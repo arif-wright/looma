@@ -1,4 +1,8 @@
-<script lang="ts">
+<script context="module" lang="ts">
+    export const ssr = false; // render this page on the client only
+  </script>
+  
+  <script lang="ts">
     import { supabase } from '$lib/supabaseClient';
     import { PUBLIC_APP_URL } from '$env/static/public';
   
@@ -8,36 +12,24 @@
   
     async function sendMagic(e: Event) {
       e.preventDefault();
-      ok = null;
-      error = null;
+      ok = null; error = null;
   
-      const redirectTo =
-        PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const redirectTo = PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   
       const { error: err } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: redirectTo }
       });
   
-      if (err) {
-        error = err.message;
-        ok = false;
-      } else {
-        ok = true;
-      }
+      if (err) { error = err.message; ok = false; }
+      else { ok = true; }
     }
   </script>
   
   <h1>Login</h1>
   
   <form class="flex flex-col gap-3 max-w-sm" on:submit={sendMagic}>
-    <input
-      type="email"
-      placeholder="you@example.com"
-      bind:value={email}
-      required
-      class="border rounded p-2"
-    />
+    <input type="email" placeholder="you@example.com" bind:value={email} required class="border rounded p-2" />
     <button class="bg-emerald-600 text-white py-2 px-4 rounded">Send Magic Link</button>
   </form>
   
@@ -46,6 +38,7 @@
   {:else if ok}
     <p style="color:green;margin-top:10px;">If that email exists, a sign-in link was sent.</p>
   {/if}
+  
   
   
   
