@@ -1,5 +1,25 @@
-import type { Actions } from './$types';
+import { redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { PUBLIC_APP_URL } from '$env/static/public';
+import { sanitizeInternalPath } from '$lib/auth/consumeHashSession';
+
+const DEFAULT_APP_PATH = '/app';
+
+function resolveRedirectDestination(url: URL): string {
+  const candidate =
+    sanitizeInternalPath(url.searchParams.get('next')) ?? sanitizeInternalPath(url.searchParams.get('redirectTo'));
+  return candidate ?? DEFAULT_APP_PATH;
+}
+
+export const load: PageServerLoad = async ({ locals, url }) => {
+  const session = await locals.getSession();
+  if (session) {
+    const destination = resolveRedirectDestination(url);
+    throw redirect(303, destination);
+  }
+
+  return {};
+};
 
 export const actions: Actions = {
   magic: async ({ request, locals, url }) => {
@@ -7,20 +27,24 @@ export const actions: Actions = {
     const email = String(form.get('email') || '').trim();
     if (!email) return { ok: false, error: 'Email required' };
 
-    // One source of truth for redirects (works in dev & prod)
-    const redirectTo = PUBLIC_APP_URL || url.origin;
+    const destination = resolveRedirectDestination(url);
+    const baseUrl = (PUBLIC_APP_URL || url.origin).replace(/\/$/, '');
+    const emailRedirectTo = baseUrl + '/auth/callback?next=' + encodeURIComponent(destination);
 
-    const { error } = await locals.sb.auth.signInWithOtp({
+    const { error } = await locals.supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo }
+      options: { emailRedirectTo }
     });
 
-    return { ok: !error, error: error?.message ?? null };
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    throw redirect(303, destination);
   },
 
   signout: async ({ locals }) => {
-    await locals.sb.auth.signOut();
+    await locals.supabase.auth.signOut();
     return { ok: true };
   }
 };
-
