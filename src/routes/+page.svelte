@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { PUBLIC_APP_URL } from '$env/static/public';
+  import { env as publicEnv } from '$env/dynamic/public';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import AuthProgress from '$lib/ui/AuthProgress.svelte';
   import {
@@ -19,7 +19,11 @@
     network_error: "We couldn't reach the server. Check your connection and try again."
   };
 
-  const SITE_URL = (PUBLIC_APP_URL || 'https://looma.app').replace(/\/$/, '');
+  const PUBLIC_APP_URL = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const ORIGIN = PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const CANONICAL = '/';
+  const abs = (path: string) => (ORIGIN ? `${ORIGIN}${path}` : path);
+  const SHARE_URL = ORIGIN || CANONICAL;
   const SITE_TITLE = 'Looma by Kinforge — Game-ready creature collections';
   const SITE_DESCRIPTION =
     'Looma helps Kinforge game masters collect, organise, and deploy creatures with a shared toolkit built for collaborative worldbuilding.';
@@ -61,8 +65,8 @@
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Kinforge',
-    url: SITE_URL,
-    logo: `${SITE_URL}/og/looma_og.png`,
+    url: SHARE_URL,
+    logo: abs('/og/looma_og.png'),
     sameAs: ['https://kinforge.gg', 'https://twitter.com/kinforge'],
     brand: {
       '@type': 'Brand',
@@ -187,20 +191,20 @@
 <svelte:head>
   <title>{SITE_TITLE}</title>
   <meta name="description" content={SITE_DESCRIPTION} />
-  <link rel="canonical" href={SITE_URL} />
+  <link rel="canonical" href="/" />
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content={SITE_TITLE} />
   <meta property="og:description" content={SITE_DESCRIPTION} />
-  <meta property="og:url" content={SITE_URL} />
-  <meta property="og:image" content={`${SITE_URL}/og/looma_og.png`} />
+  <meta property="og:url" content={SHARE_URL} />
+  <meta property="og:image" content={abs('/og/looma_og.png')} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={SITE_TITLE} />
   <meta name="twitter:description" content={SITE_DESCRIPTION} />
-  <meta name="twitter:image" content={`${SITE_URL}/og/looma_og.png`} />
+  <meta name="twitter:image" content={abs('/og/looma_og.png')} />
 
   <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
 </svelte:head>

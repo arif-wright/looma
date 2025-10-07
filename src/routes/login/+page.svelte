@@ -1,15 +1,18 @@
 <script lang="ts">
   import { supabaseBrowser } from '$lib/supabaseClient';
-  import { PUBLIC_APP_URL } from '$env/static/public';
+  import { env as publicEnv } from '$env/dynamic/public';
   import { sanitizeInternalPath } from '$lib/auth/consumeHashSession';
+
+  const PUBLIC_APP_URL = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
 
   let email = '';
   let ok: boolean | null = null;
   let error: string | null = null;
 
   function resolveCallbackUrl(): string {
-    const origin = (PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : ''))
-      .replace(/\/$/, '');
+    const fallbackOrigin =
+      typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : '';
+    const origin = PUBLIC_APP_URL || fallbackOrigin;
     if (typeof window === 'undefined') {
       return origin + '/auth/callback?next=' + encodeURIComponent('/app');
     }
