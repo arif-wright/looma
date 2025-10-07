@@ -18,13 +18,14 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+        # TODO: revert to npm ci after we regenerate package-lock.json on a machine with the correct Node version
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test
+        run: npx playwright test --reporter=dot
 
       - name: Upload Playwright report
         if: failure()
