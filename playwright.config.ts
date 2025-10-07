@@ -6,7 +6,7 @@ const config: PlaywrightTestConfig = {
     baseURL: 'http://127.0.0.1:4173'
   },
   webServer: {
-    command: 'npm run preview',
+    command: 'npm run preview:e2e',
     port: 4173,
     timeout: 120_000,
     reuseExistingServer: !process.env.CI
