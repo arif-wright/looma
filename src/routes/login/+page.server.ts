@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { sanitizeInternalPath } from '$lib/auth/consumeHashSession';
 
 const DEFAULT_APP_PATH = '/app';
@@ -9,6 +9,10 @@ function resolveRedirectDestination(url: URL): string {
   const candidate =
     sanitizeInternalPath(url.searchParams.get('next')) ?? sanitizeInternalPath(url.searchParams.get('redirectTo'));
   return candidate ?? DEFAULT_APP_PATH;
+}
+
+function getOrigin(url: URL): string {
+  return (publicEnv.PUBLIC_APP_URL || url.origin).replace(/\/$/, '');
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -28,8 +32,8 @@ export const actions: Actions = {
     if (!email) return { ok: false, error: 'Email required' };
 
     const destination = resolveRedirectDestination(url);
-    const baseUrl = (PUBLIC_APP_URL || url.origin).replace(/\/$/, '');
-    const emailRedirectTo = baseUrl + '/auth/callback?next=' + encodeURIComponent(destination);
+    const origin = getOrigin(url);
+    const emailRedirectTo = origin + '/auth/callback?next=' + encodeURIComponent(destination);
 
     const { error } = await locals.supabase.auth.signInWithOtp({
       email,
