@@ -6,7 +6,7 @@
   import StatsPanel from '$lib/app/dashboard/StatsPanel.svelte';
   import CreaturesSnapshot from '$lib/app/dashboard/CreaturesSnapshot.svelte';
   import MissionsOverview from '$lib/app/dashboard/MissionsOverview.svelte';
-  import AchievementsFeed from '$lib/app/dashboard/AchievementsFeed.svelte';
+  import AchievementsPanel from '$lib/app/dashboard/AchievementsPanel.svelte';
   import ActivityFeed from '$lib/app/dashboard/ActivityFeed.svelte';
 
   let sidebarOpen = false;
@@ -182,7 +182,7 @@
         <StatsPanel />
         <CreaturesSnapshot />
         <MissionsOverview />
-        <AchievementsFeed />
+        <AchievementsPanel />
         <ActivityFeed />
       </section>
     </main>
