@@ -23,8 +23,7 @@ jobs:
           npm -v
 
       - name: Install dependencies
-        run: npm install
-        # TODO: revert to npm ci after we regenerate package-lock.json on a machine with the correct Node version
+        run: npm ci
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps

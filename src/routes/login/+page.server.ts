@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { env as publicEnv } from '$env/dynamic/public';
+import { magicLinkRedirect } from '$lib/supabaseClient';
 import { sanitizeInternalPath } from '$lib/auth/consumeHashSession';
 
 const DEFAULT_APP_PATH = '/app';
@@ -11,12 +11,8 @@ function resolveRedirectDestination(url: URL): string {
   return candidate ?? DEFAULT_APP_PATH;
 }
 
-function getOrigin(url: URL): string {
-  return (publicEnv.PUBLIC_APP_URL || url.origin).replace(/\/$/, '');
-}
-
 export const load: PageServerLoad = async ({ locals, url }) => {
-  const session = await locals.getSession();
+  const session = locals.session;
   if (session) {
     const destination = resolveRedirectDestination(url);
     throw redirect(303, destination);
@@ -32,8 +28,7 @@ export const actions: Actions = {
     if (!email) return { ok: false, error: 'Email required' };
 
     const destination = resolveRedirectDestination(url);
-    const origin = getOrigin(url);
-    const emailRedirectTo = origin + '/auth/callback?next=' + encodeURIComponent(destination);
+    const emailRedirectTo = `${magicLinkRedirect}?${new URLSearchParams({ next: destination }).toString()}`;
 
     const { error } = await locals.supabase.auth.signInWithOtp({
       email,

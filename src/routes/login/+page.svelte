@@ -1,44 +1,28 @@
 <script lang="ts">
+  import { PUBLIC_SITE_URL } from '$env/static/public';
   import { supabaseBrowser } from '$lib/supabaseClient';
-  import { env as publicEnv } from '$env/dynamic/public';
-  import { sanitizeInternalPath } from '$lib/auth/consumeHashSession';
-
-  const PUBLIC_APP_URL = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
 
   let email = '';
-  let ok: boolean | null = null;
-  let error: string | null = null;
 
-  function resolveCallbackUrl(): string {
-    const fallbackOrigin =
-      typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : '';
-    const origin = PUBLIC_APP_URL || fallbackOrigin;
-    if (typeof window === 'undefined') {
-      return origin + '/auth/callback?next=' + encodeURIComponent('/app');
-    }
-    const params = new URLSearchParams(window.location.search);
-    const next = sanitizeInternalPath(params.get('next') ?? params.get('redirectTo')) ?? '/app';
-    return origin + '/auth/callback?next=' + encodeURIComponent(next);
-  }
-
-  async function sendMagic(e: Event) {
+  async function sendMagic(e: SubmitEvent) {
     e.preventDefault();
-    ok = null;
-    error = null;
-
-    const emailRedirectTo = resolveCallbackUrl();
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const value = (formData.get('email') as string | null)?.trim();
+    if (!value) return;
 
     const supabase = supabaseBrowser();
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo }
+    email = value;
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: value,
+      options: { emailRedirectTo: `${PUBLIC_SITE_URL}/auth/callback?next=/app/dashboard` }
     });
 
-    if (err) {
-      error = err.message;
-      ok = false;
+    if (error) {
+      console.error('Supabase sign-in error:', error.message);
     } else {
-      ok = true;
+      alert('Magic link sent! Check your inbox.');
     }
   }
 </script>
@@ -52,12 +36,7 @@
     bind:value={email}
     required
     class="border rounded p-2"
+    name="email"
   />
   <button class="bg-emerald-600 text-white py-2 px-4 rounded">Send Magic Link</button>
 </form>
-
-{#if error}
-  <p style="color:red;margin-top:10px;">{error}</p>
-{:else if ok}
-  <p style="color:green;margin-top:10px;">If that email exists, a sign-in link was sent.</p>
-{/if}
