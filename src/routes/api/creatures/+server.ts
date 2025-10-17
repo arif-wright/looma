@@ -16,7 +16,7 @@ const jsonError = (status: number, message: string) =>
   json({ ok: false, error: message }, { status });
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const session = await locals.getSession();
+  const session = locals.session;
   if (!session) {
     return jsonError(401, 'Not authenticated');
   }
@@ -47,7 +47,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-  const session = await locals.getSession();
+  const session = locals.session;
   if (!session) {
     return jsonError(401, 'Not authenticated');
   }

@@ -1,58 +1,26 @@
 import type { Handle } from '@sveltejs/kit';
-import { createServerClient } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { env as publicEnv } from '$env/dynamic/public';
-import { env as privateEnv } from '$env/dynamic/private';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import { supabaseServer } from '$lib/supabaseClient';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const SUPABASE_URL = privateEnv.SUPABASE_URL ?? publicEnv.PUBLIC_SUPABASE_URL ?? '';
-  const SUPABASE_ANON = privateEnv.SUPABASE_ANON_KEY ?? publicEnv.PUBLIC_SUPABASE_ANON_KEY ?? '';
-
-  let supabase: SupabaseClient | null = null;
-
-  if (SUPABASE_URL && SUPABASE_ANON) {
-    supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON, {
-      cookies: {
-        get: (name) => event.cookies.get(name),
-        set: (name, value, options) => {
-          event.cookies.set(name, value, { path: '/', ...options });
-        },
-        remove: (name, options) => {
-          event.cookies.delete(name, { path: '/', ...options });
-        }
-      }
-    });
-  } else if (import.meta.env.DEV) {
-    console.warn('Supabase environment variables missing; skipping server client initialisation.');
+  if (event.url.hostname === '127.0.0.1') {
+    const url = new URL(event.request.url);
+    url.hostname = 'localhost';
+    return new Response(null, { status: 301, headers: { Location: url.toString() } });
   }
 
+  const supabase = supabaseServer(event);
+  const { data } = await supabase.auth.getSession();
+
   event.locals.supabase = supabase;
-  event.locals.getSession = async () => {
-    if (!supabase) return null;
-    return (await supabase.auth.getSession()).data.session ?? null;
-  };
-  event.locals.getUser = async () => {
-    if (!supabase) return null;
-    return (await supabase.auth.getUser()).data.user ?? null;
-  };
+  event.locals.session = data.session ?? null;
 
   return resolve(event);
 };
 
-declare global {
-  namespace App {
-    interface Locals {
-      supabase: SupabaseClient | null;
-      getSession: () => Promise<
-        | (Awaited<ReturnType<SupabaseClient['auth']['getSession']>>)['data']['session']
-        | null
-      >;
-      getUser: () => Promise<
-        | (Awaited<ReturnType<SupabaseClient['auth']['getUser']>>)['data']['user']
-        | null
-      >;
-    }
+declare module '@sveltejs/kit' {
+  interface Locals {
+    supabase: SupabaseClient;
+    session: Session | null;
   }
 }
-
-export {};

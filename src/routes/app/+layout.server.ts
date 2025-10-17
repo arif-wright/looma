@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
-  const session = await locals.getSession();
+  const session = locals.session;
 
   if (!session) {
     const redirectTarget = url.pathname + url.search;
@@ -13,10 +13,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     throw redirect(303, loginLocation);
   }
 
-  const user = session.user;
-
   return {
     session,
-    user
+    user: session.user
   };
 };
