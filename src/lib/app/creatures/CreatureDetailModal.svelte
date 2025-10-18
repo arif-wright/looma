@@ -86,7 +86,7 @@
   <Portal>
     <button
       type="button"
-      class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-sm"
+      class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-md"
       aria-label="Close creature detail"
       on:click={onClose}
     ></button>
@@ -99,11 +99,11 @@
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
       class="fixed z-[2147483647] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-             w-[min(92vw,40rem)] max-h-[85vh] overflow-auto
-             rounded-2xl border border-white/10
-             bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none"
+             w-[min(92vw,42rem)] max-h-[85vh] overflow-auto
+             rounded-2xl border border-white/10 shadow-2xl outline-none
+             bg-gradient-to-b from-white/[0.08] to-white/[0.04]"
     >
-      <div class="p-4 border-b border-white/10 flex items-center justify-between gap-4">
+      <header class="sticky top-0 z-10 bg-white/8 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between gap-4 rounded-t-2xl">
         <div class="min-w-0">
           <h2 id="cd-title" class="text-base font-semibold truncate">
             {creature.name ?? 'Unnamed'} <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
@@ -113,7 +113,7 @@
           </p>
         </div>
         <button class="text-sm underline opacity-80 hover:opacity-100" on:click={onClose}>Close</button>
-      </div>
+      </header>
 
       <div class="p-4 space-y-4">
         {#if creature.species?.description}
