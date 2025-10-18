@@ -18,12 +18,7 @@
   }
 
   function trapFocus(event: KeyboardEvent) {
-    if (!open) return;
-    if (focusable.length === 0) {
-      event.preventDefault();
-      modalEl?.focus();
-      return;
-    }
+    if (!open || focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const active = document.activeElement as HTMLElement | null;
@@ -42,9 +37,7 @@
     if (event.key === 'Escape') {
       event.preventDefault();
       onClose();
-      return;
-    }
-    if (event.key === 'Tab') {
+    } else if (event.key === 'Tab') {
       trapFocus(event);
     }
   }
@@ -58,11 +51,7 @@
         'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
       )
     );
-    if (focusable.length) {
-      focusable[0].focus();
-    } else {
-      modalEl.focus();
-    }
+    (focusable[0] ?? modalEl).focus();
   }
 
   $: if (browser) {
@@ -94,10 +83,10 @@
 </script>
 
 {#if browser && open && creature}
-  <Portal target="body">
+  <Portal>
     <button
       type="button"
-      class="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-sm"
+      class="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm"
       aria-label="Close creature detail"
       on:click={onClose}
     ></button>
@@ -109,12 +98,10 @@
       aria-modal="true"
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
-      class="fixed z-[5001] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+      class="fixed z-[1000000] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
              w-[min(92vw,40rem)] max-h-[85vh] overflow-auto
              rounded-2xl border border-white/10
-             bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none
-             opacity-0 scale-95 data-[show=true]:opacity-100 data-[show=true]:scale-100 transition-all duration-200 ease-out"
-      data-show={open}
+             bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none"
     >
       <div class="p-4 border-b border-white/10 flex items-center justify-between gap-4">
         <div class="min-w-0">

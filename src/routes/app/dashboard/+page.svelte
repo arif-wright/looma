@@ -210,7 +210,9 @@
 </div>
 
 {#if browser}
+{#if browser}
   <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
+{/if}
 {/if}
 
 <style>
