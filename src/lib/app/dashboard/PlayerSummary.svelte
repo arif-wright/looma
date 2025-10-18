@@ -28,6 +28,18 @@
   let currentUserId: string | null = null;
   let subscribedUserId: string | null = null;
 
+  async function giveXp(amount = 25) {
+    try {
+      await fetch('/api/xp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+    } catch (err) {
+      console.error('Failed to grant XP', err);
+    }
+  }
+
   async function ensureRealtimeSubscription(userId: string) {
     if (!supabase) return;
 
@@ -160,6 +172,13 @@
       </div>
       <div class="level-badge">
         <StatBadge label="Level" value={profile.level} />
+        <button
+          type="button"
+          class="dev-action"
+          on:click={() => giveXp(25)}
+        >
+          +25 XP (test)
+        </button>
       </div>
     </div>
 
@@ -228,12 +247,31 @@
 
   .level-badge {
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
   }
 
   .summary-body {
     margin-top: 1.25rem;
     display: grid;
     gap: 1rem;
+  }
+
+  .dev-action {
+    background: none;
+    border: 0;
+    font-size: 0.72rem;
+    color: rgba(233, 195, 255, 0.75);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .dev-action:hover,
+  .dev-action:focus-visible {
+    color: #ffffff;
   }
 
   .metric-label {
