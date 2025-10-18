@@ -23,15 +23,16 @@
 
   let paginated: Row[] = [];
   let pages = 1;
-  let safePage = 1;
   let displayPages = 1;
   let loadedPages = 1;
-  let pagination: { page: number; pages: number; data: Row[] } = { page: 1, pages: 1, data: [] };
 
-  $: pagination = sliceByPage(items, currentPage, perPage);
-  $: ({ page: safePage, pages, data: paginated } = pagination);
-  $: if (safePage !== currentPage) {
-    currentPage = safePage;
+  $: {
+    const { data, pages: total, page: safePage } = sliceByPage(items, currentPage, perPage);
+    paginated = data;
+    pages = total;
+    if (safePage !== currentPage) {
+      currentPage = safePage;
+    }
   }
   $: loadedPages = Math.max(1, Math.ceil(items.length / perPage));
   $: displayPages = endReached ? pages : Math.max(pages, loadedPages + (loadingMore ? 0 : 1));
@@ -121,13 +122,19 @@
     }
   }
 
+  function setPageLocal(pageNumber: number) {
+    if (pageNumber >= 1) {
+      currentPage = Math.min(pageNumber, pages);
+      scrollToTop();
+    }
+  }
+
   async function changePage(target: number) {
     target = Math.max(1, Math.floor(target));
     if (target === currentPage) return;
     const loadedPagesNow = Math.max(1, Math.ceil(items.length / perPage));
     if (target <= loadedPagesNow) {
-      currentPage = target;
-      scrollToTop();
+      setPageLocal(target);
       return;
     }
 
@@ -135,8 +142,7 @@
       const loaded = await loadNextChunk();
       if (loaded) {
         const loadedPagesAfter = Math.max(1, Math.ceil(items.length / perPage));
-        currentPage = Math.min(target, loadedPagesAfter);
-        scrollToTop();
+        setPageLocal(Math.min(target, loadedPagesAfter));
       }
     }
   }
