@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
-  import { speciesAccent } from '$lib/ui/speciesAccent';
   import Portal from '$lib/ui/Portal.svelte';
+  import { speciesAccent } from '$lib/ui/speciesAccent';
+  import { speciesIcon } from '$lib/ui/speciesIcon';
   import type { CreatureRow } from '$lib/data/creatures';
 
   export let creature: CreatureRow | null = null;
@@ -14,8 +15,11 @@
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
   let accent = speciesAccent();
+  let Icon: typeof Portal | null = null;
+  let label = 'Unknown';
 
   $: accent = speciesAccent(creature?.species?.key, creature?.species?.name);
+  $: ({ Icon, label } = speciesIcon(creature?.species?.key, creature?.species?.name));
 
   function onClose() {
     dispatch('close');
@@ -126,32 +130,38 @@
 
         <!-- RIGHT: Details -->
         <div class="space-y-4 text-[15px] leading-relaxed">
-          <h2 id="cd-title" class="text-xl font-semibold text-white flex items-center gap-2">
-            {creature.name ?? 'Unnamed'}
-          </h2>
-
-          <p class="text-sm text-white/70">{creature.species?.name ?? 'Unknown species'}</p>
-
-          <div class="flex flex-wrap items-center gap-2 text-[12px] opacity-80">
-            <span class="truncate">ID: {creature.id.slice(0, 8)}…</span>
-            {#if creature.created_at}
-              <span aria-hidden="true">•</span>
-              <span>{new Date(creature.created_at).toLocaleDateString()}</span>
-            {/if}
-          </div>
-
-          <div class="flex flex-wrap gap-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              {#if Icon}
+                <svelte:component
+                  this={Icon}
+                  class={`h-6 w-6 flex-shrink-0 ${accent.text ?? 'text-white/80'}`}
+                  aria-hidden="true"
+                />
+              {/if}
+              <div class="min-w-0">
+                <h2 id="cd-title" class="text-xl font-semibold truncate text-white">
+                  {creature.name ?? 'Unnamed'}
+                </h2>
+                <p class="text-sm text-white/70 truncate">{creature.species?.name ?? label}</p>
+              </div>
+            </div>
             <span
               class={`text-[11px] px-2 py-1 rounded-full ring-1 transition ${accent.chipBg} ${accent.chipRing} ${accent.text ?? 'text-white/80'}`}
             >
               {creature.bonded ? 'Bonded' : 'Unbonded'}
             </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-[12px] text-white/70 opacity-80">
+            <span class="truncate">ID: {creature.id.slice(0, 8)}…</span>
+            {#if creature.created_at}
+              <span aria-hidden="true">•</span>
+              <span>{new Date(creature.created_at).toLocaleDateString()}</span>
+            {/if}
             {#if creature.alignment}
-              <span
-                class={`text-[11px] px-2 py-1 rounded-full ring-1 transition ${accent.chipBg} ${accent.chipRing} ${accent.text ?? 'text-white/80'}`}
-              >
-                Alignment: {creature.alignment}
-              </span>
+              <span aria-hidden="true">•</span>
+              <span>Alignment: {creature.alignment}</span>
             {/if}
           </div>
 
