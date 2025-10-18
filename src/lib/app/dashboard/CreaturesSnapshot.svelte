@@ -86,7 +86,7 @@
         <li>
           <button
             type="button"
-            class="creature-item"
+            class="creature-card"
             on:click={() => openDetail(row.id)}
             on:keydown={(event) => handleKey(event, row.id)}
           >
@@ -153,23 +153,24 @@
     gap: 0.85rem;
   }
 
-  .creature-item {
+  .creature-card {
     width: 100%;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.75rem;
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
     text-align: left;
   }
 
-  .creature-item:hover,
-  .creature-item:focus-visible {
-    background: rgba(255, 255, 255, 0.07);
+  .creature-card:hover,
+  .creature-card:focus-visible {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(233, 195, 255, 0.12);
     transform: translateY(-1px);
   }
 
@@ -181,10 +182,16 @@
     border: 1px solid rgba(233, 195, 255, 0.18);
     display: grid;
     place-items: center;
+    transition: transform 0.2s ease;
+  }
+
+  .creature-card:hover .creature-avatar,
+  .creature-card:focus-visible .creature-avatar {
+    transform: scale(1.05);
   }
 
   .spark {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
 
   .creature-text {
@@ -233,7 +240,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .creature-item,
+    .creature-card,
     .skeleton-row {
       transition: none;
       animation: none;

@@ -27,14 +27,18 @@
 </script>
 
 {#if open && creature}
-  <div class="fixed inset-0 z-50 grid place-items-center p-4" aria-modal="true" role="dialog" aria-labelledby="cd-title" aria-describedby="cd-desc">
+  <div class="fixed inset-0 z-[1200] grid place-items-center p-4" aria-modal="true" role="dialog" aria-labelledby="cd-title" aria-describedby="cd-desc">
     <button
       type="button"
       class="absolute inset-0 bg-black/60 backdrop-blur-sm"
       on:click={onClose}
       aria-label="Close creature detail"
     ></button>
-    <div bind:this={modalEl} tabindex="-1" class="relative w-full max-w-lg rounded-2xl border border-white/10 bg-white/[0.06] shadow-xl outline-none">
+    <div
+      bind:this={modalEl}
+      tabindex="-1"
+      class="relative w-full max-w-lg rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-xl outline-none"
+    >
       <div class="p-4 border-b border-white/10 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center">✨</div>
@@ -68,6 +72,12 @@
         <div class="h-40 rounded-xl bg-white/5 grid place-items-center">[ Creature Art Placeholder ]</div>
 
         <div class="flex items-center justify-end gap-3 pt-2">
+          <a
+            class="text-xs opacity-80 hover:opacity-100 underline"
+            href={`/app/creatures/${creature.id}`}
+          >
+            Open full page
+          </a>
           <button class="text-xs opacity-80 hover:opacity-100 underline" on:click={onClose}>Done</button>
         </div>
       </div>
