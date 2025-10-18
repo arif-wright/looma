@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import Pagination from '$lib/ui/Pagination.svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
 
   type FeedRow = {
@@ -9,79 +8,140 @@
     type: string;
     message: string;
     meta: any;
-    is_public: boolean;
     user_id: string;
     display_name: string | null;
+    handle: string | null;
+    avatar_url: string | null;
   };
-
-  const perPage = 8;
 
   let items: FeedRow[] = [];
   let loading = true;
-  let page = 1;
-  let container: HTMLDivElement | null = null;
-
-  $: pages = Math.max(1, Math.ceil(items.length / perPage));
-  $: pageItems = items.slice((page - 1) * perPage, page * perPage);
-
+  let moreLoading = false;
+  let reachedEnd = false;
   const supabase = supabaseBrowser();
 
-  async function loadFeed() {
+  function relativeTime(value: string) {
+    const ts = new Date(value).getTime();
+    if (!Number.isFinite(ts)) return value;
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(value).toLocaleDateString();
+  }
+
+  async function loadInitial() {
     loading = true;
+    reachedEnd = false;
     try {
-      const { data, error } = await supabase.rpc('get_public_feed', { p_limit: 200 });
+      const { data, error } = await supabase.rpc('get_public_feed', { p_limit: 20 });
       if (error) throw error;
       if (Array.isArray(data)) {
         items = data as FeedRow[];
+        reachedEnd = data.length < 20;
+      } else {
+        items = [];
+        reachedEnd = true;
       }
     } catch (err) {
-      console.error('Failed to load social feed', err);
+      console.error('load social feed error', err);
       items = [];
+      reachedEnd = true;
     } finally {
       loading = false;
     }
   }
 
-  function setPage(p: number) {
-    page = Math.min(Math.max(1, p), pages);
-    container?.scrollTo({ top: 0, behavior: 'smooth' });
+  async function loadMore() {
+    if (moreLoading || reachedEnd || items.length === 0) return;
+    moreLoading = true;
+    const last = items[items.length - 1];
+    try {
+      const { data, error } = await supabase.rpc('get_public_feed', {
+        p_limit: 20,
+        p_before: last.created_at
+      });
+      if (error) throw error;
+      if (Array.isArray(data) && data.length > 0) {
+        const existing = new Set(items.map((row) => row.id));
+        const additions = (data as FeedRow[]).filter((row) => !existing.has(row.id));
+        items = [...items, ...additions];
+        if (data.length < 20) reachedEnd = true;
+      } else {
+        reachedEnd = true;
+      }
+    } catch (err) {
+      console.error('load more social feed error', err);
+      reachedEnd = true;
+    } finally {
+      moreLoading = false;
+    }
   }
 
   let sending = new Set<string>();
-
-  function markSending(id: string, active: boolean) {
+  function setSending(userId: string, active: boolean) {
     const next = new Set(sending);
-    if (active) {
-      next.add(id);
-    } else {
-      next.delete(id);
-    }
+    if (active) next.add(userId);
+    else next.delete(userId);
     sending = next;
   }
 
   async function sendEnergy(targetUserId: string) {
-    markSending(targetUserId, true);
+    setSending(targetUserId, true);
     try {
-      const response = await fetch('/api/energy', {
+      const res = await fetch('/api/energy', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ to: targetUserId, amount: 1 })
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        console.error('Send energy failed', payload?.error ?? response.statusText);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        console.error('send energy failed', payload?.error ?? res.statusText);
       }
     } catch (err) {
-      console.error('Send energy request error', err);
+      console.error('send energy request error', err);
     } finally {
-      markSending(targetUserId, false);
+      setSending(targetUserId, false);
     }
   }
 
-  onMount(loadFeed);
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+
+  onMount(async () => {
+    await loadInitial();
+    channel = supabase
+      .channel('social-feed-rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => {
+        const row = payload.new as any;
+        if (!row?.is_public) return;
+        if (items.some((item) => item.id === row.id)) return;
+        const prepend: FeedRow = {
+          id: row.id,
+          created_at: row.created_at,
+          type: row.type,
+          message: row.message,
+          meta: row.meta,
+          user_id: row.user_id,
+          display_name: row.display_name ?? null,
+          handle: row.handle ?? null,
+          avatar_url: row.avatar_url ?? null
+        };
+        items = [prepend, ...items];
+        reachedEnd = false;
+      })
+      .subscribe();
+  });
+
+  onDestroy(() => {
+    if (channel) supabase.removeChannel(channel);
+  });
 </script>
 
-<div class="panel" bind:this={container}>
+<div class="panel">
   <h3 class="panel-title">Social Feed</h3>
 
   {#if loading}
@@ -90,14 +150,14 @@
     <div class="panel-message">No public activity yet.</div>
   {:else}
     <ul class="feed" aria-live="polite">
-      {#each pageItems as row (row.id)}
+      {#each items as row (row.id)}
         <li class="feed-item">
-          <div class="marker" aria-hidden="true"></div>
+          <img class="avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
           <div class="body">
             <div class="header">
-              <span class="name">{row.display_name ?? 'Someone'}</span>
-              <span aria-hidden="true" class="dot">•</span>
-              <span class="when">{new Date(row.created_at).toLocaleString()}</span>
+              <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
+              <span class="dot" aria-hidden="true">•</span>
+              <span class="when">{relativeTime(row.created_at)}</span>
             </div>
             <div class="message">{row.message}</div>
             <div class="actions">
@@ -114,9 +174,15 @@
         </li>
       {/each}
     </ul>
-    {#if pages > 1}
-      <Pagination {page} {pages} onChange={setPage} ariaLabel="Global feed pagination" />
-    {/if}
+    <div class="load-more">
+      {#if reachedEnd}
+        <span class="end-text">End of feed</span>
+      {:else}
+        <button class="more-button" on:click={loadMore} disabled={moreLoading}>
+          {moreLoading ? 'Loading…' : 'Load more'}
+        </button>
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -143,40 +209,41 @@
   }
 
   .feed {
-    list-style: none;
     margin: 0;
     padding: 0;
+    list-style: none;
     display: flex;
     flex-direction: column;
   }
 
   .feed-item {
     display: flex;
-    gap: 0.65rem;
-    padding: 0.85rem 1rem;
+    gap: 0.85rem;
+    padding: 0.9rem 1.1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .marker {
-    width: 10px;
-    height: 10px;
+  .avatar {
+    width: 32px;
+    height: 32px;
     border-radius: 999px;
-    margin-top: 0.4rem;
-    background: linear-gradient(180deg, #a78bfa, #22d3ee);
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
   }
 
   .body {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.35rem;
+    gap: 0.4rem;
   }
 
   .header {
     display: flex;
-    gap: 0.5rem;
     align-items: baseline;
+    gap: 0.5rem;
     font-size: 0.85rem;
   }
 
@@ -195,16 +262,16 @@
 
   .message {
     font-size: 0.95rem;
-    opacity: 0.9;
+    opacity: 0.92;
   }
 
   .actions {
-    margin-top: 0.25rem;
+    margin-top: 0.3rem;
   }
 
   .energy {
     font-size: 0.75rem;
-    padding: 0.3rem 0.75rem;
+    padding: 0.35rem 0.85rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.06);
@@ -220,13 +287,47 @@
   }
 
   .energy:disabled {
-    cursor: default;
     opacity: 0.45;
+    cursor: default;
+  }
+
+  .load-more {
+    padding: 0.75rem 1rem 1rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .more-button {
+    font-size: 0.75rem;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .more-button:hover:not(:disabled),
+  .more-button:focus-visible:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .more-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .end-text {
+    font-size: 0.75rem;
+    opacity: 0.6;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .panel,
-    .energy {
+    .energy,
+    .more-button {
       transition: none;
     }
   }
