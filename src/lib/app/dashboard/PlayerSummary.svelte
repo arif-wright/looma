@@ -158,52 +158,57 @@
       <button type="button" class="retry-button" on:click={loadData}>Retry</button>
     </div>
   {:else if profile}
-    <div class="summary-header">
-      <div class="identity">
-        <img
-          src={profile.avatar_url ?? '/avatar-fallback.png'}
-          alt="Player avatar"
-          class="avatar"
-          loading="lazy"
-        />
-        <div>
-          <div class="display-name">{profile.display_name ?? 'Player'}</div>
-          {#if profile.handle}
-            <div class="handle">@{profile.handle}</div>
+    <div class="summary-grid" aria-live="polite">
+      <div>
+        <div class="identity">
+          <img
+            src={profile.avatar_url ?? '/avatar-fallback.png'}
+            alt="Player avatar"
+            class="avatar"
+            loading="lazy"
+          />
+          <div>
+            <div class="display-name">{profile.display_name ?? 'Player'}</div>
+            {#if profile.handle}
+              <div class="handle">@{profile.handle}</div>
+            {/if}
+          </div>
+        </div>
+
+        <div class="metrics">
+          {#if typeof xp === 'number' && typeof xpNext === 'number'}
+            <div class="xp-summary">
+              <div class="xp-heading">XP to next level</div>
+              <ProgressBar value={xp} max={xpNext} ariaLabel="XP progress" />
+              <div class="xp-stats">
+                {xp} / {xpNext} XP <span aria-hidden="true">•</span> {Math.max(0, xpNext - xp)} to level {level + 1}
+              </div>
+              <button
+                type="button"
+                class="xp-dev-action"
+                on:click={() => giveXp(25)}
+              >
+                +25 XP (test)
+              </button>
+            </div>
           {/if}
+
+          <div class="energy-summary">
+            <div class="energy-heading">Energy</div>
+            <ProgressBar
+              value={profile.energy ?? 0}
+              max={Math.max(1, profile.energy_max ?? 1)}
+              ariaLabel="Energy"
+            />
+            <div class="energy-stats">
+              {profile.energy ?? 0} / {profile.energy_max ?? 0}
+            </div>
+          </div>
         </div>
       </div>
-      <div class="level-badge">
-        <StatBadge label="Level" value={profile.level} />
-        {#if typeof xp === 'number' && typeof xpNext === 'number'}
-          <div class="xp-summary">
-            <div class="xp-heading">XP to next level</div>
-            <ProgressBar value={xp} max={xpNext} ariaLabel="XP progress" />
-            <div class="xp-stats">
-              {xp} / {xpNext} XP <span aria-hidden="true">•</span> {Math.max(0, xpNext - xp)} to level {level + 1}
-            </div>
-            <button
-              type="button"
-              class="xp-dev-action"
-              on:click={() => giveXp(25)}
-            >
-              +25 XP (test)
-            </button>
-          </div>
-        {/if}
-      </div>
-    </div>
 
-    <div class="summary-body" aria-live="polite">
-      <div>
-        <div class="metric-label">Energy {profile.energy}/{profile.energy_max}</div>
-        <ProgressBar
-          value={profile.energy ?? 0}
-          max={Math.max(1, profile.energy_max ?? 1)}
-          ariaLabel="Energy"
-        />
-      </div>
-      <div class="bonded-badge">
+      <div class="badge-stack">
+        <StatBadge label="Level" value={profile.level} />
         <StatBadge label="Bonded" value={bondedCount} />
       </div>
     </div>
@@ -219,11 +224,20 @@
 </PanelFrame>
 
 <style>
-  .summary-header {
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .metrics {
+    margin-top: 1.5rem;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 1.5rem;
+    max-width: 420px;
+    width: 100%;
   }
 
   .identity {
@@ -251,20 +265,12 @@
     font-size: 0.9rem;
   }
 
-  .level-badge {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.75rem;
-  }
-
   .xp-summary {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: stretch;
     gap: 0.4rem;
-    width: clamp(200px, 32vw, 260px);
+    width: 100%;
   }
 
   .xp-heading {
@@ -275,7 +281,7 @@
   }
 
   .xp-stats {
-    text-align: right;
+    text-align: left;
     letter-spacing: 0.02em;
     font-size: 0.75rem;
     color: rgba(233, 195, 255, 0.78);
@@ -289,6 +295,7 @@
     text-decoration: underline;
     cursor: pointer;
     padding: 0;
+    align-self: flex-start;
   }
 
   .xp-dev-action:hover,
@@ -296,23 +303,58 @@
     color: #ffffff;
   }
 
-  .summary-body {
-    margin-top: 1.25rem;
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  .energy-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: stretch;
+    width: 100%;
   }
 
-  .metric-label {
-    font-size: 0.75rem;
+  .energy-heading {
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
     color: rgba(233, 195, 255, 0.78);
   }
 
-  .bonded-badge {
-    padding-top: 0.25rem;
+  .energy-stats {
+    text-align: left;
+    font-size: 0.75rem;
+    color: rgba(233, 195, 255, 0.78);
+  }
+
+  .badge-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .metrics {
+      max-width: none;
+    }
+
+    .xp-summary,
+    .energy-summary {
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .xp-summary .xp-stats,
+    .energy-stats {
+      text-align: left;
+    }
+
+    .badge-stack {
+      flex-direction: row;
+      justify-content: flex-start;
+    }
   }
 
   .error-banner {
