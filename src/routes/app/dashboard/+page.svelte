@@ -9,6 +9,7 @@
   import MissionsOverview from '$lib/app/dashboard/MissionsOverview.svelte';
   import AchievementsPanel from '$lib/app/dashboard/AchievementsPanel.svelte';
   import ActivityFeed from '$lib/app/dashboard/ActivityFeed.svelte';
+  import SocialFeedPanel from '$lib/app/dashboard/SocialFeedPanel.svelte';
   import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
   import { fetchCreatureById } from '$lib/data/creatures';
   import type { CreatureRow } from '$lib/data/creatures';
@@ -199,16 +200,17 @@
 
     <main class="panels" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading" class="sr-only">Dashboard</h1>
-  <section class="panels-grid">
-      <PlayerSummary />
-      {#if data?.stats !== undefined}
-        <StatsPanel stats={data.stats} />
-      {:else}
-        <StatsPanel stats={null} />
-      {/if}
+      <section class="panels-grid">
+        <PlayerSummary />
+        {#if data?.stats !== undefined}
+          <StatsPanel stats={data.stats} />
+        {:else}
+          <StatsPanel stats={null} />
+        {/if}
         <CreaturesSnapshot on:open-creature={handleOpenCreature} />
         <MissionsOverview />
         <AchievementsPanel />
+        <SocialFeedPanel />
         <ActivityFeed />
       </section>
     </main>
