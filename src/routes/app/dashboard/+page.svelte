@@ -199,7 +199,7 @@
       <h1 id="dashboard-heading" class="sr-only">Dashboard</h1>
       <section class="panels-grid">
         <PlayerSummary />
-        <StatsPanel />
+        <StatsPanel stats={data.stats} />
         <CreaturesSnapshot on:open-creature={handleOpenCreature} />
         <MissionsOverview />
         <AchievementsPanel />

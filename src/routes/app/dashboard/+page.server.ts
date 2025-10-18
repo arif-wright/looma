@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.session) {
@@ -7,5 +8,9 @@ export const load: PageServerLoad = async (event) => {
     throw redirect(303, `/login?next=${next}`);
   }
 
-  return {};
+  const stats = await getPlayerStats(event);
+
+  return {
+    stats
+  };
 };

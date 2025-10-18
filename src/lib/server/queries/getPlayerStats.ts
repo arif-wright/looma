@@ -1,0 +1,36 @@
+import type { RequestEvent } from '@sveltejs/kit';
+import { supabaseServer } from '$lib/supabaseClient';
+
+export type PlayerStats = {
+  id: string;
+  level: number | null;
+  xp: number | null;
+  xp_next: number | null;
+  energy: number | null;
+  energy_max: number | null;
+  bonded_count: number;
+  triad_species_count: number;
+  missions_completed: number;
+};
+
+export async function getPlayerStats(event: RequestEvent): Promise<PlayerStats | null> {
+  const supabase = supabaseServer(event);
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('player_stats')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('getPlayerStats error', error);
+    return null;
+  }
+
+  return data as PlayerStats;
+}
