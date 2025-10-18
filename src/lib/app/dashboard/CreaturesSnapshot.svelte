@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
-  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
-  import { fetchCreatureById } from '$lib/data/creatures';
+import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
+import { fetchCreatureById } from '$lib/data/creatures';
 
   type Row = {
     id: string;
@@ -63,13 +63,6 @@
       modalCreature = null;
     }
   }
-
-  function handleKey(event: KeyboardEvent, id: string) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      openDetail(id);
-    }
-  }
 </script>
 
 <PanelFrame title="Creatures Snapshot" {loading}>
@@ -88,7 +81,6 @@
             type="button"
             class="creature-card"
             on:click={() => openDetail(row.id)}
-            on:keydown={(event) => handleKey(event, row.id)}
           >
             <div class="creature-avatar" aria-hidden="true">
               <span class="spark">✨</span>
@@ -104,9 +96,6 @@
       {/each}
     </ul>
   {/if}
-
-  <CreatureDetailModal open={modalOpen} creature={modalCreature} on:close={() => (modalOpen = false)} />
-
   <svelte:fragment slot="skeleton">
     <div class="skeleton">
       <div class="skeleton-row"></div>
@@ -115,6 +104,8 @@
     </div>
   </svelte:fragment>
 </PanelFrame>
+
+<CreatureDetailModal open={modalOpen} creature={modalCreature} on:close={() => (modalOpen = false)} />
 
 <style>
   .error-banner {
