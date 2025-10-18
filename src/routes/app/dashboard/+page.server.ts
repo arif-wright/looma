@@ -8,9 +8,15 @@ export const load: PageServerLoad = async (event) => {
     throw redirect(303, `/login?next=${next}`);
   }
 
-  const stats = await getPlayerStats(event);
-
-  return {
-    stats
-  };
+  try {
+    const stats = await getPlayerStats(event);
+    return {
+      stats: stats ?? null
+    };
+  } catch (err) {
+    console.error('dashboard load error', err);
+    return {
+      stats: null
+    };
+  }
 };

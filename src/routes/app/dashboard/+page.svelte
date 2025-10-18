@@ -13,6 +13,8 @@
   import { fetchCreatureById } from '$lib/data/creatures';
   import type { CreatureRow } from '$lib/data/creatures';
 
+  export let data: { stats?: any } | undefined;
+
   let sidebarOpen = false;
   let isDesktop = false;
   let reduceMotion = false;
@@ -197,9 +199,13 @@
 
     <main class="panels" aria-labelledby="dashboard-heading">
       <h1 id="dashboard-heading" class="sr-only">Dashboard</h1>
-      <section class="panels-grid">
-        <PlayerSummary />
+  <section class="panels-grid">
+      <PlayerSummary />
+      {#if data?.stats !== undefined}
         <StatsPanel stats={data.stats} />
+      {:else}
+        <StatsPanel stats={null} />
+      {/if}
         <CreaturesSnapshot on:open-creature={handleOpenCreature} />
         <MissionsOverview />
         <AchievementsPanel />
