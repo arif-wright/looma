@@ -9,10 +9,21 @@
   let error: string | null = null;
   let items: Row[] = [];
   let page = 0;
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 6;
   let endReached = false;
   let userId: string | null = null;
   let channel: any;
+  let currentPage = 1;
+  let loadingMore = false;
+  let listEl: HTMLOListElement | null = null;
+
+  const perPage = PAGE_SIZE;
+
+  $: totalPages = Math.ceil(Math.max(items.length, 1) / perPage);
+  $: if (currentPage > totalPages) {
+    currentPage = totalPages;
+  }
+  $: paginated = items.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const icon = (t: string) => {
     const k = (t || '').toLowerCase();
@@ -44,8 +55,13 @@
 
     if (err) throw err;
 
-    items = reset ? ((data as Row[]) ?? []) : [...items, ...((data as Row[]) ?? [])];
-    if (!data || data.length < PAGE_SIZE) endReached = true;
+    const incoming = (data as Row[]) ?? [];
+    items = reset ? incoming : [...items, ...incoming];
+    if (reset) {
+      endReached = incoming.length < PAGE_SIZE;
+    } else if (incoming.length < PAGE_SIZE) {
+      endReached = true;
+    }
 
     if (!channel) {
       channel = supabase
@@ -54,6 +70,7 @@
           { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${userId}` },
           (payload) => {
             items = [payload.new as Row, ...items];
+            currentPage = 1;
           }
         )
         .subscribe();
@@ -66,6 +83,7 @@
     items = [];
     page = 0;
     endReached = false;
+    currentPage = 1;
     try {
       await fetchPage(true);
     } catch (e: any) {
@@ -75,15 +93,49 @@
     loading = false;
   }
 
-  async function loadMore() {
-    if (endReached) return;
+  async function loadNextChunk() {
+    if (endReached || loadingMore) return false;
+    loadingMore = true;
     page += 1;
     try {
       await fetchPage();
+      return true;
     } catch (e: any) {
       console.error(e);
       error = e?.message ?? 'Failed to load feed';
+      page = Math.max(0, page - 1);
+      return false;
+    } finally {
+      loadingMore = false;
     }
+  }
+
+  async function nextPage() {
+    const nextIndex = currentPage + 1;
+    const loadedPages = Math.max(1, Math.ceil(items.length / perPage));
+    if (nextIndex <= loadedPages) {
+      currentPage = nextIndex;
+      scrollToTop();
+      return;
+    }
+    if (!endReached) {
+      const loaded = await loadNextChunk();
+      if (loaded) {
+        currentPage = Math.min(nextIndex, Math.max(1, Math.ceil(items.length / perPage)));
+        scrollToTop();
+      }
+    }
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      currentPage -= 1;
+      scrollToTop();
+    }
+  }
+
+  function scrollToTop() {
+    listEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   onMount(loadInitial);
@@ -103,8 +155,8 @@
   {:else if items.length === 0}
     <div class="empty-state">No recent activity.</div>
   {:else}
-    <ol class="timeline" aria-live="polite">
-      {#each items as ev}
+    <ol class="timeline" aria-live="polite" bind:this={listEl}>
+      {#each paginated as ev}
         <li class="timeline-item">
           <span class="timeline-dot" aria-hidden="true">{icon(ev.type)}</span>
           <div class="event-card">
@@ -119,9 +171,25 @@
         </li>
       {/each}
     </ol>
-    {#if !endReached}
-      <div class="load-more">
-        <button class="load-more-button" on:click={loadMore}>Load more</button>
+    {#if totalPages > 1 || !endReached}
+      <div class="pagination">
+        <button
+          type="button"
+          class="pagination-button"
+          on:click={prevPage}
+          disabled={currentPage === 1}
+        >
+          ← Prev
+        </button>
+        <div class="page-indicator">Page {currentPage} / {totalPages}</div>
+        <button
+          type="button"
+          class="pagination-button"
+          on:click={nextPage}
+          disabled={loadingMore || (endReached && currentPage === totalPages)}
+        >
+          Next →
+        </button>
       </div>
     {/if}
   {/if}
@@ -242,27 +310,52 @@
     flex-shrink: 0;
   }
 
-  .load-more {
+  .pagination {
     margin-top: 1rem;
+    padding: 0 0.5rem;
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
-  .load-more-button {
-    background: none;
-    border: 0;
-    color: rgba(233, 195, 255, 0.85);
-    text-decoration: underline;
-    cursor: pointer;
+  .pagination-button {
     font-size: 0.85rem;
-    padding: 0.25rem 0.6rem;
+    padding: 0.35rem 1.1rem;
     border-radius: 999px;
-    transition: color 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
   }
 
-  .load-more-button:hover,
-  .load-more-button:focus-visible {
+  .pagination-button:hover:not(:disabled),
+  .pagination-button:focus-visible:not(:disabled) {
+    background: rgba(255, 255, 255, 0.18);
     color: #ffffff;
+  }
+
+  .pagination-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .page-indicator {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 480px) {
+    .pagination {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pagination-button {
+      width: 100%;
+      text-align: center;
+    }
   }
 
   .skeleton {
