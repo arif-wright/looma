@@ -40,4 +40,4 @@
   });
 </script>
 
-<div bind:this={host}><slot /></div>
+<div bind:this={host} style="pointer-events:auto;"><slot /></div>
