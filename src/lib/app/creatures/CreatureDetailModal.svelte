@@ -100,7 +100,7 @@
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
       style="position:fixed;z-index:2147483647;top:50%;left:50%;transform:translate(-50%,-50%);
-             width:min(92vw,42rem);max-height:85vh;overflow:auto;
+             width:min(92vw,56rem);max-height:85vh;overflow:auto;
              border-radius:16px;border:1px solid rgba(255,255,255,0.12);
              background:radial-gradient(120% 120% at 0% 0%,rgba(255,255,255,0.12),rgba(255,255,255,0.05) 40%,rgba(255,255,255,0.03) 70%);
              box-shadow:0 24px 48px rgba(0,0,0,0.55);"
@@ -109,7 +109,7 @@
       <!-- Card header strip (subtle glow) -->
       <div class="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-white/10"></div>
 
-      <header class="px-5 pt-5 pb-3">
+      <header class="px-6 pt-6 pb-3 bg-white/3 rounded-t-2xl backdrop-blur-[2px] border-b border-white/10">
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
             <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center text-lg shadow-inner">✨</div>
@@ -134,14 +134,14 @@
 
       <!-- Body: image left, details right (stacks on mobile) -->
       <div class="px-6 pb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full max-w-3xl mx-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 items-start w-full max-w-4xl mx-auto">
           <!-- LEFT: Hero image / art -->
           <div class="relative group">
             <div class="aspect-[4/3] rounded-xl border border-white/10 bg-gradient-to-tr from-slate-800/60 to-slate-900/40 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden grid place-items-center transition-transform duration-300 group-hover:scale-[1.02]">
               <div class="text-sm opacity-80 tracking-wide">[ Creature Art Placeholder ]</div>
             </div>
             <!-- soft corner glow -->
-            <div class="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-tr from-fuchsia-500/20 via-violet-400/15 to-cyan-400/15 blur-lg opacity-50 group-hover:opacity-80 transition-opacity"></div>
+            <div class="absolute inset-0 rounded-xl bg-gradient-to-tr from-fuchsia-500/20 via-violet-400/15 to-cyan-400/15 blur-lg opacity-50 group-hover:opacity-80 transition-opacity pointer-events-none"></div>
           </div>
 
           <!-- RIGHT: Key facts, description, chips, actions -->
