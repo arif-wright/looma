@@ -1,7 +1,7 @@
 <script lang="ts">
-  export let class: string = "h-5 w-5";
+  export let className: string = "h-5 w-5";
 </script>
-<svg class={class} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+<svg class={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <!-- stem -->
   <path d="M12 20c0-4 1-7 3.5-9.5"/>

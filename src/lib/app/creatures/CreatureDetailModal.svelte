@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
-  import Portal from '$lib/ui/Portal.svelte';
   import { speciesAccent } from '$lib/ui/speciesAccent';
   import { speciesIcon } from '$lib/ui/speciesIcon';
+  import Portal from '$lib/ui/Portal.svelte';
+  import SpeciesProgress from '$lib/ui/SpeciesProgress.svelte';
   import type { CreatureRow } from '$lib/data/creatures';
 
   export let creature: CreatureRow | null = null;
@@ -94,14 +95,21 @@
 {#if browser && open && creature}
   <Portal target="#modal-root">
     <!-- Backdrop -->
-    <div
+    <button
+      type="button"
       class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-md transition-opacity"
-      on:click={onClose}
       aria-label="Close creature detail"
-    ></div>
+      on:click={onClose}
+      on:keydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+    ></button>
 
     <!-- Dialog -->
-    <section
+    <div
       bind:this={modalEl}
       tabindex="-1"
       role="dialog"
@@ -135,7 +143,7 @@
               {#if Icon}
                 <svelte:component
                   this={Icon}
-                  class={`h-6 w-6 flex-shrink-0 ${accent.text ?? 'text-white/80'}`}
+                  className={`h-6 w-6 flex-shrink-0 ${accent.text ?? 'text-white/80'}`}
                   aria-hidden="true"
                 />
               {/if}
@@ -181,6 +189,14 @@
             </div>
           {/if}
 
+          <SpeciesProgress
+            value={Math.random() * 100}
+            label="Bond Progress"
+            speciesKey={creature?.species?.key}
+            speciesName={creature?.species?.name}
+            showPercent
+          />
+
           <div class="pt-3 flex justify-end items-center gap-4 border-t border-white/5 mt-6">
             <a class="text-sm font-medium text-violet-300 hover:text-violet-200 transition"
                href={`/app/creatures/${creature.id}`}>
@@ -194,6 +210,6 @@
           </div>
         </div>
       </div>
-    </section>
+    </div>
   </Portal>
 {/if}
