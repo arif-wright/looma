@@ -210,9 +210,26 @@
 </div>
 
 {#if browser}
-{#if browser}
-  <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
-{/if}
+  {#if browser}
+    <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
+    <button
+      type="button"
+      class="fixed bottom-4 right-4 text-xs underline opacity-70 hover:opacity-100"
+      on:click={() => {
+        creatureModalData = {
+          id: 'debug-0000',
+          name: 'Debug Creature',
+          bonded: true,
+          alignment: 'Neutral',
+          traits: ['Playtest'],
+          species: { id: 'spec-debug', key: 'debug', name: 'Debug Species', description: 'Temporary modal test entry.' }
+        } as CreatureRow;
+        creatureModalOpen = true;
+      }}
+    >
+      Open test modal
+    </button>
+  {/if}
 {/if}
 
 <style>

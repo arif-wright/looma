@@ -3,16 +3,18 @@
   import { browser } from '$app/environment';
 
   export let target: string | HTMLElement = '#modal-root';
-
   let host: HTMLDivElement;
   let mountEl: HTMLElement | null = null;
 
-  function ensureModalRoot(): HTMLElement | null {
+  function ensureRoot(): HTMLElement | null {
     if (!browser) return null;
     let el = document.querySelector('#modal-root') as HTMLElement | null;
     if (!el) {
       el = document.createElement('div');
       el.id = 'modal-root';
+      el.style.position = 'fixed';
+      el.style.inset = '0';
+      el.style.zIndex = String(2147483647);
       document.body.appendChild(el);
     }
     return el;
@@ -21,15 +23,15 @@
   function resolveTarget(): HTMLElement | null {
     if (!browser) return null;
     if (typeof target === 'string') {
-      return (document.querySelector(target) as HTMLElement | null) ?? ensureModalRoot();
+      return (document.querySelector(target) as HTMLElement) ?? ensureRoot();
     }
-    return target ?? ensureModalRoot();
+    return target ?? ensureRoot();
   }
 
   onMount(() => {
     if (!browser) return;
     mountEl = resolveTarget() ?? document.body;
-    if (mountEl && host) mountEl.appendChild(host);
+    mountEl.appendChild(host);
   });
 
   onDestroy(() => {
@@ -38,15 +40,4 @@
   });
 </script>
 
-{#if browser}
-  <div bind:this={host}>
-    <slot />
-  </div>
-{/if}
-
-<style>
-  :global(#modal-root > div) {
-    pointer-events: auto;
-    position: relative;
-  }
-</style>
+<div bind:this={host}><slot /></div>

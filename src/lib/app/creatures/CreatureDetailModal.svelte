@@ -86,9 +86,9 @@
   <Portal>
     <button
       type="button"
-      class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-md"
-      aria-label="Close creature detail"
       on:click={onClose}
+      aria-label="Close creature detail"
+      style="position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);"
     ></button>
 
     <div
@@ -98,10 +98,11 @@
       aria-modal="true"
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
-      class="fixed z-[2147483647] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-             w-[min(92vw,42rem)] max-h-[85vh] overflow-auto
-             rounded-2xl border border-white/10 shadow-2xl outline-none
-             bg-gradient-to-b from-white/[0.08] to-white/[0.04]"
+      style="position:fixed;z-index:2147483647;top:50%;left:50%;transform:translate(-50%,-50%);
+             width:min(92vw,42rem);max-height:85vh;overflow:auto;
+             border-radius:16px;border:1px solid rgba(255,255,255,0.12);
+             background:radial-gradient(120% 120% at 0% 0%,rgba(255,255,255,0.12),rgba(255,255,255,0.05) 40%,rgba(255,255,255,0.03) 70%);
+             box-shadow:0 24px 48px rgba(0,0,0,0.55);"
     >
       <header class="sticky top-0 z-10 bg-white/8 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between gap-4 rounded-t-2xl">
         <div class="min-w-0">
