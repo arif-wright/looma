@@ -4,6 +4,8 @@
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
   import ProgressBar from '$lib/app/components/ProgressBar.svelte';
   import StatBadge from '$lib/app/components/StatBadge.svelte';
+  import SpeciesProgress from '$lib/ui/SpeciesProgress.svelte';
+  import { speciesAccent } from '$lib/ui/speciesAccent';
   import type { RealtimeChannel } from '@supabase/supabase-js';
 
   type Profile = {
@@ -27,6 +29,13 @@
   let channel: RealtimeChannel | null = null;
   let currentUserId: string | null = null;
   let subscribedUserId: string | null = null;
+  const accent = speciesAccent(null, null);
+
+  $: level = profile?.level ?? 1;
+  $: xp = profile?.xp ?? 0;
+  $: xpNext = Math.max(1, profile?.xp_next ?? 50);
+  $: xpPct = Math.min(100, Math.max(0, Math.round((xp / xpNext) * 100)));
+  $: xpRemain = Math.max(0, xpNext - xp);
 
   async function giveXp(amount = 25) {
     try {
@@ -172,6 +181,20 @@
       </div>
       <div class="level-badge">
         <StatBadge label="Level" value={profile.level} />
+        <div class="level-progress">
+          <SpeciesProgress
+            value={xpPct}
+            label={`XP to next level`}
+            speciesKey={null}
+            speciesName={null}
+            showPercent
+          />
+          <div class={`progress-meta ${accent.text ?? 'text-white/80'}`}>
+            <span>{xp} / {xpNext} XP</span>
+            <span aria-hidden="true"> • </span>
+            <span>{xpRemain} to level {level + 1}</span>
+          </div>
+        </div>
         <button
           type="button"
           class="dev-action"
@@ -183,13 +206,6 @@
     </div>
 
     <div class="summary-body" aria-live="polite">
-      <div>
-        <div class="metric-label">XP {profile.xp}/{profile.xp_next}</div>
-        <ProgressBar
-          value={Math.min(1, (profile.xp || 0) / Math.max(1, profile.xp_next || 1))}
-          label="XP progress"
-        />
-      </div>
       <div>
         <div class="metric-label">Energy {profile.energy}/{profile.energy_max}</div>
         <ProgressBar
@@ -253,10 +269,25 @@
     gap: 0.35rem;
   }
 
+  .level-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    width: clamp(180px, 32vw, 260px);
+  }
+
+  .progress-meta {
+    text-align: right;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
   .summary-body {
     margin-top: 1.25rem;
     display: grid;
     gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .dev-action {
