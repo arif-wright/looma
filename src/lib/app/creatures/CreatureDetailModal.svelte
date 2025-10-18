@@ -13,14 +13,6 @@
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
 
-  const speciesHue = (k?: string) => {
-    const s = (k ?? creature?.species?.name ?? '').toLowerCase();
-    if (s.includes('aer') || s.includes('wisp')) return 'from-cyan-400/15';
-    if (s.includes('thryx')) return 'from-amber-400/15';
-    if (s.includes('vire')) return 'from-emerald-400/15';
-    return 'from-white/10';
-  };
-
   function onClose() {
     dispatch('close');
   }
@@ -141,21 +133,19 @@
       </header>
 
       <!-- Body: image left, details right (stacks on mobile) -->
-      <div class="px-5 pb-5">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+      <div class="px-6 pb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full max-w-3xl mx-auto">
           <!-- LEFT: Hero image / art -->
-          <div class="relative">
-            <div class="aspect-[4/3] rounded-xl border border-white/10 bg-white/[0.04] shadow-[0_12px_40px_rgba(0,0,0,0.45)] grid place-items-center overflow-hidden">
-              <div class="text-sm opacity-85">[ Creature Art Placeholder ]</div>
+          <div class="relative group">
+            <div class="aspect-[4/3] rounded-xl border border-white/10 bg-gradient-to-tr from-slate-800/60 to-slate-900/40 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden grid place-items-center transition-transform duration-300 group-hover:scale-[1.02]">
+              <div class="text-sm opacity-80 tracking-wide">[ Creature Art Placeholder ]</div>
             </div>
             <!-- soft corner glow -->
-            <div
-              class={`pointer-events-none absolute -inset-0.5 rounded-xl bg-gradient-to-tr ${speciesHue(creature.species?.name)} via-fuchsia-500/10 to-cyan-500/10 blur`}
-            ></div>
+            <div class="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-tr from-fuchsia-500/20 via-violet-400/15 to-cyan-400/15 blur-lg opacity-50 group-hover:opacity-80 transition-opacity"></div>
           </div>
 
           <!-- RIGHT: Key facts, description, chips, actions -->
-          <div class="space-y-4 min-w-0">
+          <div class="space-y-4 min-w-0 text-[15px] leading-relaxed">
             <!-- Meta row -->
             <div class="flex flex-wrap items-center gap-2 text-[12px] opacity-80" id="cd-desc">
               <span class="truncate">ID: {creature.id.slice(0, 8)}…</span>
@@ -171,7 +161,7 @@
 
             <!-- Description (primary text block) -->
             {#if creature.species?.description}
-              <p class="text-sm leading-relaxed opacity-90">
+              <p class="text-[15px] leading-relaxed opacity-90">
                 {creature.species.description}
               </p>
             {/if}
@@ -186,9 +176,9 @@
             {/if}
 
             <!-- Actions -->
-            <div class="pt-1 flex items-center gap-3">
-              <a class="text-sm underline opacity-85 hover:opacity-100" href={`/app/creatures/${creature.id}`}>Open full page</a>
-              <button class="text-sm underline opacity-85 hover:opacity-100" on:click={onClose}>Done</button>
+            <div class="pt-2 flex justify-end items-center gap-4 border-t border-white/5 mt-4">
+              <a class="text-sm font-medium text-violet-300 hover:text-violet-200 transition" href={`/app/creatures/${creature.id}`}>Open full page →</a>
+              <button class="text-sm text-white/70 hover:text-white transition" on:click={onClose}>Done</button>
             </div>
           </div>
         </div>
