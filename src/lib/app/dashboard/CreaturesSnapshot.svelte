@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
-import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
-import { fetchCreatureById } from '$lib/data/creatures';
 
   type Row = {
     id: string;
@@ -14,8 +12,7 @@ import { fetchCreatureById } from '$lib/data/creatures';
   let loading = true;
   let error: string | null = null;
   let rows: Row[] = [];
-  let modalOpen = false;
-  let modalCreature: any = null;
+  const dispatch = createEventDispatcher<{ 'open-creature': { id: string } }>();
 
   async function loadData() {
     loading = true;
@@ -53,15 +50,8 @@ import { fetchCreatureById } from '$lib/data/creatures';
 
   onMount(loadData);
 
-  async function openDetail(id: string) {
-    modalCreature = null;
-    modalOpen = true;
-    try {
-      modalCreature = await fetchCreatureById(id);
-    } catch (err) {
-      console.error('Failed to fetch creature detail', err);
-      modalCreature = null;
-    }
+  function openDetail(id: string) {
+    dispatch('open-creature', { id });
   }
 </script>
 
@@ -104,8 +94,6 @@ import { fetchCreatureById } from '$lib/data/creatures';
     </div>
   </svelte:fragment>
 </PanelFrame>
-
-<CreatureDetailModal open={modalOpen} creature={modalCreature} on:close={() => (modalOpen = false)} />
 
 <style>
   .error-banner {

@@ -8,10 +8,15 @@
   import MissionsOverview from '$lib/app/dashboard/MissionsOverview.svelte';
   import AchievementsPanel from '$lib/app/dashboard/AchievementsPanel.svelte';
   import ActivityFeed from '$lib/app/dashboard/ActivityFeed.svelte';
+  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
+  import { fetchCreatureById } from '$lib/data/creatures';
+  import type { CreatureRow } from '$lib/data/creatures';
 
   let sidebarOpen = false;
   let isDesktop = false;
   let reduceMotion = false;
+  let creatureModalOpen = false;
+  let creatureModalData: CreatureRow | null = null;
 
   const navItems = [
     { label: 'Dashboard', href: '/app/dashboard', active: true },
@@ -103,13 +108,27 @@
     if (!disabled) return;
     event.preventDefault();
   }
+
+  async function handleOpenCreature(event: CustomEvent<{ id: string }>) {
+    creatureModalOpen = true;
+    creatureModalData = null;
+    try {
+      creatureModalData = await fetchCreatureById(event.detail.id);
+    } catch (err) {
+      console.error('Failed to fetch creature detail', err);
+    }
+  }
+
+  function closeCreatureModal() {
+    creatureModalOpen = false;
+  }
 </script>
 
 <svelte:head>
   <title>Looma — Dashboard</title>
 </svelte:head>
 
-<div class="dashboard-shell" class:sidebar-open={sidebarOpen} data-reduce-motion={reduceMotion}>
+<div class="dashboard-shell transform-none" class:sidebar-open={sidebarOpen} data-reduce-motion={reduceMotion}>
   <button
     type="button"
     class="sidebar-toggle"
@@ -180,7 +199,7 @@
       <section class="panels-grid">
         <PlayerSummary />
         <StatsPanel />
-        <CreaturesSnapshot />
+        <CreaturesSnapshot on:open-creature={handleOpenCreature} />
         <MissionsOverview />
         <AchievementsPanel />
         <ActivityFeed />
@@ -188,6 +207,8 @@
     </main>
   </div>
 </div>
+
+<CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
 
 <style>
   .sr-only {
