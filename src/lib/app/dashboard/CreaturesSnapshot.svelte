@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
+  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
+  import { fetchCreatureById } from '$lib/data/creatures';
 
   type Row = {
     id: string;
@@ -12,6 +14,8 @@
   let loading = true;
   let error: string | null = null;
   let rows: Row[] = [];
+  let modalOpen = false;
+  let modalCreature: any = null;
 
   async function loadData() {
     loading = true;
@@ -48,6 +52,24 @@
   }
 
   onMount(loadData);
+
+  async function openDetail(id: string) {
+    modalCreature = null;
+    modalOpen = true;
+    try {
+      modalCreature = await fetchCreatureById(id);
+    } catch (err) {
+      console.error('Failed to fetch creature detail', err);
+      modalCreature = null;
+    }
+  }
+
+  function handleKey(event: KeyboardEvent, id: string) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openDetail(id);
+    }
+  }
 </script>
 
 <PanelFrame title="Creatures Snapshot" {loading}>
@@ -61,18 +83,29 @@
   {:else}
     <ul class="creature-list" aria-live="polite">
       {#each rows as row}
-        <li class="creature-item">
-          <div class="creature-avatar" aria-hidden="true"></div>
-          <div class="creature-text">
-            <div class="creature-name" title={row.name ?? 'Unnamed'}>{row.name ?? 'Unnamed'}</div>
-            <div class="creature-species" title={row.species?.name ?? 'Unknown species'}>
-              {row.species?.name ?? 'Unknown species'}
+        <li>
+          <button
+            type="button"
+            class="creature-item"
+            on:click={() => openDetail(row.id)}
+            on:keydown={(event) => handleKey(event, row.id)}
+          >
+            <div class="creature-avatar" aria-hidden="true">
+              <span class="spark">✨</span>
             </div>
-          </div>
+            <div class="creature-text">
+              <div class="creature-name" title={row.name ?? 'Unnamed'}>{row.name ?? 'Unnamed'}</div>
+              <div class="creature-species" title={row.species?.name ?? 'Unknown species'}>
+                {row.species?.name ?? 'Unknown species'}
+              </div>
+            </div>
+          </button>
         </li>
       {/each}
     </ul>
   {/if}
+
+  <CreatureDetailModal open={modalOpen} creature={modalCreature} on:close={() => (modalOpen = false)} />
 
   <svelte:fragment slot="skeleton">
     <div class="skeleton">
@@ -121,9 +154,23 @@
   }
 
   .creature-item {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+    text-align: left;
+  }
+
+  .creature-item:hover,
+  .creature-item:focus-visible {
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateY(-1px);
   }
 
   .creature-avatar {
@@ -132,6 +179,12 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(233, 195, 255, 0.18);
+    display: grid;
+    place-items: center;
+  }
+
+  .spark {
+    font-size: 1.1rem;
   }
 
   .creature-text {
@@ -180,7 +233,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .creature-item,
     .skeleton-row {
+      transition: none;
       animation: none;
     }
   }

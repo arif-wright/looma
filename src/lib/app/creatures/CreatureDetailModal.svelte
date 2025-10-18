@@ -1,0 +1,86 @@
+<script lang="ts">
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import type { CreatureRow } from '$lib/data/creatures';
+  export let creature: CreatureRow | null = null;
+  export let open = false;
+
+  const dispatch = createEventDispatcher();
+
+  function onClose() {
+    dispatch('close');
+  }
+
+  function onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') onClose();
+  }
+
+  let modalEl: HTMLDivElement | null = null;
+  onMount(() => {
+    document.addEventListener('keydown', onKey);
+    const prev = document.activeElement as HTMLElement | null;
+    if (open) modalEl?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      prev?.focus?.();
+    };
+  });
+</script>
+
+{#if open && creature}
+  <div class="fixed inset-0 z-50 grid place-items-center p-4" aria-modal="true" role="dialog" aria-labelledby="cd-title" aria-describedby="cd-desc">
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      on:click={onClose}
+      aria-label="Close creature detail"
+    ></button>
+    <div bind:this={modalEl} tabindex="-1" class="relative w-full max-w-lg rounded-2xl border border-white/10 bg-white/[0.06] shadow-xl outline-none">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center">✨</div>
+          <div>
+            <h2 id="cd-title" class="text-base font-semibold leading-none">
+              {creature.name ?? 'Unnamed'} <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
+            </h2>
+            <p id="cd-desc" class="text-xs opacity-70">Bonded: {creature.bonded ? 'Yes' : 'No'} · ID: {creature.id.slice(0, 8)}…</p>
+          </div>
+        </div>
+        <button class="text-sm opacity-80 hover:opacity-100 underline" on:click={onClose}>Close</button>
+      </div>
+
+      <div class="p-4 space-y-4">
+        {#if creature.species?.description}
+          <div class="text-sm opacity-85 leading-relaxed">{creature.species.description}</div>
+        {/if}
+
+        <div class="flex flex-wrap gap-2">
+          {#if creature.alignment}
+            <span class="chip">Alignment: {creature.alignment}</span>
+          {/if}
+          <span class="chip">Bonded: {creature.bonded ? 'Yes' : 'No'}</span>
+          {#if creature.traits && Array.isArray(creature.traits) && creature.traits.length}
+            {#each creature.traits as t}
+              <span class="chip">{String(t)}</span>
+            {/each}
+          {/if}
+        </div>
+
+        <div class="h-40 rounded-xl bg-white/5 grid place-items-center">[ Creature Art Placeholder ]</div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button class="text-xs opacity-80 hover:opacity-100 underline" on:click={onClose}>Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .chip {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+</style>
