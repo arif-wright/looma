@@ -91,7 +91,7 @@
       style="position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);"
     ></button>
 
-    <div
+    <section
       bind:this={modalEl}
       tabindex="-1"
       role="dialog"
@@ -103,43 +103,83 @@
              border-radius:16px;border:1px solid rgba(255,255,255,0.12);
              background:radial-gradient(120% 120% at 0% 0%,rgba(255,255,255,0.12),rgba(255,255,255,0.05) 40%,rgba(255,255,255,0.03) 70%);
              box-shadow:0 24px 48px rgba(0,0,0,0.55);"
+      class="ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
     >
-      <header class="sticky top-0 z-10 bg-white/8 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between gap-4 rounded-t-2xl">
-        <div class="min-w-0">
-          <h2 id="cd-title" class="text-base font-semibold truncate">
-            {creature.name ?? 'Unnamed'} <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
-          </h2>
-          <p id="cd-desc" class="text-xs opacity-70 truncate">
-            Bonded: {creature.bonded ? 'Yes' : 'No'} · ID: {creature.id.slice(0, 8)}…
-          </p>
+      <header class="sticky top-0 z-10 bg-white/5 backdrop-blur-sm border-b border-white/10 px-5 py-4 rounded-t-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center text-lg">✨</div>
+            <div class="min-w-0">
+              <h2 id="cd-title" class="text-lg font-semibold truncate">
+                {creature.name ?? 'Unnamed'}
+                <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
+              </h2>
+              <div class="flex flex-wrap items-center gap-2 text-[11px] opacity-75" id="cd-desc">
+                <span class="truncate">ID: {creature.id.slice(0, 8)}…</span>
+                {#if creature.created_at}
+                  <span aria-hidden="true">•</span>
+                  <span class="truncate">{new Date(creature.created_at).toLocaleDateString()}</span>
+                {/if}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20">
+              {creature.bonded ? 'Bonded' : 'Unbonded'}
+            </span>
+            <button
+              class="h-8 w-8 grid place-items-center rounded-full hover:bg-white/10 transition"
+              aria-label="Close creature detail"
+              on:click={onClose}
+            >
+              ✕
+            </button>
+          </div>
         </div>
-        <button class="text-sm underline opacity-80 hover:opacity-100" on:click={onClose}>Close</button>
       </header>
 
-      <div class="p-4 space-y-4">
-        {#if creature.species?.description}
-          <div class="text-sm opacity-85 leading-relaxed">{creature.species.description}</div>
-        {/if}
+      <div class="px-5 py-4">
+        <p class="sr-only" aria-hidden="true">
+          {creature.species?.description ?? 'Creature detail'}
+        </p>
+        <!-- Responsive body grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- LEFT: description + chips -->
+          <div class="space-y-4 min-w-0">
+            {#if creature.species?.description}
+              <p class="text-sm leading-relaxed opacity-90">{creature.species.description}</p>
+            {/if}
 
-        <div class="flex flex-wrap gap-2">
-          {#if creature.alignment}
-            <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Alignment: {creature.alignment}</span>
-          {/if}
-          <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Bonded: {creature.bonded ? 'Yes' : 'No'}</span>
-          {#if creature.traits && Array.isArray(creature.traits) && creature.traits.length}
-            {#each creature.traits as t}
-              <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">{String(t)}</span>
-            {/each}
-          {/if}
+            <div class="flex flex-wrap gap-2">
+              {#if creature.alignment}
+                <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">
+                  Alignment: {creature.alignment}
+                </span>
+              {/if}
+              <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">
+                Bonded: {creature.bonded ? 'Yes' : 'No'}
+              </span>
+              {#if creature.traits && Array.isArray(creature.traits) && creature.traits.length}
+                {#each creature.traits as t}
+                  <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">{String(t)}</span>
+                {/each}
+              {/if}
+            </div>
+          </div>
+
+          <!-- RIGHT: image block -->
+          <div class="rounded-xl border border-white/10 bg-white/[0.04] aspect-[4/3] grid place-items-center">
+            <div class="text-sm opacity-80">[ Creature Art Placeholder ]</div>
+          </div>
         </div>
 
-        <div class="h-44 rounded-xl bg-white/5 grid place-items-center">[ Creature Art Placeholder ]</div>
-
-        <div class="flex items-center justify-end gap-3">
-          <a class="text-xs underline opacity-80 hover:opacity-100" href={`/app/creatures/${creature.id}`}>Open full page</a>
-          <button class="text-xs underline opacity-80 hover:opacity-100" on:click={onClose}>Done</button>
+        <!-- Footer actions -->
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <a class="text-sm underline opacity-80 hover:opacity-100" href={`/app/creatures/${creature.id}`}>Open full page</a>
+          <button class="text-sm underline opacity-80 hover:opacity-100" on:click={onClose}>Done</button>
         </div>
       </div>
-    </div>
+    </section>
   </Portal>
 {/if}
