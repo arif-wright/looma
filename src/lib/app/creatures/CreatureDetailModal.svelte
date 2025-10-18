@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
+  import { speciesAccent } from '$lib/ui/speciesAccent';
   import Portal from '$lib/ui/Portal.svelte';
   import type { CreatureRow } from '$lib/data/creatures';
 
@@ -12,6 +13,9 @@
   let modalEl: HTMLElement | null = null;
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
+  let accent = speciesAccent();
+
+  $: accent = speciesAccent(creature?.species?.key, creature?.species?.name);
 
   function onClose() {
     dispatch('close');
@@ -111,22 +115,22 @@
       <!-- Content Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start w-full max-w-4xl mx-auto">
         <!-- LEFT: Hero image -->
-        <div class="relative rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-800/60 to-slate-900/50 shadow-xl">
+        <div class="relative group rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-800/60 to-slate-900/50 shadow-xl">
           <div class="aspect-[4/3] grid place-items-center text-sm text-white/70">
             [ Creature Art Placeholder ]
           </div>
-          <div class="absolute inset-0 rounded-xl pointer-events-none
-                      bg-gradient-to-tr from-cyan-400/20 via-fuchsia-400/15 to-violet-400/20
-                      blur-2xl opacity-60 group-hover:opacity-90 transition"></div>
+          <div
+            class={`absolute inset-0 rounded-xl pointer-events-none blur-2xl opacity-60 transition bg-gradient-to-tr ${accent.glow} group-hover:opacity-90`}
+          ></div>
         </div>
 
         <!-- RIGHT: Details -->
         <div class="space-y-4 text-[15px] leading-relaxed">
           <h2 id="cd-title" class="text-xl font-semibold text-white flex items-center gap-2">
-            {creature.name}
+            {creature.name ?? 'Unnamed'}
           </h2>
 
-          <p class="text-sm text-white/70">{creature.species?.name}</p>
+          <p class="text-sm text-white/70">{creature.species?.name ?? 'Unknown species'}</p>
 
           <div class="flex flex-wrap items-center gap-2 text-[12px] opacity-80">
             <span class="truncate">ID: {creature.id.slice(0, 8)}…</span>
@@ -134,9 +138,20 @@
               <span aria-hidden="true">•</span>
               <span>{new Date(creature.created_at).toLocaleDateString()}</span>
             {/if}
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <span
+              class={`text-[11px] px-2 py-1 rounded-full ring-1 transition ${accent.chipBg} ${accent.chipRing} ${accent.text ?? 'text-white/80'}`}
+            >
+              {creature.bonded ? 'Bonded' : 'Unbonded'}
+            </span>
             {#if creature.alignment}
-              <span aria-hidden="true">•</span>
-              <span>Alignment: {creature.alignment}</span>
+              <span
+                class={`text-[11px] px-2 py-1 rounded-full ring-1 transition ${accent.chipBg} ${accent.chipRing} ${accent.text ?? 'text-white/80'}`}
+              >
+                Alignment: {creature.alignment}
+              </span>
             {/if}
           </div>
 
@@ -144,10 +159,12 @@
             <p class="text-white/90">{creature.species.description}</p>
           {/if}
 
-          {#if creature.traits && creature.traits.length}
+          {#if creature.traits && Array.isArray(creature.traits) && creature.traits.length}
             <div class="flex flex-wrap gap-2">
               {#each creature.traits as t}
-                <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10 text-white/80">
+                <span
+                  class={`text-[11px] px-2 py-1 rounded-full ring-1 transition ${accent.chipBg} ${accent.chipRing} ${accent.text ?? 'text-white/80'}`}
+                >
                   {t}
                 </span>
               {/each}
