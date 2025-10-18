@@ -8,26 +8,12 @@
 
   const dispatch = createEventDispatcher();
 
-  function onClose() {
-    dispatch('close');
-  }
-
   let modalEl: HTMLDivElement | null = null;
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
-  let show = false;
-  let scrollLocked = false;
-  let storedOverflow = '';
 
-  function lockScroll(state: boolean) {
-    if (state && !scrollLocked) {
-      storedOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      scrollLocked = true;
-    } else if (!state && scrollLocked) {
-      document.body.style.overflow = storedOverflow;
-      scrollLocked = false;
-    }
+  function onClose() {
+    dispatch('close');
   }
 
   function trapFocus(event: KeyboardEvent) {
@@ -50,9 +36,10 @@
     }
   }
 
-  function handleKey(event: KeyboardEvent) {
+  function onKey(event: KeyboardEvent) {
     if (!open) return;
     if (event.key === 'Escape') {
+      event.preventDefault();
       onClose();
       return;
     }
@@ -61,7 +48,7 @@
     }
   }
 
-  async function activateModal() {
+  async function focusModal() {
     await tick();
     if (!open || !modalEl) return;
     focusable = Array.from(
@@ -69,7 +56,6 @@
         'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
       )
     );
-    show = true;
     if (focusable.length) {
       focusable[0].focus();
     } else {
@@ -77,63 +63,63 @@
     }
   }
 
-  $: if (open) {
-    previouslyFocused = (document.activeElement as HTMLElement | null) ?? previouslyFocused;
-    lockScroll(true);
-    show = false;
-    activateModal();
-  } else {
-    if (scrollLocked) lockScroll(false);
-    show = false;
-    previouslyFocused?.focus?.();
-  }
+$: if (open) {
+  previouslyFocused = (document.activeElement as HTMLElement | null) ?? previouslyFocused;
+  document.body.classList.add('modal-open');
+  focusModal();
+} else {
+  document.body.classList.remove('modal-open');
+  focusable = [];
+  previouslyFocused?.focus?.();
+  previouslyFocused = null;
+}
 
   onMount(() => {
-    document.addEventListener('keydown', handleKey, true);
+    document.addEventListener('keydown', onKey, true);
     return () => {
-      document.removeEventListener('keydown', handleKey, true);
-      lockScroll(false);
+      document.removeEventListener('keydown', onKey, true);
+      document.body.classList.remove('modal-open');
     };
   });
 
   onDestroy(() => {
-    lockScroll(false);
+    document.body.classList.remove('modal-open');
   });
 </script>
 
 {#if open && creature}
   <Portal target="body">
+    <button
+      type="button"
+      class="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-sm"
+      aria-label="Close creature detail"
+      on:click={onClose}
+    ></button>
+
     <div
-      class="fixed inset-0 z-[1200] grid place-items-center p-4"
-      aria-modal="true"
+      bind:this={modalEl}
+      tabindex="-1"
       role="dialog"
+      aria-modal="true"
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
+      class="fixed z-[5001] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+             w-[min(92vw,40rem)] max-h-[85vh] overflow-auto
+             rounded-2xl border border-white/10
+             bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none
+             opacity-0 scale-95 data-[show=true]:opacity-100 data-[show=true]:scale-100 transition-all duration-200 ease-out"
+      data-show={open}
     >
-      <button
-        type="button"
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        on:click={onClose}
-        aria-label="Close creature detail"
-      ></button>
-      <div
-        bind:this={modalEl}
-        tabindex="-1"
-        class={`relative w-full max-w-lg rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none transition-all duration-200 ease-out ${
-          show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-        }`}
-      >
-        <div class="p-4 border-b border-white/10 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center">✨</div>
-          <div>
-            <h2 id="cd-title" class="text-base font-semibold leading-none">
-              {creature.name ?? 'Unnamed'} <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
-            </h2>
-            <p id="cd-desc" class="text-xs opacity-70">Bonded: {creature.bonded ? 'Yes' : 'No'} · ID: {creature.id.slice(0, 8)}…</p>
-          </div>
+      <div class="p-4 border-b border-white/10 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h2 id="cd-title" class="text-base font-semibold truncate">
+            {creature.name ?? 'Unnamed'} <span class="opacity-70 text-sm">({creature.species?.name ?? 'Unknown'})</span>
+          </h2>
+          <p id="cd-desc" class="text-xs opacity-70 truncate">
+            Bonded: {creature.bonded ? 'Yes' : 'No'} · ID: {creature.id.slice(0, 8)}…
+          </p>
         </div>
-        <button class="text-sm opacity-80 hover:opacity-100 underline" on:click={onClose}>Close</button>
+        <button class="text-sm underline opacity-80 hover:opacity-100" on:click={onClose}>Close</button>
       </div>
 
       <div class="p-4 space-y-4">
@@ -143,39 +129,23 @@
 
         <div class="flex flex-wrap gap-2">
           {#if creature.alignment}
-            <span class="chip">Alignment: {creature.alignment}</span>
+            <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Alignment: {creature.alignment}</span>
           {/if}
-          <span class="chip">Bonded: {creature.bonded ? 'Yes' : 'No'}</span>
+          <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Bonded: {creature.bonded ? 'Yes' : 'No'}</span>
           {#if creature.traits && Array.isArray(creature.traits) && creature.traits.length}
             {#each creature.traits as t}
-              <span class="chip">{String(t)}</span>
+              <span class="text-[11px] px-2 py-1 rounded-full bg-white/10 ring-1 ring-white/10">{String(t)}</span>
             {/each}
           {/if}
         </div>
 
-        <div class="h-40 rounded-xl bg-white/5 grid place-items-center">[ Creature Art Placeholder ]</div>
+        <div class="h-44 rounded-xl bg-white/5 grid place-items-center">[ Creature Art Placeholder ]</div>
 
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <a
-            class="text-xs opacity-80 hover:opacity-100 underline"
-            href={`/app/creatures/${creature.id}`}
-          >
-            Open full page
-          </a>
-          <button class="text-xs opacity-80 hover:opacity-100 underline" on:click={onClose}>Done</button>
+        <div class="flex items-center justify-end gap-3">
+          <a class="text-xs underline opacity-80 hover:opacity-100" href={`/app/creatures/${creature.id}`}>Open full page</a>
+          <button class="text-xs underline opacity-80 hover:opacity-100" on:click={onClose}>Done</button>
         </div>
       </div>
     </div>
-    </div>
   </Portal>
 {/if}
-
-<style>
-  .chip {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-</style>
