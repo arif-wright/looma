@@ -86,7 +86,7 @@
   <Portal>
     <button
       type="button"
-      class="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-sm"
+      class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-sm"
       aria-label="Close creature detail"
       on:click={onClose}
     ></button>
@@ -98,7 +98,7 @@
       aria-modal="true"
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
-      class="fixed z-[1000000] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+      class="fixed z-[2147483647] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
              w-[min(92vw,40rem)] max-h-[85vh] overflow-auto
              rounded-2xl border border-white/10
              bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none"

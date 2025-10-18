@@ -43,3 +43,10 @@
     <slot />
   </div>
 {/if}
+
+<style>
+  :global(#modal-root > div) {
+    pointer-events: auto;
+    position: relative;
+  }
+</style>
