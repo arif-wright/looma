@@ -6,47 +6,27 @@
   type Tier = 'bronze' | 'silver' | 'gold' | 'mythic' | null;
   type AchievementRow = {
     id: string;
+    earned_at: string;
     created_at: string;
     achievement_id: string;
     key: string;
-    name: string;
+    title: string | null;
+    description: string | null;
     tier: Tier;
+    points: number | null;
   };
 
   let loading = true;
   let error: string | null = null;
   let items: AchievementRow[] = [];
-  let supabase: ReturnType<typeof supabaseBrowser> | null = null;
-  let channel: ReturnType<ReturnType<typeof supabaseBrowser>['channel']> | null = null;
-  let userId: string | null = null;
-
-  async function fetchAchievements() {
-    if (!supabase) supabase = supabaseBrowser();
-
-    const {
-      data: { user }
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      items = [];
-      return;
-    }
-
-    userId = user.id;
-
-    const { data, error: err } = await supabase.rpc('get_my_achievements', { p_limit: 12 });
-
-    if (err) throw err;
-
-    items = (data as AchievementRow[]) ?? [];
-  }
+  const supabase = supabaseBrowser();
 
   async function loadInitial() {
     loading = true;
-    error = null;
     try {
-      await fetchAchievements();
-      setupRealtime();
+      const { data, error } = await supabase.rpc('get_my_achievements', { p_limit: 12 });
+      if (error) throw error;
+      items = (data as AchievementRow[]) ?? [];
     } catch (err: any) {
       console.error('loadAchievements error', err);
       error = err?.message ?? 'Failed to load achievements';
@@ -55,36 +35,17 @@
     }
   }
 
-  function setupRealtime() {
-    if (!supabase || !userId) return;
+  loadInitial();
 
-    channel?.unsubscribe?.();
-    channel = supabase
-      .channel(`ua-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'user_achievements', filter: `user_id=eq.${userId}` },
-        async () => {
-          try {
-            await fetchAchievements();
-          } catch (err) {
-            console.error('realtime achievements load failure', err);
-          }
-        }
-      )
-      .subscribe();
-  }
-
-  onMount(() => {
-    loadInitial();
-  });
+  const channel = supabase
+    .channel('ua-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_achievements' }, async () => {
+      await loadInitial();
+    })
+    .subscribe();
 
   onDestroy(() => {
-    if (supabase && channel) {
-      supabase.removeChannel(channel);
-    } else {
-      channel?.unsubscribe?.();
-    }
+    supabase.removeChannel(channel);
   });
 
   const tierClass = (tier: Tier) => {
@@ -115,12 +76,25 @@
       {#each items as item (item.id)}
         <li class="achievement-card" data-tier={item.tier ?? 'bronze'}>
           <div class="head">
-            <span class="name">{item.name ?? 'Achievement unlocked'}</span>
-            <span class="date">{new Date(item.created_at).toLocaleDateString()}</span>
+            <span class="name">{item.title ?? item.key ?? 'Achievement unlocked'}</span>
+            <span class="date">
+              {#if item.earned_at}
+                {new Date(item.earned_at).toLocaleDateString()}
+              {:else}
+                {new Date(item.created_at).toLocaleDateString()}
+              {/if}
+            </span>
           </div>
           <div class={tierClass(item.tier ?? 'bronze')}>
             {(item.tier ?? 'bronze').toUpperCase()}
+            {#if typeof item.points === 'number'}
+              <span aria-hidden="true"> · </span>
+              <span>{item.points} pts</span>
+            {/if}
           </div>
+          {#if item.description}
+            <div class="desc">{item.description}</div>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -212,6 +186,12 @@
     font-weight: 600;
     text-transform: uppercase;
     width: fit-content;
+  }
+
+  .desc {
+    font-size: 0.72rem;
+    opacity: 0.7;
+    line-height: 1.3;
   }
 
   .tier.bronze {
