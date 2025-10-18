@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
+  import Pagination from '$lib/ui/Pagination.svelte';
+  import { sliceByPage } from '$lib/utils/paginate';
 
   type Row = { id: string; type: string; message: string; created_at: string };
 
@@ -19,11 +21,20 @@
 
   const perPage = PAGE_SIZE;
 
-  $: totalPages = Math.ceil(Math.max(items.length, 1) / perPage);
-  $: if (currentPage > totalPages) {
-    currentPage = totalPages;
+  let paginated: Row[] = [];
+  let pages = 1;
+  let safePage = 1;
+  let displayPages = 1;
+  let loadedPages = 1;
+  let pagination: { page: number; pages: number; data: Row[] } = { page: 1, pages: 1, data: [] };
+
+  $: pagination = sliceByPage(items, currentPage, perPage);
+  $: ({ page: safePage, pages, data: paginated } = pagination);
+  $: if (safePage !== currentPage) {
+    currentPage = safePage;
   }
-  $: paginated = items.slice((currentPage - 1) * perPage, currentPage * perPage);
+  $: loadedPages = Math.max(1, Math.ceil(items.length / perPage));
+  $: displayPages = endReached ? pages : Math.max(pages, loadedPages + (loadingMore ? 0 : 1));
 
   const icon = (t: string) => {
     const k = (t || '').toLowerCase();
@@ -110,27 +121,23 @@
     }
   }
 
-  async function nextPage() {
-    const nextIndex = currentPage + 1;
-    const loadedPages = Math.max(1, Math.ceil(items.length / perPage));
-    if (nextIndex <= loadedPages) {
-      currentPage = nextIndex;
+  async function changePage(target: number) {
+    target = Math.max(1, Math.floor(target));
+    if (target === currentPage) return;
+    const loadedPagesNow = Math.max(1, Math.ceil(items.length / perPage));
+    if (target <= loadedPagesNow) {
+      currentPage = target;
       scrollToTop();
       return;
     }
+
     if (!endReached) {
       const loaded = await loadNextChunk();
       if (loaded) {
-        currentPage = Math.min(nextIndex, Math.max(1, Math.ceil(items.length / perPage)));
+        const loadedPagesAfter = Math.max(1, Math.ceil(items.length / perPage));
+        currentPage = Math.min(target, loadedPagesAfter);
         scrollToTop();
       }
-    }
-  }
-
-  function prevPage() {
-    if (currentPage > 1) {
-      currentPage -= 1;
-      scrollToTop();
     }
   }
 
@@ -171,26 +178,13 @@
         </li>
       {/each}
     </ol>
-    {#if totalPages > 1 || !endReached}
-      <div class="pagination">
-        <button
-          type="button"
-          class="pagination-button"
-          on:click={prevPage}
-          disabled={currentPage === 1}
-        >
-          ← Prev
-        </button>
-        <div class="page-indicator">Page {currentPage} / {totalPages}</div>
-        <button
-          type="button"
-          class="pagination-button"
-          on:click={nextPage}
-          disabled={loadingMore || (endReached && currentPage === totalPages)}
-        >
-          Next →
-        </button>
-      </div>
+    {#if displayPages > 1}
+      <Pagination
+        page={currentPage}
+        pages={displayPages}
+        onChange={changePage}
+        ariaLabel="Activity pagination"
+      />
     {/if}
   {/if}
 
@@ -308,54 +302,6 @@
     font-size: 0.72rem;
     opacity: 0.6;
     flex-shrink: 0;
-  }
-
-  .pagination {
-    margin-top: 1rem;
-    padding: 0 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .pagination-button {
-    font-size: 0.85rem;
-    padding: 0.35rem 1.1rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
-    color: inherit;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
-  }
-
-  .pagination-button:hover:not(:disabled),
-  .pagination-button:focus-visible:not(:disabled) {
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-  }
-
-  .pagination-button:disabled {
-    opacity: 0.35;
-    cursor: default;
-  }
-
-  .page-indicator {
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-
-  @media (max-width: 480px) {
-    .pagination {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .pagination-button {
-      width: 100%;
-      text-align: center;
-    }
   }
 
   .skeleton {
