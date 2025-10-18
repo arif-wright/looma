@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PlayerSummary from '$lib/app/dashboard/PlayerSummary.svelte';
   import StatsPanel from '$lib/app/dashboard/StatsPanel.svelte';
@@ -208,7 +209,9 @@
   </div>
 </div>
 
-<CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
+{#if browser}
+  <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
+{/if}
 
 <style>
   .sr-only {

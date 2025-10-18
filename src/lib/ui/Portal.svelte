@@ -1,33 +1,40 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
 
   export let target: string | HTMLElement = 'body';
 
   let host: HTMLDivElement;
   let mountEl: HTMLElement | null = null;
 
-  function resolveTarget() {
+  function resolveTarget(): HTMLElement | null {
+    if (!browser) return null;
     if (typeof target === 'string') {
-      const el = document.querySelector(target) as HTMLElement | null;
-      return el ?? document.body;
+      return (document.querySelector(target) as HTMLElement | null) ?? document.body;
     }
     return target ?? document.body;
   }
 
   onMount(() => {
+    if (!browser) return;
     mountEl = resolveTarget();
-    mountEl.appendChild(host);
+    if (mountEl && host) {
+      mountEl.appendChild(host);
+    }
   });
 
   onDestroy(() => {
+    if (!browser) return;
     try {
-      host?.parentNode?.removeChild(host);
+      host?.parentNode?.removeChild?.(host);
     } catch {
-      // ignore
+      // ignore detach errors
     }
   });
 </script>
 
-<div bind:this={host}>
-  <slot />
-</div>
+{#if browser}
+  <div bind:this={host}>
+    <slot />
+  </div>
+{/if}

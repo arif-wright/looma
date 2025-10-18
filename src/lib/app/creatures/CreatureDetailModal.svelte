@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { browser } from '$app/environment';
   import Portal from '$lib/ui/Portal.svelte';
   import type { CreatureRow } from '$lib/data/creatures';
 
@@ -49,6 +50,7 @@
   }
 
   async function focusModal() {
+    if (!browser) return;
     await tick();
     if (!open || !modalEl) return;
     focusable = Array.from(
@@ -63,18 +65,21 @@
     }
   }
 
-$: if (open) {
-  previouslyFocused = (document.activeElement as HTMLElement | null) ?? previouslyFocused;
-  document.body.classList.add('modal-open');
-  focusModal();
-} else {
-  document.body.classList.remove('modal-open');
-  focusable = [];
-  previouslyFocused?.focus?.();
-  previouslyFocused = null;
-}
+  $: if (browser) {
+    if (open) {
+      previouslyFocused = (document.activeElement as HTMLElement | null) ?? previouslyFocused;
+      document.body.classList.add('modal-open');
+      focusModal();
+    } else {
+      document.body.classList.remove('modal-open');
+      focusable = [];
+      previouslyFocused?.focus?.();
+      previouslyFocused = null;
+    }
+  }
 
   onMount(() => {
+    if (!browser) return;
     document.addEventListener('keydown', onKey, true);
     return () => {
       document.removeEventListener('keydown', onKey, true);
@@ -83,11 +88,12 @@ $: if (open) {
   });
 
   onDestroy(() => {
+    if (!browser) return;
     document.body.classList.remove('modal-open');
   });
 </script>
 
-{#if open && creature}
+{#if browser && open && creature}
   <Portal target="body">
     <button
       type="button"
