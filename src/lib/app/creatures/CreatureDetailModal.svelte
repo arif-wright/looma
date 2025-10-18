@@ -99,12 +99,12 @@
       aria-modal="true"
       aria-labelledby="cd-title"
       aria-describedby="cd-desc"
-      style="position:fixed;z-index:2147483647;top:50%;left:50%;transform:translate(-50%,-50%);
-             width:min(92vw,56rem);max-height:85vh;overflow:auto;
+      style="position:fixed;z-index:2147483647;top:50%;left:50%;transform:translate(-50%,-50%) scale(1);
+             width:min(92vw,56rem);max-width:56rem;max-height:85vh;overflow:auto;opacity:1;
              border-radius:16px;border:1px solid rgba(255,255,255,0.12);
              background:radial-gradient(120% 120% at 0% 0%,rgba(255,255,255,0.12),rgba(255,255,255,0.05) 40%,rgba(255,255,255,0.03) 70%);
              box-shadow:0 24px 48px rgba(0,0,0,0.55);"
-      class="relative overflow-hidden ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-transform duration-200 ease-out will-change-transform scale-95 opacity-0 data-[show=true]:scale-100 data-[show=true]:opacity-100"
+      class="relative mx-auto mt-[10vh] overflow-hidden ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-transform duration-200 ease-out will-change-transform scale-95 opacity-0 data-[show=true]:scale-100 data-[show=true]:opacity-100 bg-gradient-to-b from-slate-900/95 to-slate-950/90 border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.7)] backdrop-blur-xl transition-all duration-300 ease-out"
     >
       <!-- Card header strip (subtle glow) -->
       <div class="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-white/10"></div>
@@ -134,14 +134,11 @@
 
       <!-- Body: image left, details right (stacks on mobile) -->
       <div class="px-6 pb-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 items-start w-full max-w-4xl mx-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 items-start w-full max-w-none mx-auto">
           <!-- LEFT: Hero image / art -->
-          <div class="relative group">
-            <div class="aspect-[4/3] rounded-xl border border-white/10 bg-gradient-to-tr from-slate-800/60 to-slate-900/40 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden grid place-items-center transition-transform duration-300 group-hover:scale-[1.02]">
-              <div class="text-sm opacity-80 tracking-wide">[ Creature Art Placeholder ]</div>
-            </div>
-            <!-- soft corner glow -->
-            <div class="absolute inset-0 rounded-xl bg-gradient-to-tr from-fuchsia-500/20 via-violet-400/15 to-cyan-400/15 blur-lg opacity-50 group-hover:opacity-80 transition-opacity pointer-events-none"></div>
+          <div class="relative group aspect-[4/3] grid place-items-center rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 shadow-xl transition-transform duration-300 group-hover:scale-[1.02]">
+            <div class="text-sm opacity-80 tracking-wide">[ Creature Art Placeholder ]</div>
+            <div class="absolute inset-0 rounded-xl bg-gradient-to-tr from-cyan-400/20 via-fuchsia-400/15 to-violet-400/20 blur-2xl opacity-50 group-hover:opacity-90 transition-all pointer-events-none"></div>
           </div>
 
           <!-- RIGHT: Key facts, description, chips, actions -->
