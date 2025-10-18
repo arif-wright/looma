@@ -7,12 +7,10 @@
   type AchievementRow = {
     id: string;
     created_at: string;
-    achievements: {
-      id: string;
-      key: string;
-      name: string;
-      tier: Tier;
-    } | null;
+    achievement_id: string;
+    key: string;
+    name: string;
+    tier: Tier;
   };
 
   let loading = true;
@@ -36,12 +34,7 @@
 
     userId = user.id;
 
-    const { data, error: err } = await supabase
-      .from('user_achievements')
-      .select('id, created_at, achievements:achievement_id ( id, key, name, tier )')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(12);
+    const { data, error: err } = await supabase.rpc('get_my_achievements', { p_limit: 12 });
 
     if (err) throw err;
 
@@ -120,13 +113,13 @@
   {:else}
     <ul class="achievements" aria-live="polite">
       {#each items as item (item.id)}
-        <li class="achievement-card" data-tier={item.achievements?.tier ?? 'bronze'}>
+        <li class="achievement-card" data-tier={item.tier ?? 'bronze'}>
           <div class="head">
-            <span class="name">{item.achievements?.name ?? 'Achievement unlocked'}</span>
+            <span class="name">{item.name ?? 'Achievement unlocked'}</span>
             <span class="date">{new Date(item.created_at).toLocaleDateString()}</span>
           </div>
-          <div class={tierClass(item.achievements?.tier ?? 'bronze')}>
-            {(item.achievements?.tier ?? 'bronze').toUpperCase()}
+          <div class={tierClass(item.tier ?? 'bronze')}>
+            {(item.tier ?? 'bronze').toUpperCase()}
           </div>
         </li>
       {/each}

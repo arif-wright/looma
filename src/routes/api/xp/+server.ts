@@ -31,6 +31,7 @@ export const POST: RequestHandler = async (event) => {
     .single();
 
   if (curErr) {
+    console.error('xp:get current profile failed', curErr);
     return json({ error: curErr.message }, { status: 400 });
   }
 
@@ -42,6 +43,7 @@ export const POST: RequestHandler = async (event) => {
     .eq('id', user.id);
 
   if (updErr) {
+    console.error('xp:update profile failed', updErr);
     return json({ error: updErr.message }, { status: 400 });
   }
 
