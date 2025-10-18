@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import Portal from '$lib/ui/Portal.svelte';
   import type { CreatureRow } from '$lib/data/creatures';
 
   export let creature: CreatureRow | null = null;
@@ -101,28 +102,29 @@
 </script>
 
 {#if open && creature}
-  <div
-    class="fixed inset-0 z-[1200] grid place-items-center p-4"
-    aria-modal="true"
-    role="dialog"
-    aria-labelledby="cd-title"
-    aria-describedby="cd-desc"
-  >
-    <button
-      type="button"
-      class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      on:click={onClose}
-      aria-label="Close creature detail"
-    ></button>
+  <Portal target="body">
     <div
-      bind:this={modalEl}
-      tabindex="-1"
-      class={`relative w-full max-w-lg rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none transition-all duration-200 ease-out ${
-        show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-      }`}
+      class="fixed inset-0 z-[1200] grid place-items-center p-4"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="cd-title"
+      aria-describedby="cd-desc"
     >
-      <div class="p-4 border-b border-white/10 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        on:click={onClose}
+        aria-label="Close creature detail"
+      ></button>
+      <div
+        bind:this={modalEl}
+        tabindex="-1"
+        class={`relative w-full max-w-lg rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.04] shadow-2xl outline-none transition-all duration-200 ease-out ${
+          show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+      >
+        <div class="p-4 border-b border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-full bg-white/10 grid place-items-center">✨</div>
           <div>
             <h2 id="cd-title" class="text-base font-semibold leading-none">
@@ -164,7 +166,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </Portal>
 {/if}
 
 <style>
