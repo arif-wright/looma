@@ -14,6 +14,7 @@
     avatar_url: string | null;
   };
 
+  const PAGE_SIZE = 5;
   let items: FeedRow[] = [];
   let loading = true;
   let moreLoading = false;
@@ -40,11 +41,11 @@
     reachedEnd = false;
     errMsg = null;
     try {
-      const { data, error } = await supabase.rpc('get_public_feed', { p_limit: 20 });
+      const { data, error } = await supabase.rpc('get_public_feed', { p_limit: PAGE_SIZE });
       if (error) throw error;
       if (Array.isArray(data)) {
         items = data as FeedRow[];
-        reachedEnd = data.length < 20;
+        reachedEnd = data.length < PAGE_SIZE;
       } else {
         items = [];
         reachedEnd = true;
@@ -66,7 +67,7 @@
     const last = items[items.length - 1];
     try {
       const { data, error } = await supabase.rpc('get_public_feed', {
-        p_limit: 20,
+        p_limit: PAGE_SIZE,
         p_before: last.created_at
       });
       if (error) throw error;
@@ -74,7 +75,7 @@
         const existing = new Set(items.map((row) => row.id));
         const additions = (data as FeedRow[]).filter((row) => !existing.has(row.id));
         items = [...items, ...additions];
-        if (data.length < 20) reachedEnd = true;
+        if (data.length < PAGE_SIZE) reachedEnd = true;
       } else {
         reachedEnd = true;
       }
