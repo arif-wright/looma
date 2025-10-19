@@ -14,4 +14,12 @@ export const supabaseServer = (event: { cookies: any; fetch: typeof fetch }) =>
     fetch: event.fetch,
   });
 
+// Dev helper: expose Supabase browser client globally for quick console access.
+if (typeof window !== 'undefined') {
+  const globalWin = window as any;
+  if (!globalWin.supabase) {
+    globalWin.supabase = supabaseBrowser();
+  }
+}
+
 export const magicLinkRedirect = `${PUBLIC_SITE_URL}/auth/callback`;
