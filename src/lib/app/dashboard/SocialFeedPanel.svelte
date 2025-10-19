@@ -352,4 +352,5 @@
     .actions {
       transition: none;
     }
+  }
 </style>
