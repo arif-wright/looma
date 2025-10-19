@@ -162,13 +162,12 @@
         <li class="item">
           <img class="avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
           <div class="content">
-            <div class="meta">
-              <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
-              <span class="dot" aria-hidden="true">•</span>
-              <span class="when">{relativeTime(row.created_at)}</span>
-            </div>
-            <div class="message">{row.message}</div>
-            <div class="actions">
+            <div class="header">
+              <div class="meta">
+                <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
+                <span class="dot" aria-hidden="true">•</span>
+                <span class="when">{relativeTime(row.created_at)}</span>
+              </div>
               <button
                 type="button"
                 class="energy"
@@ -178,6 +177,7 @@
                 ⚡ Send Energy
               </button>
             </div>
+            <div class="message">{row.message}</div>
           </div>
         </li>
       {/each}
@@ -229,7 +229,7 @@
     display: grid;
     grid-template-columns: 28px 1fr;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
@@ -250,6 +250,13 @@
     min-width: 0;
     display: grid;
     gap: 0.35rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
   .meta {
@@ -276,24 +283,12 @@
     font-size: 0.88rem;
     line-height: 1.32;
     opacity: 0.9;
-  }
-
-  .actions {
     margin-top: 0.2rem;
-    opacity: 0;
-    transform: translateY(-2px);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-
-  .item:hover .actions,
-  .item:focus-within .actions {
-    opacity: 1;
-    transform: translateY(0);
   }
 
   .energy {
     font-size: 0.72rem;
-    padding: 0.3rem 0.75rem;
+    padding: 0.3rem 0.7rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
