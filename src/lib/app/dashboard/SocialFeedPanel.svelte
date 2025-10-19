@@ -159,10 +159,10 @@
   {:else}
     <ul class="feed" aria-live="polite">
       {#each items as row (row.id)}
-        <li class="feed-item">
+        <li class="item">
           <img class="avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
-          <div class="body">
-            <div class="header">
+          <div class="content">
+            <div class="meta">
               <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
               <span class="dot" aria-hidden="true">•</span>
               <span class="when">{relativeTime(row.created_at)}</span>
@@ -182,7 +182,7 @@
         </li>
       {/each}
     </ul>
-    <div class="load-more">
+    <div class="footer">
       {#if reachedEnd}
         <span class="end-text">End of feed</span>
       {:else}
@@ -200,13 +200,11 @@
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
-    max-height: 100%;
-    overflow: auto;
   }
 
   .panel-title {
     font-weight: 600;
-    padding: 16px;
+    padding: 14px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
@@ -225,39 +223,40 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    display: flex;
-    flex-direction: column;
   }
 
-  .feed-item {
-    display: flex;
-    gap: 0.85rem;
-    padding: 0.9rem 1.1rem;
+  .item {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
+  .item:last-child {
+    border-bottom: none;
+  }
+
   .avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
     object-fit: cover;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.05);
   }
 
-  .body {
-    flex: 1;
+  .content {
     min-width: 0;
     display: grid;
-    gap: 0.4rem;
+    gap: 0.35rem;
   }
 
-  .header {
+  .meta {
     display: flex;
+    gap: 0.45rem;
     align-items: baseline;
-    gap: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .name {
@@ -274,20 +273,30 @@
   }
 
   .message {
-    font-size: 0.95rem;
-    opacity: 0.92;
+    font-size: 0.88rem;
+    line-height: 1.32;
+    opacity: 0.9;
   }
 
   .actions {
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+
+  .item:hover .actions,
+  .item:focus-within .actions {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .energy {
-    font-size: 0.75rem;
-    padding: 0.35rem 0.85rem;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: inherit;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
@@ -295,27 +304,27 @@
 
   .energy:hover:enabled,
   .energy:focus-visible:enabled {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.09);
     border-color: rgba(255, 255, 255, 0.2);
   }
 
   .energy:disabled {
-    opacity: 0.45;
+    opacity: 0.5;
     cursor: default;
   }
 
-  .load-more {
+  .footer {
     padding: 0.75rem 1rem 1rem;
     display: flex;
     justify-content: center;
   }
 
   .more-button {
-    font-size: 0.75rem;
-    padding: 0.4rem 1rem;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.9rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
     color: inherit;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease;
@@ -333,15 +342,14 @@
   }
 
   .end-text {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     opacity: 0.6;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .panel,
     .energy,
-    .more-button {
+    .more-button,
+    .actions {
       transition: none;
     }
-  }
 </style>
