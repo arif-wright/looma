@@ -294,18 +294,36 @@
     background: rgba(255, 255, 255, 0.05);
     color: inherit;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transition:
+      background 0.25s ease,
+      border-color 0.25s ease,
+      box-shadow 0.25s ease,
+      opacity 0.2s ease,
+      transform 0.1s ease;
   }
 
   .energy:hover:enabled,
   .energy:focus-visible:enabled {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(0, 255, 255, 0.35);
+    box-shadow:
+      0 0 6px rgba(0, 255, 255, 0.3),
+      0 0 12px rgba(255, 0, 255, 0.2);
+  }
+
+  .energy:active:enabled {
+    transform: scale(0.96);
+    box-shadow:
+      0 0 10px rgba(255, 0, 255, 0.4),
+      0 0 20px rgba(0, 255, 255, 0.35);
   }
 
   .energy:disabled {
     opacity: 0.5;
     cursor: default;
+    box-shadow: none;
   }
 
   .footer {
