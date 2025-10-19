@@ -18,6 +18,7 @@
   let loading = true;
   let moreLoading = false;
   let reachedEnd = false;
+  let errMsg: string | null = null;
   const supabase = supabaseBrowser();
 
   function relativeTime(value: string) {
@@ -37,6 +38,7 @@
   async function loadInitial() {
     loading = true;
     reachedEnd = false;
+    errMsg = null;
     try {
       const { data, error } = await supabase.rpc('get_public_feed', { p_limit: 20 });
       if (error) throw error;
@@ -51,6 +53,7 @@
       console.error('load social feed error', err);
       items = [];
       reachedEnd = true;
+      errMsg = err instanceof Error ? err.message : String(err);
     } finally {
       loading = false;
     }
@@ -59,6 +62,7 @@
   async function loadMore() {
     if (moreLoading || reachedEnd || items.length === 0) return;
     moreLoading = true;
+    errMsg = null;
     const last = items[items.length - 1];
     try {
       const { data, error } = await supabase.rpc('get_public_feed', {
@@ -77,6 +81,7 @@
     } catch (err) {
       console.error('load more social feed error', err);
       reachedEnd = true;
+      errMsg = err instanceof Error ? err.message : String(err);
     } finally {
       moreLoading = false;
     }
@@ -146,6 +151,8 @@
 
   {#if loading}
     <div class="panel-message">Loading…</div>
+  {:else if errMsg}
+    <div class="panel-message error">Error: {errMsg}</div>
   {:else if items.length === 0}
     <div class="panel-message">No public activity yet.</div>
   {:else}
@@ -206,6 +213,11 @@
     padding: 1rem 1.5rem;
     font-size: 0.9rem;
     opacity: 0.75;
+  }
+
+  .panel-message.error {
+    color: #fca5a5;
+    opacity: 1;
   }
 
   .feed {
