@@ -230,19 +230,19 @@
     <ul class="feed" aria-live="polite">
       {#each items as row (row.id)}
         <li class="item">
-          <a class="avatar-link" href={`/u/${row.handle ?? row.user_id}`}>
-            <img class="avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
-            <span class="hover-card" aria-hidden="true">
+          <a class="avatar-link" href={"/u/" + (row.handle ?? row.user_id)}>
+            <img class="avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" loading="lazy" />
+            <span class="hover-card" role="dialog" aria-hidden="true">
               <span class="hc-header">
-                <img class="hc-avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" />
+                <img class="hc-avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" />
                 <span>
-                  <b class="hc-name">{row.display_name ?? row.handle ?? 'Someone'}</b>
+                  <b class="hc-name">{row.display_name ?? 'Someone'}</b>
                   <span class="hc-handle">@{row.handle ?? 'user'}</span>
                 </span>
               </span>
               <span class="hc-stats">
-                <span>Lvl <b>{row.meta?.level ?? '—'}</b></span>
-                <span><b>{row.meta?.bonded_count ?? '—'}</b> bonded</span>
+                <span>Lvl <b>{row.meta?.level ?? ''}</b></span>
+                <span><b>{row.meta?.bonded_count ?? ''}</b> bonded</span>
               </span>
               <span class="hc-cta">View profile →</span>
             </span>
@@ -250,7 +250,7 @@
           <div class="content">
             <div class="header">
               <div class="meta">
-                <a class="name-link" href={`/u/${row.handle ?? row.user_id}`}>
+                <a class="name-link" href={"/u/" + (row.handle ?? row.user_id)}>
                   <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
                 </a>
                 <span class="dot" aria-hidden="true">•</span>
@@ -387,14 +387,14 @@
     position: absolute;
     left: 34px;
     top: -6px;
-    z-index: 40;
+    z-index: 30;
     display: none;
     min-width: 220px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: rgba(8, 11, 18, 0.96);
+    background: rgba(10, 12, 16, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
 
   .avatar-link:hover .hover-card,
@@ -410,10 +410,10 @@
   }
 
   .hc-avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .hc-name {
@@ -428,15 +428,15 @@
 
   .hc-stats {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     font-size: 12px;
-    opacity: 0.85;
+    opacity: 0.9;
     margin-bottom: 6px;
   }
 
   .hc-cta {
     font-size: 12px;
-    opacity: 0.85;
+    opacity: 0.9;
   }
 
   .content {
