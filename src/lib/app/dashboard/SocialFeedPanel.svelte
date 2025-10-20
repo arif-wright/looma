@@ -75,7 +75,7 @@
         const existing = new Set(items.map((row) => row.id));
         const additions = (data as FeedRow[]).filter((row) => !existing.has(row.id));
         items = [...items, ...additions];
-        if (data.length < PAGE_SIZE) reachedEnd = true;
+        reachedEnd = data.length < PAGE_SIZE;
       } else {
         reachedEnd = true;
       }
@@ -113,6 +113,34 @@
     } finally {
       setSending(targetUserId, false);
     }
+  }
+
+  function spawnSparks(button: HTMLButtonElement | null) {
+    if (!button) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const wrapper = document.createElement('span');
+    wrapper.className = 'spark-wrap';
+    const palette = ['#6cf', '#f0f', '#0ff', '#9ff', '#f9f'];
+    const count = 6;
+    for (let i = 0; i < count; i += 1) {
+      const spark = document.createElement('span');
+      spark.className = 'spark-p';
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6;
+      const radius = 12 + Math.random() * 6;
+      spark.style.setProperty('--dx', `${Math.cos(angle) * radius}px`);
+      spark.style.setProperty('--dy', `${Math.sin(angle) * radius}px`);
+      spark.style.setProperty('--clr', palette[i % palette.length]);
+      wrapper.appendChild(spark);
+    }
+    button.appendChild(wrapper);
+    setTimeout(() => wrapper.remove(), 520);
+  }
+
+  function handleSendEnergy(button: HTMLButtonElement, targetUserId: string) {
+    if (sending.has(targetUserId)) return;
+    spawnSparks(button);
+    void sendEnergy(targetUserId);
   }
 
   let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -172,7 +200,7 @@
                 type="button"
                 class="energy"
                 disabled={sending.has(row.user_id)}
-                on:click={() => sendEnergy(row.user_id)}
+                on:click={(event) => handleSendEnergy(event.currentTarget as HTMLButtonElement, row.user_id)}
               >
                 ⚡ Send Energy
               </button>
@@ -326,6 +354,40 @@
     box-shadow: none;
   }
 
+  .spark-wrap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .spark-p {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--clr, #6cf);
+    filter: drop-shadow(0 0 6px var(--clr, #6cf));
+    transform: translate(-50%, -50%) scale(0.6);
+    animation: spark-pop 0.52s ease-out forwards;
+  }
+
+  @keyframes spark-pop {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(0.65);
+    }
+    60% {
+      opacity: 1;
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.9);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0);
+    }
+  }
+
   .footer {
     padding: 0.75rem 1rem 1rem;
     display: flex;
@@ -364,6 +426,10 @@
     .more-button,
     .actions {
       transition: none;
+    }
+    .spark-p {
+      animation: none;
+      opacity: 0;
     }
   }
 </style>
