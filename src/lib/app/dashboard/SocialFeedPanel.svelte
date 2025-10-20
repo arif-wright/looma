@@ -230,11 +230,29 @@
     <ul class="feed" aria-live="polite">
       {#each items as row (row.id)}
         <li class="item">
-          <img class="avatar" src={row.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
+          <a class="avatar-link" href={"/u/" + (row.handle ?? row.user_id)}>
+            <img class="avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" loading="lazy" />
+            <span class="hover-card" role="dialog" aria-hidden="true">
+              <span class="hc-header">
+                <img class="hc-avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" />
+                <span>
+                  <b class="hc-name">{row.display_name ?? 'Someone'}</b>
+                  <span class="hc-handle">@{row.handle ?? 'user'}</span>
+                </span>
+              </span>
+              <span class="hc-stats">
+                <span>Lvl <b>{row.meta?.level ?? ''}</b></span>
+                <span><b>{row.meta?.bonded_count ?? ''}</b> bonded</span>
+              </span>
+              <span class="hc-cta">View profile →</span>
+            </span>
+          </a>
           <div class="content">
             <div class="header">
               <div class="meta">
-                <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
+                <a class="name-link" href={"/u/" + (row.handle ?? row.user_id)}>
+                  <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
+                </a>
                 <span class="dot" aria-hidden="true">•</span>
                 <span class="when">{relativeTime(row.created_at)}</span>
               </div>
@@ -351,12 +369,74 @@
   }
 
   .avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    object-fit: cover;
+    margin-top: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .avatar-link {
+    position: relative;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .hover-card {
+    position: absolute;
+    left: 34px;
+    top: -6px;
+    z-index: 30;
+    display: none;
+    min-width: 220px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(10, 12, 16, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .avatar-link:hover .hover-card,
+  .avatar-link:focus-within .hover-card {
+    display: block;
+  }
+
+  .hc-header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .hc-avatar {
     width: 28px;
     height: 28px;
     border-radius: 999px;
-    object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .hc-name {
+    font-weight: 600;
+    display: block;
+  }
+
+  .hc-handle {
+    opacity: 0.7;
+    font-size: 12px;
+  }
+
+  .hc-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+  }
+
+  .hc-cta {
+    font-size: 12px;
+    opacity: 0.9;
   }
 
   .content {
@@ -377,6 +457,11 @@
     gap: 0.45rem;
     align-items: baseline;
     font-size: 0.82rem;
+  }
+
+  .name-link {
+    color: inherit;
+    text-decoration: none;
   }
 
   .name {
