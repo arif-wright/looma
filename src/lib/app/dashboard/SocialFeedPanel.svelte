@@ -31,6 +31,8 @@
   let sendingCommentFor: string | null = null;
   let drafts: Record<string, string> = {};
   let currentUserId: string | null = null;
+  let openId: string | null = null;
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   function relativeTime(value: string) {
     const ts = new Date(value).getTime();
@@ -44,6 +46,39 @@
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}d ago`;
     return new Date(value).toLocaleDateString();
+  }
+
+  function openCard(id: string) {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    openId = id;
+  }
+
+  function scheduleClose() {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    hideTimer = setTimeout(() => {
+      openId = null;
+      hideTimer = null;
+    }, 120);
+  }
+
+  function immediateClose() {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+    openId = null;
+  }
+
+  function onKeydownCard(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      immediateClose();
+    }
   }
 
   async function ensureUserId() {
@@ -214,6 +249,7 @@
     [eventChannel, reactionChannel, commentChannel].forEach((ch) => {
       if (ch) supabase.removeChannel(ch);
     });
+    if (hideTimer) clearTimeout(hideTimer);
   });
 </script>
 
@@ -230,9 +266,40 @@
     <ul class="feed" aria-live="polite">
       {#each items as row (row.id)}
         <li class="item">
-          <a class="avatar-link" href={"/u/" + (row.handle ?? row.user_id)}>
-            <img class="avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" loading="lazy" />
-            <span class="hover-card" role="dialog" aria-hidden="true">
+          <div
+            class="hover-wrap"
+            on:mouseenter={() => openCard(row.id)}
+            on:mouseleave={scheduleClose}
+            on:focusin={() => openCard(row.id)}
+            on:focusout={scheduleClose}
+          >
+            <a
+              class="avatar-link"
+              href={"/u/" + (row.handle ?? row.user_id)}
+              aria-haspopup="dialog"
+              on:keydown={onKeydownCard}
+            >
+              <img
+                class="avatar"
+                src={row.avatar_url ?? '/avatar.svg'}
+                alt={row.display_name ?? row.handle ?? 'Profile'}
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              class="hover-card"
+              href={"/u/" + (row.handle ?? row.user_id)}
+              role="dialog"
+              aria-label="View profile"
+              aria-hidden={openId === row.id ? 'false' : 'true'}
+              data-open={openId === row.id}
+              on:mouseenter={() => openCard(row.id)}
+              on:mouseleave={scheduleClose}
+              on:focusin={() => openCard(row.id)}
+              on:focusout={scheduleClose}
+              on:keydown={onKeydownCard}
+            >
               <span class="hc-header">
                 <img class="hc-avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" />
                 <span>
@@ -245,8 +312,8 @@
                 <span><b>{row.meta?.bonded_count ?? ''}</b> bonded</span>
               </span>
               <span class="hc-cta">View profile →</span>
-            </span>
-          </a>
+            </a>
+          </div>
           <div class="content">
             <div class="header">
               <div class="meta">
@@ -377,8 +444,13 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .avatar-link {
+  .hover-wrap {
     position: relative;
+    display: inline-block;
+    width: 28px;
+  }
+
+  .avatar-link {
     display: inline-block;
     text-decoration: none;
   }
@@ -395,10 +467,13 @@
     background: rgba(10, 12, 16, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    text-decoration: none;
+    color: inherit;
   }
 
-  .avatar-link:hover .hover-card,
-  .avatar-link:focus-within .hover-card {
+  .hover-wrap:hover .hover-card,
+  .hover-wrap:focus-within .hover-card,
+  .hover-card[data-open='true'] {
     display: block;
   }
 
