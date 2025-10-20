@@ -12,15 +12,25 @@
     display_name: string | null;
     handle: string | null;
     avatar_url: string | null;
+    praise_count?: number;
+    energy_count?: number;
+    comment_count?: number;
+    i_praised?: boolean;
+    i_energized?: boolean;
   };
 
   const PAGE_SIZE = 5;
+  const supabase = supabaseBrowser();
+
   let items: FeedRow[] = [];
   let loading = true;
   let moreLoading = false;
   let reachedEnd = false;
   let errMsg: string | null = null;
-  const supabase = supabaseBrowser();
+  let openComposerFor: string | null = null;
+  let sendingCommentFor: string | null = null;
+  let drafts: Record<string, string> = {};
+  let currentUserId: string | null = null;
 
   function relativeTime(value: string) {
     const ts = new Date(value).getTime();
@@ -36,6 +46,14 @@
     return new Date(value).toLocaleDateString();
   }
 
+  async function ensureUserId() {
+    if (currentUserId) return currentUserId;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    currentUserId = data.user?.id ?? null;
+    return currentUserId;
+  }
+
   async function loadInitial() {
     loading = true;
     reachedEnd = false;
@@ -43,13 +61,16 @@
     try {
       const { data, error } = await supabase.rpc('get_public_feed', { p_limit: PAGE_SIZE });
       if (error) throw error;
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
         items = data as FeedRow[];
         reachedEnd = data.length < PAGE_SIZE;
       } else {
         items = [];
         reachedEnd = true;
       }
+      drafts = {};
+      sendingCommentFor = null;
+      openComposerFor = null;
     } catch (err) {
       console.error('load social feed error', err);
       items = [];
@@ -75,7 +96,7 @@
         const existing = new Set(items.map((row) => row.id));
         const additions = (data as FeedRow[]).filter((row) => !existing.has(row.id));
         items = [...items, ...additions];
-        reachedEnd = data.length < PAGE_SIZE;
+        reachedEnd = additions.length === 0 || data.length < PAGE_SIZE;
       } else {
         reachedEnd = true;
       }
@@ -88,90 +109,111 @@
     }
   }
 
-  let sending = new Set<string>();
-  function setSending(userId: string, active: boolean) {
-    const next = new Set(sending);
-    if (active) next.add(userId);
-    else next.delete(userId);
-    sending = next;
-  }
-
-  async function sendEnergy(targetUserId: string) {
-    setSending(targetUserId, true);
+  async function toggleReaction(row: FeedRow, kind: 'praise' | 'energy', button?: HTMLButtonElement) {
     try {
-      const res = await fetch('/api/energy', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ to: targetUserId, amount: 1 })
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        console.error('send energy failed', payload?.error ?? res.statusText);
+      const userId = await ensureUserId();
+      if (!userId) return;
+      const isActive = kind === 'praise' ? !!row.i_praised : !!row.i_energized;
+      if (isActive) {
+        const { error } = await supabase
+          .from('reactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('event_id', row.id)
+          .eq('kind', kind);
+        if (error) throw error;
+        if (kind === 'praise') {
+          row.i_praised = false;
+          row.praise_count = Math.max(0, (row.praise_count ?? 0) - 1);
+        } else {
+          row.i_energized = false;
+          row.energy_count = Math.max(0, (row.energy_count ?? 0) - 1);
+        }
+      } else {
+        const { error } = await supabase
+          .from('reactions')
+          .insert({ user_id: userId, event_id: row.id, kind });
+        if (error) throw error;
+        if (kind === 'praise') {
+          row.i_praised = true;
+          row.praise_count = (row.praise_count ?? 0) + 1;
+        } else {
+          row.i_energized = true;
+          row.energy_count = (row.energy_count ?? 0) + 1;
+          if (button) triggerSpark(button);
+        }
       }
+      items = [...items];
     } catch (err) {
-      console.error('send energy request error', err);
-    } finally {
-      setSending(targetUserId, false);
+      console.error('toggleReaction error', err);
     }
   }
 
-  function spawnSparks(button: HTMLButtonElement | null) {
-    if (!button) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let reactionChannel: ReturnType<typeof supabase.channel> | null = null;
+  let commentChannel: ReturnType<typeof supabase.channel> | null = null;
+  let eventChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    const wrapper = document.createElement('span');
-    wrapper.className = 'spark-wrap';
+  async function submitComment(eventId: string) {
+    const text = drafts[eventId]?.trim();
+    if (!text) return;
+    sendingCommentFor = eventId;
+    try {
+      const userId = await ensureUserId();
+      if (!userId) return;
+      const { error } = await supabase
+        .from('comments')
+        .insert({ user_id: userId, event_id: eventId, body: text });
+      if (error) throw error;
+      drafts[eventId] = '';
+      openComposerFor = null;
+      await loadInitial();
+    } catch (err) {
+      console.error('submitComment error', err);
+    } finally {
+      sendingCommentFor = null;
+    }
+  }
+
+  function triggerSpark(button: HTMLElement) {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'spark-wrap';
+    const count = 8;
     const palette = ['#6cf', '#f0f', '#0ff', '#9ff', '#f9f'];
-    const count = 6;
     for (let i = 0; i < count; i += 1) {
       const spark = document.createElement('span');
       spark.className = 'spark-p';
-      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6;
-      const radius = 12 + Math.random() * 6;
-      spark.style.setProperty('--dx', `${Math.cos(angle) * radius}px`);
-      spark.style.setProperty('--dy', `${Math.sin(angle) * radius}px`);
-      spark.style.setProperty('--clr', palette[i % palette.length]);
-      wrapper.appendChild(spark);
+      const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.6 - 0.3);
+      const dist = 14 + Math.random() * 8;
+      spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+      spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+      spark.style.setProperty('--clr', `hsl(${Math.random() < 0.5 ? 185 : 300} 100% 60%)`);
+      wrap.appendChild(spark);
     }
-    button.appendChild(wrapper);
-    setTimeout(() => wrapper.remove(), 520);
+    button.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 550);
   }
-
-  function handleSendEnergy(button: HTMLButtonElement, targetUserId: string) {
-    if (sending.has(targetUserId)) return;
-    spawnSparks(button);
-    void sendEnergy(targetUserId);
-  }
-
-  let channel: ReturnType<typeof supabase.channel> | null = null;
 
   onMount(async () => {
     await loadInitial();
-    channel = supabase
-      .channel('social-feed-rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => {
-        const row = payload.new as any;
-        if (!row?.is_public) return;
-        if (items.some((item) => item.id === row.id)) return;
-        const prepend: FeedRow = {
-          id: row.id,
-          created_at: row.created_at,
-          type: row.type,
-          message: row.message,
-          meta: row.meta,
-          user_id: row.user_id,
-          display_name: row.display_name ?? null,
-          handle: row.handle ?? null,
-          avatar_url: row.avatar_url ?? null
-        };
-        items = [prepend, ...items];
-        reachedEnd = false;
-      })
+    eventChannel = supabase
+      .channel('social-feed-events')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, () => loadInitial())
+      .subscribe();
+    reactionChannel = supabase
+      .channel('social-feed-reactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => loadInitial())
+      .subscribe();
+    commentChannel = supabase
+      .channel('social-feed-comments')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, () => loadInitial())
       .subscribe();
   });
 
   onDestroy(() => {
-    if (channel) supabase.removeChannel(channel);
+    [eventChannel, reactionChannel, commentChannel].forEach((ch) => {
+      if (ch) supabase.removeChannel(ch);
+    });
   });
 </script>
 
@@ -196,16 +238,59 @@
                 <span class="dot" aria-hidden="true">•</span>
                 <span class="when">{relativeTime(row.created_at)}</span>
               </div>
-              <button
-                type="button"
-                class="energy"
-                disabled={sending.has(row.user_id)}
-                on:click={(event) => handleSendEnergy(event.currentTarget as HTMLButtonElement, row.user_id)}
-              >
-                ⚡ Send Energy
-              </button>
+              <div class="right-actions">
+                <button
+                  class={`chip praise ${row.i_praised ? 'on' : ''}`}
+                  aria-pressed={row.i_praised}
+                  on:click={() => toggleReaction(row, 'praise')}
+                >
+                  💎 {row.praise_count ?? 0}
+                </button>
+                <button
+                  class={`chip energy ${row.i_energized ? 'on' : ''}`}
+                  aria-pressed={row.i_energized}
+                  on:click={(event) => toggleReaction(row, 'energy', event.currentTarget as HTMLButtonElement)}
+                >
+                  ⚡ {row.energy_count ?? 0}
+                </button>
+                <button
+                  class="chip comment"
+                  on:click={() => {
+                    openComposerFor = openComposerFor === row.id ? null : row.id;
+                    drafts[row.id] = drafts[row.id] ?? '';
+                  }}
+                >
+                  💬 {row.comment_count ?? 0}
+                </button>
+              </div>
             </div>
             <div class="message">{row.message}</div>
+            {#if openComposerFor === row.id}
+              <div class="composer">
+                <input
+                  class="field"
+                  type="text"
+                  maxlength="280"
+                  placeholder="Write a supportive note…"
+                  value={drafts[row.id] ?? ''}
+                  on:input={(event) => drafts[row.id] = event.currentTarget.value}
+                  on:keydown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      submitComment(row.id);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  class="send"
+                  disabled={sendingCommentFor === row.id || !(drafts[row.id]?.trim())}
+                  on:click={() => submitComment(row.id)}
+                >
+                  {sendingCommentFor === row.id ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+            {/if}
           </div>
         </li>
       {/each}
@@ -248,9 +333,9 @@
   }
 
   .feed {
+    list-style: none;
     margin: 0;
     padding: 0;
-    list-style: none;
   }
 
   .item {
@@ -314,44 +399,46 @@
     margin-top: 0.2rem;
   }
 
-  .energy {
-    font-size: 0.72rem;
-    padding: 0.3rem 0.7rem;
+  .right-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .chip {
+    font-size: 11.5px;
+    padding: 3px 8px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.05);
     color: inherit;
-    cursor: pointer;
     position: relative;
     overflow: hidden;
-    transition:
-      background 0.25s ease,
-      border-color 0.25s ease,
-      box-shadow 0.25s ease,
-      opacity 0.2s ease,
-      transform 0.1s ease;
+    cursor: pointer;
+    transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   }
 
-  .energy:hover:enabled,
-  .energy:focus-visible:enabled {
+  .chip.on {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.25);
+  }
+
+  .chip:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .chip.energy:hover:not(:disabled),
+  .chip.energy:focus-visible:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(0, 255, 255, 0.35);
-    box-shadow:
-      0 0 6px rgba(0, 255, 255, 0.3),
-      0 0 12px rgba(255, 0, 255, 0.2);
+    box-shadow: 0 0 6px rgba(0, 255, 255, 0.3), 0 0 12px rgba(255, 0, 255, 0.2);
   }
 
-  .energy:active:enabled {
+  .chip.energy:active:not(:disabled) {
     transform: scale(0.96);
-    box-shadow:
-      0 0 10px rgba(255, 0, 255, 0.4),
-      0 0 20px rgba(0, 255, 255, 0.35);
-  }
-
-  .energy:disabled {
-    opacity: 0.5;
-    cursor: default;
-    box-shadow: none;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(0, 255, 255, 0.35);
   }
 
   .spark-wrap {
@@ -388,6 +475,40 @@
     }
   }
 
+  .composer {
+    margin-top: 6px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+
+  .field {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 13px;
+    color: inherit;
+  }
+
+  .field::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .send {
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+  }
+
+  .send:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
   .footer {
     padding: 0.75rem 1rem 1rem;
     display: flex;
@@ -422,11 +543,13 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .energy,
+    .chip,
     .more-button,
-    .actions {
+    .composer,
+    .right-actions {
       transition: none;
     }
+
     .spark-p {
       animation: none;
       opacity: 0;
