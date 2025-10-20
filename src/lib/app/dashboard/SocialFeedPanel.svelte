@@ -369,12 +369,12 @@
   }
 
   .avatar {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 999px;
     object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.05);
+    margin-top: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .avatar-link {
