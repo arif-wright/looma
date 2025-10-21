@@ -268,6 +268,7 @@
         <li class="item">
           <div
             class="hover-wrap"
+            role="group"
             on:mouseenter={() => openCard(row.id)}
             on:mouseleave={scheduleClose}
             on:focusin={() => openCard(row.id)}
