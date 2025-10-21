@@ -18,7 +18,6 @@
 
 <nav
   class={`flex items-center justify-between gap-3 mt-4 px-4 ${compact ? 'text-[13px]' : ''}`}
-  role="navigation"
   aria-label={ariaLabel}
 >
   <button
