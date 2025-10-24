@@ -5,6 +5,10 @@ export type PostRow = {
   meta?: Record<string, unknown>;
   is_public?: boolean;
   created_at: string;
+  author_name?: string | null;
+  author_handle?: string | null;
+  author_avatar?: string | null;
+  // Legacy fields kept for backwards compatibility with older payloads
   display_name?: string | null;
   handle?: string | null;
   avatar_url?: string | null;

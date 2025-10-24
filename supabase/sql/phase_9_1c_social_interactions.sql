@@ -85,9 +85,9 @@ returns table(
   message text,
   meta jsonb,
   user_id uuid,
-  display_name text,
-  handle text,
-  avatar_url text,
+  author_name text,
+  author_handle text,
+  author_avatar text,
   praise_count int,
   energy_count int,
   comment_count int,
@@ -100,7 +100,9 @@ set search_path = public
 as $$
   with base as (
     select e.id, e.created_at, e.type, e.message, e.meta, e.user_id,
-           p.display_name, p.handle, p.avatar_url
+           coalesce(p.display_name, '@' || p.handle, 'Someone') as author_name,
+           p.handle as author_handle,
+           p.avatar_url as author_avatar
     from public.events e
     left join public.profiles p on p.id = e.user_id
     where e.is_public = true
@@ -125,7 +127,7 @@ as $$
     group by c.event_id
   )
   select b.id, b.created_at, b.type, b.message, b.meta, b.user_id,
-         b.display_name, b.handle, b.avatar_url,
+         b.author_name, b.author_handle, b.author_avatar,
          coalesce(rx.praise_count, 0) as praise_count,
          coalesce(rx.energy_count, 0) as energy_count,
          coalesce(cx.comment_count, 0) as comment_count,

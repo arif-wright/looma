@@ -28,3 +28,15 @@ create policy "events: owner read"
 on public.events for select
   to authenticated
   using (user_id = auth.uid());
+
+drop policy if exists "events: owner insert" on public.events;
+create policy "events: owner insert"
+on public.events for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "events: public read" on public.events;
+create policy "events: public read"
+on public.events for select
+  to authenticated
+  using (is_public = true);

@@ -14,9 +14,9 @@ RETURNS TABLE (
   message text,
   meta jsonb,
   user_id uuid,
-  display_name text,
-  handle text,
-  avatar_url text,
+  author_name text,
+  author_handle text,
+  author_avatar text,
   praise_count int,
   energy_count int,
   comment_count int,
@@ -29,7 +29,9 @@ SET search_path = public
 AS $$
   WITH base AS (
     SELECT e.id, e.created_at, e.type, e.message, e.meta, e.user_id,
-           p.display_name, p.handle, p.avatar_url
+           COALESCE(p.display_name, '@' || p.handle, 'Someone') AS author_name,
+           p.handle AS author_handle,
+           p.avatar_url AS author_avatar
     FROM public.events e
     LEFT JOIN public.profiles p ON p.id = e.user_id
     WHERE e.is_public = true
@@ -54,7 +56,7 @@ AS $$
     GROUP BY c.event_id
   )
   SELECT b.id, b.created_at, b.type, b.message, b.meta, b.user_id,
-         b.display_name, b.handle, b.avatar_url,
+         b.author_name, b.author_handle, b.author_avatar,
          COALESCE(rx.praise_count, 0) AS praise_count,
          COALESCE(rx.energy_count, 0) AS energy_count,
          COALESCE(cx.comment_count, 0) AS comment_count,

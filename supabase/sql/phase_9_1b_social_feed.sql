@@ -7,6 +7,12 @@ create policy "events: owner read"
   to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "events: owner insert" on public.events;
+create policy "events: owner insert"
+  on public.events for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
 drop policy if exists "events: public read" on public.events;
 create policy "events: public read"
   on public.events for select
@@ -26,9 +32,9 @@ create or replace function public.get_public_feed(
   message text,
   meta jsonb,
   user_id uuid,
-  display_name text,
-  handle text,
-  avatar_url text
+  author_name text,
+  author_handle text,
+  author_avatar text
 )
 language sql
 security definer
@@ -41,9 +47,9 @@ as $$
     e.message,
     e.meta,
     e.user_id,
-    p.display_name,
-    p.handle,
-    p.avatar_url
+    coalesce(p.display_name, '@' || p.handle, 'Someone') as author_name,
+    p.handle as author_handle,
+    p.avatar_url as author_avatar
   from public.events e
   left join public.profiles p on p.id = e.user_id
   where e.is_public = true

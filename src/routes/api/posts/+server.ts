@@ -60,18 +60,50 @@ export const POST: RequestHandler = async (event) => {
     payload.meta && typeof payload.meta === 'object' && !Array.isArray(payload.meta)
       ? (payload.meta as Record<string, unknown>)
       : {};
-  const isPublic = typeof payload.is_public === 'boolean' ? payload.is_public : true;
 
-  const { error } = await supabase.from('posts').insert({
-    user_id: user.id,
-    body,
-    meta,
-    is_public: isPublic
-  });
+  const {
+    data: inserted,
+    error: insertError
+  } = await supabase
+    .from('posts')
+    .insert({
+      user_id: user.id,
+      body,
+      meta,
+      is_public: true
+    })
+    .select('id, user_id, body, meta, is_public, created_at')
+    .single();
 
-  if (error) {
-    return json({ error: error.message }, { status: 400 });
+  if (insertError) {
+    return json({ error: insertError.message }, { status: 400 });
   }
 
-  return json({ ok: true });
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('display_name, handle, avatar_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error('posts insert profile lookup error', profileError);
+  }
+
+  const authorHandle = profile?.handle ?? null;
+  const authorName =
+    profile?.display_name ?? (authorHandle ? `@${authorHandle}` : 'Someone');
+
+  const response = {
+    ...inserted,
+    author_name: authorName,
+    author_handle: authorHandle,
+    author_avatar: profile?.avatar_url ?? null,
+    comment_count: 0,
+    reaction_like_count: 0,
+    reaction_spark_count: 0,
+    reaction_support_count: 0,
+    current_user_reaction: null
+  };
+
+  return json({ item: response });
 };

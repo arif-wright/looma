@@ -10,9 +10,12 @@
     message: string;
     meta: any;
     user_id: string;
-    display_name: string | null;
-    handle: string | null;
-    avatar_url: string | null;
+    author_name: string | null;
+    author_handle: string | null;
+    author_avatar: string | null;
+    display_name?: string | null;
+    handle?: string | null;
+    avatar_url?: string | null;
     praise_count?: number;
     energy_count?: number;
     comment_count?: number;
@@ -48,6 +51,13 @@
     if (days < 7) return `${days}d ago`;
     return new Date(value).toLocaleDateString();
   }
+
+  const getAuthorHandle = (row: FeedRow) => row.author_handle ?? row.handle ?? null;
+  const getAuthorName = (row: FeedRow) => {
+    const handle = getAuthorHandle(row);
+    return row.author_name ?? (row.display_name ?? (handle ? `@${handle}` : 'Someone'));
+  };
+  const getAuthorAvatar = (row: FeedRow) => row.author_avatar ?? row.avatar_url ?? '/avatar.svg';
 
   function openCard(id: string) {
     if (hideTimer) {
@@ -284,21 +294,21 @@
           >
             <a
               class="avatar-link"
-              href={"/u/" + (row.handle ?? row.user_id)}
+              href={"/u/" + (getAuthorHandle(row) ?? row.user_id)}
               aria-haspopup="dialog"
               on:keydown={onKeydownCard}
             >
               <img
                 class="avatar"
-                src={row.avatar_url ?? '/avatar.svg'}
-                alt={row.display_name ?? row.handle ?? 'Profile'}
+                src={getAuthorAvatar(row)}
+                alt={getAuthorName(row)}
                 loading="lazy"
               />
             </a>
 
             <a
               class="hover-card"
-              href={"/u/" + (row.handle ?? row.user_id)}
+              href={"/u/" + (getAuthorHandle(row) ?? row.user_id)}
               role="dialog"
               aria-label="View profile"
               aria-hidden={openId === row.id ? 'false' : 'true'}
@@ -310,10 +320,10 @@
               on:keydown={onKeydownCard}
             >
               <span class="hc-header">
-                <img class="hc-avatar" src={row.avatar_url ?? '/avatar.svg'} alt="" />
+                <img class="hc-avatar" src={getAuthorAvatar(row)} alt="" />
                 <span>
-                  <b class="hc-name">{row.display_name ?? 'Someone'}</b>
-                  <span class="hc-handle">@{row.handle ?? 'user'}</span>
+                  <b class="hc-name">{getAuthorName(row)}</b>
+                  <span class="hc-handle">@{getAuthorHandle(row) ?? 'user'}</span>
                 </span>
               </span>
               <span class="hc-stats">
@@ -326,8 +336,8 @@
           <div class="content">
             <div class="header">
               <div class="meta">
-                <a class="name-link" href={"/u/" + (row.handle ?? row.user_id)}>
-                  <span class="name">{row.display_name ?? row.handle ?? 'Someone'}</span>
+                <a class="name-link" href={"/u/" + (getAuthorHandle(row) ?? row.user_id)}>
+                  <span class="name">{getAuthorName(row)}</span>
                 </a>
                 <span class="dot" aria-hidden="true">•</span>
                 <span class="when">{relativeTime(row.created_at)}</span>

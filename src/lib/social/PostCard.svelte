@@ -12,6 +12,14 @@
   let reacting = false;
   let errorMsg: string | null = null;
 
+  $: legacyHandle = post.handle ?? null;
+  $: authorHandle = post.author_handle ?? legacyHandle ?? null;
+  $: authorAvatar = post.author_avatar ?? post.avatar_url ?? '/avatar.svg';
+  $: authorName =
+    post.author_name ??
+    (post.display_name ?? (authorHandle ? `@${authorHandle}` : 'Someone'));
+  $: profileHref = `/u/${authorHandle ?? post.user_id}`;
+
   function relativeTime(value: string) {
     const timestamp = new Date(value).getTime();
     if (!Number.isFinite(timestamp)) return value;
@@ -93,18 +101,18 @@
   <header class="post-header">
     <img
       class="avatar"
-      src={post.avatar_url ?? '/avatar.svg'}
+      src={authorAvatar}
       alt=""
       width="36"
       height="36"
       loading="lazy"
     />
     <div class="meta">
-      <a class="name" href={`/u/${post.handle ?? post.user_id}`}>
-        {post.display_name ?? post.handle ?? 'Someone'}
+      <a class="name" href={profileHref}>
+        {authorName}
       </a>
       <div class="sub">
-        <span class="handle">@{post.handle ?? 'user'}</span>
+        <span class="handle">@{authorHandle ?? 'user'}</span>
         <span aria-hidden="true">•</span>
         <span>{relativeTime(post.created_at)}</span>
       </div>
