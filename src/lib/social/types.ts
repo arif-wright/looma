@@ -27,4 +27,6 @@ export type PostComment = {
   display_name: string | null;
   handle: string | null;
   avatar_url: string | null;
+  parent_id?: string | null;
+  reply_count?: number;
 };

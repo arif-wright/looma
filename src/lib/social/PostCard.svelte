@@ -1,11 +1,14 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount, tick } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import CommentComposer from './CommentComposer.svelte';
   import CommentsList from './CommentsList.svelte';
   import type { PostComment, PostRow } from './types';
 
+  const dispatch = createEventDispatcher<{ 'focus-comments': void }>();
+
   export let post: PostRow;
+  export let detail = false;
 
   const supabase = supabaseBrowser();
 
@@ -15,6 +18,9 @@
   let liked = post.current_user_reaction === 'like';
   let likeCount = post.reaction_like_count ?? 0;
   let commentCount = post.comment_count ?? 0;
+  let lastPropLikeCount = likeCount;
+  let lastPropCommentCount = commentCount;
+  let lastPropReaction: string | null | undefined = post.current_user_reaction ?? null;
   let viewerId: string | null = null;
   let likeChannel: ReturnType<typeof supabase.channel> | null = null;
   let commentChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -42,6 +48,30 @@
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}d ago`;
     return new Date(value).toLocaleDateString();
+  }
+
+  $: {
+    const nextLikeCount = post.reaction_like_count ?? likeCount;
+    if (!reacting && nextLikeCount !== lastPropLikeCount) {
+      likeCount = nextLikeCount;
+      lastPropLikeCount = nextLikeCount;
+    }
+  }
+
+  $: {
+    const nextCommentCount = post.comment_count ?? commentCount;
+    if (nextCommentCount !== lastPropCommentCount) {
+      commentCount = nextCommentCount;
+      lastPropCommentCount = nextCommentCount;
+    }
+  }
+
+  $: {
+    const nextReaction = post.current_user_reaction ?? null;
+    if (!reacting && nextReaction !== lastPropReaction) {
+      liked = nextReaction === 'like';
+      lastPropReaction = nextReaction;
+    }
   }
 
   async function ensureViewerId() {
@@ -110,6 +140,10 @@
   }
 
   async function toggleComments() {
+    if (detail) {
+      dispatch('focus-comments');
+      return;
+    }
     commentOpen = !commentOpen;
     if (commentOpen) {
       await tick();
@@ -214,31 +248,36 @@
   {/if}
 
   <footer class="actions">
-    <button
-      class={`chip ${liked ? 'active' : ''}`}
-      type="button"
-      on:click={toggleLike}
-      disabled={reacting}
-      aria-pressed={liked}
-    >
-      <span aria-hidden="true">❤️</span>
-      <span class="label">{liked ? 'Liked' : 'Like'}</span>
-      <span class="count">{likeCount}</span>
-    </button>
-    <button
-      class="chip"
-      type="button"
-      on:click={toggleComments}
-      aria-expanded={commentOpen}
-      aria-controls={`post-${post.id}-comments`}
-    >
-      <span aria-hidden="true">💬</span>
-      <span class="label">Comment</span>
-      <span class="count">{commentCount}</span>
-    </button>
+    <div class="action-group">
+      <button
+        class={`chip ${liked ? 'active' : ''}`}
+        type="button"
+        on:click={toggleLike}
+        disabled={reacting}
+        aria-pressed={liked}
+      >
+        <span aria-hidden="true">❤️</span>
+        <span class="label">{liked ? 'Liked' : 'Like'}</span>
+        <span class="count">{likeCount}</span>
+      </button>
+      <button
+        class="chip"
+        type="button"
+        on:click={toggleComments}
+        aria-expanded={!detail ? commentOpen : undefined}
+        aria-controls={!detail ? `post-${post.id}-comments` : undefined}
+      >
+        <span aria-hidden="true">💬</span>
+        <span class="label">Comment</span>
+        <span class="count">{commentCount}</span>
+      </button>
+    </div>
+    {#if !detail}
+      <a class="permalink" href={`/p/${post.id}`}>Open</a>
+    {/if}
   </footer>
 
-  {#if commentOpen}
+  {#if !detail && commentOpen}
     <div class="thread" id={`post-${post.id}-comments`}>
       <CommentComposer postId={post.id} on:posted={handleComposerPosted} />
       <CommentsList bind:this={commentsRef} postId={post.id} on:count={handleCommentsCount} />
@@ -300,6 +339,13 @@
 
   .actions {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .action-group {
+    display: inline-flex;
     gap: 10px;
   }
 
@@ -332,6 +378,19 @@
   .chip:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+
+  .permalink {
+    font-size: 0.78rem;
+    color: inherit;
+    opacity: 0.75;
+    text-decoration: none;
+  }
+
+  .permalink:hover,
+  .permalink:focus-visible {
+    opacity: 1;
+    text-decoration: underline;
   }
 
   .thread {

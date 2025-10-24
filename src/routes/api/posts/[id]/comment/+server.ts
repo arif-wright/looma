@@ -19,7 +19,7 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let payload: { body?: unknown };
+  let payload: { body?: unknown; parent_id?: unknown };
   try {
     payload = await event.request.json();
   } catch (cause) {
@@ -31,6 +31,30 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'Body is required' }, { status: 400 });
   }
 
+  const parentId = typeof payload.parent_id === 'string' && payload.parent_id.trim() !== ''
+    ? payload.parent_id
+    : null;
+
+  if (parentId) {
+    const { data: parent, error: parentError } = await supabase
+      .from('comments')
+      .select('id, target_kind, target_id, parent_id')
+      .eq('id', parentId)
+      .maybeSingle();
+
+    if (parentError) {
+      return json({ error: parentError.message }, { status: 400 });
+    }
+
+    if (!parent || parent.target_kind !== 'post' || parent.target_id !== postId) {
+      return json({ error: 'Invalid parent comment' }, { status: 400 });
+    }
+
+    if (parent.parent_id) {
+      return json({ error: 'Replies may only nest one level' }, { status: 400 });
+    }
+  }
+
   const {
     data: inserted,
     error: insertError
@@ -40,9 +64,10 @@ export const POST: RequestHandler = async (event) => {
       user_id: user.id,
       target_kind: 'post',
       target_id: postId,
+      parent_id: parentId,
       body
     })
-    .select('id, user_id, body, created_at')
+    .select('id, user_id, body, created_at, parent_id')
     .single();
 
   if (insertError) {
@@ -81,7 +106,8 @@ export const POST: RequestHandler = async (event) => {
       ...inserted,
       display_name: profile?.display_name ?? null,
       handle: profile?.handle ?? null,
-      avatar_url: profile?.avatar_url ?? null
+      avatar_url: profile?.avatar_url ?? null,
+      reply_count: 0
     },
     counts: {
       comments: commentCount ?? 0,

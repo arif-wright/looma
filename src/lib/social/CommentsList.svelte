@@ -112,6 +112,9 @@
     if (payload.eventType === 'INSERT') {
       const row = payload.new;
       if (row?.target_kind !== 'post' || row?.target_id !== postId) return;
+      if (row.parent_id) {
+        return; // replies handled in detail thread view
+      }
       let displayName = row.display_name ?? row.profiles?.display_name ?? null;
       let handle = row.handle ?? row.profiles?.handle ?? null;
       let avatar = row.avatar_url ?? row.profiles?.avatar_url ?? null;
@@ -147,6 +150,7 @@
     } else if (payload.eventType === 'DELETE') {
       const row = payload.old;
       if (row?.target_kind !== 'post' || row?.target_id !== postId) return;
+      if (row.parent_id) return;
       remove(row.id);
     }
   }

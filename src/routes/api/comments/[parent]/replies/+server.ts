@@ -11,12 +11,12 @@ const parseLimit = (value: string | null, fallback = 20) => {
 
 export const GET: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
-  const postId = event.params.id;
+  const parentId = event.params.parent;
   const limit = parseLimit(event.url.searchParams.get('limit'));
   const before = event.url.searchParams.get('before') ?? new Date().toISOString();
 
-  const { data, error } = await supabase.rpc('get_post_comments_tree', {
-    p_post_id: postId,
+  const { data, error } = await supabase.rpc('get_comment_replies', {
+    p_parent_id: parentId,
     p_limit: limit,
     p_before: before
   });
@@ -26,8 +26,9 @@ export const GET: RequestHandler = async (event) => {
   }
 
   const items = Array.isArray(data) ? data : [];
+  const last = items.length > 0 ? items[items.length - 1] : null;
   const nextCursor =
-    items.length === limit ? (items[items.length - 1]?.created_at as string | null) ?? null : null;
+    items.length === limit ? ((last?.created_at as string | null) ?? null) : null;
 
   return json({ items, nextCursor });
 };

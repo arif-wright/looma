@@ -8,12 +8,21 @@
   };
 
   export let postId: string;
+  export let parentId: string | null = null;
+  export let placeholder: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{ posted: CommentResponse }>();
 
   let body = '';
   let sending = false;
   let errorMsg: string | null = null;
+  let textareaEl: HTMLTextAreaElement | null = null;
+
+  $: computedPlaceholder = placeholder ?? (parentId ? 'Write a reply…' : 'Add your thoughts…');
+
+  export function focus() {
+    textareaEl?.focus();
+  }
 
   function reset() {
     body = '';
@@ -32,7 +41,7 @@
       const res = await fetch(`/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ body: text })
+        body: JSON.stringify({ body: text, parent_id: parentId })
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -42,6 +51,7 @@
       const payload = (await res.json()) as CommentResponse;
       reset();
       dispatch('posted', payload);
+      textareaEl?.focus();
     } catch (err) {
       console.error('comment composer error', err);
       errorMsg = err instanceof Error ? err.message : 'Unexpected error';
@@ -63,10 +73,11 @@
     <p class="error" role="alert">{errorMsg}</p>
   {/if}
   <textarea
+    bind:this={textareaEl}
     bind:value={body}
     rows={2}
     maxlength={280}
-    placeholder="Add your thoughts…"
+    placeholder={computedPlaceholder}
     on:keydown={onKey}
     aria-label="Write a comment"
   ></textarea>
