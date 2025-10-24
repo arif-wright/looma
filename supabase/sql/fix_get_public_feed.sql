@@ -40,20 +40,22 @@ AS $$
     LIMIT GREATEST(1, COALESCE(p_limit, 10))
   ),
   rx AS (
-    SELECT r.event_id,
+    SELECT r.target_id,
            COUNT(*) FILTER (WHERE r.kind = 'praise') AS praise_count,
            COUNT(*) FILTER (WHERE r.kind = 'energy') AS energy_count,
            BOOL_OR(r.kind = 'praise' AND r.user_id = auth.uid()) AS i_praised,
            BOOL_OR(r.kind = 'energy' AND r.user_id = auth.uid()) AS i_energized
     FROM public.reactions r
-    JOIN base b ON b.id = r.event_id
-    GROUP BY r.event_id
+    JOIN base b ON b.id = r.target_id
+    WHERE r.target_kind = 'event'
+    GROUP BY r.target_id
   ),
   cx AS (
-    SELECT c.event_id, COUNT(*) AS comment_count
+    SELECT c.target_id, COUNT(*) AS comment_count
     FROM public.comments c
-    JOIN base b ON b.id = c.event_id
-    GROUP BY c.event_id
+    JOIN base b ON b.id = c.target_id
+    WHERE c.target_kind = 'event'
+    GROUP BY c.target_id
   )
   SELECT b.id, b.created_at, b.type, b.message, b.meta, b.user_id,
          b.author_name, b.author_handle, b.author_avatar,
@@ -63,8 +65,8 @@ AS $$
          COALESCE(rx.i_praised, false) AS i_praised,
          COALESCE(rx.i_energized, false) AS i_energized
   FROM base b
-  LEFT JOIN rx ON rx.event_id = b.id
-  LEFT JOIN cx ON cx.event_id = b.id
+  LEFT JOIN rx ON rx.target_id = b.id
+  LEFT JOIN cx ON cx.target_id = b.id
   ORDER BY b.created_at DESC;
 $$;
 

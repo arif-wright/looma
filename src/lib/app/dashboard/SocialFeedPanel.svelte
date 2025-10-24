@@ -165,7 +165,8 @@
           .from('reactions')
           .delete()
           .eq('user_id', userId)
-          .eq('event_id', row.id)
+          .eq('target_kind', 'event')
+          .eq('target_id', row.id)
           .eq('kind', kind);
         if (error) throw error;
         if (kind === 'praise') {
@@ -178,7 +179,7 @@
       } else {
         const { error } = await supabase
           .from('reactions')
-          .insert({ user_id: userId, event_id: row.id, kind });
+          .insert({ user_id: userId, target_kind: 'event', target_id: row.id, kind });
         if (error) throw error;
         if (kind === 'praise') {
           row.i_praised = true;
@@ -208,7 +209,7 @@
       if (!userId) return;
       const { error } = await supabase
         .from('comments')
-        .insert({ user_id: userId, event_id: eventId, body: text });
+        .insert({ user_id: userId, target_kind: 'event', target_id: eventId, body: text });
       if (error) throw error;
       drafts[eventId] = '';
       openComposerFor = null;
@@ -248,11 +249,19 @@
       .subscribe();
     reactionChannel = supabase
       .channel('social-feed-reactions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => loadInitial())
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reactions', filter: 'target_kind=eq.event' },
+        () => loadInitial()
+      )
       .subscribe();
     commentChannel = supabase
       .channel('social-feed-comments')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, () => loadInitial())
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comments', filter: 'target_kind=eq.event' },
+        () => loadInitial()
+      )
       .subscribe();
   });
 

@@ -18,3 +18,13 @@ export type PostRow = {
   reaction_support_count?: number;
   current_user_reaction?: 'like' | 'spark' | 'support' | null;
 };
+
+export type PostComment = {
+  id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  display_name: string | null;
+  handle: string | null;
+  avatar_url: string | null;
+};

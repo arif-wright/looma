@@ -2,44 +2,31 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
 
-export const POST: RequestHandler = async (event) => {
+const parseLimit = (value: string | null, fallback = 20) => {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(1, Math.min(50, Math.floor(parsed)));
+};
+
+export const GET: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    return json({ error: userError.message }, { status: 400 });
-  }
-
-  if (!user) {
-    return json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
   const postId = event.params.id;
-  let payload: { body?: unknown };
+  const limit = parseLimit(event.url.searchParams.get('limit'));
+  const before = event.url.searchParams.get('before') ?? new Date().toISOString();
 
-  try {
-    payload = await event.request.json();
-  } catch (cause) {
-    return json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  const body = typeof payload.body === 'string' ? payload.body.trim() : '';
-  if (!body) {
-    return json({ error: 'Body is required' }, { status: 400 });
-  }
-
-  const { error } = await supabase.from('post_comments').insert({
-    post_id: postId,
-    user_id: user.id,
-    body
+  const { data, error } = await supabase.rpc('get_post_comments', {
+    p_post_id: postId,
+    p_limit: limit,
+    p_before: before
   });
 
   if (error) {
     return json({ error: error.message }, { status: 400 });
   }
 
-  return json({ ok: true });
+  const items = Array.isArray(data) ? data : [];
+  const nextCursor = items.length === limit ? items[items.length - 1]?.created_at ?? null : null;
+
+  return json({ items, nextCursor });
 };

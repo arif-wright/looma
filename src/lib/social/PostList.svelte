@@ -70,9 +70,6 @@
     await resetAndLoad();
   }
 
-  function handleCardRefresh() {
-    resetAndLoad();
-  }
 
   onMount(async () => {
     mounted = true;
@@ -98,7 +95,7 @@
   <ul class="items">
     {#each items as post (post.id)}
       <li>
-        <PostCard {post} on:refresh={handleCardRefresh} />
+        <PostCard {post} />
       </li>
     {/each}
   </ul>

@@ -218,7 +218,7 @@ returns table (
   reaction_like_count bigint,
   reaction_spark_count bigint,
   reaction_support_count bigint,
-  current_user_reaction public.reaction_kind
+  current_user_reaction text
 ) language sql
 security definer
 set search_path = public
@@ -242,22 +242,26 @@ as $$
   left join public.profiles prof on prof.id = p.user_id
   left join lateral (
     select count(*)::bigint as comment_count
-    from public.post_comments c
-    where c.post_id = p.id
+    from public.comments c
+    where c.target_kind = 'post'
+      and c.target_id = p.id
   ) pc on true
   left join lateral (
     select
       count(*) filter (where kind = 'like')::bigint as like_count,
-      count(*) filter (where kind = 'spark')::bigint as spark_count,
-      count(*) filter (where kind = 'support')::bigint as support_count
-    from public.post_reactions r
-    where r.post_id = p.id
+      0::bigint as spark_count,
+      0::bigint as support_count
+    from public.reactions r
+    where r.target_kind = 'post'
+      and r.target_id = p.id
   ) pr on true
   left join lateral (
-    select rself.kind
-    from public.post_reactions rself
-    where rself.post_id = p.id
+    select 'like'::text as kind
+    from public.reactions rself
+    where rself.target_kind = 'post'
+      and rself.target_id = p.id
       and rself.user_id = auth.uid()
+      and rself.kind = 'like'
     limit 1
   ) self on true
   where p.is_public = true
@@ -289,7 +293,7 @@ returns table (
   reaction_like_count bigint,
   reaction_spark_count bigint,
   reaction_support_count bigint,
-  current_user_reaction public.reaction_kind
+  current_user_reaction text
 ) language sql
 security definer
 set search_path = public
@@ -313,22 +317,26 @@ as $$
   left join public.profiles prof on prof.id = p.user_id
   left join lateral (
     select count(*)::bigint as comment_count
-    from public.post_comments c
-    where c.post_id = p.id
+    from public.comments c
+    where c.target_kind = 'post'
+      and c.target_id = p.id
   ) pc on true
   left join lateral (
     select
       count(*) filter (where kind = 'like')::bigint as like_count,
-      count(*) filter (where kind = 'spark')::bigint as spark_count,
-      count(*) filter (where kind = 'support')::bigint as support_count
-    from public.post_reactions r
-    where r.post_id = p.id
+      0::bigint as spark_count,
+      0::bigint as support_count
+    from public.reactions r
+    where r.target_kind = 'post'
+      and r.target_id = p.id
   ) pr on true
   left join lateral (
-    select rself.kind
-    from public.post_reactions rself
-    where rself.post_id = p.id
+    select 'like'::text as kind
+    from public.reactions rself
+    where rself.target_kind = 'post'
+      and rself.target_id = p.id
       and rself.user_id = auth.uid()
+      and rself.kind = 'like'
     limit 1
   ) self on true
   where p.user_id = p_user
