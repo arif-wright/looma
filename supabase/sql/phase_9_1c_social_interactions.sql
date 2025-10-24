@@ -111,20 +111,22 @@ as $$
     limit greatest(1, coalesce(p_limit, 10))
   ),
   rx as (
-    select r.event_id,
+    select r.target_id,
            count(*) filter (where r.kind = 'praise') as praise_count,
            count(*) filter (where r.kind = 'energy') as energy_count,
            bool_or(r.kind = 'praise' and r.user_id = auth.uid()) as i_praised,
            bool_or(r.kind = 'energy' and r.user_id = auth.uid()) as i_energized
     from public.reactions r
-    join base b on b.id = r.event_id
-    group by r.event_id
+    join base b on b.id = r.target_id
+    where r.target_kind = 'event'
+    group by r.target_id
   ),
   cx as (
-    select c.event_id, count(*) as comment_count
+    select c.target_id, count(*) as comment_count
     from public.comments c
-    join base b on b.id = c.event_id
-    group by c.event_id
+    join base b on b.id = c.target_id
+    where c.target_kind = 'event'
+    group by c.target_id
   )
   select b.id, b.created_at, b.type, b.message, b.meta, b.user_id,
          b.author_name, b.author_handle, b.author_avatar,
@@ -134,8 +136,8 @@ as $$
          coalesce(rx.i_praised, false) as i_praised,
          coalesce(rx.i_energized, false) as i_energized
   from base b
-  left join rx on rx.event_id = b.id
-  left join cx on cx.event_id = b.id
+  left join rx on rx.target_id = b.id
+  left join cx on cx.target_id = b.id
   order by b.created_at desc;
 $$;
 
