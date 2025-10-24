@@ -28,5 +28,7 @@ export const load: PageServerLoad = async (event) => {
     console.error('get_user_public_feed error', feedError);
   }
 
-  return { profile, feed: feed ?? [] };
+  const viewerId = event.locals.session?.user.id ?? null;
+
+  return { profile, feed: feed ?? [], viewerId };
 };

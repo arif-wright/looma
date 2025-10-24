@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
+  import PostList from '$lib/social/PostList.svelte';
 
   type FeedRow = {
     id: string;
@@ -256,6 +257,13 @@
 <div class="panel">
   <h3 class="panel-title">Social Feed</h3>
 
+  <section class="posts-section">
+    <h4 class="section-title">Recent posts</h4>
+    <PostList pageSize={5} emptyMessage="No posts yet." />
+  </section>
+
+  <div class="section-divider" aria-hidden="true"></div>
+
   {#if loading}
     <div class="panel-message">Loading…</div>
   {:else if errMsg}
@@ -416,6 +424,22 @@
   .panel-message.error {
     color: #fca5a5;
     opacity: 1;
+  }
+
+  .posts-section {
+    padding: 0 1rem 0.75rem;
+  }
+
+  .section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .section-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 0 1rem 0.75rem;
   }
 
   .feed {
