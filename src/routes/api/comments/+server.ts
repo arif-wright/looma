@@ -16,6 +16,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
 
+  if (!supabase) {
+    console.error('comments:get', new Error('Supabase client unavailable'));
+    return json({ error: 'Service temporarily unavailable' }, { status: 503 });
+  }
+
   const search = url.searchParams;
   const postId = search.get('postId');
   const replyTo = search.get('replyTo');
@@ -24,33 +29,43 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   const after = search.get('after');
 
   if (replyTo) {
-    const { data, error } = await supabase.rpc('get_replies', {
-      p_comment: replyTo,
-      p_limit: limit,
-      p_after: after ?? null
-    });
+    try {
+      const { data, error } = await supabase.rpc('get_replies', {
+        p_comment: replyTo,
+        p_limit: limit,
+        p_after: after ?? null
+      });
 
-    if (error) {
-      console.error('comments:get', error);
-      return json({ error: error.message }, { status: 400 });
+      if (error) {
+        console.error('comments:get', error);
+        return json({ error: error.message }, { status: 400 });
+      }
+
+      return json({ items: Array.isArray(data) ? data : [] });
+    } catch (err) {
+      console.error('comments:get', err);
+      return json({ error: 'Unexpected error' }, { status: 400 });
     }
-
-    return json({ items: Array.isArray(data) ? data : [] });
   }
 
   if (postId) {
-    const { data, error } = await supabase.rpc('get_comments_tree', {
-      p_post: postId,
-      p_limit: limit,
-      p_before: before
-    });
+    try {
+      const { data, error } = await supabase.rpc('get_comments_tree', {
+        p_post: postId,
+        p_limit: limit,
+        p_before: before
+      });
 
-    if (error) {
-      console.error('comments:get', error);
-      return json({ error: error.message }, { status: 400 });
+      if (error) {
+        console.error('comments:get', error);
+        return json({ error: error.message }, { status: 400 });
+      }
+
+      return json({ items: Array.isArray(data) ? data : [] });
+    } catch (err) {
+      console.error('comments:get', err);
+      return json({ error: 'Unexpected error' }, { status: 400 });
     }
-
-    return json({ items: Array.isArray(data) ? data : [] });
   }
 
   return json({ error: 'Provide ?postId or ?replyTo' }, { status: 400 });
