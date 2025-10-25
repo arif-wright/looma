@@ -193,7 +193,7 @@ create or replace function public.insert_comment(
   p_is_public boolean default true
 )
 returns table(
-  id uuid,
+  comment_id uuid,
   post_id uuid,
   author_id uuid,
   comment_user_id uuid,
@@ -215,7 +215,7 @@ declare
   parent_post uuid;
   post_owner uuid;
   post_public boolean;
-  comment_user_id uuid;
+  comment_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -272,48 +272,39 @@ begin
     p_parent,
     coalesce(p_is_public, true)
   )
-  returning
-    comments.id,
-    comments.post_id,
-    comments.author_id,
-    comments.user_id,
-    comments.body,
-    comments.created_at,
-    comments.parent_id,
-    comments.is_public,
-    comments.thread_root_id,
-    comments.depth
-  into id, post_id, author_id, comment_user_id, body, created_at, parent_id, is_public, thread_root_id, depth;
+  returning comments.id
+  into comment_id;
 
   perform public.emit_event(
     auth.uid(),
     'comment',
     'Commented on a post',
     jsonb_build_object(
-      'post_id', post_id,
-      'comment_id', id,
-      'parent_id', parent_id
+      'post_id', p_post,
+      'comment_id', comment_id,
+      'parent_id', p_parent
     ),
     coalesce(post_public, true)
   );
 
   return query
   select
-    id as id,
-    post_id as post_id,
-    author_id as author_id,
-    comment_user_id as comment_user_id,
-    body as body,
-    created_at as created_at,
-    parent_id as parent_id,
-    is_public as is_public,
-    thread_root_id as thread_root_id,
-    depth as depth,
-    prof.display_name,
-    prof.handle,
-    prof.avatar_url
-  from public.profiles prof
-  where prof.id = author_id;
+    c.id as comment_id,
+    c.post_id,
+    c.author_id,
+    c.user_id as comment_user_id,
+    c.body,
+    c.created_at,
+    c.parent_id,
+    c.is_public,
+    c.thread_root_id,
+    c.depth,
+    p.display_name,
+    p.handle,
+    p.avatar_url
+  from public.comments c
+  left join public.profiles p on p.id = c.author_id
+  where c.id = comment_id;
 end$$;
 
 create or replace function public.get_comments_tree(
@@ -322,7 +313,7 @@ create or replace function public.get_comments_tree(
   p_before timestamptz default now()
 )
 returns table (
-  id uuid,
+  comment_id uuid,
   post_id uuid,
   author_id uuid,
   comment_user_id uuid,
@@ -342,7 +333,7 @@ security definer
 set search_path = public
 as $$
   select
-    c.id,
+    c.id as comment_id,
     c.post_id,
     c.author_id,
     c.user_id as comment_user_id,
@@ -376,7 +367,7 @@ create or replace function public.get_replies(
   p_after timestamptz default null
 )
 returns table (
-  id uuid,
+  comment_id uuid,
   post_id uuid,
   author_id uuid,
   comment_user_id uuid,
@@ -395,7 +386,7 @@ security definer
 set search_path = public
 as $$
   select
-    c.id,
+    c.id as comment_id,
     c.post_id,
     c.author_id,
     c.user_id as comment_user_id,

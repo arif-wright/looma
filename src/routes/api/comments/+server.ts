@@ -12,6 +12,14 @@ const parseLimit = (value: string | null, fallback = 10) => {
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
+const normalizeRow = (row: any) => {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.comment_id ?? row.id ?? null
+  };
+};
+
 export const GET: RequestHandler = async (event) => {
   const supabase = event.locals.sb ?? supabaseServer(event);
   let session = event.locals.session ?? null;
@@ -46,22 +54,24 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: error.message }, { status: 400 });
     }
 
-    return json({ items: Array.isArray(data) ? data : [] });
+    const items = Array.isArray(data) ? data.map(normalizeRow).filter(Boolean) : [];
+    return json({ items });
   }
 
   if (postId) {
-  const { data, error } = await supabase.rpc('get_comments_tree', {
-    p_post: postId,
-    p_limit: limit,
-    p_before: before
-  });
+    const { data, error } = await supabase.rpc('get_comments_tree', {
+      p_post: postId,
+      p_limit: limit,
+      p_before: before
+    });
 
     if (error) {
       console.error('comments:get', error);
       return json({ error: error.message }, { status: 400 });
     }
 
-    return json({ items: Array.isArray(data) ? data : [] });
+    const items = Array.isArray(data) ? data.map(normalizeRow).filter(Boolean) : [];
+    return json({ items });
   }
 
   return json({ error: 'Provide ?postId or ?replyTo' }, { status: 400 });
@@ -119,5 +129,8 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: error.message ?? 'insert failed' }, { status: 500 });
   }
 
-  return json({ item: Array.isArray(data) ? data[0] ?? null : data ?? null }, { status: 201 });
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  const normalized = rows.length > 0 ? normalizeRow(rows[0]) : null;
+
+  return json({ item: normalized }, { status: 201 });
 };
