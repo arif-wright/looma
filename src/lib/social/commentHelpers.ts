@@ -232,8 +232,6 @@ export async function fetchReplies(
   const url = new URL(API_BASE, DEFAULT_ORIGIN);
   url.searchParams.set('replyTo', commentId);
   url.searchParams.set('limit', String(limit));
-  if (opts.after) {
-    url.searchParams.set('after', opts.after);
-  }
+  url.searchParams.set('after', opts.after ?? '');
   return requestComments(url);
 }

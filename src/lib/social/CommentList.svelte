@@ -121,6 +121,7 @@
       errorMsg = 'Failed to publish comment.';
       return;
     }
+    errorMsg = null;
     addTopLevel(comment, true);
     totalCount += 1;
   }
@@ -130,6 +131,7 @@
     const parentId = event.detail?.parentId;
     const reply = event.detail?.comment;
     if (!parentId || !reply) return;
+    errorMsg = null;
     const inserted = addReply(parentId, reply);
     registerPending(reply.id);
     if (inserted) {

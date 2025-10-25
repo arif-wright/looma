@@ -290,16 +290,23 @@
     }
     sending = true;
     errorMsg = null;
+    const payload = {
+      postId,
+      parentId: parentId ?? null,
+      body: text,
+      isPublic
+    };
+    console.debug('[comment:submit]', {
+      postId,
+      parentId: parentId ?? null,
+      preview: text.slice(0, 64)
+    });
+
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          postId,
-          body: text,
-          parentId,
-          isPublic
-        })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

@@ -9,6 +9,9 @@ const parseLimit = (value: string | null, fallback = 10) => {
   return Math.max(1, Math.min(50, Math.floor(parsed)));
 };
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export const GET: RequestHandler = async (event) => {
   const supabase = event.locals.sb ?? supabaseServer(event);
   let session = event.locals.session ?? null;
@@ -26,14 +29,16 @@ export const GET: RequestHandler = async (event) => {
   const postId = search.get('postId');
   const replyTo = search.get('replyTo');
   const limit = parseLimit(search.get('limit'));
-  const before = search.get('before') ?? new Date().toISOString();
-  const after = search.get('after');
+  const beforeRaw = search.get('before');
+  const before = beforeRaw && beforeRaw.trim().length > 0 ? beforeRaw : new Date().toISOString();
+  const afterRaw = search.get('after');
+  const after = afterRaw && afterRaw.trim().length > 0 ? afterRaw : null;
 
   if (replyTo) {
     const { data, error } = await supabase.rpc('get_replies', {
       p_comment: replyTo,
       p_limit: limit,
-      p_after: after ?? null
+      p_after: after
     });
 
     if (error) {
@@ -45,11 +50,11 @@ export const GET: RequestHandler = async (event) => {
   }
 
   if (postId) {
-    const { data, error } = await supabase.rpc('get_comments_tree', {
-      p_post: postId,
-      p_limit: limit,
-      p_before: before
-    });
+  const { data, error } = await supabase.rpc('get_comments_tree', {
+    p_post: postId,
+    p_limit: limit,
+    p_before: before
+  });
 
     if (error) {
       console.error('comments:get', error);
@@ -82,22 +87,25 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const postId = typeof payload.postId === 'string' ? payload.postId : null;
+  const postId = typeof payload.postId === 'string' ? payload.postId.trim() : '';
   const body = typeof payload.body === 'string' ? payload.body.trim() : '';
-  const parentId =
-    typeof payload.parentId === 'string' && payload.parentId.length > 0
-      ? payload.parentId
-      : null;
-  const isPublic =
-    typeof payload.isPublic === 'boolean' ? payload.isPublic : true;
+  const rawParent = typeof payload.parentId === 'string' ? payload.parentId.trim() : null;
+  const parentId = rawParent && rawParent.length > 0 ? rawParent : null;
+  const isPublic = typeof payload.isPublic === 'boolean' ? payload.isPublic : true;
 
-  if (!postId) {
+  if (!postId || !UUID_REGEX.test(postId)) {
     return json({ error: 'postId is required' }, { status: 400 });
   }
 
   if (!body) {
     return json({ error: 'body is required' }, { status: 400 });
   }
+
+  if (parentId && !UUID_REGEX.test(parentId)) {
+    return json({ error: 'parentId must be a uuid' }, { status: 400 });
+  }
+
+  console.debug('[api/comments:POST] payload', { postId, parentId, len: body.length });
 
   const { data, error } = await supabase.rpc('insert_comment', {
     p_post: postId,
@@ -107,7 +115,8 @@ export const POST: RequestHandler = async (event) => {
   });
 
   if (error) {
-    return json({ error: error.message }, { status: 400 });
+    console.error('[api/comments:POST] insert_comment failed', error);
+    return json({ error: error.message ?? 'insert failed' }, { status: 400 });
   }
 
   return json({ item: Array.isArray(data) ? data[0] ?? null : data ?? null }, { status: 201 });
