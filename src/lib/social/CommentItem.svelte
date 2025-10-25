@@ -209,14 +209,14 @@
     word-break: break-word;
   }
 
-  .body .mention {
+  :global(.mention) {
     color: inherit;
     font-weight: 600;
     text-decoration: none;
   }
 
-  .body .mention:hover,
-  .body .mention:focus-visible {
+  :global(.mention:hover),
+  :global(.mention:focus-visible) {
     text-decoration: underline;
   }
 

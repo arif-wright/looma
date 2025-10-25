@@ -17,44 +17,42 @@
 </script>
 
 {#if open}
-  <svelte:portal target="body">
-    <div
-      class="mention-popover"
-      style={`top:${position.top}px;left:${position.left}px;`}
-      role="dialog"
-      aria-label="Mention suggestions"
-    >
-      {#if loading}
-        <div class="status">Searching…</div>
-      {:else if query.length < 2}
-        <div class="status">Keep typing…</div>
-      {:else if items.length === 0}
-        <div class="status">No matches</div>
-      {:else}
-        <ul
-          role="listbox"
-          aria-activedescendant={items[active] ? `mention-${items[active].id}` : undefined}
-          tabindex="0"
-        >
-          {#each items as item, index}
-            <li
-              id={`mention-${item.id}`}
-              role="option"
-              aria-selected={index === active}
-              class:active={index === active}
-              on:mousedown|preventDefault={() => handleSelect(item)}
-            >
-              <img src={item.avatar_url ?? '/avatar.svg'} alt="" width="28" height="28" loading="lazy" />
-              <span>
-                <b>{item.display_name ?? (item.handle ? `@${item.handle}` : 'Someone')}</b>
-                <small>@{item.handle ?? 'user'}</small>
-              </span>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
-  </svelte:portal>
+  <div
+    class="mention-popover"
+    style={`top:${position.top}px;left:${position.left}px;`}
+    role="dialog"
+    aria-label="Mention suggestions"
+  >
+    {#if loading}
+      <div class="status">Searching…</div>
+    {:else if query.length < 2}
+      <div class="status">Keep typing…</div>
+    {:else if items.length === 0}
+      <div class="status">No matches</div>
+    {:else}
+      <ul
+        role="listbox"
+        aria-activedescendant={items[active] ? `mention-${items[active].id}` : undefined}
+        tabindex="0"
+      >
+        {#each items as item, index}
+          <li
+            id={`mention-${item.id}`}
+            role="option"
+            aria-selected={index === active}
+            class:active={index === active}
+            on:mousedown|preventDefault={() => handleSelect(item)}
+          >
+            <img src={item.avatar_url ?? '/avatar.svg'} alt="" width="28" height="28" loading="lazy" />
+            <span>
+              <b>{item.display_name ?? (item.handle ? `@${item.handle}` : 'Someone')}</b>
+              <small>@{item.handle ?? 'user'}</small>
+            </span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 {/if}
 
 <style>

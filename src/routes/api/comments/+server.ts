@@ -111,7 +111,7 @@ export const POST: RequestHandler = async (event) => {
     p_post: postId,
     p_body: body,
     p_parent: parentId,
-    p_public: isPublic
+    p_is_public: isPublic
   });
 
   if (error) {

@@ -192,8 +192,9 @@ export let autofocus = false;
         }
         mentionStart = i;
         mentionQuery = fragment;
-        scheduleMentionFetch(fragment);
+       scheduleMentionFetch(fragment);
         mentionOpen = true;
+        tick().then(updateMentionPosition);
         return;
       }
       if (!/\w/.test(char)) {
