@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import CommentComposer from './CommentComposer.svelte';
-  import { formatCommentBody, mergeReplies, normalizeComment, relativeTime } from './commentHelpers';
+  import { fetchReplies, formatCommentBody, mergeReplies, normalizeComment, relativeTime } from './commentHelpers';
   import type { CommentNode, PostComment } from './types';
 
   const REPLY_PAGE_SIZE = 5;
@@ -11,7 +11,7 @@
   export let depth = 0;
 
   const dispatch = createEventDispatcher<{
-    replyPosted: { parentId: string; comment: PostComment; counts: { comments: number; likes: number } };
+    replyPosted: { parentId: string; comment: PostComment };
     replyCount: { parentId: string; total: number };
   }>();
 
@@ -28,31 +28,29 @@
     if (comment.repliesLoading) return;
     comment.repliesLoading = true;
     comment.repliesError = null;
-    try {
-      const params = new URLSearchParams();
-      params.set('parentId', comment.id);
-      params.set('limit', String(REPLY_PAGE_SIZE));
-      if (append && comment.repliesCursor) {
-        params.set('after', comment.repliesCursor);
-      }
-      const res = await fetch(`/api/comments?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Failed to load replies');
-      }
-      const payload = await res.json();
-      const incoming: PostComment[] = Array.isArray(payload?.items) ? payload.items : [];
-      const normalized = incoming.map(normalizeComment);
-      const merged = mergeReplies(append ? replies : [], normalized);
-      comment.replies = merged;
-      comment.repliesCursor = typeof payload?.nextCursor === 'string' ? payload.nextCursor : null;
-      comment.repliesTotal = Math.max(comment.repliesTotal ?? comment.reply_count ?? 0, merged.length);
-    } catch (err) {
-      console.error('load replies error', err);
-      comment.repliesError = err instanceof Error ? err.message : 'Failed to load replies';
-    } finally {
+    const cursor =
+      append && comment.replies && comment.replies.length > 0
+        ? (comment.replies[0].created_at as string)
+        : null;
+    const { items, error } = await fetchReplies(comment.id, {
+      limit: REPLY_PAGE_SIZE,
+      after: append ? cursor : null
+    });
+
+    if (error) {
+      comment.repliesError = error;
       comment.repliesLoading = false;
+      return;
     }
+
+    const normalized = items.map(normalizeComment);
+    comment.replies = mergeReplies(append ? comment.replies ?? [] : [], normalized);
+    comment.repliesTotal = Math.max(comment.repliesTotal ?? comment.reply_count ?? 0, comment.replies.length);
+    comment.repliesCursor =
+      items.length === REPLY_PAGE_SIZE && comment.replies.length > 0
+        ? (comment.replies[0].created_at as string)
+        : null;
+    comment.repliesLoading = false;
   }
 
   function toggleReplyComposer() {
@@ -73,15 +71,15 @@
     await loadReplies(true);
   }
 
-  function handleReplyPosted(event: CustomEvent<{ comment: PostComment; counts: { comments: number; likes: number } }>) {
-    const { comment: reply, counts } = event.detail;
+  function handleReplyPosted(event: CustomEvent<{ comment: PostComment; parentId: string | null }>) {
+    const reply = event.detail.comment;
     if (!reply) return;
     comment.replying = false;
     comment.repliesVisible = true;
     comment.replies = mergeReplies(comment.replies ?? [], [normalizeComment(reply)]);
     comment.reply_count = (comment.reply_count ?? 0) + 1;
     comment.repliesTotal = Math.max(comment.repliesTotal ?? 0, comment.reply_count);
-    dispatch('replyPosted', { parentId: comment.id, comment: reply, counts });
+    dispatch('replyPosted', { parentId: comment.id, comment: reply });
     dispatch('replyCount', { parentId: comment.id, total: comment.repliesTotal ?? comment.reply_count ?? 0 });
   }
 </script>

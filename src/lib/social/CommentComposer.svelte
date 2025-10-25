@@ -4,16 +4,17 @@
   import type { MentionOption, PostComment } from './types';
 
   type CommentResponse = {
-    comment: PostComment;
-    counts: { comments: number; likes: number };
+    item: PostComment | null;
+    error?: string;
   };
 
   export let postId: string;
   export let parentId: string | null = null;
   export let placeholder: string | undefined = undefined;
   export let autofocus = false;
+  export let isPublic = true;
 
-  const dispatch = createEventDispatcher<{ posted: CommentResponse }>();
+  const dispatch = createEventDispatcher<{ posted: { comment: PostComment; parentId: string | null } }>();
 
   let body = '';
   let sending = false;
@@ -293,7 +294,12 @@
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ postId, body: text, parentId })
+        body: JSON.stringify({
+          postId,
+          body: text,
+          parentId,
+          isPublic
+        })
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -301,11 +307,16 @@
         return;
       }
       const payload = (await res.json()) as CommentResponse;
+      const comment = payload?.item ?? null;
+      if (!comment) {
+        errorMsg = payload?.error ?? 'Failed to publish comment.';
+        return;
+      }
       body = '';
       resetMention();
       await tick();
       resize();
-      dispatch('posted', payload);
+      dispatch('posted', { comment, parentId });
       textareaEl?.focus();
     } catch (err) {
       console.error('comment composer error', err);

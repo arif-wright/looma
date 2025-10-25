@@ -17,6 +17,19 @@ const MERGEABLE_FIELDS: Array<keyof CommentNode> = [
 ];
 
 const mentionPattern = /(^|[\s.,!?;:()[\]{}"'`-])@([A-Za-z0-9_]{2,})/g;
+const API_BASE = '/api/comments';
+const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+
+type CommentsFetchResult = {
+  items: PostComment[];
+  error: string | null;
+};
+
+function normaliseLimit(value: number | undefined, fallback: number) {
+  if (!Number.isFinite(value ?? NaN)) return fallback;
+  const parsed = Math.floor(value ?? fallback);
+  return Math.max(1, Math.min(50, parsed));
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -174,4 +187,53 @@ export function findComment(tree: CommentNode[], id: string): CommentNode | null
     }
   }
   return null;
+}
+
+async function requestComments(url: URL): Promise<CommentsFetchResult> {
+  console.debug('[comments:get]', url.toString());
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+      const message = payload?.error ?? `Request failed (${res.status})`;
+      console.error('comments:get', message);
+      return { items: [], error: message };
+    }
+    const payload = (await res.json().catch(() => null)) as { items?: PostComment[] } | null;
+    return {
+      items: Array.isArray(payload?.items) ? payload!.items : [],
+      error: null
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unexpected error';
+    console.error('comments:get', err);
+    return { items: [], error: message };
+  }
+}
+
+export async function fetchPostComments(
+  postId: string,
+  opts: { limit?: number; before?: string } = {}
+): Promise<CommentsFetchResult> {
+  const limit = normaliseLimit(opts.limit, 10);
+  const before = opts.before ?? new Date().toISOString();
+  const url = new URL(API_BASE, DEFAULT_ORIGIN);
+  url.searchParams.set('postId', postId);
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('before', before);
+  return requestComments(url);
+}
+
+export async function fetchReplies(
+  commentId: string,
+  opts: { limit?: number; after?: string | null } = {}
+): Promise<CommentsFetchResult> {
+  const limit = normaliseLimit(opts.limit, 10);
+  const url = new URL(API_BASE, DEFAULT_ORIGIN);
+  url.searchParams.set('replyTo', commentId);
+  url.searchParams.set('limit', String(limit));
+  if (opts.after) {
+    url.searchParams.set('after', opts.after);
+  }
+  return requestComments(url);
 }

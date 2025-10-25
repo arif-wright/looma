@@ -7,6 +7,7 @@
     dedupeComments,
     findComment,
     mergeReplies,
+    fetchPostComments,
     normalizeComment,
     removeCommentFromTree
   } from './commentHelpers';
@@ -51,35 +52,37 @@
       if (!nextCursor || moreLoading) return;
       moreLoading = true;
     }
-    try {
-      const params = new URLSearchParams();
-      params.set('postId', postId);
-      params.set('limit', String(pageSize));
-      if (!initial && nextCursor) {
-        params.set('before', nextCursor);
-      }
-      const res = await fetch(`/api/comments?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Failed to load comments');
-      }
-      const payload = await res.json();
-      const incoming: PostComment[] = Array.isArray(payload?.items) ? payload.items : [];
+    const cursor = initial ? new Date().toISOString() : nextCursor;
+    if (!initial && !cursor) {
+      moreLoading = false;
+      return;
+    }
+
+    const { items: incoming, error } = await fetchPostComments(postId, {
+      limit: pageSize,
+      before: cursor ?? new Date().toISOString()
+    });
+
+    if (error) {
+      errorMsg = error;
+    } else {
+      errorMsg = null;
       const normalized = incoming.map(normalizeComment);
       items = initial ? normalized : dedupeComments(items, normalized);
-      nextCursor = typeof payload?.nextCursor === 'string' ? payload.nextCursor : null;
       if (initial && totalCount === 0) {
         totalCount = Math.max(totalCount, incoming.length);
       }
-    } catch (err) {
-      console.error('load comments error', err);
-      errorMsg = err instanceof Error ? err.message : 'Failed to load comments';
-    } finally {
-      if (initial) {
-        loading = false;
-      } else {
-        moreLoading = false;
-      }
+      const last = incoming.length > 0 ? incoming[incoming.length - 1] : null;
+      nextCursor =
+        incoming.length === pageSize && last?.created_at
+          ? (last.created_at as string)
+          : null;
+    }
+
+    if (initial) {
+      loading = false;
+    } else {
+      moreLoading = false;
     }
   }
 
@@ -112,26 +115,25 @@
     items = [...items];
   }
 
-  function handleTopLevelPosted(event: CustomEvent<any>) {
-    const detail = event.detail ?? {};
-    const comment: PostComment | undefined = detail.comment;
-    const counts = detail.counts as { comments?: number } | undefined;
-    if (!comment) return;
+  function handleTopLevelPosted(event: CustomEvent<{ comment?: PostComment; parentId: string | null }>) {
+    const comment = event.detail?.comment;
+    if (!comment) {
+      errorMsg = 'Failed to publish comment.';
+      return;
+    }
     addTopLevel(comment, true);
-    totalCount = typeof counts?.comments === 'number' ? counts.comments : totalCount + 1;
+    totalCount += 1;
   }
 
-  function handleReplyPosted(event: CustomEvent<any>) {
+  function handleReplyPosted(event: CustomEvent<{ parentId?: string; comment?: PostComment }>) {
     event.stopPropagation();
-    const detail = event.detail ?? {};
-    const parentId: string | undefined = detail.parentId;
-    const comment: PostComment | undefined = detail.comment;
-    const counts = detail.counts as { comments?: number } | undefined;
-    if (!parentId || !comment) return;
-    const inserted = addReply(parentId, comment);
-    registerPending(comment.id);
+    const parentId = event.detail?.parentId;
+    const reply = event.detail?.comment;
+    if (!parentId || !reply) return;
+    const inserted = addReply(parentId, reply);
+    registerPending(reply.id);
     if (inserted) {
-      totalCount = typeof counts?.comments === 'number' ? counts.comments : totalCount + 1;
+      totalCount += 1;
     }
   }
 
@@ -242,7 +244,12 @@
     isMounted = true;
     if (initialItems.length > 0 && !seeded) {
       items = initialItems.map(normalizeComment);
-      nextCursor = initialCursor ?? null;
+      if (initialItems.length === pageSize) {
+        const last = initialItems[initialItems.length - 1];
+        nextCursor = initialCursor ?? (last?.created_at ?? null);
+      } else {
+        nextCursor = initialCursor ?? null;
+      }
       seeded = true;
       if (initialCount === 0) {
         totalCount = Math.max(totalCount, initialItems.length);
