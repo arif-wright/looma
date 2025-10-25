@@ -190,7 +190,7 @@ create or replace function public.insert_comment(
   p_post uuid,
   p_body text,
   p_parent uuid default null,
-  p_public boolean default true
+  p_is_public boolean default true
 )
 returns table(
   id uuid,
@@ -225,7 +225,7 @@ begin
     raise exception 'Body is required';
   end if;
 
-  select user_id, is_public
+  select user_id, posts.is_public
     into post_owner, post_public
   from public.posts
   where id = p_post;
@@ -270,7 +270,7 @@ begin
     auth.uid(),
     p_body,
     p_parent,
-    coalesce(p_public, true)
+    coalesce(p_is_public, true)
   )
   returning
     comments.id,
@@ -435,7 +435,7 @@ drop policy if exists "comments: read public" on public.comments;
 create policy "comments: read public"
   on public.comments
   for select
-  using (is_public = true);
+  using (public.comments.is_public = true);
 
 drop policy if exists "comments: insert own" on public.comments;
 create policy "comments: insert own"

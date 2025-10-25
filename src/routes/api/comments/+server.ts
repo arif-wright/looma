@@ -116,7 +116,7 @@ export const POST: RequestHandler = async (event) => {
 
   if (error) {
     console.error('[api/comments:POST] insert_comment failed', error);
-    return json({ error: error.message ?? 'insert failed' }, { status: 400 });
+    return json({ error: error.message ?? 'insert failed' }, { status: 500 });
   }
 
   return json({ item: Array.isArray(data) ? data[0] ?? null : data ?? null }, { status: 201 });

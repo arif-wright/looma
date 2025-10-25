@@ -8,7 +8,7 @@
   export let postId: string;
   export let parentId: string | null = null;
   export let placeholder: string | undefined = undefined;
-  export let autofocus = false;
+export let autofocus = false;
 
   const dispatch = createEventDispatcher<{
     posted: { comment: PostComment; parentId: string | null };
@@ -54,7 +54,7 @@
   }
 
   function syncMirrorStyles() {
-    if (!textareaEl || !mirrorEl) return;
+    if (typeof window === 'undefined' || !textareaEl || !mirrorEl) return;
     const style = window.getComputedStyle(textareaEl);
     const props = [
       'boxSizing',
@@ -108,18 +108,18 @@
   }
 
   function updateMentionPosition() {
+    if (typeof window === 'undefined') return;
     if (!mentionOpen || mentionStart === null || !textareaEl || !composerEl) return;
     const caret = getCaretOffset(mentionStart);
     if (!caret) return;
     const style = window.getComputedStyle(textareaEl);
-    const borderTop = parseFloat(style.borderTopWidth || '0');
-    const borderLeft = parseFloat(style.borderLeftWidth || '0');
     const lineHeight = parseFloat(style.lineHeight || '16');
     const textareaRect = textareaEl.getBoundingClientRect();
-    const composerRect = composerEl.getBoundingClientRect();
+    const scrollX = typeof window !== 'undefined' ? window.scrollX : 0;
+    const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     mentionPosition = {
-      top: caret.top + lineHeight + borderTop + (textareaRect.top - composerRect.top),
-      left: caret.left + borderLeft + (textareaRect.left - composerRect.left)
+      top: textareaRect.top + caret.top + lineHeight + scrollY,
+      left: textareaRect.left + caret.left + scrollX
     };
   }
 
@@ -268,6 +268,10 @@
     tick().then(updateMentionPosition);
   }
 
+  function handleMentionSelect(event: CustomEvent<MentionOption>) {
+    insertMention(event.detail);
+  }
+
   async function handleSubmit() {
     if (submitting) return;
     const body = text.trim();
@@ -334,6 +338,10 @@
     }
     mirrorEl = null;
   });
+
+  export function focus() {
+    textareaEl?.focus();
+  }
 </script>
 
 <form class="comment-composer" bind:this={composerEl} on:submit|preventDefault={handleSubmit}>
@@ -364,7 +372,8 @@
     items={mentionItems}
     active={mentionActive}
     position={mentionPosition}
-    on:select={(event) => insertMention(event.detail)}
+    query={mentionQuery}
+    on:select={handleMentionSelect}
   />
 </form>
 
