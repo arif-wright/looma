@@ -180,10 +180,12 @@ begin
   end;
 end$$;
 
--- ============================================================================
 -- Insert helper & tree queries
 -- ============================================================================
 
+drop function if exists public.insert_comment(uuid, text, uuid, boolean);
+drop function if exists public.get_comments_tree(uuid, int, timestamptz);
+drop function if exists public.get_replies(uuid, int, timestamptz);
 create or replace function public.insert_comment(
   p_post uuid,
   p_body text,
@@ -194,7 +196,7 @@ returns table(
   id uuid,
   post_id uuid,
   author_id uuid,
-  user_id uuid,
+  comment_user_id uuid,
   body text,
   created_at timestamptz,
   parent_id uuid,
@@ -213,6 +215,7 @@ declare
   parent_post uuid;
   post_owner uuid;
   post_public boolean;
+  comment_user_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -280,7 +283,7 @@ begin
     comments.is_public,
     comments.thread_root_id,
     comments.depth
-  into id, post_id, author_id, user_id, body, created_at, parent_id, is_public, thread_root_id, depth;
+  into id, post_id, author_id, comment_user_id, body, created_at, parent_id, is_public, thread_root_id, depth;
 
   perform public.emit_event(
     auth.uid(),
@@ -296,16 +299,16 @@ begin
 
   return query
   select
-    id,
-    post_id,
-    author_id,
-    user_id,
-    body,
-    created_at,
-    parent_id,
-    is_public,
-    thread_root_id,
-    depth,
+    id as id,
+    post_id as post_id,
+    author_id as author_id,
+    comment_user_id as comment_user_id,
+    body as body,
+    created_at as created_at,
+    parent_id as parent_id,
+    is_public as is_public,
+    thread_root_id as thread_root_id,
+    depth as depth,
     prof.display_name,
     prof.handle,
     prof.avatar_url
@@ -322,7 +325,7 @@ returns table (
   id uuid,
   post_id uuid,
   author_id uuid,
-  user_id uuid,
+  comment_user_id uuid,
   body text,
   created_at timestamptz,
   parent_id uuid,
@@ -342,8 +345,7 @@ as $$
     c.id,
     c.post_id,
     c.author_id,
-    c.user_id,
-    c.user_id,
+    c.user_id as comment_user_id,
     c.body,
     c.created_at,
     c.parent_id,
@@ -377,7 +379,7 @@ returns table (
   id uuid,
   post_id uuid,
   author_id uuid,
-  user_id uuid,
+  comment_user_id uuid,
   body text,
   created_at timestamptz,
   parent_id uuid,
@@ -396,6 +398,7 @@ as $$
     c.id,
     c.post_id,
     c.author_id,
+    c.user_id as comment_user_id,
     c.body,
     c.created_at,
     c.parent_id,

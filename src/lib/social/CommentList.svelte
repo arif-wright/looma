@@ -146,7 +146,7 @@
     let displayName = row.display_name ?? row?.profiles?.display_name ?? null;
     let handle = row.handle ?? row?.profiles?.handle ?? null;
     let avatar = row.avatar_url ?? row?.profiles?.avatar_url ?? null;
-    const authorId = row.author_id ?? row.user_id ?? null;
+    const authorId = row.author_id ?? row.comment_user_id ?? null;
 
     if ((!displayName && !handle) && supabase) {
       const { data } = await supabase
@@ -164,8 +164,8 @@
     return {
       id: row.id,
       post_id: row.post_id,
-      author_id: authorId ?? row.user_id,
-      user_id: row.user_id ?? authorId ?? null,
+      author_id: authorId ?? row.comment_user_id ?? null,
+      comment_user_id: row.comment_user_id ?? authorId ?? null,
       body: row.body ?? '',
       created_at: row.created_at,
       parent_id: row.parent_id ?? null,

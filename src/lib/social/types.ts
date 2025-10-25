@@ -23,7 +23,7 @@ export type PostComment = {
   id: string;
   post_id: string;
   author_id: string;
-  user_id: string | null;
+  comment_user_id: string | null;
   body: string;
   created_at: string;
   parent_id: string | null;

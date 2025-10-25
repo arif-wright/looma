@@ -143,7 +143,7 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     comment,
-    totals: {
+    counts: {
       comments: commentStats.count ?? 0,
       likes: likeCount
     }
