@@ -20,38 +20,40 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   const postId = search.get('postId');
   const replyTo = search.get('replyTo');
   const limit = parseLimit(search.get('limit'));
+  const before = search.get('before') ?? new Date().toISOString();
+  const after = search.get('after');
 
-  if (!postId && !replyTo) {
-    return json({ error: 'postId or replyTo is required' }, { status: 400 });
-  }
-
-  if (postId) {
-    const before = search.get('before');
-    const { data, error } = await supabase.rpc('get_comments_tree', {
-      p_post: postId,
+  if (replyTo) {
+    const { data, error } = await supabase.rpc('get_replies', {
+      p_comment: replyTo,
       p_limit: limit,
-      p_before: before ?? null
+      p_after: after ?? null
     });
 
     if (error) {
+      console.error('comments:get', error);
       return json({ error: error.message }, { status: 400 });
     }
 
     return json({ items: Array.isArray(data) ? data : [] });
   }
 
-  const after = search.get('after');
-  const { data, error } = await supabase.rpc('get_replies', {
-    p_comment: replyTo,
-    p_limit: limit,
-    p_after: after ?? null
-  });
+  if (postId) {
+    const { data, error } = await supabase.rpc('get_comments_tree', {
+      p_post: postId,
+      p_limit: limit,
+      p_before: before
+    });
 
-  if (error) {
-    return json({ error: error.message }, { status: 400 });
+    if (error) {
+      console.error('comments:get', error);
+      return json({ error: error.message }, { status: 400 });
+    }
+
+    return json({ items: Array.isArray(data) ? data : [] });
   }
 
-  return json({ items: Array.isArray(data) ? data : [] });
+  return json({ error: 'Provide ?postId or ?replyTo' }, { status: 400 });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
