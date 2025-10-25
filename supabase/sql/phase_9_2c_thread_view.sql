@@ -1,55 +1,4 @@
--- Phase 9.2C — Post thread permalink + nested comments
-
--- === Comment hierarchy support ==============================================
-
--- Add parent reference for threaded replies (idempotent).
-alter table if exists public.comments
-  add column if not exists parent_id uuid references public.comments(id) on delete cascade;
-
--- Ensure helpful indexes exist.
-create index if not exists comments_target_created_idx
-  on public.comments (target_kind, target_id, created_at desc);
-
-create index if not exists comments_parent_created_idx
-  on public.comments (parent_id, created_at asc);
-
--- Enforce single-level depth (replies only to top-level comments).
-create or replace function public.enforce_comment_depth()
-returns trigger
-language plpgsql
-as $$
-declare
-  parent_target uuid;
-  parent_kind text;
-  parent_parent uuid;
-begin
-  if new.parent_id is null then
-    return new;
-  end if;
-
-  select c.parent_id, c.target_kind, c.target_id
-    into parent_parent, parent_kind, parent_target
-  from public.comments c
-  where c.id = new.parent_id;
-
-  if parent_parent is not null then
-    raise exception 'Nested replies beyond one level are not allowed';
-  end if;
-
-  if parent_kind is distinct from new.target_kind or parent_target is distinct from new.target_id then
-    raise exception 'Reply must target the same post as its parent comment';
-  end if;
-
-  return new;
-end$$;
-
-drop trigger if exists comments_depth_check on public.comments;
-create trigger comments_depth_check
-  before insert or update on public.comments
-  for each row
-  execute function public.enforce_comment_depth();
-
--- === RPCs ===================================================================
+-- Phase 9.2C — Post thread permalink helpers (depends on 9.2B schema)
 
 drop function if exists public.get_post_by_id(uuid);
 create or replace function public.get_post_by_id(p_post_id uuid)
@@ -133,12 +82,13 @@ as $$
       select count(*)::bigint
       from public.comments child
       where child.parent_id = c.id
+        and child.is_public = true
     ) as reply_count
   from public.comments c
-  left join public.profiles prof on prof.id = c.user_id
-  where c.target_kind = 'post'
-    and c.target_id = p_post_id
+  left join public.profiles prof on prof.id = c.author_id
+  where c.post_id = p_post_id
     and c.parent_id is null
+    and c.is_public = true
     and c.created_at < coalesce(p_before, now())
   order by c.created_at desc
   limit greatest(1, coalesce(p_limit, 20));
@@ -174,8 +124,9 @@ as $$
     prof.handle,
     prof.avatar_url
   from public.comments c
-  left join public.profiles prof on prof.id = c.user_id
+  left join public.profiles prof on prof.id = c.author_id
   where c.parent_id = p_parent_id
+    and c.is_public = true
     and c.created_at < coalesce(p_before, now())
   order by c.created_at desc
   limit greatest(1, coalesce(p_limit, 20));

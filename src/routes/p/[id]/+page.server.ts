@@ -62,8 +62,8 @@ export const load: PageServerLoad = async (event) => {
     current_user_reaction: liked ? ('like' as const) : null
   };
 
-  const { data: commentRows, error: commentError } = await supabase.rpc('get_post_comments_tree', {
-    p_post_id: postId,
+  const { data: commentRows, error: commentError } = await supabase.rpc('get_comments_tree', {
+    p_post: postId,
     p_limit: limit,
     p_before: before
   });

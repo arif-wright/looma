@@ -55,6 +55,7 @@ AS $$
     FROM public.comments c
     JOIN base b ON b.id = c.target_id
     WHERE c.target_kind = 'event'
+      AND c.is_public = true
     GROUP BY c.target_id
   )
   SELECT b.id, b.created_at, b.type, b.message, b.meta, b.user_id,

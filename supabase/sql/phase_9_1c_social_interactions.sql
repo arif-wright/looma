@@ -126,6 +126,7 @@ as $$
     from public.comments c
     join base b on b.id = c.target_id
     where c.target_kind = 'event'
+      and c.is_public = true
     group by c.target_id
   )
   select b.id, b.created_at, b.type, b.message, b.meta, b.user_id,

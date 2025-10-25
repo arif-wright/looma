@@ -243,8 +243,8 @@ as $$
   left join lateral (
     select count(*)::bigint as comment_count
     from public.comments c
-    where c.target_kind = 'post'
-      and c.target_id = p.id
+    where c.post_id = p.id
+      and c.is_public = true
   ) pc on true
   left join lateral (
     select
@@ -318,8 +318,8 @@ as $$
   left join lateral (
     select count(*)::bigint as comment_count
     from public.comments c
-    where c.target_kind = 'post'
-      and c.target_id = p.id
+    where c.post_id = p.id
+      and c.is_public = true
   ) pc on true
   left join lateral (
     select
