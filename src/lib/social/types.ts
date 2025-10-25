@@ -21,12 +21,35 @@ export type PostRow = {
 
 export type PostComment = {
   id: string;
-  user_id: string;
+  post_id: string;
+  author_id: string;
+  user_id: string | null;
   body: string;
   created_at: string;
+  parent_id: string | null;
+  is_public: boolean;
+  thread_root_id: string;
+  depth: number;
   display_name: string | null;
   handle: string | null;
   avatar_url: string | null;
-  parent_id?: string | null;
-  reply_count?: number;
+  reply_count: number;
+};
+
+export type CommentNode = PostComment & {
+  replies?: CommentNode[];
+  repliesCursor?: string | null;
+  repliesVisible?: boolean;
+  repliesLoading?: boolean;
+  repliesError?: string | null;
+  repliesTotal?: number;
+  replying?: boolean;
+  pending?: boolean;
+};
+
+export type MentionOption = {
+  id: string;
+  handle: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
 };

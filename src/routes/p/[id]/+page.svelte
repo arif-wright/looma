@@ -1,6 +1,6 @@
 <script lang="ts">
   import PostCard from '$lib/social/PostCard.svelte';
-  import CommentTree from '$lib/social/CommentTree.svelte';
+  import CommentList from '$lib/social/CommentList.svelte';
   import type { PostRow, PostComment } from '$lib/social/types';
 
   export let data: {
@@ -16,7 +16,7 @@
   let commentCount = data.post.comment_count ?? 0;
   let initialComments = data.comments ?? [];
   let cursor: string | null = data.nextCursor ?? null;
-  let commentTreeRef: InstanceType<typeof CommentTree> | null = null;
+  let commentListRef: InstanceType<typeof CommentList> | null = null;
 
   function handleCommentCount(event: CustomEvent<number>) {
     const value = event.detail;
@@ -25,7 +25,7 @@
   }
 
   function handleFocusRequest() {
-    commentTreeRef?.focusComposer?.();
+    commentListRef?.focusComposer?.();
   }
 </script>
 
@@ -45,12 +45,12 @@
 
   <section class="thread-section">
     <h2>Conversation</h2>
-    <CommentTree
-      bind:this={commentTreeRef}
+    <CommentList
+      bind:this={commentListRef}
       postId={post.id}
-      initialComments={initialComments}
+      initialItems={initialComments}
       initialCursor={cursor}
-      initialTotal={commentCount}
+      initialCount={commentCount}
       on:count={handleCommentCount}
     />
   </section>

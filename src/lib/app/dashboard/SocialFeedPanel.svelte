@@ -209,7 +209,7 @@
       if (!userId) return;
       const { error } = await supabase
         .from('comments')
-        .insert({ user_id: userId, target_kind: 'event', target_id: eventId, body: text });
+        .insert({ user_id: userId, author_id: userId, target_kind: 'event', target_id: eventId, body: text });
       if (error) throw error;
       drafts[eventId] = '';
       openComposerFor = null;
