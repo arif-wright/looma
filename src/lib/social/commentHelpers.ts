@@ -18,7 +18,6 @@ const MERGEABLE_FIELDS: Array<keyof CommentNode> = [
 
 const mentionPattern = /(^|[\s.,!?;:()[\]{}"'`-])@([A-Za-z0-9_]{2,})/g;
 const API_BASE = '/api/comments';
-const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
 
 type CommentsFetchResult = {
   items: PostComment[];
@@ -217,7 +216,8 @@ export async function fetchPostComments(
 ): Promise<CommentsFetchResult> {
   const limit = normaliseLimit(opts.limit, 10);
   const before = opts.before ?? new Date().toISOString();
-  const url = new URL(API_BASE, DEFAULT_ORIGIN);
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  const url = new URL(API_BASE, origin);
   url.searchParams.set('postId', postId);
   url.searchParams.set('limit', String(limit));
   url.searchParams.set('before', before);
@@ -229,7 +229,8 @@ export async function fetchReplies(
   opts: { limit?: number; after?: string | null } = {}
 ): Promise<CommentsFetchResult> {
   const limit = normaliseLimit(opts.limit, 10);
-  const url = new URL(API_BASE, DEFAULT_ORIGIN);
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  const url = new URL(API_BASE, origin);
   url.searchParams.set('replyTo', commentId);
   url.searchParams.set('limit', String(limit));
   url.searchParams.set('after', opts.after ?? '');

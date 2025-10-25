@@ -3,24 +3,23 @@
   import MentionAutocomplete from './MentionAutocomplete.svelte';
   import type { MentionOption, PostComment } from './types';
 
-  type CommentResponse = {
-    item: PostComment | null;
-    error?: string;
-  };
+  type ApiResponse = { item?: PostComment | null; error?: string };
 
   export let postId: string;
   export let parentId: string | null = null;
   export let placeholder: string | undefined = undefined;
   export let autofocus = false;
-  export let isPublic = true;
 
-  const dispatch = createEventDispatcher<{ posted: { comment: PostComment; parentId: string | null } }>();
+  const dispatch = createEventDispatcher<{
+    posted: { comment: PostComment; parentId: string | null };
+    error: { message: string };
+  }>();
 
-  let body = '';
-  let sending = false;
+  let text = '';
+  let submitting = false;
   let errorMsg: string | null = null;
   let textareaEl: HTMLTextAreaElement | null = null;
-  let composerEl: HTMLDivElement | null = null;
+  let composerEl: HTMLFormElement | null = null;
   let mirrorEl: HTMLDivElement | null = null;
 
   let mentionStart: number | null = null;
@@ -31,12 +30,12 @@
   let mentionActive = 0;
   let mentionPosition = { top: 0, left: 0 };
   let mentionAbort: AbortController | null = null;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let mentionTimer: ReturnType<typeof setTimeout> | null = null;
 
   const MIN_MENTION_LENGTH = 2;
-  const MAX_LINES = 6;
-  const MAX_LENGTH = 500;
   const FETCH_DELAY = 180;
+  const MAX_LENGTH = 500;
+  const MAX_LINES = 6;
 
   $: computedPlaceholder = placeholder ?? (parentId ? 'Write a reply…' : 'Add your thoughts…');
 
@@ -57,7 +56,7 @@
   function syncMirrorStyles() {
     if (!textareaEl || !mirrorEl) return;
     const style = window.getComputedStyle(textareaEl);
-    const properties = [
+    const props = [
       'boxSizing',
       'width',
       'height',
@@ -78,10 +77,9 @@
       'borderLeftWidth',
       'lineHeight'
     ] as const;
-    for (const prop of properties) {
+    for (const prop of props) {
       mirrorEl.style[prop as any] = style[prop as any];
     }
-    mirrorEl.scrollTop = textareaEl.scrollTop;
   }
 
   function getCaretOffset(position: number) {
@@ -109,97 +107,6 @@
     textareaEl.style.height = `${Math.min(textareaEl.scrollHeight, maxHeight)}px`;
   }
 
-  function clearMentionFetch() {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
-    if (mentionAbort) {
-      mentionAbort.abort();
-      mentionAbort = null;
-    }
-  }
-
-  function resetMention() {
-    clearMentionFetch();
-    mentionStart = null;
-    mentionQuery = '';
-    mentionItems = [];
-    mentionOpen = false;
-    mentionLoading = false;
-    mentionActive = 0;
-  }
-
-  function findMention(text: string, cursor: number) {
-    for (let i = cursor - 1; i >= 0; i -= 1) {
-      const char = text[i];
-      if (char === '@') {
-        if (i > 0) {
-          const prev = text[i - 1];
-          if (/[@A-Za-z0-9_]/.test(prev)) {
-            return null;
-          }
-        }
-        const fragment = text.slice(i + 1, cursor);
-        if (!/^[A-Za-z0-9_]*$/.test(fragment)) {
-          return null;
-        }
-        return { start: i, query: fragment };
-      }
-      if (!/[A-Za-z0-9_]/.test(char)) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  function scheduleMentionFetch(query: string) {
-    clearMentionFetch();
-    if (query.length < MIN_MENTION_LENGTH) {
-      mentionItems = [];
-      mentionLoading = false;
-      return;
-    }
-    mentionLoading = true;
-    debounceTimer = setTimeout(async () => {
-      if (mentionAbort) mentionAbort.abort();
-      mentionAbort = new AbortController();
-      try {
-        const res = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`, {
-          signal: mentionAbort.signal
-        });
-        if (!res.ok) {
-          throw new Error('Failed to fetch users');
-        }
-        const payload = await res.json();
-        const rows = Array.isArray(payload?.items) ? payload.items : [];
-        mentionItems = rows;
-        mentionActive = 0;
-      } catch (err) {
-        if ((err as any)?.name === 'AbortError') return;
-        mentionItems = [];
-      } finally {
-        if (mentionAbort?.signal.aborted) return;
-        mentionLoading = false;
-      }
-    }, FETCH_DELAY);
-  }
-
-  function updateMentionState() {
-    if (!textareaEl) return;
-    const cursor = textareaEl.selectionStart ?? 0;
-    const found = findMention(body, cursor);
-    if (!found) {
-      resetMention();
-      return;
-    }
-    mentionStart = found.start;
-    mentionQuery = found.query;
-    mentionOpen = true;
-    scheduleMentionFetch(found.query);
-    tick().then(updateMentionPosition);
-  }
-
   function updateMentionPosition() {
     if (!mentionOpen || mentionStart === null || !textareaEl || !composerEl) return;
     const caret = getCaretOffset(mentionStart);
@@ -216,14 +123,96 @@
     };
   }
 
+  function resetMention() {
+    if (mentionTimer) {
+      clearTimeout(mentionTimer);
+      mentionTimer = null;
+    }
+    if (mentionAbort) {
+      mentionAbort.abort();
+      mentionAbort = null;
+    }
+    mentionStart = null;
+    mentionQuery = '';
+    mentionItems = [];
+    mentionOpen = false;
+    mentionLoading = false;
+    mentionActive = 0;
+  }
+
+  function scheduleMentionFetch(query: string) {
+    if (mentionTimer) clearTimeout(mentionTimer);
+    if (mentionAbort) {
+      mentionAbort.abort();
+      mentionAbort = null;
+    }
+    if (query.length < MIN_MENTION_LENGTH) {
+      resetMention();
+      return;
+    }
+    mentionLoading = true;
+    mentionTimer = setTimeout(async () => {
+      mentionAbort = new AbortController();
+      try {
+        const res = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`, {
+          signal: mentionAbort.signal
+        });
+        if (!res.ok) throw new Error('Failed to search users');
+        const payload = await res.json();
+        mentionItems = Array.isArray(payload?.items) ? payload.items : [];
+        mentionOpen = mentionItems.length > 0;
+        mentionActive = 0;
+        tick().then(updateMentionPosition);
+      } catch (err) {
+        if ((err as any)?.name !== 'AbortError') console.error('mention search error', err);
+      } finally {
+        if (!mentionAbort?.signal.aborted) {
+          mentionLoading = false;
+        }
+      }
+    }, FETCH_DELAY);
+  }
+
+  function updateMentionState() {
+    if (!textareaEl) return;
+    const cursor = textareaEl.selectionStart ?? 0;
+    const content = textareaEl.value;
+    for (let i = cursor - 1; i >= 0; i -= 1) {
+      const char = content[i];
+      if (char === '@') {
+        const prev = i > 0 ? content[i - 1] : ' ';
+        if (/[@\w]/.test(prev) && prev !== '@') {
+          resetMention();
+          return;
+        }
+        const fragment = content.slice(i + 1, cursor);
+        if (!/^\w*$/.test(fragment)) {
+          resetMention();
+          return;
+        }
+        mentionStart = i;
+        mentionQuery = fragment;
+        scheduleMentionFetch(fragment);
+        mentionOpen = true;
+        return;
+      }
+      if (!/\w/.test(char)) {
+        resetMention();
+        return;
+      }
+    }
+    resetMention();
+  }
+
   function handleInput() {
     resize();
     errorMsg = null;
     updateMentionState();
   }
 
-  function handleCursorMove() {
+  function handleCaretMove() {
     updateMentionState();
+    tick().then(updateMentionPosition);
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -257,98 +246,89 @@
 
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
       event.preventDefault();
-      submit();
+      handleSubmit();
     }
   }
 
   function insertMention(option: MentionOption | undefined) {
-    if (!option || !option.handle || !textareaEl || mentionStart === null) return;
+    if (!option?.handle || !textareaEl || mentionStart === null) return;
     const handle = option.handle.toLowerCase();
     const mentionText = `@${handle}`;
-    const before = body.slice(0, mentionStart);
+    const before = text.slice(0, mentionStart);
     const cursor = textareaEl.selectionStart ?? mentionStart;
-    const after = body.slice(cursor);
-    const needsSpace = after.length === 0 || /^[^\s]/.test(after) ? ' ' : '';
-    body = `${before}${mentionText}${needsSpace}${after}`;
-    const nextCaret = before.length + mentionText.length + (needsSpace ? 1 : 0);
-    tick().then(() => {
-      if (textareaEl) {
-        textareaEl.focus();
-        textareaEl.setSelectionRange(nextCaret, nextCaret);
-      }
-      resize();
+    const after = text.slice(cursor);
+    const separator = after.length === 0 || /^[^\s]/.test(after) ? ' ' : '';
+    text = `${before}${mentionText}${separator}${after}`;
+    const nextCaret = before.length + mentionText.length + separator.length;
+    queueMicrotask(() => {
+      textareaEl?.focus();
+      textareaEl?.setSelectionRange(nextCaret, nextCaret);
     });
     resetMention();
+    tick().then(updateMentionPosition);
   }
 
-  async function submit() {
-    if (sending) return;
-    const text = body.trim();
-    if (!text) {
+  async function handleSubmit() {
+    if (submitting) return;
+    const body = text.trim();
+    if (!body) {
       errorMsg = 'Write a comment before posting.';
       return;
     }
-    sending = true;
-    errorMsg = null;
+
     const payload = {
       postId,
       parentId: parentId ?? null,
-      body: text,
-      isPublic
+      body
     };
+
     console.debug('[comment:submit]', {
       postId,
       parentId: parentId ?? null,
-      preview: text.slice(0, 64)
+      preview: body.slice(0, 64)
     });
 
+    submitting = true;
+    errorMsg = null;
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const data = (await res.json().catch(() => ({}))) as ApiResponse;
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        errorMsg = data?.error ?? 'Failed to publish comment.';
-        return;
+        const message = data?.error ?? res.statusText;
+        throw new Error(message);
       }
-      const payload = (await res.json()) as CommentResponse;
-      const comment = payload?.item ?? null;
-      if (!comment) {
-        errorMsg = payload?.error ?? 'Failed to publish comment.';
-        return;
+      if (!data?.item) {
+        throw new Error('Unexpected response');
       }
-      body = '';
-      resetMention();
-      await tick();
+      text = '';
       resize();
-      dispatch('posted', { comment, parentId });
+      resetMention();
+      dispatch('posted', { comment: data.item, parentId: payload.parentId });
       textareaEl?.focus();
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to post comment';
+      errorMsg = message;
+      dispatch('error', { message });
       console.error('comment composer error', err);
-      errorMsg = err instanceof Error ? err.message : 'Unexpected error';
     } finally {
-      sending = false;
+      submitting = false;
     }
-  }
-
-  export function focus() {
-    textareaEl?.focus();
   }
 
   onMount(() => {
     ensureMirror();
     tick().then(() => {
       resize();
-      if (autofocus) {
-        textareaEl?.focus();
-      }
+      if (autofocus) textareaEl?.focus();
     });
   });
 
   onDestroy(() => {
-    clearMentionFetch();
+    resetMention();
     if (mirrorEl?.parentNode) {
       mirrorEl.parentNode.removeChild(mirrorEl);
     }
@@ -356,62 +336,57 @@
   });
 </script>
 
-<div class="comment-composer" bind:this={composerEl}>
+<form class="comment-composer" bind:this={composerEl} on:submit|preventDefault={handleSubmit}>
   {#if errorMsg}
     <p class="error" role="alert">{errorMsg}</p>
   {/if}
   <textarea
     bind:this={textareaEl}
-    bind:value={body}
+    bind:value={text}
     rows={2}
     maxlength={MAX_LENGTH}
     placeholder={computedPlaceholder}
     on:input={handleInput}
     on:keydown={handleKeydown}
-    on:keyup={handleCursorMove}
-    on:click={handleCursorMove}
-    aria-label="Write a comment"
+    on:keyup={handleCaretMove}
+    on:click={handleCaretMove}
+    aria-label={parentId ? 'Write a reply' : 'Write a comment'}
   ></textarea>
   <div class="footer">
     <span class="hint">Use @ to mention someone</span>
-    <button type="button" class="post-btn" on:click={submit} disabled={sending || !body.trim()}>
-      {sending ? 'Posting…' : parentId ? 'Reply' : 'Post'}
+    <button type="submit" class="post-btn" disabled={submitting || !text.trim()}>
+      {submitting ? 'Posting…' : parentId ? 'Reply' : 'Post'}
     </button>
   </div>
   <MentionAutocomplete
-    open={mentionOpen || mentionLoading}
-    position={mentionPosition}
+    open={mentionOpen}
+    loading={mentionLoading}
     items={mentionItems}
     active={mentionActive}
-    loading={mentionLoading}
-    query={mentionQuery}
+    position={mentionPosition}
     on:select={(event) => insertMention(event.detail)}
   />
-</div>
+</form>
 
 <style>
   .comment-composer {
-    position: relative;
     display: grid;
     gap: 6px;
   }
 
   textarea {
-    resize: none;
+    resize: vertical;
     min-height: 52px;
     padding: 8px 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     color: inherit;
     font: inherit;
-    line-height: 1.35;
-    transition: border-color 0.15s ease;
   }
 
-  textarea:focus {
-    outline: none;
-    border-color: rgba(255, 255, 255, 0.2);
+  textarea::placeholder {
+    opacity: 0.75;
   }
 
   .footer {
@@ -426,14 +401,13 @@
   }
 
   .post-btn {
-    padding: 5px 14px;
+    padding: 5px 12px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.1);
     color: inherit;
     cursor: pointer;
-    font-size: 0.82rem;
-    transition: opacity 0.15s ease;
+    font-size: 0.8rem;
   }
 
   .post-btn:disabled {
