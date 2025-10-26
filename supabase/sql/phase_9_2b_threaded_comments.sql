@@ -122,36 +122,36 @@ security definer
 set search_path = public
 as $$
 declare
-  mention record;
-  handles text[];
-  handle text;
-  target_profile uuid;
+  v_handles text[];
+  v_handle text;
+  v_target_profile uuid;
 begin
-  handles := array(
+  v_handles := array(
     select distinct lower(trim(leading '@' from match[1]))
     from regexp_matches(coalesce(new.body, ''), '@([A-Za-z0-9_]{2,})', 'g') as match
   );
 
-  if handles is null or array_length(handles, 1) is null then
+  if v_handles is null or array_length(v_handles, 1) is null then
     return new;
   end if;
 
-  foreach handle in array handles loop
-    select p.id into target_profile
-    from public.profiles p
-    where lower(p.handle) = handle
+  foreach v_handle in array v_handles loop
+    select p.id
+      into v_target_profile
+    from public.profiles as p
+    where lower(p.handle) = v_handle
     limit 1;
 
-    if target_profile is null or target_profile = new.author_id then
+    if v_target_profile is null or v_target_profile = new.author_id then
       continue;
     end if;
 
     insert into public.comment_mentions (comment_id, mentioned_user_id)
-    values (new.id, target_profile)
+    values (new.id, v_target_profile)
     on conflict (comment_id, mentioned_user_id) do nothing;
 
     perform public.emit_event(
-      target_profile,
+      v_target_profile,
       'mention',
       'You were mentioned in a comment',
       jsonb_build_object(
@@ -184,6 +184,7 @@ end$$;
 -- ============================================================================
 
 drop function if exists public.insert_comment(uuid, text, uuid, boolean);
+drop function if exists public.insert_comment(uuid, text, uuid, boolean, boolean);
 drop function if exists public.get_comments_tree(uuid, integer, timestamptz);
 drop function if exists public.get_replies(uuid, integer, timestamptz);
 create or replace function public.insert_comment(

@@ -2,7 +2,8 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import CommentList from './CommentList.svelte';
-  import type { PostRow } from './types';
+  import ThreadDrawer from './ThreadDrawer.svelte';
+  import type { CommentNode, PostRow } from './types';
 
   const supabase = supabaseBrowser();
 
@@ -18,6 +19,9 @@
   let errorMsg: string | null = null;
 
   let commentOpen = false;
+  let threadOpen = false;
+  let threadRoot: CommentNode | null = null;
+  let threadAncestors: CommentNode[] = [];
 
   let likeChannel: ReturnType<typeof supabase.channel> | null = null;
   let commentChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -128,6 +132,18 @@
     commentCount = event.detail;
   }
 
+  function handleOpenThread(event: CustomEvent<{ root: CommentNode; ancestors: CommentNode[] }>) {
+    threadRoot = event.detail.root;
+    threadAncestors = event.detail.ancestors;
+    threadOpen = true;
+  }
+
+  function handleCloseThread() {
+    threadOpen = false;
+    threadRoot = null;
+    threadAncestors = [];
+  }
+
   async function handleRealtimeLike(payload: any) {
     const subject = payload.new ?? payload.old;
     if (!subject || subject.target_kind !== 'post' || subject.target_id !== post.id) return;
@@ -222,9 +238,21 @@
 
   {#if !detail && commentOpen}
     <section class="comments">
-      <CommentList postId={post.id} initialCount={commentCount} on:count={handleCommentCount} />
+      <CommentList
+        postId={post.id}
+        initialCount={commentCount}
+        on:count={handleCommentCount}
+        on:openThread={handleOpenThread}
+      />
     </section>
   {/if}
+  <ThreadDrawer
+    postId={post.id}
+    open={threadOpen}
+    root={threadRoot}
+    ancestors={threadAncestors}
+    on:close={handleCloseThread}
+  />
 </article>
 
 <style>

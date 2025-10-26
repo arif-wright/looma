@@ -1,9 +1,12 @@
 import type { CommentNode, PostComment } from './types';
 
-const COMMENT_ORDER = {
+export const COMMENT_ORDER = {
   ASC: 'asc',
   DESC: 'desc'
 } as const;
+
+export const MAX_INLINE_DEPTH = 2;
+export const INLINE_REPLY_BATCH_SIZE = 3;
 
 const MERGEABLE_FIELDS: Array<keyof CommentNode> = [
   'replies',
@@ -68,6 +71,7 @@ export function normalizeComment(row: PostComment): CommentNode {
   return {
     ...row,
     reply_count: replyCount,
+    depth: typeof row.depth === 'number' ? row.depth : row.parent_id ? 1 : 0,
     replies: [],
     repliesCursor: null,
     repliesVisible: false,
@@ -186,6 +190,19 @@ export function findComment(tree: CommentNode[], id: string): CommentNode | null
     }
   }
   return null;
+}
+
+export function depthOf(comment: CommentNode): number {
+  return typeof comment.depth === 'number' ? comment.depth : 0;
+}
+
+export function remainingRepliesText(totalRemaining: number, batchSize = INLINE_REPLY_BATCH_SIZE): string {
+  if (totalRemaining <= 0) return '';
+  return `View ${batchSize} more replies (${totalRemaining} left)`;
+}
+
+export function keyForCursor(comment: CommentNode): string | null {
+  return comment.created_at ?? null;
 }
 
 async function requestComments(url: URL): Promise<CommentsFetchResult> {

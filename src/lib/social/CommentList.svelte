@@ -4,12 +4,12 @@
   import CommentComposer from './CommentComposer.svelte';
   import CommentItem from './CommentItem.svelte';
   import {
-    dedupeComments,
-    findComment,
-    mergeReplies,
     fetchPostComments,
+    fetchReplies,
+    keyForCursor,
     normalizeComment,
-    removeCommentFromTree
+    INLINE_REPLY_BATCH_SIZE,
+    MAX_INLINE_DEPTH
   } from './commentHelpers';
   import type { CommentNode, PostComment } from './types';
 
@@ -19,46 +19,160 @@
   export let initialItems: PostComment[] = [];
   export let initialCursor: string | null = null;
 
-  const dispatch = createEventDispatcher<{ count: number }>();
+  type ReplyState = {
+    items: CommentNode[];
+    hasMore: boolean;
+    cursor: string | null;
+    totalCount: number;
+    loading: boolean;
+    isOpen: boolean;
+  };
+
+  const dispatch = createEventDispatcher<{
+    count: number;
+    openThread: { root: CommentNode; ancestors: CommentNode[] };
+  }>();
 
   const supabaseClient = typeof window === 'undefined' ? null : supabaseBrowser();
   type SupabaseClient = NonNullable<typeof supabaseClient>;
   type SupabaseChannel = ReturnType<SupabaseClient['channel']>;
   const supabase = supabaseClient;
 
-  let items: CommentNode[] = [];
+  let comments: CommentNode[] = [];
   let loading = false;
   let moreLoading = false;
   let errorMsg: string | null = null;
   let nextCursor: string | null = null;
   let totalCount = initialCount;
-  let channel: SupabaseChannel | null = null;
   let composerRef: InstanceType<typeof CommentComposer> | null = null;
-  let isMounted = false;
+  let channel: SupabaseChannel | null = null;
   let seeded = false;
 
+  let replyStates = new Map<string, ReplyState>();
+  const commentLookup = new Map<string, CommentNode>();
+  const parentLookup = new Map<string, string | null>();
   const pendingIds = new Set<string>();
+
+  function registerComment(comment: CommentNode) {
+    commentLookup.set(comment.comment_id, comment);
+    parentLookup.set(comment.comment_id, comment.parent_id ?? null);
+  }
+
+  function unregisterComment(commentId: string) {
+    commentLookup.delete(commentId);
+    parentLookup.delete(commentId);
+  }
+
+  function ensureReplyState(comment: CommentNode): ReplyState {
+    const existing = replyStates.get(comment.comment_id);
+    if (existing) return existing;
+    const state: ReplyState = {
+      items: [],
+      hasMore: (comment.reply_count ?? 0) > 0,
+      cursor: null,
+      totalCount: comment.reply_count ?? 0,
+      loading: false,
+      isOpen: comment.depth < MAX_INLINE_DEPTH && (comment.reply_count ?? 0) > 0
+    };
+    const next = new Map(replyStates);
+    next.set(comment.comment_id, state);
+    replyStates = next;
+    return state;
+  }
+
+  async function loadRepliesForComment(comment: CommentNode, append = true) {
+    const state = ensureReplyState(comment);
+    if (state.loading) return;
+    const after = append ? state.cursor : null;
+    state.loading = true;
+    replyStates = new Map(replyStates);
+
+    const { items: rawItems, error } = await fetchReplies(comment.comment_id, {
+      limit: INLINE_REPLY_BATCH_SIZE,
+      after
+    });
+
+    if (error) {
+      state.loading = false;
+      replyStates = new Map(replyStates);
+      errorMsg = error;
+      return;
+    }
+
+    const normalized = (rawItems ?? []).map((row) => {
+      const node = normalizeComment(row);
+      node.depth = (comment.depth ?? 0) + 1;
+      registerComment(node);
+      return node;
+    });
+
+    state.items = append ? [...state.items, ...normalized] : normalized;
+    state.cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : state.cursor;
+    const expectedTotal = comment.reply_count ?? state.totalCount;
+    state.totalCount = Math.max(expectedTotal, state.items.length);
+    state.hasMore =
+      state.items.length < state.totalCount ||
+      normalized.length === INLINE_REPLY_BATCH_SIZE;
+    state.loading = false;
+    replyStates = new Map(replyStates);
+    errorMsg = null;
+  }
+
+  function initializeReplyPreview(comment: CommentNode) {
+    const state = ensureReplyState(comment);
+    if (state.isOpen && state.items.length === 0 && state.hasMore && !state.loading) {
+      void loadRepliesForComment(comment, false);
+    }
+  }
+
+  function toggleReplies(comment: CommentNode) {
+    const state = ensureReplyState(comment);
+    state.isOpen = !state.isOpen;
+    replyStates = new Map(replyStates);
+    if (state.isOpen && state.items.length === 0 && state.hasMore && !state.loading) {
+      void loadRepliesForComment(comment, false);
+    }
+  }
+
+  function buildAncestorTrail(comment: CommentNode): CommentNode[] {
+    const ancestors: CommentNode[] = [];
+    let currentId = parentLookup.get(comment.comment_id) ?? comment.parent_id ?? null;
+    while (currentId) {
+      const parent = commentLookup.get(currentId);
+      if (!parent) break;
+      ancestors.unshift(parent);
+      currentId = parentLookup.get(parent.comment_id) ?? parent.parent_id ?? null;
+    }
+    return ancestors;
+  }
+
+  function openThread(comment: CommentNode) {
+    const ancestors = buildAncestorTrail(comment);
+    dispatch('openThread', { root: comment, ancestors });
+  }
 
   function registerPending(id: string) {
     pendingIds.add(id);
     setTimeout(() => pendingIds.delete(id), 1500);
   }
 
-  async function load(initial = false) {
+  async function fetchTopLevel(initial = false) {
     if (initial) {
       loading = true;
       errorMsg = null;
+    } else if (!nextCursor || moreLoading) {
+      return;
     } else {
-      if (!nextCursor || moreLoading) return;
       moreLoading = true;
     }
+
     const cursor = initial ? new Date().toISOString() : nextCursor;
     if (!initial && !cursor) {
       moreLoading = false;
       return;
     }
 
-    const { items: incoming, error } = await fetchPostComments(postId, {
+    const { items: rawItems, error } = await fetchPostComments(postId, {
       limit: pageSize,
       before: cursor ?? new Date().toISOString()
     });
@@ -66,15 +180,44 @@
     if (error) {
       errorMsg = error;
     } else {
-      errorMsg = null;
-      const normalized = incoming.map(normalizeComment);
-      items = initial ? normalized : dedupeComments(items, normalized);
-      if (initial && totalCount === 0) {
-        totalCount = Math.max(totalCount, incoming.length);
+      const normalized = rawItems.map((row) => {
+        const node = normalizeComment(row);
+        node.depth = 0;
+        return node;
+      });
+
+      if (initial) {
+        comments = normalized;
+      } else {
+        const map = new Map<string, CommentNode>();
+        for (const existing of comments) {
+          map.set(existing.comment_id, existing);
+        }
+        for (const node of normalized) {
+          map.set(node.comment_id, node);
+        }
+        comments = Array.from(map.values()).sort((a, b) => {
+          return Number(new Date(b.created_at)) - Number(new Date(a.created_at));
+        });
       }
-      const last = incoming.length > 0 ? incoming[incoming.length - 1] : null;
+
+      comments = comments.map((comment) => {
+        const next = { ...comment, depth: 0 };
+        registerComment(next);
+        return next;
+      });
+
+      if (initial && totalCount === 0) {
+        totalCount = Math.max(totalCount, rawItems.length);
+      }
+
+      for (const comment of comments) {
+        initializeReplyPreview(comment);
+      }
+
+      const last = rawItems.length > 0 ? rawItems[rawItems.length - 1] : null;
       nextCursor =
-        incoming.length === pageSize && last?.created_at
+        rawItems.length === pageSize && last?.created_at
           ? (last.created_at as string)
           : null;
     }
@@ -86,36 +229,46 @@
     }
   }
 
-  async function loadMore() {
-    await load(false);
+  async function loadMoreTopLevel() {
+    await fetchTopLevel(false);
   }
 
   function addTopLevel(comment: PostComment, optimistic = false) {
     const node = normalizeComment(comment);
-    items = dedupeComments(items, [node]);
-    if (optimistic) registerPending(comment.comment_id);
+    node.depth = 0;
+    registerComment(node);
+    comments = [node, ...comments.filter((existing) => existing.comment_id !== node.comment_id)];
+    comments.sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)));
+    ensureReplyState(node);
+    initializeReplyPreview(node);
+    if (optimistic) registerPending(node.comment_id);
   }
 
   function addReply(parentId: string, reply: PostComment) {
-    const parent = findComment(items, parentId);
-    if (!parent) return false;
-    parent.replies = mergeReplies(parent.replies ?? [], [normalizeComment(reply)]);
-    parent.repliesVisible = true;
+    const parent = commentLookup.get(parentId);
+    if (!parent) return;
+    const node = normalizeComment(reply);
+    node.depth = (parent.depth ?? 0) + 1;
+    registerComment(node);
+    const state = ensureReplyState(parent);
+    state.items = [node, ...state.items];
+    state.totalCount = state.totalCount + 1;
+    state.hasMore = state.items.length < state.totalCount;
+    replyStates = new Map(replyStates);
     parent.reply_count = (parent.reply_count ?? 0) + 1;
-    parent.repliesTotal = (parent.repliesTotal ?? parent.reply_count ?? 0) + 1;
-    items = [...items];
-    return true;
   }
 
   function updateReplyCount(parentId: string, total: number) {
-    const parent = findComment(items, parentId);
+    const parent = commentLookup.get(parentId);
     if (!parent) return;
+    const state = ensureReplyState(parent);
+    state.totalCount = total;
+    state.hasMore = state.items.length < state.totalCount;
+    replyStates = new Map(replyStates);
     parent.reply_count = total;
-    parent.repliesTotal = total;
-    items = [...items];
   }
 
-  function handleTopLevelPosted(event: CustomEvent<{ comment?: PostComment; parentId: string | null }>) {
+  async function handleTopLevelPosted(event: CustomEvent<{ comment?: PostComment; parentId: string | null }>) {
     const comment = event.detail?.comment;
     if (!comment) {
       errorMsg = 'Failed to publish comment.';
@@ -131,18 +284,47 @@
     const parentId = event.detail?.parentId;
     const reply = event.detail?.comment;
     if (!parentId || !reply) return;
-    errorMsg = null;
-    const inserted = addReply(parentId, reply);
-    registerPending(reply.comment_id);
-    if (inserted) {
-      totalCount += 1;
-    }
+    addReply(parentId, reply);
+    totalCount += 1;
   }
 
   function handleReplyCount(event: CustomEvent<{ parentId: string; total: number }>) {
     const { parentId, total } = event.detail;
-    if (!parentId) return;
     updateReplyCount(parentId, total);
+  }
+
+  function handleToggleReplies(event: CustomEvent<{ comment: CommentNode }>) {
+    event.stopPropagation();
+    toggleReplies(event.detail.comment);
+  }
+
+  function handleLoadReplies(event: CustomEvent<{ comment: CommentNode; append?: boolean }>) {
+    event.stopPropagation();
+    void loadRepliesForComment(event.detail.comment, event.detail.append ?? true);
+  }
+
+  function handleContinueThread(event: CustomEvent<{ comment: CommentNode }>) {
+    event.stopPropagation();
+    openThread(event.detail.comment);
+  }
+
+  function pruneComment(commentId: string) {
+    const parentId = parentLookup.get(commentId);
+    unregisterComment(commentId);
+    if (!parentId) {
+      comments = comments.filter((comment) => comment.comment_id !== commentId);
+      totalCount = Math.max(0, totalCount - 1);
+      return;
+    }
+    const parent = commentLookup.get(parentId);
+    if (!parent) return;
+    const state = ensureReplyState(parent);
+    state.items = state.items.filter((child) => child.comment_id !== commentId);
+    state.totalCount = Math.max(0, state.totalCount - 1);
+    state.hasMore = state.items.length < state.totalCount;
+    replyStates = new Map(replyStates);
+    totalCount = Math.max(0, totalCount - 1);
+    parent.reply_count = Math.max(0, (parent.reply_count ?? state.totalCount) - 1);
   }
 
   async function hydrateComment(row: any): Promise<PostComment | null> {
@@ -200,26 +382,18 @@
       if (!comment) return;
       if (pendingIds.has(comment.comment_id)) {
         pendingIds.delete(comment.comment_id);
-        totalCount = Math.max(totalCount, items.length);
         return;
       }
       if (comment.parent_id) {
-        if (addReply(comment.parent_id, comment)) {
-          totalCount += 1;
-        }
+        addReply(comment.parent_id, comment);
       } else {
         addTopLevel(comment);
-        totalCount += 1;
       }
+      totalCount += 1;
     } else if (payload.eventType === 'DELETE') {
-      const row = payload.old;
-      const targetId = (row?.comment_id ?? row?.id) as string | undefined;
+      const targetId = (payload.old?.comment_id ?? payload.old?.id) as string | undefined;
       if (!targetId) return;
-      const result = removeCommentFromTree(items, targetId);
-      if (result.removed > 0) {
-        items = result.tree;
-        totalCount = Math.max(0, totalCount - result.removed);
-      }
+      pruneComment(targetId);
     }
   }
 
@@ -238,10 +412,10 @@
   }
 
   export async function refresh() {
-    items = [];
+    comments = [];
     nextCursor = null;
     seeded = true;
-    await load(true);
+    await fetchTopLevel(true);
   }
 
   export function prepend(comment: PostComment) {
@@ -254,21 +428,32 @@
   }
 
   onMount(() => {
-    isMounted = true;
     if (initialItems.length > 0 && !seeded) {
-      items = initialItems.map(normalizeComment);
+      const normalized = initialItems.map((row) => {
+        const node = normalizeComment(row);
+        node.depth = 0;
+        return node;
+      });
+      comments = normalized;
+      comments.forEach((comment) => {
+        registerComment(comment);
+        ensureReplyState(comment);
+      });
       if (initialItems.length === pageSize) {
         const last = initialItems[initialItems.length - 1];
         nextCursor = initialCursor ?? (last?.created_at ?? null);
       } else {
         nextCursor = initialCursor ?? null;
       }
-      seeded = true;
       if (initialCount === 0) {
         totalCount = Math.max(totalCount, initialItems.length);
       }
+      for (const comment of comments) {
+        initializeReplyPreview(comment);
+      }
+      seeded = true;
     } else {
-      load(true);
+      void fetchTopLevel(true);
     }
     setupRealtime();
   });
@@ -280,35 +465,44 @@
     pendingIds.clear();
   });
 
-  $: if (isMounted) {
-    dispatch('count', totalCount);
-  }
+  $: dispatch('count', totalCount);
 </script>
 
-<section class="comment-list">
+<section class="comment-list" aria-live="polite">
   <CommentComposer bind:this={composerRef} postId={postId} on:posted={handleTopLevelPosted} />
 
   {#if errorMsg}
     <p class="status error" role="alert">{errorMsg}</p>
   {/if}
 
-  {#if loading && items.length === 0}
+  {#if loading && comments.length === 0}
     <p class="status">Loading comments…</p>
-  {:else if items.length === 0}
+  {:else if comments.length === 0}
     <p class="status muted">Be the first to comment.</p>
   {:else}
-    <ul class="thread">
-      {#each items as comment (comment.comment_id)}
+    <ul class="thread" role="list">
+      {#each comments as comment (comment.comment_id)}
         <CommentItem
           postId={postId}
-          comment={comment}
+          {comment}
+          {replyStates}
+          replyPageSize={INLINE_REPLY_BATCH_SIZE}
+          maxDepth={MAX_INLINE_DEPTH}
           on:replyPosted={handleReplyPosted}
           on:replyCount={handleReplyCount}
+          on:toggleReplies={handleToggleReplies}
+          on:loadReplies={handleLoadReplies}
+          on:continueThread={handleContinueThread}
         />
       {/each}
     </ul>
     {#if nextCursor}
-      <button class="load-more" type="button" on:click={loadMore} disabled={moreLoading}>
+      <button
+        class="load-more"
+        type="button"
+        on:click={loadMoreTopLevel}
+        disabled={moreLoading}
+      >
         {moreLoading ? 'Loading…' : 'View more comments'}
       </button>
     {/if}
