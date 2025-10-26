@@ -381,7 +381,8 @@ returns table (
   depth int,
   author_display_name text,
   author_handle text,
-  author_avatar_url text
+  author_avatar_url text,
+  reply_count bigint
 )
 language sql
 security definer
@@ -400,7 +401,12 @@ as $$
     c.depth as depth,
     prof.display_name as author_display_name,
     prof.handle as author_handle,
-    prof.avatar_url as author_avatar_url
+    prof.avatar_url as author_avatar_url,
+    (
+      select count(*)::bigint
+      from public.comments as child
+      where child.parent_id = c.id
+    ) as reply_count
   from public.comments as c
   left join public.profiles as prof on prof.id = c.author_id
   where c.parent_id = p_comment

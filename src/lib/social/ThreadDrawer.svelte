@@ -253,43 +253,69 @@
       </button>
       <header class="header">
         <h2>Thread</h2>
-        {#if ancestors.length > 0}
-          <nav class="trail" aria-label="Ancestor comments">
-            {#each ancestors as ancestor, index}
-              <span class="trail-item">
-                {ancestor.author_display_name ?? ancestor.author_handle ?? 'Someone'}
-                <span aria-hidden="true">•</span>
-                {relativeTime(ancestor.created_at)}
-              </span>
-              {#if index < ancestors.length - 1}
-                <span class="trail-separator">›</span>
-              {/if}
-            {/each}
-          </nav>
-        {/if}
+        <p class="subhead">
+          {root.author_display_name ?? root.author_handle ?? 'Someone'} • {relativeTime(root.created_at)}
+        </p>
       </header>
 
-      <section class="root">
-        <header>
-          <strong>{root.author_display_name ?? root.author_handle ?? 'Someone'}</strong>
-          <span class="root-meta">{relativeTime(root.created_at)}</span>
+      <section class="root-card">
+        <header class="root-meta">
+          <div class="root-author">
+            <span class="avatar">
+              <img src={root.author_avatar_url ?? '/avatar.svg'} alt="" width="32" height="32" loading="lazy" />
+            </span>
+            <div>
+              <strong>{root.author_display_name ?? root.author_handle ?? 'Someone'}</strong>
+              <span class="root-time">{relativeTime(root.created_at)}</span>
+            </div>
+          </div>
         </header>
-        <p>{@html formatCommentBody(root.body)}</p>
+        <div class="root-body">
+          {@html formatCommentBody(root.body)}
+        </div>
       </section>
 
-      <section class="reply-composer">
-        <CommentComposer
-          bind:this={composerRef}
-          postId={postId}
-          parentId={root.comment_id}
-          placeholder={`Reply to ${
-            root.author_display_name ?? root.author_handle ?? 'this thread'
-          }…`}
-          on:posted={handleReplyPosted}
-        />
-      </section>
+      {#if ancestors.length > 0}
+        <section class="timeline" aria-label="Conversation context">
+          {#each ancestors as ancestor, index}
+            <div class="timeline-row">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div class="timeline-content">
+                <div class="timeline-header">
+                  <span class="timeline-author">
+                    {ancestor.author_display_name ?? ancestor.author_handle ?? 'Someone'}
+                  </span>
+                  <span class="timeline-time">{relativeTime(ancestor.created_at)}</span>
+                </div>
+                <div class="timeline-body">
+                  {@html formatCommentBody(ancestor.body)}
+                </div>
+              </div>
+            </div>
+            {#if index === ancestors.length - 1}
+              <div class="timeline-row current">
+                <div class="timeline-dot current-dot" aria-hidden="true"></div>
+                <div class="timeline-content current-content">
+                  <div class="timeline-header">
+                    <span class="timeline-author current-author">
+                      {root.author_display_name ?? root.author_handle ?? 'Someone'}
+                    </span>
+                    <span class="timeline-time">{relativeTime(root.created_at)}</span>
+                  </div>
+                  <div class="timeline-body current-body">
+                    {@html formatCommentBody(root.body)}
+                  </div>
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </section>
+      {/if}
 
       <section class="reply-list" aria-label="Thread replies">
+        {#if replies.length === 0 && !hasMore && !loading}
+          <p class="status empty">No replies yet. Be the first to respond.</p>
+        {/if}
         {#if replies.length === 0 && loading}
           <p class="status">Loading replies…</p>
         {/if}
@@ -311,9 +337,21 @@
         </ul>
         {#if hasMore}
           <button type="button" class="load-more" on:click={() => loadRootReplies(false)} disabled={loading}>
-            {loading ? 'Loading…' : 'Load more'}
+            {loading ? 'Loading…' : 'Load more replies'}
           </button>
         {/if}
+      </section>
+
+      <section class="reply-composer">
+        <CommentComposer
+          bind:this={composerRef}
+          postId={postId}
+          parentId={root.comment_id}
+          placeholder={`Reply to ${
+            root.author_display_name ?? root.author_handle ?? 'this thread'
+          }…`}
+          on:posted={handleReplyPosted}
+        />
       </section>
     </aside>
   </div>
@@ -334,10 +372,11 @@
     background: rgba(18, 18, 24, 0.96);
     width: min(520px, 100vw);
     height: 100vh;
-    padding: 24px;
-    overflow-y: auto;
+    overflow: hidden;
     display: grid;
-    gap: 18px;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 16px;
+    padding: 24px;
   }
 
   @media (max-width: 640px) {
@@ -359,45 +398,125 @@
 
   .header {
     display: grid;
-    gap: 8px;
+    gap: 4px;
   }
 
-  .trail {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: 0.78rem;
-    opacity: 0.75;
+  .subhead {
+    font-size: 0.82rem;
+    opacity: 0.7;
   }
 
-  .trail-item span {
-    margin: 0 4px;
-    opacity: 0.5;
-  }
-
-  .root {
+  .root-card {
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 16px;
     background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    gap: 12px;
+  }
+
+  .root-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .root-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .root-time {
+    font-size: 0.78rem;
+    opacity: 0.7;
+  }
+
+  .root-body {
+    font-size: 0.94rem;
+    line-height: 1.45;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 24px;
+    display: grid;
+    gap: 14px;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 10px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .timeline-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    margin-top: 6px;
+  }
+
+  .timeline-content {
     display: grid;
     gap: 6px;
   }
 
-  .root header {
+  .timeline-header {
     display: flex;
-    justify-content: space-between;
-    font-size: 0.82rem;
-    opacity: 0.85;
+    gap: 8px;
+    font-size: 0.78rem;
+    opacity: 0.75;
   }
 
-  .root-meta {
-    font-size: 0.76rem;
+  .timeline-author {
+    font-weight: 600;
   }
 
-  .reply-composer {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    padding-top: 12px;
+  .timeline-body {
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+
+  .timeline-row.current .timeline-dot {
+    background: rgba(125, 211, 252, 0.9);
+    box-shadow: 0 0 8px rgba(125, 211, 252, 0.4);
+  }
+
+  .timeline-row.current .timeline-body {
+    font-weight: 500;
+  }
+
+  .reply-list {
+    overflow-y: auto;
+    padding-right: 6px;
   }
 
   .reply-list ul {
@@ -405,7 +524,18 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 16px;
+    gap: 18px;
+  }
+
+  .status {
+    margin: 0;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+
+  .status.empty {
+    text-align: center;
+    opacity: 0.6;
   }
 
   .load-more {
@@ -423,9 +553,8 @@
     cursor: default;
   }
 
-  .status {
-    margin: 0;
-    font-size: 0.8rem;
-    opacity: 0.75;
+  .reply-composer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 12px;
   }
 </style>
