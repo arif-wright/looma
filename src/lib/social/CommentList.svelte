@@ -93,7 +93,7 @@
   function addTopLevel(comment: PostComment, optimistic = false) {
     const node = normalizeComment(comment);
     items = dedupeComments(items, [node]);
-    if (optimistic) registerPending(comment.id);
+    if (optimistic) registerPending(comment.comment_id);
   }
 
   function addReply(parentId: string, reply: PostComment) {
@@ -133,7 +133,7 @@
     if (!parentId || !reply) return;
     errorMsg = null;
     const inserted = addReply(parentId, reply);
-    registerPending(reply.id);
+    registerPending(reply.comment_id);
     if (inserted) {
       totalCount += 1;
     }
@@ -147,38 +147,48 @@
 
   async function hydrateComment(row: any): Promise<PostComment | null> {
     if (!row?.id) return null;
-    let displayName = row.display_name ?? row?.profiles?.display_name ?? null;
-    let handle = row.handle ?? row?.profiles?.handle ?? null;
-    let avatar = row.avatar_url ?? row?.profiles?.avatar_url ?? null;
-    const authorId = row.author_id ?? row.comment_user_id ?? null;
+    const commentId = row.id ?? row.comment_id ?? null;
+    if (!commentId) return null;
 
-    if ((!displayName && !handle) && supabase) {
+    const commentPostId = row.comment_post_id ?? row.post_id ?? row.target_id ?? null;
+    if (!commentPostId) return null;
+
+    const authorId = row.author_id ?? row.comment_user_id ?? row.user_id ?? null;
+    if (!authorId) return null;
+
+    let authorDisplayName =
+      row.author_display_name ?? row.display_name ?? row?.profiles?.display_name ?? null;
+    let authorHandle = row.author_handle ?? row.handle ?? row?.profiles?.handle ?? null;
+    let authorAvatar =
+      row.author_avatar_url ?? row.avatar_url ?? row?.profiles?.avatar_url ?? null;
+
+    if (!authorDisplayName && !authorHandle && supabase) {
       const { data } = await supabase
         .from('profiles')
         .select('display_name, handle, avatar_url')
         .eq('id', authorId)
         .maybeSingle();
       if (data) {
-        displayName = data.display_name ?? null;
-        handle = data.handle ?? null;
-        avatar = data.avatar_url ?? null;
+        authorDisplayName = data.display_name ?? null;
+        authorHandle = data.handle ?? null;
+        authorAvatar = data.avatar_url ?? null;
       }
     }
 
     return {
-      id: row.id,
-      post_id: row.post_id,
-      author_id: authorId ?? row.comment_user_id ?? null,
-      comment_user_id: row.comment_user_id ?? authorId ?? null,
+      comment_id: commentId,
+      comment_post_id: commentPostId,
+      author_id: authorId,
+      comment_user_id: row.comment_user_id ?? authorId,
       body: row.body ?? '',
       created_at: row.created_at,
       parent_id: row.parent_id ?? null,
       is_public: row.is_public ?? true,
-      thread_root_id: row.thread_root_id ?? row.id,
+      thread_root_id: row.thread_root_id ?? commentId,
       depth: row.depth ?? (row.parent_id ? 1 : 0),
-      display_name: displayName,
-      handle,
-      avatar_url: avatar,
+      author_display_name: authorDisplayName,
+      author_handle: authorHandle,
+      author_avatar_url: authorAvatar,
       reply_count: row.reply_count ?? 0
     };
   }
@@ -188,8 +198,8 @@
     if (payload.eventType === 'INSERT') {
       const comment = await hydrateComment(payload.new);
       if (!comment) return;
-      if (pendingIds.has(comment.id)) {
-        pendingIds.delete(comment.id);
+      if (pendingIds.has(comment.comment_id)) {
+        pendingIds.delete(comment.comment_id);
         totalCount = Math.max(totalCount, items.length);
         return;
       }
@@ -203,8 +213,9 @@
       }
     } else if (payload.eventType === 'DELETE') {
       const row = payload.old;
-      if (!row?.id) return;
-      const result = removeCommentFromTree(items, row.id as string);
+      const targetId = (row?.comment_id ?? row?.id) as string | undefined;
+      if (!targetId) return;
+      const result = removeCommentFromTree(items, targetId);
       if (result.removed > 0) {
         items = result.tree;
         totalCount = Math.max(0, totalCount - result.removed);
@@ -287,7 +298,7 @@
     <p class="status muted">Be the first to comment.</p>
   {:else}
     <ul class="thread">
-      {#each items as comment (comment.id)}
+      {#each items as comment (comment.comment_id)}
         <CommentItem
           postId={postId}
           comment={comment}

@@ -20,9 +20,8 @@ export type PostRow = {
 };
 
 export type PostComment = {
-  id: string;
-  post_id: string;
-  comment_post_id?: string | null;
+  comment_id: string;
+  comment_post_id: string;
   author_id: string;
   comment_user_id: string | null;
   body: string;
@@ -31,9 +30,9 @@ export type PostComment = {
   is_public: boolean;
   thread_root_id: string;
   depth: number;
-  display_name: string | null;
-  handle: string | null;
-  avatar_url: string | null;
+  author_display_name: string | null;
+  author_handle: string | null;
+  author_avatar_url: string | null;
   reply_count: number;
 };
 
@@ -50,7 +49,7 @@ export type CommentNode = PostComment & {
 
 export type MentionOption = {
   id: string;
-  handle: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
+  author_handle: string | null;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
 };

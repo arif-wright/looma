@@ -12,18 +12,6 @@ const parseLimit = (value: string | null, fallback = 10) => {
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-const normalizeRow = (row: any) => {
-  if (!row) return null;
-  const commentId = row.comment_id ?? row.id ?? null;
-  const commentPostId = row.comment_post_id ?? row.post_id ?? null;
-  return {
-    ...row,
-    id: commentId,
-    post_id: commentPostId,
-    comment_post_id: commentPostId
-  };
-};
-
 export const GET: RequestHandler = async (event) => {
   const supabase = event.locals.sb ?? supabaseServer(event);
   let session = event.locals.session ?? null;
@@ -58,7 +46,7 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: error.message }, { status: 400 });
     }
 
-    const items = Array.isArray(data) ? data.map(normalizeRow).filter(Boolean) : [];
+    const items = Array.isArray(data) ? data : [];
     return json({ items });
   }
 
@@ -74,7 +62,7 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: error.message }, { status: 400 });
     }
 
-    const items = Array.isArray(data) ? data.map(normalizeRow).filter(Boolean) : [];
+    const items = Array.isArray(data) ? data : [];
     return json({ items });
   }
 
@@ -135,7 +123,7 @@ export const POST: RequestHandler = async (event) => {
 
     if (parentError) {
       console.error('[api/comments:POST] parent lookup failed', parentError);
-      return json({ error: parentError.message ?? 'Unable to resolve parent comment' }, { status: 500 });
+      return json({ error: parentError.message ?? String(parentError) }, { status: 500 });
     }
 
     postId = parentRow?.post_id ?? null;
@@ -164,11 +152,11 @@ export const POST: RequestHandler = async (event) => {
 
   if (error) {
     console.error('[api/comments:POST] insert_comment failed', error);
-    return json({ error: error.message ?? 'insert failed' }, { status: 400 });
+    return json({ error: error.message }, { status: 400 });
   }
 
   const rows = Array.isArray(data) ? data : data ? [data] : [];
-  const normalized = rows.length > 0 ? normalizeRow(rows[0]) : null;
+  const item = rows.length > 0 ? rows[0] : null;
 
-  return json({ item: normalized }, { status: 201 });
+  return json({ item }, { status: 201 });
 };

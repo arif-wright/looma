@@ -123,11 +123,11 @@ export function dedupeComments(
 ): CommentNode[] {
   const map = new Map<string, CommentNode>();
   for (const node of existing) {
-    map.set(node.id, node);
+    map.set(node.comment_id, node);
   }
   for (const node of incoming) {
-    const current = map.get(node.id);
-    map.set(node.id, mergeNode(current, node));
+    const current = map.get(node.comment_id);
+    map.set(node.comment_id, mergeNode(current, node));
   }
   const sorted = Array.from(map.values());
   sorted.sort((a, b) => {
@@ -158,7 +158,7 @@ export function removeCommentFromTree(tree: CommentNode[], commentId: string): {
   let removed = 0;
   const result: CommentNode[] = [];
   for (const node of tree) {
-    if (node.id === commentId) {
+    if (node.comment_id === commentId) {
       removed += countSubtree(node);
       continue;
     }
@@ -179,7 +179,7 @@ export function removeCommentFromTree(tree: CommentNode[], commentId: string): {
 
 export function findComment(tree: CommentNode[], id: string): CommentNode | null {
   for (const node of tree) {
-    if (node.id === id) return node;
+    if (node.comment_id === id) return node;
     if (node.replies) {
       const found = findComment(node.replies, id);
       if (found) return found;

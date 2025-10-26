@@ -184,9 +184,8 @@ end$$;
 -- ============================================================================
 
 drop function if exists public.insert_comment(uuid, text, uuid, boolean);
-drop function if exists public.insert_comment(uuid, text, uuid, boolean, boolean);
-drop function if exists public.get_comments_tree(uuid, int, timestamptz);
-drop function if exists public.get_replies(uuid, int, timestamptz);
+drop function if exists public.get_comments_tree(uuid, integer, timestamptz);
+drop function if exists public.get_replies(uuid, integer, timestamptz);
 create or replace function public.insert_comment(
   p_post uuid,
   p_body text,
@@ -204,19 +203,19 @@ returns table(
   is_public boolean,
   thread_root_id uuid,
   depth int,
-  display_name text,
-  handle text,
-  avatar_url text
+  author_display_name text,
+  author_handle text,
+  author_avatar_url text
 )
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  parent_post uuid;
-  post_owner uuid;
-  post_public boolean;
-  comment_id uuid;
+  v_parent_post uuid;
+  v_post_owner uuid;
+  v_post_public boolean;
+  v_comment_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -226,29 +225,30 @@ begin
     raise exception 'Body is required';
   end if;
 
-  select user_id, posts.is_public
-    into post_owner, post_public
-  from public.posts
-  where id = p_post;
+  select p_posts.user_id, p_posts.is_public
+    into v_post_owner, v_post_public
+  from public.posts as p_posts
+  where p_posts.id = p_post;
 
-  if post_owner is null then
+  if v_post_owner is null then
     raise exception 'Post not found';
   end if;
 
-  if coalesce(post_public, false) = false and post_owner <> auth.uid() then
+  if coalesce(v_post_public, false) = false and v_post_owner <> auth.uid() then
     raise exception 'Not authorized to comment on this post';
   end if;
 
   if p_parent is not null then
-    select post_id into parent_post
-    from public.comments
-    where id = p_parent;
+    select c_parent.post_id
+      into v_parent_post
+    from public.comments as c_parent
+    where c_parent.id = p_parent;
 
-    if parent_post is null then
+    if v_parent_post is null then
       raise exception 'Parent comment not found';
     end if;
 
-    if parent_post <> p_post then
+    if v_parent_post <> p_post then
       raise exception 'Parent comment belongs to a different post';
     end if;
   end if;
@@ -273,8 +273,8 @@ begin
     p_parent,
     coalesce(p_is_public, true)
   )
-  returning comments.id
-  into comment_id;
+  returning public.comments.id
+  into v_comment_id;
 
   perform public.emit_event(
     auth.uid(),
@@ -282,30 +282,30 @@ begin
     'Commented on a post',
     jsonb_build_object(
       'post_id', p_post,
-      'comment_id', comment_id,
+      'comment_id', v_comment_id,
       'parent_id', p_parent
     ),
-    coalesce(post_public, true)
+    coalesce(v_post_public, true)
   );
 
   return query
   select
     c.id as comment_id,
     c.post_id as comment_post_id,
-    c.author_id,
+    c.author_id as author_id,
     c.user_id as comment_user_id,
-    c.body,
-    c.created_at,
-    c.parent_id,
-    c.is_public,
-    c.thread_root_id,
-    c.depth,
-    p.display_name,
-    p.handle,
-    p.avatar_url
-  from public.comments c
-  left join public.profiles p on p.id = c.author_id
-  where c.id = comment_id;
+    c.body as body,
+    c.created_at as created_at,
+    c.parent_id as parent_id,
+    c.is_public as is_public,
+    c.thread_root_id as thread_root_id,
+    c.depth as depth,
+    prof.display_name as author_display_name,
+    prof.handle as author_handle,
+    prof.avatar_url as author_avatar_url
+  from public.comments as c
+  left join public.profiles as prof on prof.id = c.author_id
+  where c.id = v_comment_id;
 end$$;
 
 create or replace function public.get_comments_tree(
@@ -324,9 +324,9 @@ returns table (
   is_public boolean,
   thread_root_id uuid,
   depth int,
-  display_name text,
-  handle text,
-  avatar_url text,
+  author_display_name text,
+  author_handle text,
+  author_avatar_url text,
   reply_count bigint
 )
 language sql
@@ -336,24 +336,24 @@ as $$
   select
     c.id as comment_id,
     c.post_id as comment_post_id,
-    c.author_id,
+    c.author_id as author_id,
     c.user_id as comment_user_id,
-    c.body,
-    c.created_at,
-    c.parent_id,
-    c.is_public,
-    c.thread_root_id,
-    c.depth,
-    prof.display_name,
-    prof.handle,
-    prof.avatar_url,
+    c.body as body,
+    c.created_at as created_at,
+    c.parent_id as parent_id,
+    c.is_public as is_public,
+    c.thread_root_id as thread_root_id,
+    c.depth as depth,
+    prof.display_name as author_display_name,
+    prof.handle as author_handle,
+    prof.avatar_url as author_avatar_url,
     (
       select count(*)::bigint
-      from public.comments r
+      from public.comments as r
       where r.parent_id = c.id
     ) as reply_count
-  from public.comments c
-  left join public.profiles prof on prof.id = c.author_id
+  from public.comments as c
+  left join public.profiles as prof on prof.id = c.author_id
   where c.post_id = p_post
     and c.parent_id is null
     and c.is_public = true
@@ -378,9 +378,9 @@ returns table (
   is_public boolean,
   thread_root_id uuid,
   depth int,
-  display_name text,
-  handle text,
-  avatar_url text
+  author_display_name text,
+  author_handle text,
+  author_avatar_url text
 )
 language sql
 security definer
@@ -389,19 +389,19 @@ as $$
   select
     c.id as comment_id,
     c.post_id as comment_post_id,
-    c.author_id,
+    c.author_id as author_id,
     c.user_id as comment_user_id,
-    c.body,
-    c.created_at,
-    c.parent_id,
-    c.is_public,
-    c.thread_root_id,
-    c.depth,
-    prof.display_name,
-    prof.handle,
-    prof.avatar_url
-  from public.comments c
-  left join public.profiles prof on prof.id = c.author_id
+    c.body as body,
+    c.created_at as created_at,
+    c.parent_id as parent_id,
+    c.is_public as is_public,
+    c.thread_root_id as thread_root_id,
+    c.depth as depth,
+    prof.display_name as author_display_name,
+    prof.handle as author_handle,
+    prof.avatar_url as author_avatar_url
+  from public.comments as c
+  left join public.profiles as prof on prof.id = c.author_id
   where c.parent_id = p_comment
     and c.is_public = true
     and (
@@ -413,8 +413,8 @@ as $$
 $$;
 
 grant execute on function public.insert_comment(uuid, text, uuid, boolean) to authenticated;
-grant execute on function public.get_comments_tree(uuid, int, timestamptz) to anon, authenticated;
-grant execute on function public.get_replies(uuid, int, timestamptz) to anon, authenticated;
+grant execute on function public.get_comments_tree(uuid, integer, timestamptz) to anon, authenticated;
+grant execute on function public.get_replies(uuid, integer, timestamptz) to anon, authenticated;
 
 -- ============================================================================
 -- RLS policies

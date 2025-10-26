@@ -54,10 +54,12 @@
             class:active={index === active}
             on:mousedown|preventDefault={() => handleSelect(item)}
           >
-            <img src={item.avatar_url ?? '/avatar.svg'} alt="" width="28" height="28" loading="lazy" />
+            <img src={item.author_avatar_url ?? '/avatar.svg'} alt="" width="28" height="28" loading="lazy" />
             <span>
-              <b>{item.display_name ?? (item.handle ? `@${item.handle}` : 'Someone')}</b>
-              <small>@{item.handle ?? 'user'}</small>
+              <b>
+                {item.author_display_name ?? (item.author_handle ? `@${item.author_handle}` : 'Someone')}
+              </b>
+              <small>@{item.author_handle ?? 'user'}</small>
             </span>
           </li>
         {/each}

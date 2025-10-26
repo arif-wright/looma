@@ -32,7 +32,7 @@
       append && comment.replies && comment.replies.length > 0
         ? (comment.replies[0].created_at as string)
         : null;
-    const { items, error } = await fetchReplies(comment.id, {
+    const { items, error } = await fetchReplies(comment.comment_id, {
       limit: REPLY_PAGE_SIZE,
       after: append ? cursor : null
     });
@@ -79,17 +79,27 @@
     comment.replies = mergeReplies(comment.replies ?? [], [normalizeComment(reply)]);
     comment.reply_count = (comment.reply_count ?? 0) + 1;
     comment.repliesTotal = Math.max(comment.repliesTotal ?? 0, comment.reply_count);
-    dispatch('replyPosted', { parentId: comment.id, comment: reply });
-    dispatch('replyCount', { parentId: comment.id, total: comment.repliesTotal ?? comment.reply_count ?? 0 });
+    dispatch('replyPosted', { parentId: comment.comment_id, comment: reply });
+    dispatch('replyCount', {
+      parentId: comment.comment_id,
+      total: comment.repliesTotal ?? comment.reply_count ?? 0
+    });
   }
 </script>
 
-<li class="comment" id={`comment-${comment.id}`} style={`margin-left:${indent}px`}>
-  <img class="avatar" src={comment.avatar_url ?? '/avatar.svg'} alt="" width="32" height="32" loading="lazy" />
+<li class="comment" id={`comment-${comment.comment_id}`} style={`margin-left:${indent}px`}>
+  <img
+    class="avatar"
+    src={comment.author_avatar_url ?? '/avatar.svg'}
+    alt=""
+    width="32"
+    height="32"
+    loading="lazy"
+  />
   <div class="content">
     <div class="header">
-      <a class="name" href={`/u/${comment.handle ?? comment.author_id}`}>
-        {comment.display_name ?? (comment.handle ? `@${comment.handle}` : 'Someone')}
+      <a class="name" href={`/u/${comment.author_handle ?? comment.author_id}`}>
+        {comment.author_display_name ?? (comment.author_handle ? `@${comment.author_handle}` : 'Someone')}
       </a>
       <span class="dot" aria-hidden="true">•</span>
       <span class="when">{relativeTime(comment.created_at)}</span>
@@ -120,8 +130,10 @@
         <CommentComposer
           bind:this={composerRef}
           postId={postId}
-          parentId={comment.id}
-          placeholder={`Reply to ${comment.display_name ?? comment.handle ?? 'this comment'}…`}
+          parentId={comment.comment_id}
+          placeholder={`Reply to ${
+            comment.author_display_name ?? comment.author_handle ?? 'this comment'
+          }…`}
           on:posted={handleReplyPosted}
         />
       </div>
@@ -137,7 +149,7 @@
         {/if}
         {#if comment.replies && comment.replies.length > 0}
           <ul class="reply-list">
-            {#each comment.replies as reply (reply.id)}
+            {#each comment.replies as reply (reply.comment_id)}
               <svelte:self
                 postId={postId}
                 comment={reply}

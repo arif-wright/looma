@@ -82,19 +82,24 @@ export let autofocus = false;
     }
   }
 
-  function getCaretOffset(position: number) {
+  function getCaretRect(position: number): DOMRect | null {
     if (!textareaEl) return null;
     ensureMirror();
     if (!mirrorEl) return null;
     syncMirrorStyles();
+    const textareaRect = textareaEl.getBoundingClientRect();
+    mirrorEl.style.top = `${textareaRect.top}px`;
+    mirrorEl.style.left = `${textareaRect.left}px`;
+    mirrorEl.style.width = `${textareaRect.width}px`;
     mirrorEl.textContent = textareaEl.value.slice(0, position);
     const marker = document.createElement('span');
-    marker.textContent = textareaEl.value.slice(position) || ' ';
+    marker.textContent = '\u200b';
     mirrorEl.appendChild(marker);
-    const top = marker.offsetTop - textareaEl.scrollTop;
-    const left = marker.offsetLeft - textareaEl.scrollLeft;
+    const range = document.createRange();
+    range.selectNode(marker);
+    const rect = range.getClientRects()[0] ?? null;
     mirrorEl.removeChild(marker);
-    return { top, left };
+    return rect ?? null;
   }
 
   function resize() {
@@ -109,17 +114,13 @@ export let autofocus = false;
 
   function updateMentionPosition() {
     if (typeof window === 'undefined') return;
-    if (!mentionOpen || mentionStart === null || !textareaEl || !composerEl) return;
-    const caret = getCaretOffset(mentionStart);
-    if (!caret) return;
-    const style = window.getComputedStyle(textareaEl);
-    const lineHeight = parseFloat(style.lineHeight || '16');
-    const textareaRect = textareaEl.getBoundingClientRect();
-    const scrollX = typeof window !== 'undefined' ? window.scrollX : 0;
-    const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    if (!mentionOpen || !textareaEl) return;
+    const caretIndex = textareaEl.selectionStart ?? textareaEl.value.length;
+    const rect = getCaretRect(caretIndex);
+    if (!rect) return;
     mentionPosition = {
-      top: textareaRect.top + caret.top + lineHeight + scrollY,
-      left: textareaRect.left + caret.left + scrollX
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX
     };
   }
 
@@ -159,7 +160,13 @@ export let autofocus = false;
         });
         if (!res.ok) throw new Error('Failed to search users');
         const payload = await res.json();
-        mentionItems = Array.isArray(payload?.items) ? payload.items : [];
+        const rows = Array.isArray(payload?.items) ? payload.items : [];
+        mentionItems = rows.map((item: any) => ({
+          id: item.id,
+          author_handle: item.author_handle ?? item.handle ?? null,
+          author_display_name: item.author_display_name ?? item.display_name ?? null,
+          author_avatar_url: item.author_avatar_url ?? item.avatar_url ?? null
+        }));
         mentionOpen = mentionItems.length > 0;
         mentionActive = 0;
         tick().then(updateMentionPosition);
@@ -192,7 +199,7 @@ export let autofocus = false;
         }
         mentionStart = i;
         mentionQuery = fragment;
-       scheduleMentionFetch(fragment);
+        scheduleMentionFetch(fragment);
         mentionOpen = true;
         tick().then(updateMentionPosition);
         return;
@@ -252,8 +259,8 @@ export let autofocus = false;
   }
 
   function insertMention(option: MentionOption | undefined) {
-    if (!option?.handle || !textareaEl || mentionStart === null) return;
-    const handle = option.handle.toLowerCase();
+    if (!option?.author_handle || !textareaEl || mentionStart === null) return;
+    const handle = option.author_handle.toLowerCase();
     const mentionText = `@${handle}`;
     const before = text.slice(0, mentionStart);
     const cursor = textareaEl.selectionStart ?? mentionStart;
