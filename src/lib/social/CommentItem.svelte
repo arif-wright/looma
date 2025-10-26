@@ -43,7 +43,11 @@
       ? replyPageSize
       : Math.max(estimatedRemaining, 0));
   $: continueThread = depth > maxDepth;
-  $: bodyClamped = depth >= 1 && !seeMore;
+  $: rawBody = comment.body ?? '';
+  $: newlineCount = (rawBody.match(/\n/g) ?? []).length;
+  $: shouldClamp =
+    depth >= 1 && (rawBody.length > 320 || newlineCount >= 5);
+  $: bodyClamped = shouldClamp && !seeMore;
   $: indentStyle = `--depth:${displayDepth}`;
 
   function toggleComposer() {
@@ -120,7 +124,7 @@
       <div class:body-clamped={bodyClamped} class="body">
         {@html formatCommentBody(comment.body)}
       </div>
-      {#if depth >= 1 && comment.body?.length > 0}
+      {#if shouldClamp}
         <button
           type="button"
           class="see-more"
