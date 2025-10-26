@@ -1,7 +1,8 @@
 <script lang="ts">
   import PostCard from '$lib/social/PostCard.svelte';
   import CommentList from '$lib/social/CommentList.svelte';
-  import type { PostRow, PostComment } from '$lib/social/types';
+  import ThreadDrawer from '$lib/social/ThreadDrawer.svelte';
+  import type { PostRow, PostComment, CommentNode } from '$lib/social/types';
 
   export let data: {
     post: PostRow;
@@ -17,6 +18,9 @@
   let initialComments = data.comments ?? [];
   let cursor: string | null = data.nextCursor ?? null;
   let commentListRef: InstanceType<typeof CommentList> | null = null;
+  let threadOpen = false;
+  let threadRoot: CommentNode | null = null;
+  let threadAncestors: CommentNode[] = [];
 
   function handleCommentCount(event: CustomEvent<number>) {
     const value = event.detail;
@@ -26,6 +30,18 @@
 
   function handleFocusRequest() {
     commentListRef?.focusComposer?.();
+  }
+
+  function handleOpenThread(event: CustomEvent<{ root: CommentNode; ancestors: CommentNode[] }>) {
+    threadRoot = event.detail.root;
+    threadAncestors = event.detail.ancestors;
+    threadOpen = true;
+  }
+
+  function handleCloseThread() {
+    threadOpen = false;
+    threadRoot = null;
+    threadAncestors = [];
   }
 </script>
 
@@ -52,8 +68,16 @@
       initialCursor={cursor}
       initialCount={commentCount}
       on:count={handleCommentCount}
+      on:openThread={handleOpenThread}
     />
   </section>
+  <ThreadDrawer
+    postId={post.id}
+    open={threadOpen}
+    root={threadRoot}
+    ancestors={threadAncestors}
+    on:close={handleCloseThread}
+  />
 </main>
 
 <style>
