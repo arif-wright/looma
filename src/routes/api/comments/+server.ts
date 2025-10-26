@@ -90,37 +90,71 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let payload: { postId?: unknown; body?: unknown; parentId?: unknown; isPublic?: unknown };
+  let payload: { postId?: unknown; replyTo?: unknown; body?: unknown; isPublic?: unknown };
   try {
     payload = await event.request.json();
   } catch {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const postId = typeof payload.postId === 'string' ? payload.postId.trim() : '';
+  const providedPostId =
+    typeof payload.postId === 'string' && payload.postId.trim().length > 0 ? payload.postId.trim() : null;
+  const replyTo =
+    typeof payload.replyTo === 'string' && payload.replyTo.trim().length > 0 ? payload.replyTo.trim() : null;
   const body = typeof payload.body === 'string' ? payload.body.trim() : '';
-  const rawParent = typeof payload.parentId === 'string' ? payload.parentId.trim() : null;
-  const parentId = rawParent && rawParent.length > 0 ? rawParent : null;
   const isPublic = typeof payload.isPublic === 'boolean' ? payload.isPublic : true;
 
-  if (!postId || !UUID_REGEX.test(postId)) {
-    return json({ error: 'postId is required' }, { status: 400 });
+  if (!providedPostId && !replyTo) {
+    return json({ error: 'postId or replyTo is required' }, { status: 400 });
   }
 
   if (!body) {
     return json({ error: 'body is required' }, { status: 400 });
   }
 
-  if (parentId && !UUID_REGEX.test(parentId)) {
-    return json({ error: 'parentId must be a uuid' }, { status: 400 });
+  if (providedPostId && !UUID_REGEX.test(providedPostId)) {
+    return json({ error: 'postId must be a uuid' }, { status: 400 });
   }
 
-  console.debug('[api/comments:POST] payload', { postId, parentId, len: body.length });
+  if (replyTo && !UUID_REGEX.test(replyTo)) {
+    return json({ error: 'replyTo must be a uuid' }, { status: 400 });
+  }
+
+  let postId = providedPostId;
+
+  if (replyTo && !postId) {
+    const { data: parentRow, error: parentError } = await supabase
+      .from('comments')
+      .select('post_id')
+      .eq('id', replyTo)
+      .maybeSingle();
+
+    if (parentError) {
+      console.error('[api/comments:POST] parent lookup failed', parentError);
+      return json({ error: parentError.message ?? 'Unable to resolve parent comment' }, { status: 500 });
+    }
+
+    postId = parentRow?.post_id ?? null;
+  }
+
+  if (!postId) {
+    return json({ error: 'postId could not be determined' }, { status: 400 });
+  }
+
+  if (!UUID_REGEX.test(postId)) {
+    return json({ error: 'postId must be a uuid' }, { status: 400 });
+  }
+
+  console.debug('[api/comments:POST] payload', {
+    postId,
+    replyTo,
+    len: body.length
+  });
 
   const { data, error } = await supabase.rpc('insert_comment', {
     p_post: postId,
     p_body: body,
-    p_parent: parentId,
+    p_parent: replyTo,
     p_is_public: isPublic
   });
 

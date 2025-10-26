@@ -9,6 +9,16 @@
   export let query = '';
   export let position: { top: number; left: number } = { top: 0, left: 0 };
 
+  const portal = (node: HTMLElement) => {
+    if (typeof document === 'undefined') return;
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+      }
+    };
+  };
+
   const dispatch = createEventDispatcher<{ select: MentionOption }>();
 
   function handleSelect(option: MentionOption) {
@@ -19,6 +29,7 @@
 {#if open}
   <div
     class="mention-popover"
+    use:portal
     style={`top:${position.top}px;left:${position.left}px;`}
     role="dialog"
     aria-label="Mention suggestions"
@@ -58,7 +69,7 @@
 <style>
   .mention-popover {
     position: fixed;
-    z-index: 1000;
+    z-index: 60;
     min-width: 220px;
     max-width: 260px;
     background: rgba(20, 20, 24, 0.96);

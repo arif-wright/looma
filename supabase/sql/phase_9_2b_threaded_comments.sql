@@ -184,6 +184,7 @@ end$$;
 -- ============================================================================
 
 drop function if exists public.insert_comment(uuid, text, uuid, boolean);
+drop function if exists public.insert_comment(uuid, text, uuid, boolean, boolean);
 drop function if exists public.get_comments_tree(uuid, int, timestamptz);
 drop function if exists public.get_replies(uuid, int, timestamptz);
 create or replace function public.insert_comment(

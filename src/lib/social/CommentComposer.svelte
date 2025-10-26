@@ -281,15 +281,13 @@ export let autofocus = false;
       return;
     }
 
-    const payload = {
-      postId,
-      parentId: parentId ?? null,
-      body
-    };
+    const payload = parentId
+      ? { replyTo: parentId, body }
+      : { postId, body };
 
     console.debug('[comment:submit]', {
-      postId,
-      parentId: parentId ?? null,
+      postId: parentId ? undefined : postId,
+      replyTo: parentId ?? null,
       preview: body.slice(0, 64)
     });
 
@@ -301,18 +299,18 @@ export let autofocus = false;
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = (await res.json().catch(() => ({}))) as ApiResponse;
-      if (!res.ok) {
-        const message = data?.error ?? res.statusText;
-        throw new Error(message);
-      }
-      if (!data?.item) {
-        throw new Error('Unexpected response');
-      }
-      text = '';
-      resize();
-      resetMention();
-      dispatch('posted', { comment: data.item, parentId: payload.parentId });
+     const data = (await res.json().catch(() => ({}))) as ApiResponse;
+     if (!res.ok) {
+       const message = data?.error ?? res.statusText;
+       throw new Error(message);
+     }
+     if (!data?.item) {
+       throw new Error('Unexpected response');
+     }
+     text = '';
+     resize();
+     resetMention();
+      dispatch('posted', { comment: data.item, parentId: parentId ?? null });
       textareaEl?.focus();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to post comment';
