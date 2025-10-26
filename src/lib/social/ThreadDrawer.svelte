@@ -33,21 +33,67 @@
   let loading = false;
   let hasMore = false;
   let composerRef: InstanceType<typeof CommentComposer> | null = null;
+  let rootTotalCount = 0;
+
   let replyStates = new Map<string, ReplyState>();
+  const commentLookup = new Map<string, CommentNode>();
+  const parentLookup = new Map<string, string | null>();
   let lastRootId: string | null = null;
 
   function closeDrawer() {
     dispatch('close');
   }
 
-  function resetState() {
+  function registerComment(comment: CommentNode) {
+    commentLookup.set(comment.comment_id, comment);
+    parentLookup.set(comment.comment_id, comment.parent_id ?? null);
+  }
+
+  function ensureReplyState(comment: CommentNode): ReplyState {
+    const existing = replyStates.get(comment.comment_id);
+    if (existing) return existing;
+    const state: ReplyState = {
+      items: [],
+      hasMore: (comment.reply_count ?? 0) > 0,
+      cursor: null,
+      totalCount: comment.reply_count ?? 0,
+      loading: false,
+      isOpen: false
+    };
+    const next = new Map(replyStates);
+    next.set(comment.comment_id, state);
+    replyStates = next;
+    return state;
+  }
+
+  function resetState(baseRoot: CommentNode | null) {
     replies = [];
     cursor = null;
     hasMore = false;
     replyStates = new Map();
+    commentLookup.clear();
+    parentLookup.clear();
+    if (baseRoot) {
+      registerComment(baseRoot);
+      rootTotalCount = baseRoot.reply_count ?? 0;
+    } else {
+      rootTotalCount = 0;
+    }
   }
 
-  async function loadReplies(initial = false) {
+  function buildAncestors(comment: CommentNode): CommentNode[] {
+    const trail: CommentNode[] = [];
+    let currentId = parentLookup.get(comment.comment_id) ?? comment.parent_id ?? null;
+    while (currentId) {
+      const node = commentLookup.get(currentId);
+      if (!node) break;
+      trail.unshift(node);
+      currentId = parentLookup.get(node.comment_id) ?? node.parent_id ?? null;
+    }
+    return trail;
+  }
+
+  async function loadRootReplies(initial = false) {
     if (!root || loading) return;
     loading = true;
     const { items, error } = await fetchReplies(root.comment_id, {
@@ -59,19 +105,118 @@
     const normalized = (items ?? []).map((row) => {
       const node = normalizeComment(row);
       node.depth = 0;
+      registerComment(node);
       return node;
     });
     replies = initial ? normalized : [...replies, ...normalized];
     cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : cursor;
-    hasMore = normalized.length === pageSize;
+    rootTotalCount = Math.max(rootTotalCount, replies.length);
+    hasMore = replies.length < rootTotalCount || normalized.length === pageSize;
+  }
+
+  function insertReply(parentId: string | null, data: PostComment) {
+    const node = normalizeComment(data);
+    node.depth = 0;
+    registerComment(node);
+
+    if (root && parentId === root.comment_id) {
+      replies = [node, ...replies];
+      rootTotalCount += 1;
+      hasMore = replies.length < rootTotalCount;
+      return;
+    }
+
+    if (!parentId) {
+      replies = [node, ...replies];
+      rootTotalCount += 1;
+      hasMore = replies.length < rootTotalCount;
+      return;
+    }
+
+    const parent = commentLookup.get(parentId);
+    if (!parent) return;
+    const state = ensureReplyState(parent);
+    state.items = [node, ...state.items];
+    state.totalCount = state.totalCount + 1;
+    state.hasMore = state.items.length < state.totalCount;
+    replyStates = new Map(replyStates);
   }
 
   function handleReplyPosted(event: CustomEvent<{ comment: PostComment; parentId: string | null }>) {
     const reply = event.detail.comment;
     if (!reply) return;
-    const node = normalizeComment(reply);
-    node.depth = 0;
-    replies = [node, ...replies];
+    insertReply(event.detail.parentId ?? null, reply);
+  }
+
+  function handleReplyCount(event: CustomEvent<{ parentId: string; total: number }>) {
+    const { parentId, total } = event.detail;
+    if (!parentId) return;
+    if (root && parentId === root.comment_id) {
+      rootTotalCount = total;
+      hasMore = replies.length < rootTotalCount;
+      return;
+    }
+    const parent = commentLookup.get(parentId);
+    if (!parent) return;
+    const state = ensureReplyState(parent);
+    state.totalCount = total;
+    state.hasMore = state.items.length < state.totalCount;
+    replyStates = new Map(replyStates);
+  }
+
+  async function loadChildReplies(comment: CommentNode, append = true) {
+    const state = ensureReplyState(comment);
+    if (state.loading) return;
+    state.loading = true;
+    replyStates = new Map(replyStates);
+
+    const { items, error } = await fetchReplies(comment.comment_id, {
+      limit: pageSize,
+      after: append ? state.cursor : null
+    });
+
+    if (error) {
+      state.loading = false;
+      replyStates = new Map(replyStates);
+      return;
+    }
+
+    const normalized = (items ?? []).map((row) => {
+      const node = normalizeComment(row);
+      node.depth = 0;
+      registerComment(node);
+      return node;
+    });
+
+    state.items = append ? [...state.items, ...normalized] : normalized;
+    state.cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : state.cursor;
+    const expectedTotal = comment.reply_count ?? state.totalCount;
+    state.totalCount = Math.max(expectedTotal, state.items.length);
+    state.hasMore = state.items.length < state.totalCount || normalized.length === pageSize;
+    state.loading = false;
+    replyStates = new Map(replyStates);
+  }
+
+  function handleToggleReplies(event: CustomEvent<{ comment: CommentNode }>) {
+    const comment = event.detail.comment;
+    const state = ensureReplyState(comment);
+    state.isOpen = !state.isOpen;
+    replyStates = new Map(replyStates);
+    if (state.isOpen && state.items.length === 0 && state.hasMore && !state.loading) {
+      void loadChildReplies(comment, false);
+    }
+  }
+
+  function handleLoadReplies(event: CustomEvent<{ comment: CommentNode; append?: boolean }>) {
+    void loadChildReplies(event.detail.comment, event.detail.append ?? true);
+  }
+
+  function handleContinueThread(event: CustomEvent<{ comment: CommentNode }>) {
+    const target = event.detail.comment;
+    if (!target) return;
+    root = target;
+    ancestors = buildAncestors(target);
+    lastRootId = null;
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -92,8 +237,8 @@
     const currentId = root?.comment_id ?? null;
     if (currentId && currentId !== lastRootId) {
       lastRootId = currentId;
-      resetState();
-      void loadReplies(true);
+      resetState(root);
+      void loadRootReplies(true);
     }
   } else {
     lastRootId = null;
@@ -156,12 +301,16 @@
               comment={reply}
               replyPageSize={pageSize}
               maxDepth={0}
-              on:replyPosted={(event) => handleReplyPosted(event)}
+              on:replyPosted={handleReplyPosted}
+              on:replyCount={handleReplyCount}
+              on:toggleReplies={handleToggleReplies}
+              on:loadReplies={handleLoadReplies}
+              on:continueThread={handleContinueThread}
             />
           {/each}
         </ul>
         {#if hasMore}
-          <button type="button" class="load-more" on:click={() => loadReplies(false)} disabled={loading}>
+          <button type="button" class="load-more" on:click={() => loadRootReplies(false)} disabled={loading}>
             {loading ? 'Loading…' : 'Load more'}
           </button>
         {/if}
