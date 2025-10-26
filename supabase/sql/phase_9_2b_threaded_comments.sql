@@ -195,7 +195,7 @@ create or replace function public.insert_comment(
 )
 returns table(
   comment_id uuid,
-  post_id uuid,
+  comment_post_id uuid,
   author_id uuid,
   comment_user_id uuid,
   body text,
@@ -291,7 +291,7 @@ begin
   return query
   select
     c.id as comment_id,
-    c.post_id,
+    c.post_id as comment_post_id,
     c.author_id,
     c.user_id as comment_user_id,
     c.body,
@@ -315,7 +315,7 @@ create or replace function public.get_comments_tree(
 )
 returns table (
   comment_id uuid,
-  post_id uuid,
+  comment_post_id uuid,
   author_id uuid,
   comment_user_id uuid,
   body text,
@@ -335,7 +335,7 @@ set search_path = public
 as $$
   select
     c.id as comment_id,
-    c.post_id,
+    c.post_id as comment_post_id,
     c.author_id,
     c.user_id as comment_user_id,
     c.body,
@@ -369,7 +369,7 @@ create or replace function public.get_replies(
 )
 returns table (
   comment_id uuid,
-  post_id uuid,
+  comment_post_id uuid,
   author_id uuid,
   comment_user_id uuid,
   body text,
@@ -388,7 +388,7 @@ set search_path = public
 as $$
   select
     c.id as comment_id,
-    c.post_id,
+    c.post_id as comment_post_id,
     c.author_id,
     c.user_id as comment_user_id,
     c.body,

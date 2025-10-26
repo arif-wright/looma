@@ -14,9 +14,13 @@ const UUID_REGEX =
 
 const normalizeRow = (row: any) => {
   if (!row) return null;
+  const commentId = row.comment_id ?? row.id ?? null;
+  const commentPostId = row.comment_post_id ?? row.post_id ?? null;
   return {
     ...row,
-    id: row.comment_id ?? row.id ?? null
+    id: commentId,
+    post_id: commentPostId,
+    comment_post_id: commentPostId
   };
 };
 
@@ -160,7 +164,7 @@ export const POST: RequestHandler = async (event) => {
 
   if (error) {
     console.error('[api/comments:POST] insert_comment failed', error);
-    return json({ error: error.message ?? 'insert failed' }, { status: 500 });
+    return json({ error: error.message ?? 'insert failed' }, { status: 400 });
   }
 
   const rows = Array.isArray(data) ? data : data ? [data] : [];

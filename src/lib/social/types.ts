@@ -22,6 +22,7 @@ export type PostRow = {
 export type PostComment = {
   id: string;
   post_id: string;
+  comment_post_id?: string | null;
   author_id: string;
   comment_user_id: string | null;
   body: string;
