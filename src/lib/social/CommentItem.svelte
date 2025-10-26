@@ -173,7 +173,7 @@
           {/if}
           <ul class="reply-list" role="list">
             {#each replies as reply (reply.comment_id)}
-              <CommentItem
+              <svelte:self
                 postId={postId}
                 comment={reply}
                 {replyStates}
