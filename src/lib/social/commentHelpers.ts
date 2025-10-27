@@ -5,7 +5,7 @@ export const COMMENT_ORDER = {
   DESC: 'desc'
 } as const;
 
-export const MAX_INLINE_DEPTH = 2;
+export const MAX_INLINE_DEPTH = 1;
 export const INLINE_REPLY_BATCH_SIZE = 3;
 export const THREAD_DRAWER_PAGE_SIZE = 20;
 

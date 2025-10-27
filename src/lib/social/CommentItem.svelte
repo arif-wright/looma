@@ -43,6 +43,10 @@
       ? replyPageSize
       : Math.max(estimatedRemaining, 0));
   $: continueThread = depth > maxDepth;
+  $: canToggleInline = depth < maxDepth;
+  $: nestedCount = totalCount;
+  $: showThreadButton = depth === 1 && nestedCount > 0;
+  $: allowInlineReply = depth === 0 || (depth === 1 && nestedCount === 0);
   $: rawBody = comment.body ?? '';
   $: newlineCount = (rawBody.match(/\n/g) ?? []).length;
   $: shouldClamp =
@@ -136,10 +140,22 @@
       {/if}
       <div class="actions">
         <button type="button" class="action">Like</button>
-        <button type="button" class="action" on:click={toggleComposer}>
-          {comment.replying ? 'Cancel' : 'Reply'}
-        </button>
-        {#if hasReplies}
+        {#if allowInlineReply}
+          <button type="button" class="action" on:click={toggleComposer}>
+            {comment.replying ? 'Cancel' : 'Reply'}
+          </button>
+        {/if}
+        {#if showThreadButton}
+          <button
+            type="button"
+            class="action"
+            on:click={handleContinueThread}
+            aria-haspopup="dialog"
+          >
+            View thread ({nestedCount})
+          </button>
+        {/if}
+        {#if canToggleInline && hasReplies}
           <button
             type="button"
             class="action"
@@ -156,7 +172,7 @@
           </button>
         {/if}
       </div>
-      {#if comment.replying}
+      {#if comment.replying && allowInlineReply}
         <div class="reply-composer">
           <CommentComposer
             bind:this={composerRef}
@@ -170,7 +186,7 @@
         </div>
       {/if}
 
-      {#if hasReplies && isExpanded}
+      {#if canToggleInline && hasReplies && isExpanded}
         <div class="replies" id={`replies-${comment.comment_id}`}>
           {#if replyState?.loading && replies.length === 0}
             <p class="status">Loading replies…</p>
