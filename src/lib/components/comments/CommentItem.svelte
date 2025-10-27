@@ -38,7 +38,7 @@
   id={`c-${comment.id}`}
   class="group relative rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 text-sm shadow-sm transition focus-within:border-emerald-500/70 focus-within:shadow-emerald-500/20"
   class:ring-2={isHighlighted}
-  class={isHighlighted ? 'ring-emerald-400/70' : ''}
+  class:ring-emerald-400/70={isHighlighted}
   style={`margin-left:${depth * 20}px`}
 >
   <header class="mb-2 flex items-start gap-3">
