@@ -4,6 +4,7 @@
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
+  import { threadPermalinkById, threadPermalinkBySlug } from '$lib/threads/permalink';
 
   const supabase = supabaseBrowser();
 
@@ -51,6 +52,8 @@
     post.author_name ??
     (post.display_name ?? (authorHandle ? `@${authorHandle}` : 'Someone'));
   $: profileHref = `/u/${authorHandle ?? post.user_id}`;
+  $: threadSlug = (post.slug ?? null) as string | null;
+  $: threadLink = threadSlug ? threadPermalinkBySlug(threadSlug) : threadPermalinkById(post.id);
 
   function relativeTime(value: string) {
     const ts = new Date(value).getTime();
@@ -233,7 +236,7 @@
     <button class="chip" type="button" on:click={toggleComments}>
       Comment <span class="count">{commentCount}</span>
     </button>
-    <button class="chip muted" type="button">Share</button>
+    <a class="chip muted" href={threadLink}>Open thread</a>
   </footer>
 
   {#if !detail && commentOpen}
@@ -248,6 +251,7 @@
   {/if}
   <ThreadDrawer
     postId={post.id}
+    threadSlug={threadSlug}
     open={threadOpen}
     root={threadRoot}
     ancestors={threadAncestors}

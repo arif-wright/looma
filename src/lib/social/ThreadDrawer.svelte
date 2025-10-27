@@ -10,10 +10,12 @@
     relativeTime,
     THREAD_DRAWER_PAGE_SIZE
   } from './commentHelpers';
+  import { threadPermalinkById, threadPermalinkBySlug } from '$lib/threads/permalink';
   import type { CommentNode, PostComment } from './types';
 
   export let open = false;
   export let postId: string;
+  export let threadSlug: string | null = null;
   export let root: CommentNode | null = null;
   export let ancestors: CommentNode[] = [];
   export let pageSize = THREAD_DRAWER_PAGE_SIZE;
@@ -40,6 +42,7 @@
   const commentLookup = new Map<string, CommentNode>();
   const parentLookup = new Map<string, string | null>();
   let lastRootId: string | null = null;
+  $: drawerThreadLink = threadSlug ? threadPermalinkBySlug(threadSlug) : threadPermalinkById(postId);
 
   function closeDrawer() {
     dispatch('close');
@@ -266,6 +269,9 @@
         <p class="subhead">
           {root.author_display_name ?? root.author_handle ?? 'Someone'} • {relativeTime(root.created_at)}
         </p>
+        <a class="open-full" href={drawerThreadLink}>
+          Open full thread
+        </a>
       </header>
 
       <section class="root-card">
@@ -398,6 +404,20 @@
   .subhead {
     font-size: 0.82rem;
     opacity: 0.7;
+  }
+
+  .open-full {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: rgb(110 231 183);
+    text-decoration: none;
+  }
+
+  .open-full:hover,
+  .open-full:focus-visible {
+    text-decoration: underline;
   }
 
   .root-card {

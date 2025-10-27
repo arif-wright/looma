@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import CommentComposer from './CommentComposer.svelte';
   import { formatCommentBody, remainingRepliesText, relativeTime } from './commentHelpers';
+  import { commentPermalinkFromId } from '$lib/threads/permalink';
   import type { CommentNode, PostComment } from './types';
 
   type ReplyState = {
@@ -53,6 +54,7 @@
     depth >= 1 && (rawBody.length > 320 || newlineCount >= 5);
   $: bodyClamped = shouldClamp && !seeMore;
   $: indentStyle = `--depth:${displayDepth}`;
+  $: fullThreadLink = commentPermalinkFromId(comment.comment_post_id, comment.comment_id);
 
   function toggleComposer() {
     comment.replying = !comment.replying;
@@ -154,6 +156,7 @@
           >
             View thread ({nestedCount})
           </button>
+          <a class="action" href={fullThreadLink}>Open full thread</a>
         {/if}
         {#if canToggleInline && hasReplies}
           <button

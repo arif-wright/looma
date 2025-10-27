@@ -207,6 +207,7 @@ create or replace function public.get_public_posts(
 returns table (
   id uuid,
   user_id uuid,
+  slug text,
   body text,
   meta jsonb,
   is_public boolean,
@@ -226,6 +227,7 @@ as $$
   select
     p.id,
     p.user_id,
+    p.slug,
     p.body,
     p.meta,
     p.is_public,

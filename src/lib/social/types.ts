@@ -1,6 +1,7 @@
 export type PostRow = {
   id: string;
   user_id: string;
+  slug?: string | null;
   body: string;
   meta?: Record<string, unknown>;
   is_public?: boolean;
