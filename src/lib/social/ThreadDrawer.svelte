@@ -67,18 +67,19 @@
     return state;
   }
 
-  function resetState(baseRoot: CommentNode | null) {
+  function resetState(baseRoot: CommentNode | null, baseAncestors: CommentNode[]) {
     replies = [];
     cursor = null;
     hasMore = false;
     replyStates = new Map();
     commentLookup.clear();
     parentLookup.clear();
+    rootTotalCount = baseRoot?.reply_count ?? 0;
+    for (const ancestor of baseAncestors) {
+      registerComment(ancestor);
+    }
     if (baseRoot) {
       registerComment(baseRoot);
-      rootTotalCount = baseRoot.reply_count ?? 0;
-    } else {
-      rootTotalCount = 0;
     }
   }
 
@@ -246,7 +247,7 @@
     const currentId = root?.comment_id ?? null;
     if (currentId && currentId !== lastRootId) {
       lastRootId = currentId;
-      resetState(root);
+      resetState(root, ancestors);
       void loadRootReplies(true);
     }
   } else {
