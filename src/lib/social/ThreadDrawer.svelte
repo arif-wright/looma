@@ -7,7 +7,8 @@
     formatCommentBody,
     keyForCursor,
     normalizeComment,
-    relativeTime
+    relativeTime,
+    THREAD_DRAWER_PAGE_SIZE
   } from './commentHelpers';
   import type { CommentNode, PostComment } from './types';
 
@@ -15,7 +16,7 @@
   export let postId: string;
   export let root: CommentNode | null = null;
   export let ancestors: CommentNode[] = [];
-  export let pageSize = 20;
+  export let pageSize = THREAD_DRAWER_PAGE_SIZE;
 
   type ReplyState = {
     items: CommentNode[];
@@ -108,9 +109,15 @@
       registerComment(node);
       return node;
     });
-    replies = initial ? normalized : [...replies, ...normalized];
+    const ordered = normalized.slice().reverse();
+    if (initial) {
+      replies = ordered;
+    } else {
+      replies = [...ordered, ...replies];
+    }
     cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : cursor;
-    rootTotalCount = Math.max(rootTotalCount, replies.length);
+    const expectedTotal = root?.reply_count ?? rootTotalCount ?? 0;
+    rootTotalCount = Math.max(expectedTotal, replies.length);
     hasMore = replies.length < rootTotalCount || normalized.length === pageSize;
   }
 
@@ -120,7 +127,7 @@
     registerComment(node);
 
     if (root && parentId === root.comment_id) {
-      replies = [node, ...replies];
+      replies = [...replies, node];
       rootTotalCount += 1;
       hasMore = replies.length < rootTotalCount;
       return;
@@ -136,7 +143,7 @@
     const parent = commentLookup.get(parentId);
     if (!parent) return;
     const state = ensureReplyState(parent);
-    state.items = [node, ...state.items];
+    state.items = [...state.items, node];
     state.totalCount = state.totalCount + 1;
     state.hasMore = state.items.length < state.totalCount;
     replyStates = new Map(replyStates);
@@ -188,7 +195,9 @@
       return node;
     });
 
-    state.items = append ? [...state.items, ...normalized] : normalized;
+    const ordered = normalized.slice().reverse();
+
+    state.items = append ? [...ordered, ...state.items] : ordered;
     state.cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : state.cursor;
     const expectedTotal = comment.reply_count ?? state.totalCount;
     state.totalCount = Math.max(expectedTotal, state.items.length);
@@ -277,7 +286,7 @@
 
       {#if ancestors.length > 0}
         <section class="timeline" aria-label="Conversation context">
-          {#each ancestors as ancestor, index}
+          {#each ancestors as ancestor}
             <div class="timeline-row">
               <div class="timeline-dot" aria-hidden="true"></div>
               <div class="timeline-content">
@@ -292,22 +301,6 @@
                 </div>
               </div>
             </div>
-            {#if index === ancestors.length - 1}
-              <div class="timeline-row current">
-                <div class="timeline-dot current-dot" aria-hidden="true"></div>
-                <div class="timeline-content current-content">
-                  <div class="timeline-header">
-                    <span class="timeline-author current-author">
-                      {root.author_display_name ?? root.author_handle ?? 'Someone'}
-                    </span>
-                    <span class="timeline-time">{relativeTime(root.created_at)}</span>
-                  </div>
-                  <div class="timeline-body current-body">
-                    {@html formatCommentBody(root.body)}
-                  </div>
-                </div>
-              </div>
-            {/if}
           {/each}
         </section>
       {/if}
@@ -374,7 +367,7 @@
     height: 100vh;
     overflow: hidden;
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     gap: 16px;
     padding: 24px;
   }
@@ -503,15 +496,6 @@
   .timeline-body {
     font-size: 0.88rem;
     line-height: 1.4;
-  }
-
-  .timeline-row.current .timeline-dot {
-    background: rgba(125, 211, 252, 0.9);
-    box-shadow: 0 0 8px rgba(125, 211, 252, 0.4);
-  }
-
-  .timeline-row.current .timeline-body {
-    font-weight: 500;
   }
 
   .reply-list {
