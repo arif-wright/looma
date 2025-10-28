@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '$lib/supabaseClient';
 
 export type PlayerStats = {
@@ -13,8 +14,11 @@ export type PlayerStats = {
   missions_completed: number;
 };
 
-export async function getPlayerStats(event: RequestEvent): Promise<PlayerStats | null> {
-  const supabase = supabaseServer(event);
+export async function getPlayerStats(
+  event: RequestEvent,
+  client?: SupabaseClient
+): Promise<PlayerStats | null> {
+  const supabase = client ?? supabaseServer(event);
   const {
     data: { user }
   } = await supabase.auth.getUser();

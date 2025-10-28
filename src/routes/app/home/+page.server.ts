@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { reportHomeLoadIssue } from '$lib/server/logging';
@@ -44,9 +45,15 @@ export const load: PageServerLoad = async (event) => {
   };
 
   try {
-    const supabase = supabaseServer(event);
+    const supabase: SupabaseClient = event.locals.supabase ?? supabaseServer(event);
 
-    const stats = await getPlayerStats(event);
+    let stats = null;
+    try {
+      stats = await getPlayerStats(event, supabase);
+    } catch (err) {
+      diagnostics.push('stats_query_failed');
+      reportHomeLoadIssue('stats_query_failed', { error: err instanceof Error ? err.message : String(err) });
+    }
 
     let feedItems: PostRow[] = [];
     try {
