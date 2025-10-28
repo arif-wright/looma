@@ -4,13 +4,11 @@ import { supabaseServer } from '$lib/supabaseClient';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import {
   computeLanding,
-  surfaceToPath,
+  shouldResolveLanding,
   type LandingDecision,
   type PreferenceRow,
   type MissionCandidate
 } from '$lib/server/landing';
-
-const RESOLVABLE_PATHS = new Set(['/app', '/app/home']);
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
 const variantRoll = (): 'A' | 'B' | 'C' => {
@@ -176,8 +174,8 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   const normalizedPath = normalizePath(url.pathname);
-  const skipResolver = url.searchParams.has('forceHome');
-  const shouldResolve = !skipResolver && RESOLVABLE_PATHS.has(normalizedPath);
+  const forceHome = url.searchParams.get('forceHome') === '1';
+  const resolverMode = shouldResolveLanding(normalizedPath, forceHome);
 
   const supabase = supabaseServer(event);
   const preferences = await getOrCreatePreferences(supabase, session.user.id);
@@ -185,7 +183,11 @@ export const load: LayoutServerLoad = async (event) => {
 
   let decision: LandingDecision | null = null;
 
-  if (shouldResolve) {
+  if (resolverMode === 'force-home') {
+    throw redirect(302, '/app/home');
+  }
+
+  if (resolverMode === 'resolve') {
     const [mission, careDue] = await Promise.all([
       fetchActiveMission(supabase, session.user.id),
       fetchCareDue(supabase, session.user.id)

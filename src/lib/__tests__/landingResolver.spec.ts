@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeLanding,
   surfaceToPath,
+  shouldResolveLanding,
   type PreferenceRow,
   type MissionCandidate
 } from '../server/landing';
@@ -23,6 +24,25 @@ describe('surfaceToPath', () => {
 
   it('falls back to base path when payload missing', () => {
     expect(surfaceToPath('creatures')).toBe('/app/creatures');
+  });
+});
+
+describe('shouldResolveLanding', () => {
+  it('resolves for app root', () => {
+    expect(shouldResolveLanding('/app', false)).toBe('resolve');
+  });
+
+  it('force-homes when query overrides', () => {
+    expect(shouldResolveLanding('/app', true)).toBe('force-home');
+  });
+
+  it('skips for home subpath', () => {
+    expect(shouldResolveLanding('/app/home', false)).toBe('skip');
+  });
+
+  it('skips for deep routes', () => {
+    expect(shouldResolveLanding('/app/u/demo', false)).toBe('skip');
+    expect(shouldResolveLanding('/app/creatures', false)).toBe('skip');
   });
 });
 

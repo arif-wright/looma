@@ -24,6 +24,21 @@ export type LandingDecision = {
   reason: 'mission' | 'care' | 'preference' | 'context' | 'variant';
 };
 
+const APP_ROOT = '/app';
+
+export const shouldResolveLanding = (
+  normalizedPath: string,
+  forceHome: boolean
+): 'skip' | 'force-home' | 'resolve' => {
+  if (normalizedPath !== APP_ROOT) {
+    return 'skip';
+  }
+  if (forceHome) {
+    return 'force-home';
+  }
+  return 'resolve';
+};
+
 export const surfaceToPath = (
   surface: 'home' | 'creatures' | 'dashboard' | 'mission',
   payload?: Record<string, unknown>
