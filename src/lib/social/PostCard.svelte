@@ -1,19 +1,23 @@
+<script lang="ts" context="module">
+  export const ssr = false;
+</script>
+
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-import { supabaseBrowser } from '$lib/supabaseClient';
+  import { supabaseBrowser } from '$lib/supabaseClient';
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
   import { canonicalPostPath } from '$lib/threads/permalink';
 
-let supabase: ReturnType<typeof supabaseBrowser> | null = null;
+  let supabase: ReturnType<typeof supabaseBrowser> | null = null;
 
-const getSupabase = () => {
-  if (supabase) return supabase;
-  if (typeof window === 'undefined') return null;
-  supabase = supabaseBrowser();
-  return supabase;
-};
+  const getSupabase = () => {
+    if (supabase) return supabase;
+    if (typeof window === 'undefined') return null;
+    supabase = supabaseBrowser();
+    return supabase;
+  };
 
   export let post: PostRow;
   export let detail = false;
