@@ -96,7 +96,7 @@
   <ul class="items">
     {#each items as post (post.id)}
       <li>
-        <PostCard {post} highlighted={highlightPostId === post.id} />
+        <svelte:component this={PostCard} client:only {post} highlighted={highlightPostId === post.id} />
       </li>
     {/each}
   </ul>

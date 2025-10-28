@@ -14,7 +14,7 @@
   <ul class="feed-list">
     {#each items as post (post.id)}
       <li>
-        <PostCard {post} />
+        <svelte:component this={PostCard} client:only {post} />
       </li>
     {/each}
   </ul>

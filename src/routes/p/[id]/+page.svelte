@@ -57,7 +57,13 @@
 </svelte:head>
 
 <main class="post-page">
-  <PostCard post={{ ...post, comment_count: commentCount }} detail on:focus-comments={handleFocusRequest} />
+  <svelte:component
+    this={PostCard}
+    client:only
+    post={{ ...post, comment_count: commentCount }}
+    detail
+    on:focus-comments={handleFocusRequest}
+  />
 
   <section class="thread-section">
     <h2>Conversation</h2>

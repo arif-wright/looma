@@ -172,7 +172,7 @@
         <ul>
           {#each morePosts as item (item.id)}
             <li>
-              <PostCard post={item} />
+            <svelte:component this={PostCard} client:only post={item} />
             </li>
           {/each}
         </ul>
