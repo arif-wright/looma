@@ -1,6 +1,8 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
+import { updateUserContext } from '$lib/server/userContext';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
 
 const parseLimit = (value: string | null, fallback = 20) => {
   if (!value) return fallback;
@@ -104,6 +106,12 @@ export const POST: RequestHandler = async (event) => {
     reaction_support_count: 0,
     current_user_reaction: null
   };
+
+  await updateUserContext(event, 'feed', { postId: inserted?.id ?? null });
+  await recordAnalyticsEvent(supabase, user.id, 'post_created', {
+    surface: 'home',
+    payload: { postId: inserted?.id ?? null }
+  });
 
   return json({ item: response });
 };

@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { CreatureView, Rarity } from '$lib/types/creatures';
+import { updateUserContext } from '$lib/server/userContext';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
 
 type CreatureRow = {
   id: string;
@@ -46,7 +48,8 @@ export const GET: RequestHandler = async ({ locals }) => {
   return json({ ok: true, creatures });
 };
 
-export const POST: RequestHandler = async ({ locals, request }) => {
+export const POST: RequestHandler = async (event) => {
+  const { locals, request } = event;
   const session = locals.session;
   if (!session) {
     return jsonError(401, 'Not authenticated');
@@ -104,6 +107,19 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     species_name: data.species?.name ?? species.name,
     species_rarity: (data.species?.rarity ?? species.rarity) as Rarity
   };
+
+  await updateUserContext(event, 'creature', {
+    creatureId: creature.id,
+    interaction: 'adopt'
+  });
+
+  await recordAnalyticsEvent(locals.supabase, session.user.id, 'pet_interaction', {
+    surface: 'creatures',
+    payload: {
+      creatureId: creature.id,
+      action: 'adopt'
+    }
+  });
 
   return json({ ok: true, creature });
 };
