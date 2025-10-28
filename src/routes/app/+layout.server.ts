@@ -70,6 +70,36 @@ const getOrCreatePreferences = async (
   );
 };
 
+const extractContext = (entry: PreferenceRow['last_context']): string | null => {
+  if (!entry) return null;
+  if (typeof entry === 'string') return entry;
+  const context = (entry as Record<string, unknown>).context;
+  return typeof context === 'string' ? context : null;
+};
+
+const computeNavActivity = (prefs: PreferenceRow): Record<string, number> => {
+  const context = extractContext(prefs.last_context);
+  const activity: Record<string, number> = {};
+  switch (context) {
+    case 'mission':
+      activity['/app/missions'] = 1;
+      break;
+    case 'creature':
+      activity['/app/creatures'] = 1;
+      break;
+    case 'feed':
+    case 'social':
+      activity['/app/home'] = 1;
+      break;
+    case 'dashboard':
+      activity['/app/dashboard'] = 1;
+      break;
+    default:
+      break;
+  }
+  return activity;
+};
+
 const ensureVariant = async (
   supabase: ReturnType<typeof supabaseServer>,
   prefs: PreferenceRow
@@ -227,6 +257,7 @@ export const load: LayoutServerLoad = async (event) => {
     user: session.user,
     preferences,
     landingVariant: variant,
-    landingSurface: decision?.surface ?? null
+    landingSurface: decision?.surface ?? null,
+    navActivity: computeNavActivity(preferences)
   };
 };

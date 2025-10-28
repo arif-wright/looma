@@ -1,7 +1,12 @@
+type ContextRecord = {
+  context?: unknown;
+  trigger?: unknown;
+};
+
 export type PreferenceRow = {
   user_id: string;
   start_on: 'home' | 'creatures' | 'dashboard';
-  last_context: string | null;
+  last_context: ContextRecord | string | null;
   last_context_payload: Record<string, unknown> | null;
   ab_variant: 'A' | 'B' | 'C' | null;
   updated_at: string | null;
@@ -68,6 +73,13 @@ const withinWindow = (iso: string | null | undefined, windowMs: number) => {
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 
+const extractContextKind = (entry: ContextRecord | string | null): string | null => {
+  if (!entry) return null;
+  if (typeof entry === 'string') return entry;
+  const value = entry.context;
+  return typeof value === 'string' ? value : null;
+};
+
 export const computeLanding = (
   prefs: PreferenceRow,
   variant: 'A' | 'B' | 'C',
@@ -94,8 +106,10 @@ export const computeLanding = (
   }
 
   const updatedRecently = withinWindow(prefs.updated_at, HOURS_24);
-  if (updatedRecently && prefs.last_context) {
-    switch (prefs.last_context) {
+  const contextKind = extractContextKind(prefs.last_context ?? null);
+
+  if (updatedRecently && contextKind) {
+    switch (contextKind) {
       case 'feed':
       case 'social':
         return {

@@ -1,93 +1,191 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import SideRail from '$lib/components/nav/SideRail.svelte';
+  import BottomDock from '$lib/components/nav/BottomDock.svelte';
+  import { sendAnalytics } from '$lib/utils/analytics';
+
   export let data;
 
   const userEmail = data?.user?.email ?? data?.session?.user?.email ?? '';
+  const activity = data?.navActivity ?? {};
+  let previousPath: string | null = null;
+
+  function handleCompose() {
+    void goto('/app/u/me?compose=1');
+  }
+
+  onMount(() => {
+    if (!browser) return;
+    const month = new Date().getMonth();
+    const accent = month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
+    document.documentElement.dataset.themeAccent = accent;
+    previousPath = window.location.pathname;
+  });
+
+  afterNavigate((nav) => {
+    if (!browser) return;
+    const nextPath = nav.to?.pathname ?? window.location.pathname;
+    if (previousPath && previousPath !== nextPath) {
+      sendAnalytics('nav_switch', {
+        payload: {
+          from: previousPath,
+          to: nextPath
+        }
+      });
+    }
+    previousPath = nextPath;
+  });
 </script>
 
-<header class="app-header">
-  <div class="app-meta">
-    <span class="app-title">Looma</span>
-    {#if userEmail}
-      <span class="app-user">{userEmail}</span>
-    {/if}
+<div class="app-shell">
+  <aside class="app-rail">
+    <SideRail activity={activity} />
+  </aside>
+
+  <div class="app-surface">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">L</span>
+        <div class="brand-copy">
+          <p class="brand-title">Looma</p>
+          <p class="brand-sub">Hybrid Home</p>
+        </div>
+      </div>
+
+      <div class="header-meta">
+        {#if userEmail}
+          <span class="user-email">{userEmail}</span>
+        {/if}
+        <form method="POST" action="/app?/logout">
+          <button type="submit" class="logout">Logout</button>
+        </form>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <slot />
+    </main>
   </div>
+</div>
 
-  <nav class="app-nav">
-    <a href="/app" class="nav-link">Home</a>
-    <a href="/app/creatures" class="nav-link">Creatures</a>
-    <span class="nav-link disabled" aria-disabled="true" tabindex="-1">Inventory</span>
-  </nav>
-
-  <form method="POST" action="/app?/logout">
-    <button type="submit">Logout</button>
-  </form>
-</header>
-
-<main class="app-main">
-  <slot />
-</main>
+<BottomDock activity={activity} on:compose={handleCompose} />
 
 <style>
+  .app-shell {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    height: 100vh;
+    background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 55%),
+      radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 50%),
+      #0f172a;
+    color: rgba(226, 232, 240, 0.96);
+  }
+
+  .app-rail {
+    backdrop-filter: blur(12px);
+  }
+
+  .app-surface {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
   .app-header {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(16px);
   }
 
-  .app-meta {
+  .brand {
     display: flex;
-    gap: 0.5rem;
-    align-items: baseline;
-  }
-
-  .app-nav {
-    display: flex;
-    gap: 1rem;
     align-items: center;
+    gap: 14px;
   }
 
-  .nav-link {
-    color: #1f2937;
-    text-decoration: none;
-    font-weight: 500;
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.32), rgba(45, 212, 191, 0.3));
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: rgba(12, 74, 110, 0.9);
   }
 
-  .nav-link:hover,
-  .nav-link:focus {
-    text-decoration: underline;
+  .brand-copy {
+    display: grid;
+    gap: 2px;
   }
 
-  .nav-link.disabled {
-    color: #9ca3af;
-    text-decoration: none;
-    cursor: not-allowed;
-  }
-
-  .app-title {
+  .brand-title {
+    margin: 0;
     font-weight: 600;
+    font-size: 1.1rem;
   }
 
-  .app-user {
-    font-size: 0.9rem;
-    color: #4b5563;
+  .brand-sub {
+    margin: 0;
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.68);
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .user-email {
+    font-size: 0.88rem;
+    color: rgba(148, 163, 184, 0.78);
+  }
+
+  .logout {
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(30, 41, 59, 0.7);
+    color: rgba(226, 232, 240, 0.9);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  }
+
+  .logout:hover,
+  .logout:focus-visible {
+    background: rgba(56, 189, 248, 0.22);
+    color: rgba(15, 23, 42, 0.92);
+    transform: translateY(-1px);
   }
 
   .app-main {
-    padding: 1.5rem;
+    padding: 32px;
+    overflow-y: auto;
   }
 
-  button {
-    background: #111827;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-  }
+  @media (max-width: 960px) {
+    .app-shell {
+      grid-template-columns: 1fr;
+    }
 
-  button:hover {
-    background: #0f172a;
+    .app-rail {
+      display: none;
+    }
+
+    .app-main {
+      padding: 20px;
+      padding-bottom: 96px;
+    }
   }
 </style>

@@ -3,6 +3,14 @@ import { supabaseServer } from '$lib/supabaseClient';
 import { recordAnalyticsEvent } from './analytics';
 
 export type UserContext = 'feed' | 'mission' | 'creature' | 'dashboard';
+export type ContextTrigger =
+  | 'mission_click'
+  | 'social'
+  | 'reward_claim'
+  | 'navigation'
+  | 'system'
+  | 'care'
+  | 'resume';
 
 const CONTEXT_TO_SURFACE: Record<UserContext, string> = {
   feed: 'home',
@@ -21,7 +29,8 @@ const parseLandingCookie = (value: string | undefined | null) => {
 export async function updateUserContext(
   event: RequestEvent,
   context: UserContext,
-  payload: Record<string, unknown> | null = null
+  payload: Record<string, unknown> | null = null,
+  trigger: ContextTrigger | string | null = null
 ): Promise<void> {
   const supabase = event.locals.sb ?? supabaseServer(event);
 
@@ -37,7 +46,10 @@ export async function updateUserContext(
 
   const upsertPayload: Record<string, unknown> = {
     user_id: userId,
-    last_context: context,
+    last_context: {
+      context,
+      trigger: trigger ?? null
+    },
     last_context_payload: payload ?? null
   };
 

@@ -4,6 +4,9 @@ export type PostRow = {
   slug?: string | null;
   body: string;
   meta?: Record<string, unknown>;
+  image_url?: string | null;
+  engagement_score?: number | null;
+  deep_link_target?: Record<string, unknown> | null;
   is_public?: boolean;
   created_at: string;
   author_name?: string | null;
@@ -18,6 +21,11 @@ export type PostRow = {
   reaction_spark_count?: number;
   reaction_support_count?: number;
   current_user_reaction?: 'like' | 'spark' | 'support' | null;
+  author_id?: string | null;
+  is_follow?: boolean;
+  engagement?: number;
+  recency?: number;
+  score?: number;
 };
 
 export type PostComment = {
@@ -53,4 +61,13 @@ export type MentionOption = {
   author_handle: string | null;
   author_display_name: string | null;
   author_avatar_url: string | null;
+};
+
+export type FeedItem = PostRow & {
+  author_id: string | null;
+  deep_link_target: Record<string, unknown> | null;
+  is_follow: boolean;
+  engagement: number;
+  recency: number;
+  score: number;
 };

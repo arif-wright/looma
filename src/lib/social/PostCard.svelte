@@ -32,6 +32,11 @@
   let threadOpen = false;
   let threadRoot: CommentNode | null = null;
   let threadAncestors: CommentNode[] = [];
+  let imageUrl: string | null = null;
+  let imageAlt = 'Post media';
+  let audioCtx: AudioContext | null = null;
+  let showCreatureReact = false;
+  let hideReactionTimer: ReturnType<typeof setTimeout> | null = null;
 
   let likeChannel: ReturnType<typeof supabase.channel> | null = null;
   let commentChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -79,6 +84,51 @@
     return new Date(value).toLocaleDateString();
   }
 
+  const getMetaString = (key: string) => {
+    const data = post?.meta;
+    if (!data || typeof data !== 'object') return null;
+    const value = (data as Record<string, unknown>)[key];
+    return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  };
+
+  $: imageUrl =
+    typeof post?.image_url === 'string' && post.image_url.trim().length > 0
+      ? post.image_url
+      : getMetaString('image_url');
+  $: imageAlt = getMetaString('image_alt') ?? 'Post media';
+
+  const triggerFeedback = (nextLiked: boolean) => {
+    if (!browser) return;
+    if ('vibrate' in navigator) {
+      navigator.vibrate(nextLiked ? 28 : 12);
+    }
+    try {
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = nextLiked ? 540 : 320;
+      gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.22);
+    } catch (err) {
+      console.debug('reaction feedback error', err);
+    }
+    if (nextLiked) {
+      if (hideReactionTimer) clearTimeout(hideReactionTimer);
+      showCreatureReact = false;
+      showCreatureReact = true;
+      hideReactionTimer = setTimeout(() => {
+        showCreatureReact = false;
+      }, 820);
+    }
+  };
+
   async function toggleLike() {
     if (reacting) return;
     reacting = true;
@@ -86,6 +136,7 @@
     const previousLiked = liked;
     const previousCount = likeCount;
     liked = !liked;
+    triggerFeedback(liked);
     likeCount = Math.max(0, likeCount + (liked ? 1 : -1));
     try {
       const res = await fetch(`/api/posts/${post.id}/react`, { method: 'POST' });
@@ -216,6 +267,7 @@
   onDestroy(() => {
     if (likeChannel && supabase) supabase.removeChannel(likeChannel);
     if (commentChannel && supabase) supabase.removeChannel(commentChannel);
+    if (hideReactionTimer) clearTimeout(hideReactionTimer);
   });
 </script>
 
@@ -236,6 +288,12 @@
     <p>{post.body}</p>
   </div>
 
+  {#if imageUrl}
+    <figure class="media">
+      <img src={imageUrl} alt={imageAlt} loading="lazy" />
+    </figure>
+  {/if}
+
   {#if errorMsg}
     <p class="error" role="alert">{errorMsg}</p>
   {/if}
@@ -248,12 +306,12 @@
       aria-pressed={liked}
       disabled={reacting}
     >
-      Like <span class="count">{likeCount}</span>
+      ❤️ React <span class="count">{likeCount}</span>
     </button>
     <button class="chip" type="button" on:click={toggleComments}>
-      Comment <span class="count">{commentCount}</span>
+      💬 Comment <span class="count">{commentCount}</span>
     </button>
-    <a class="chip muted" href={threadLink}>Open thread</a>
+    <a class="chip muted" href={threadLink}>🔗 Thread</a>
   </footer>
 
   {#if !detail && commentOpen}
@@ -277,6 +335,9 @@
     ancestors={threadAncestors}
     on:close={handleCloseThread}
   />
+  {#if showCreatureReact}
+    <div class="creature-pop" aria-hidden="true">🐾</div>
+  {/if}
 </article>
 
 <style>
@@ -356,6 +417,19 @@
     white-space: pre-wrap;
   }
 
+  .media {
+    margin: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .media img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
   .actions {
     display: flex;
     gap: 10px;
@@ -380,7 +454,8 @@
   }
 
   .chip.active {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--theme-accent-soft, rgba(255, 255, 255, 0.15));
+    color: rgba(226, 232, 240, 0.95);
   }
 
   .chip.muted {
@@ -404,6 +479,32 @@
     padding-top: 12px;
     display: grid;
     gap: 12px;
+  }
+
+  .creature-pop {
+    position: absolute;
+    bottom: 18px;
+    right: 18px;
+    font-size: 1.6rem;
+    opacity: 0;
+    transform: scale(0.6) translateY(12px);
+    animation: creaturePop 0.7s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes creaturePop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6) translateY(12px);
+    }
+    45% {
+      opacity: 1;
+      transform: scale(1.08) translateY(-6px);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.9) translateY(-12px);
+    }
   }
 
 </style>

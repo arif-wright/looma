@@ -108,10 +108,15 @@ export const POST: RequestHandler = async (event) => {
     species_rarity: (data.species?.rarity ?? species.rarity) as Rarity
   };
 
-  await updateUserContext(event, 'creature', {
-    creatureId: creature.id,
-    interaction: 'adopt'
-  });
+  await updateUserContext(
+    event,
+    'creature',
+    {
+      creatureId: creature.id,
+      interaction: 'adopt'
+    },
+    'care'
+  );
 
   await recordAnalyticsEvent(locals.supabase, session.user.id, 'pet_interaction', {
     surface: 'creatures',

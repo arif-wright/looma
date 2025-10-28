@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { reportHomeLoadIssue } from '$lib/server/logging';
-import type { PostRow } from '$lib/social/types';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
+import type { FeedItem } from '$lib/social/types';
 
 type MissionSummary = {
   id: string;
@@ -36,12 +37,13 @@ export const load: PageServerLoad = async (event) => {
   const diagnostics: string[] = [];
   const safe = {
     stats: null as Awaited<ReturnType<typeof getPlayerStats>>,
-    feed: [] as PostRow[],
+    feed: [] as FeedItem[],
     missions: [] as MissionSummary[],
     creatures: [] as CreatureMoment[],
     endcap: DEFAULT_ENDCAP,
     landingVariant: parent.landingVariant ?? null,
-    diagnostics
+    diagnostics,
+    preferences: parent.preferences ?? null
   };
 
   try {
@@ -55,14 +57,45 @@ export const load: PageServerLoad = async (event) => {
       reportHomeLoadIssue('stats_query_failed', { error: err instanceof Error ? err.message : String(err) });
     }
 
-    let feedItems: PostRow[] = [];
+    let feedItems: FeedItem[] = [];
     try {
-      const feedResponse = await event.fetch('/api/posts?limit=10');
-      if (!feedResponse.ok) {
-        throw new Error(`feed status ${feedResponse.status}`);
+      const { data, error } = await supabase
+        .from('feed_view')
+        .select(
+          [
+            'id',
+            'user_id',
+            'author_id',
+            'slug',
+            'body',
+            'meta',
+            'image_url',
+            'is_public',
+            'created_at',
+            'deep_link_target',
+            'author_name',
+            'author_handle',
+            'author_avatar',
+            'comment_count',
+            'reaction_like_count',
+            'reaction_spark_count',
+            'reaction_support_count',
+            'current_user_reaction',
+            'is_follow',
+            'engagement',
+            'recency',
+            'score'
+          ].join(', ')
+        )
+        .order('score', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        throw error;
       }
-      const payload = await feedResponse.json();
-      feedItems = Array.isArray(payload?.items) ? (payload.items as PostRow[]) : [];
+
+      feedItems = Array.isArray(data) ? (data as FeedItem[]) : [];
     } catch (err) {
       diagnostics.push('feed_query_failed');
       reportHomeLoadIssue('feed_query_failed', { error: err instanceof Error ? err.message : String(err) });
@@ -115,6 +148,20 @@ export const load: PageServerLoad = async (event) => {
           }
         : DEFAULT_ENDCAP;
 
+    if (session?.user?.id) {
+      const landedAtCookie = event.cookies.get('looma_landing_at');
+      const landedAt = landedAtCookie ? Number(landedAtCookie) : null;
+      const dwellMs = landedAt && Number.isFinite(landedAt) ? Date.now() - landedAt : null;
+      await recordAnalyticsEvent(supabase, session.user.id, 'app_feed_load', {
+        surface: 'home',
+        variant: parent.landingVariant ?? null,
+        payload: {
+          dwell_ms: dwellMs ?? null,
+          feed_items: feedItems.length
+        }
+      });
+    }
+
     return {
       stats,
       feed: feedItems,
@@ -122,7 +169,8 @@ export const load: PageServerLoad = async (event) => {
       creatures: creatureMoments,
       endcap,
       landingVariant: parent.landingVariant ?? null,
-      diagnostics
+      diagnostics,
+      preferences: parent.preferences ?? null
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

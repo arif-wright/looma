@@ -1,6 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -67,6 +68,17 @@ export const POST: RequestHandler = async (event) => {
 
   if (countError) {
     return json({ error: countError.message }, { status: 400 });
+  }
+
+  if (likeCount !== null && likeCount !== undefined) {
+    await recordAnalyticsEvent(supabase, user.id, 'feed_react', {
+      surface: 'home',
+      payload: {
+        post_id: postId,
+        reaction: liked ? 'like' : 'unlike',
+        total: likeCount ?? 0
+      }
+    });
   }
 
   return json({ liked, likes: likeCount ?? 0 });

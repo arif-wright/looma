@@ -18,6 +18,22 @@
   --space: clamp(24px, 5vw, 40px);
   --vh: 1vh;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --theme-accent-rgb: 56, 189, 248;
+  --theme-accent: rgba(var(--theme-accent-rgb), 0.95);
+  --theme-accent-soft: rgba(var(--theme-accent-rgb), 0.18);
+  --theme-accent-ring: rgba(var(--theme-accent-rgb), 0.35);
+}
+
+:root[data-theme-accent='neonMagenta'] {
+  --theme-accent-rgb: 236, 72, 153;
+}
+
+:root[data-theme-accent='amber'] {
+  --theme-accent-rgb: 251, 191, 36;
+}
+
+:root[data-theme-accent='neonCyan'] {
+  --theme-accent-rgb: 56, 189, 248;
 }
 
 * {

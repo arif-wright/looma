@@ -160,10 +160,15 @@ export const POST: RequestHandler = async (event) => {
   const rows = Array.isArray(data) ? data : data ? [data] : [];
   const item = rows.length > 0 ? rows[0] : null;
 
-  await updateUserContext(event, 'feed', {
-    postId,
-    commentId: item?.comment_id ?? item?.id ?? null
-  });
+  await updateUserContext(
+    event,
+    'feed',
+    {
+      postId,
+      commentId: item?.comment_id ?? item?.id ?? null
+    },
+    'social'
+  );
 
   await recordAnalyticsEvent(supabase, session.user.id, 'comment_created', {
     surface: 'home',

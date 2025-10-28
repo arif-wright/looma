@@ -70,6 +70,20 @@ describe('computeLanding', () => {
     expect(decision.reason).toBe('context');
   });
 
+  it('uses structured mission context when available', () => {
+    const payload = { missionId: 'mission-x' };
+    const prefs = basePrefs({
+      last_context: { context: 'mission', trigger: 'mission_click' } as any,
+      last_context_payload: payload,
+      updated_at: new Date().toISOString()
+    });
+
+    const decision = computeLanding(prefs, 'C', null, null, payload);
+    expect(decision.surface).toBe('mission');
+    expect(decision.target).toBe('/app/missions/mission-x');
+    expect(decision.reason).toBe('context');
+  });
+
   it('respects explicit start preference', () => {
     const prefs = basePrefs({ start_on: 'dashboard' });
     const decision = computeLanding(prefs, 'C', null, null, null);

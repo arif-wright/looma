@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { onMount, tick } from 'svelte';
   import TodayCard from '$lib/components/home/TodayCard.svelte';
   import ComposerChip from '$lib/components/home/ComposerChip.svelte';
   import FeedList from '$lib/components/home/FeedList.svelte';
@@ -16,13 +18,60 @@
   const creatures = data.creatures ?? [];
   const endcap = data.endcap;
   const variant = data.landingVariant ?? null;
+  const preferences = data.preferences ?? null;
+  const energy = stats?.energy ?? 0;
+  const energyMax = stats?.energy_max ?? 0;
+  const streak = stats?.missions_completed ?? 0;
+  const petMood = creatures[0]?.mood_label ?? creatures[0]?.mood ?? null;
+  const activeMission = missions[0]
+    ? {
+        id: missions[0].id,
+        name: missions[0].title ?? null,
+        summary: missions[0].summary ?? null,
+        difficulty: missions[0].difficulty ?? null
+      }
+    : null;
+
+  const extractContext = (entry: unknown): string | null => {
+    if (!entry) return null;
+    if (typeof entry === 'string') return entry;
+    if (typeof entry === 'object') {
+      const context = (entry as Record<string, unknown>).context;
+      return typeof context === 'string' ? context : null;
+    }
+    return null;
+  };
+
+  onMount(async () => {
+    if (!browser || !preferences) return;
+    const contextKind = extractContext(preferences.last_context ?? null);
+    if (contextKind !== 'feed') return;
+    const payload = preferences.last_context_payload as Record<string, unknown> | null;
+    const scrollValue =
+      payload && typeof payload.scroll === 'number' ? Math.max(0, payload.scroll) : null;
+    if (scrollValue === null) return;
+    await tick();
+    window.scrollTo({ top: scrollValue, behavior: 'auto' });
+  });
 </script>
 
 <main class="home-surface" aria-labelledby="home-heading">
   <h1 id="home-heading" class="sr-only">Home</h1>
 
   <section class="hero-grid">
-    <TodayCard {stats} mission={missions[0] ?? null} creature={creatures[0] ?? null} {variant} />
+    <TodayCard
+      {stats}
+      mission={missions[0] ?? null}
+      creature={creatures[0] ?? null}
+      {variant}
+      {energy}
+      {energyMax}
+      {streak}
+      {petMood}
+      {activeMission}
+      pendingReward={false}
+      recentFail={null}
+    />
     <ComposerChip className="composer-chip" />
   </section>
 

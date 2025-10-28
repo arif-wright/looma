@@ -107,7 +107,7 @@ export const POST: RequestHandler = async (event) => {
     current_user_reaction: null
   };
 
-  await updateUserContext(event, 'feed', { postId: inserted?.id ?? null });
+  await updateUserContext(event, 'feed', { postId: inserted?.id ?? null }, 'social');
   await recordAnalyticsEvent(supabase, user.id, 'post_created', {
     surface: 'home',
     payload: { postId: inserted?.id ?? null }
