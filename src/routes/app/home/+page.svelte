@@ -23,7 +23,7 @@
 
   <section class="hero-grid">
     <TodayCard {stats} mission={missions[0] ?? null} creature={creatures[0] ?? null} {variant} />
-    <ComposerChip class="composer-chip" />
+    <ComposerChip className="composer-chip" />
   </section>
 
   <section class="missions-section" aria-labelledby="missions-heading">

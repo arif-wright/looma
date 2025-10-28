@@ -3,7 +3,7 @@
   import PostComposer from '$lib/social/PostComposer.svelte';
 
   export let placeholder = 'Share a quick win…';
-  export let class: string | undefined;
+  export let className = '';
 
   const dispatch = createEventDispatcher<{ posted: void }>();
 
@@ -19,7 +19,7 @@
   }
 </script>
 
-<div class={`composer-shell ${class ?? ''}`}>
+<div class={`composer-shell ${className}`}>
   {#if expanded}
     <div class="composer-card" aria-label="Share something uplifting">
       <div class="composer-header">
