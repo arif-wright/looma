@@ -1,12 +1,19 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { supabaseBrowser } from '$lib/supabaseClient';
+import { supabaseBrowser } from '$lib/supabaseClient';
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
   import { canonicalPostPath } from '$lib/threads/permalink';
 
-  const supabase = supabaseBrowser();
+let supabase: ReturnType<typeof supabaseBrowser> | null = null;
+
+const getSupabase = () => {
+  if (supabase) return supabase;
+  if (typeof window === 'undefined') return null;
+  supabase = supabaseBrowser();
+  return supabase;
+};
 
   export let post: PostRow;
   export let detail = false;
@@ -102,7 +109,9 @@
   }
 
   async function refreshLikeCount() {
-    const { data, error } = await supabase.rpc('get_post_reaction_counts', {
+    const client = getSupabase();
+    if (!client) return;
+    const { data, error } = await client.rpc('get_post_reaction_counts', {
       p_post_id: post.id
     });
     if (!error && Array.isArray(data) && data.length > 0) {
@@ -115,7 +124,9 @@
   }
 
   async function refreshCommentCount() {
-    const { count, error } = await supabase
+    const client = getSupabase();
+    if (!client) return;
+    const { count, error } = await client
       .from('comments')
       .select('id', { head: true, count: 'exact' })
       .eq('post_id', post.id);
@@ -162,7 +173,10 @@
   }
 
   onMount(() => {
-    likeChannel = supabase
+    const client = getSupabase();
+    if (!client) return;
+
+    likeChannel = client
       .channel(`post-${post.id}-likes`)
       .on(
         'postgres_changes',
@@ -178,7 +192,7 @@
       )
       .subscribe();
 
-    commentChannel = supabase
+    commentChannel = client
       .channel(`post-${post.id}-comments`)
       .on(
         'postgres_changes',
@@ -199,8 +213,8 @@
   });
 
   onDestroy(() => {
-    if (likeChannel) supabase.removeChannel(likeChannel);
-    if (commentChannel) supabase.removeChannel(commentChannel);
+    if (likeChannel && supabase) supabase.removeChannel(likeChannel);
+    if (commentChannel && supabase) supabase.removeChannel(commentChannel);
   });
 </script>
 
