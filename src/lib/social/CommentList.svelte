@@ -18,6 +18,8 @@
   export let initialCount = 0;
   export let initialItems: PostComment[] = [];
   export let initialCursor: string | null = null;
+  export let threadHandle: string | null = null;
+  export let threadSlug: string | null = null;
 
   type ReplyState = {
     items: CommentNode[];
@@ -485,6 +487,8 @@
         <CommentItem
           postId={postId}
           {comment}
+          threadHandle={threadHandle}
+          threadSlug={threadSlug}
           {replyStates}
           replyPageSize={INLINE_REPLY_BATCH_SIZE}
           maxDepth={MAX_INLINE_DEPTH}

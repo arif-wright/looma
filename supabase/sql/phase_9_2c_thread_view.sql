@@ -21,7 +21,7 @@ set search_path = public
 as $$
   select
     p.id,
-    p.user_id,
+    p.author_id as user_id,
     p.body,
     p.meta,
     p.created_at,
@@ -43,9 +43,9 @@ as $$
         and c.target_id = p.id
     ) as comment_count
   from public.posts p
-  left join public.profiles pr on pr.id = p.user_id
+  left join public.profiles pr on pr.id = p.author_id
   where p.id = p_post_id
-    and (p.is_public = true or p.user_id = auth.uid());
+    and (p.is_public = true or p.author_id = auth.uid());
 $$;
 
 drop function if exists public.get_post_comments_tree(uuid, int, timestamptz);

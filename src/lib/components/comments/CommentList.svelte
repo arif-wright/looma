@@ -6,6 +6,7 @@
   export let comments: Comment[] = [];
   export let highlightedId: string | null = null;
   export let threadSlug: string | null = null;
+  export let threadHandle: string | null = null;
 </script>
 
 {#if comments.length === 0}
@@ -19,6 +20,7 @@
         {comment}
         {postId}
         {threadSlug}
+        {threadHandle}
         {highlightedId}
         depth={0}
       />

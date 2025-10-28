@@ -4,12 +4,13 @@
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
-  import { threadPermalinkById, threadPermalinkBySlug } from '$lib/threads/permalink';
+  import { canonicalPostPath } from '$lib/threads/permalink';
 
   const supabase = supabaseBrowser();
 
   export let post: PostRow;
   export let detail = false;
+  export let highlighted = false;
 
   const dispatch = createEventDispatcher<{ 'focus-comments': void }>();
 
@@ -51,9 +52,10 @@
   $: authorName =
     post.author_name ??
     (post.display_name ?? (authorHandle ? `@${authorHandle}` : 'Someone'));
-  $: profileHref = `/u/${authorHandle ?? post.user_id}`;
+  $: profileHref =
+    authorHandle && authorHandle.length > 0 ? `/app/u/${authorHandle}` : `/u/${authorHandle ?? post.user_id}`;
   $: threadSlug = (post.slug ?? null) as string | null;
-  $: threadLink = threadSlug ? threadPermalinkBySlug(threadSlug) : threadPermalinkById(post.id);
+  $: threadLink = canonicalPostPath(authorHandle, threadSlug, post.id);
 
   function relativeTime(value: string) {
     const ts = new Date(value).getTime();
@@ -202,7 +204,7 @@
   });
 </script>
 
-<article class="post-card">
+<article class={`post-card ${highlighted ? 'highlighted' : ''}`}>
   <header class="post-header">
     <img class="avatar" src={authorAvatar} alt="" width="40" height="40" loading="lazy" />
     <div class="meta">
@@ -244,6 +246,8 @@
       <CommentList
         postId={post.id}
         initialCount={commentCount}
+        threadHandle={authorHandle}
+        threadSlug={threadSlug}
         on:count={handleCommentCount}
         on:openThread={handleOpenThread}
       />
@@ -252,6 +256,7 @@
   <ThreadDrawer
     postId={post.id}
     threadSlug={threadSlug}
+    threadHandle={authorHandle}
     open={threadOpen}
     root={threadRoot}
     ancestors={threadAncestors}
@@ -267,6 +272,30 @@
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(17, 20, 27, 0.85);
+  }
+
+  .post-card.highlighted {
+    border-color: rgba(16, 185, 129, 0.55);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
+    animation: postHighlight 1.2s ease-in-out 2;
+  }
+
+  @keyframes postHighlight {
+    0% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.15);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.04);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .post-card.highlighted {
+      animation: none;
+    }
   }
 
   .post-header {

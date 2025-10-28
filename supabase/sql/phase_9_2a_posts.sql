@@ -241,7 +241,7 @@ as $$
     coalesce(pr.support_count, 0) as reaction_support_count,
     self.kind as current_user_reaction
   from public.posts p
-  left join public.profiles prof on prof.id = p.user_id
+  left join public.profiles prof on prof.id = p.author_id
   left join lateral (
     select count(*)::bigint as comment_count
     from public.comments c
@@ -284,6 +284,7 @@ create or replace function public.get_user_posts(
 returns table (
   id uuid,
   user_id uuid,
+  slug text,
   body text,
   meta jsonb,
   is_public boolean,
@@ -303,6 +304,7 @@ as $$
   select
     p.id,
     p.user_id,
+    p.slug,
     p.body,
     p.meta,
     p.is_public,
@@ -316,7 +318,7 @@ as $$
     coalesce(pr.support_count, 0) as reaction_support_count,
     self.kind as current_user_reaction
   from public.posts p
-  left join public.profiles prof on prof.id = p.user_id
+  left join public.profiles prof on prof.id = p.author_id
   left join lateral (
     select count(*)::bigint as comment_count
     from public.comments c
@@ -341,9 +343,9 @@ as $$
       and rself.kind = 'like'
     limit 1
   ) self on true
-  where p.user_id = p_user
+  where p.author_id = p_user
     and p.created_at < coalesce(p_before, now())
-    and (p.is_public = true or p.user_id = auth.uid())
+    and (p.is_public = true or p.author_id = auth.uid())
   order by p.created_at desc
   limit greatest(1, coalesce(p_limit, 20));
 $$;

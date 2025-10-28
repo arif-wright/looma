@@ -10,15 +10,16 @@
     relativeTime,
     THREAD_DRAWER_PAGE_SIZE
   } from './commentHelpers';
-  import { threadPermalinkById, threadPermalinkBySlug } from '$lib/threads/permalink';
+  import { canonicalPostPath } from '$lib/threads/permalink';
   import type { CommentNode, PostComment } from './types';
 
-  export let open = false;
-  export let postId: string;
-  export let threadSlug: string | null = null;
-  export let root: CommentNode | null = null;
-  export let ancestors: CommentNode[] = [];
-  export let pageSize = THREAD_DRAWER_PAGE_SIZE;
+export let open = false;
+export let postId: string;
+export let threadSlug: string | null = null;
+export let threadHandle: string | null = null;
+export let root: CommentNode | null = null;
+export let ancestors: CommentNode[] = [];
+export let pageSize = THREAD_DRAWER_PAGE_SIZE;
 
   type ReplyState = {
     items: CommentNode[];
@@ -42,7 +43,7 @@
   const commentLookup = new Map<string, CommentNode>();
   const parentLookup = new Map<string, string | null>();
   let lastRootId: string | null = null;
-  $: drawerThreadLink = threadSlug ? threadPermalinkBySlug(threadSlug) : threadPermalinkById(postId);
+  $: drawerThreadLink = canonicalPostPath(threadHandle, threadSlug, postId);
 
   function closeDrawer() {
     dispatch('close');
@@ -323,6 +324,8 @@
           {#each replies as reply (reply.comment_id)}
             <CommentItem
               postId={postId}
+              threadHandle={threadHandle}
+              threadSlug={threadSlug}
               {replyStates}
               comment={reply}
               replyPageSize={pageSize}

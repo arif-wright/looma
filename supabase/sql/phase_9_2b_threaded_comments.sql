@@ -226,7 +226,7 @@ begin
     raise exception 'Body is required';
   end if;
 
-  select p_posts.user_id, p_posts.is_public
+  select p_posts.author_id, p_posts.is_public
     into v_post_owner, v_post_public
   from public.posts as p_posts
   where p_posts.id = p_post;

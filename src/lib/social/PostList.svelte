@@ -7,6 +7,7 @@
   export let pageSize = 20;
   export let emptyMessage = 'No posts yet.';
   export let refreshToken = 0;
+  export let highlightPostId: string | null = null;
 
   let items: PostRow[] = [];
   let loading = false;
@@ -95,7 +96,7 @@
   <ul class="items">
     {#each items as post (post.id)}
       <li>
-        <PostCard {post} />
+        <PostCard {post} highlighted={highlightPostId === post.id} />
       </li>
     {/each}
   </ul>

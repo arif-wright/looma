@@ -4,13 +4,13 @@ import { supabaseServer } from '$lib/supabaseClient';
 import { appendSearch, canonicalRedirectTarget } from '$lib/threads/redirectHelpers';
 
 export const GET: RequestHandler = async (event) => {
-  const { slug } = event.params;
-  if (!slug) {
-    throw error(400, 'Missing thread slug');
+  const { id } = event.params;
+  if (!id) {
+    throw error(400, 'Missing thread id');
   }
 
   const supabase = supabaseServer(event);
-  const { data, error: dbError } = await supabase
+  const { data, error: lookupError } = await supabase
     .from('posts')
     .select(
       `
@@ -19,11 +19,11 @@ export const GET: RequestHandler = async (event) => {
         author:profiles!posts_author_fk(handle)
       `
     )
-    .eq('slug', slug)
+    .eq('id', id)
     .maybeSingle();
 
-  if (dbError) {
-    console.error('[legacy slug redirect] lookup failed', dbError);
+  if (lookupError) {
+    console.error('[legacy thread redirect] lookup failed', lookupError);
     throw error(500, 'Unable to resolve thread');
   }
 
@@ -35,14 +35,14 @@ export const GET: RequestHandler = async (event) => {
     const canonical = canonicalRedirectTarget(
       {
         id: data.id,
-        slug: data.slug ?? slug,
+        slug: data.slug,
         author: data.author ?? null
       },
       data.id
     );
     throw redirect(302, appendSearch(canonical, event.url.search));
   } catch (cause) {
-    console.error('[legacy slug redirect] canonical resolution failed', cause);
+    console.error('[legacy thread redirect] canonical resolution failed', cause);
     throw error(500, 'Unable to resolve thread');
   }
 };
