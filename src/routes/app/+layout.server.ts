@@ -12,33 +12,12 @@ import {
 
 const RESOLVABLE_PATHS = new Set(['/app', '/app/home']);
 const HOURS_12 = 12 * 60 * 60 * 1000;
-const HOURS_24 = 24 * 60 * 60 * 1000;
 
 const variantRoll = (): 'A' | 'B' | 'C' => {
   const roll = Math.random();
   if (roll < 0.25) return 'A';
   if (roll < 0.5) return 'B';
   return 'C';
-};
-
-export const surfaceToPath = (
-  surface: 'home' | 'creatures' | 'dashboard' | 'mission',
-  payload?: Record<string, unknown>
-) => {
-  switch (surface) {
-    case 'creatures': {
-      const focus = payload?.creatureId;
-      return focus ? `/app/creatures?focus=${encodeURIComponent(String(focus))}` : '/app/creatures';
-    }
-    case 'dashboard':
-      return '/app/dashboard';
-    case 'mission': {
-      const missionId = payload?.missionId;
-      return missionId ? `/app/missions/${encodeURIComponent(String(missionId))}` : '/app/missions';
-    }
-    default:
-      return '/app/home';
-  }
 };
 
 const normalizePath = (path: string) => {
