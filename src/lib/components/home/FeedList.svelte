@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import PostCard from '$lib/social/PostCard.svelte';
   import type { PostRow } from '$lib/social/types';
 
@@ -14,7 +15,9 @@
   <ul class="feed-list">
     {#each items as post (post.id)}
       <li>
-        <svelte:component this={PostCard} client:only {post} />
+        {#if browser}
+          <PostCard {post} />
+        {/if}
       </li>
     {/each}
   </ul>

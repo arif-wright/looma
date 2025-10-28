@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import PostCard from './PostCard.svelte';
   import type { PostRow } from './types';
 
@@ -96,7 +97,9 @@
   <ul class="items">
     {#each items as post (post.id)}
       <li>
-        <svelte:component this={PostCard} client:only {post} highlighted={highlightPostId === post.id} />
+        {#if browser}
+          <PostCard {post} highlighted={highlightPostId === post.id} />
+        {/if}
       </li>
     {/each}
   </ul>

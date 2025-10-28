@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import ProfileHero from '$lib/profile/ProfileHero.svelte';
   import type { ProfileSummary } from '$lib/profile/types';
   import type { Thread, Comment } from '$lib/threads/types';
@@ -172,7 +173,9 @@
         <ul>
           {#each morePosts as item (item.id)}
             <li>
-            <svelte:component this={PostCard} client:only post={item} />
+              {#if browser}
+                <PostCard post={item} />
+              {/if}
             </li>
           {/each}
         </ul>

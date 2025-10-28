@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import PostCard from '$lib/social/PostCard.svelte';
   import CommentList from '$lib/social/CommentList.svelte';
   import ThreadDrawer from '$lib/social/ThreadDrawer.svelte';
@@ -57,13 +58,13 @@
 </svelte:head>
 
 <main class="post-page">
-  <svelte:component
-    this={PostCard}
-    client:only
-    post={{ ...post, comment_count: commentCount }}
-    detail
-    on:focus-comments={handleFocusRequest}
-  />
+  {#if browser}
+    <PostCard
+      post={{ ...post, comment_count: commentCount }}
+      detail
+      on:focus-comments={handleFocusRequest}
+    />
+  {/if}
 
   <section class="thread-section">
     <h2>Conversation</h2>
