@@ -104,11 +104,13 @@
   }
 
   onMount(() => {
+    if (typeof document === 'undefined') return;
     document.addEventListener('click', handleDocumentClick, true);
     document.addEventListener('keydown', handleKey, true);
   });
 
   onDestroy(() => {
+    if (typeof document === 'undefined') return;
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleKey, true);
   });
