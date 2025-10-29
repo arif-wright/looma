@@ -26,12 +26,16 @@
     if (!browser) return;
     const month = new Date().getMonth();
     const accent = month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
-    document.documentElement.dataset.themeAccent = accent;
-    previousPath = window.location.pathname;
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.themeAccent = accent;
+    }
+    if (typeof window !== 'undefined') {
+      previousPath = window.location.pathname;
+    }
   });
 
   afterNavigate((nav) => {
-    if (!browser) return;
+    if (!browser || typeof window === 'undefined') return;
     const nextPath = nav.to?.pathname ?? window.location.pathname;
     if (previousPath && previousPath !== nextPath) {
       sendAnalytics('nav_switch', {
