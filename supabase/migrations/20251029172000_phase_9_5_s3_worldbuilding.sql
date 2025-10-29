@@ -42,6 +42,15 @@ create table if not exists public.creatures (
 );
 
 alter table if exists public.creatures
+  add column if not exists species text;
+
+alter table if exists public.creatures
+  add column if not exists mood text;
+
+alter table if exists public.creatures
+  add column if not exists mood_label text;
+
+alter table if exists public.creatures
   add column if not exists care_due_at timestamptz;
 
 alter table if exists public.creatures
