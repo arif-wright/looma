@@ -22,31 +22,27 @@
     void goto('/app/u/me?compose=1');
   }
 
-  onMount(() => {
-    if (!browser) return;
-    const month = new Date().getMonth();
-    const accent = month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
-    if (typeof document !== 'undefined') {
+  if (browser) {
+    onMount(() => {
+      const month = new Date().getMonth();
+      const accent = month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
       document.documentElement.dataset.themeAccent = accent;
-    }
-    if (typeof window !== 'undefined') {
       previousPath = window.location.pathname;
-    }
-  });
+    });
 
-  afterNavigate((nav) => {
-    if (!browser || typeof window === 'undefined') return;
-    const nextPath = nav.to?.pathname ?? window.location.pathname;
-    if (previousPath && previousPath !== nextPath) {
-      sendAnalytics('nav_switch', {
-        payload: {
-          from: previousPath,
-          to: nextPath
-        }
-      });
-    }
-    previousPath = nextPath;
-  });
+    afterNavigate((nav) => {
+      const nextPath = nav.to?.pathname ?? window.location.pathname;
+      if (previousPath && previousPath !== nextPath) {
+        sendAnalytics('nav_switch', {
+          payload: {
+            from: previousPath,
+            to: nextPath
+          }
+        });
+      }
+      previousPath = nextPath;
+    });
+  }
 </script>
 
 <div class="app-shell">
