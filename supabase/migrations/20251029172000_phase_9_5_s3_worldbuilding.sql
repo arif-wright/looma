@@ -33,7 +33,10 @@ create table if not exists public.creatures (
   species text,
   mood text,
   mood_label text,
+  care_due_at timestamptz,
   next_care_at timestamptz,
+  needs_care boolean not null default false,
+  mood_expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
