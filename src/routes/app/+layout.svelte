@@ -4,13 +4,19 @@
   import { onMount } from 'svelte';
   import SideRail from '$lib/components/nav/SideRail.svelte';
   import BottomDock from '$lib/components/nav/BottomDock.svelte';
+  import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import { sendAnalytics } from '$lib/utils/analytics';
 
   export let data;
 
   const userEmail = data?.user?.email ?? data?.session?.user?.email ?? '';
   const activity = data?.navActivity ?? {};
+  let bellNotifications = data?.notifications ?? [];
+  let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
+
+  $: bellNotifications = data?.notifications ?? bellNotifications;
+  $: bellUnread = typeof data?.notificationsUnread === 'number' ? data.notificationsUnread : bellUnread;
 
   function handleCompose() {
     void goto('/app/u/me?compose=1');
@@ -55,6 +61,7 @@
       </div>
 
       <div class="header-meta">
+        <NotificationBell notifications={bellNotifications} unreadCount={bellUnread} />
         {#if userEmail}
           <span class="user-email">{userEmail}</span>
         {/if}

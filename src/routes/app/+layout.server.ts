@@ -210,6 +210,27 @@ export const load: LayoutServerLoad = async (event) => {
   const supabase = supabaseServer(event);
   const preferences = await getOrCreatePreferences(supabase, session.user.id);
   const variant = await ensureVariant(supabase, preferences);
+  let notifications: Array<Record<string, any>> = [];
+  let notificationsUnread = 0;
+
+  try {
+    const { data: notificationRows, error: notificationError } = await supabase.rpc(
+      'get_notifications_for_user',
+      {
+        p_user: session.user.id,
+        p_limit: 20
+      }
+    );
+
+    if (notificationError) {
+      console.error('[resolver] notifications fetch failed', notificationError);
+    } else if (Array.isArray(notificationRows)) {
+      notifications = notificationRows;
+      notificationsUnread = notificationRows.filter((row) => row?.read === false).length;
+    }
+  } catch (err) {
+    console.error('[resolver] notifications fetch unexpected error', err);
+  }
 
   let decision: LandingDecision | null = null;
 
@@ -258,6 +279,8 @@ export const load: LayoutServerLoad = async (event) => {
     preferences,
     landingVariant: variant,
     landingSurface: decision?.surface ?? null,
-    navActivity: computeNavActivity(preferences)
+    navActivity: computeNavActivity(preferences),
+    notifications,
+    notificationsUnread
   };
 };

@@ -1,12 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
-import {
-  ensureUuid,
-  getPostReactionCounts,
-  togglePostReaction,
-  validateReactionKind
-} from '$lib/server/engagement';
+import { ensureUuid, getPostReactionCounts, togglePostReaction, validateReactionKind } from '$lib/server/engagement';
+import { enforceRateLimit } from '$lib/server/safety';
+import { createNotification } from '$lib/server/notifications';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
@@ -45,8 +42,49 @@ export const POST: RequestHandler = async (event) => {
   }
 
   try {
+    const { data: existing, error: existingError } = await supabase
+      .from('post_reactions')
+      .select('post_id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .eq('kind', kind)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    if (!existing) {
+      const limit = enforceRateLimit('reaction', user.id);
+      if (!limit.ok) {
+        return json(
+          { error: 'rate_limited', details: 'Please slow down before reacting again.' },
+          { status: 429, headers: CACHE_HEADERS }
+        );
+      }
+    }
+
     const result = await togglePostReaction(supabase, user.id, postId, kind);
     const counts = await getPostReactionCounts(supabase, postId);
+
+    if (result.toggledOn) {
+      const { data: postRow, error: postError } = await supabase
+        .from('posts')
+        .select('author_id')
+        .eq('id', postId)
+        .maybeSingle();
+
+      if (postError) {
+        console.error('[api/reactions/post] author lookup failed', postError);
+      } else if (postRow?.author_id) {
+        await createNotification(supabase, {
+          actorId: user.id,
+          userId: postRow.author_id as string,
+          kind: 'reaction',
+          targetId: postId,
+          targetKind: 'post',
+          metadata: { reaction: kind }
+        });
+      }
+    }
 
     return json(
       {

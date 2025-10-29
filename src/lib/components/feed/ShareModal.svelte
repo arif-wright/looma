@@ -123,15 +123,17 @@
     } catch (error) {
       submitting = false;
       const shareError = error instanceof ShareError ? error : null;
-      const message =
-        shareError?.status === 401
-          ? 'Please sign in to share.'
-          : shareError?.message ?? 'Unable to share right now.';
-      helperText = shareError?.status === 400 ? message : null;
-      dispatch('error', {
-        status: shareError?.status ?? 500,
-        message
-      });
+      const status = shareError?.status ?? 500;
+      let message = shareError?.message ?? 'Unable to share right now.';
+
+      if (status === 401) {
+        message = 'Please sign in to share.';
+      } else if (status === 429) {
+        message = shareError?.message ?? 'You are sharing too quickly.';
+      }
+
+      helperText = status === 400 || status === 409 ? message : null;
+      dispatch('error', { status, message });
     }
   }
 </script>

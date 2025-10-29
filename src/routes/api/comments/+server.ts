@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
+import { createNotification } from '$lib/server/notifications';
 import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/comments/tree';
 
 const parseLimit = (value: string | null, fallback = 10) => {
@@ -155,11 +156,12 @@ export const POST: RequestHandler = async (event) => {
   }
 
   let postId = providedPostId;
+  let parentAuthorId: string | null = null;
 
-  if (replyTo && !postId) {
+  if (replyTo) {
     const { data: parentRow, error: parentError } = await supabase
       .from('comments')
-      .select('post_id')
+      .select('post_id, author_id')
       .eq('id', replyTo)
       .maybeSingle();
 
@@ -168,7 +170,17 @@ export const POST: RequestHandler = async (event) => {
       return json({ error: parentError.message ?? String(parentError) }, { status: 500 });
     }
 
-    postId = parentRow?.post_id ?? null;
+    if (!parentRow) {
+      return json({ error: 'parent_not_found' }, { status: 400 });
+    }
+
+    if (!postId) {
+      postId = parentRow.post_id ?? null;
+    } else if (parentRow.post_id && parentRow.post_id !== postId) {
+      return json({ error: 'reply_mismatch' }, { status: 400 });
+    }
+
+    parentAuthorId = parentRow.author_id ?? null;
   }
 
   if (!postId) {
@@ -237,6 +249,43 @@ export const POST: RequestHandler = async (event) => {
         })
       )
     );
+  }
+
+  try {
+    const { data: postRow, error: postError } = await supabase
+      .from('posts')
+      .select('author_id')
+      .eq('id', postId)
+      .maybeSingle();
+
+    if (postError) {
+      console.error('[api/comments:POST] post author lookup failed', postError);
+    } else if (postRow?.author_id) {
+      const postAuthorId = postRow.author_id as string;
+      const isReply = Boolean(replyTo);
+
+      await createNotification(supabase, {
+        actorId: session.user.id,
+        userId: postAuthorId,
+        kind: 'comment',
+        targetId: postId,
+        targetKind: 'post',
+        metadata: { isReply }
+      });
+
+      if (parentAuthorId && parentAuthorId !== postAuthorId) {
+        await createNotification(supabase, {
+          actorId: session.user.id,
+          userId: parentAuthorId,
+          kind: 'comment',
+          targetId: replyTo ?? commentId ?? postId,
+          targetKind: 'comment',
+          metadata: { isReply: true }
+        });
+      }
+    }
+  } catch (notificationError) {
+    console.error('[api/comments:POST] notification enqueue failed', notificationError);
   }
 
   return json({ item }, { status: 201 });

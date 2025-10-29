@@ -132,8 +132,13 @@
       showToast({ kind: 'success', message: 'Reposted!' }, 2000);
     } catch (error) {
       const shareError = error instanceof ShareError ? error : null;
-      const message =
-        shareError?.status === 401 ? 'Please sign in to share.' : 'Unable to share right now.';
+      const status = shareError?.status ?? 500;
+      let message = shareError?.message ?? 'Unable to share right now.';
+      if (status === 401) {
+        message = 'Please sign in to share.';
+      } else if (status === 429) {
+        message = shareError?.message ?? 'You are sharing too quickly.';
+      }
       showToast({ kind: 'error', message });
     } finally {
       sharePending = false;
@@ -158,7 +163,9 @@
 
   function handleQuoteError(event: CustomEvent<{ status: number; message: string }>) {
     const { status, message } = event.detail;
-    showToast({ kind: 'error', message: status === 401 ? 'Please sign in to share.' : message });
+    const toastMessage =
+      status === 401 ? 'Please sign in to share.' : message || 'Unable to share right now.';
+    showToast({ kind: 'error', message: toastMessage });
   }
 
   function openQuoteModal() {

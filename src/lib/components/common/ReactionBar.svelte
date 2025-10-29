@@ -99,8 +99,14 @@
       localStates = statesBefore;
       pending = null;
 
-      if (error instanceof ReactionError && error.status === 401) {
-        showToast({ kind: 'error', message: 'Please sign in to react.' });
+      if (error instanceof ReactionError) {
+        if (error.status === 401) {
+          showToast({ kind: 'error', message: 'Please sign in to react.' });
+        } else if (error.status === 429) {
+          showToast({ kind: 'error', message: error.message || 'You are reacting too quickly.' });
+        } else {
+          showToast({ kind: 'error', message: error.message || 'Unable to update reaction.' });
+        }
       } else {
         showToast({ kind: 'error', message: 'Unable to update reaction.' });
       }
