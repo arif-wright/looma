@@ -41,6 +41,33 @@ create table if not exists public.creatures (
   updated_at timestamptz not null default now()
 );
 
+alter table if exists public.creatures
+  add column if not exists care_due_at timestamptz;
+
+alter table if exists public.creatures
+  add column if not exists next_care_at timestamptz;
+
+alter table if exists public.creatures
+  add column if not exists needs_care boolean;
+
+alter table if exists public.creatures
+  add column if not exists mood_expires_at timestamptz;
+
+do $$
+begin
+  if to_regclass('public.creatures') is not null then
+    update public.creatures
+    set needs_care = coalesce(needs_care, false)
+    where needs_care is null;
+  end if;
+end$$;
+
+alter table if exists public.creatures
+  alter column needs_care set default false;
+
+alter table if exists public.creatures
+  alter column needs_care set not null;
+
 create index if not exists creatures_owner_idx
   on public.creatures (owner_id, created_at desc);
 
