@@ -12,6 +12,100 @@ create table if not exists public.notifications (
   metadata jsonb not null default '{}'::jsonb
 );
 
+alter table if exists public.notifications
+  add column if not exists user_id uuid;
+
+alter table if exists public.notifications
+  add column if not exists actor_id uuid;
+
+alter table if exists public.notifications
+  add column if not exists kind text;
+
+alter table if exists public.notifications
+  add column if not exists target_id uuid;
+
+alter table if exists public.notifications
+  add column if not exists target_kind text;
+
+alter table if exists public.notifications
+  add column if not exists created_at timestamptz default now();
+
+alter table if exists public.notifications
+  add column if not exists read boolean default false;
+
+alter table if exists public.notifications
+  add column if not exists metadata jsonb default '{}'::jsonb;
+
+alter table if exists public.notifications
+  alter column created_at set default now();
+
+alter table if exists public.notifications
+  alter column read set default false;
+
+alter table if exists public.notifications
+  alter column metadata set default '{}'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.constraint_column_usage
+    where table_schema = 'public'
+      and table_name = 'notifications'
+      and constraint_name = 'notifications_kind_check'
+  ) then
+    begin
+      alter table public.notifications
+        add constraint notifications_kind_check
+        check (kind in ('reaction', 'comment', 'share'));
+    exception
+      when duplicate_object then null;
+    end;
+  end if;
+end$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.constraint_column_usage
+    where table_schema = 'public'
+      and table_name = 'notifications'
+      and constraint_name = 'notifications_target_kind_check'
+  ) then
+    begin
+      alter table public.notifications
+        add constraint notifications_target_kind_check
+        check (target_kind in ('post', 'comment'));
+    exception
+      when duplicate_object then null;
+    end;
+  end if;
+end$$;
+
+alter table if exists public.notifications
+  add constraint notifications_user_fk
+  foreign key (user_id) references public.profiles(id) on delete cascade;
+
+alter table if exists public.notifications
+  drop constraint if exists notifications_actor_fk;
+
+alter table if exists public.notifications
+  add constraint notifications_actor_fk
+  foreign key (actor_id) references public.profiles(id) on delete set null;
+
+alter table if exists public.notifications
+  alter column user_id set not null;
+
+alter table if exists public.notifications
+  alter column kind set not null;
+
+alter table if exists public.notifications
+  alter column target_id set not null;
+
+alter table if exists public.notifications
+  alter column target_kind set not null;
+
 create index if not exists notifications_user_created_idx
   on public.notifications (user_id, created_at desc);
 
