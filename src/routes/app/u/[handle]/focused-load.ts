@@ -2,11 +2,13 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { ProfileSummary } from '$lib/profile/types';
-import type { Comment, DbUser, Thread } from '$lib/threads/types';
+import type { Comment, Thread } from '$lib/threads/types';
 import type { PostRow } from '$lib/social/types';
 import { canonicalPostPath, commentHash } from '$lib/threads/permalink';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
+import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/comments/tree';
 
-const PAGE_SIZE = 25;
+const MAX_VISIBLE_DEPTH = 2;
 
 type Lookup =
   | { kind: 'slug'; slug: string }
@@ -18,28 +20,6 @@ type FocusedPostResult = {
   pagination: { hasMore: boolean; before: string | null };
   morePosts: PostRow[];
 };
-
-type CommentRow = {
-  id: string;
-  post_id: string;
-  parent_id: string | null;
-  body: string | null;
-  created_at: string;
-  author_id: string;
-  profiles?: {
-    id: string;
-    display_name: string | null;
-    handle: string | null;
-    avatar_url: string | null;
-  } | null;
-};
-
-const toDbUser = (row: CommentRow): DbUser => ({
-  id: row.profiles?.id ?? row.author_id,
-  display_name: row.profiles?.display_name ?? null,
-  handle: row.profiles?.handle ?? null,
-  avatar_url: row.profiles?.avatar_url ?? null
-});
 
 const safe = (value: string) => encodeURIComponent(value);
 
@@ -131,155 +111,19 @@ export async function loadFocusedPost(
     }
   };
 
-  const beforeId = event.url.searchParams.get('before');
-  let anchorMeta: { id: string; created_at: string } | null = null;
-
-  if (beforeId) {
-    const { data: anchorRow, error: anchorError } = await supabase
-      .from('comments')
-      .select('id, created_at')
-      .eq('post_id', postRow.id)
-      .eq('id', beforeId)
-      .maybeSingle();
-
-    if (anchorError) {
-      console.error('[profile focused post] pagination anchor lookup failed', anchorError);
-      throw error(500, 'Unable to load comments');
-    }
-
-    if (!anchorRow) {
-      throw error(404, 'Comment anchor not found');
-    }
-
-    anchorMeta = anchorRow;
-  }
-
-  let baseQuery = supabase
-    .from('comments')
-    .select(
-      `
-        id,
-        post_id,
-        parent_id,
-        body,
-        created_at,
-        author_id,
-        profiles:profiles!comments_author_fk(
-          id,
-          display_name,
-          handle,
-          avatar_url
-        )
-      `
-    )
-    .eq('post_id', postRow.id)
-    .is('parent_id', null)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(PAGE_SIZE);
-
-  if (anchorMeta) {
-    baseQuery = baseQuery.or(
-      `created_at.lt.${anchorMeta.created_at},and(created_at.eq.${anchorMeta.created_at},id.lt.${anchorMeta.id})`
-    );
-  }
-
-  const { data: topRows, error: topError } = await baseQuery;
-
-  if (topError) {
-    console.error('[profile focused post] top-level comments query failed', topError);
+  let commentRows: Comment[] = [];
+  try {
+    const treeRows = await fetchTreeRows(supabase, postRow.id);
+    const profileMap = await hydrateAuthors(supabase, treeRows);
+    commentRows = buildCommentTree(treeRows, profileMap, { maxDepth: MAX_VISIBLE_DEPTH });
+  } catch (treeError) {
+    console.error('[profile focused post] comment tree query failed', treeError);
     throw error(500, 'Unable to load comments');
   }
 
-  const orderedTop = (topRows ?? []).slice().reverse() as CommentRow[];
-  const parentIds = orderedTop.map((row) => row.id);
-
-  let childRows: CommentRow[] = [];
-  if (parentIds.length > 0) {
-    const { data: rows, error: childError } = await supabase
-      .from('comments')
-      .select(
-        `
-          id,
-          post_id,
-          parent_id,
-          body,
-          created_at,
-          author_id,
-          profiles:profiles!comments_author_fk(
-            id,
-            display_name,
-            handle,
-            avatar_url
-          )
-        `
-      )
-      .in('parent_id', parentIds)
-      .order('created_at', { ascending: true })
-      .order('id', { ascending: true });
-
-    if (childError) {
-      console.error('[profile focused post] child comments query failed', childError);
-      throw error(500, 'Unable to load replies');
-    }
-
-    childRows = (rows ?? []) as CommentRow[];
-  }
-
-  const childIds = childRows.map((row) => row.id);
-  const nestedCount = new Map<string, number>();
-
-  if (childIds.length > 0) {
-    const { data: grandRows, error: grandError } = await supabase
-      .from('comments')
-      .select('parent_id')
-      .in('parent_id', childIds);
-
-    if (grandError) {
-      console.error('[profile focused post] nested reply count failed', grandError);
-      throw error(500, 'Unable to aggregate replies');
-    }
-
-    for (const row of grandRows ?? []) {
-      if (!row?.parent_id) continue;
-      nestedCount.set(row.parent_id, (nestedCount.get(row.parent_id) ?? 0) + 1);
-    }
-  }
-
-  const childByParent = new Map<string, Comment[]>();
-  for (const row of childRows) {
-    if (!row.parent_id) continue;
-    const comment: Comment = {
-      id: row.id,
-      post_id: row.post_id,
-      parent_id: row.parent_id,
-      body: row.body ?? '',
-      created_at: row.created_at,
-      author: toDbUser(row),
-      reply_count: nestedCount.get(row.id) ?? 0,
-      children: []
-    };
-    const existing = childByParent.get(row.parent_id) ?? [];
-    existing.push(comment);
-    childByParent.set(row.parent_id, existing);
-  }
-
-  const comments: Comment[] = orderedTop.map((row) => {
-    const children = childByParent.get(row.id) ?? [];
-    return {
-      id: row.id,
-      post_id: row.post_id,
-      parent_id: row.parent_id,
-      body: row.body ?? '',
-      created_at: row.created_at,
-      author: toDbUser(row),
-      reply_count: children.length,
-      children
-    };
-  });
-
-  const hasMore = (topRows?.length ?? 0) === PAGE_SIZE;
-  const nextBefore = hasMore && comments.length > 0 ? comments[0].id : null;
+  const comments = commentRows;
+  const hasMore = false;
+  const nextBefore = null;
 
   const { data: moreRows, error: moreError } = await supabase.rpc('get_user_posts', {
     p_user: profile.id,
@@ -322,11 +166,10 @@ export async function handleReplyAction(event: RequestEvent, postId: string) {
     return fail(400, { message: 'Reply cannot be empty' });
   }
 
-  const { data, error: insertError } = await supabase.rpc('insert_comment', {
-    p_post: postId,
-    p_body: body,
-    p_parent: parentId,
-    p_is_public: true
+  const { data, error: insertError } = await supabase.rpc('fn_insert_comment_with_mentions', {
+    p_post_id: postId,
+    p_parent_id: parentId,
+    p_body: body
   });
 
   if (insertError) {
@@ -336,9 +179,38 @@ export async function handleReplyAction(event: RequestEvent, postId: string) {
 
   const inserted = Array.isArray(data) ? data[0] : data;
   const newId = inserted?.comment_id ?? inserted?.id;
+  const depth = typeof inserted?.depth === 'number' ? inserted.depth : 0;
+  const mentionedIds = Array.isArray(inserted?.mentioned_user_ids)
+    ? (inserted.mentioned_user_ids as string[]).filter((id) => typeof id === 'string')
+    : [];
   if (!newId) {
     console.error('[profile focused post] unexpected insert_comment payload', data);
     return fail(500, { message: 'Unexpected response from server' });
+  }
+
+  await recordAnalyticsEvent(supabase, session.user.id, 'comment_create', {
+    surface: 'profile_focused_post',
+    payload: {
+      post_id: postId,
+      comment_id: newId,
+      parent_id: parentId,
+      depth
+    }
+  });
+
+  if (mentionedIds.length > 0) {
+    await Promise.all(
+      mentionedIds.map((mentionedUserId) =>
+        recordAnalyticsEvent(supabase, session.user.id, 'mention_add', {
+          surface: 'profile_focused_post',
+          payload: {
+            post_id: postId,
+            comment_id: newId,
+            mentioned_user_id: mentionedUserId
+          }
+        })
+      )
+    );
   }
 
   const { data: postRow, error: postError } = await supabase

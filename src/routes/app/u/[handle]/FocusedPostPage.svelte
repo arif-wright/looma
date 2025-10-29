@@ -7,11 +7,13 @@
   import type { ProfileSummary } from '$lib/profile/types';
   import type { Thread, Comment } from '$lib/threads/types';
   import type { PostRow } from '$lib/social/types';
-  import CommentList from '$lib/components/comments/CommentList.svelte';
-  import PostCard from '$lib/social/PostCard.svelte';
-  import { canonicalPostPath } from '$lib/threads/permalink';
-  import { copyToClipboard } from '$lib/utils/copy';
-  import { formatCommentBody } from '$lib/social/commentHelpers';
+import CommentThread from '$lib/components/comments/CommentThread.svelte';
+import PostCard from '$lib/social/PostCard.svelte';
+import { canonicalPostPath } from '$lib/threads/permalink';
+import { copyToClipboard } from '$lib/utils/copy';
+import { formatCommentBody } from '$lib/social/commentHelpers';
+import { sendAnalytics } from '$lib/utils/analytics';
+import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
 
   export let data: {
     profile: ProfileSummary;
@@ -52,6 +54,10 @@
     highlightTimer = setTimeout(() => {
       highlightedId = null;
     }, 2200);
+    sendAnalytics('comment_permalink_open', {
+      surface: 'profile_focused_post',
+      payload: { comment_id: commentId }
+    });
   }
 
   onMount(() => {
@@ -135,20 +141,14 @@
         </div>
       </article>
 
-      <form method="post" action="?/reply" class="reply-box">
-        <label for="reply-top-level">Add a reply</label>
-        <textarea
-          id="reply-top-level"
-          name="body"
-          rows="4"
-          required
-          aria-label="Add a reply"
-        ></textarea>
-        <div class="hint">
-          <span>Use @ to mention someone</span>
-          <button type="submit">Reply</button>
-        </div>
-      </form>
+      <section class="reply-box" data-testid="top-reply-box">
+        <h2 class="reply-heading">Join the discussion</h2>
+        <ReplyComposer
+          testId="reply-composer-root"
+          submitLabel="Reply"
+          placeholder="Share your thoughts…"
+        />
+      </section>
 
       {#if pagination.hasMore && pagination.before}
         <div class="load-more">
@@ -156,10 +156,10 @@
         </div>
       {/if}
 
-      <CommentList
+      <CommentThread
         postId={post.id}
-        {comments}
-        {highlightedId}
+        comments={comments}
+        highlightedId={highlightedId}
         threadSlug={post.slug}
         threadHandle={profile.handle}
       />
@@ -312,50 +312,19 @@
   }
 
   .reply-box {
-    display: grid;
-    gap: 8px;
-    border: 1px solid rgba(71, 85, 105, 0.4);
-    border-radius: 18px;
-    padding: 18px;
-    background: rgba(15, 23, 42, 0.7);
+    margin-top: 28px;
+    padding: 22px;
+    border-radius: 20px;
+    border: 1px solid rgba(71, 85, 105, 0.45);
+    background: rgba(15, 23, 42, 0.68);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.32);
   }
 
-  .reply-box label {
-    font-size: 0.85rem;
+  .reply-heading {
+    margin-bottom: 14px;
+    font-size: 1rem;
     font-weight: 600;
-  }
-
-  .reply-box textarea {
-    border-radius: 12px;
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    background: rgba(2, 6, 23, 0.6);
-    padding: 10px 12px;
-    color: inherit;
-    font: inherit;
-    resize: vertical;
-  }
-
-  .reply-box textarea:focus {
-    outline: none;
-    border-color: rgba(94, 234, 212, 0.6);
-    box-shadow: 0 0 0 2px rgba(94, 234, 212, 0.25);
-  }
-
-  .hint {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: rgba(148, 163, 184, 0.8);
-  }
-
-  .hint button {
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(94, 234, 212, 0.3);
-    background: rgba(45, 212, 191, 0.2);
-    color: rgba(226, 252, 236, 0.9);
-    cursor: pointer;
+    color: rgba(226, 232, 240, 0.95);
   }
 
   .load-more {

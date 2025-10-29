@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
+import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/comments/tree';
 
 const parseLimit = (value: string | null, fallback = 10) => {
   if (!value) return fallback;
@@ -35,6 +36,47 @@ export const GET: RequestHandler = async (event) => {
   const before = beforeRaw && beforeRaw.trim().length > 0 ? beforeRaw : new Date().toISOString();
   const afterRaw = search.get('after');
   const after = afterRaw && afterRaw.trim().length > 0 ? afterRaw : null;
+  const mode = search.get('mode');
+
+  if (mode === 'deep') {
+    if (!replyTo) {
+      return json({ error: 'replyTo is required for deep mode' }, { status: 400 });
+    }
+
+    let branchPostId = postId;
+    if (!branchPostId) {
+      const { data: parentRow, error: parentError } = await supabase
+        .from('comments')
+        .select('post_id')
+        .eq('id', replyTo)
+        .maybeSingle();
+
+      if (parentError) {
+        console.error('[comments:get] parent lookup failed', parentError);
+        return json({ error: 'Unable to resolve comment post' }, { status: 500 });
+      }
+
+      branchPostId = parentRow?.post_id ?? null;
+    }
+
+    if (!branchPostId) {
+      return json({ items: [] });
+    }
+
+    try {
+      const allRows = await fetchTreeRows(supabase, branchPostId);
+      const branchRows = allRows.filter((row) => row.id === replyTo || (Array.isArray(row.path) && row.path.includes(replyTo)));
+      if (branchRows.length === 0) {
+        return json({ items: [] });
+      }
+      const authorMap = await hydrateAuthors(supabase, branchRows);
+      const branch = buildCommentTree(branchRows, authorMap, { ancestorId: replyTo });
+      return json({ items: branch });
+    } catch (err) {
+      console.error('[comments:get] deep branch failed', err);
+      return json({ error: 'Unable to load replies' }, { status: 500 });
+    }
+  }
 
   if (replyTo) {
     const { data, error } = await supabase.rpc('get_replies', {
@@ -96,8 +138,6 @@ export const POST: RequestHandler = async (event) => {
   const replyTo =
     typeof payload.replyTo === 'string' && payload.replyTo.trim().length > 0 ? payload.replyTo.trim() : null;
   const body = typeof payload.body === 'string' ? payload.body.trim() : '';
-  const isPublic = typeof payload.isPublic === 'boolean' ? payload.isPublic : true;
-
   if (!providedPostId && !replyTo) {
     return json({ error: 'postId or replyTo is required' }, { status: 400 });
   }
@@ -145,39 +185,59 @@ export const POST: RequestHandler = async (event) => {
     len: body.length
   });
 
-  const { data, error } = await supabase.rpc('insert_comment', {
-    p_post: postId,
-    p_body: body,
-    p_parent: replyTo,
-    p_is_public: isPublic
+  const { data, error } = await supabase.rpc('fn_insert_comment_with_mentions', {
+    p_post_id: postId,
+    p_parent_id: replyTo,
+    p_body: body
   });
 
   if (error) {
-    console.error('[api/comments:POST] insert_comment failed', error);
+    console.error('[api/comments:POST] fn_insert_comment_with_mentions failed', error);
     return json({ error: error.message }, { status: 400 });
   }
 
   const rows = Array.isArray(data) ? data : data ? [data] : [];
   const item = rows.length > 0 ? rows[0] : null;
+  const commentId = item?.comment_id ?? item?.id ?? null;
+  const depth = typeof item?.depth === 'number' ? item.depth : replyTo ? 1 : 0;
+  const mentionedIds = Array.isArray(item?.mentioned_user_ids)
+    ? (item.mentioned_user_ids as string[]).filter((value) => typeof value === 'string')
+    : [];
 
   await updateUserContext(
     event,
     'feed',
     {
       postId,
-      commentId: item?.comment_id ?? item?.id ?? null
+      commentId
     },
     'social'
   );
 
-  await recordAnalyticsEvent(supabase, session.user.id, 'comment_created', {
-    surface: 'home',
+  await recordAnalyticsEvent(supabase, session.user.id, 'comment_create', {
+    surface: 'api_comments',
     payload: {
       postId,
-      commentId: item?.comment_id ?? item?.id ?? null,
-      replyTo: replyTo ?? null
+      commentId,
+      replyTo: replyTo ?? null,
+      depth
     }
   });
+
+  if (mentionedIds.length > 0) {
+    await Promise.all(
+      mentionedIds.map((mentionedUserId) =>
+        recordAnalyticsEvent(supabase, session.user.id, 'mention_add', {
+          surface: 'api_comments',
+          payload: {
+            postId,
+            commentId,
+            mentioned_user_id: mentionedUserId
+          }
+        })
+      )
+    );
+  }
 
   return json({ item }, { status: 201 });
 };

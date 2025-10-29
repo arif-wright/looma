@@ -1,3 +1,5 @@
+import type { ReactionCounts, ReactionKind } from '$lib/lib/reactions';
+
 export type DbUser = {
   id: string;
   display_name: string | null;
@@ -14,6 +16,10 @@ export type Comment = {
   author: DbUser;
   reply_count: number;
   children?: Comment[];
+  hasMoreChildren?: boolean;
+  moreChildrenCount?: number;
+  reactions?: ReactionCounts;
+  reactionStates?: Record<ReactionKind, boolean>;
 };
 
 export type Thread = {

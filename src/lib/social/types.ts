@@ -20,12 +20,22 @@ export type PostRow = {
   reaction_like_count?: number;
   reaction_spark_count?: number;
   reaction_support_count?: number;
+  reactions_like?: number;
+  reactions_cheer?: number;
+  reactions_spark?: number;
   current_user_reaction?: 'like' | 'spark' | 'support' | null;
   author_id?: string | null;
   is_follow?: boolean;
   engagement?: number;
   recency?: number;
   score?: number;
+  shares_count?: number;
+  sharedBy?: {
+    id: string | null;
+    display_name?: string | null;
+    handle?: string | null;
+    is_self?: boolean;
+  } | null;
 };
 
 export type PostComment = {
