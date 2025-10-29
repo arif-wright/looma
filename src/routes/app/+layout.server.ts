@@ -214,19 +214,21 @@ export const load: LayoutServerLoad = async (event) => {
   let notificationsUnread = 0;
 
   try {
-    const { data: notificationRows, error: notificationError } = await supabase.rpc(
-      'get_notifications_for_user',
-      {
-        p_user: session.user.id,
-        p_limit: 20
-      }
-    );
+    const { data: notificationRows, error: notificationError } = await supabase
+      .from('notifications')
+      .select('id, user_id, actor_id, kind, target_id, target_kind, created_at, read, metadata')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (notificationError) {
       console.error('[resolver] notifications fetch failed', notificationError);
     } else if (Array.isArray(notificationRows)) {
-      notifications = notificationRows;
-      notificationsUnread = notificationRows.filter((row) => row?.read === false).length;
+      notifications = notificationRows.map((row) => ({
+        ...row,
+        metadata: (row?.metadata ?? {}) as Record<string, unknown>
+      }));
+      notificationsUnread = notifications.filter((row) => row?.read === false).length;
     }
   } catch (err) {
     console.error('[resolver] notifications fetch unexpected error', err);
