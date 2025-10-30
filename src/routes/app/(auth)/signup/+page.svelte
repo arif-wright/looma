@@ -82,10 +82,10 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
 
     persistNext();
 
+    const configuredBase = PUBLIC_SITE_URL?.replace(/\/$/, '') || null;
     const baseUrl =
-      (typeof window !== 'undefined'
-        ? window.location.origin
-        : PUBLIC_SITE_URL?.replace(/\/$/, '') ?? get(page).url.origin);
+      configuredBase ??
+      (typeof window !== 'undefined' ? window.location.origin : get(page).url.origin);
     const redirectUrl = `${baseUrl}${PUBLIC_AUTH_CALLBACK}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
