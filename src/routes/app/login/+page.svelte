@@ -5,9 +5,11 @@
   import { z } from 'zod';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK } from '$env/static/public';
+  import AuthBackdrop from '$lib/ui/AuthBackdrop.svelte';
 
   export let data: { next?: string | null };
 
+  const ACCENT_GRADIENT = 'linear-gradient(90deg, #9b5cff, #4df4ff)';
   const supabase = createSupabaseBrowserClient();
   const schema = z.object({
     email: z.string().email('Enter a valid email address'),
@@ -29,8 +31,7 @@
 
   const setNext = () => {
     try {
-      const target = resolveNext();
-      sessionStorage.setItem('looma:auth:next', target);
+      sessionStorage.setItem('looma:auth:next', resolveNext());
     } catch (err) {
       console.warn('Failed to persist next redirect', err);
     }
@@ -56,10 +57,7 @@
 
     loading = true;
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: result.data.email,
-      password: result.data.password
-    });
+    const { error } = await supabase.auth.signInWithPassword(result.data);
 
     loading = false;
 
@@ -74,7 +72,7 @@
 
   const handleOAuth = async () => {
     errorMessage = null;
-    oauthLoading = provider;
+    oauthLoading = 'google';
 
     setNext();
 
@@ -96,235 +94,316 @@
   };
 </script>
 
-<section class="auth-shell">
-  <div class="panel">
-    <h1>Welcome back</h1>
-    <p class="subtitle">Sign in to continue building with Looma.</p>
+<section class="auth-page">
+  <AuthBackdrop />
+  <div class="auth-page__content">
+    <article class="auth-card" style={`--accent-gradient: ${ACCENT_GRADIENT};`}>
+      <header class="auth-card__header">
+        <h1>Looma remembers your light.</h1>
+        <p>Step back into your bond.</p>
+      </header>
 
-    <form class="form" on:submit={handleEmailLogin} aria-label="Email login">
-      <label class="field">
-        <span>Email</span>
-        <input
-          type="email"
-          name="email"
-          autocomplete="email"
-          bind:value={email}
-          required
-          placeholder="you@example.com"
-        />
-      </label>
+      <form class="auth-form" data-testid="login-form" on:submit={handleEmailLogin} aria-label="Email login">
+        <label class="auth-field">
+          <span>Email</span>
+          <input
+            type="email"
+            name="email"
+            autocomplete="email"
+            bind:value={email}
+            required
+            placeholder="you@example.com"
+          />
+        </label>
 
-      <label class="field">
-        <span>Password</span>
-        <input
-          type="password"
-          name="password"
-          autocomplete="current-password"
-          bind:value={password}
-          required
-          minlength="8"
-        />
-      </label>
+        <label class="auth-field">
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            bind:value={password}
+            required
+            minlength="8"
+            placeholder="Enter your password"
+          />
+        </label>
 
-      {#if errorMessage}
-        <p class="error" role="alert">{errorMessage}</p>
-      {/if}
-
-      <button
-        class="primary"
-        type="submit"
-        data-testid="email-login"
-        disabled={loading}
-      >
-        {#if loading}
-          Signing in…
-        {:else}
-          Continue with email
+        {#if errorMessage}
+          <p class="auth-error" role="alert">{errorMessage}</p>
         {/if}
-      </button>
-    </form>
 
-    <div class="divider" role="presentation">
-      <span>or</span>
-    </div>
+        <button class="auth-primary" type="submit" data-testid="email-login" disabled={loading}>
+          <span>{loading ? 'Signing in…' : 'Continue with email'}</span>
+        </button>
+      </form>
 
-    <div class="oauth-group" hidden={!oauthFlags.google}>
-      <button
-        type="button"
-        class="oauth"
-        aria-label="Continue with Google"
-        data-testid="oauth-google"
-        on:click={handleOAuth}
-        disabled={oauthLoading !== null}
-      >
-        {oauthLoading === 'google' ? 'Opening Google…' : 'Continue with Google'}
-      </button>
-    </div>
+      <div class="auth-divider" role="presentation">
+        <span>or continue with</span>
+      </div>
 
-    <p class="footnote">
-      Need an account?
-      <a href="/app/signup" class="link">Create one</a>
-    </p>
+      <div class="auth-oauth" hidden={!oauthFlags.google}>
+        <button
+          type="button"
+          class="auth-oauth__button"
+          aria-label="Continue with Google"
+          data-testid="oauth-google"
+          on:click={handleOAuth}
+          disabled={oauthLoading !== null}
+        >
+          {oauthLoading === 'google' ? 'Opening Google…' : 'Continue with Google'}
+        </button>
+      </div>
+
+      <p class="auth-footnote">
+        Need an account?
+        <a href="/app/signup" class="auth-link">Create one</a>
+      </p>
+    </article>
   </div>
 </section>
 
 <style>
-  .auth-shell {
+  .auth-page {
+    position: relative;
     min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5rem 1.5rem;
+    color: #f9f8ff;
+    overflow: hidden;
+    background: #05060d;
+  }
+
+  .auth-page__content {
+    position: relative;
+    width: min(500px, 100%);
+  }
+
+  .auth-card {
+    position: relative;
+    background: rgba(12, 14, 22, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: clamp(2.25rem, 3vw, 3rem);
+    backdrop-filter: blur(24px);
+    box-shadow:
+      0 25px 60px rgba(9, 8, 19, 0.55),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
+  }
+
+  .auth-card__header {
     display: grid;
-    place-items: center;
-    padding: 32px 16px;
-    background: radial-gradient(circle at top right, rgba(45, 212, 191, 0.18), transparent 55%),
-      radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.22), transparent 50%),
-      #0f172a;
-    color: #e2e8f0;
+    gap: 0.65rem;
+    margin-bottom: 2.25rem;
   }
 
-  .panel {
-    width: min(480px, 100%);
-    background: rgba(15, 23, 42, 0.88);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.4);
-  }
-
-  h1 {
-    font-size: 1.9rem;
+  .auth-card__header h1 {
+    margin: 0;
+    font-size: clamp(1.9rem, 3vw, 2.4rem);
     font-weight: 600;
-    margin: 0 0 12px;
+    color: #fff;
+    letter-spacing: -0.01em;
   }
 
-  .subtitle {
-    margin: 0 0 32px;
-    color: rgba(148, 163, 184, 0.78);
+  .auth-card__header p {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(211, 202, 255, 0.8);
   }
 
-  .form {
+  .auth-form {
     display: grid;
-    gap: 18px;
+    gap: 1.25rem;
   }
 
-  .field {
+  .auth-field {
     display: grid;
-    gap: 8px;
+    gap: 0.45rem;
+  }
+
+  .auth-field span {
     font-size: 0.9rem;
-  }
-
-  .field span {
-    color: rgba(148, 163, 184, 0.9);
     font-weight: 500;
+    color: rgba(238, 235, 255, 0.78);
   }
 
   input {
     width: 100%;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.4);
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    background: rgba(17, 19, 28, 0.55);
+    border: 1px solid rgba(157, 152, 255, 0.2);
     color: inherit;
     font-size: 1rem;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background 220ms ease;
+  }
+
+  input::placeholder {
+    color: rgba(204, 200, 236, 0.5);
   }
 
   input:focus-visible {
-    outline: 2px solid rgba(56, 189, 248, 0.55);
-    outline-offset: 2px;
+    outline: none;
+    border-color: rgba(157, 92, 255, 0.75);
+    box-shadow:
+      0 0 0 2px rgba(157, 92, 255, 0.3),
+      0 15px 30px rgba(157, 92, 255, 0.18);
+    background: rgba(18, 20, 33, 0.75);
   }
 
-  .primary {
-    margin-top: 4px;
-    padding: 12px 18px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.85), rgba(45, 212, 191, 0.85));
-    color: #0f172a;
-    font-weight: 600;
+  .auth-error {
+    margin: -0.5rem 0 0;
+    color: #ff9bb5;
+    font-size: 0.9rem;
+  }
+
+  .auth-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem;
+    padding: 0.95rem 1.2rem;
+    width: 100%;
+    border-radius: 14px;
     border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #05060d;
+    background: var(--accent-gradient);
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 200ms ease,
+      box-shadow 220ms ease;
   }
 
-  .primary:disabled {
-    opacity: 0.7;
+  .auth-primary:disabled {
+    opacity: 0.65;
     cursor: wait;
   }
 
-  .primary:hover:not(:disabled),
-  .primary:focus-visible:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 18px 36px rgba(56, 189, 248, 0.35);
+  .auth-primary:not(:disabled):hover,
+  .auth-primary:not(:disabled):focus-visible {
+    transform: translateY(-2px);
+    box-shadow:
+      0 18px 40px rgba(77, 244, 255, 0.28),
+      0 8px 20px rgba(155, 92, 255, 0.33);
   }
 
-  .divider {
+  .auth-primary:not(:disabled):active {
+    animation: pulse 620ms ease;
+  }
+
+  .auth-divider {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin: 28px 0;
+    gap: 1rem;
+    margin: 2.5rem 0 1.75rem;
     text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.2em;
-    color: rgba(148, 163, 184, 0.55);
+    font-size: 0.7rem;
+    letter-spacing: 0.32em;
+    color: rgba(218, 215, 255, 0.4);
   }
 
-  .divider::before,
-  .divider::after {
+  .auth-divider::before,
+  .auth-divider::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: rgba(148, 163, 184, 0.18);
+    background: linear-gradient(90deg, rgba(217, 217, 255, 0.12), transparent);
   }
 
-  .oauth-group {
+  .auth-divider::after {
+    background: linear-gradient(90deg, transparent, rgba(217, 217, 255, 0.12));
+  }
+
+  .auth-oauth {
     display: grid;
-    gap: 12px;
+    gap: 0.75rem;
   }
 
-  .oauth {
+  .auth-oauth__button {
     width: 100%;
-    padding: 12px 18px;
+    padding: 0.85rem 1rem;
     border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    background: rgba(15, 23, 42, 0.6);
-    color: inherit;
+    border: 1px solid rgba(210, 208, 255, 0.14);
+    background: rgba(18, 20, 34, 0.55);
+    color: #f5f3ff;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      border-color 180ms ease,
+      background 200ms ease,
+      box-shadow 220ms ease;
   }
 
-  .oauth:hover:not(:disabled),
-  .oauth:focus-visible:not(:disabled) {
-    background: rgba(56, 189, 248, 0.22);
-    border-color: rgba(56, 189, 248, 0.45);
+  .auth-oauth__button:not(:disabled):hover,
+  .auth-oauth__button:not(:disabled):focus-visible {
+    background: rgba(27, 30, 46, 0.78);
+    border-color: rgba(157, 92, 255, 0.45);
+    box-shadow: 0 12px 30px rgba(155, 92, 255, 0.25);
   }
 
-  .oauth:disabled {
-    opacity: 0.7;
+  .auth-oauth__button:disabled {
+    opacity: 0.65;
     cursor: wait;
   }
 
-  .error {
-    margin: 0;
-    color: #fca5a5;
-    font-size: 0.9rem;
+  .auth-footnote {
+    margin: 2.25rem 0 0;
+    font-size: 0.95rem;
+    color: rgba(222, 219, 255, 0.7);
   }
 
-  .footnote {
-    margin-top: 32px;
-    color: rgba(148, 163, 184, 0.78);
-    font-size: 0.9rem;
+  .auth-link {
+    color: #c3bbff;
+    font-weight: 500;
   }
 
-  .link {
-    color: #38bdf8;
-  }
-
-  .link:hover,
-  .link:focus-visible {
+  .auth-link:hover,
+  .auth-link:focus-visible {
     text-decoration: underline;
   }
 
-  @media (max-width: 560px) {
-    .panel {
-      padding: 28px 24px;
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(22px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(0.99);
+      box-shadow: 0 0 0 0 rgba(157, 92, 255, 0.4);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 16px rgba(157, 92, 255, 0);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(157, 92, 255, 0);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .auth-page {
+      padding: 2.5rem 1.25rem 3rem;
+    }
+
+    .auth-card {
+      padding: 2rem 1.5rem;
+      border-radius: 20px;
     }
   }
 </style>
