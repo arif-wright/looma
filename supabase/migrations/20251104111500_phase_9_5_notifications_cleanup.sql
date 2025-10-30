@@ -4,6 +4,8 @@
 drop index if exists public.notifications_user_read_idx;
 
 -- Drop legacy constraints and columns no longer used by the client.
+drop view if exists public.user_unread_notifications_view;
+
 alter table if exists public.notifications
   drop constraint if exists notifications_type_check,
   drop constraint if exists notifications_post_id_fkey,
