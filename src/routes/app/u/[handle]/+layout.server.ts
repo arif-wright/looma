@@ -21,7 +21,7 @@ export const load: LayoutServerLoad = async (event) => {
     throw error(404, 'Profile not found');
   }
 
-  const viewerId = event.locals.session?.user.id ?? null;
+  const viewerId = event.locals.user?.id ?? null;
 
   return {
     profile,

@@ -11,7 +11,7 @@ test.describe('Marketing homepage', () => {
   test('CTA navigates to login', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: 'Start with your Kinforge account' }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/app\/login$/);
   });
 
   test('sections render for features, how it works, and footer', async ({ page }) => {

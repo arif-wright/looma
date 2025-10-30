@@ -18,10 +18,8 @@ export async function getPlayerStats(
   event: RequestEvent,
   client?: SupabaseClient
 ): Promise<PlayerStats | null> {
-  const supabase = client ?? supabaseServer(event);
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const supabase = client ?? event.locals.supabase ?? supabaseServer(event);
+  const user = event.locals.user ?? (await supabase.auth.getUser()).data.user ?? null;
 
   if (!user) return null;
 

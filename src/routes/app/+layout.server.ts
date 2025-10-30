@@ -192,13 +192,13 @@ const fetchCareDue = async (
 
 export const load: LayoutServerLoad = async (event) => {
   const { locals, url, cookies } = event;
-  const session = locals.session;
+  const user = locals.user;
 
-  if (!session) {
+  if (!user) {
     const redirectTarget = url.pathname + url.search;
     const loginLocation = redirectTarget
-      ? '/login?next=' + encodeURIComponent(redirectTarget)
-      : '/login';
+      ? '/app/login?next=' + encodeURIComponent(redirectTarget)
+      : '/app/login';
 
     throw redirect(303, loginLocation);
   }
@@ -207,8 +207,8 @@ export const load: LayoutServerLoad = async (event) => {
   const forceHome = url.searchParams.get('forceHome') === '1';
   const resolverMode = shouldResolveLanding(normalizedPath, forceHome);
 
-  const supabase = supabaseServer(event);
-  const preferences = await getOrCreatePreferences(supabase, session.user.id);
+  const supabase = locals.supabase ?? supabaseServer(event);
+  const preferences = await getOrCreatePreferences(supabase, user.id);
   const variant = await ensureVariant(supabase, preferences);
   let notifications: Array<Record<string, any>> = [];
   let notificationsUnread = 0;
@@ -217,7 +217,7 @@ export const load: LayoutServerLoad = async (event) => {
     const { data: notificationRows, error: notificationError } = await supabase
       .from('notifications')
       .select('id, user_id, actor_id, kind, target_id, target_kind, created_at, read, metadata')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -242,8 +242,8 @@ export const load: LayoutServerLoad = async (event) => {
 
   if (resolverMode === 'resolve') {
     const [mission, careDue] = await Promise.all([
-      fetchActiveMission(supabase, session.user.id),
-      fetchCareDue(supabase, session.user.id)
+      fetchActiveMission(supabase, user.id),
+      fetchCareDue(supabase, user.id)
     ]);
 
     const contextPayload =
@@ -253,7 +253,7 @@ export const load: LayoutServerLoad = async (event) => {
 
     const decisionPath = normalizePath(decision.target);
 
-    await recordAnalyticsEvent(supabase, session.user.id, 'app_landed', {
+    await recordAnalyticsEvent(supabase, user.id, 'app_landed', {
       surface: decision.surface,
       variant,
       payload: {
@@ -276,8 +276,7 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   return {
-    session,
-    user: session.user,
+    user,
     preferences,
     landingVariant: variant,
     landingSurface: decision?.surface ?? null,

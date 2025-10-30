@@ -3,8 +3,8 @@ import type { PageServerLoad } from './$types';
 import type { CreatureView, Species } from '$lib/types/creatures';
 
 export const load: PageServerLoad = async ({ fetch, locals }) => {
-  const session = locals.session;
-  if (!session) {
+  const user = locals.user;
+  if (!user) {
     return { creatures: [] as CreatureView[], species: [] as Species[] };
   }
 

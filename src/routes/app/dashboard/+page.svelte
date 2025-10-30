@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { supabaseBrowser } from '$lib/supabaseClient';
+  import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import PlayerSummary from '$lib/app/dashboard/PlayerSummary.svelte';
   import StatsPanel from '$lib/app/dashboard/StatsPanel.svelte';
   import CreaturesSnapshot from '$lib/app/dashboard/CreaturesSnapshot.svelte';
@@ -59,12 +59,12 @@
   }
 
   onMount(() => {
-    const supabase = supabaseBrowser();
+    const supabase = createSupabaseBrowserClient();
 
     const handleSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        goto('/login?next=' + encodeURIComponent('/app/dashboard'));
+        goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
       }
     };
 
@@ -72,7 +72,7 @@
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        goto('/login?next=' + encodeURIComponent('/app/dashboard'));
+        goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
       }
     });
 

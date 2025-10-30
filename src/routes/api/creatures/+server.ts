@@ -18,8 +18,8 @@ const jsonError = (status: number, message: string) =>
   json({ ok: false, error: message }, { status });
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const session = locals.session;
-  if (!session) {
+  const user = locals.user;
+  if (!user) {
     return jsonError(401, 'Not authenticated');
   }
 
@@ -50,8 +50,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 export const POST: RequestHandler = async (event) => {
   const { locals, request } = event;
-  const session = locals.session;
-  if (!session) {
+  const user = locals.user;
+  if (!user) {
     return jsonError(401, 'Not authenticated');
   }
 
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const insert = {
-    owner_id: session.user.id,
+    owner_id: user.id,
     species_id,
     nickname: nickname || null
   };
@@ -118,7 +118,7 @@ export const POST: RequestHandler = async (event) => {
     'care'
   );
 
-  await recordAnalyticsEvent(locals.supabase, session.user.id, 'pet_interaction', {
+  await recordAnalyticsEvent(locals.supabase, user.id, 'pet_interaction', {
     surface: 'creatures',
     payload: {
       creatureId: creature.id,

@@ -39,7 +39,7 @@
   <div class="nav-overlay__inner container">
     <a href="/" class="brand">Looma</a>
     <div class="nav-actions">
-      <a class="btn btn--ghost btn--sm" href="/login">Enter</a>
+      <a class="btn btn--ghost btn--sm" href="/app/login">Enter</a>
     </div>
   </div>
 </nav>
@@ -58,7 +58,7 @@
           A living world that learns you back with every choice you make. Bonds deepen as you tend, explore, and share.
         </p>
         <div class="btn-row">
-          <a class="btn btn--primary btn-primary" href="/login">Begin your bond</a>
+          <a class="btn btn--primary btn-primary" href="/app/login">Begin your bond</a>
           <a class="btn btn--ghost btn-secondary" href="#story">Watch the story</a>
         </div>
       </div>

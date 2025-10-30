@@ -17,15 +17,10 @@ const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const GET: RequestHandler = async (event) => {
-  const supabase = event.locals.sb ?? supabaseServer(event);
-  let session = event.locals.session ?? null;
+  const supabase = event.locals.supabase ?? supabaseServer(event);
+  const user = event.locals.user;
 
-  if (!session) {
-    const { data } = await supabase.auth.getSession();
-    session = data.session ?? null;
-  }
-
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
 
@@ -115,15 +110,10 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-  const supabase = event.locals.sb ?? supabaseServer(event);
-  let session = event.locals.session ?? null;
+  const supabase = event.locals.supabase ?? supabaseServer(event);
+  const user = event.locals.user;
 
-  if (!session) {
-    const { data } = await supabase.auth.getSession();
-    session = data.session ?? null;
-  }
-
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
 
@@ -226,7 +216,7 @@ export const POST: RequestHandler = async (event) => {
     'social'
   );
 
-  await recordAnalyticsEvent(supabase, session.user.id, 'comment_create', {
+  await recordAnalyticsEvent(supabase, user.id, 'comment_create', {
     surface: 'api_comments',
     payload: {
       postId,
@@ -239,7 +229,7 @@ export const POST: RequestHandler = async (event) => {
   if (mentionedIds.length > 0) {
     await Promise.all(
       mentionedIds.map((mentionedUserId) =>
-        recordAnalyticsEvent(supabase, session.user.id, 'mention_add', {
+        recordAnalyticsEvent(supabase, user.id, 'mention_add', {
           surface: 'api_comments',
           payload: {
             postId,
@@ -273,7 +263,7 @@ export const POST: RequestHandler = async (event) => {
       const postHandle = (postRow.author?.handle ?? null) as string | null;
 
       await createNotification(supabase, {
-        actorId: session.user.id,
+        actorId: user.id,
         userId: postAuthorId,
         kind: 'comment',
         targetId: postId,
@@ -290,7 +280,7 @@ export const POST: RequestHandler = async (event) => {
 
       if (parentAuthorId && parentAuthorId !== postAuthorId) {
         await createNotification(supabase, {
-          actorId: session.user.id,
+          actorId: user.id,
           userId: parentAuthorId,
           kind: 'comment',
           targetId: replyTo ?? commentId ?? postId,

@@ -10,6 +10,23 @@ import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/com
 
 const MAX_VISIBLE_DEPTH = 2;
 
+type FocusedAuthor = {
+  id: string | null;
+  handle: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+type FocusedPostRow = {
+  id: string;
+  slug: string | null;
+  body: string | null;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+  author_id: string;
+  author: FocusedAuthor | null;
+};
+
 type Lookup =
   | { kind: 'slug'; slug: string }
   | { kind: 'id'; id: string };
@@ -58,7 +75,8 @@ export async function loadFocusedPost(
     postQuery.eq('id', lookup.id);
   }
 
-  const { data: postRow, error: postError } = await postQuery.maybeSingle();
+  const { data: rawPost, error: postError } = await postQuery.maybeSingle();
+  const postRow = (rawPost as FocusedPostRow | null) ?? null;
 
   if (postError) {
     console.error('[profile focused post] post lookup failed', postError);
@@ -151,9 +169,9 @@ export async function loadFocusedPost(
 }
 
 export async function handleReplyAction(event: RequestEvent, postId: string) {
-  const session = event.locals.session;
-  if (!session) {
-    throw redirect(303, '/login');
+  const user = event.locals.user;
+  if (!user) {
+    throw redirect(303, '/app/login');
   }
 
   const supabase = supabaseServer(event);
@@ -188,7 +206,7 @@ export async function handleReplyAction(event: RequestEvent, postId: string) {
     return fail(500, { message: 'Unexpected response from server' });
   }
 
-  await recordAnalyticsEvent(supabase, session.user.id, 'comment_create', {
+  await recordAnalyticsEvent(supabase, user.id, 'comment_create', {
     surface: 'profile_focused_post',
     payload: {
       post_id: postId,
@@ -201,7 +219,7 @@ export async function handleReplyAction(event: RequestEvent, postId: string) {
   if (mentionedIds.length > 0) {
     await Promise.all(
       mentionedIds.map((mentionedUserId) =>
-        recordAnalyticsEvent(supabase, session.user.id, 'mention_add', {
+        recordAnalyticsEvent(supabase, user.id, 'mention_add', {
           surface: 'profile_focused_post',
           payload: {
             post_id: postId,

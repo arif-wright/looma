@@ -29,7 +29,7 @@ export const load: PageServerLoad = async (event) => {
     throw error(404, 'Post not found');
   }
 
-  const viewerId = event.locals.session?.user.id ?? null;
+  const viewerId = event.locals.user?.id ?? null;
   let liked = false;
 
   if (viewerId) {

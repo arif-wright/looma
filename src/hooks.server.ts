@@ -1,6 +1,5 @@
 import type { Handle } from '@sveltejs/kit';
-import type { Session, SupabaseClient } from '@supabase/supabase-js';
-import { supabaseServer } from '$lib/supabaseClient';
+import { getUserServer } from '$lib/server/auth';
 
 export const handle: Handle = async ({ event, resolve }) => {
   if (event.url.hostname === '127.0.0.1') {
@@ -9,18 +8,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     return new Response(null, { status: 301, headers: { Location: url.toString() } });
   }
 
-  const supabase = supabaseServer(event);
-  const { data } = await supabase.auth.getSession();
+  const { supabase, user } = await getUserServer(event);
 
   event.locals.supabase = supabase;
-  event.locals.session = data.session ?? null;
+  event.locals.user = user ?? null;
 
   return resolve(event);
 };
-
-declare module '@sveltejs/kit' {
-  interface Locals {
-    supabase: SupabaseClient;
-    session: Session | null;
-  }
-}

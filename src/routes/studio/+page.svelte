@@ -1,23 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
   import { PUBLIC_SITE_URL } from '$env/static/public';
-  import { supabaseBrowser } from '$lib/supabaseClient';
-  import AuthProgress from '$lib/ui/AuthProgress.svelte';
-  import {
-    consumeHashSession,
-    type HashResult,
-    sanitizeInternalPath
-  } from '$lib/auth/consumeHashSession';
-
-  type ProgressState = 'processing' | 'success' | 'error';
-
-  const STATUS_MESSAGES: Record<HashResult['status'], string> = {
-    success: 'Signed in successfully.',
-    expired: 'This link has expired. Request a new magic link.',
-    invalid: 'This link is invalid or already used.',
-    network_error: "We couldn't reach the server. Check your connection and try again."
-  };
 
   const PUBLIC_SITE_ORIGIN = (PUBLIC_SITE_URL || '').replace(/\/$/, '');
   const ORIGIN = PUBLIC_SITE_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -73,119 +55,6 @@
       name: 'Looma'
     }
   };
-
-  let progressState: ProgressState | null = null;
-  let message = 'Signing you in...';
-  let nextPath: string | null = null;
-  let desiredNext = '/app';
-  let errorMessage: string | null = null;
-  let lastStatus: HashResult['status'] | null = null;
-
-  function debug(...args: unknown[]) {
-    if (import.meta.env.DEV) {
-      console.debug('[looma:auth-progress]', ...args);
-    }
-  }
-
-  function hasSupabaseHash(): boolean {
-    if (typeof window === 'undefined') return false;
-    const hash = window.location.hash || '';
-    if (!hash.startsWith('#')) return false;
-
-    const params = new URLSearchParams(hash.slice(1));
-    return (
-      params.has('access_token') ||
-      params.has('refresh_token') ||
-      params.get('type') === 'recovery' ||
-      params.get('type') === 'magiclink' ||
-      params.has('error') ||
-      params.has('error_code') ||
-      params.has('error_description')
-    );
-  }
-
-  async function syncServerCookies() {
-    const supabase = supabaseBrowser();
-    const { data } = await supabase.auth.getSession();
-    const session = data.session;
-    if (!session) return;
-
-    try {
-      const response = await fetch('/auth/refresh', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`Refresh failed with status ${response.status}`);
-      }
-    } catch (error) {
-      debug('syncServerCookies network error', error);
-      throw error;
-    }
-  }
-
-  function resolveNext(): string {
-    if (typeof window === 'undefined') return '/app';
-    const params = new URLSearchParams(window.location.search);
-    const candidate = sanitizeInternalPath(params.get('next') ?? params.get('redirectTo'));
-    return candidate ?? '/app';
-  }
-
-  async function processMagicLink() {
-    progressState = 'processing';
-    message = 'Signing you in...';
-    errorMessage = null;
-    nextPath = null;
-    const target = resolveNext();
-    desiredNext = target;
-    debug('state -> processing');
-
-    const result = await consumeHashSession();
-    lastStatus = result.status;
-    debug('consumeHashSession result', result);
-
-    if (result.status !== 'success') {
-      progressState = 'error';
-      errorMessage = result.message ?? STATUS_MESSAGES[result.status];
-      debug('state -> error', errorMessage);
-      return;
-    }
-
-    try {
-      await syncServerCookies();
-    } catch (error) {
-      progressState = 'error';
-      lastStatus = 'network_error';
-      errorMessage = STATUS_MESSAGES.network_error;
-      debug('state -> error (refresh failed)', error);
-      return;
-    }
-
-    progressState = 'success';
-    nextPath = target;
-    debug('state -> success', { nextPath });
-
-    await goto(target, { replaceState: true });
-  }
-
-  async function handleRetry() {
-    debug('retry requested', { lastStatus });
-    if (lastStatus === 'network_error') {
-      await processMagicLink();
-    } else {
-      await goto(`/login?next=${encodeURIComponent(desiredNext)}`);
-    }
-  }
-
-  onMount(async () => {
-    if (!hasSupabaseHash()) return;
-    await processMagicLink();
-  });
 </script>
 
 <svelte:head>
@@ -209,100 +78,90 @@
   <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
 </svelte:head>
 
-{#if progressState}
-  <AuthProgress
-    state={progressState}
-    message={message}
-    next={nextPath}
-    errorMessage={errorMessage}
-    onRetry={progressState === 'error' ? handleRetry : undefined}
-  />
-{:else}
-  <a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">Skip to content</a>
 
-  <div class="page">
-    <header class="hero" aria-labelledby="hero-heading">
-      <div class="hero__content">
-        <p class="hero__eyebrow">Kinforge presents</p>
-        <h1 id="hero-heading">Looma keeps every creature at your command</h1>
-        <p class="hero__lead">
-          Prep faster, improvise with confidence, and give your players unforgettable encounters.
-          Looma is the command centre for Kinforge storytellers who need living creature collections in seconds.
-        </p>
-        <div class="hero__actions">
-          <a class="button" href="/login">Start with your Kinforge account</a>
-          <a class="button button--ghost" href="/login">Explore the demo library</a>
-        </div>
+<div class="page">
+  <header class="hero" aria-labelledby="hero-heading">
+    <div class="hero__content">
+      <p class="hero__eyebrow">Kinforge presents</p>
+      <h1 id="hero-heading">Looma keeps every creature at your command</h1>
+      <p class="hero__lead">
+        Prep faster, improvise with confidence, and give your players unforgettable encounters.
+        Looma is the command centre for Kinforge storytellers who need living creature collections in seconds.
+      </p>
+      <div class="hero__actions">
+        <a class="button" href="/app/login">Start with your Kinforge account</a>
+        <a class="button button--ghost" href="/app/login">Explore the demo library</a>
       </div>
-      <figure class="hero__media">
-        <img
-          src="/og/looma_og.png"
-          alt="Stylised Looma dashboard showing curated creature cards"
-          width="1200"
-          height="630"
-          loading="lazy"
-        />
-      </figure>
-    </header>
+    </div>
+    <figure class="hero__media">
+      <img
+        src="/og/looma_og.png"
+        alt="Stylised Looma dashboard showing curated creature cards"
+        width="1200"
+        height="630"
+        loading="lazy"
+      />
+    </figure>
+  </header>
 
-    <main id="main" tabindex="-1">
-      <section class="features" aria-labelledby="features-heading">
-        <div class="section-intro">
-          <h2 id="features-heading">Built to tame every bestiary</h2>
-          <p>Everything game runners need to capture, classify, and deploy Kinforge creatures without losing momentum.</p>
-        </div>
-        <div class="feature-grid">
-          {#each features as feature}
-            <article class="feature-card">
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
-            </article>
-          {/each}
-        </div>
-      </section>
-
-      <section class="how" aria-labelledby="how-heading">
-        <div class="section-intro">
-          <h2 id="how-heading">How Looma supports your session flow</h2>
-          <p>From early brainstorms to the moment initiative starts, Looma keeps the details consistent.</p>
-        </div>
-        <ol class="how-steps">
-          {#each howItWorks as step, index}
-            <li class="how-step">
-              <span class="how-step__number" aria-hidden="true">{index + 1}</span>
-              <div>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </div>
-            </li>
-          {/each}
-        </ol>
-      </section>
-
-      <section class="cta" aria-labelledby="cta-heading">
-        <div class="cta__content">
-          <h2 id="cta-heading">Ready to bring your creatures to life?</h2>
-          <p>Log in with your Kinforge credentials and start building encounters that surprise every table.</p>
-        </div>
-        <a class="button button--light" href="/login">Sign in to Looma</a>
-      </section>
-    </main>
-
-    <footer class="footer" aria-label="Looma footer">
-      <div>
-        <strong>Looma</strong>
-        <p>Creature collections, encounter prep, and collaborative lore for Kinforge worlds.</p>
+  <main id="main" tabindex="-1">
+    <section class="features" aria-labelledby="features-heading">
+      <div class="section-intro">
+        <h2 id="features-heading">Built to tame every bestiary</h2>
+        <p>Everything game runners need to capture, classify, and deploy Kinforge creatures without losing momentum.</p>
       </div>
-      <nav aria-label="Secondary">
-        <ul>
-          <li><a href="/login">Log in</a></li>
-          <li><a href="/login">Request access</a></li>
-          <li><a href="mailto:team@kinforge.gg">Contact</a></li>
-        </ul>
-      </nav>
-    </footer>
-  </div>
-{/if}
+      <div class="feature-grid">
+        {#each features as feature}
+          <article class="feature-card">
+            <h3>{feature.title}</h3>
+            <p>{feature.description}</p>
+          </article>
+        {/each}
+      </div>
+    </section>
+
+    <section class="how" aria-labelledby="how-heading">
+      <div class="section-intro">
+        <h2 id="how-heading">How Looma supports your session flow</h2>
+        <p>From early brainstorms to the moment initiative starts, Looma keeps the details consistent.</p>
+      </div>
+      <ol class="how-steps">
+        {#each howItWorks as step, index}
+          <li class="how-step">
+            <span class="how-step__number" aria-hidden="true">{index + 1}</span>
+            <div>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </div>
+          </li>
+        {/each}
+      </ol>
+    </section>
+
+    <section class="cta" aria-labelledby="cta-heading">
+      <div class="cta__content">
+        <h2 id="cta-heading">Ready to bring your creatures to life?</h2>
+        <p>Log in with your Kinforge credentials and start building encounters that surprise every table.</p>
+      </div>
+      <a class="button button--light" href="/app/login">Sign in to Looma</a>
+    </section>
+  </main>
+
+  <footer class="footer" aria-label="Looma footer">
+    <div>
+      <strong>Looma</strong>
+      <p>Creature collections, encounter prep, and collaborative lore for Kinforge worlds.</p>
+    </div>
+    <nav aria-label="Secondary">
+      <ul>
+        <li><a href="/app/login">Log in</a></li>
+        <li><a href="/app/login">Request access</a></li>
+        <li><a href="mailto:team@kinforge.gg">Contact</a></li>
+      </ul>
+    </nav>
+  </footer>
+</div>
 
 <style>
   :global(body) {

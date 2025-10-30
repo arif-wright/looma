@@ -1,7 +1,7 @@
 <script lang="ts">
   export let data;
 
-  const email = data?.user?.email ?? data?.session?.user?.email ?? '';
+  const email = data?.user?.email ?? '';
 </script>
 
 <svelte:head>

@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { supabaseServer } from '$lib/supabaseClient';
+import { createSupabaseServerClient } from '$lib/supabase/server';
 import { recordAnalyticsEvent } from './analytics';
 
 export type UserContext = 'feed' | 'mission' | 'creature' | 'dashboard';
@@ -32,9 +32,9 @@ export async function updateUserContext(
   payload: Record<string, unknown> | null = null,
   trigger: ContextTrigger | string | null = null
 ): Promise<void> {
-  const supabase = event.locals.sb ?? supabaseServer(event);
+  const supabase = event.locals.supabase ?? createSupabaseServerClient(event);
 
-  let userId = event.locals.session?.user?.id ?? null;
+  let userId = event.locals.user?.id ?? null;
   if (!userId) {
     const {
       data: { user }

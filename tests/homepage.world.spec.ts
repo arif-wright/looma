@@ -20,8 +20,8 @@ test('Looma World homepage renders key sections and CTA navigates to login', asy
 
   await expect(page.getByRole('contentinfo')).toBeVisible();
 
-  const navigationPromise = page.waitForURL('**/login');
+  const navigationPromise = page.waitForURL('**/app/login');
   await page.getByRole('link', { name: 'Begin your bond' }).click();
   await navigationPromise;
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/app\/login$/);
 });

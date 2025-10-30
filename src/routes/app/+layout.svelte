@@ -5,21 +5,27 @@
   import SideRail from '$lib/components/nav/SideRail.svelte';
   import BottomDock from '$lib/components/nav/BottomDock.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { sendAnalytics } from '$lib/utils/analytics';
+  import { logout } from '$lib/auth/logout';
 
   export let data;
 
-  const userEmail = data?.user?.email ?? data?.session?.user?.email ?? '';
+  const userEmail = data?.user?.email ?? '';
   const activity = data?.navActivity ?? {};
-  let bellNotifications = data?.notifications ?? [];
+  let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
 
-  $: bellNotifications = data?.notifications ?? bellNotifications;
+  $: bellNotifications = (data?.notifications ?? bellNotifications) as NotificationItem[];
   $: bellUnread = typeof data?.notificationsUnread === 'number' ? data.notificationsUnread : bellUnread;
 
   function handleCompose() {
     void goto('/app/u/me?compose=1');
+  }
+
+  function handleLogout() {
+    void logout();
   }
 
   if (browser) {
@@ -31,7 +37,8 @@
     });
 
     afterNavigate((nav) => {
-      const nextPath = nav.to?.pathname ?? window.location.pathname;
+      const nextUrl = nav.to?.url ?? new URL(window.location.href);
+      const nextPath = nextUrl.pathname;
       if (previousPath && previousPath !== nextPath) {
         sendAnalytics('nav_switch', {
           payload: {
@@ -65,9 +72,9 @@
         {#if userEmail}
           <span class="user-email">{userEmail}</span>
         {/if}
-        <form method="POST" action="/app?/logout">
-          <button type="submit" class="logout">Logout</button>
-        </form>
+        <button type="button" class="logout" on:click={handleLogout} data-testid="logout">
+          Logout
+        </button>
       </div>
     </header>
 

@@ -1,21 +1,16 @@
 import type { PageLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
 
 export const load: PageLoad = async (event) => {
-  const supabase = supabaseServer(event);
-  const id = event.params.id;
-
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
+  const user = event.locals.user;
   if (!user) {
-    throw error(302, {
-      message: 'Redirect',
-      location: '/login?next=' + encodeURIComponent(event.url.pathname)
-    });
+    const redirectTo = event.url.pathname + event.url.search;
+    throw redirect(302, '/app/login?next=' + encodeURIComponent(redirectTo));
   }
+
+  const supabase = event.locals.supabase ?? supabaseServer(event);
+  const id = event.params.id;
 
   const { data, error: err } = await supabase
     .from('creatures')
