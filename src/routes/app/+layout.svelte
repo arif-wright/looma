@@ -108,6 +108,8 @@
     border-bottom: 1px solid rgba(148, 163, 184, 0.12);
     background: rgba(15, 23, 42, 0.78);
     backdrop-filter: blur(16px);
+    position: relative;
+    z-index: 2147483645;
   }
 
   .brand {
