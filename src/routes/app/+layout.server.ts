@@ -190,7 +190,7 @@ const fetchCareDue = async (
   }
 };
 
-const isPublicAppPath = (path: string) =>
+const isAuthSurface = (path: string) =>
   path === '/app/login' ||
   path === '/app/signup' ||
   path.startsWith('/app/login') ||
@@ -202,7 +202,7 @@ export const load: LayoutServerLoad = async (event) => {
   const normalizedPath = normalizePath(url.pathname);
 
   if (!user) {
-    if (isPublicAppPath(normalizedPath)) {
+    if (isAuthSurface(normalizedPath)) {
       return {
         user: null,
         preferences: null,
@@ -214,12 +214,7 @@ export const load: LayoutServerLoad = async (event) => {
       };
     }
 
-    const redirectTarget = url.pathname + url.search;
-    const loginLocation = redirectTarget
-      ? '/app/login?next=' + encodeURIComponent(redirectTarget)
-      : '/app/login';
-
-    throw redirect(303, loginLocation);
+    throw redirect(302, '/');
   }
 
   const forceHome = url.searchParams.get('forceHome') === '1';

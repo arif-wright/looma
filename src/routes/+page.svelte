@@ -2,8 +2,16 @@
   import { onMount } from 'svelte';
   import ThreadBackground from '$lib/ui/ThreadBackground.svelte';
   import ParticlesLayer from '$lib/ui/ParticlesLayer.svelte';
+  import type { User } from '@supabase/supabase-js';
+
+  export let data: { user?: User | null };
 
   let heroVideo: HTMLVideoElement | null = null;
+  const isAuthed = Boolean(data?.user);
+  const enterHref = isAuthed ? '/app/home' : '/app/login';
+  const enterLabel = 'Enter';
+  const primaryHref = enterHref;
+  const primaryLabel = isAuthed ? 'Enter Looma' : 'Begin your bond';
 
   onMount(() => {
     const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
@@ -39,7 +47,7 @@
   <div class="nav-overlay__inner container">
     <a href="/" class="brand">Looma</a>
     <div class="nav-actions">
-      <a class="btn btn--ghost btn--sm" href="/app/login">Enter</a>
+      <a class="btn btn--ghost btn--sm" href={enterHref}>{enterLabel}</a>
     </div>
   </div>
 </nav>
@@ -58,7 +66,7 @@
           A living world that learns you back with every choice you make. Bonds deepen as you tend, explore, and share.
         </p>
         <div class="btn-row">
-          <a class="btn btn--primary btn-primary" href="/app/login">Begin your bond</a>
+          <a class="btn btn--primary btn-primary" href={primaryHref}>{primaryLabel}</a>
           <a class="btn btn--ghost btn-secondary" href="#story">Watch the story</a>
         </div>
       </div>
