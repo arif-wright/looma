@@ -172,14 +172,15 @@
 <style>
   .auth-card {
     width: min(520px, 100%);
-    background: rgba(13, 16, 26, 0.58);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background:
+      linear-gradient(150deg, rgba(16, 20, 32, 0.44), rgba(5, 8, 18, 0.26));
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 22px;
     padding: clamp(2.3rem, 3vw, 3rem);
-    backdrop-filter: blur(28px);
+    backdrop-filter: blur(26px);
     box-shadow:
-      0 28px 68px rgba(6, 7, 12, 0.62),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      0 26px 60px rgba(6, 7, 12, 0.48),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
     color: #f9f8ff;
   }
