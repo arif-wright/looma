@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 loadEnv({ path: '.env' });
 loadEnv({ path: '.env.local', override: true });
 
-export const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4173';
+export const BASE_URL = process.env.BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -30,7 +30,9 @@ const ensureEnv = () => {
   if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for tests');
 };
 
-export async function seed(): Promise<SeedResult> {
+export type TestUser = SeedUser;
+
+async function seedCore(): Promise<SeedResult> {
   ensureEnv();
 
   const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
@@ -135,4 +137,12 @@ export async function seed(): Promise<SeedResult> {
     author,
     viewer
   };
+}
+
+export async function seed(): Promise<SeedResult> {
+  return seedCore();
+}
+
+export async function seedMinimal(): Promise<SeedResult> {
+  return seedCore();
 }

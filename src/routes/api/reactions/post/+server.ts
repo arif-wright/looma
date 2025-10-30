@@ -16,6 +16,10 @@ export const POST: RequestHandler = async (event) => {
   } = await supabase.auth.getUser();
 
   if (authError) {
+    console.error('[api/reactions/post] auth error', authError, {
+      cookie: event.request.headers.get('cookie'),
+      authorization: event.request.headers.get('authorization')
+    });
     return json({ error: 'server_error' }, { status: 500, headers: CACHE_HEADERS });
   }
 

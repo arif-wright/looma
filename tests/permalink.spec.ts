@@ -61,14 +61,13 @@ test.describe('permalink helpers', () => {
     expect(target).toBe('/app/u/A%20R%20I%20F/Hello%20World');
   });
 
-  test('redirect helper throws when handle missing', () => {
-    expect(() =>
-      canonicalRedirectTarget({
-        id: '123',
-        slug: 'slug',
-        author: { handle: null }
-      })
-    ).toThrowError(/Missing author handle/);
+  test('redirect helper falls back to legacy thread when handle missing', () => {
+    const target = canonicalRedirectTarget({
+      id: '123',
+      slug: 'slug',
+      author: { handle: null }
+    });
+    expect(target).toBe('/app/thread/123?slug=slug');
   });
 
   test('appendSearch utility preserves search strings', () => {

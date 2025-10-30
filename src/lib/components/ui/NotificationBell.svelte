@@ -354,7 +354,15 @@
       />
     </svg>
     {#if unread > 0}
-      <span class="badge" aria-live="polite" aria-atomic="true" role="status">{unread > 9 ? '9+' : unread}</span>
+      <span
+        class="badge"
+        data-testid="notification-badge"
+        aria-live="polite"
+        aria-atomic="true"
+        role="status"
+      >
+        {unread > 9 ? '9+' : unread}
+      </span>
     {/if}
     <span class={`glow ${unread > 0 ? 'active' : ''}`} aria-hidden="true"></span>
   </button>
@@ -375,6 +383,7 @@
         <button
           type="button"
           class="mark-read"
+          data-testid="notification-mark-all"
           on:click={markAllRead}
           disabled={unread === 0}
         >
@@ -382,13 +391,19 @@
         </button>
       </header>
 
-      <ul>
+      <ul data-testid="notification-list">
         {#if items.length === 0}
           <li class="empty" aria-live="polite">Nothing to show yet.</li>
         {:else}
           {#each items as item (item.id)}
             {@const href = resolveHref(item)}
-            <li class={`item ${item.read ? '' : 'unread'}`} role="presentation">
+            <li
+              class={`item ${item.read ? '' : 'unread'}`}
+              data-testid="notification-item"
+              data-unread={item.read ? 'false' : 'true'}
+              data-notification-id={item.id}
+              role="presentation"
+            >
               <a
                 class="item-link"
                 href={href ?? '#'}
