@@ -4,7 +4,7 @@
   import { get } from 'svelte/store';
   import { z } from 'zod';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
-  import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK } from '$env/static/public';
+import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env/static/public';
 
   export let data: { next?: string | null };
 
@@ -15,7 +15,6 @@
     password: z.string().min(8, 'Password must be at least 8 characters long')
   });
 
-  const AUTH_CALLBACK = PUBLIC_AUTH_CALLBACK || '/auth/callback';
   const oauthFlags = {
     google: PUBLIC_OAUTH_GOOGLE === 'true'
   };
@@ -75,12 +74,15 @@
 
     setNext();
 
-    const origin = get(page).url.origin;
+    const baseUrl =
+      PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+      (typeof window !== 'undefined' ? window.location.origin : get(page).url.origin);
+    const redirectUrl = `${baseUrl}${PUBLIC_AUTH_CALLBACK}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${origin}${AUTH_CALLBACK}`,
+        redirectTo: redirectUrl,
         scopes: 'email profile'
       }
     });
