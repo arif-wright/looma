@@ -173,15 +173,14 @@
   .auth-card {
     width: min(520px, 100%);
     background:
-      linear-gradient(160deg, rgba(16, 20, 33, 0.3), rgba(6, 8, 18, 0.12)),
-      rgba(6, 9, 18, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+      linear-gradient(155deg, rgba(24, 30, 47, 0.18), rgba(8, 12, 26, 0.06));
+    border: 1px solid rgba(255, 255, 255, 0.24);
     border-radius: 22px;
     padding: clamp(2.3rem, 3vw, 3rem);
-    backdrop-filter: blur(32px) saturate(140%);
+    backdrop-filter: blur(38px) saturate(165%);
     box-shadow:
-      0 32px 80px rgba(3, 4, 12, 0.5),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+      0 28px 70px rgba(3, 4, 12, 0.46),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
     color: #f9f8ff;
     position: relative;
@@ -194,10 +193,10 @@
     inset: 1px;
     border-radius: inherit;
     background:
-      linear-gradient(120deg, rgba(255, 255, 255, 0.22), transparent 55%),
-      radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.16), transparent 50%),
-      radial-gradient(circle at 80% 78%, rgba(255, 255, 255, 0.12), transparent 50%);
-    opacity: 0.5;
+      linear-gradient(115deg, rgba(255, 255, 255, 0.35), transparent 55%),
+      radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.2), transparent 55%),
+      radial-gradient(circle at 82% 80%, rgba(255, 255, 255, 0.16), transparent 58%);
+    opacity: 0.4;
     pointer-events: none;
     mix-blend-mode: screen;
   }
@@ -252,8 +251,8 @@
     width: 100%;
     padding: 0.9rem 1rem;
     border-radius: 14px;
-    background: rgba(17, 19, 28, 0.55);
-    border: 1px solid rgba(157, 152, 255, 0.2);
+    background: rgba(17, 19, 28, 0.28);
+    border: 1px solid rgba(157, 152, 255, 0.22);
     color: inherit;
     font-size: 1rem;
     transition:
@@ -272,7 +271,7 @@
     box-shadow:
       0 0 0 2px rgba(157, 92, 255, 0.3),
       0 15px 30px rgba(157, 92, 255, 0.18);
-    background: rgba(18, 20, 33, 0.75);
+    background: rgba(18, 20, 33, 0.42);
   }
 
   .auth-error {
