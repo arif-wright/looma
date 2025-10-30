@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { onDestroy, onMount, tick } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import { relativeTime } from '$lib/social/commentHelpers';
+  import { commentHash, legacyThreadById } from '$lib/threads/permalink';
 
   export type NotificationItem = {
     id: string;
@@ -74,6 +76,52 @@
       default:
         return 'You have an update';
     }
+  }
+
+  function getMetaString(
+    meta: Record<string, unknown> | null | undefined,
+    ...keys: string[]
+  ): string | null {
+    if (!meta) return null;
+    for (const key of keys) {
+      const candidate = meta[key];
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return null;
+  }
+
+  function resolveHref(item: NotificationItem): string | null {
+    const meta = item.metadata ?? {};
+    const postId =
+      getMetaString(meta, 'postId', 'post_id', 'postID') ??
+      (item.target_kind === 'post' ? item.target_id : null);
+    const commentId =
+      getMetaString(meta, 'commentId', 'comment_id', 'commentID') ??
+      (item.target_kind === 'comment' ? item.target_id : null);
+    const parentId = getMetaString(meta, 'parentCommentId', 'parent_comment_id');
+
+    if (postId && commentId) {
+      return `${legacyThreadById(postId)}${commentHash(commentId)}`;
+    }
+
+    if (postId && parentId) {
+      return `${legacyThreadById(postId)}${commentHash(parentId)}`;
+    }
+
+    if (postId) {
+      return legacyThreadById(postId);
+    }
+
+    return null;
+  }
+
+  function handleNavigate(event: MouseEvent, item: NotificationItem, href: string | null) {
+    if (!href) return;
+    event.preventDefault();
+    closeDropdown();
+    void goto(href);
   }
 
   function extractActorDisplay(item: NotificationItem): string | null {
@@ -325,12 +373,22 @@
           <li class="empty" aria-live="polite">Nothing to show yet.</li>
         {:else}
           {#each items as item (item.id)}
-            <li class={`item ${item.read ? '' : 'unread'}`} role="menuitem">
-              <div class="indicator" aria-hidden="true"></div>
-              <div class="copy">
-                <p class="message">{describe(item)}</p>
-                <time datetime={item.created_at}>{relativeTime(item.created_at)}</time>
-              </div>
+            {@const href = resolveHref(item)}
+            <li class={`item ${item.read ? '' : 'unread'}`} role="presentation">
+              <a
+                class="item-link"
+                href={href ?? '#'}
+                role="menuitem"
+                aria-disabled={href ? undefined : 'true'}
+                tabindex={href ? undefined : -1}
+                on:click={(event) => handleNavigate(event, item, href)}
+              >
+                <div class="indicator" aria-hidden="true"></div>
+                <div class="copy">
+                  <p class="message">{describe(item)}</p>
+                  <time datetime={item.created_at}>{relativeTime(item.created_at)}</time>
+                </div>
+              </a>
             </li>
           {/each}
         {/if}
@@ -422,15 +480,15 @@
     top: calc(100% + 12px);
     right: 0;
     width: min(320px, 92vw);
-    background: rgba(15, 23, 42, 0.92);
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 18px;
-    box-shadow: 0 22px 45px rgba(15, 23, 42, 0.45);
+    box-shadow: 0 24px 55px rgba(2, 6, 23, 0.55);
     padding: 16px;
     display: grid;
     gap: 10px;
     z-index: 40;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(14px);
   }
 
   header {
@@ -492,17 +550,15 @@
   }
 
   .item {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 12px;
-    padding: 10px 12px;
     border-radius: 14px;
-    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(23, 37, 84, 0.88);
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
   }
 
   .item.unread {
     border: 1px solid rgba(56, 189, 248, 0.35);
-    background: rgba(56, 189, 248, 0.08);
+    background: rgba(30, 64, 175, 0.3);
   }
 
   .indicator {
@@ -515,6 +571,28 @@
 
   .item.unread .indicator {
     background: rgba(56, 189, 248, 0.95);
+  }
+
+  .item-link {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: inherit;
+    text-decoration: none;
+    color: inherit;
+    outline: none;
+  }
+
+  .item-link:hover,
+  .item-link:focus-visible {
+    background: rgba(56, 189, 248, 0.08);
+  }
+
+  .item-link[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.6;
+    pointer-events: none;
   }
 
   .copy {
@@ -567,6 +645,14 @@
 
     .notification-toast {
       animation: none;
+    }
+
+    .item {
+      transition: none;
+    }
+
+    .item-link {
+      transition: none;
     }
   }
 

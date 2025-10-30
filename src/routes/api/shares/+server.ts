@@ -91,7 +91,7 @@ export const POST: RequestHandler = async (event) => {
         kind: 'share',
         targetId: postId,
         targetKind: 'post',
-        metadata: { quote: Boolean(quote) }
+        metadata: { quote: Boolean(quote), postId }
       });
     }
 

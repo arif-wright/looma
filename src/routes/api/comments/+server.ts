@@ -270,7 +270,12 @@ export const POST: RequestHandler = async (event) => {
         kind: 'comment',
         targetId: postId,
         targetKind: 'post',
-        metadata: { isReply }
+        metadata: {
+          isReply,
+          postId,
+          commentId,
+          parentCommentId: replyTo ?? null
+        }
       });
 
       if (parentAuthorId && parentAuthorId !== postAuthorId) {
@@ -280,7 +285,12 @@ export const POST: RequestHandler = async (event) => {
           kind: 'comment',
           targetId: replyTo ?? commentId ?? postId,
           targetKind: 'comment',
-          metadata: { isReply: true }
+          metadata: {
+            isReply: true,
+            postId,
+            commentId,
+            parentCommentId: replyTo ?? null
+          }
         });
       }
     }

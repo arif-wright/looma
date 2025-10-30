@@ -81,7 +81,7 @@ export const POST: RequestHandler = async (event) => {
           kind: 'reaction',
           targetId: postId,
           targetKind: 'post',
-          metadata: { reaction: kind }
+          metadata: { reaction: kind, postId }
         });
       }
     }

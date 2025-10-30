@@ -81,7 +81,11 @@ export const POST: RequestHandler = async (event) => {
         kind: 'reaction',
         targetId: commentId,
         targetKind: 'comment',
-        metadata: { reaction: kind }
+        metadata: {
+          reaction: kind,
+          postId: typeof commentRow.post_id === 'string' ? commentRow.post_id : null,
+          commentId
+        }
       });
     }
 
