@@ -25,11 +25,15 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 20% 20%, rgba(157, 78, 221, 0.35), transparent 40%),
-      radial-gradient(circle at 80% 15%, rgba(73, 255, 255, 0.28), transparent 45%),
-      linear-gradient(160deg, rgba(12, 10, 24, 0.95), rgba(10, 14, 26, 0.92));
+      radial-gradient(circle at 22% 18%, rgba(148, 70, 231, 0.32), transparent 45%),
+      radial-gradient(circle at 78% 16%, rgba(73, 255, 255, 0.24), transparent 52%),
+      radial-gradient(circle at 50% 80%, rgba(55, 120, 255, 0.18), transparent 58%),
+      linear-gradient(160deg, rgba(12, 10, 24, 0.96), rgba(9, 15, 28, 0.92));
+    background-size: 180% 180%, 200% 200%, 220% 220%, 100% 100%;
     z-index: 0;
-    animation: gradientPulse 32s ease-in-out infinite alternate;
+    animation:
+      gradientFlow 26s ease-in-out infinite,
+      gradientPulse 34s ease-in-out infinite alternate;
   }
 
   .auth-backdrop__threads {
@@ -88,6 +92,21 @@
     }
   }
 
+  @keyframes gradientFlow {
+    0% {
+      background-position: 18% 24%, 82% 20%, 50% 80%, 50% 50%;
+    }
+    35% {
+      background-position: 26% 32%, 78% 22%, 44% 74%, 50% 50%;
+    }
+    65% {
+      background-position: 14% 28%, 84% 28%, 56% 70%, 50% 50%;
+    }
+    100% {
+      background-position: 20% 24%, 80% 18%, 50% 82%, 50% 50%;
+    }
+  }
+
   @keyframes gradientPulse {
     0% {
       opacity: 1;
@@ -104,10 +123,10 @@
       transform: translate3d(-1.2%, -0.6%, 0) scale(1.03);
     }
     50% {
-      transform: translate3d(1.6%, 0.8%, 0) scale(1.05);
+      transform: translate3d(1.6%, 0.8%, 0) scale(1.05) rotate(0.2deg);
     }
     100% {
-      transform: translate3d(-0.4%, -0.2%, 0) scale(1.02);
+      transform: translate3d(-0.6%, -0.2%, 0) scale(1.02);
     }
   }
 
