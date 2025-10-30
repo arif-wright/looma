@@ -431,6 +431,7 @@
 <style>
   .notification-wrapper {
     position: relative;
+    z-index: 2147483646;
   }
 
   .bell {
