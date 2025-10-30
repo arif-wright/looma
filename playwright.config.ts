@@ -6,8 +6,10 @@ const WEB_SERVER_PORT = base.port ? Number(base.port) : 5173;
 
 const config: PlaywrightTestConfig = {
   testDir: 'tests',
+  globalSetup: './tests/global.setup.ts',
   use: {
-    baseURL: BASE_URL
+    baseURL: BASE_URL,
+    storageState: '.auth/viewer.json'
   },
   webServer: {
     command: `npm run dev -- --host 0.0.0.0 --port ${WEB_SERVER_PORT}`,

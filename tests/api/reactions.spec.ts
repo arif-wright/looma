@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { seed, type SeedResult } from '../fixtures/env';
-import { createApiRequestContext } from '../fixtures/auth';
+import { runSeed, type SeedResult } from '../fixtures/env';
+import { createAuthedRequest } from '../fixtures/auth';
 
 test.describe.serial('Reactions API', () => {
   let seedData: SeedResult;
 
   test.beforeAll(async () => {
-    seedData = await seed();
+    seedData = await runSeed();
   });
 
-  test('toggle post like on/off', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('toggle post like on/off', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
 
     const likeAdd = await apiContext.post('/api/reactions/post', {
       data: { post_id: seedData.postId, kind: 'like' }
@@ -33,8 +33,8 @@ test.describe.serial('Reactions API', () => {
     await apiContext.dispose();
   });
 
-  test('adding cheer does not affect like counts', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('adding cheer does not affect like counts', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
 
     const cheerAdd = await apiContext.post('/api/reactions/post', {
       data: { post_id: seedData.postId, kind: 'cheer' }
@@ -54,8 +54,8 @@ test.describe.serial('Reactions API', () => {
     await apiContext.dispose();
   });
 
-  test('comment reactions toggle successfully', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('comment reactions toggle successfully', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
 
     const add = await apiContext.post('/api/reactions/comment', {
       data: { comment_id: seedData.commentId, kind: 'spark' }
@@ -81,8 +81,8 @@ test.describe.serial('Reactions API', () => {
     expect(res.status(), 'unauthenticated status').toBe(401);
   });
 
-  test('invalid reaction kinds return 400', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('invalid reaction kinds return 400', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
     const res = await apiContext.post('/api/reactions/post', {
       data: { post_id: seedData.postId, kind: 'clap' }
     });

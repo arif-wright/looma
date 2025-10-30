@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { seed, type SeedResult } from '../fixtures/env';
+import { runSeed, type SeedResult } from '../fixtures/env';
 import { loginAs } from '../fixtures/auth';
 
 test.describe('Social reactions & shares', () => {
@@ -8,7 +8,7 @@ test.describe('Social reactions & shares', () => {
   let seedData: SeedResult;
 
   test.beforeAll(async () => {
-    seedData = await seed();
+    seedData = await runSeed();
   });
 
   test('post & comment reactions with share flows persist', async ({ page }) => {

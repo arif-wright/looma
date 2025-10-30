@@ -1,10 +1,9 @@
 import { expect, request, test } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
-import { BASE_URL, seedMinimal, type SeedResult } from '../fixtures/env';
-import { loginAs } from '../fixtures/auth';
+import { runSeed, type SeedResult } from '../fixtures/env';
+import { createAuthedRequest, loginAs } from '../fixtures/auth';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -14,48 +13,12 @@ const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   }
 });
 
-const projectRef = (() => {
-  const host = new URL(SUPABASE_URL).host;
-  const [subdomain] = host.split('.');
-  return subdomain;
-})();
-
-type Credentials = { email: string; password: string };
-
 type NotificationRow = {
   id: string;
   kind: string;
   target_kind: string;
   read: boolean;
 };
-
-async function buildAuthedRequest(user: Credentials) {
-  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-
-  const { data, error } = await client.auth.signInWithPassword(user);
-  if (error || !data.session) {
-    throw new Error(`Unable to create session for ${user.email}: ${error?.message ?? 'unknown error'}`);
-  }
-
-  const session = data.session;
-  const cookieHeader = [
-    `sb-${projectRef}-access-token=${session.access_token}`,
-    `sb-${projectRef}-refresh-token=${session.refresh_token}`
-  ].join('; ');
-
-  return request.newContext({
-    baseURL: BASE_URL,
-    extraHTTPHeaders: {
-      Cookie: cookieHeader,
-      Authorization: `Bearer ${session.access_token}`
-    }
-  });
-}
 
 async function fetchNotifications(userId: string): Promise<NotificationRow[]> {
   const { data, error } = await adminClient
@@ -98,9 +61,9 @@ test.describe('Notifications UI', () => {
   let viewerRequest: request.APIRequestContext;
 
   test.beforeAll(async () => {
-    seedData = await seedMinimal();
+    seedData = await runSeed();
     await resetState(seedData);
-    viewerRequest = await buildAuthedRequest(seedData.viewer);
+    viewerRequest = await createAuthedRequest(seedData.viewer);
   });
 
   test.afterAll(async () => {

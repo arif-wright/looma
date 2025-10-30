@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { seed, type SeedResult } from '../fixtures/env';
-import { createApiRequestContext } from '../fixtures/auth';
+import { runSeed, type SeedResult } from '../fixtures/env';
+import { createAuthedRequest } from '../fixtures/auth';
 
 test.describe.serial('Shares API', () => {
   let seedData: SeedResult;
 
   test.beforeAll(async () => {
-    seedData = await seed();
+    seedData = await runSeed();
   });
 
-  test('reposting increments share count', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('reposting increments share count', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
     const res = await apiContext.post('/api/shares', {
       data: { post_id: seedData.postId }
     });
@@ -20,8 +20,8 @@ test.describe.serial('Shares API', () => {
     await apiContext.dispose();
   });
 
-  test('quote share succeeds within limit', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('quote share succeeds within limit', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
     const res = await apiContext.post('/api/shares', {
       data: { post_id: seedData.postId, quote: 'Looking good from automated tests!' }
     });
@@ -38,8 +38,8 @@ test.describe.serial('Shares API', () => {
     expect(res.status(), 'unauthenticated share status').toBe(401);
   });
 
-  test('quotes longer than 280 chars return 400', async ({ browser }) => {
-    const apiContext = await createApiRequestContext(browser, seedData.viewer);
+  test('quotes longer than 280 chars return 400', async () => {
+    const apiContext = await createAuthedRequest(seedData.viewer);
     const longQuote = 'x'.repeat(300);
     const res = await apiContext.post('/api/shares', {
       data: { post_id: seedData.postId, quote: longQuote }

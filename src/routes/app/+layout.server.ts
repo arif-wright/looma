@@ -190,11 +190,30 @@ const fetchCareDue = async (
   }
 };
 
+const isPublicAppPath = (path: string) =>
+  path === '/app/login' ||
+  path === '/app/signup' ||
+  path.startsWith('/app/login') ||
+  path.startsWith('/app/signup');
+
 export const load: LayoutServerLoad = async (event) => {
   const { locals, url, cookies } = event;
   const user = locals.user;
+  const normalizedPath = normalizePath(url.pathname);
 
   if (!user) {
+    if (isPublicAppPath(normalizedPath)) {
+      return {
+        user: null,
+        preferences: null,
+        landingVariant: null,
+        landingSurface: null,
+        navActivity: {},
+        notifications: [],
+        notificationsUnread: 0
+      };
+    }
+
     const redirectTarget = url.pathname + url.search;
     const loginLocation = redirectTarget
       ? '/app/login?next=' + encodeURIComponent(redirectTarget)
@@ -203,7 +222,6 @@ export const load: LayoutServerLoad = async (event) => {
     throw redirect(303, loginLocation);
   }
 
-  const normalizedPath = normalizePath(url.pathname);
   const forceHome = url.searchParams.get('forceHome') === '1';
   const resolverMode = shouldResolveLanding(normalizedPath, forceHome);
 

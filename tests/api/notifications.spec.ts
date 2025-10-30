@@ -1,7 +1,7 @@
-import { expect, test, type Browser } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
-import { seedMinimal, type SeedResult } from '../fixtures/env';
-import { createApiRequestContext } from '../fixtures/auth';
+import { runSeed, type SeedResult } from '../fixtures/env';
+import { createAuthedRequest } from '../fixtures/auth';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -89,7 +89,7 @@ test.describe.serial('Notifications API', () => {
   let seedData: SeedResult;
 
   test.beforeAll(async () => {
-    seedData = await seedMinimal();
+    seedData = await runSeed();
     await resetState(seedData);
   });
 
@@ -97,8 +97,8 @@ test.describe.serial('Notifications API', () => {
     await resetState(seedData);
   });
 
-  test('reaction creates notification for author', async ({ browser }) => {
-    const viewerContext = await createApiRequestContext(browser, seedData.viewer);
+  test('reaction creates notification for author', async () => {
+    const viewerContext = await createAuthedRequest(seedData.viewer);
     const res = await viewerContext.post('/api/reactions/post', {
       data: { post_id: seedData.postId, kind: 'like' }
     });
@@ -108,8 +108,8 @@ test.describe.serial('Notifications API', () => {
     await viewerContext.dispose();
   });
 
-  test('comment reply creates notification targeting comment', async ({ browser }) => {
-    const viewerContext = await createApiRequestContext(browser, seedData.viewer);
+  test('comment reply creates notification targeting comment', async () => {
+    const viewerContext = await createAuthedRequest(seedData.viewer);
     const res = await viewerContext.post('/api/comments', {
       data: {
         postId: seedData.postId,
@@ -123,8 +123,8 @@ test.describe.serial('Notifications API', () => {
     await viewerContext.dispose();
   });
 
-  test('share creates notification', async ({ browser }) => {
-    const viewerContext = await createApiRequestContext(browser, seedData.viewer);
+  test('share creates notification', async () => {
+    const viewerContext = await createAuthedRequest(seedData.viewer);
     const res = await viewerContext.post('/api/shares', {
       data: { post_id: seedData.postId }
     });
@@ -134,9 +134,9 @@ test.describe.serial('Notifications API', () => {
     await viewerContext.dispose();
   });
 
-  test('mark all read clears unread count', async ({ browser }) => {
+  test('mark all read clears unread count', async () => {
     // generate a notification first
-    const viewerContext = await createApiRequestContext(browser, seedData.viewer);
+    const viewerContext = await createAuthedRequest(seedData.viewer);
     const reaction = await viewerContext.post('/api/reactions/post', {
       data: { post_id: seedData.postId, kind: 'like' }
     });
@@ -144,7 +144,7 @@ test.describe.serial('Notifications API', () => {
 
     await waitForNotification(seedData.author.id, (row) => row.kind === 'reaction');
 
-    const authorContext = await createApiRequestContext(browser, seedData.author);
+    const authorContext = await createAuthedRequest(seedData.author);
     const markAll = await authorContext.post('/api/notifications', {
       data: { action: 'mark_all' }
     });
