@@ -4,10 +4,10 @@
   import ParticlesLayer from '$lib/ui/ParticlesLayer.svelte';
   import type { User } from '@supabase/supabase-js';
 
-  export let data: { user?: User | null };
+  export let data: { loggedIn: boolean };
 
   let heroVideo: HTMLVideoElement | null = null;
-  const isAuthed = Boolean(data?.user);
+  const isAuthed = data.loggedIn;
   const enterHref = isAuthed ? '/app/home' : '/app/login';
   const enterLabel = 'Enter';
   const primaryHref = enterHref;

@@ -1,9 +1,10 @@
-import type { Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export const actions: Actions = {
-  logout: async ({ locals }) => {
-    await locals.supabase.auth.signOut();
-    throw redirect(303, '/app/login');
+export const load: PageServerLoad = async ({ locals }) => {
+  if (locals.user) {
+    throw redirect(302, '/app/home');
   }
+
+  throw redirect(302, '/');
 };
