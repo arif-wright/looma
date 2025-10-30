@@ -4,7 +4,7 @@
   import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import { relativeTime } from '$lib/social/commentHelpers';
-  import { commentHash, legacyThreadById } from '$lib/threads/permalink';
+  import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
 
   export type NotificationItem = {
     id: string;
@@ -101,24 +101,38 @@
       getMetaString(meta, 'commentId', 'comment_id', 'commentID') ??
       (item.target_kind === 'comment' ? item.target_id : null);
     const parentId = getMetaString(meta, 'parentCommentId', 'parent_comment_id');
+    const postHandle = getMetaString(meta, 'postHandle', 'post_handle', 'authorHandle', 'author_handle');
+    const postSlug = getMetaString(meta, 'postSlug', 'post_slug', 'slug');
 
     if (postId && commentId) {
-      return `${legacyThreadById(postId)}${commentHash(commentId)}`;
+      return canonicalCommentPath(postHandle, postSlug, postId, commentId);
     }
 
     if (postId && parentId) {
-      return `${legacyThreadById(postId)}${commentHash(parentId)}`;
+      return `${canonicalPostPath(postHandle, postSlug, postId)}${commentHash(parentId)}`;
     }
 
     if (postId) {
-      return legacyThreadById(postId);
+      return canonicalPostPath(postHandle, postSlug, postId);
     }
 
     return null;
   }
 
   function handleNavigate(event: MouseEvent, item: NotificationItem, href: string | null) {
-    if (!href) return;
+    if (!href) {
+      event.preventDefault();
+      return;
+    }
+
+    const isModified =
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+
+    if (isModified) {
+      closeDropdown();
+      return;
+    }
+
     event.preventDefault();
     closeDropdown();
     void goto(href);

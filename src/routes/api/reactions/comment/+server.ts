@@ -75,6 +75,30 @@ export const POST: RequestHandler = async (event) => {
     const counts = await getCommentReactionCounts(supabase, commentId);
 
     if (result.toggledOn && commentRow?.author_id) {
+      let postSlug: string | null = null;
+      let postHandle: string | null = null;
+      const commentPostId = typeof commentRow.post_id === 'string' ? commentRow.post_id : null;
+
+      if (commentPostId) {
+        const { data: postMeta, error: postMetaError } = await supabase
+          .from('posts')
+          .select(
+            `
+            slug,
+            author:profiles!posts_author_fk(handle)
+          `
+          )
+          .eq('id', commentPostId)
+          .maybeSingle();
+
+        if (postMetaError) {
+          console.error('[api/reactions/comment] post meta lookup failed', postMetaError);
+        } else if (postMeta) {
+          postSlug = (postMeta.slug ?? null) as string | null;
+          postHandle = (postMeta.author?.handle ?? null) as string | null;
+        }
+      }
+
       await createNotification(supabase, {
         actorId: user.id,
         userId: commentRow.author_id as string,
@@ -83,8 +107,10 @@ export const POST: RequestHandler = async (event) => {
         targetKind: 'comment',
         metadata: {
           reaction: kind,
-          postId: typeof commentRow.post_id === 'string' ? commentRow.post_id : null,
-          commentId
+          postId: commentPostId,
+          commentId,
+          postSlug,
+          postHandle
         }
       });
     }

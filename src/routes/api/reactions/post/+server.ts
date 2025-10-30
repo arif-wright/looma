@@ -68,7 +68,13 @@ export const POST: RequestHandler = async (event) => {
     if (result.toggledOn) {
       const { data: postRow, error: postError } = await supabase
         .from('posts')
-        .select('author_id')
+        .select(
+          `
+          author_id,
+          slug,
+          author:profiles!posts_author_fk(handle)
+        `
+        )
         .eq('id', postId)
         .maybeSingle();
 
@@ -81,7 +87,12 @@ export const POST: RequestHandler = async (event) => {
           kind: 'reaction',
           targetId: postId,
           targetKind: 'post',
-          metadata: { reaction: kind, postId }
+          metadata: {
+            reaction: kind,
+            postId,
+            postSlug: (postRow.slug ?? null) as string | null,
+            postHandle: (postRow.author?.handle ?? null) as string | null
+          }
         });
       }
     }

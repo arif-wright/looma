@@ -254,7 +254,13 @@ export const POST: RequestHandler = async (event) => {
   try {
     const { data: postRow, error: postError } = await supabase
       .from('posts')
-      .select('author_id')
+      .select(
+        `
+        author_id,
+        slug,
+        author:profiles!posts_author_fk(handle)
+      `
+      )
       .eq('id', postId)
       .maybeSingle();
 
@@ -263,6 +269,8 @@ export const POST: RequestHandler = async (event) => {
     } else if (postRow?.author_id) {
       const postAuthorId = postRow.author_id as string;
       const isReply = Boolean(replyTo);
+      const postSlug = (postRow.slug ?? null) as string | null;
+      const postHandle = (postRow.author?.handle ?? null) as string | null;
 
       await createNotification(supabase, {
         actorId: session.user.id,
@@ -274,7 +282,9 @@ export const POST: RequestHandler = async (event) => {
           isReply,
           postId,
           commentId,
-          parentCommentId: replyTo ?? null
+          parentCommentId: replyTo ?? null,
+          postSlug,
+          postHandle
         }
       });
 
@@ -289,7 +299,9 @@ export const POST: RequestHandler = async (event) => {
             isReply: true,
             postId,
             commentId,
-            parentCommentId: replyTo ?? null
+            parentCommentId: replyTo ?? null,
+            postSlug,
+            postHandle
           }
         });
       }
