@@ -5,7 +5,6 @@
   import { z } from 'zod';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK } from '$env/static/public';
-  import AuthBackdrop from '$lib/ui/AuthBackdrop.svelte';
 
   export let data: { next?: string | null };
 
@@ -94,104 +93,83 @@
   };
 </script>
 
-<section class="auth-page">
-  <AuthBackdrop />
-  <div class="auth-page__content">
-    <article class="auth-card" style={`--accent-gradient: ${ACCENT_GRADIENT};`}>
-      <header class="auth-card__header">
-        <h1>Looma remembers your light.</h1>
-        <p>Step back into your bond.</p>
-      </header>
+<article class="auth-card" style={`--accent-gradient: ${ACCENT_GRADIENT};`}>
+  <header class="auth-card__header">
+    <h1>Looma remembers your light.</h1>
+    <p>Step back into your bond.</p>
+  </header>
 
-      <form class="auth-form" data-testid="login-form" on:submit={handleEmailLogin} aria-label="Email login">
-        <label class="auth-field">
-          <span>Email</span>
-          <input
-            type="email"
-            name="email"
-            autocomplete="email"
-            bind:value={email}
-            required
-            placeholder="you@example.com"
-          />
-        </label>
+  <form class="auth-form" data-testid="login-form" on:submit={handleEmailLogin} aria-label="Email login">
+    <label class="auth-field">
+      <span>Email</span>
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        bind:value={email}
+        required
+        placeholder="you@example.com"
+      />
+    </label>
 
-        <label class="auth-field">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            autocomplete="current-password"
-            bind:value={password}
-            required
-            minlength="8"
-            placeholder="Enter your password"
-          />
-        </label>
+    <label class="auth-field">
+      <span>Password</span>
+      <input
+        type="password"
+        name="password"
+        autocomplete="current-password"
+        bind:value={password}
+        required
+        minlength="8"
+        placeholder="Enter your password"
+      />
+    </label>
 
-        {#if errorMessage}
-          <p class="auth-error" role="alert">{errorMessage}</p>
-        {/if}
+    {#if errorMessage}
+      <p class="auth-error" role="alert">{errorMessage}</p>
+    {/if}
 
-        <button class="auth-primary" type="submit" data-testid="email-login" disabled={loading}>
-          <span>{loading ? 'Signing in…' : 'Continue with email'}</span>
-        </button>
-      </form>
+    <button class="auth-primary" type="submit" data-testid="email-login" disabled={loading}>
+      <span>{loading ? 'Signing in…' : 'Continue with email'}</span>
+    </button>
+  </form>
 
-      <div class="auth-divider" role="presentation">
-        <span>or continue with</span>
-      </div>
-
-      <div class="auth-oauth" hidden={!oauthFlags.google}>
-        <button
-          type="button"
-          class="auth-oauth__button"
-          aria-label="Continue with Google"
-          data-testid="oauth-google"
-          on:click={handleOAuth}
-          disabled={oauthLoading !== null}
-        >
-          {oauthLoading === 'google' ? 'Opening Google…' : 'Continue with Google'}
-        </button>
-      </div>
-
-      <p class="auth-footnote">
-        Need an account?
-        <a href="/app/signup" class="auth-link">Create one</a>
-      </p>
-    </article>
+  <div class="auth-divider" role="presentation">
+    <span>or continue with</span>
   </div>
-</section>
+
+  <div class="auth-oauth" hidden={!oauthFlags.google}>
+    <button
+      type="button"
+      class="auth-oauth__button"
+      aria-label="Continue with Google"
+      data-testid="oauth-google"
+      on:click={handleOAuth}
+      disabled={oauthLoading !== null}
+    >
+      {oauthLoading === 'google' ? 'Opening Google…' : 'Continue with Google'}
+    </button>
+  </div>
+
+  <p class="auth-footnote">
+    Need an account?
+    <a href="/app/signup" class="auth-link">Create one</a>
+  </p>
+</article>
 
 <style>
-  .auth-page {
-    position: relative;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3.5rem 1.5rem;
-    color: #f9f8ff;
-    overflow: hidden;
-    background: #05060d;
-  }
-
-  .auth-page__content {
-    position: relative;
-    width: min(500px, 100%);
-  }
-
   .auth-card {
-    position: relative;
+    width: min(520px, 100%);
     background: rgba(12, 14, 22, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
-    padding: clamp(2.25rem, 3vw, 3rem);
+    padding: clamp(2.3rem, 3vw, 3rem);
     backdrop-filter: blur(24px);
     box-shadow:
       0 25px 60px rgba(9, 8, 19, 0.55),
       inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
+    color: #f9f8ff;
   }
 
   .auth-card__header {
@@ -258,7 +236,7 @@
   }
 
   .auth-error {
-    margin: -0.5rem 0 0;
+    margin: -0.4rem 0 0;
     color: #ff9bb5;
     font-size: 0.9rem;
   }
@@ -397,10 +375,6 @@
   }
 
   @media (max-width: 640px) {
-    .auth-page {
-      padding: 2.5rem 1.25rem 3rem;
-    }
-
     .auth-card {
       padding: 2rem 1.5rem;
       border-radius: 20px;

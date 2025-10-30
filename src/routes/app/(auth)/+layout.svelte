@@ -4,32 +4,28 @@
 
 <section class="auth-shell">
   <AuthBackdrop />
-  <div class="auth-container">
+  <div class="auth-shell__slot">
     <slot />
   </div>
 </section>
 
 <style>
+  :global(body) {
+    background: #05060d;
+  }
+
   .auth-shell {
     position: relative;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3.5rem 1.5rem;
-    background: #05060d;
+    display: grid;
+    place-items: center;
+    padding: clamp(2.5rem, 5vw, 3.5rem) clamp(1.25rem, 3vw, 1.75rem);
     overflow: hidden;
   }
 
-  .auth-container {
+  .auth-shell__slot {
     position: relative;
     width: min(520px, 100%);
     z-index: 3;
-  }
-
-  @media (max-width: 640px) {
-    .auth-shell {
-      padding: 2.5rem 1.25rem 3rem;
-    }
   }
 </style>

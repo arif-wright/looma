@@ -55,7 +55,7 @@
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    opacity: 0.38;
+    opacity: 0.42;
     mix-blend-mode: screen;
   }
 
@@ -70,25 +70,31 @@
   }
 
   .layer {
-    animation: drift 28s linear infinite;
+    animation: drift 46s ease-in-out infinite alternate;
   }
 
   .l2 {
-    animation-duration: 36s;
-    animation-direction: reverse;
+    --duration: 58s;
+    animation-duration: var(--duration);
   }
 
   .l3 {
-    animation-duration: 44s;
+    --duration: 68s;
+    animation-duration: var(--duration);
+    animation-direction: alternate-reverse;
   }
 
   @keyframes drift {
-    from {
-      transform: translate3d(-1.6%, -0.8%, 0);
+    0% {
+      transform: translate3d(-2.6%, -1.8%, 0) scale(0.98);
     }
 
-    to {
-      transform: translate3d(1.6%, 0.8%, 0);
+    50% {
+      transform: translate3d(3.4%, 1.6%, 0) scale(1.03);
+    }
+
+    100% {
+      transform: translate3d(-1.4%, 0.6%, 0) scale(1.01);
     }
   }
 
