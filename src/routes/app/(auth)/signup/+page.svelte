@@ -86,7 +86,9 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
     const baseUrl =
       configuredBase ??
       (typeof window !== 'undefined' ? window.location.origin : get(page).url.origin);
-    const redirectUrl = `${baseUrl}${PUBLIC_AUTH_CALLBACK}`;
+    const callbackTarget = (PUBLIC_AUTH_CALLBACK || '/auth/callback').replace(/^(https?:\/\/[^/]+)?/, '');
+    const normalizedCallback = callbackTarget.startsWith('/') ? callbackTarget : `/${callbackTarget}`;
+    const redirectUrl = `${baseUrl}${normalizedCallback}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
