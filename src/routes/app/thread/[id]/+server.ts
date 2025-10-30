@@ -31,8 +31,10 @@ export const GET: RequestHandler = async (event) => {
     throw error(404, 'Thread not found');
   }
 
+  let canonical: string;
+
   try {
-    const canonical = canonicalRedirectTarget(
+    canonical = canonicalRedirectTarget(
       {
         id: data.id,
         slug: data.slug,
@@ -40,9 +42,10 @@ export const GET: RequestHandler = async (event) => {
       },
       data.id
     );
-    throw redirect(302, appendSearch(canonical, event.url.search));
   } catch (cause) {
     console.error('[legacy thread redirect] canonical resolution failed', cause);
     throw error(500, 'Unable to resolve thread');
   }
+
+  throw redirect(302, appendSearch(canonical, event.url.search));
 };
