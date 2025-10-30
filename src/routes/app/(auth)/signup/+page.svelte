@@ -173,16 +173,43 @@
   .auth-card {
     width: min(520px, 100%);
     background:
-      linear-gradient(150deg, rgba(16, 20, 32, 0.44), rgba(5, 8, 18, 0.26));
-    border: 1px solid rgba(255, 255, 255, 0.14);
+      linear-gradient(160deg, rgba(16, 20, 33, 0.3), rgba(6, 8, 18, 0.12)),
+      rgba(6, 9, 18, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 22px;
     padding: clamp(2.3rem, 3vw, 3rem);
-    backdrop-filter: blur(26px);
+    backdrop-filter: blur(32px) saturate(140%);
     box-shadow:
-      0 26px 60px rgba(6, 7, 12, 0.48),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      0 32px 80px rgba(3, 4, 12, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
     color: #f9f8ff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    background:
+      linear-gradient(120deg, rgba(255, 255, 255, 0.22), transparent 55%),
+      radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.16), transparent 50%),
+      radial-gradient(circle at 80% 78%, rgba(255, 255, 255, 0.12), transparent 50%);
+    opacity: 0.5;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  .auth-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 65%);
+    mix-blend-mode: lighten;
+    pointer-events: none;
   }
 
   .auth-card__header {
