@@ -160,14 +160,14 @@
 <style>
   .auth-card {
     width: min(520px, 100%);
-    background: rgba(12, 14, 22, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
+    background: rgba(13, 16, 26, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
     padding: clamp(2.3rem, 3vw, 3rem);
-    backdrop-filter: blur(24px);
+    backdrop-filter: blur(28px);
     box-shadow:
-      0 25px 60px rgba(9, 8, 19, 0.55),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      0 28px 68px rgba(6, 7, 12, 0.62),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
     color: #f9f8ff;
   }

@@ -23,6 +23,18 @@
     overflow: hidden;
   }
 
+  .auth-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 10%, rgba(0, 0, 0, 0.45), transparent 55%),
+      radial-gradient(circle at 50% 90%, rgba(0, 0, 0, 0.45), transparent 60%),
+      linear-gradient(180deg, rgba(2, 4, 11, 0.4), rgba(1, 4, 12, 0.8));
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 2;
+  }
+
   .auth-shell__slot {
     position: relative;
     width: min(520px, 100%);
