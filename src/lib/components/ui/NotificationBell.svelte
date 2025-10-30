@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+  import { supabaseBrowser } from '$lib/supabaseClient';
   import { relativeTime } from '$lib/social/commentHelpers';
 
   export type NotificationItem = {
@@ -17,15 +19,43 @@
   export let notifications: NotificationItem[] = [];
   export let unreadCount = 0;
 
-  let items: NotificationItem[] = [...notifications];
+  type ToastState = { kind: 'success'; message: string } | null;
+
+  const seenIds = new Set<string>();
+
+  let items: NotificationItem[] = notifications.map(normalizeItem);
+  let lastNotificationsRef = notifications;
+  syncSeenIds(items);
+
   let unread = unreadCount;
   let open = false;
   let anchor: HTMLButtonElement | null = null;
   let listEl: HTMLElement | null = null;
   let liveMessage: string | null = null;
+  let liveTimer: ReturnType<typeof setTimeout> | null = null;
+  let toast: ToastState = null;
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  let supabase: ReturnType<typeof supabaseBrowser> | null = null;
+  let channel: RealtimeChannel | null = null;
 
-  $: items = notifications.map((item) => ({ ...item }));
+  $: if (notifications !== lastNotificationsRef) {
+    lastNotificationsRef = notifications;
+    items = notifications.map(normalizeItem);
+    syncSeenIds(items);
+  }
+
   $: unread = items.filter((item) => !item.read).length;
+
+  function normalizeItem(item: NotificationItem): NotificationItem {
+    return {
+      ...item,
+      metadata: (item.metadata ?? {}) as Record<string, unknown>
+    };
+  }
+
+  function syncSeenIds(next: NotificationItem[]) {
+    next.forEach((item) => seenIds.add(item.id));
+  }
 
   function describe(item: NotificationItem): string {
     const payload = item.metadata ?? {};
@@ -46,6 +76,35 @@
     }
   }
 
+  function extractActorDisplay(item: NotificationItem): string | null {
+    const payload = item.metadata ?? {};
+    if (typeof payload.actorDisplay === 'string' && payload.actorDisplay.trim().length > 0) {
+      return payload.actorDisplay;
+    }
+    if (typeof payload.actor_display === 'string' && payload.actor_display.trim().length > 0) {
+      return payload.actor_display;
+    }
+    return null;
+  }
+
+  function setLiveAnnouncement(message: string, duration = 1800) {
+    liveMessage = message;
+    if (liveTimer) clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      liveMessage = null;
+      liveTimer = null;
+    }, duration);
+  }
+
+  function showToast(message: string) {
+    if (toastTimer) clearTimeout(toastTimer);
+    toast = { kind: 'success', message };
+    toastTimer = setTimeout(() => {
+      toast = null;
+      toastTimer = null;
+    }, 3500);
+  }
+
   function closeDropdown() {
     open = false;
   }
@@ -59,12 +118,24 @@
 
   async function refresh() {
     try {
+      const previousScroll = open && listEl ? { top: listEl.scrollTop, height: listEl.scrollHeight } : null;
       const response = await fetch('/api/notifications');
       if (!response.ok) return;
       const payload = await response.json();
       if (Array.isArray(payload.items)) {
-        items = payload.items.slice(0, 20);
-        unread = Number(payload.unread ?? items.filter((item) => !item.read).length);
+        const nextItems: NotificationItem[] = (payload.items as NotificationItem[])
+          .slice(0, 20)
+          .map((item) => normalizeItem(item));
+        items = nextItems;
+        syncSeenIds(nextItems);
+        const fallbackUnread = nextItems.filter((item: NotificationItem) => !item.read).length;
+        unread = Number(payload.unread ?? fallbackUnread);
+        if (previousScroll && listEl) {
+          const delta = listEl.scrollHeight - previousScroll.height;
+          if (delta !== 0) {
+            listEl.scrollTop = Math.max(previousScroll.top + delta, 0);
+          }
+        }
       }
     } catch (err) {
       console.error('[NotificationBell] refresh failed', err);
@@ -81,8 +152,7 @@
       if (!response.ok) return;
       items = items.map((item) => ({ ...item, read: true }));
       unread = 0;
-      liveMessage = 'Notifications marked as read';
-      setTimeout(() => (liveMessage = null), 1500);
+      setLiveAnnouncement('Notifications marked as read', 1500);
     } catch (err) {
       console.error('[NotificationBell] markAllRead failed', err);
     }
@@ -104,16 +174,106 @@
   }
 
   onMount(() => {
+    supabase = supabaseBrowser();
+    void initRealtime();
+
     if (typeof document === 'undefined') return;
     document.addEventListener('click', handleDocumentClick, true);
     document.addEventListener('keydown', handleKey, true);
   });
 
   onDestroy(() => {
+    if (channel) {
+      channel
+        .unsubscribe()
+        .catch((err) => console.error('[NotificationBell] failed to unsubscribe', err));
+      channel = null;
+    }
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (liveTimer) {
+      clearTimeout(liveTimer);
+      liveTimer = null;
+    }
+
     if (typeof document === 'undefined') return;
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleKey, true);
   });
+
+  async function handleRealtimeInsert(record: NotificationItem) {
+    if (!record?.id || seenIds.has(record.id)) {
+      return;
+    }
+
+    const incoming = normalizeItem(record);
+    seenIds.add(incoming.id);
+
+    const maintainScroll = open && listEl && listEl.scrollTop > 0;
+    const previousHeight = maintainScroll && listEl ? listEl.scrollHeight : 0;
+
+    const nextItems = [incoming, ...items.filter((item) => item.id !== incoming.id)].slice(0, 20);
+    items = nextItems;
+    syncSeenIds(nextItems);
+
+    if (maintainScroll && listEl) {
+      await tick();
+      const delta = listEl.scrollHeight - previousHeight;
+      if (delta > 0) {
+        listEl.scrollTop += delta;
+      }
+    }
+
+    const actorDisplay = extractActorDisplay(incoming);
+    const message = actorDisplay ? `New notification from ${actorDisplay}` : 'New notification';
+    setLiveAnnouncement(message, 2000);
+    showToast(message);
+  }
+
+  async function initRealtime() {
+    if (!supabase) return;
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) return;
+
+      if (channel) {
+        await channel.unsubscribe();
+        channel = null;
+      }
+
+      const newChannel = supabase
+        .channel(`notifs:user:${userId}`);
+
+      newChannel.on<RealtimePostgresInsertPayload<NotificationItem>>(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`
+        },
+        async (payload) => {
+          if (!payload.new) return;
+          const incoming = payload.new as NotificationItem;
+          await handleRealtimeInsert(incoming);
+        }
+      );
+
+      newChannel.subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[NotificationBell] realtime channel error for notifications');
+        }
+      });
+
+      channel = newChannel;
+    } catch (err) {
+      console.error('[NotificationBell] realtime setup failed', err);
+    }
+  }
 </script>
 
 <div class="notification-wrapper">
@@ -132,7 +292,7 @@
       />
     </svg>
     {#if unread > 0}
-      <span class="badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>
+      <span class="badge" aria-live="polite" aria-atomic="true" role="status">{unread > 9 ? '9+' : unread}</span>
     {/if}
     <span class={`glow ${unread > 0 ? 'active' : ''}`} aria-hidden="true"></span>
   </button>
@@ -175,6 +335,17 @@
           {/each}
         {/if}
       </ul>
+    </div>
+  {/if}
+
+  {#if toast}
+    <div
+      class={`notification-toast ${toast.kind}`}
+      role="status"
+      aria-live="polite"
+      data-testid="toast-success"
+    >
+      {toast.message}
     </div>
   {/if}
 
@@ -370,6 +541,35 @@
     white-space: nowrap;
   }
 
+  .notification-toast {
+    position: absolute;
+    top: calc(100% + 16px);
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.92);
+    color: rgba(226, 232, 240, 0.94);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.35);
+    font-size: 0.82rem;
+    z-index: 45;
+    animation: toast-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glow,
+    .glow.active {
+      animation: none;
+      transition: none;
+    }
+
+    .notification-toast {
+      animation: none;
+    }
+  }
+
   @keyframes pulse {
     0%,
     100% {
@@ -377,6 +577,17 @@
     }
     50% {
       opacity: 0.8;
+    }
+  }
+
+  @keyframes toast-pop {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 </style>
