@@ -501,7 +501,7 @@
     padding: 16px;
     display: grid;
     gap: 10px;
-    z-index: 40;
+    z-index: 220;
     backdrop-filter: blur(14px);
   }
 
