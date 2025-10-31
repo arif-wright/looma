@@ -19,23 +19,29 @@ export const createSupabaseServerClient = (event: RequestEvent) => {
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get: (name) => event.cookies.get(name),
-      set: (name, value, options) => {
-        event.cookies.set(name, value, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: isSecure,
-          path: '/',
-          ...options
-        });
-      },
-      remove: (name, options) => {
-        event.cookies.delete(name, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: isSecure,
-          path: '/',
-          ...options
+      getAll: () => event.cookies.getAll(),
+      setAll: (cookies) => {
+        cookies.forEach(({ name, value, options }) => {
+          if (value === undefined) {
+            event.cookies.delete(name, {
+              path: options?.path ?? '/',
+              secure: options?.secure ?? isSecure,
+              sameSite: options?.sameSite ?? 'lax',
+              httpOnly: options?.httpOnly ?? true,
+              expires: options?.expires,
+              maxAge: options?.maxAge
+            });
+            return;
+          }
+
+          event.cookies.set(name, value, {
+            path: options?.path ?? '/',
+            secure: options?.secure ?? isSecure,
+            sameSite: options?.sameSite ?? 'lax',
+            httpOnly: options?.httpOnly ?? true,
+            expires: options?.expires,
+            maxAge: options?.maxAge
+          });
         });
       }
     }
