@@ -31,7 +31,7 @@
       <PostComposer on:posted={handlePosted} />
     </div>
   {:else}
-    <button type="button" class="chip" on:click={toggle}>
+    <button type="button" class="chip btn-ripple hover-glow" on:click={toggle}>
       <span class="dot" aria-hidden="true"></span>
       {placeholder}
     </button>

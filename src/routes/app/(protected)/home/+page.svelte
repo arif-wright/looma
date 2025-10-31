@@ -103,90 +103,103 @@
   });
 </script>
 
-<BackgroundStack />
+<div class="bg-neuro min-h-screen relative overflow-hidden">
+  <BackgroundStack />
 
-<div class="home-frame">
-  <ConstellationNav items={navItems} {activeSection} />
+  <div class="home-frame">
+    <ConstellationNav items={navItems} {activeSection} />
 
-  <main class="home-main" aria-labelledby="home-heading">
-    <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
+    <main class="home-main" aria-labelledby="home-heading">
+      <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
 
-    <section id="bond" class="section-anchor">
-      <OrbPanel
-        headline="Your bond pulses brighter today."
-        subtitle="Energy renewed. The thread hums with potential."
-        data-testid="orb-panel"
-      >
-        <TodayCard
-          {stats}
-          mission={missions[0] ?? null}
-          creature={creatures[0] ?? null}
-          {variant}
-          {energy}
-          {energyMax}
-          {streak}
-          {petMood}
-          {activeMission}
-          pendingReward={false}
-          recentFail={null}
+      <div class="mobile-status">
+        <StatusCapsule
+          level={stats?.level ?? null}
+          xp={stats?.xp ?? null}
+          xpNext={stats?.xp_next ?? null}
+          energy={stats?.energy ?? null}
+          energyMax={stats?.energy_max ?? null}
+          notifications={notificationsUnread}
         />
-        <ComposerChip className="composer-chip" />
-      </OrbPanel>
-    </section>
+      </div>
 
-    <section id="missions" class="section-anchor">
-      <OrbPanel
-        headline="Guide the loop forward."
-        subtitle="Pick a mission thread to keep your synergy alive."
-        data-testid="orb-panel"
-      >
-        <div class="panel-heading">
-          <a href="/app/missions" class="cta-link">All missions</a>
-        </div>
-        <MissionRow items={missions} />
-      </OrbPanel>
-    </section>
+      <section id="bond" class="section-anchor">
+        <OrbPanel
+          headline="Your bond pulses brighter today."
+          subtitle="Energy renewed. The thread hums with potential."
+          data-testid="orb-panel"
+        >
+          <TodayCard
+            {stats}
+            mission={missions[0] ?? null}
+            creature={creatures[0] ?? null}
+            {variant}
+            {energy}
+            {energyMax}
+            {streak}
+            {petMood}
+            {activeMission}
+            pendingReward={false}
+            recentFail={null}
+          />
+          <ComposerChip className="composer-chip" />
+        </OrbPanel>
+      </section>
 
-    <section id="feed" class="section-anchor">
-      <OrbPanel
-        headline="Signals from your circle."
-        subtitle="Share a resonance, respond with warmth, stay woven together."
-        data-testid="orb-panel"
-      >
-        <FeedList items={feed} />
-      </OrbPanel>
-    </section>
+      <section id="missions" class="section-anchor">
+        <OrbPanel
+          headline="Guide the loop forward."
+          subtitle="Pick a mission thread to keep your synergy alive."
+          data-testid="orb-panel"
+        >
+          <div class="panel-heading">
+            <a href="/app/missions" class="cta-link">All missions</a>
+          </div>
+          <MissionRow items={missions} />
+        </OrbPanel>
+      </section>
 
-    <section id="companions" class="section-anchor">
-      <OrbPanel
-        headline="Companion pulse"
-        subtitle="Attune to each mood and keep the bond glowing."
-        data-testid="orb-panel"
-      >
-        <CreatureMoments items={creatures} />
-      </OrbPanel>
-    </section>
+      <section id="feed" class="section-anchor">
+        <OrbPanel
+          headline="Signals from your circle."
+          subtitle="Share a resonance, respond with warmth, stay woven together."
+          data-testid="orb-panel"
+        >
+          <FeedList items={feed} />
+        </OrbPanel>
+      </section>
 
-    <section id="path" class="section-anchor">
-      <OrbPanel
-        headline="Where the thread invites you next."
-        subtitle="A gentle nudge when you’re ready to move."
-        data-testid="orb-panel"
-      >
-        <EndcapCard {endcap} />
-      </OrbPanel>
-    </section>
-  </main>
+      <section id="companions" class="section-anchor">
+        <OrbPanel
+          headline="Companion pulse"
+          subtitle="Attune to each mood and keep the bond glowing."
+          data-testid="orb-panel"
+        >
+          <CreatureMoments items={creatures} />
+        </OrbPanel>
+      </section>
 
-  <div class="home-aside">
-    <StatusCapsule
-      level={stats?.level ?? null}
-      xp={stats?.xp ?? null}
-      xpNext={stats?.xp_next ?? null}
-      energy={stats?.energy ?? null}
-      energyMax={stats?.energy_max ?? null}
-      notifications={notificationsUnread}
-    />
+      <section id="path" class="section-anchor">
+        <OrbPanel
+          headline="Where the thread invites you next."
+          subtitle="A gentle nudge when you’re ready to move."
+          data-testid="orb-panel"
+        >
+          <EndcapCard {endcap} />
+        </OrbPanel>
+      </section>
+    </main>
+
+    <div class="home-aside">
+      <StatusCapsule
+        level={stats?.level ?? null}
+        xp={stats?.xp ?? null}
+        xpNext={stats?.xp_next ?? null}
+        energy={stats?.energy ?? null}
+        energyMax={stats?.energy_max ?? null}
+        notifications={notificationsUnread}
+      />
+    </div>
   </div>
 </div>
 
@@ -221,6 +234,10 @@
   .home-aside {
     display: flex;
     justify-content: flex-start;
+  }
+
+  .mobile-status {
+    display: none;
   }
 
   .section-anchor {
@@ -279,7 +296,12 @@
     }
 
     .home-aside {
-      order: -1;
+      display: none;
+    }
+
+    .mobile-status {
+      display: block;
+      margin-bottom: clamp(1.4rem, 4vw, 2rem);
     }
   }
 

@@ -171,7 +171,7 @@
 
     <button
       type="button"
-      class={`primary-cta ${showPulse ? 'is-pulsing' : ''}`}
+      class={`primary-cta btn-glass btn-ripple hover-glow ${showPulse ? 'is-pulsing' : ''}`}
       on:click={handlePrimary}
       disabled={ctaDisabled}
       data-cta-state={ctaState}
@@ -228,12 +228,7 @@
       <h3>{creature?.name ?? 'Mystery companion'}</h3>
       <p class="callout-summary mood">{companionMood}</p>
     </div>
-    <button
-      type="button"
-      class="secondary-cta"
-      on:click={handleCreature}
-      disabled={!creature?.id}
-    >
+    <button type="button" class="secondary-cta btn-ripple hover-glow" on:click={handleCreature} disabled={!creature?.id}>
       Visit {creature?.name ?? 'habitat'}
     </button>
   </section>

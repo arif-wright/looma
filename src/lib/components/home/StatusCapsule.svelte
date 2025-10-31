@@ -5,6 +5,7 @@
   export let energy: number | null = null;
   export let energyMax: number | null = null;
   export let notifications: number | null = null;
+  export let className = '';
 
 let pulse = false;
 let previousXp: number | null = null;
@@ -35,7 +36,10 @@ $: xpPercent =
 
 </script>
 
-<aside class={`status-capsule ${pulse ? 'level-up' : ''}`} aria-label="Status summary">
+<aside
+  class={`status-capsule ${pulse ? 'level-up' : ''} ${className}`.trim()}
+  aria-label="Status summary"
+>
   <div class="status-line">
     <div class="stat">
       <span class="label">Level</span>
