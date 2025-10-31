@@ -36,7 +36,13 @@
       }
 
       if (parsed.searchParams.has('code')) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(currentUrl);
+        const authCode = parsed.searchParams.get('code');
+        if (!authCode) {
+          fail('We could not complete the sign-in process.');
+          return;
+        }
+
+        const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
         if (error || !data.session) {
           fail(error?.message ?? 'We could not complete the sign-in process.');
           return;
