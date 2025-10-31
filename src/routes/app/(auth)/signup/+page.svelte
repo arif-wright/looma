@@ -83,7 +83,17 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
     persistNext();
 
     const configuredBase = PUBLIC_SITE_URL?.replace(/\/$/, '') || null;
-    const redirectUrl = normalizedCallback.startsWith('http') ? normalizedCallback : `${baseUrl}${normalizedCallback}`;
+    const resolvedOrigin =
+      configuredBase ??
+      (typeof window !== 'undefined' ? window.location.origin : get(page).url.origin);
+    const rawCallback = (PUBLIC_AUTH_CALLBACK || '/auth/callback').trim();
+    const callbackIsAbsolute = /^https?:\/\//.test(rawCallback);
+    const normalizedCallback = callbackIsAbsolute
+      ? rawCallback
+      : rawCallback.startsWith('/')
+        ? rawCallback
+        : `/${rawCallback}`;
+    const redirectUrl = callbackIsAbsolute ? normalizedCallback : `${resolvedOrigin}${normalizedCallback}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
