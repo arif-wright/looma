@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,10 +20,12 @@
   --space: clamp(24px, 5vw, 40px);
   --vh: 1vh;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
   --theme-accent-rgb: 56, 189, 248;
   --theme-accent: rgba(var(--theme-accent-rgb), 0.95);
   --theme-accent-soft: rgba(var(--theme-accent-rgb), 0.18);
   --theme-accent-ring: rgba(var(--theme-accent-rgb), 0.35);
+  --looma-accent: linear-gradient(90deg, #9b5cff, #4df4ff);
 }
 
 :root[data-theme-accent='neonMagenta'] {
@@ -190,6 +194,13 @@ main {
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   font-size: 0.85rem;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6);
 }
 
 

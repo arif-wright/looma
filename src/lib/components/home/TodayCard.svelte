@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-import type { PlayerStats } from '$lib/server/queries/getPlayerStats';
-import { computeTodayCardState } from './todayCardLogic';
-import { sendAnalytics } from '$lib/utils/analytics';
+  import type { PlayerStats } from '$lib/server/queries/getPlayerStats';
+  import { computeTodayCardState } from './todayCardLogic';
+  import { sendAnalytics } from '$lib/utils/analytics';
 
   export type MissionSnippet = {
     id: string;
@@ -28,21 +28,21 @@ import { sendAnalytics } from '$lib/utils/analytics';
   export let energyMax: number | null = null;
   export let streak: number | null = null;
   export let petMood: string | null = null;
-export let activeMission:
-  | { id: string; name?: string | null; summary?: string | null; difficulty?: string | null }
-  | null = null;
-export let pendingReward: { label?: string | null } | boolean = false;
-export let recentFail: { missionId?: string | null; name?: string | null } | null = null;
+  export let activeMission:
+    | { id: string; name?: string | null; summary?: string | null; difficulty?: string | null }
+    | null = null;
+  export let pendingReward: { label?: string | null } | boolean = false;
+  export let recentFail: { missionId?: string | null; name?: string | null } | null = null;
 
-const dispatch = createEventDispatcher<{
-  claim: void;
-  startMission: { missionId: string | null; mode: 'resume' | 'quick' | 'retry' };
-  checkCreature: { creatureId: string };
-}>();
+  const dispatch = createEventDispatcher<{
+    claim: void;
+    startMission: { missionId: string | null; mode: 'resume' | 'quick' | 'retry' };
+    checkCreature: { creatureId: string };
+  }>();
 
-let missionForCta: string | null = null;
+  let missionForCta: string | null = null;
 
-$: resolvedEnergy = energy ?? stats?.energy ?? 0;
+  $: resolvedEnergy = energy ?? stats?.energy ?? 0;
   $: resolvedEnergyMax = energyMax ?? stats?.energy_max ?? 0;
   $: energyPercent =
     resolvedEnergyMax && resolvedEnergyMax > 0
@@ -54,12 +54,12 @@ $: resolvedEnergy = energy ?? stats?.energy ?? 0;
     typeof pendingReward === 'object' && pendingReward && typeof pendingReward.label === 'string'
       ? pendingReward.label
       : 'Bond bonus ready';
-$: failMissionId =
-  recentFail && typeof recentFail.missionId === 'string' ? recentFail.missionId : null;
-$: failMissionName =
-  recentFail && typeof recentFail.name === 'string' && recentFail.name
-    ? recentFail.name
-    : 'your last run';
+  $: failMissionId =
+    recentFail && typeof recentFail.missionId === 'string' ? recentFail.missionId : null;
+  $: failMissionName =
+    recentFail && typeof recentFail.name === 'string' && recentFail.name
+      ? recentFail.name
+      : 'your last run';
   $: missionCandidate =
     activeMission ??
     (mission?.id
@@ -70,45 +70,44 @@ $: failMissionName =
           difficulty: mission.difficulty ?? null
         }
       : null);
-$: missionDifficulty =
-  typeof missionCandidate?.difficulty === 'string'
-    ? missionCandidate.difficulty
-    : mission?.difficulty ?? null;
-$: creatureName = creature?.name ?? 'your companion';
-$: companionMood = petMood ?? creature?.mood_label ?? creature?.mood ?? 'Content';
+  $: missionDifficulty =
+    typeof missionCandidate?.difficulty === 'string'
+      ? missionCandidate.difficulty
+      : mission?.difficulty ?? null;
+  $: creatureName = creature?.name ?? 'your companion';
+  $: companionMood = petMood ?? creature?.mood_label ?? creature?.mood ?? 'Content';
 
-let todayState = computeTodayCardState({
-  rewardPending,
-  mission: missionCandidate,
-  failMissionId,
-  failMissionName,
-  creatureName
-});
-
-$: todayState = computeTodayCardState({
-  rewardPending,
-  mission: missionCandidate,
-  failMissionId,
-  failMissionName,
+  let todayState = computeTodayCardState({
+    rewardPending,
+    mission: missionCandidate,
+    failMissionId,
+    failMissionName,
     creatureName
   });
+
+  $: todayState = computeTodayCardState({
+    rewardPending,
+    mission: missionCandidate,
+    failMissionId,
+    failMissionName,
+    creatureName
+  });
+
   $: ctaState = todayState.ctaState;
   $: ctaLabel = todayState.label;
   $: ctaDisabled = todayState.disabled;
   $: secondaryTip = todayState.secondary;
   $: missionForCta = todayState.missionId;
   $: showPulse = ctaState === 'reward' || ctaState === 'retry';
+  $: orbIntensity =
+    energyPercent !== null ? Math.max(0.28, Math.min(1, energyPercent / 100)) : 0.45;
 
   function handlePrimary() {
     if (ctaState === 'reward') {
       dispatch('claim');
       sendAnalytics('todaycard_cta', {
         surface: 'home',
-        payload: {
-          action: 'reward',
-          mission_id: null,
-          completed: true
-        }
+        payload: { action: 'reward', mission_id: null, completed: true }
       });
       return;
     }
@@ -117,11 +116,7 @@ $: todayState = computeTodayCardState({
       dispatch('startMission', { missionId: missionForCta, mode: 'retry' });
       sendAnalytics('todaycard_cta', {
         surface: 'home',
-        payload: {
-          action: 'retry',
-          mission_id: missionForCta,
-          completed: false
-        }
+        payload: { action: 'retry', mission_id: missionForCta, completed: false }
       });
       return;
     }
@@ -130,11 +125,7 @@ $: todayState = computeTodayCardState({
       dispatch('startMission', { missionId: missionForCta, mode: 'resume' });
       sendAnalytics('todaycard_cta', {
         surface: 'home',
-        payload: {
-          action: 'resume',
-          mission_id: missionForCta,
-          completed: false
-        }
+        payload: { action: 'resume', mission_id: missionForCta, completed: false }
       });
       return;
     }
@@ -142,11 +133,7 @@ $: todayState = computeTodayCardState({
     dispatch('startMission', { missionId: null, mode: 'quick' });
     sendAnalytics('todaycard_cta', {
       surface: 'home',
-      payload: {
-        action: 'quick',
-        mission_id: null,
-        completed: false
-      }
+      payload: { action: 'quick', mission_id: null, completed: false }
     });
   }
 
@@ -156,29 +143,11 @@ $: todayState = computeTodayCardState({
   }
 </script>
 
-<article class="today-card" aria-labelledby="today-heading">
-  <header class="today-header">
-    <div class="stack">
-      <span class="label">Hybrid Home</span>
-      <h2 id="today-heading">Today&apos;s boost</h2>
-      <p class="variant">
-        Variant {variant ?? 'C'}
-      </p>
-    </div>
-    <button
-      type="button"
-      class={`cta ${showPulse ? 'pulse' : ''}`}
-      on:click={handlePrimary}
-      disabled={ctaDisabled}
-    >
-      {ctaLabel}
-    </button>
-  </header>
-
-  <section class="stat-grid" aria-label="Daily readiness">
-    <div class="stat">
-      <span class="stat-label">Energy</span>
-      <strong class="stat-value">
+<article class="pulse-card" data-variant={variant ?? 'C'}>
+  <header class="pulse-meta" aria-label="Daily readiness">
+    <div class="metric energy">
+      <span class="metric-label">Energy</span>
+      <strong class="metric-value">
         {resolvedEnergyMax > 0 ? `${resolvedEnergy}/${resolvedEnergyMax}` : resolvedEnergy}
       </strong>
       {#if energyPercent !== null}
@@ -194,326 +163,348 @@ $: todayState = computeTodayCardState({
       {/if}
     </div>
 
-    <div class="stat">
-      <span class="stat-label">Streak</span>
-      <strong class="stat-value">{resolvedStreak} days</strong>
-      <p class="stat-hint">Keep the loop alive</p>
+    <div class="metric streak">
+      <span class="metric-label">Streak</span>
+      <strong class="metric-value">{resolvedStreak} days</strong>
+      <p class="metric-sub">Keep the luminous loop alive.</p>
     </div>
-  </section>
 
-  <section class="mission-callout" aria-label="Active mission">
-    <div class="content">
-      <p class="section-label">
+    <button
+      type="button"
+      class={`primary-cta ${showPulse ? 'is-pulsing' : ''}`}
+      on:click={handlePrimary}
+      disabled={ctaDisabled}
+      data-cta-state={ctaState}
+    >
+      <span class="cta-label">{ctaLabel}</span>
+    </button>
+  </header>
+
+  <section class="mission-callout" aria-label="Mission guidance">
+    <div class="callout-head">
+      <span class="callout-label">
         {ctaState === 'reward'
           ? rewardLabel
           : ctaState === 'retry'
-          ? 'Bounce back'
-          : 'Next mission'}
-      </p>
-      {#if missionCandidate?.name && ctaState !== 'reward'}
-        <h3>{missionCandidate.name}</h3>
-      {:else if ctaState === 'reward'}
-        <h3>Daily bond bonus ready</h3>
-      {:else}
-        <h3>Quick win available</h3>
-      {/if}
-
-      {#if missionCandidate?.summary && ctaState !== 'reward'}
-        <p class="summary">{missionCandidate.summary}</p>
-      {:else if ctaState === 'retry'}
-        <p class="summary">Shake off {failMissionName} and take another shot.</p>
-      {:else if ctaState === 'reward'}
-        <p class="summary">Claim now to boost your creature bond streak.</p>
-      {:else}
-        <p class="summary">Short burst missions keep your streak growing.</p>
-      {/if}
-
+          ? 'Recenter & retry'
+          : ctaState === 'resume'
+          ? 'Resume the flow'
+          : 'Next mission thread'}
+      </span>
       {#if missionDifficulty && ctaState !== 'reward'}
         <span class="badge">{missionDifficulty}</span>
       {/if}
     </div>
+
+    {#if missionCandidate?.name && ctaState !== 'reward'}
+      <h3>{missionCandidate.name}</h3>
+    {:else if ctaState === 'reward'}
+      <h3>Daily bond bonus waiting</h3>
+    {:else}
+      <h3>Quick win is humming for you</h3>
+    {/if}
+
+    {#if missionCandidate?.summary && ctaState !== 'reward'}
+      <p class="callout-summary">{missionCandidate.summary}</p>
+    {:else if ctaState === 'retry'}
+      <p class="callout-summary">Shake off {failMissionName} and let momentum return.</p>
+    {:else if ctaState === 'reward'}
+      <p class="callout-summary">Claim now to amplify your shared resonance.</p>
+    {:else}
+      <p class="callout-summary">Short burst, fast dopamine — perfect for keeping the streak glowing.</p>
+    {/if}
   </section>
 
-  <section class="companion" aria-label="Companion status">
-    <div>
-      <p class="section-label">Companion pulse</p>
-      <h3>{creature?.name ?? 'Mystery companion'}</h3>
-      <p class="summary mood">{companionMood}</p>
+  <section
+    class="companion"
+    aria-label="Companion pulse"
+    style={`--pulse-intensity:${orbIntensity}`}
+  >
+    <div class="companion-orb" aria-hidden="true">
+      <span class="orb-core"></span>
     </div>
-    <button type="button" class="companion-btn" on:click={handleCreature} disabled={!creature?.id}>
+    <div class="companion-copy">
+      <span class="callout-label">Companion pulse</span>
+      <h3>{creature?.name ?? 'Mystery companion'}</h3>
+      <p class="callout-summary mood">{companionMood}</p>
+    </div>
+    <button
+      type="button"
+      class="secondary-cta"
+      on:click={handleCreature}
+      disabled={!creature?.id}
+    >
       Visit {creature?.name ?? 'habitat'}
     </button>
   </section>
 
-  <p class="tip">{secondaryTip}</p>
+  <p class="whisper">{secondaryTip}</p>
 </article>
 
 <style>
-  .today-card {
+  .pulse-card {
     display: grid;
-    gap: 24px;
-    padding: 24px;
-    border-radius: 28px;
-    background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 55%),
-      radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.12), transparent 50%),
-      rgba(15, 23, 42, 0.88);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.45);
-    color: rgba(226, 232, 240, 0.96);
+    gap: clamp(1.6rem, 3vw, 2.2rem);
+    color: rgba(244, 247, 255, 0.92);
   }
 
-  .today-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-  }
-
-  .stack {
+  .pulse-meta {
     display: grid;
-    gap: 6px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
+    align-items: center;
   }
 
-  .label {
+  .metric {
+    position: relative;
+    display: grid;
+    gap: 0.5rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+      rgba(10, 14, 32, 0.35);
+    box-shadow: 0 16px 35px rgba(10, 14, 32, 0.36);
+    backdrop-filter: blur(22px);
+  }
+
+  .metric-label {
     font-size: 0.72rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(148, 163, 184, 0.7);
+    color: rgba(226, 232, 255, 0.6);
   }
 
-  h2 {
-    margin: 0;
-    font-size: 1.6rem;
+  .metric-value {
+    font-size: 1.65rem;
     font-weight: 600;
+    font-family: var(--font-display, 'Cormorant Garamond', serif);
   }
 
-  .variant {
+  .metric-sub {
     margin: 0;
     font-size: 0.85rem;
-    color: rgba(148, 163, 184, 0.7);
-  }
-
-  .cta {
-    border: none;
-    border-radius: 999px;
-    padding: 12px 22px;
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: rgba(15, 23, 42, 0.92);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(45, 212, 191, 0.95));
-    cursor: pointer;
-    box-shadow: 0 12px 26px rgba(56, 189, 248, 0.35);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .cta:hover:not(:disabled),
-  .cta:focus-visible {
-    transform: translateY(-1px);
-    box-shadow: 0 18px 40px rgba(56, 189, 248, 0.4);
-  }
-
-  .cta:disabled {
-    opacity: 0.6;
-    cursor: default;
-    box-shadow: none;
-  }
-
-  .cta.pulse {
-    animation: pulse 1.8s infinite;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      box-shadow: 0 12px 26px rgba(56, 189, 248, 0.35);
-      transform: translateY(0);
-    }
-    50% {
-      box-shadow: 0 18px 36px rgba(45, 212, 191, 0.45);
-      transform: translateY(-1px);
-    }
-  }
-
-  .stat-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-
-  .stat {
-    border-radius: 20px;
-    padding: 16px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    display: grid;
-    gap: 8px;
-  }
-
-  .stat-label {
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: rgba(148, 163, 184, 0.65);
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-  }
-
-  .stat-hint {
-    margin: 0;
-    font-size: 0.8rem;
-    color: rgba(148, 163, 184, 0.75);
+    color: rgba(226, 232, 255, 0.68);
   }
 
   .meter {
     position: relative;
     height: 10px;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.2);
+    background: rgba(255, 255, 255, 0.12);
     overflow: hidden;
   }
 
   .meter span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, rgba(45, 212, 191, 0.8), rgba(59, 130, 246, 0.85));
+    background: var(--looma-accent, linear-gradient(90deg, #9b5cff, #4df4ff));
+    transition: width 360ms ease;
+    transform-origin: left center;
+  }
+
+  .primary-cta {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1.8rem;
+    border-radius: 999px;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    color: rgba(9, 12, 26, 0.92);
+    background: linear-gradient(120deg, #9b5cff, #4df4ff);
+    cursor: pointer;
+    box-shadow: 0 18px 40px rgba(155, 92, 255, 0.4);
+    transition: transform 160ms ease, box-shadow 180ms ease;
+    overflow: hidden;
+  }
+
+  .primary-cta::after {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 420ms ease, opacity 420ms ease;
+  }
+
+  .primary-cta:hover:not(:disabled),
+  .primary-cta:focus-visible,
+  .primary-cta:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 24px 50px rgba(155, 92, 255, 0.48);
+  }
+
+  .primary-cta:focus-visible,
+  .primary-cta:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 24px 50px rgba(155, 92, 255, 0.48);
+  }
+
+  .primary-cta:active::after {
+    transform: scale(1.8);
+    opacity: 0.35;
+    transition: none;
+  }
+
+  .primary-cta:disabled {
+    opacity: 0.6;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  .primary-cta.is-pulsing {
+    animation: ctaPulse 1.8s ease-in-out infinite;
+  }
+
+  .callout-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .callout-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 255, 0.65);
   }
 
   .mission-callout {
-    border-radius: 20px;
-    padding: 20px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(56, 189, 248, 0.08));
-    border: 1px solid rgba(56, 189, 248, 0.25);
-  }
-
-  .mission-callout .content {
     display: grid;
-    gap: 10px;
-  }
-
-  .section-label {
-    margin: 0;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(148, 163, 184, 0.7);
+    gap: 0.65rem;
   }
 
   .mission-callout h3 {
     margin: 0;
-    font-size: 1.2rem;
-  }
-
-  .summary {
-    margin: 0;
-    font-size: 0.9rem;
-    color: rgba(226, 232, 240, 0.78);
-  }
-
-  .summary.mood {
+    font-size: clamp(1.35rem, 2.2vw, 1.7rem);
     font-weight: 600;
-    color: rgba(191, 219, 254, 0.9);
+    font-family: var(--font-display, 'Cormorant Garamond', serif);
+  }
+
+  .callout-summary {
+    margin: 0;
+    font-size: 0.96rem;
+    color: rgba(226, 232, 255, 0.82);
   }
 
   .badge {
-    justify-self: start;
-    margin-top: 6px;
-    padding: 3px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.2rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    background: rgba(56, 189, 248, 0.18);
-    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
   }
 
   .companion {
-    border-radius: 20px;
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.58);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1.2rem;
     align-items: center;
+    padding: 1.15rem 1.35rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 18px 42px rgba(8, 12, 28, 0.36);
+    backdrop-filter: blur(18px);
   }
 
-  .companion h3 {
-    margin: 6px 0 4px;
-    font-size: 1.1rem;
-  }
-
-  .companion-btn {
+  .companion-orb {
+    position: relative;
+    width: 46px;
+    height: 46px;
     border-radius: 999px;
-    padding: 10px 18px;
-    background: rgba(45, 212, 191, 0.16);
-    border: 1px solid rgba(45, 212, 191, 0.35);
-    color: rgba(204, 251, 241, 0.95);
-    font-size: 0.88rem;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.88), rgba(155, 92, 255, 0.45));
+    box-shadow: 0 0 22px rgba(155, 92, 255, calc(var(--pulse-intensity)));
+    display: grid;
+    place-items: center;
+    animation: orbPulse 6s ease-in-out infinite;
+  }
+
+  .companion-copy h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .mood {
+    color: rgba(148, 163, 255, 0.8);
+  }
+
+  .secondary-cta {
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 0.65rem 1.15rem;
+    background: transparent;
+    color: rgba(244, 247, 255, 0.88);
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
   }
 
-  .companion-btn:hover,
-  .companion-btn:focus-visible {
-    background: rgba(45, 212, 191, 0.26);
+  .secondary-cta:hover:not(:disabled),
+  .secondary-cta:focus-visible {
     transform: translateY(-1px);
+    border-color: rgba(77, 244, 255, 0.6);
+    box-shadow: 0 14px 28px rgba(77, 244, 255, 0.25);
   }
 
-  .companion-btn:disabled {
+  .secondary-cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 14px 28px rgba(77, 244, 255, 0.25);
+  }
+
+  .secondary-cta:disabled {
     opacity: 0.6;
     cursor: default;
+    box-shadow: none;
   }
 
-  .tip {
+  .whisper {
     margin: 0;
-    font-size: 0.82rem;
-    color: rgba(148, 163, 184, 0.78);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
+    font-size: 0.9rem;
+    color: rgba(226, 232, 255, 0.6);
+  }
+
+  @keyframes ctaPulse {
+    0%,
+    100% {
+      box-shadow: 0 18px 40px rgba(155, 92, 255, 0.4);
+    }
+    50% {
+      box-shadow: 0 24px 48px rgba(77, 244, 255, 0.42);
+    }
+  }
+
+  @keyframes orbPulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 22px rgba(155, 92, 255, calc(var(--pulse-intensity)));
+    }
+
+    50% {
+      transform: scale(1.08);
+      box-shadow: 0 0 30px rgba(77, 244, 255, calc(var(--pulse-intensity) * 1.4));
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cta,
-    .companion-btn {
-      transition: background 0.2s ease;
-    }
-
-    .cta:hover:not(:disabled),
-    .cta:focus-visible,
-    .companion-btn:hover,
-    .companion-btn:focus-visible {
-      transform: none;
-    }
-
-    .cta.pulse {
+    .primary-cta,
+    .secondary-cta,
+    .metric,
+    .companion-orb {
+      transition: none;
       animation: none;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .today-card {
-      padding: 20px;
-    }
-
-    .today-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .cta {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .companion {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .companion-btn {
-      width: 100%;
     }
   }
 </style>

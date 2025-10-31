@@ -43,7 +43,8 @@ export const load: PageServerLoad = async (event) => {
     endcap: DEFAULT_ENDCAP,
     landingVariant: parent.landingVariant ?? null,
     diagnostics,
-    preferences: parent.preferences ?? null
+    preferences: parent.preferences ?? null,
+    notificationsUnread: parent.notificationsUnread ?? 0
   };
 
   try {
@@ -170,7 +171,8 @@ export const load: PageServerLoad = async (event) => {
       endcap,
       landingVariant: parent.landingVariant ?? null,
       diagnostics,
-      preferences: parent.preferences ?? null
+      preferences: parent.preferences ?? null,
+      notificationsUnread: parent.notificationsUnread ?? 0
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

@@ -1,6 +1,10 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
+  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import ConstellationNav, { type NavItem } from '$lib/components/home/ConstellationNav.svelte';
+  import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
+  import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import TodayCard from '$lib/components/home/TodayCard.svelte';
   import ComposerChip from '$lib/components/home/ComposerChip.svelte';
   import FeedList from '$lib/components/home/FeedList.svelte';
@@ -19,6 +23,8 @@
   const endcap = data.endcap;
   const variant = data.landingVariant ?? null;
   const preferences = data.preferences ?? null;
+  const notificationsUnread = data.notificationsUnread ?? 0;
+
   const energy = stats?.energy ?? 0;
   const energyMax = stats?.energy_max ?? 0;
   const streak = stats?.missions_completed ?? 0;
@@ -32,6 +38,16 @@
       }
     : null;
 
+  const navItems: NavItem[] = [
+    { id: 'bond', label: 'Resonance', description: 'Pulse & composer' },
+    { id: 'missions', label: 'Missions', description: 'Next moves' },
+    { id: 'feed', label: 'Circle', description: 'Community signals' },
+    { id: 'companions', label: 'Companions', description: 'Care & moods' },
+    { id: 'path', label: 'Path', description: 'Suggested focus' }
+  ];
+
+  let activeSection = navItems[0].id;
+
   const extractContext = (entry: unknown): string | null => {
     if (!entry) return null;
     if (typeof entry === 'string') return entry;
@@ -43,66 +59,136 @@
   };
 
   onMount(async () => {
-    if (!browser || !preferences) return;
-    const contextKind = extractContext(preferences.last_context ?? null);
-    if (contextKind !== 'feed') return;
-    const payload = preferences.last_context_payload as Record<string, unknown> | null;
-    const scrollValue =
-      payload && typeof payload.scroll === 'number' ? Math.max(0, payload.scroll) : null;
-    if (scrollValue === null) return;
+    if (!browser) return;
+
+    if (preferences) {
+      const contextKind = extractContext(preferences.last_context ?? null);
+      if (contextKind === 'feed') {
+        const payload = preferences.last_context_payload as Record<string, unknown> | null;
+        const scrollValue =
+          payload && typeof payload.scroll === 'number' ? Math.max(0, payload.scroll) : null;
+        if (scrollValue !== null) {
+          await tick();
+          window.scrollTo({ top: scrollValue, behavior: 'auto' });
+        }
+      }
+    }
+
     await tick();
-    window.scrollTo({ top: scrollValue, behavior: 'auto' });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible.length > 0) {
+          const id = visible[0].target.getAttribute('id');
+          if (id) {
+            activeSection = id;
+          }
+        }
+      },
+      {
+        threshold: 0.42,
+        rootMargin: '-20% 0px -40% 0px'
+      }
+    );
+
+    navItems.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
   });
 </script>
 
-<main class="home-surface" aria-labelledby="home-heading">
-  <h1 id="home-heading" class="sr-only">Home</h1>
+<BackgroundStack />
 
-  <section class="hero-grid">
-    <TodayCard
-      {stats}
-      mission={missions[0] ?? null}
-      creature={creatures[0] ?? null}
-      {variant}
-      {energy}
-      {energyMax}
-      {streak}
-      {petMood}
-      {activeMission}
-      pendingReward={false}
-      recentFail={null}
+<div class="home-frame">
+  <ConstellationNav items={navItems} {activeSection} />
+
+  <main class="home-main" aria-labelledby="home-heading">
+    <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
+
+    <section id="bond" class="section-anchor">
+      <OrbPanel
+        headline="Your bond pulses brighter today."
+        subtitle="Energy renewed. The thread hums with potential."
+        data-testid="orb-panel"
+      >
+        <TodayCard
+          {stats}
+          mission={missions[0] ?? null}
+          creature={creatures[0] ?? null}
+          {variant}
+          {energy}
+          {energyMax}
+          {streak}
+          {petMood}
+          {activeMission}
+          pendingReward={false}
+          recentFail={null}
+        />
+        <ComposerChip className="composer-chip" />
+      </OrbPanel>
+    </section>
+
+    <section id="missions" class="section-anchor">
+      <OrbPanel
+        headline="Guide the loop forward."
+        subtitle="Pick a mission thread to keep your synergy alive."
+        data-testid="orb-panel"
+      >
+        <div class="panel-heading">
+          <a href="/app/missions" class="cta-link">All missions</a>
+        </div>
+        <MissionRow items={missions} />
+      </OrbPanel>
+    </section>
+
+    <section id="feed" class="section-anchor">
+      <OrbPanel
+        headline="Signals from your circle."
+        subtitle="Share a resonance, respond with warmth, stay woven together."
+        data-testid="orb-panel"
+      >
+        <FeedList items={feed} />
+      </OrbPanel>
+    </section>
+
+    <section id="companions" class="section-anchor">
+      <OrbPanel
+        headline="Companion pulse"
+        subtitle="Attune to each mood and keep the bond glowing."
+        data-testid="orb-panel"
+      >
+        <CreatureMoments items={creatures} />
+      </OrbPanel>
+    </section>
+
+    <section id="path" class="section-anchor">
+      <OrbPanel
+        headline="Where the thread invites you next."
+        subtitle="A gentle nudge when you’re ready to move."
+        data-testid="orb-panel"
+      >
+        <EndcapCard {endcap} />
+      </OrbPanel>
+    </section>
+  </main>
+
+  <div class="home-aside">
+    <StatusCapsule
+      level={stats?.level ?? null}
+      xp={stats?.xp ?? null}
+      xpNext={stats?.xp_next ?? null}
+      energy={stats?.energy ?? null}
+      energyMax={stats?.energy_max ?? null}
+      notifications={notificationsUnread}
     />
-    <ComposerChip className="composer-chip" />
-  </section>
-
-  <section class="missions-section" aria-labelledby="missions-heading">
-    <div class="section-heading">
-      <h2 id="missions-heading">Stay on track</h2>
-      <a href="/app/missions" class="see-all">All missions</a>
-    </div>
-    <MissionRow items={missions} />
-  </section>
-
-  <section class="feed-section" aria-labelledby="feed-heading">
-    <div class="section-heading">
-      <h2 id="feed-heading">From your circle</h2>
-      <a href="/app/u/me" class="see-all">View profile</a>
-    </div>
-    <FeedList items={feed} />
-  </section>
-
-  <section class="creatures-section" aria-labelledby="creatures-heading">
-    <div class="section-heading">
-      <h2 id="creatures-heading">Creature moments</h2>
-      <a href="/app/creatures" class="see-all">Manage creatures</a>
-    </div>
-    <CreatureMoments items={creatures} />
-  </section>
-
-  <section class="endcap-section" aria-labelledby="endcap-heading">
-    <EndcapCard {endcap} id="endcap-heading" />
-  </section>
-</main>
+  </div>
+</div>
 
 <style>
   .sr-only {
@@ -116,64 +202,90 @@
     border: 0;
   }
 
-  .home-surface {
+  .home-frame {
+    position: relative;
     display: grid;
-    gap: 32px;
-    padding: 24px;
-    max-width: 1160px;
-    margin: 0 auto 120px;
+    grid-template-columns: 220px minmax(0, 1fr) 320px;
+    gap: clamp(24px, 4vw, 48px);
+    padding: clamp(24px, 5vw, 72px) clamp(20px, 5vw, 72px) clamp(120px, 10vw, 160px);
+    min-height: 100vh;
   }
 
-  .hero-grid {
+  .home-main {
     display: grid;
-    gap: 24px;
+    gap: clamp(28px, 4vw, 40px);
+    position: relative;
+    z-index: 1;
   }
 
-  .missions-section,
-  .feed-section,
-  .creatures-section,
-  .endcap-section {
-    display: grid;
-    gap: 16px;
-  }
-
-  .section-heading {
+  .home-aside {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    justify-content: flex-start;
   }
 
-  .section-heading h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
+  .section-anchor {
+    scroll-margin-top: 110px;
   }
 
-  .see-all {
-    font-size: 0.85rem;
-    color: rgba(125, 211, 252, 0.9);
-    text-decoration: none;
+  .panel-heading {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .cta-link {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    padding: 0.55rem 1.05rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(244, 247, 255, 0.9);
+    font-size: 0.88rem;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 180ms ease, background 180ms ease;
   }
 
-  .see-all:hover,
-  .see-all:focus-visible {
-    text-decoration: underline;
+  .cta-link::after {
+    content: '→';
+    font-size: 1rem;
   }
 
-  @media (min-width: 960px) {
-    .hero-grid {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-      align-items: stretch;
+  .cta-link:hover,
+  .cta-link:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(77, 244, 255, 0.28);
+    box-shadow: 0 14px 30px rgba(77, 244, 255, 0.24);
+  }
+
+  .cta-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 14px 30px rgba(77, 244, 255, 0.24);
+  }
+
+  @media (max-width: 1280px) {
+    .home-frame {
+      grid-template-columns: minmax(0, 1fr) 320px;
+    }
+
+    .home-frame > :first-child {
+      display: none;
     }
   }
 
-  @media (max-width: 640px) {
-    .home-surface {
-      padding: 16px;
+  @media (max-width: 1024px) {
+    .home-frame {
+      grid-template-columns: minmax(0, 1fr);
+      padding: clamp(20px, 6vw, 48px);
+    }
+
+    .home-aside {
+      order: -1;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .home-main {
+      gap: 24px;
     }
   }
 </style>
