@@ -9,6 +9,7 @@ import {
   type PreferenceRow,
   type MissionCandidate
 } from '$lib/server/landing';
+import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -211,7 +212,8 @@ export const load: LayoutServerLoad = async (event) => {
         landingSurface: null,
         navActivity: {},
         notifications: [],
-        notificationsUnread: 0
+        notificationsUnread: 0,
+        headerStats: null
       };
     }
 
@@ -226,6 +228,7 @@ export const load: LayoutServerLoad = async (event) => {
   const variant = await ensureVariant(supabase, preferences);
   let notifications: Array<Record<string, any>> = [];
   let notificationsUnread = 0;
+  const headerStats = await getPlayerStats(event, supabase).catch(() => null);
 
   try {
     const { data: notificationRows, error: notificationError } = await supabase
@@ -296,6 +299,7 @@ export const load: LayoutServerLoad = async (event) => {
     landingSurface: decision?.surface ?? null,
     navActivity: computeNavActivity(preferences),
     notifications,
-    notificationsUnread
+    notificationsUnread,
+    headerStats
   };
 };

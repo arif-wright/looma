@@ -156,36 +156,6 @@ main {
 }
 
 /* Transparent navbar over hero */
-.nav-overlay {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 60px;
-  pointer-events: none;
-  z-index: 2;
-  overflow: hidden;
-}
-
-.nav-overlay__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  pointer-events: auto;
-}
-
-.brand {
-  font-weight: 700;
-  opacity: 0.9;
-  text-decoration: none;
-  letter-spacing: 0.04em;
-}
-
-.nav-actions .btn--sm {
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-}
-
 button:focus-visible,
 a:focus-visible,
 [role='button']:focus-visible {

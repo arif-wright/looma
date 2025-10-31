@@ -2,8 +2,6 @@
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
-  import ConstellationNav, { type NavItem } from '$lib/components/home/ConstellationNav.svelte';
-  import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import TodayCard from '$lib/components/home/TodayCard.svelte';
   import ComposerChip from '$lib/components/home/ComposerChip.svelte';
@@ -11,6 +9,8 @@
   import MissionRow from '$lib/components/home/MissionRow.svelte';
   import CreatureMoments from '$lib/components/home/CreatureMoments.svelte';
   import EndcapCard from '$lib/components/home/EndcapCard.svelte';
+  import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
+  import QuickLinks, { type QuickLink } from '$lib/components/home/QuickLinks.svelte';
 
   import type { PageData } from './$types';
 
@@ -38,15 +38,13 @@
       }
     : null;
 
-  const navItems: NavItem[] = [
-    { id: 'bond', label: 'Resonance', description: 'Pulse & composer' },
-    { id: 'missions', label: 'Missions', description: 'Next moves' },
-    { id: 'feed', label: 'Circle', description: 'Community signals' },
-    { id: 'companions', label: 'Companions', description: 'Care & moods' },
-    { id: 'path', label: 'Path', description: 'Suggested focus' }
+  const quickLinks: QuickLink[] = [
+    { id: 'resonance', label: 'Resonance', description: 'Pulse & composer', href: '/app/home#resonance', icon: '✶' },
+    { id: 'missions', label: 'Missions', description: 'Thread your next move', href: '/app/missions', icon: '⬢' },
+    { id: 'feed', label: 'Circle', description: 'Community signals', href: '/app/home#feed', icon: '●' },
+    { id: 'companions', label: 'Companions', description: 'Care & moods', href: '/app/creatures', icon: '◎' },
+    { id: 'path', label: 'Path', description: 'Suggested focus', href: '/app/home#path', icon: '↗' }
   ];
-
-  let activeSection = navItems[0].id;
 
   const extractContext = (entry: unknown): string | null => {
     if (!entry) return null;
@@ -73,47 +71,98 @@
         }
       }
     }
-
-    await tick();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible.length > 0) {
-          const id = visible[0].target.getAttribute('id');
-          if (id) {
-            activeSection = id;
-          }
-        }
-      },
-      {
-        threshold: 0.42,
-        rootMargin: '-20% 0px -40% 0px'
-      }
-    );
-
-    navItems.forEach((item) => {
-      const el = document.getElementById(item.id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
   });
 </script>
 
 <div class="bg-neuro min-h-screen relative overflow-hidden">
   <BackgroundStack />
 
-  <div class="home-frame">
-    <ConstellationNav items={navItems} {activeSection} />
+  <main
+    class="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-20 lg:grid lg:grid-cols-12 lg:px-10"
+    aria-labelledby="home-heading"
+  >
+    <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
 
-    <main class="home-main" aria-labelledby="home-heading">
-      <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
+    <section class="space-y-6 lg:col-span-3">
+      <QuickLinks links={quickLinks} />
+    </section>
 
-      <div class="mobile-status">
+    <section class="space-y-6 lg:col-span-6">
+      <OrbPanel
+        headline="Your bond pulses brighter today."
+        subtitle="Energy renewed. The thread hums with potential."
+        data-testid="orb-panel"
+        id="resonance"
+        class="space-y-6"
+      >
+        <TodayCard
+          {stats}
+          mission={missions[0] ?? null}
+          creature={creatures[0] ?? null}
+          {variant}
+          {energy}
+          {energyMax}
+          {streak}
+          {petMood}
+          {activeMission}
+          pendingReward={false}
+          recentFail={null}
+        />
+        <ComposerChip className="composer-chip" />
+      </OrbPanel>
+
+      <OrbPanel
+        headline="Guide the loop forward."
+        subtitle="Pick a mission thread to keep your synergy alive."
+        data-testid="orb-panel"
+        id="missions"
+        class="space-y-4"
+      >
+        <div class="flex justify-end">
+          <a href="/app/missions" class="cta-link">All missions</a>
+        </div>
+        <MissionRow items={missions} />
+      </OrbPanel>
+
+      <OrbPanel
+        headline="Signals from your circle."
+        subtitle="Share a resonance, respond with warmth, stay woven together."
+        data-testid="orb-panel"
+        id="feed"
+        class="space-y-4"
+      >
+        <FeedList items={feed} />
+      </OrbPanel>
+
+      <OrbPanel
+        headline="Companion pulse"
+        subtitle="Attune to each mood and keep the bond glowing."
+        data-testid="orb-panel"
+        id="companions"
+        class="space-y-4"
+      >
+        <CreatureMoments items={creatures} />
+      </OrbPanel>
+
+      <OrbPanel
+        headline="Where the thread invites you next."
+        subtitle="A gentle nudge when you’re ready to move."
+        data-testid="orb-panel"
+        id="path"
+        class="space-y-4"
+      >
+        <EndcapCard {endcap} />
+      </OrbPanel>
+    </section>
+
+    <aside class="space-y-6 lg:col-span-3" aria-label="Status overview">
+      <OrbPanel class="space-y-5" data-testid="level-panel">
+        <header class="space-y-1">
+          <p class="text-xs uppercase tracking-[0.2em] text-white/60">Signal status</p>
+          <h2 class="text-2xl font-semibold font-display text-white">Bond telemetry</h2>
+        </header>
         <StatusCapsule
+          className="status-readout"
           level={stats?.level ?? null}
           xp={stats?.xp ?? null}
           xpNext={stats?.xp_next ?? null}
@@ -121,86 +170,9 @@
           energyMax={stats?.energy_max ?? null}
           notifications={notificationsUnread}
         />
-      </div>
-
-      <section id="bond" class="section-anchor">
-        <OrbPanel
-          headline="Your bond pulses brighter today."
-          subtitle="Energy renewed. The thread hums with potential."
-          data-testid="orb-panel"
-        >
-          <TodayCard
-            {stats}
-            mission={missions[0] ?? null}
-            creature={creatures[0] ?? null}
-            {variant}
-            {energy}
-            {energyMax}
-            {streak}
-            {petMood}
-            {activeMission}
-            pendingReward={false}
-            recentFail={null}
-          />
-          <ComposerChip className="composer-chip" />
-        </OrbPanel>
-      </section>
-
-      <section id="missions" class="section-anchor">
-        <OrbPanel
-          headline="Guide the loop forward."
-          subtitle="Pick a mission thread to keep your synergy alive."
-          data-testid="orb-panel"
-        >
-          <div class="panel-heading">
-            <a href="/app/missions" class="cta-link">All missions</a>
-          </div>
-          <MissionRow items={missions} />
-        </OrbPanel>
-      </section>
-
-      <section id="feed" class="section-anchor">
-        <OrbPanel
-          headline="Signals from your circle."
-          subtitle="Share a resonance, respond with warmth, stay woven together."
-          data-testid="orb-panel"
-        >
-          <FeedList items={feed} />
-        </OrbPanel>
-      </section>
-
-      <section id="companions" class="section-anchor">
-        <OrbPanel
-          headline="Companion pulse"
-          subtitle="Attune to each mood and keep the bond glowing."
-          data-testid="orb-panel"
-        >
-          <CreatureMoments items={creatures} />
-        </OrbPanel>
-      </section>
-
-      <section id="path" class="section-anchor">
-        <OrbPanel
-          headline="Where the thread invites you next."
-          subtitle="A gentle nudge when you’re ready to move."
-          data-testid="orb-panel"
-        >
-          <EndcapCard {endcap} />
-        </OrbPanel>
-      </section>
-    </main>
-
-    <div class="home-aside">
-      <StatusCapsule
-        level={stats?.level ?? null}
-        xp={stats?.xp ?? null}
-        xpNext={stats?.xp_next ?? null}
-        energy={stats?.energy ?? null}
-        energyMax={stats?.energy_max ?? null}
-        notifications={notificationsUnread}
-      />
-    </div>
-  </div>
+      </OrbPanel>
+    </aside>
+  </main>
 </div>
 
 <style>
@@ -215,51 +187,17 @@
     border: 0;
   }
 
-  .home-frame {
-    position: relative;
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr) 320px;
-    gap: clamp(24px, 4vw, 48px);
-    padding: clamp(24px, 5vw, 72px) clamp(20px, 5vw, 72px) clamp(120px, 10vw, 160px);
-    min-height: 100vh;
-  }
-
-  .home-main {
-    display: grid;
-    gap: clamp(28px, 4vw, 40px);
-    position: relative;
-    z-index: 1;
-  }
-
-  .home-aside {
-    display: flex;
-    justify-content: flex-start;
-  }
-
-  .mobile-status {
-    display: none;
-  }
-
-  .section-anchor {
-    scroll-margin-top: 110px;
-  }
-
-  .panel-heading {
-    display: flex;
-    justify-content: flex-end;
-  }
-
   .cta-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 0.55rem 1.05rem;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     color: rgba(244, 247, 255, 0.9);
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     text-decoration: none;
-    transition: transform 160ms ease, box-shadow 180ms ease, background 180ms ease;
+    transition: transform 160ms ease, box-shadow 200ms ease, background 180ms ease;
   }
 
   .cta-link::after {
@@ -276,38 +214,6 @@
 
   .cta-link:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 14px 30px rgba(77, 244, 255, 0.24);
-  }
-
-  @media (max-width: 1280px) {
-    .home-frame {
-      grid-template-columns: minmax(0, 1fr) 320px;
-    }
-
-    .home-frame > :first-child {
-      display: none;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    .home-frame {
-      grid-template-columns: minmax(0, 1fr);
-      padding: clamp(20px, 6vw, 48px);
-    }
-
-    .home-aside {
-      display: none;
-    }
-
-    .mobile-status {
-      display: block;
-      margin-bottom: clamp(1.4rem, 4vw, 2rem);
-    }
-  }
-
-  @media (max-width: 680px) {
-    .home-main {
-      gap: 24px;
-    }
+    box-shadow: 0 0 0 2px rgba(77, 244, 255, 0.6);
   }
 </style>

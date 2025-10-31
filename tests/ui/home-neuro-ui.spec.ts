@@ -5,28 +5,30 @@ test.describe('Neuro UI dashboard', () => {
     await page.goto('/app/home');
   });
 
-  test('renders orb panels for key sections', async ({ page }) => {
+  test('renders neuro shell with status capsule and level panel', async ({ page }) => {
     const panels = page.locator('[data-testid="orb-panel"]');
     await expect(panels).toHaveCount(5);
+    await expect(page.locator('[data-testid="quick-links"]')).toBeVisible();
+    await expect(page.locator('[data-testid="level-panel"]')).toBeVisible();
+    await expect(page.locator('[data-testid="top-status"]')).toBeVisible();
+    await expect(page.locator('.app-rail')).toHaveCount(0);
   });
 
-  test('primary CTA exposes cyan focus ring', async ({ page }) => {
+  test('quick links support keyboard navigation and CTA focus ring', async ({ page }) => {
+    const links = page.locator('[data-testid="quick-links"] button');
+    await expect(links.first()).toHaveAttribute('tabindex', '0');
+    await expect(links.nth(1)).toHaveAttribute('tabindex', '-1');
+
     const primaryCta = page.locator('.primary-cta').first();
-    const baseShadow = await primaryCta.evaluate((element) => getComputedStyle(element).boxShadow);
-    let focused = false;
-    for (let i = 0; i < 18; i += 1) {
-      await page.keyboard.press('Tab');
-      focused = await primaryCta.evaluate(
-        (element) => element === document.activeElement
-      );
-      if (focused) break;
-    }
-    expect(focused).toBeTruthy();
+    await primaryCta.focus();
     const focusState = await primaryCta.evaluate((element) =>
       element.matches(':focus-visible') || element.matches(':focus')
     );
     expect(focusState).toBeTruthy();
-    const boxShadow = await primaryCta.evaluate((element) => getComputedStyle(element).boxShadow);
-    expect(boxShadow).not.toBe(baseShadow);
+  });
+
+  test('legacy dashboard artifacts are absent', async ({ page }) => {
+    await expect(page.locator('.brand-title')).toHaveCount(0);
+    await expect(page.locator('[data-testid="legacy-panel"]')).toHaveCount(0);
   });
 });

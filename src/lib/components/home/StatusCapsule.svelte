@@ -36,10 +36,7 @@ $: xpPercent =
 
 </script>
 
-<aside
-  class={`status-capsule ${pulse ? 'level-up' : ''} ${className}`.trim()}
-  aria-label="Status summary"
->
+<aside class={`status-capsule ${pulse ? 'level-up' : ''} ${className}`.trim()} aria-label="Status summary">
   <div class="status-line">
     <div class="stat">
       <span class="label">Level</span>
@@ -103,19 +100,9 @@ $: xpPercent =
 
 <style>
   .status-capsule {
-    position: sticky;
-    top: 40px;
     display: grid;
     gap: 18px;
-    padding: 1.35rem 1.6rem;
-    border-radius: 1.5rem;
-    background:
-      linear-gradient(140deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
-      rgba(8, 12, 28, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 24px 40px rgba(9, 10, 26, 0.45);
-    backdrop-filter: blur(32px);
-    min-width: 260px;
+    min-height: 220px;
   }
 
   .status-line {
@@ -242,10 +229,7 @@ $: xpPercent =
 
   @media (max-width: 1024px) {
     .status-capsule {
-      position: static;
-      min-width: 0;
-      width: 100%;
-      order: -1;
+      min-height: initial;
     }
   }
 
