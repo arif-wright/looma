@@ -7,31 +7,59 @@
   let status: 'checking' | 'error' = 'checking';
   let message = 'Signing you in…';
 
+  const complete = async () => {
+    const next = sessionStorage.getItem(STORAGE_KEY) ?? '/app/home';
+    sessionStorage.removeItem(STORAGE_KEY);
+    await goto(next || '/app/home', { replaceState: true });
+  };
+
+  const fail = (text: string) => {
+    status = 'error';
+    message = text;
+    sessionStorage.removeItem(STORAGE_KEY);
+  };
+
   onMount(async () => {
     const supabase = createSupabaseBrowserClient();
 
     try {
+      const currentUrl = window.location.href;
+      const parsed = new URL(currentUrl);
+
+      if (parsed.searchParams.has('error')) {
+        const reason =
+          parsed.searchParams.get('error_description') ??
+          parsed.searchParams.get('error') ??
+          'We could not complete the sign-in process.';
+        fail(reason);
+        return;
+      }
+
+      if (parsed.searchParams.has('code')) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(currentUrl);
+        if (error || !data.session) {
+          fail(error?.message ?? 'We could not complete the sign-in process.');
+          return;
+        }
+
+        await complete();
+        return;
+      }
+
       const { data, error } = await supabase.auth.getSession();
       if (error) {
-        status = 'error';
-        message = error.message ?? 'We could not complete the sign-in process.';
+        fail(error.message ?? 'We could not complete the sign-in process.');
         return;
       }
 
       if (data.session) {
-        const next = sessionStorage.getItem(STORAGE_KEY) ?? '/app/home';
-        sessionStorage.removeItem(STORAGE_KEY);
-        await goto(next || '/app/home', { replaceState: true });
+        await complete();
         return;
       }
 
-      status = 'error';
-      message = 'Session not found. Please try signing in again.';
-      sessionStorage.removeItem(STORAGE_KEY);
+      fail('Session not found. Please try signing in again.');
     } catch (err) {
-      status = 'error';
-      message = err instanceof Error ? err.message : 'Unexpected error while signing in.';
-      sessionStorage.removeItem(STORAGE_KEY);
+      fail(err instanceof Error ? err.message : 'Unexpected error while signing in.');
     }
   });
 </script>
