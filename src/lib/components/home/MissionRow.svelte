@@ -49,7 +49,11 @@
               </div>
             {/if}
           </dl>
-          <button type="button" on:click={() => dispatch('start', { missionId: mission.id })}>
+          <button
+            type="button"
+            class="mission-action btn-ripple hover-glow"
+            on:click={() => dispatch('start', { missionId: mission.id })}
+          >
             Start mission
           </button>
         </article>
@@ -101,7 +105,7 @@
   .summary {
     margin: 0;
     font-size: 0.9rem;
-    color: rgba(226, 232, 240, 0.75);
+    color: rgba(226, 232, 255, 0.82);
   }
 
   .rewards {
@@ -125,19 +129,20 @@
     font-weight: 600;
   }
 
-  button {
-    border-radius: 12px;
-    padding: 10px 14px;
-    border: 1px solid rgba(56, 189, 248, 0.6);
+  .mission-action {
+    border-radius: 999px;
+    padding: 10px 16px;
+    border: 1px solid rgba(56, 189, 248, 0.55);
     background: rgba(56, 189, 248, 0.18);
-    color: rgba(226, 232, 240, 0.95);
+    color: rgba(226, 232, 255, 0.95);
     font-size: 0.9rem;
     cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, box-shadow 200ms ease;
   }
 
-  button:hover,
-  button:focus-visible {
-    background: rgba(56, 189, 248, 0.28);
+  .mission-action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.6);
   }
 
   .empty {
@@ -164,5 +169,11 @@
   .cta:focus-visible {
     border-color: rgba(56, 189, 248, 0.6);
     color: rgba(125, 211, 252, 0.9);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mission-action {
+      transition: none;
+    }
   }
 </style>

@@ -43,7 +43,11 @@
           </header>
           <p class="mood">{creature.mood_label ?? creature.mood ?? 'Content'}</p>
           <p class="status">{dueLabel(creature.next_care_at)}</p>
-          <button type="button" on:click={() => dispatch('focus', { creatureId: creature.id })}>
+          <button
+            type="button"
+            class="visit-action btn-ripple hover-glow"
+            on:click={() => dispatch('focus', { creatureId: creature.id })}
+          >
             Feed &amp; play
           </button>
         </article>
@@ -64,11 +68,11 @@
 
   .creature-card {
     border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(15, 23, 42, 0.66);
     padding: 18px;
     display: grid;
-    gap: 10px;
+    gap: 12px;
   }
 
   header {
@@ -83,34 +87,36 @@
 
   .species {
     font-size: 0.78rem;
-    color: rgba(148, 163, 184, 0.75);
+    color: rgba(226, 232, 255, 0.7);
   }
 
   .mood {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
+    color: rgba(244, 247, 255, 0.9);
   }
 
   .status {
     margin: 0;
     font-size: 0.85rem;
-    color: rgba(226, 232, 240, 0.7);
+    color: rgba(226, 232, 255, 0.8);
   }
 
-  button {
-    border-radius: 12px;
-    padding: 8px 14px;
-    border: 1px solid rgba(45, 212, 191, 0.6);
-    background: rgba(45, 212, 191, 0.2);
-    color: rgba(226, 252, 236, 0.9);
+  .visit-action {
+    border-radius: 999px;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid rgba(77, 244, 255, 0.45);
+    background: rgba(77, 244, 255, 0.16);
+    color: rgba(244, 247, 255, 0.92);
     font-size: 0.85rem;
     cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, box-shadow 200ms ease;
   }
 
-  button:hover,
-  button:focus-visible {
-    background: rgba(45, 212, 191, 0.3);
+  .visit-action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(77, 244, 255, 0.6);
   }
 
   .empty {
@@ -137,5 +143,11 @@
   .empty a:focus-visible {
     border-color: rgba(56, 189, 248, 0.6);
     color: rgba(125, 211, 252, 0.9);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .visit-action {
+      transition: none;
+    }
   }
 </style>

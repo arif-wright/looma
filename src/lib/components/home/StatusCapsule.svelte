@@ -38,10 +38,12 @@ $: xpPercent =
 
 <aside class={`status-capsule ${pulse ? 'level-up' : ''} ${className}`.trim()} aria-label="Status summary">
   <div class="status-line">
-    <div class="stat">
-      <span class="label">Level</span>
-      <strong class="value">{level ?? '—'}</strong>
-    </div>
+  <div class="stat level-stat">
+    <strong class="value">
+      <span class="value-label">Level</span>
+      <span class="value-number">{level ?? '—'}</span>
+    </strong>
+  </div>
     <div class="metric">
       <span class="metric-label">Bond XP</span>
       <div class="meter" role="progressbar" aria-valuenow={xpPercent ?? undefined} aria-valuemin="0" aria-valuemax="100">
@@ -107,7 +109,7 @@ $: xpPercent =
 
   .status-line {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     gap: 18px;
   }
 
@@ -125,16 +127,41 @@ $: xpPercent =
   }
 
   .value {
-    font-size: 1.6rem;
-    font-weight: 600;
+    font-size: 1.55rem;
+    font-weight: 500;
     font-family: var(--font-display, 'Cormorant Garamond', serif);
-    color: rgba(255, 255, 255, 0.92);
+    color: rgba(244, 247, 255, 0.82);
+    line-height: 1.1;
+  }
+
+  .level-stat .value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: rgba(226, 232, 255, 0.75);
+  }
+
+  .value-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(226, 232, 255, 0.78);
+  }
+
+  .value-number {
+    font-size: 1.55rem;
+    font-weight: 500;
+    font-family: var(--font-display, 'Cormorant Garamond', serif);
+    color: rgba(244, 247, 255, 0.85);
+    letter-spacing: 0.02em;
   }
 
   .metric {
     flex: 1;
     display: grid;
     gap: 6px;
+    align-content: start;
   }
 
   .metric-label {
@@ -146,7 +173,7 @@ $: xpPercent =
 
   .meter {
     position: relative;
-    height: 10px;
+    height: 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     overflow: hidden;
@@ -164,7 +191,7 @@ $: xpPercent =
   .metric-sub {
     margin: 0;
     font-size: 0.82rem;
-    color: rgba(226, 232, 255, 0.68);
+    color: rgba(226, 232, 255, 0.8);
   }
 
   .notifications {

@@ -280,12 +280,12 @@
   .metric-sub {
     margin: 0;
     font-size: 0.85rem;
-    color: rgba(226, 232, 255, 0.68);
+    color: rgba(226, 232, 255, 0.8);
   }
 
   .meter {
     position: relative;
-    height: 10px;
+    height: 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
     overflow: hidden;

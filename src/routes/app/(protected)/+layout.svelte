@@ -9,6 +9,9 @@
   import { logout } from '$lib/auth/logout';
   import StatusCapsuleNav from '$lib/components/ui/StatusCapsule.svelte';
   import { page } from '$app/stores';
+  import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import MobileDock from '$lib/components/ui/MobileDock.svelte';
+  import { Search, Home, PawPrint, ListChecks, Package, UserRound } from 'lucide-svelte';
 
   export let data;
 
@@ -33,6 +36,14 @@
   let isHome = false;
 
   $: isHome = $pageStore.url.pathname === '/app/home';
+
+  const iconNavItems: IconNavItem[] = [
+    { href: '/app/home', label: 'Home', icon: Home },
+    { href: '/app/creatures', label: 'Creatures', icon: PawPrint },
+    { href: '/app/missions', label: 'Missions', icon: ListChecks },
+    { href: '/app/inventory', label: 'Inventory', icon: Package },
+    { href: '/app/profile', label: 'Profile', icon: UserRound }
+  ];
 
   if (browser) {
     onMount(() => {
@@ -67,18 +78,28 @@
   {/if}
   <div class="app-surface">
     <header class="app-header">
-      <span aria-hidden="true"></span>
-      <StatusCapsuleNav
-        energy={data?.headerStats?.energy ?? null}
-        energyMax={data?.headerStats?.energy_max ?? null}
-        level={data?.headerStats?.level ?? null}
-        xp={data?.headerStats?.xp ?? null}
-        xpNext={data?.headerStats?.xp_next ?? null}
-        unreadCount={bellUnread}
-        notifications={bellNotifications}
-        userEmail={userEmail}
-        onLogout={handleLogout}
-      />
+      <div class="app-header__inner">
+        <div class="header-left">
+          <span class="logo-dot" aria-hidden="true"></span>
+          <div class="search" role="search" aria-label="Search threads">
+            <Search class="search-icon" aria-hidden="true" />
+            <input type="search" placeholder="Search threads…" aria-label="Search threads" />
+          </div>
+        </div>
+        <CenterIconNav className="hidden md:flex" items={iconNavItems} />
+        <StatusCapsuleNav
+          className="shrink-0 justify-self-end hover-glow"
+          energy={data?.headerStats?.energy ?? null}
+          energyMax={data?.headerStats?.energy_max ?? null}
+          level={data?.headerStats?.level ?? null}
+          xp={data?.headerStats?.xp ?? null}
+          xpNext={data?.headerStats?.xp_next ?? null}
+          unreadCount={bellUnread}
+          notifications={bellNotifications}
+          userEmail={userEmail}
+          onLogout={handleLogout}
+        />
+      </div>
     </header>
 
     <main class="app-main">
@@ -87,7 +108,13 @@
   </div>
 </div>
 
-<BottomDock activity={activity} on:compose={handleCompose} />
+{#if !isHome}
+  <BottomDock activity={activity} on:compose={handleCompose} />
+{/if}
+
+{#if isHome}
+  <MobileDock items={iconNavItems} />
+{/if}
 
 <style>
   .app-shell {
@@ -112,15 +139,83 @@
   }
 
   .app-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 18px 28px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(6, 11, 23, 0.7);
+    backdrop-filter: blur(18px);
+  }
+
+  .app-header__inner {
+    margin: 0 auto;
+    max-width: 80rem;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    height: 3.5rem;
+  }
+
+  .header-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .logo-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(77, 244, 255, 0.35), rgba(155, 92, 255, 0.45));
+    box-shadow: 0 12px 28px rgba(77, 244, 255, 0.22);
+  }
+
+  .search {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 0 0.75rem;
+    height: 2.25rem;
+    color: rgba(244, 247, 255, 0.82);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(7, 11, 23, 0.4);
+  }
+
+  .search:focus-within {
+    border-color: rgba(77, 244, 255, 0.4);
+    box-shadow: 0 0 0 2px rgba(77, 244, 255, 0.32), 0 12px 28px rgba(7, 11, 23, 0.4);
+  }
+
+  .search input {
+    border: none;
     background: transparent;
-    backdrop-filter: blur(14px);
-    position: relative;
-    z-index: 10;
+    color: rgba(244, 247, 255, 0.92);
+    font-size: 0.86rem;
+    width: 17.5rem;
+  }
+
+  .search input::placeholder {
+    color: rgba(244, 247, 255, 0.38);
+  }
+
+  .search input:focus-visible {
+    outline: none;
+  }
+
+  .search-icon {
+    width: 1rem;
+    height: 1rem;
+    color: rgba(244, 247, 255, 0.45);
+    transition: color 0.16s ease;
+  }
+
+  .search:focus-within .search-icon {
+    color: rgba(244, 247, 255, 0.8);
   }
 
   .app-main {
@@ -133,12 +228,28 @@
       grid-template-columns: 1fr;
     }
 
-    .app-header {
-      padding: 18px 20px;
+    .app-header__inner {
+      padding: 0 1.25rem;
+    }
+
+    .search {
+      display: none;
     }
 
     .app-main {
-      padding: 24px;
+      padding: 0;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .search {
+      display: inline-flex;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-header__inner {
+      padding: 0 1.75rem;
     }
   }
 </style>

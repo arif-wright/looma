@@ -52,9 +52,12 @@
         return;
     }
 
-    const target = items[nextIndex] ?? null;
     activeIndex = nextIndex;
-    setTimeout(() => target?.focus(), 0);
+    items.forEach((item, itemIndex) => {
+      item.tabIndex = itemIndex === nextIndex ? 0 : -1;
+    });
+    const target = items[nextIndex] ?? null;
+    target?.focus();
   };
 </script>
 
@@ -80,6 +83,7 @@
           on:keydown={(event) => handleKey(event, index)}
           on:click={() => activate(link.href)}
           aria-label={`${link.label} — ${link.description}`}
+          data-href={link.href}
         >
           <span class="link-row__icon" aria-hidden="true">
             {link.icon ?? '•'}
@@ -177,6 +181,18 @@
 
   .link-row__description {
     font-size: 0.82rem;
-    color: rgba(226, 232, 255, 0.68);
+    color: rgba(226, 232, 255, 0.8);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .link-row {
+      transition: none;
+    }
+
+    .link-row:hover,
+    .link-row:focus-visible {
+      transform: none;
+      box-shadow: none;
+    }
   }
 </style>
