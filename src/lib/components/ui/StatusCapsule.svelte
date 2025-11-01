@@ -14,7 +14,7 @@
   export let className = '';
 
   const capsuleBaseClass =
-    'flex h-9 flex-wrap items-center gap-2.5 rounded-full bg-white/5 px-2.5 text-[13px] text-white/80 backdrop-blur-xl';
+    'flex h-9 flex-wrap items-center gap-2.5 rounded-full bg-white/5 px-2.5 text-[13px] text-white/80 backdrop-blur-xl md:h-10 md:gap-3 md:px-3';
 
   const energyDisplay =
     typeof energy === 'number' && typeof energyMax === 'number'
@@ -52,12 +52,12 @@
 
   <button
     type="button"
-    class="btn-ripple group relative flex h-7 items-center gap-1.5 rounded-full bg-white/10 px-1.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none"
+    class="btn-ripple group relative flex h-7 items-center gap-1.5 rounded-full bg-white/10 px-1.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none md:h-8 md:px-2"
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
     <span
-      class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900"
+      class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
       aria-hidden="true"
     >
       {initials}
