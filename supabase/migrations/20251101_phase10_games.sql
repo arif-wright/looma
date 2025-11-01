@@ -95,7 +95,8 @@ begin
   v_nonce := encode(gen_random_bytes(16), 'hex');
   insert into public.game_sessions(user_id, game_id, nonce)
   values (auth.uid(), v_game_id, v_nonce)
-  returning id, nonce into session_id, nonce;
+  returning id into session_id;
+  nonce := v_nonce;
   return next;
 end;
 $$;

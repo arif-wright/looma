@@ -3,7 +3,13 @@
   import { goto } from '$app/navigation';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
-  import { completeSession, fetchPlayerState, init, startSession } from '$lib/games/sdk';
+  import {
+    completeSession,
+    fetchPlayerState,
+    init,
+    signCompletion,
+    startSession
+  } from '$lib/games/sdk';
   import { applyPlayerState, recordRewardResult } from '$lib/games/state';
   import type { PageData } from './$types';
 
@@ -21,7 +27,7 @@
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
-  let session: { sessionId: string; nonce: string } | null = null;
+  let session: { sessionId: string; nonce: string; caps?: Record<string, unknown> } | null = null;
   let sessionInFlight: Promise<void> | null = null;
   let iframeKey = 0;
 
@@ -72,12 +78,23 @@
       const durationMs = Math.max(0, Math.floor(Number(payload?.durationMs ?? 0)));
       const reportedNonce = typeof payload?.nonce === 'string' ? payload.nonce : session.nonce;
 
+      status = 'Requesting validation…';
+      const { signature } = await signCompletion({
+        sessionId: session.sessionId,
+        score,
+        durationMs,
+        nonce: reportedNonce,
+        clientVersion: game.min_version ?? '1.0.0'
+      });
+
       status = 'Reporting results…';
       const result = await completeSession({
         sessionId: session.sessionId,
         score,
         durationMs,
-        nonce: reportedNonce
+        nonce: reportedNonce,
+        signature,
+        clientVersion: game.min_version ?? '1.0.0'
       });
 
       reward = result;

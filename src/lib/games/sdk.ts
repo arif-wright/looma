@@ -80,6 +80,14 @@ export const init = ({ targetWindow, origin = '*' }: InitOptions): Bridge => {
 type StartResponse = {
   sessionId: string;
   nonce: string;
+  serverTime: number;
+  caps: {
+    maxDurationMs: number;
+    minDurationMs: number;
+    maxScorePerMin: number;
+    minClientVer: string;
+    maxScore: number;
+  };
 };
 
 export const startSession = async (slug: string, clientVersion?: string): Promise<StartResponse> => {
@@ -103,6 +111,8 @@ type CompleteArgs = {
   score: number;
   durationMs: number;
   nonce: string;
+  signature: string;
+  clientVersion?: string;
 };
 
 export const completeSession = async (args: CompleteArgs) => {
@@ -121,6 +131,32 @@ export const completeSession = async (args: CompleteArgs) => {
   }
 
   return (await response.json()) as { xpDelta: number; currencyDelta: number };
+};
+
+type SignArgs = {
+  sessionId: string;
+  score: number;
+  durationMs: number;
+  nonce: string;
+  clientVersion?: string;
+};
+
+export const signCompletion = async (args: SignArgs) => {
+  const response = await fetch('/api/games/sign', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(args)
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    const message = error?.message ?? 'Unable to sign result';
+    const err = new Error(message);
+    (err as any).details = error;
+    throw err;
+  }
+
+  return (await response.json()) as { signature: string };
 };
 
 export const fetchConfig = async () => {

@@ -1,11 +1,20 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireUser, takeRateLimit } from '$lib/server/games/guard';
-import { supabaseAdmin } from '$lib/server/supabase';
-import { memoryStore } from '$lib/server/games/store';
+import { env } from '$env/dynamic/private';
+import { ensureAuth, getActiveGameBySlug, getConfigForGame, hasAbuseFlag } from '$lib/server/games/guard';
+import { limit } from '$lib/server/games/rate';
+import { logGameAudit } from '$lib/server/games/audit';
+import { error, json } from '@sveltejs/kit';
 
-const LIMIT = 10;
-const WINDOW_MS = 60_000;
+const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
+
+const buildCaps = (config: any, fallback: { max_score: number | null }) => ({
+  maxDurationMs: config?.max_duration_ms ?? 600000,
+  minDurationMs: config?.min_duration_ms ?? 10000,
+  maxScorePerMin: config?.max_score_per_min ?? 8000,
+  minClientVer: config?.min_client_ver ?? '1.0.0',
+  maxScore: fallback.max_score ?? 100000
+});
 
 export const POST: RequestHandler = async (event) => {
   let body: { slug?: unknown; clientVersion?: unknown };
@@ -16,43 +25,68 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request', details: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { user, supabase } = await requireUser(event);
+  const { user, supabase } = await ensureAuth(event);
+  const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
 
-  const rate = takeRateLimit(`games:start:${user.id}`, LIMIT, WINDOW_MS);
-  if (!rate.allowed) {
-    return json(
-      { error: 'rate_limited', retryAfter: rate.retryAfter },
-      { status: 429, headers: { 'retry-after': `${rate.retryAfter}` } }
-    );
+  limit(`games:start:user:${user.id}`, rateLimitPerMinute);
+  if (clientIp) {
+    limit(`games:start:ip:${clientIp}`, rateLimitPerMinute);
+  }
+
+  if (await hasAbuseFlag(user.id)) {
+    throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
   }
 
   const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
   const clientVersion = typeof body.clientVersion === 'string' ? body.clientVersion.trim() : null;
 
   if (!slug) {
-    return json({ error: 'bad_request', details: 'slug is required' }, { status: 400 });
+    throw error(400, { code: 'bad_request', message: 'Game slug is required.' });
   }
 
-  const { data, error } = await supabase.rpc('fn_game_start', { p_slug: slug });
+  const game = await getActiveGameBySlug(supabase, slug);
+  if (!game) {
+    throw error(404, { code: 'not_found', message: 'Game not available.' });
+  }
 
-  if (error || !data || data.length === 0) {
-    console.warn('[games] falling back to in-memory session store', error);
-    const fallback = memoryStore.createSession(user.id, slug);
-    return json({ sessionId: fallback.id, nonce: fallback.nonce, fallback: true });
+  const config = await getConfigForGame(supabase, game.id);
+
+  const { data, error: rpcError } = await supabase.rpc('fn_game_start', { p_slug: slug });
+
+  if (rpcError || !data || data.length === 0) {
+    await logGameAudit({
+      userId: user.id,
+      sessionId: null,
+      event: 'reject',
+      ip: clientIp,
+      details: {
+        slug,
+        reason: 'fn_game_start_failed',
+        error: rpcError?.message ?? null
+      }
+    });
+    console.error('[games] fn_game_start failed', rpcError);
+    throw error(500, { code: 'server_error', message: 'Unable to start game session.' });
   }
 
   const session = data[0];
+  const caps = buildCaps(config, game);
 
-  if (clientVersion) {
-    const { error: updateError } = await supabaseAdmin
-      .from('game_sessions')
-      .update({ client_ver: clientVersion })
-      .eq('id', session.session_id);
-
-    if (updateError) {
-      console.warn('[games] unable to persist client version', updateError);
+  await logGameAudit({
+    userId: user.id,
+    sessionId: session.session_id,
+    event: 'start',
+    ip: clientIp,
+    details: {
+      slug,
+      clientVersion
     }
-  }
+  });
 
-  return json({ sessionId: session.session_id, nonce: session.nonce });
+  return json({
+    sessionId: session.session_id,
+    nonce: session.nonce,
+    serverTime: Date.now(),
+    caps
+  });
 };

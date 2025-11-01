@@ -1,40 +1,37 @@
 import { error } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
+import { supabaseAdmin } from '$lib/server/supabase';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { User } from '@supabase/supabase-js';
 
-type RateBucket = {
-  count: number;
-  reset: number;
+type GameRow = {
+  id: string;
+  slug: string;
+  name: string;
+  max_score: number | null;
+  is_active: boolean;
 };
 
-type RateLimitResult = {
-  allowed: boolean;
-  remaining: number;
-  retryAfter: number;
+type ConfigRow = {
+  id: string;
+  game_id: string;
+  max_duration_ms: number | null;
+  min_duration_ms: number | null;
+  max_score_per_min: number | null;
+  min_client_ver: string | null;
 };
 
-const buckets = new Map<string, RateBucket>();
-
-export const takeRateLimit = (key: string, limit: number, windowMs: number): RateLimitResult => {
-  const now = Date.now();
-  const bucket = buckets.get(key);
-
-  if (!bucket || bucket.reset <= now) {
-    buckets.set(key, { count: 1, reset: now + windowMs });
-    return { allowed: true, remaining: limit - 1, retryAfter: 0 };
-  }
-
-  if (bucket.count >= limit) {
-    const retryAfter = Math.max(0, Math.ceil((bucket.reset - now) / 1000));
-    return { allowed: false, remaining: 0, retryAfter };
-  }
-
-  bucket.count += 1;
-  return { allowed: true, remaining: Math.max(0, limit - bucket.count), retryAfter: 0 };
+type SessionRow = {
+  id: string;
+  user_id: string;
+  nonce: string;
+  status: string;
+  completed_at: string | null;
+  game_id: string | null;
+  started_at: string;
 };
 
-export const requireUser = async (event: RequestEvent): Promise<{
+export const ensureAuth = async (event: RequestEvent): Promise<{
   user: User;
   supabase: ReturnType<typeof supabaseServer>;
 }> => {
@@ -53,14 +50,14 @@ export const requireUser = async (event: RequestEvent): Promise<{
 
   if (authError) {
     if (authError.message?.includes('Auth session missing')) {
-      throw error(401, 'unauthorized');
+      throw error(401, { code: 'unauthorized', message: 'Authentication required' });
     }
     console.error('[games] auth error', authError);
-    throw error(500, 'server_error');
+    throw error(500, { code: 'server_error', message: 'Unable to verify session' });
   }
 
   if (!user) {
-    throw error(401, 'unauthorized');
+    throw error(401, { code: 'unauthorized', message: 'Authentication required' });
   }
 
   event.locals.user = user;
@@ -68,3 +65,82 @@ export const requireUser = async (event: RequestEvent): Promise<{
 
   return { user, supabase };
 };
+
+export const requireUser = ensureAuth;
+
+export const getActiveGameBySlug = async (
+  supabase: ReturnType<typeof supabaseServer>,
+  slug: string
+): Promise<GameRow | null> => {
+  const { data, error: gameError } = await supabase
+    .from('game_titles')
+    .select('id, slug, name, max_score, is_active')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (gameError) {
+    console.error('[games] failed to load game by slug', gameError);
+    throw error(500, { code: 'server_error', message: 'Unable to load game' });
+  }
+
+  return (data as GameRow | null) ?? null;
+};
+
+export const getGameById = async (gameId: string): Promise<GameRow | null> => {
+  const { data, error: gameError } = await supabaseAdmin
+    .from('game_titles')
+    .select('id, slug, name, max_score, is_active')
+    .eq('id', gameId)
+    .maybeSingle();
+
+  if (gameError) {
+    console.error('[games] failed to load game by id', gameError);
+    throw error(500, { code: 'server_error', message: 'Unable to load game metadata' });
+  }
+
+  return (data as GameRow | null) ?? null;
+};
+
+export const getConfigForGame = async (
+  supabase: ReturnType<typeof supabaseServer>,
+  gameId: string
+): Promise<ConfigRow | null> => {
+  const { data, error: configError } = await supabase
+    .from('game_config')
+    .select('id, game_id, max_duration_ms, min_duration_ms, max_score_per_min, min_client_ver')
+    .eq('game_id', gameId)
+    .maybeSingle();
+
+  if (configError) {
+    console.error('[games] failed to load game config', configError);
+    throw error(500, { code: 'server_error', message: 'Unable to load game configuration' });
+  }
+
+  return (data as ConfigRow | null) ?? null;
+};
+
+export const getSession = async (
+  supabase: ReturnType<typeof supabaseServer>,
+  sessionId: string
+): Promise<SessionRow | null> => {
+  const { data, error: sessionError } = await supabase
+    .from('game_sessions')
+    .select('id, user_id, nonce, status, completed_at, game_id, started_at')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  if (sessionError) {
+    console.error('[games] failed to load game session', sessionError);
+    throw error(500, { code: 'server_error', message: 'Unable to load session' });
+  }
+
+  return (data as SessionRow | null) ?? null;
+};
+
+export const hasAbuseFlag = async (_userId: string): Promise<boolean> => {
+  // Placeholder for future heuristics or moderation hooks.
+  return false;
+};
+
+export const getAdminClient = () => supabaseAdmin;
