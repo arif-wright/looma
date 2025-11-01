@@ -6,7 +6,8 @@ import {
   getSession,
   getGameById,
   getConfigForGame,
-  hasAbuseFlag
+  hasAbuseFlag,
+  getAdminClient
 } from '$lib/server/games/guard';
 import { calculateRewards, persistRewards } from '$lib/server/games/rewards';
 import { buildSignaturePayload, verifySignature } from '$lib/server/games/hmac';
@@ -35,6 +36,7 @@ const compareVersions = (current: string | null, minimum: string) => {
 export const POST: RequestHandler = async (event) => {
   const { user, supabase } = await ensureAuth(event);
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
+  const admin = getAdminClient();
 
   limit(`games:complete:user:${user.id}`, rateLimitPerMinute);
   if (clientIp) {
@@ -263,6 +265,30 @@ export const POST: RequestHandler = async (event) => {
   } catch (err) {
     console.error('[games] persist rewards failed', err);
     throw error(500, { code: 'server_error', message: 'Unable to record rewards.' });
+  }
+
+  try {
+    const scoreInsert = await admin.from('game_scores').insert({
+      user_id: user.id,
+      game_id: session.game_id,
+      session_id: session.id,
+      score,
+      duration_ms: durationMs
+    });
+
+    if (scoreInsert.error && scoreInsert.error.code !== '23505') {
+      console.error('[games] game_scores insert failed', scoreInsert.error);
+    }
+
+    await admin.rpc('fn_leader_refresh', { p_scope: 'daily' }).catch((err) => {
+      console.warn('[games] fn_leader_refresh daily failed', err);
+    });
+
+    await admin.rpc('fn_leader_refresh', { p_scope: 'weekly' }).catch((err) => {
+      console.warn('[games] fn_leader_refresh weekly failed', err);
+    });
+  } catch (err) {
+    console.error('[games] leaderboard refresh failed', err);
   }
 
   await logGameAudit({

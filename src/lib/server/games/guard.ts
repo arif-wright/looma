@@ -102,6 +102,21 @@ export const getGameById = async (gameId: string): Promise<GameRow | null> => {
   return (data as GameRow | null) ?? null;
 };
 
+export const getGameBySlugAdmin = async (slug: string): Promise<GameRow | null> => {
+  const { data, error: gameError } = await supabaseAdmin
+    .from('game_titles')
+    .select('id, slug, name, max_score, is_active')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (gameError) {
+    console.error('[games] failed to load game by slug (admin)', gameError);
+    throw error(500, { code: 'server_error', message: 'Unable to load game' });
+  }
+
+  return (data as GameRow | null) ?? null;
+};
+
 export const getConfigForGame = async (
   supabase: ReturnType<typeof supabaseServer>,
   gameId: string

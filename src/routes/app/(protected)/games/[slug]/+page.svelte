@@ -11,6 +11,9 @@
     startSession
   } from '$lib/games/sdk';
   import { applyPlayerState, recordRewardResult } from '$lib/games/state';
+  import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
+  import LeaderboardList, { type LeaderboardDisplayRow } from '$lib/components/games/LeaderboardList.svelte';
+  import type { LeaderboardScope } from '$lib/server/games/leaderboard';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -41,6 +44,96 @@
   let sessionStartTime = 0;
   let sessionInFlight: Promise<void> | null = null;
   let iframeKey = 0;
+
+  type LeaderboardState = {
+    rows: LeaderboardDisplayRow[];
+    meta: { page: number; limit: number; total: number } | null;
+    loading: boolean;
+    fetched: boolean;
+  };
+
+  const createLeaderboardState = (): LeaderboardState => ({
+    rows: [],
+    meta: null,
+    loading: false,
+    fetched: false
+  });
+
+  let leaderboardScope: LeaderboardScope = 'alltime';
+  let leaderboardStates: Record<LeaderboardScope, LeaderboardState> = {
+    daily: createLeaderboardState(),
+    weekly: createLeaderboardState(),
+    alltime: createLeaderboardState()
+  };
+
+  const leaderboardPageSize = 25;
+
+  const mutateLeaderboardState = (scope: LeaderboardScope, partial: Partial<LeaderboardState>) => {
+    leaderboardStates = {
+      ...leaderboardStates,
+      [scope]: {
+        ...leaderboardStates[scope],
+        ...partial
+      }
+    };
+  };
+
+  const loadLeaderboard = async (scope: LeaderboardScope, page = 1, append = false) => {
+    mutateLeaderboardState(scope, { loading: true });
+    const previousRows = leaderboardStates[scope].rows;
+
+    try {
+      const response = await fetch(
+        `/api/leaderboard/${slug}/${scope}?page=${page}&limit=${leaderboardPageSize}`
+      );
+      if (!response.ok) {
+        throw new Error('Unable to load leaderboard');
+      }
+      const payload = await response.json();
+      const nextRows: LeaderboardDisplayRow[] = append
+        ? [...previousRows, ...payload.rows]
+        : payload.rows;
+      mutateLeaderboardState(scope, {
+        rows: nextRows,
+        meta: payload.meta,
+        loading: false,
+        fetched: true
+      });
+    } catch (err) {
+      console.error('[games] leaderboard fetch failed', err);
+      mutateLeaderboardState(scope, { loading: false, fetched: true });
+    }
+  };
+
+  const refreshActiveLeaderboard = () => {
+    void loadLeaderboard(leaderboardScope);
+  };
+
+  const onTabsChange = (scope: LeaderboardScope) => {
+    leaderboardScope = scope;
+    const current = leaderboardStates[scope];
+    if (!current.fetched) {
+      void loadLeaderboard(scope);
+    }
+  };
+
+  const loadMoreLeaderboard = () => {
+    const current = leaderboardStates[leaderboardScope];
+    if (!current.meta) return;
+    const totalPages = Math.ceil(current.meta.total / current.meta.limit);
+    const nextPage = current.meta.page + 1;
+    if (nextPage > totalPages) return;
+    void loadLeaderboard(leaderboardScope, nextPage, true);
+  };
+
+  $: activeLeaderboard = leaderboardStates[leaderboardScope];
+  $: leaderboardHasMore = activeLeaderboard.meta
+    ? activeLeaderboard.meta.page * activeLeaderboard.meta.limit < activeLeaderboard.meta.total
+    : false;
+
+  onMount(() => {
+    void loadLeaderboard('alltime');
+  });
 
   const embedSrcDoc = String.raw`<!DOCTYPE html><html><head><meta charset="utf-8" /><style>html,body{margin:0;padding:0;background:#050b1f;color:#fff;font-family:Inter,sans-serif;height:100%;display:grid;place-items:center;}</style></head><body><div>Mini-game sandbox</div><script>\n(function(){\n  const send = (type, payload) => parent.postMessage({ type, payload }, '*');\n  window.__loomaGame = { send, lastSession:null, lastReward:null };\n  window.addEventListener('message', (event) => {\n    if (event.data?.type === 'SESSION_STARTED') { window.__loomaGame.lastSession = event.data.payload; }\n    if (event.data?.type === 'REWARD_GRANTED') { window.__loomaGame.lastReward = event.data.payload; }\n    if (event.data?.type === 'ERROR') { window.__loomaGame.lastError = event.data.payload; }\n  });\n  send('GAME_READY');\n})();\n<\/script></body></html>`;
 
@@ -141,6 +234,8 @@
       } catch (refreshErr) {
         console.warn('[games] failed to refresh player state', refreshErr);
       }
+
+      refreshActiveLeaderboard();
     } catch (err) {
       const message = (err as Error).message ?? 'Unable to complete session';
       errorMessage = message;
@@ -276,6 +371,31 @@
       {#if errorMessage}
         <div class="error-banner">{errorMessage}</div>
       {/if}
+
+      <section class="leaderboard-section">
+        <div class="leaderboard-header">
+          <h2 class="leaderboard-title">Leaderboards</h2>
+          <LeaderboardTabs active={leaderboardScope} on:change={(event) => onTabsChange(event.detail)} />
+        </div>
+
+        <LeaderboardList
+          rows={activeLeaderboard.rows}
+          loading={activeLeaderboard.loading && activeLeaderboard.rows.length === 0}
+          scope={leaderboardScope}
+        />
+
+        {#if leaderboardHasMore}
+          <button
+            class="leaderboard-more"
+            type="button"
+            data-testid="leaderboard-next"
+            on:click={loadMoreLeaderboard}
+            disabled={activeLeaderboard.loading}
+          >
+            {activeLeaderboard.loading ? 'Loading…' : 'Next page'}
+          </button>
+        {/if}
+      </section>
     </OrbPanel>
   </main>
 </div>
@@ -389,5 +509,48 @@
     background: rgba(255, 71, 87, 0.16);
     border: 1px solid rgba(255, 71, 87, 0.45);
     color: rgba(255, 224, 230, 0.92);
+  }
+
+  .leaderboard-section {
+    display: grid;
+    gap: 1rem;
+    padding-top: 0.5rem;
+  }
+
+  .leaderboard-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .leaderboard-title {
+    margin: 0;
+    font-size: 1.1rem;
+    color: rgba(244, 247, 255, 0.85);
+  }
+
+  .leaderboard-more {
+    justify-self: center;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 1.4rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(244, 247, 255, 0.85);
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease;
+  }
+
+  .leaderboard-more:hover,
+  .leaderboard-more:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    color: white;
+    outline: none;
+  }
+
+  .leaderboard-more[disabled] {
+    opacity: 0.6;
+    cursor: progress;
   }
 </style>
