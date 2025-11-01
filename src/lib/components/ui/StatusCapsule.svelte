@@ -14,7 +14,7 @@
   export let className = '';
 
   const capsuleBaseClass =
-    'status-capsule flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[13px] text-white/80 backdrop-blur-xl';
+    'status-capsule flex h-9 flex-wrap items-center gap-2 rounded-full bg-white/5 px-3 text-[13px] text-white/80 backdrop-blur-xl';
 
   const energyDisplay =
     typeof energy === 'number' && typeof energyMax === 'number'
@@ -52,7 +52,7 @@
 
   <button
     type="button"
-    class="btn-ripple group relative flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-1.5 py-0.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none"
+    class="btn-ripple group relative flex h-7 items-center gap-1.5 rounded-full bg-white/10 px-1.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none"
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
