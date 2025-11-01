@@ -86,9 +86,9 @@
             <input type="search" placeholder="Search threads…" aria-label="Search threads" />
           </div>
         </div>
-        <CenterIconNav className="hidden md:flex" items={iconNavItems} />
+        <CenterIconNav className="hidden md:flex flex-1 justify-center" items={iconNavItems} />
         <StatusCapsuleNav
-          className="shrink-0 justify-self-end hover-glow"
+          className="shrink-0 hover-glow"
           energy={data?.headerStats?.energy ?? null}
           energyMax={data?.headerStats?.energy_max ?? null}
           level={data?.headerStats?.level ?? null}
@@ -150,9 +150,9 @@
   .app-header__inner {
     margin: 0 auto;
     max-width: 80rem;
+    width: 100%;
     padding: 0 1rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    display: flex;
     align-items: center;
     gap: 0.75rem;
     height: 3.5rem;
@@ -160,6 +160,7 @@
 
   .header-left {
     display: inline-flex;
+    flex: 1;
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
@@ -184,6 +185,8 @@
     height: 2.25rem;
     color: rgba(244, 247, 255, 0.82);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(7, 11, 23, 0.4);
+    flex: 1;
+    max-width: min(24rem, 100%);
   }
 
   .search:focus-within {
@@ -196,7 +199,7 @@
     background: transparent;
     color: rgba(244, 247, 255, 0.92);
     font-size: 0.86rem;
-    width: 17.5rem;
+    width: 100%;
   }
 
   .search input::placeholder {

@@ -24,7 +24,7 @@
 </script>
 
 <nav class={`pointer-events-auto ${className}`.trim()} aria-label="Primary navigation">
-  <div class="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl md:gap-5">
+  <div class="mx-auto flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl md:gap-5">
     {#each items as item (item.href)}
       <a
         href={item.href}
