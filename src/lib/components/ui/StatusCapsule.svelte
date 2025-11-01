@@ -14,7 +14,7 @@
   export let className = '';
 
   const capsuleBaseClass =
-    'status-capsule flex flex-wrap items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 shadow-[0_12px_28px_rgba(7,11,23,0.45)] backdrop-blur-2xl';
+    'status-capsule flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[13px] text-white/80 shadow-[0_8px_20px_rgba(7,11,23,0.35)] backdrop-blur-xl';
 
   const energyDisplay =
     typeof energy === 'number' && typeof energyMax === 'number'
@@ -32,16 +32,16 @@
 
 <div class={`${capsuleBaseClass} ${className}`.trim()} data-testid="top-status">
   <span class="flex items-center gap-1.5 whitespace-nowrap text-white">
-    <span class="text-base leading-none" aria-hidden="true">⚡</span>
-    <span class="font-medium text-white/90" aria-label="Current energy">{energyDisplay}</span>
+    <span class="text-sm leading-none" aria-hidden="true">⚡</span>
+    <span class="text-sm font-medium text-white/90" aria-label="Current energy">{energyDisplay}</span>
   </span>
 
   <span aria-hidden="true" class="text-white/35">•</span>
 
   <span class="flex items-center gap-2 whitespace-nowrap">
-    <span class="text-base leading-none" aria-hidden="true">★</span>
-    <span class="font-medium text-white" aria-label="Bond level">Level {levelDisplay}</span>
-    <span class="text-xs text-white/60">{xpDisplay}</span>
+    <span class="text-sm leading-none" aria-hidden="true">★</span>
+    <span class="text-sm font-medium text-white" aria-label="Bond level">Level {levelDisplay}</span>
+    <span class="text-[11px] text-white/60">{xpDisplay}</span>
   </span>
 
   <span aria-hidden="true" class="text-white/35">•</span>
@@ -52,18 +52,18 @@
 
   <button
     type="button"
-    class="btn-ripple group relative flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-1.5 py-1 text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none"
+    class="btn-ripple group relative flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-1.5 py-0.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none"
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
     <span
-      class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 font-semibold uppercase tracking-wide text-ink-900"
+      class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900"
       aria-hidden="true"
     >
       {initials}
     </span>
     {#if userEmail}
-      <span class="max-w-[160px] truncate text-sm text-white/80">{userEmail}</span>
+      <span class="max-w-[140px] truncate text-xs text-white/75">{userEmail}</span>
     {/if}
   </button>
 </div>
