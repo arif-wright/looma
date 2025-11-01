@@ -1,10 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { ensureAuth, getActiveGameBySlug, getConfigForGame, hasAbuseFlag } from '$lib/server/games/guard';
 import { limit } from '$lib/server/games/rate';
 import { logGameAudit } from '$lib/server/games/audit';
-import { error, json } from '@sveltejs/kit';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 
