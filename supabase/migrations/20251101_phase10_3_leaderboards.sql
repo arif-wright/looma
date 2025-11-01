@@ -13,8 +13,20 @@ create table if not exists public.game_scores (
 create unique index if not exists game_scores_session_unique on public.game_scores(session_id);
 
 alter table public.game_scores enable row level security;
-create policy "read own scores" on public.game_scores for select to authenticated using (user_id = auth.uid());
-create policy "insert via server only" on public.game_scores for insert to service_role with check (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'game_scores' and policyname = 'read own scores'
+  ) then
+    execute 'create policy "read own scores" on public.game_scores for select to authenticated using (user_id = auth.uid())';
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'game_scores' and policyname = 'insert via server only'
+  ) then
+    execute 'create policy "insert via server only" on public.game_scores for insert to service_role with check (true)';
+  end if;
+end;
+$$;
 
 create materialized view if not exists public.mv_leader_alltime as
 with best as (

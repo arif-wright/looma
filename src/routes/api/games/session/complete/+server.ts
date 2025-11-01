@@ -280,13 +280,15 @@ export const POST: RequestHandler = async (event) => {
       console.error('[games] game_scores insert failed', scoreInsert.error);
     }
 
-    await admin.rpc('fn_leader_refresh', { p_scope: 'daily' }).catch((err) => {
-      console.warn('[games] fn_leader_refresh daily failed', err);
-    });
+    const refreshDaily = await admin.rpc('fn_leader_refresh', { p_scope: 'daily' });
+    if (refreshDaily.error) {
+      console.warn('[games] fn_leader_refresh daily failed', refreshDaily.error);
+    }
 
-    await admin.rpc('fn_leader_refresh', { p_scope: 'weekly' }).catch((err) => {
-      console.warn('[games] fn_leader_refresh weekly failed', err);
-    });
+    const refreshWeekly = await admin.rpc('fn_leader_refresh', { p_scope: 'weekly' });
+    if (refreshWeekly.error) {
+      console.warn('[games] fn_leader_refresh weekly failed', refreshWeekly.error);
+    }
   } catch (err) {
     console.error('[games] leaderboard refresh failed', err);
   }
