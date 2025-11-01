@@ -132,7 +132,7 @@ export const fetchConfig = async () => {
 };
 
 export const fetchPlayerState = async () => {
-  const response = await fetch('/api/games/player/state');
+  const response = await fetch('/api/games/player/state', { cache: 'no-store' });
   if (!response.ok) {
     throw new Error('Unable to fetch game player state');
   }

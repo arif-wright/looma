@@ -1,7 +1,16 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { onDestroy, onMount } from 'svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import {
+    applyPlayerState,
+    getPlayerProgressSnapshot,
+    playerProgress,
+    type PlayerProgressState,
+    type RewardEntry
+  } from '$lib/games/state';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -13,7 +22,73 @@
         { slug: 'astro-match', name: 'Astro Match', min_version: '1.0.0', max_score: 75000 }
       ];
 
-  const playerState = data?.playerState ?? null;
+  type PlayerSummary = {
+    level: number | null;
+    xp: number | null;
+    xpNext: number | null;
+    energy: number | null;
+    energyMax: number | null;
+    currency: number | null;
+    rewards: RewardEntry[];
+  } | null;
+
+  let playerSummary: PlayerSummary = data?.playerState
+    ? {
+        level: data.playerState.level ?? null,
+        xp: data.playerState.xp ?? null,
+        xpNext: data.playerState.xpNext ?? null,
+        energy: data.playerState.energy ?? null,
+        energyMax: data.playerState.energyMax ?? null,
+        currency: data.playerState.currency ?? null,
+        rewards: Array.isArray(data.playerState.rewards)
+          ? (data.playerState.rewards as RewardEntry[])
+          : []
+      }
+    : null;
+
+  const applyProgressSnapshot = (next: PlayerProgressState) => {
+    playerSummary = {
+      level: next.level,
+      xp: next.xp,
+      xpNext: next.xpNext,
+      energy: next.energy,
+      energyMax: next.energyMax,
+      currency: next.currency,
+      rewards: next.rewards
+    };
+  };
+
+  if (browser && data?.playerState) {
+    applyPlayerState(data.playerState);
+  }
+
+  let unsubscribe: (() => void) | null = null;
+
+  onMount(() => {
+    applyProgressSnapshot(getPlayerProgressSnapshot());
+    unsubscribe = playerProgress.subscribe((value) => applyProgressSnapshot(value));
+  });
+
+  onDestroy(() => {
+    unsubscribe?.();
+    unsubscribe = null;
+  });
+
+  const formatRewardTime = (iso: string | null) => {
+    if (!iso || !browser) return '';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  let rewardList: RewardEntry[] = playerSummary?.rewards ? playerSummary.rewards.slice(0, 5) : [];
+
+  $: rewardList = (playerSummary?.rewards ?? []).slice(0, 5);
 </script>
 
 <svelte:head>
@@ -32,16 +107,50 @@
       </p>
       <StatusCapsule
         className="w-full max-w-xl"
-        level={playerState?.level ?? 1}
-        xp={playerState?.xp ?? 0}
-        xpNext={playerState?.xpNext ?? null}
-        energy={playerState?.energy ?? null}
-        energyMax={playerState?.energyMax ?? null}
-        notifications={playerState?.rewards?.length ?? 0}
+        level={playerSummary?.level ?? null}
+        xp={playerSummary?.xp ?? null}
+        xpNext={playerSummary?.xpNext ?? null}
+        energy={playerSummary?.energy ?? null}
+        energyMax={playerSummary?.energyMax ?? null}
+        notifications={playerSummary?.rewards?.length ?? 0}
         unreadCount={0}
         userEmail={null}
         onLogout={() => {}}
       />
+
+      <section class="progress-overview" aria-label="Player rewards">
+        <div class="progress-tile">
+          <span class="progress-label">Shard balance</span>
+          <strong class="progress-value" data-testid="shard-balance">
+            {#if typeof playerSummary?.currency === 'number'}
+              {playerSummary.currency}
+            {:else}
+              —
+            {/if}
+          </strong>
+          <p class="progress-hint">Rewards from recent sessions and grants sum here.</p>
+        </div>
+        <div class="progress-tile">
+          <span class="progress-label">Recent rewards</span>
+          {#if rewardList.length > 0}
+            <ul class="reward-log" data-testid="reward-log">
+              {#each rewardList as reward (reward.id)}
+                <li class="reward-row">
+                  <span class="reward-delta">+{reward.xpDelta} XP • +{reward.currencyDelta} shards</span>
+                  <span class="reward-meta">
+                    {reward.gameName ?? reward.game ?? 'Mini-game'}
+                    {#if formatRewardTime(reward.insertedAt)}
+                      · {formatRewardTime(reward.insertedAt)}
+                    {/if}
+                  </span>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="progress-hint">Complete a session to see rewards appear here.</p>
+          {/if}
+        </div>
+      </section>
     </header>
 
     <section class="grid gap-6 md:grid-cols-2" aria-label="Available games">
@@ -78,6 +187,64 @@
 </div>
 
 <style>
+  .progress-overview {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 1rem;
+  }
+
+  .progress-tile {
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 18, 41, 0.65);
+    padding: 1rem 1.2rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .progress-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 255, 0.6);
+  }
+
+  .progress-value {
+    font-size: 1.85rem;
+    font-weight: 600;
+    color: rgba(244, 247, 255, 0.93);
+  }
+
+  .progress-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: rgba(214, 224, 255, 0.65);
+  }
+
+  .reward-log {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .reward-row {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .reward-delta {
+    font-weight: 600;
+    color: rgba(244, 247, 255, 0.9);
+  }
+
+  .reward-meta {
+    font-size: 0.78rem;
+    color: rgba(182, 198, 255, 0.7);
+  }
+
   .btn-primary {
     border-radius: 999px;
     padding: 0.65rem 1.5rem;

@@ -31,6 +31,31 @@ test.describe('Tiles Run embed bridge', () => {
       });
     });
 
+    await page.route('**/api/games/player/state', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          level: 5,
+          xp: 1200,
+          xpNext: 1600,
+          energy: 8,
+          energyMax: 10,
+          currency: 240,
+          rewards: [
+            {
+              id: 'reward-1',
+              xpDelta: 12,
+              currencyDelta: 24,
+              insertedAt: new Date().toISOString(),
+              game: 'tiles-run',
+              gameName: 'Tiles Run'
+            }
+          ]
+        })
+      });
+    });
+
     const startRequest = page.waitForRequest('**/api/games/session/start');
 
     await page.goto('/app/games/tiles-run');

@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
-  import { completeSession, init, startSession } from '$lib/games/sdk';
+  import { completeSession, fetchPlayerState, init, startSession } from '$lib/games/sdk';
+  import { applyPlayerState } from '$lib/games/state';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -84,6 +85,13 @@
       session = null;
       if (typeof window !== 'undefined') {
         (window as any).__loomaComplete = null;
+      }
+
+      try {
+        const latest = await fetchPlayerState();
+        applyPlayerState(latest);
+      } catch (refreshErr) {
+        console.warn('[games] failed to refresh player state', refreshErr);
       }
     } catch (err) {
       const message = (err as Error).message ?? 'Unable to complete session';

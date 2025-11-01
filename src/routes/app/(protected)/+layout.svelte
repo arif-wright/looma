@@ -12,6 +12,7 @@
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
   import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2 } from 'lucide-svelte';
+  import { applyHeaderStats, playerProgress } from '$lib/games/state';
 
   export let data;
 
@@ -23,6 +24,10 @@
 
   $: bellNotifications = (data?.notifications ?? bellNotifications) as NotificationItem[];
   $: bellUnread = typeof data?.notificationsUnread === 'number' ? data.notificationsUnread : bellUnread;
+
+  $: if (browser) {
+    applyHeaderStats(data?.headerStats ?? null);
+  }
 
   function handleCompose() {
     void goto('/app/u/me?compose=1');
@@ -96,11 +101,11 @@
         <CenterIconNav className="hidden md:flex flex-1 justify-center" items={iconNavItems} />
         <StatusCapsuleNav
           className="ml-auto shrink-0"
-          energy={data?.headerStats?.energy ?? null}
-          energyMax={data?.headerStats?.energy_max ?? null}
-          level={data?.headerStats?.level ?? null}
-          xp={data?.headerStats?.xp ?? null}
-          xpNext={data?.headerStats?.xp_next ?? null}
+          energy={$playerProgress.energy}
+          energyMax={$playerProgress.energyMax}
+          level={$playerProgress.level}
+          xp={$playerProgress.xp}
+          xpNext={$playerProgress.xpNext}
           unreadCount={bellUnread}
           notifications={bellNotifications}
           userEmail={userEmail}
