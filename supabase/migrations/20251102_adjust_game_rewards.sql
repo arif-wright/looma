@@ -19,3 +19,6 @@ end;
 $$;
 
 grant execute on function public.fn_award_game_xp(uuid, int) to authenticated;
+
+grant execute on function public.fn_game_start(text) to authenticated;
+grant execute on function public.fn_game_complete(uuid, int, int) to authenticated;
