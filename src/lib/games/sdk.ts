@@ -103,7 +103,6 @@ type CompleteArgs = {
   score: number;
   durationMs: number;
   nonce: string;
-  signature: string;
 };
 
 export const completeSession = async (args: CompleteArgs) => {

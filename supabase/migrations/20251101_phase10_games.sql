@@ -45,8 +45,8 @@ create table if not exists public.game_grants (
   inserted_at timestamptz default now()
 );
 
-insert into public.game_titles (slug, name, min_version)
-values ('tiles-run', 'Tiles Run', '1.0.0')
+insert into public.game_titles (slug, name, min_version, max_score)
+values ('tiles-run', 'Tiles Run', '1.0.0', 200000)
 on conflict (slug) do nothing;
 
 -- Policies

@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireUser } from '$lib/server/games/guard';
-import { buildSignaturePayload, verifyGameSignature } from '$lib/server/games/hmac';
 import { calculateRewards, persistRewards } from '$lib/server/games/rewards';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { memoryStore } from '$lib/server/games/store';
@@ -14,7 +13,6 @@ export const POST: RequestHandler = async (event) => {
     score?: unknown;
     durationMs?: unknown;
     nonce?: unknown;
-    signature?: unknown;
   };
 
   try {
@@ -27,19 +25,12 @@ export const POST: RequestHandler = async (event) => {
   const scoreRaw = Number(body.score);
   const durationMsRaw = Number(body.durationMs);
   const nonce = typeof body.nonce === 'string' ? body.nonce : '';
-  const signature = typeof body.signature === 'string' ? body.signature : '';
-
   if (!sessionId || !Number.isFinite(scoreRaw) || !Number.isFinite(durationMsRaw) || !nonce) {
     return json({ error: 'bad_request', details: 'Missing required fields' }, { status: 400 });
   }
 
   const score = Math.max(0, Math.floor(scoreRaw));
   const durationMs = Math.max(0, Math.floor(durationMsRaw));
-
-  const payload = buildSignaturePayload(sessionId, score, durationMs, nonce);
-  if (!verifyGameSignature(signature, payload)) {
-    return json({ error: 'forbidden', details: 'Signature verification failed' }, { status: 403 });
-  }
 
   let useFallback = false;
   let session: {

@@ -1,26 +1,29 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
-  import { init, startSession, completeSession } from '$lib/games/sdk';
+  import { completeSession, init, startSession } from '$lib/games/sdk';
   import type { PageData } from './$types';
 
   export let data: PageData;
 
   const slug = data.slug;
   const game = data.game ?? { name: slug, min_version: '1.0.0' };
+  const isTilesRun = slug === 'tiles-run';
 
   const devBanner = import.meta.env.DEV;
 
-  let status = 'Preparing bridge…';
+  let status = isTilesRun ? 'Waiting for game bridge…' : 'Preparing bridge…';
   let errorMessage: string | null = null;
   let reward: { xpDelta: number; currencyDelta: number } | null = null;
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
   let session: { sessionId: string; nonce: string } | null = null;
+  let sessionInFlight: Promise<void> | null = null;
+  let iframeKey = 0;
+
   const embedSrcDoc = String.raw`<!DOCTYPE html><html><head><meta charset="utf-8" /><style>html,body{margin:0;padding:0;background:#050b1f;color:#fff;font-family:Inter,sans-serif;height:100%;display:grid;place-items:center;}</style></head><body><div>Mini-game sandbox</div><script>\n(function(){\n  const send = (type, payload) => parent.postMessage({ type, payload }, '*');\n  window.__loomaGame = { send, lastSession:null, lastReward:null };\n  window.addEventListener('message', (event) => {\n    if (event.data?.type === 'SESSION_STARTED') { window.__loomaGame.lastSession = event.data.payload; }\n    if (event.data?.type === 'REWARD_GRANTED') { window.__loomaGame.lastReward = event.data.payload; }\n    if (event.data?.type === 'ERROR') { window.__loomaGame.lastError = event.data.payload; }\n  });\n  send('GAME_READY');\n})();\n<\/script></body></html>`;
 
   const resetListeners = () => {
@@ -28,15 +31,68 @@
     unsubscribers = [];
     bridge?.destroy();
     bridge = null;
+    sessionInFlight = null;
     if (typeof window !== 'undefined') {
       delete (window as any).__loomaSession;
       delete (window as any).__loomaComplete;
     }
   };
 
-  onDestroy(resetListeners);
+  const beginSession = () => {
+    if (!isTilesRun || !bridge) return;
+    if (sessionInFlight) return;
 
-  const handleFrameLoad = async (iframe: HTMLIFrameElement) => {
+    sessionInFlight = (async () => {
+      try {
+        status = 'Starting session…';
+        errorMessage = null;
+        session = await startSession(slug, game.min_version ?? '1.0.0');
+        if (typeof window !== 'undefined') {
+          (window as any).__loomaSession = session;
+        }
+        bridge?.post('SESSION_STARTED', { ...session, slug });
+        status = 'Session handshake complete';
+      } catch (err) {
+        session = null;
+        const message = (err as Error).message ?? 'Unable to start session';
+        errorMessage = message;
+        status = 'Handshake failed';
+      } finally {
+        sessionInFlight = null;
+      }
+    })();
+  };
+
+  const finalizeSession = async (payload: any) => {
+    if (!isTilesRun) return;
+    try {
+      if (!session) throw new Error('Session missing');
+      const score = Math.max(0, Math.floor(Number(payload?.score ?? 0)));
+      const durationMs = Math.max(0, Math.floor(Number(payload?.durationMs ?? 0)));
+      const reportedNonce = typeof payload?.nonce === 'string' ? payload.nonce : session.nonce;
+
+      status = 'Reporting results…';
+      const result = await completeSession({
+        sessionId: session.sessionId,
+        score,
+        durationMs,
+        nonce: reportedNonce
+      });
+
+      reward = result;
+      status = 'Session complete';
+      session = null;
+      if (typeof window !== 'undefined') {
+        (window as any).__loomaComplete = null;
+      }
+    } catch (err) {
+      const message = (err as Error).message ?? 'Unable to complete session';
+      errorMessage = message;
+      status = 'Result submission failed';
+    }
+  };
+
+  const handleFrameLoad = (iframe: HTMLIFrameElement) => {
     const target = iframe.contentWindow;
     if (!target) {
       errorMessage = 'Unable to load game frame';
@@ -49,64 +105,37 @@
     unsubscribers.push(
       bridge.subscribe('GAME_READY', () => {
         status = 'Game signaled ready';
-        if (session) {
-          bridge?.post('SESSION_STARTED', { ...session, slug });
+        if (isTilesRun) {
+          beginSession();
         }
       })
     );
 
-    unsubscribers.push(
-      bridge.subscribe('GAME_START', () => {
-        status = 'Game session in progress';
-      })
-    );
+    unsubscribers.push(bridge.subscribe('GAME_COMPLETE', finalizeSession));
 
-    const finalize = async (payload: any) => {
-      try {
-        if (!session) throw new Error('Session missing');
-        const score = Number(payload?.score ?? 0);
-        const durationMs = Number(payload?.durationMs ?? 0);
-        const reportedNonce = typeof payload?.nonce === 'string' ? payload.nonce : session.nonce;
-        const signature = typeof payload?.signature === 'string' ? payload.signature : '';
-
-        if (!signature) {
-          throw new Error('Missing signature');
-        }
-
-        const result = await completeSession({
-          sessionId: session.sessionId,
-          score,
-          durationMs,
-          nonce: reportedNonce,
-          signature
-        });
-
-        reward = result;
-        status = 'Session complete';
-        bridge?.post('REWARD_GRANTED', result);
-      } catch (err) {
-        errorMessage = (err as Error).message ?? 'Unable to complete session';
-        bridge?.post('ERROR', { message: errorMessage });
-      }
-    };
-
-    unsubscribers.push(bridge.subscribe('GAME_COMPLETE', finalize));
-
-    if (typeof window !== 'undefined') {
-      (window as any).__loomaComplete = finalize;
+    if (!isTilesRun) {
+      status = 'Sandbox ready';
     }
+  };
 
-    try {
-      status = 'Starting session…';
-      session = await startSession(slug, game.min_version ?? '1.0.0');
-      if (typeof window !== 'undefined') {
-        (window as any).__loomaSession = session;
-      }
-      status = 'Session handshake complete';
-      bridge.post('SESSION_STARTED', { ...session, slug });
-    } catch (err) {
-      errorMessage = (err as Error).message ?? 'Unable to start session';
-      status = 'Handshake failed';
+  const reloadIframe = () => {
+    reward = null;
+    errorMessage = null;
+    session = null;
+    iframeKey += 1;
+    status = 'Waiting for game bridge…';
+  };
+
+  const replaySession = () => {
+    reward = null;
+    errorMessage = null;
+    session = null;
+    if (bridge) {
+      bridge.post('SESSION_RESET');
+      beginSession();
+      status = 'Waiting for game bridge…';
+    } else {
+      reloadIframe();
     }
   };
 
@@ -120,6 +149,10 @@
     return () => {
       iframeEl?.removeEventListener('load', runner);
     };
+  });
+
+  onDestroy(() => {
+    resetListeners();
   });
 
   const goBack = () => goto('/app/games');
@@ -147,18 +180,40 @@
       </header>
 
       <div class="game-frame">
-        <iframe
-          bind:this={iframeEl}
-          title={`${game.name} embed`}
-          srcdoc={embedSrcDoc}
-          allowfullscreen
-        ></iframe>
+        {#if isTilesRun}
+          <iframe
+            bind:this={iframeEl}
+            title={`${game.name} embed`}
+            src={`/games/tiles-run/embed?session=${iframeKey}`}
+            data-testid="tiles-embed"
+            class="tiles-iframe"
+            allow="gamepad *; fullscreen"
+            allowfullscreen
+          ></iframe>
+        {:else}
+          <iframe
+            bind:this={iframeEl}
+            title={`${game.name} embed`}
+            srcdoc={embedSrcDoc}
+            allowfullscreen
+          ></iframe>
+        {/if}
       </div>
 
       {#if reward}
-        <div class="reward-callout">
-          <p>XP earned: <strong>{reward.xpDelta}</strong></p>
-          <p>Shards collected: <strong>{reward.currencyDelta}</strong></p>
+        <div class="reward-toast" role="status" data-testid="reward-toast">
+          <p class="reward-toast__label">Session rewards</p>
+          <p class="reward-toast__value">
+            +{reward.xpDelta} XP • +{reward.currencyDelta} shards
+          </p>
+          <div class="toast-actions">
+            <button class="toast-button" type="button" on:click={replaySession}>
+              Replay
+            </button>
+            <button class="toast-button secondary" type="button" on:click={goBack}>
+              Back to hub
+            </button>
+          </div>
         </div>
       {/if}
 
@@ -214,15 +269,62 @@
     border: none;
   }
 
-  .reward-callout {
-    display: flex;
-    gap: 1.5rem;
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.78);
+  .tiles-iframe {
+    background: transparent;
   }
 
-  .reward-callout strong {
+  .reward-toast {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    border-radius: 1rem;
+    padding: 1rem 1.2rem;
+    background: rgba(13, 23, 45, 0.85);
+    border: 1px solid rgba(116, 186, 255, 0.2);
+    color: rgba(230, 240, 255, 0.92);
+    box-shadow: 0 14px 38px rgba(8, 12, 28, 0.35);
+  }
+
+  .reward-toast__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(160, 194, 255, 0.6);
+  }
+
+  .reward-toast__value {
+    font-size: 1.05rem;
+    font-weight: 600;
     color: rgba(255, 255, 255, 0.95);
+  }
+
+  .toast-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .toast-button {
+    border-radius: 999px;
+    border: none;
+    padding: 0.55rem 1.4rem;
+    background: linear-gradient(120deg, rgba(155, 92, 255, 0.85), rgba(77, 244, 255, 0.85));
+    color: rgba(10, 14, 32, 0.9);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 200ms ease;
+  }
+
+  .toast-button.secondary {
+    background: transparent;
+    border: 1px solid rgba(160, 194, 255, 0.35);
+    color: rgba(200, 224, 255, 0.85);
+  }
+
+  .toast-button:hover,
+  .toast-button:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(77, 244, 255, 0.25);
+    outline: none;
   }
 
   .error-banner {
