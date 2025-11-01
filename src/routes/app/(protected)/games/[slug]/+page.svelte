@@ -27,7 +27,18 @@
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
-  let session: { sessionId: string; nonce: string; caps?: Record<string, unknown> } | null = null;
+  let session: {
+    sessionId: string;
+    nonce: string;
+    caps?: {
+      maxDurationMs: number;
+      minDurationMs: number;
+      maxScorePerMin: number;
+      minClientVer: string;
+      maxScore: number;
+    };
+  } | null = null;
+  let sessionStartTime = 0;
   let sessionInFlight: Promise<void> | null = null;
   let iframeKey = 0;
 
@@ -58,6 +69,7 @@
           (window as any).__loomaSession = session;
         }
         bridge?.post('SESSION_STARTED', { ...session, slug });
+        sessionStartTime = typeof window !== 'undefined' ? performance.now() : Date.now();
         status = 'Session handshake complete';
       } catch (err) {
         session = null;
@@ -75,8 +87,20 @@
     try {
       if (!session) throw new Error('Session missing');
       const score = Math.max(0, Math.floor(Number(payload?.score ?? 0)));
-      const durationMs = Math.max(0, Math.floor(Number(payload?.durationMs ?? 0)));
+      let durationMs = Math.max(0, Math.floor(Number(payload?.durationMs ?? 0)));
       const reportedNonce = typeof payload?.nonce === 'string' ? payload.nonce : session.nonce;
+
+      const elapsed = typeof window !== 'undefined' ? performance.now() - sessionStartTime : durationMs;
+      durationMs = Math.max(durationMs, Math.floor(elapsed));
+
+      const minDuration = Number(session.caps?.minDurationMs ?? 0);
+      if (minDuration > 0 && durationMs < minDuration) {
+        const waitMs = minDuration - durationMs;
+        status = `Finalizing… ${Math.ceil(waitMs / 1000)}s minimum session time`;
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        const postWaitElapsed = typeof window !== 'undefined' ? performance.now() - sessionStartTime : durationMs + waitMs;
+        durationMs = Math.max(minDuration, Math.floor(postWaitElapsed));
+      }
 
       status = 'Requesting validation…';
       const { signature } = await signCompletion({
