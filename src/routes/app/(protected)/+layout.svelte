@@ -88,7 +88,7 @@
         </div>
         <CenterIconNav className="hidden md:flex flex-1 justify-center" items={iconNavItems} />
         <StatusCapsuleNav
-          className="shrink-0 hover-glow"
+          className="ml-auto shrink-0 hover-glow"
           energy={data?.headerStats?.energy ?? null}
           energyMax={data?.headerStats?.energy_max ?? null}
           level={data?.headerStats?.level ?? null}
@@ -148,19 +148,19 @@
   }
 
   .app-header__inner {
-    margin: 0 auto;
-    max-width: 80rem;
+    margin: 0;
     width: 100%;
-    padding: 0 1rem;
+    padding: 0 clamp(1rem, 3vw, 2.75rem);
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: space-between;
+    gap: clamp(0.5rem, 1.5vw, 1.25rem);
     height: 3.5rem;
   }
 
   .header-left {
     display: inline-flex;
-    flex: 1;
+    flex: 1 1 0;
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
@@ -177,16 +177,17 @@
   .search {
     display: none;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     border-radius: 0.9rem;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.14);
-    padding: 0 0.75rem;
-    height: 2.25rem;
+    padding: 0 0.65rem;
+    height: 2.1rem;
     color: rgba(244, 247, 255, 0.82);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(7, 11, 23, 0.4);
-    flex: 1;
-    max-width: min(24rem, 100%);
+    flex: 1 1 0;
+    min-width: 12rem;
+    max-width: clamp(12rem, 28vw, 22rem);
   }
 
   .search:focus-within {
@@ -197,8 +198,8 @@
   .search input {
     border: none;
     background: transparent;
-    color: rgba(244, 247, 255, 0.92);
-    font-size: 0.86rem;
+    color: rgba(244, 247, 255, 0.9);
+    font-size: 0.84rem;
     width: 100%;
   }
 
@@ -252,7 +253,7 @@
 
   @media (min-width: 1024px) {
     .app-header__inner {
-      padding: 0 1.75rem;
+      padding: 0 2.25rem;
     }
   }
 </style>

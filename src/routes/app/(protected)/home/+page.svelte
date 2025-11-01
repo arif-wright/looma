@@ -84,16 +84,16 @@
   <BackgroundStack />
 
 <main
-  class="relative z-10 mx-auto min-h-screen w-full max-w-7xl px-5 pb-28 pt-24 lg:px-10"
+  class="relative z-10 min-h-screen w-full px-6 pb-28 pt-24 lg:px-12"
   aria-labelledby="home-heading"
 >
   <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
-  <div class="grid gap-6 lg:grid-cols-12">
-    <section class="space-y-6 lg:col-span-3">
+  <div class="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)_320px] xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+    <section class="space-y-6">
       <QuickLinks links={quickLinks} />
     </section>
 
-    <section class="space-y-6 lg:col-span-6">
+    <section class="space-y-6">
       <OrbPanel
         headline="Your bond pulses brighter today."
         subtitle="Energy renewed. The thread hums with potential."
@@ -170,7 +170,7 @@
       </OrbPanel>
     </section>
 
-    <aside class="space-y-6 lg:col-span-3" aria-label="Status overview">
+    <aside class="space-y-6" aria-label="Status overview">
       <OrbPanel class="space-y-5 telemetry-panel relative overflow-hidden p-6" data-testid="level-panel">
         <header class="space-y-1">
           <p class="text-xs uppercase tracking-[0.2em] text-white/80">Signal status</p>

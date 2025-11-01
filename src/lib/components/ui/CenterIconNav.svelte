@@ -24,11 +24,11 @@
 </script>
 
 <nav class={`pointer-events-auto ${className}`.trim()} aria-label="Primary navigation">
-  <div class="mx-auto flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl md:gap-5">
+  <div class="flex w-fit items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-1 backdrop-blur-xl md:gap-4">
     {#each items as item (item.href)}
       <a
         href={item.href}
-        class={`group relative flex h-10 w-10 flex-col items-center justify-center gap-1 rounded-full text-[13px] font-medium text-white/70 transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-0 motion-reduce:transition-none md:h-11 md:w-11 ${
+        class={`group relative flex h-9 w-9 flex-col items-center justify-center gap-1 rounded-full text-[12px] font-medium text-white/70 transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-0 motion-reduce:transition-none md:h-10 md:w-10 ${
           isActive(item.href)
             ? 'bg-white/10 text-white shadow-[0_0_0_1px_rgba(77,244,255,0.45),0_10px_24px_rgba(77,244,255,0.22)]'
             : 'hover:bg-white/10 hover:text-white focus-visible:text-white'
