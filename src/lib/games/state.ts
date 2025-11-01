@@ -36,8 +36,18 @@ const initialState: PlayerProgressState = {
 
 const store = writable<PlayerProgressState>(initialState);
 
-const normalizeNumber = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
+const normalizeNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
 
 const normalizeRewards = (rows: unknown): RewardEntry[] => {
   if (!Array.isArray(rows)) return [];
@@ -167,7 +177,7 @@ export const recordRewardResult = ({ xpDelta, currencyDelta, game = null, gameNa
   const timestamp = insertedAt ?? new Date().toISOString();
 
   mergeState((state) => {
-    const nextXp = typeof state.xp === 'number' ? state.xp + safeXp : state.xp;
+    const nextXp = typeof state.xp === 'number' ? state.xp + safeXp : safeXp;
     const nextCurrency = typeof state.currency === 'number' ? state.currency + safeCurrency : safeCurrency;
 
     const rewardEntry: RewardEntry = {

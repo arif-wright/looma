@@ -28,6 +28,7 @@ export const persistRewards = async ({ sessionId, userId, xpDelta, currencyDelta
   });
 
   if (rewardInsert.error) {
+    console.error('[games] persistRewards game_rewards insert failed', rewardInsert.error);
     throw rewardInsert.error;
   }
 
@@ -40,6 +41,19 @@ export const persistRewards = async ({ sessionId, userId, xpDelta, currencyDelta
   });
 
   if (grantInsert.error) {
+    console.error('[games] persistRewards game_grants insert failed', grantInsert.error);
     throw grantInsert.error;
+  }
+
+  if (xpDelta > 0) {
+    const xpResult = await supabaseAdmin.rpc('fn_award_game_xp', {
+      p_user: userId,
+      p_xp: xpDelta
+    });
+
+    if (xpResult.error) {
+      console.error('[games] persistRewards fn_award_game_xp failed', xpResult.error);
+      throw xpResult.error;
+    }
   }
 };
