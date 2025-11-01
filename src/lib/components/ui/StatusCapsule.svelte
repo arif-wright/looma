@@ -52,7 +52,7 @@
 
   <button
     type="button"
-    class="btn-ripple group relative flex h-7 items-center gap-1.5 rounded-full bg-white/10 px-1.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 motion-reduce:transition-none md:h-8 md:px-2"
+    class="btn-ripple group relative flex h-7 items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-1.5 text-sm text-white/90 transition-colors duration-150 ease-out hover:bg-white/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-300/50 motion-reduce:transition-none md:h-8 md:px-2"
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
