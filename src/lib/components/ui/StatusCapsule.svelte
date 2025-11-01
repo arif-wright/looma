@@ -14,7 +14,7 @@
   export let className = '';
 
   const capsuleBaseClass =
-    'status-capsule flex h-9 flex-wrap items-center gap-2 rounded-full bg-white/5 px-3 text-[13px] text-white/80 backdrop-blur-xl';
+    'flex h-9 flex-wrap items-center gap-2.5 rounded-full bg-white/5 px-2.5 text-[13px] text-white/80 backdrop-blur-xl';
 
   const energyDisplay =
     typeof energy === 'number' && typeof energyMax === 'number'
@@ -36,7 +36,7 @@
     <span class="text-sm font-medium text-white/90" aria-label="Current energy">{energyDisplay}</span>
   </span>
 
-  <span aria-hidden="true" class="text-white/35">•</span>
+  <span aria-hidden="true" class="text-white/30">•</span>
 
   <span class="flex items-center gap-2 whitespace-nowrap">
     <span class="text-sm leading-none" aria-hidden="true">★</span>
@@ -44,11 +44,11 @@
     <span class="text-[11px] text-white/60">{xpDisplay}</span>
   </span>
 
-  <span aria-hidden="true" class="text-white/35">•</span>
+  <span aria-hidden="true" class="text-white/30">•</span>
 
   <NotificationBell class="shrink-0" notifications={notifications} unreadCount={unreadCount} />
 
-  <span aria-hidden="true" class="text-white/35">•</span>
+  <span aria-hidden="true" class="text-white/30">•</span>
 
   <button
     type="button"
