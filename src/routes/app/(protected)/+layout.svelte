@@ -11,7 +11,7 @@
   import { page } from '$app/stores';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-  import { Search, Home, PawPrint, ListChecks, Package, UserRound } from 'lucide-svelte';
+  import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2 } from 'lucide-svelte';
 
   export let data;
 
@@ -33,14 +33,21 @@
   }
 
   const pageStore = page;
+  let currentPath = '';
   let isHome = false;
+  let isGames = false;
+  let hideRail = false;
 
-  $: isHome = $pageStore.url.pathname === '/app/home';
+  $: currentPath = $pageStore.url.pathname;
+  $: isHome = currentPath === '/app/home';
+  $: isGames = currentPath.startsWith('/app/games');
+  $: hideRail = isHome || isGames;
 
   const iconNavItems: IconNavItem[] = [
     { href: '/app/home', label: 'Home', icon: Home },
     { href: '/app/creatures', label: 'Creatures', icon: PawPrint },
     { href: '/app/missions', label: 'Missions', icon: ListChecks },
+    { href: '/app/games', label: 'Games', icon: Gamepad2 },
     { href: '/app/inventory', label: 'Inventory', icon: Package },
     { href: '/app/profile', label: 'Profile', icon: UserRound }
   ];
@@ -70,8 +77,8 @@
   }
 </script>
 
-<div class={`app-shell ${isHome ? 'app-shell--home' : ''}`}>
-  {#if !isHome}
+<div class={`app-shell ${hideRail ? 'app-shell--home' : ''}`}>
+  {#if !hideRail}
     <aside class="app-rail">
       <SideRail activity={activity} />
     </aside>

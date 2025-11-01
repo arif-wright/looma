@@ -36,13 +36,9 @@ export const POST: RequestHandler = async (event) => {
   const { data, error } = await supabase.rpc('fn_game_start', { p_slug: slug });
 
   if (error || !data || data.length === 0) {
-    if (error?.code === 'PGRST202' || error?.code === 'PGRST205') {
-      console.warn('[games] falling back to in-memory session store');
-      const fallback = memoryStore.createSession(user.id, slug);
-      return json({ sessionId: fallback.id, nonce: fallback.nonce, fallback: true });
-    }
-    console.error('[games] start session failed', error);
-    return json({ error: 'game_unavailable' }, { status: 400 });
+    console.warn('[games] falling back to in-memory session store', error);
+    const fallback = memoryStore.createSession(user.id, slug);
+    return json({ sessionId: fallback.id, nonce: fallback.nonce, fallback: true });
   }
 
   const session = data[0];

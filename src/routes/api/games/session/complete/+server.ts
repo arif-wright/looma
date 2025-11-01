@@ -42,9 +42,14 @@ export const POST: RequestHandler = async (event) => {
   }
 
   let useFallback = false;
-  let session = null as
-    | { id: string; user_id: string; nonce: string; status: string; completed_at: string | null; game_id: string | null }
-    | null;
+  let session: {
+    id: string;
+    user_id: string;
+    nonce: string;
+    status: string;
+    completed_at: string | null;
+    game_id: string | null;
+  } | null = null;
 
   const { data: dbSession, error: sessionError } = await supabase
     .from('game_sessions')
@@ -54,13 +59,23 @@ export const POST: RequestHandler = async (event) => {
 
   if (!sessionError && dbSession) {
     session = dbSession as typeof session;
-  } else if (sessionError && (sessionError.code === 'PGRST205' || sessionError.code === 'PGRST202')) {
-    useFallback = true;
-  } else if (!dbSession) {
-    return json({ error: 'not_found' }, { status: 404 });
   } else if (sessionError) {
-    console.error('[games] session lookup failed', sessionError);
-    return json({ error: 'server_error' }, { status: 500 });
+    const fallbackCodes = ['PGRST205', 'PGRST202'];
+    if (sessionError.code && fallbackCodes.includes(sessionError.code)) {
+      useFallback = true;
+    } else {
+      console.error('[games] session lookup failed', sessionError);
+      return json({ error: 'server_error' }, { status: 500 });
+    }
+  }
+
+  if (!session && !useFallback) {
+    const fallbackSession = memoryStore.getSession(sessionId);
+    if (fallbackSession) {
+      useFallback = true;
+    } else {
+      return json({ error: 'not_found' }, { status: 404 });
+    }
   }
 
   let maxScore = 100000;
