@@ -14,7 +14,7 @@
   export let className = '';
 
   const capsuleBaseClass =
-    'status-capsule flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[13px] text-white/80 shadow-[0_8px_20px_rgba(7,11,23,0.35)] backdrop-blur-xl';
+    'status-capsule flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[13px] text-white/80 backdrop-blur-xl';
 
   const energyDisplay =
     typeof energy === 'number' && typeof energyMax === 'number'

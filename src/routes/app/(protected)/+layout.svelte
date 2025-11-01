@@ -88,7 +88,7 @@
         </div>
         <CenterIconNav className="hidden md:flex flex-1 justify-center" items={iconNavItems} />
         <StatusCapsuleNav
-          className="ml-auto shrink-0 hover-glow"
+          className="ml-auto shrink-0"
           energy={data?.headerStats?.energy ?? null}
           energyMax={data?.headerStats?.energy_max ?? null}
           level={data?.headerStats?.level ?? null}
