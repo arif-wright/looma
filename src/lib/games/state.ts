@@ -139,7 +139,7 @@ export const applyPlayerState = (playerState: unknown) => {
     energy: energy ?? state.energy,
     energyMax: energyMax ?? state.energyMax,
     currency: currency ?? state.currency,
-    rewards,
+    rewards: rewards.length > 0 ? rewards : state.rewards,
     hydrated: true
   }));
 };
@@ -150,4 +150,43 @@ export const getPlayerProgressSnapshot = (): PlayerProgressState => {
     snapshot = value;
   })();
   return snapshot;
+};
+
+type RecordRewardArgs = {
+  xpDelta: number;
+  currencyDelta: number;
+  game?: string | null;
+  gameName?: string | null;
+  insertedAt?: string | null;
+};
+
+export const recordRewardResult = ({ xpDelta, currencyDelta, game = null, gameName = null, insertedAt = null }: RecordRewardArgs) => {
+  if (!browser) return;
+  const safeXp = Number.isFinite(xpDelta) ? Math.max(0, Math.floor(xpDelta)) : 0;
+  const safeCurrency = Number.isFinite(currencyDelta) ? Math.max(0, Math.floor(currencyDelta)) : 0;
+  const timestamp = insertedAt ?? new Date().toISOString();
+
+  mergeState((state) => {
+    const nextXp = typeof state.xp === 'number' ? state.xp + safeXp : state.xp;
+    const nextCurrency = typeof state.currency === 'number' ? state.currency + safeCurrency : safeCurrency;
+
+    const rewardEntry: RewardEntry = {
+      id: `${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+      xpDelta: safeXp,
+      currencyDelta: safeCurrency,
+      insertedAt: timestamp,
+      game,
+      gameName
+    };
+
+    const nextRewards = [rewardEntry, ...state.rewards].slice(0, 20);
+
+    return {
+      ...state,
+      xp: nextXp,
+      currency: nextCurrency,
+      rewards: nextRewards,
+      hydrated: true
+    };
+  });
 };

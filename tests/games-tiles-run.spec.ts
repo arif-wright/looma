@@ -80,6 +80,12 @@ test.describe('Tiles Run embed bridge', () => {
     await expect(rewardToast).toContainText('+12 XP');
     await expect(rewardToast).toContainText('+24 shards');
 
+    const shardBalance = page.locator('[data-testid="shard-balance"]');
+    await expect(shardBalance).toContainText('240');
+
+    const rewardLog = page.locator('[data-testid="reward-log"]');
+    await expect(rewardLog).toContainText('+12 XP');
+
     expect(completePayload).not.toBeNull();
     expect(completePayload!).toMatchObject({
       sessionId: sessionPayload.sessionId,

@@ -4,7 +4,7 @@
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import { completeSession, fetchPlayerState, init, startSession } from '$lib/games/sdk';
-  import { applyPlayerState } from '$lib/games/state';
+  import { applyPlayerState, recordRewardResult } from '$lib/games/state';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -86,6 +86,13 @@
       if (typeof window !== 'undefined') {
         (window as any).__loomaComplete = null;
       }
+
+      recordRewardResult({
+        xpDelta: result.xpDelta,
+        currencyDelta: result.currencyDelta,
+        game: slug,
+        gameName: game.name
+      });
 
       try {
         const latest = await fetchPlayerState();
