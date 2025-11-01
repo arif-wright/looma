@@ -193,6 +193,7 @@
         <span aria-current="page">Dashboard</span>
       </div>
       <div class="header-actions">
+        <a class="btn-secondary ghost-action" href="/app/games">Play mini-game</a>
         <button class="btn-secondary ghost-action" type="button">New draft</button>
         <button class="btn-primary" type="button">Record encounter</button>
       </div>
