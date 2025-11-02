@@ -157,26 +157,21 @@ export let requestId: number | null = null;
       }
       return a.unlocked ? -1 : 1;
     });
-
-    console.debug('[AchievementsPanel] hydrateItems', {
-      catalogCount: catalog.length,
-      unlockCount: unlocks.length,
-      itemCount: items.length,
-      sample: items.slice(0, 5)
-    });
   };
 
   const filteredItems = (): PanelItem[] => {
     switch (activeTab) {
       case 'game':
-        return items.filter((item) => {
+        if (items.length === 0) return items;
+        const subset = items.filter((item) => {
           const targetSlug = filterSlug ?? gameSlug;
           const targetGameId = filterGameId ?? gameId;
           const matchesSlug = targetSlug ? item.gameSlug === targetSlug : false;
           const matchesGameId = targetGameId ? item.gameId === targetGameId : false;
-          const isGlobal = item.gameSlug === null && item.gameId === null;
+          const isGlobal = (item.gameSlug ?? null) === null && (item.gameId ?? null) === null;
           return matchesSlug || matchesGameId || isGlobal;
         });
+        return subset.length > 0 ? subset : items;
       case 'locked':
         return items.filter((item) => !item.unlocked);
       case 'all':
