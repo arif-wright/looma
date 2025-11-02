@@ -162,16 +162,7 @@ export let requestId: number | null = null;
   const filteredItems = (): PanelItem[] => {
     switch (activeTab) {
       case 'game':
-        if (items.length === 0) return items;
-        const subset = items.filter((item) => {
-          const targetSlug = filterSlug ?? gameSlug;
-          const targetGameId = filterGameId ?? gameId;
-          const matchesSlug = targetSlug ? item.gameSlug === targetSlug : false;
-          const matchesGameId = targetGameId ? item.gameId === targetGameId : false;
-          const isGlobal = (item.gameSlug ?? null) === null && (item.gameId ?? null) === null;
-          return matchesSlug || matchesGameId || isGlobal;
-        });
-        return subset.length > 0 ? subset : items;
+        return items;
       case 'locked':
         return items.filter((item) => !item.unlocked);
       case 'all':
