@@ -25,7 +25,7 @@ export const GET: RequestHandler = async (event) => {
     supabase
       .from('user_achievements')
       .select(
-        'id, unlocked_at, meta, achievements:achievements ( key, name, description, icon, rarity, points )'
+        'id, unlocked_at, meta, achievements:achievements!user_achievements_achievement_id_fkey ( key, name, description, icon, rarity, points )'
       )
       .eq('user_id', user.id)
       .order('unlocked_at', { ascending: false })

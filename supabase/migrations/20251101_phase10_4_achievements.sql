@@ -15,6 +15,15 @@ create table if not exists public.achievements (
   inserted_at timestamptz not null default now()
 );
 
+alter table if exists public.achievements
+  add column if not exists inserted_at timestamptz;
+
+update public.achievements
+  set inserted_at = coalesce(inserted_at, now());
+
+alter table if exists public.achievements
+  alter column inserted_at set default now();
+
 -- Per-user unlocks
 create table if not exists public.user_achievements (
   id uuid primary key default gen_random_uuid(),
@@ -24,6 +33,40 @@ create table if not exists public.user_achievements (
   meta jsonb not null default '{}'::jsonb,
   unique (user_id, achievement_id)
 );
+
+alter table if exists public.user_achievements
+  add column if not exists id uuid;
+
+update public.user_achievements
+  set id = coalesce(id, gen_random_uuid());
+
+alter table if exists public.user_achievements
+  alter column id set default gen_random_uuid();
+
+alter table if exists public.user_achievements
+  drop constraint if exists user_achievements_pkey;
+
+alter table if exists public.user_achievements
+  add constraint user_achievements_pkey
+  primary key (id);
+
+alter table if exists public.user_achievements
+  add column if not exists unlocked_at timestamptz;
+
+update public.user_achievements
+  set unlocked_at = coalesce(unlocked_at, now());
+
+alter table if exists public.user_achievements
+  alter column unlocked_at set default now();
+
+alter table if exists public.user_achievements
+  add column if not exists meta jsonb;
+
+update public.user_achievements
+  set meta = coalesce(meta, '{}'::jsonb);
+
+alter table if exists public.user_achievements
+  alter column meta set default '{}'::jsonb;
 
 create index if not exists user_achievements_user_idx on public.user_achievements(user_id);
 create index if not exists user_achievements_achievement_idx on public.user_achievements(achievement_id);
@@ -38,6 +81,28 @@ create table if not exists public.user_points (
 alter table public.achievements enable row level security;
 alter table public.user_achievements enable row level security;
 alter table public.user_points enable row level security;
+
+alter table if exists public.user_achievements
+  drop constraint if exists user_achievements_achievement_fk;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints
+    where table_schema = 'public'
+      and table_name = 'user_achievements'
+      and constraint_name = 'user_achievements_achievement_id_fkey'
+      and constraint_type = 'FOREIGN KEY'
+  ) then
+    execute 'alter table public.user_achievements
+      add constraint user_achievements_achievement_id_fkey
+      foreign key (achievement_id)
+      references public.achievements(id)
+      on delete cascade';
+  end if;
+end;
+$$;
 
 alter table if exists public.achievements
   add column if not exists game_id uuid references public.game_titles(id) on delete set null;
