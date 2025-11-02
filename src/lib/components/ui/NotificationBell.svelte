@@ -131,10 +131,15 @@ import { achievementsUI } from '$lib/achievements/store';
       const meta = item.metadata ?? {};
       const key = getMetaString(meta, 'key', 'achievementKey');
       const slug = getMetaString(meta, 'slug', 'gameSlug');
+      const gameId = getMetaString(meta, 'gameId', 'game_id');
       if (key) {
-        achievementsUI.focusAchievement(key, slug ?? null, 'notification');
+        achievementsUI.focusAchievement(key, {
+          slug: slug ?? null,
+          gameId: gameId ?? null,
+          source: 'notification'
+        });
       } else {
-        achievementsUI.open({ slug: slug ?? null, source: 'notification' });
+        achievementsUI.open({ slug: slug ?? null, gameId: gameId ?? null, source: 'notification' });
       }
       return;
     }

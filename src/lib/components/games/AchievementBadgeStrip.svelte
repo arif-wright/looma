@@ -12,7 +12,8 @@
     points: number;
   };
 
-  export let gameSlug: string | null = null;
+export let gameSlug: string | null = null;
+export let gameId: string | null = null;
 
   let loading = true;
   let entries: StripEntry[] = [];
@@ -54,9 +55,13 @@
 
   const openPanel = (highlight?: string) => {
     if (highlight) {
-      achievementsUI.focusAchievement(highlight, gameSlug ?? null, 'profile');
+      achievementsUI.focusAchievement(highlight, {
+        slug: gameSlug ?? null,
+        gameId: gameId ?? null,
+        source: 'profile'
+      });
     } else {
-      achievementsUI.open({ slug: gameSlug ?? null, source: 'profile' });
+      achievementsUI.open({ slug: gameSlug ?? null, gameId: gameId ?? null, source: 'profile' });
     }
   };
 </script>

@@ -34,11 +34,13 @@
     unlockedAt: string | null;
   };
 
-  export let open = false;
-  export let gameSlug: string | null = null;
-  export let gameName = 'Tiles Run';
-  export let highlightKey: string | null = null;
-  export let filterSlug: string | null = null;
+export let open = false;
+export let gameSlug: string | null = null;
+export let gameName = 'Tiles Run';
+export let highlightKey: string | null = null;
+export let filterSlug: string | null = null;
+export let gameId: string | null = null;
+export let filterGameId: string | null = null;
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -127,9 +129,12 @@
     switch (activeTab) {
       case 'game':
         return items.filter((item) => {
-          const matchesSlug = gameSlug && item.gameSlug === gameSlug;
-          const isGlobal = item.gameSlug === null;
-          return matchesSlug || isGlobal;
+          const targetSlug = filterSlug ?? gameSlug;
+          const targetGameId = filterGameId ?? gameId;
+          const matchesSlug = targetSlug ? item.gameSlug === targetSlug : false;
+          const matchesGameId = targetGameId ? item.gameId === targetGameId : false;
+          const isGlobal = item.gameSlug === null && item.gameId === null;
+          return matchesSlug || matchesGameId || isGlobal;
         });
       case 'locked':
         return items.filter((item) => !item.unlocked);
@@ -167,7 +172,7 @@
 
   $: if (open) {
     if (!activeTab || activeTab === 'all') {
-      if (filterSlug && filterSlug === gameSlug) {
+      if (filterSlug || filterGameId || gameSlug || gameId) {
         activeTab = 'game';
       }
     }

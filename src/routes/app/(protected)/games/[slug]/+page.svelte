@@ -52,11 +52,13 @@ let iframeKey = 0;
 let achievementsPanelOpen = false;
 let achievementsHighlight: string | null = null;
 let achievementsFilterSlug: string | null = null;
+let achievementsFilterGameId: string | null = null;
 
 const releaseAchievements = achievementsUI.subscribe((state) => {
   achievementsPanelOpen = state.open;
   achievementsHighlight = state.highlightKey;
   achievementsFilterSlug = state.filterSlug;
+  achievementsFilterGameId = state.filterGameId;
 });
 
   type LeaderboardState = {
@@ -376,24 +378,31 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
           <p class="reward-toast__value">
             +{reward.xpDelta} XP • +{reward.currencyDelta} shards
           </p>
-      <div class="toast-actions">
-        <button class="toast-button" type="button" on:click={replaySession}>
-          Replay
-        </button>
-        <button class="toast-button secondary" type="button" on:click={goBack}>
-          Back to hub
-        </button>
-      </div>
+          <div class="toast-actions">
+            <button class="toast-button" type="button" on:click={replaySession}>
+              Replay
+            </button>
+            <button class="toast-button secondary" type="button" on:click={goBack}>
+              Back to hub
+            </button>
+          </div>
 
-      {#if reward.achievements.length > 0}
-        <AchievementToastStack
-          achievements={reward.achievements}
-          slug={slug}
-          on:view={(event) => achievementsUI.focusAchievement(event.detail.key, event.detail.slug, 'toast')}
-        />
+          {#if reward.achievements.length > 0}
+            <AchievementToastStack
+              achievements={reward.achievements}
+              slug={slug}
+              gameId={game.id ?? null}
+              on:view={(event) =>
+                achievementsUI.focusAchievement(event.detail.key, {
+                  slug: event.detail.slug,
+                  gameId: event.detail.gameId ?? null,
+                  source: 'toast'
+                })
+              }
+            />
+          {/if}
+        </div>
       {/if}
-    </div>
-  {/if}
 
       {#if errorMessage}
         <div class="error-banner">{errorMessage}</div>
@@ -428,7 +437,7 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
         class="achievements-open"
         type="button"
         data-testid="achievements-open"
-        on:click={() => achievementsUI.open({ slug, source: 'game' })}
+        on:click={() => achievementsUI.open({ slug, gameId: game.id ?? null, source: 'game' })}
       >
         View achievements
       </button>
@@ -439,8 +448,10 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
     open={achievementsPanelOpen}
     gameSlug={slug}
     gameName={game.name}
+    gameId={game.id ?? null}
     highlightKey={achievementsHighlight}
     filterSlug={achievementsFilterSlug}
+    filterGameId={achievementsFilterGameId}
     on:close={() => achievementsUI.close()}
   />
 </div>

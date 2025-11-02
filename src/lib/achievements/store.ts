@@ -5,6 +5,7 @@ type PanelSource = 'game' | 'profile' | 'notification' | 'toast' | null;
 export type AchievementPanelRequest = {
   open: boolean;
   filterSlug: string | null;
+  filterGameId: string | null;
   highlightKey: string | null;
   source: PanelSource;
   requestId: number;
@@ -13,6 +14,7 @@ export type AchievementPanelRequest = {
 const initialState: AchievementPanelRequest = {
   open: false,
   filterSlug: null,
+  filterGameId: null,
   highlightKey: null,
   source: null,
   requestId: 0
@@ -22,12 +24,20 @@ const panelStore = writable<AchievementPanelRequest>(initialState);
 
 const nextRequestId = () => Date.now();
 
+type OpenOptions = {
+  slug?: string | null;
+  gameId?: string | null;
+  highlightKey?: string | null;
+  source?: PanelSource;
+};
+
 export const achievementsUI = {
   subscribe: panelStore.subscribe,
-  open(options?: { slug?: string | null; highlightKey?: string | null; source?: PanelSource }) {
+  open(options?: OpenOptions) {
     panelStore.set({
       open: true,
       filterSlug: options?.slug ?? null,
+      filterGameId: options?.gameId ?? null,
       highlightKey: options?.highlightKey ?? null,
       source: options?.source ?? null,
       requestId: nextRequestId()
@@ -37,17 +47,19 @@ export const achievementsUI = {
     panelStore.update((state) => ({
       ...state,
       open: false,
+      filterGameId: null,
       highlightKey: null,
       source: null,
       requestId: nextRequestId()
     }));
   },
-  focusAchievement(key: string, slug?: string | null, source: PanelSource = null) {
+  focusAchievement(key: string, options?: { slug?: string | null; gameId?: string | null; source?: PanelSource }) {
     panelStore.set({
       open: true,
-      filterSlug: slug ?? null,
+      filterSlug: options?.slug ?? null,
+      filterGameId: options?.gameId ?? null,
       highlightKey: key,
-      source,
+      source: options?.source ?? null,
       requestId: nextRequestId()
     });
   }

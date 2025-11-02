@@ -3,18 +3,19 @@
   import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
   import ConfettiBurst from '$lib/components/games/ConfettiBurst.svelte';
 
-  export type AchievementToastItem = {
-    key: string;
-    name: string;
-    icon: string;
-    points: number;
-    rarity?: string | null;
-  };
+export type AchievementToastItem = {
+  key: string;
+  name: string;
+  icon: string;
+  points: number;
+  rarity?: string | null;
+};
 
-  export let achievements: AchievementToastItem[] = [];
-  export let slug: string | null = null;
+export let achievements: AchievementToastItem[] = [];
+export let slug: string | null = null;
+export let gameId: string | null = null;
 
-  const dispatch = createEventDispatcher<{ view: { key: string; slug: string | null } }>();
+const dispatch = createEventDispatcher<{ view: { key: string; slug: string | null; gameId: string | null } }>();
 
   const formatRarity = (value?: string | null) => {
     if (!value) return 'Common';
@@ -23,7 +24,7 @@
   };
 
   const openAchievement = (key: string) => {
-    dispatch('view', { key, slug });
+    dispatch('view', { key, slug, gameId });
   };
 
   let triggerId = 0;
