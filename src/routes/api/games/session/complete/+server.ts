@@ -13,6 +13,10 @@ import { calculateRewards, persistRewards } from '$lib/server/games/rewards';
 import { buildSignaturePayload, verifySignature } from '$lib/server/games/hmac';
 import { limit } from '$lib/server/games/rate';
 import { logGameAudit } from '$lib/server/games/audit';
+import { createAchievementEvaluator } from '$lib/server/achievements/evaluator';
+import type { UnlockSummary } from '$lib/server/achievements/evaluator';
+import { getCurrentStreakDays } from '$lib/server/games/streak';
+import { createAchievementNotification } from '$lib/server/notifications';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -267,6 +271,8 @@ export const POST: RequestHandler = async (event) => {
     throw error(500, { code: 'server_error', message: 'Unable to record rewards.' });
   }
 
+  let achievementsUnlocked: UnlockSummary[] = [];
+
   try {
     const scoreInsert = await admin.from('game_scores').insert({
       user_id: user.id,
@@ -278,6 +284,11 @@ export const POST: RequestHandler = async (event) => {
 
     if (scoreInsert.error && scoreInsert.error.code !== '23505') {
       console.error('[games] game_scores insert failed', scoreInsert.error);
+    }
+
+    const refreshAlltime = await admin.rpc('fn_leader_refresh', { p_scope: 'alltime' });
+    if (refreshAlltime.error) {
+      console.warn('[games] fn_leader_refresh alltime failed', refreshAlltime.error);
     }
 
     const refreshDaily = await admin.rpc('fn_leader_refresh', { p_scope: 'daily' });
@@ -293,6 +304,61 @@ export const POST: RequestHandler = async (event) => {
     console.error('[games] leaderboard refresh failed', err);
   }
 
+  try {
+    const evaluator = createAchievementEvaluator({ supabase: admin });
+    const [{ count: sessionCount, error: sessionCountError }, currentStreakDays] = await Promise.all([
+      admin
+        .from('game_sessions')
+        .select('id', { head: true, count: 'exact' })
+        .eq('user_id', user.id)
+        .eq('game_id', session.game_id)
+        .eq('status', 'completed'),
+      getCurrentStreakDays(user.id, { supabase: admin })
+    ]);
+
+    if (sessionCountError) {
+      console.error('[games] failed to count completed sessions', sessionCountError);
+    }
+
+    const completedSessionsForGame = typeof sessionCount === 'number' ? sessionCount : 0;
+    const nowUtc = new Date().toISOString();
+
+    const evaluation = await evaluator.evaluate({
+      userId: user.id,
+      slug: game.slug,
+      gameId: game.id,
+      score,
+      durationMs,
+      sessionId: session.id,
+      completedSessionsForGame,
+      currentStreakDays,
+      nowUtc
+    });
+
+    achievementsUnlocked = evaluation.unlocked;
+
+    if (achievementsUnlocked.length > 0) {
+      await Promise.all(
+        achievementsUnlocked.map((entry) =>
+          createAchievementNotification(admin, {
+            userId: user.id,
+            achievementId: entry.achievementId,
+            metadata: {
+              key: entry.key,
+              name: entry.name,
+              points: entry.points,
+              icon: entry.icon,
+              rarity: entry.rarity,
+              slug: game.slug
+            }
+          })
+        )
+      );
+    }
+  } catch (err) {
+    console.error('[games] achievement evaluation failed', err);
+  }
+
   await logGameAudit({
     userId: user.id,
     sessionId,
@@ -303,9 +369,22 @@ export const POST: RequestHandler = async (event) => {
       durationMs,
       scorePerMinute,
       clientVersion,
-      rewards
+      rewards,
+      achievements: achievementsUnlocked.map((item) => ({
+        key: item.key,
+        points: item.points
+      }))
     }
   });
 
-  return json(rewards);
+  return json({
+    ...rewards,
+    achievements: achievementsUnlocked.map((entry) => ({
+      key: entry.key,
+      name: entry.name,
+      points: entry.points,
+      icon: entry.icon,
+      rarity: entry.rarity
+    }))
+  });
 };

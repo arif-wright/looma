@@ -2,17 +2,18 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount, tick } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
-  import { supabaseBrowser } from '$lib/supabaseClient';
-  import { relativeTime } from '$lib/social/commentHelpers';
-  import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
+import { supabaseBrowser } from '$lib/supabaseClient';
+import { relativeTime } from '$lib/social/commentHelpers';
+import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
+import { achievementsUI } from '$lib/achievements/store';
 
   export type NotificationItem = {
     id: string;
     user_id: string;
     actor_id: string | null;
-    kind: 'reaction' | 'comment' | 'share';
+    kind: 'reaction' | 'comment' | 'share' | 'achievement_unlocked';
     target_id: string;
-    target_kind: 'post' | 'comment';
+    target_kind: 'post' | 'comment' | 'achievement';
     created_at: string;
     read: boolean;
     metadata: Record<string, unknown> | null;
@@ -73,6 +74,10 @@
       }
       case 'share':
         return 'Someone shared your post';
+      case 'achievement_unlocked': {
+        const name = getMetaString(payload, 'name', 'achievementName', 'title');
+        return name ? `Achievement unlocked: ${name}` : 'Achievement unlocked';
+      }
       default:
         return 'You have an update';
     }
@@ -120,6 +125,20 @@
   }
 
   function handleNavigate(event: MouseEvent, item: NotificationItem, href: string | null) {
+    if (item.kind === 'achievement_unlocked') {
+      event.preventDefault();
+      closeDropdown();
+      const meta = item.metadata ?? {};
+      const key = getMetaString(meta, 'key', 'achievementKey');
+      const slug = getMetaString(meta, 'slug', 'gameSlug');
+      if (key) {
+        achievementsUI.focusAchievement(key, slug ?? null, 'notification');
+      } else {
+        achievementsUI.open({ slug: slug ?? null, source: 'notification' });
+      }
+      return;
+    }
+
     if (!href) {
       event.preventDefault();
       return;

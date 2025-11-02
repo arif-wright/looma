@@ -1,8 +1,12 @@
 <script lang="ts">
-  import ProfileHero from '$lib/profile/ProfileHero.svelte';
-  import PostComposer from '$lib/social/PostComposer.svelte';
-  import PostList from '$lib/social/PostList.svelte';
-  import type { ProfileSummary } from '$lib/profile/types';
+  import { onDestroy } from 'svelte';
+import ProfileHero from '$lib/profile/ProfileHero.svelte';
+import PostComposer from '$lib/social/PostComposer.svelte';
+import PostList from '$lib/social/PostList.svelte';
+import type { ProfileSummary } from '$lib/profile/types';
+import AchievementBadgeStrip from '$lib/components/games/AchievementBadgeStrip.svelte';
+import AchievementsPanel from '$lib/components/games/AchievementsPanel.svelte';
+import { achievementsUI } from '$lib/achievements/store';
 
   export let data: {
     profile: ProfileSummary;
@@ -18,8 +22,19 @@
   let loading = false;
   let reachedEnd = feed.length < 12;
   let tab: 'activity' | 'posts' = 'activity';
-  let postsRefreshToken = 0;
-  let postListRef: any = null;
+let postsRefreshToken = 0;
+let postListRef: any = null;
+
+let achievementsPanelOpen = false;
+let achievementsHighlight: string | null = null;
+let achievementsFilterSlug: string | null = null;
+const defaultGameSlug = 'tiles-run';
+
+const releaseAchievements = achievementsUI.subscribe((state) => {
+  achievementsPanelOpen = state.open;
+  achievementsHighlight = state.highlightKey;
+  achievementsFilterSlug = state.filterSlug;
+});
 
   const isSelf = !!viewerId && profile?.id === viewerId;
 
@@ -56,10 +71,16 @@
     postsRefreshToken += 1;
     postListRef?.refresh?.();
   }
+
+  onDestroy(() => {
+    releaseAchievements();
+  });
 </script>
 
 <main class="wrap">
   <ProfileHero {profile} />
+
+  <AchievementBadgeStrip gameSlug={defaultGameSlug} />
 
   <div class="tabs" role="tablist">
     <button
@@ -119,6 +140,15 @@
     </section>
   {/if}
 </main>
+
+<AchievementsPanel
+  open={achievementsPanelOpen}
+  gameSlug={defaultGameSlug}
+  gameName="Tiles Run"
+  highlightKey={achievementsHighlight}
+  filterSlug={achievementsFilterSlug}
+  on:close={() => achievementsUI.close()}
+/>
 
 <style>
   .wrap {

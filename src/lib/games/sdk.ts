@@ -115,6 +115,20 @@ type CompleteArgs = {
   clientVersion?: string;
 };
 
+export type SessionAchievement = {
+  key: string;
+  name: string;
+  icon: string;
+  points: number;
+  rarity?: string | null;
+};
+
+type CompleteResponse = {
+  xpDelta: number;
+  currencyDelta: number;
+  achievements?: SessionAchievement[];
+};
+
 export const completeSession = async (args: CompleteArgs) => {
   const response = await fetch('/api/games/session/complete', {
     method: 'POST',
@@ -130,7 +144,7 @@ export const completeSession = async (args: CompleteArgs) => {
     throw err;
   }
 
-  return (await response.json()) as { xpDelta: number; currencyDelta: number };
+  return (await response.json()) as CompleteResponse;
 };
 
 type SignArgs = {

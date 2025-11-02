@@ -1,12 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type NotificationKind = 'reaction' | 'comment' | 'share';
-type TargetKind = 'post' | 'comment';
+type SocialNotificationKind = 'reaction' | 'comment' | 'share';
+type AchievementNotificationKind = 'achievement_unlocked';
+
+type NotificationKind = SocialNotificationKind | AchievementNotificationKind;
+type TargetKind = 'post' | 'comment' | 'achievement';
 
 export type NotificationParams = {
   actorId: string;
   userId: string;
-  kind: NotificationKind;
+  kind: SocialNotificationKind;
   targetId: string;
   targetKind: TargetKind;
   metadata?: Record<string, unknown>;
@@ -34,6 +37,35 @@ export async function createNotification(
   const { error } = await supabase.from('notifications').insert(insertPayload);
   if (error) {
     console.error('[notifications] failed to insert notification', error, insertPayload);
+  }
+}
+
+export type AchievementNotificationParams = {
+  userId: string;
+  achievementId: string;
+  metadata?: Record<string, unknown>;
+};
+
+export async function createAchievementNotification(
+  supabase: SupabaseClient,
+  params: AchievementNotificationParams
+): Promise<void> {
+  const { userId, achievementId, metadata } = params;
+  if (!userId || !achievementId) return;
+
+  const insertPayload = {
+    actor_id: null,
+    user_id: userId,
+    kind: 'achievement_unlocked' as const,
+    target_id: achievementId,
+    target_kind: 'achievement' as const,
+    metadata: metadata ?? {},
+    read: false
+  };
+
+  const { error } = await supabase.from('notifications').insert(insertPayload);
+  if (error) {
+    console.error('[notifications] failed to insert achievement notification', error, insertPayload);
   }
 }
 

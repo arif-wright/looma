@@ -3,17 +3,21 @@
   import { goto } from '$app/navigation';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
-  import {
-    completeSession,
-    fetchPlayerState,
-    init,
-    signCompletion,
-    startSession
-  } from '$lib/games/sdk';
-  import { applyPlayerState, recordRewardResult } from '$lib/games/state';
-  import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
-  import LeaderboardList, { type LeaderboardDisplayRow } from '$lib/components/games/LeaderboardList.svelte';
-  import type { LeaderboardScope } from '$lib/server/games/leaderboard';
+import {
+  completeSession,
+  fetchPlayerState,
+  init,
+  signCompletion,
+  startSession
+} from '$lib/games/sdk';
+import type { SessionAchievement } from '$lib/games/sdk';
+import { applyPlayerState, recordRewardResult } from '$lib/games/state';
+import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
+import LeaderboardList, { type LeaderboardDisplayRow } from '$lib/components/games/LeaderboardList.svelte';
+import type { LeaderboardScope } from '$lib/server/games/leaderboard';
+import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
+import { achievementsUI } from '$lib/achievements/store';
+import AchievementsPanel from '$lib/components/games/AchievementsPanel.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -26,7 +30,7 @@
 
   let status = isTilesRun ? 'Waiting for game bridge…' : 'Preparing bridge…';
   let errorMessage: string | null = null;
-  let reward: { xpDelta: number; currencyDelta: number } | null = null;
+let reward: { xpDelta: number; currencyDelta: number; achievements: SessionAchievement[] } | null = null;
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -43,7 +47,17 @@
   } | null = null;
   let sessionStartTime = 0;
   let sessionInFlight: Promise<void> | null = null;
-  let iframeKey = 0;
+let iframeKey = 0;
+
+let achievementsPanelOpen = false;
+let achievementsHighlight: string | null = null;
+let achievementsFilterSlug: string | null = null;
+
+const releaseAchievements = achievementsUI.subscribe((state) => {
+  achievementsPanelOpen = state.open;
+  achievementsHighlight = state.highlightKey;
+  achievementsFilterSlug = state.filterSlug;
+});
 
   type LeaderboardState = {
     rows: LeaderboardDisplayRow[];
@@ -214,7 +228,11 @@
         clientVersion: game.min_version ?? '1.0.0'
       });
 
-      reward = result;
+      reward = {
+        xpDelta: result.xpDelta,
+        currencyDelta: result.currencyDelta,
+        achievements: Array.isArray(result.achievements) ? result.achievements : []
+      };
       status = 'Session complete';
       session = null;
       if (typeof window !== 'undefined') {
@@ -304,6 +322,7 @@
 
   onDestroy(() => {
     resetListeners();
+    releaseAchievements();
   });
 
   const goBack = () => goto('/app/games');
@@ -357,16 +376,24 @@
           <p class="reward-toast__value">
             +{reward.xpDelta} XP • +{reward.currencyDelta} shards
           </p>
-          <div class="toast-actions">
-            <button class="toast-button" type="button" on:click={replaySession}>
-              Replay
-            </button>
-            <button class="toast-button secondary" type="button" on:click={goBack}>
-              Back to hub
-            </button>
-          </div>
-        </div>
+      <div class="toast-actions">
+        <button class="toast-button" type="button" on:click={replaySession}>
+          Replay
+        </button>
+        <button class="toast-button secondary" type="button" on:click={goBack}>
+          Back to hub
+        </button>
+      </div>
+
+      {#if reward.achievements.length > 0}
+        <AchievementToastStack
+          achievements={reward.achievements}
+          slug={slug}
+          on:view={(event) => achievementsUI.focusAchievement(event.detail.key, event.detail.slug, 'toast')}
+        />
       {/if}
+    </div>
+  {/if}
 
       {#if errorMessage}
         <div class="error-banner">{errorMessage}</div>
@@ -396,8 +423,26 @@
           </button>
         {/if}
       </section>
+
+      <button
+        class="achievements-open"
+        type="button"
+        data-testid="achievements-open"
+        on:click={() => achievementsUI.open({ slug, source: 'game' })}
+      >
+        View achievements
+      </button>
     </OrbPanel>
   </main>
+
+  <AchievementsPanel
+    open={achievementsPanelOpen}
+    gameSlug={slug}
+    gameName={game.name}
+    highlightKey={achievementsHighlight}
+    filterSlug={achievementsFilterSlug}
+    on:close={() => achievementsUI.close()}
+  />
 </div>
 
 <style>
@@ -450,6 +495,7 @@
   }
 
   .reward-toast {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -500,6 +546,27 @@
   .toast-button:focus-visible {
     transform: translateY(-1px);
     box-shadow: 0 8px 20px rgba(77, 244, 255, 0.25);
+    outline: none;
+  }
+
+  .achievements-open {
+    align-self: flex-end;
+    border: 1px solid rgba(160, 194, 255, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(220, 234, 255, 0.85);
+    border-radius: 999px;
+    padding: 0.4rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border 0.15s ease, transform 0.15s ease;
+  }
+
+  .achievements-open:hover,
+  .achievements-open:focus-visible {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(210, 230, 255, 0.8);
+    transform: translateY(-1px);
     outline: none;
   }
 
