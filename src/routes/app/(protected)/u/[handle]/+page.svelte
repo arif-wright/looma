@@ -29,6 +29,7 @@ let achievementsPanelOpen = false;
 let achievementsHighlight: string | null = null;
 let achievementsFilterSlug: string | null = null;
 let achievementsFilterGameId: string | null = null;
+let achievementsRequestId: number | null = null;
 const defaultGameSlug = 'tiles-run';
 
 const releaseAchievements = achievementsUI.subscribe((state) => {
@@ -36,6 +37,7 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
   achievementsHighlight = state.highlightKey;
   achievementsFilterSlug = state.filterSlug;
   achievementsFilterGameId = state.filterGameId;
+  achievementsRequestId = state.requestId;
 });
 
   const isSelf = !!viewerId && profile?.id === viewerId;
@@ -151,6 +153,7 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
   highlightKey={achievementsHighlight}
   filterSlug={achievementsFilterSlug}
   filterGameId={achievementsFilterGameId}
+  requestId={achievementsRequestId}
   on:close={() => achievementsUI.close()}
 />
 

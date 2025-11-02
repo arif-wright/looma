@@ -53,12 +53,14 @@ let achievementsPanelOpen = false;
 let achievementsHighlight: string | null = null;
 let achievementsFilterSlug: string | null = null;
 let achievementsFilterGameId: string | null = null;
+let achievementsRequestId: number | null = null;
 
 const releaseAchievements = achievementsUI.subscribe((state) => {
   achievementsPanelOpen = state.open;
   achievementsHighlight = state.highlightKey;
   achievementsFilterSlug = state.filterSlug;
   achievementsFilterGameId = state.filterGameId;
+  achievementsRequestId = state.requestId;
 });
 
   type LeaderboardState = {
@@ -452,6 +454,7 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
     highlightKey={achievementsHighlight}
     filterSlug={achievementsFilterSlug}
     filterGameId={achievementsFilterGameId}
+    requestId={achievementsRequestId}
     on:close={() => achievementsUI.close()}
   />
 </div>

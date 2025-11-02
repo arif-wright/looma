@@ -41,6 +41,7 @@ export let highlightKey: string | null = null;
 export let filterSlug: string | null = null;
 export let gameId: string | null = null;
 export let filterGameId: string | null = null;
+export let requestId: number | null = null;
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -56,6 +57,7 @@ export let filterGameId: string | null = null;
   let activeTab: PanelTab = 'all';
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
   let currentItems: PanelItem[] = [];
+  let lastRequestId: number | null = null;
 
   const fetchData = async () => {
     loading = true;
@@ -166,6 +168,13 @@ export let filterGameId: string | null = null;
     }, 120);
   };
 
+  $: if (open && requestId && requestId !== lastRequestId) {
+    lastRequestId = requestId;
+    loaded = false;
+    error = null;
+    void fetchData();
+  }
+
   $: if (open && !loaded && !loading) {
     void fetchData();
   }
@@ -186,6 +195,11 @@ export let filterGameId: string | null = null;
 
   $: if (highlightKey && open) {
     focusHighlight();
+  }
+
+  $: if (!open && loaded) {
+    loaded = false;
+    error = null;
   }
 
   onMount(() => {
