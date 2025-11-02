@@ -157,6 +157,13 @@ export let requestId: number | null = null;
       }
       return a.unlocked ? -1 : 1;
     });
+
+    console.debug('[AchievementsPanel] hydrateItems', {
+      catalogCount: catalog.length,
+      unlockCount: unlocks.length,
+      itemCount: items.length,
+      sample: items.slice(0, 5)
+    });
   };
 
   const filteredItems = (): PanelItem[] => {
