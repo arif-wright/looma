@@ -117,13 +117,45 @@ export let requestId: number | null = null;
 
   const hydrateItems = () => {
     const unlockedMap = new Map(unlocks.map((entry) => [entry.key, entry]));
-    items = catalog.map((row) => {
+    const catalogMap = new Map(catalog.map((row) => [row.key, row]));
+
+    const catalogItems: PanelItem[] = catalog.map((row) => {
       const unlocked = unlockedMap.get(row.key) ?? null;
       return {
         ...row,
         unlocked: Boolean(unlocked),
         unlockedAt: unlocked?.unlockedAt ?? null
       };
+    });
+
+    const missingUnlocks: PanelItem[] = unlocks
+      .filter((entry) => !catalogMap.has(entry.key))
+      .map((entry) => ({
+        id: entry.key,
+        key: entry.key,
+        name: entry.name,
+        description: entry.description,
+        icon: entry.icon,
+        rarity: entry.rarity ?? 'common',
+        points: entry.points,
+        gameId: null,
+        gameSlug: null,
+        gameName: null,
+        ruleKind: null,
+        unlocked: true,
+        unlockedAt: entry.unlockedAt
+      }));
+
+    items = [...catalogItems, ...missingUnlocks].sort((a, b) => {
+      if (a.unlocked === b.unlocked) {
+        const aDate = a.unlockedAt ? new Date(a.unlockedAt).valueOf() : 0;
+        const bDate = b.unlockedAt ? new Date(b.unlockedAt).valueOf() : 0;
+        if (aDate === bDate) {
+          return a.name.localeCompare(b.name);
+        }
+        return bDate - aDate;
+      }
+      return a.unlocked ? -1 : 1;
     });
   };
 
