@@ -79,18 +79,18 @@ export let requestId: number | null = null;
       const catalogPayload = (await catalogRes.json()) as { achievements: CatalogRow[] };
       const mePayload = (await meRes.json()) as { points: number; unlocks: UnlockRow[] };
 
-      catalog = (catalogPayload.achievements ?? []).map((row) => ({
-        id: row.id,
+      catalog = (catalogPayload.achievements ?? []).map((row: any) => ({
+        id: row.id ?? row.achievement_id ?? row.key,
         key: row.key,
         name: row.name,
         description: row.description,
         icon: row.icon,
         rarity: row.rarity,
         points: row.points,
-        gameId: row.gameId,
-        gameSlug: row.gameSlug,
-        gameName: row.gameName,
-        ruleKind: row.ruleKind
+        gameId: row.gameId ?? row.game_id ?? null,
+        gameSlug: row.gameSlug ?? row.game_slug ?? null,
+        gameName: row.gameName ?? row.game_name ?? null,
+        ruleKind: row.ruleKind ?? row.rule_kind ?? null
       }));
 
       unlocks = (mePayload.unlocks ?? []).map((row) => ({
@@ -146,32 +146,51 @@ export let requestId: number | null = null;
         unlockedAt: entry.unlockedAt
       }));
 
-    items = [...catalogItems, ...missingUnlocks].sort((a, b) => {
-      if (a.unlocked === b.unlocked) {
-        const aDate = a.unlockedAt ? new Date(a.unlockedAt).valueOf() : 0;
-        const bDate = b.unlockedAt ? new Date(b.unlockedAt).valueOf() : 0;
-        if (aDate === bDate) {
-          return a.name.localeCompare(b.name);
+    items = [...catalogItems, ...missingUnlocks];
+
+    if (items.length > 0) {
+      items.sort((a, b) => {
+        if (a.unlocked === b.unlocked) {
+          const aDate = a.unlockedAt ? new Date(a.unlockedAt).valueOf() : 0;
+          const bDate = b.unlockedAt ? new Date(b.unlockedAt).valueOf() : 0;
+          if (aDate === bDate) {
+            return a.name.localeCompare(b.name);
+          }
+          return bDate - aDate;
         }
-        return bDate - aDate;
-      }
-      return a.unlocked ? -1 : 1;
-    });
+        return a.unlocked ? -1 : 1;
+      });
+    }
+  };
+
+  const matchesGame = (item: PanelItem): boolean => {
+    const gid = filterGameId ?? gameId ?? null;
+    const gslug = (filterSlug ?? gameSlug)?.toLowerCase?.() ?? null;
+    if (!gid && !gslug) return true;
+    const itemSlug = item.gameSlug?.toLowerCase?.() ?? null;
+    return (gid && item.gameId === gid) || (gslug && itemSlug === gslug) || (!item.gameId && !item.gameSlug);
   };
 
   const filteredItems = (): PanelItem[] => {
     switch (activeTab) {
       case 'game':
-        return items;
+        return items.filter(matchesGame);
       case 'locked':
-        return items.filter((item) => !item.unlocked);
+        return items.filter((item) => !item.unlocked && matchesGame(item));
       case 'all':
       default:
         return items;
     }
   };
 
-  $: currentItems = filteredItems();
+  $: {
+    const list = filteredItems();
+    currentItems = list;
+    if (open && loaded && activeTab === 'game' && list.length === 0 && items.length > 0) {
+      activeTab = 'all';
+      currentItems = items;
+    }
+  }
 
   const closePanel = () => {
     dispatch('close');
