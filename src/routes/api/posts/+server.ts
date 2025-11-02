@@ -70,11 +70,13 @@ export const POST: RequestHandler = async (event) => {
     .from('posts')
     .insert({
       user_id: user.id,
+      kind: 'text',
       body,
+      text: body,
       meta,
       is_public: true
     })
-    .select('id, user_id, body, meta, is_public, created_at')
+    .select('id, user_id, kind, body, text, meta, is_public, created_at')
     .single();
 
   if (insertError) {

@@ -30,4 +30,7 @@ export type Thread = {
   created_at: string;
   comment_count: number;
   author: DbUser;
+  kind?: string | null;
+  text?: string | null;
+  meta?: Record<string, unknown> | null;
 };

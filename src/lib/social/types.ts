@@ -2,7 +2,9 @@ export type PostRow = {
   id: string;
   user_id: string;
   slug?: string | null;
+  kind?: string | null;
   body: string;
+  text?: string;
   meta?: Record<string, unknown>;
   image_url?: string | null;
   engagement_score?: number | null;

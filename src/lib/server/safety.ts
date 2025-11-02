@@ -1,4 +1,4 @@
-type RateBucket = 'reaction' | 'share';
+type RateBucket = 'reaction' | 'share' | 'social_share';
 
 type RateEntry = {
   stamps: number[];
@@ -12,28 +12,49 @@ type QuoteEntry = {
 type SafetyState = {
   reactions: Map<string, RateEntry>;
   shares: Map<string, RateEntry>;
+  socialShares: Map<string, RateEntry>;
   quotes: Map<string, QuoteEntry>;
 };
 
 const WINDOW_MS = {
   reaction: 60_000,
-  share: 60_000
+  share: 60_000,
+  social_share: 600_000
 } satisfies Record<RateBucket, number>;
 
 const LIMITS = {
   reaction: 10,
-  share: 5
+  share: 5,
+  social_share: 10
 } satisfies Record<RateBucket, number>;
 
 const globalStateKey = '__loomaSafetyState';
 
-const state: SafetyState =
-  (globalThis as unknown as Record<string, SafetyState>)[globalStateKey] ??
-  ((globalThis as unknown as Record<string, SafetyState>)[globalStateKey] = {
-    reactions: new Map(),
-    shares: new Map(),
-    quotes: new Map()
-  });
+const existingState = (globalThis as unknown as Record<string, SafetyState | undefined>)[
+  globalStateKey
+];
+
+const state: SafetyState = existingState ?? {
+  reactions: new Map(),
+  shares: new Map(),
+  socialShares: new Map(),
+  quotes: new Map()
+};
+
+if (!existingState) {
+  (globalThis as unknown as Record<string, SafetyState>)[globalStateKey] = state;
+} else {
+  state.reactions ??= new Map();
+  state.shares ??= new Map();
+  state.socialShares ??= new Map();
+  state.quotes ??= new Map();
+}
+
+const bucketMap: Record<RateBucket, keyof SafetyState> = {
+  reaction: 'reactions',
+  share: 'shares',
+  social_share: 'socialShares'
+};
 
 function pruneEntries(entry: RateEntry, windowMs: number) {
   const cutoff = Date.now() - windowMs;
@@ -42,7 +63,7 @@ function pruneEntries(entry: RateEntry, windowMs: number) {
 
 export function enforceRateLimit(bucket: RateBucket, userId: string): { ok: true } | { ok: false } {
   if (!userId) return { ok: false };
-  const map = state[`${bucket}s` as keyof SafetyState] as Map<string, RateEntry>;
+  const map = state[bucketMap[bucket]];
   let entry = map.get(userId);
   if (!entry) {
     entry = { stamps: [] };

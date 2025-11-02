@@ -15,13 +15,19 @@ export type NotificationParams = {
   metadata?: Record<string, unknown>;
 };
 
+type NotificationOptions = {
+  allowSelf?: boolean;
+};
+
 export async function createNotification(
   supabase: SupabaseClient,
-  params: NotificationParams
+  params: NotificationParams,
+  options?: NotificationOptions
 ): Promise<void> {
   const { actorId, userId, kind, targetId, targetKind, metadata } = params;
+  const allowSelf = options?.allowSelf ?? false;
 
-  if (!actorId || !userId || actorId === userId) {
+  if (!actorId || !userId || (!allowSelf && actorId === userId)) {
     return;
   }
 

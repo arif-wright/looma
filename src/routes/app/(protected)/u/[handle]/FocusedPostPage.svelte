@@ -6,9 +6,11 @@
   import ProfileHero from '$lib/profile/ProfileHero.svelte';
   import type { ProfileSummary } from '$lib/profile/types';
   import type { Thread, Comment } from '$lib/threads/types';
-  import type { PostRow } from '$lib/social/types';
+import type { PostRow } from '$lib/social/types';
 import CommentThread from '$lib/components/comments/CommentThread.svelte';
 import PostCard from '$lib/social/PostCard.svelte';
+import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
 import { canonicalPostPath } from '$lib/threads/permalink';
 import { copyToClipboard } from '$lib/utils/copy';
 import { formatCommentBody } from '$lib/social/commentHelpers';
@@ -32,6 +34,11 @@ import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
   const morePosts = data.morePosts ?? [];
 
   const canonicalLink = canonicalPostPath(profile.handle, post.slug, post.id);
+  const shareKind = typeof post.kind === 'string' ? post.kind.toLowerCase() : '';
+  const postText = post.text && post.text.trim().length > 0 ? post.text : post.body ?? '';
+  const hasCaption = postText.trim().length > 0;
+  const runShareMeta = (post.meta ?? null) as RunShareMeta;
+  const achievementShareMeta = (post.meta ?? null) as AchievementShareMeta;
 
   let highlightedId: string | null = null;
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
@@ -137,7 +144,19 @@ import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
           <h1 class="post-title">{post.title}</h1>
         {/if}
         <div class="post-body">
-          {@html formatCommentBody(post.body ?? '')}
+          {#if hasCaption}
+            {@html formatCommentBody(postText)}
+          {/if}
+
+          {#if shareKind === 'run'}
+            <div class="share-card">
+              <RunShareCard meta={runShareMeta} />
+            </div>
+          {:else if shareKind === 'achievement'}
+            <div class="share-card">
+              <AchievementShareCard meta={achievementShareMeta} />
+            </div>
+          {/if}
         </div>
       </article>
 
@@ -302,13 +321,29 @@ import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
     color: rgb(226, 232, 240);
   }
 
+  .post-body {
+    display: grid;
+    gap: 1rem;
+  }
+
   .post-body :global(p) {
-    margin-bottom: 1em;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
   }
 
   .post-body :global(a) {
     color: inherit;
     text-decoration: underline;
+  }
+
+  .share-card {
+    display: block;
+  }
+
+  .share-card :global(.run-share-card),
+  .share-card :global(.achievement-share-card) {
+    width: 100%;
   }
 
   .reply-box {

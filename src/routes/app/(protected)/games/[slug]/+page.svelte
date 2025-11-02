@@ -18,6 +18,11 @@ import type { LeaderboardScope } from '$lib/server/games/leaderboard';
 import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
 import { achievementsUI } from '$lib/achievements/store';
 import AchievementsPanel from '$lib/components/games/AchievementsPanel.svelte';
+import ShareComposer from '$lib/components/social/ShareComposer.svelte';
+import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
+import type { RunShareInput, AchievementShareInput } from '$lib/social/share';
+import Portal from '$lib/ui/Portal.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -62,6 +67,198 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
   achievementsFilterGameId = state.filterGameId;
   achievementsRequestId = state.requestId;
 });
+
+type SharePreferences = {
+  run: boolean;
+  achievement: boolean;
+};
+
+type RunSharePromptState = {
+  open: boolean;
+  payload: RunShareInput | null;
+  meta: RunShareMeta | null;
+  defaults: { text?: string };
+  preview: Record<string, unknown> | null;
+};
+
+type AchievementPrompt = {
+  payload: AchievementShareInput;
+  meta: AchievementShareMeta;
+  defaults: { text?: string };
+  preview: Record<string, unknown> | null;
+};
+
+const SHARE_PREF_KEY = 'looma_share_preferences';
+const numberFormatter = new Intl.NumberFormat('en-US');
+
+let sharePreferences: SharePreferences = { run: false, achievement: false };
+let runSharePrompt: RunSharePromptState = {
+  open: false,
+  payload: null,
+  meta: null,
+  defaults: {},
+  preview: null
+};
+let achievementPromptQueue: AchievementPrompt[] = [];
+let activeAchievementPrompt: AchievementPrompt | null = null;
+let shareToast: { message: string; kind: 'success' | 'error' } | null = null;
+let shareToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+const readSharePreferences = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(SHARE_PREF_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    sharePreferences = {
+      run: Boolean(parsed?.run),
+      achievement: Boolean(parsed?.achievement)
+    };
+  } catch (err) {
+    console.warn('[games/share] failed to read preferences', err);
+  }
+};
+
+const persistSharePreferences = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      SHARE_PREF_KEY,
+      JSON.stringify({ run: sharePreferences.run, achievement: sharePreferences.achievement })
+    );
+  } catch (err) {
+    console.warn('[games/share] failed to persist preferences', err);
+  }
+};
+
+const optOutShare = (kind: 'run' | 'achievement') => {
+  sharePreferences = { ...sharePreferences, [kind]: true };
+  persistSharePreferences();
+  if (kind === 'run') {
+    runSharePrompt = { open: false, payload: null, meta: null, defaults: {}, preview: null };
+  } else {
+    activeAchievementPrompt = null;
+    achievementPromptQueue = [];
+  }
+};
+
+const showShareToast = (message: string, kind: 'success' | 'error' = 'success') => {
+  shareToast = { message, kind };
+  if (shareToastTimer) clearTimeout(shareToastTimer);
+  shareToastTimer = setTimeout(() => {
+    shareToast = null;
+    shareToastTimer = null;
+  }, kind === 'success' ? 2400 : 3200);
+};
+
+const buildRunMeta = (payload: RunShareInput, gameName: string): RunShareMeta => {
+  const score = Math.max(0, Math.floor(payload.score ?? 0));
+  const durationMs = Math.max(0, Math.floor(payload.durationMs ?? 0));
+  const durationSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const scoreLabel = numberFormatter.format(score);
+  const preview = {
+    kind: 'run' as const,
+    title: `${gameName} — ${scoreLabel} pts`,
+    subtitle: `${durationSeconds}s run`
+  };
+
+  return {
+    game: { slug: payload.slug, name: gameName },
+    score,
+    durationMs,
+    sessionId: payload.sessionId,
+    deepLink: `/app/games/${payload.slug}`,
+    preview
+  };
+};
+
+const maybePromptRunShare = (payload: RunShareInput, gameName: string) => {
+  if (sharePreferences.run) return;
+  const meta = buildRunMeta(payload, gameName);
+  const scoreLabel = numberFormatter.format(Math.max(0, Math.floor(payload.score ?? 0)));
+  runSharePrompt = {
+    open: true,
+    payload,
+    meta,
+    defaults: { text: `Just ran ${gameName} — ${scoreLabel} pts!` },
+    preview: meta.preview ?? null
+  };
+};
+
+const formatRarity = (value?: string | null) => {
+  if (!value) return 'Common';
+  const lower = value.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
+
+const enqueueAchievementShare = (achievement: SessionAchievement) => {
+  if (sharePreferences.achievement) return;
+  const rarityLabel = formatRarity(achievement.rarity ?? 'common');
+  const meta: AchievementShareMeta = {
+    achievement: {
+      key: achievement.key,
+      name: achievement.name,
+      points: achievement.points,
+      icon: achievement.icon,
+      rarity: achievement.rarity ?? 'common'
+    },
+    deepLink: `/app/achievements?highlight=${encodeURIComponent(achievement.key)}`,
+    preview: {
+      kind: 'achievement',
+      title: achievement.name,
+      subtitle: `${achievement.points} pts • ${rarityLabel}`,
+      icon: achievement.icon
+    }
+  };
+
+  const prompt: AchievementPrompt = {
+    payload: { key: achievement.key },
+    meta,
+    defaults: { text: `Unlocked ${achievement.name} (+${achievement.points} pts)!` },
+    preview: meta.preview ?? null
+  };
+
+  achievementPromptQueue = [...achievementPromptQueue, prompt];
+  openNextAchievementPrompt();
+};
+
+const openNextAchievementPrompt = () => {
+  if (sharePreferences.achievement) {
+    achievementPromptQueue = [];
+    activeAchievementPrompt = null;
+    return;
+  }
+  if (activeAchievementPrompt || achievementPromptQueue.length === 0) return;
+  activeAchievementPrompt = achievementPromptQueue[0];
+  achievementPromptQueue = achievementPromptQueue.slice(1);
+};
+
+const closeAchievementPrompt = () => {
+  activeAchievementPrompt = null;
+  openNextAchievementPrompt();
+};
+
+const resetRunSharePrompt = () => {
+  runSharePrompt = { open: false, payload: null, meta: null, defaults: {}, preview: null };
+};
+
+const handleRunShareSubmitted = () => {
+  resetRunSharePrompt();
+  showShareToast('Shared to your Circle.', 'success');
+};
+
+const handleRunShareCancel = () => {
+  resetRunSharePrompt();
+};
+
+const handleAchievementShareSubmitted = () => {
+  showShareToast('Shared to your Circle.', 'success');
+  closeAchievementPrompt();
+};
+
+const handleAchievementShareCancel = () => {
+  closeAchievementPrompt();
+};
 
   type LeaderboardState = {
     rows: LeaderboardDisplayRow[];
@@ -151,6 +348,7 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
 
   onMount(() => {
     void loadLeaderboard('alltime');
+    readSharePreferences();
   });
 
   const embedSrcDoc = String.raw`<!DOCTYPE html><html><head><meta charset="utf-8" /><style>html,body{margin:0;padding:0;background:#050b1f;color:#fff;font-family:Inter,sans-serif;height:100%;display:grid;place-items:center;}</style></head><body><div>Mini-game sandbox</div><script>\n(function(){\n  const send = (type, payload) => parent.postMessage({ type, payload }, '*');\n  window.__loomaGame = { send, lastSession:null, lastReward:null };\n  window.addEventListener('message', (event) => {\n    if (event.data?.type === 'SESSION_STARTED') { window.__loomaGame.lastSession = event.data.payload; }\n    if (event.data?.type === 'REWARD_GRANTED') { window.__loomaGame.lastReward = event.data.payload; }\n    if (event.data?.type === 'ERROR') { window.__loomaGame.lastError = event.data.payload; }\n  });\n  send('GAME_READY');\n})();\n<\/script></body></html>`;
@@ -237,6 +435,21 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
         currencyDelta: result.currencyDelta,
         achievements: Array.isArray(result.achievements) ? result.achievements : []
       };
+
+      maybePromptRunShare(
+        {
+          sessionId: session.sessionId,
+          score,
+          durationMs,
+          slug
+        },
+        game.name
+      );
+
+      if (reward.achievements.length > 0) {
+        reward.achievements.forEach((achievement) => enqueueAchievementShare(achievement));
+      }
+
       status = 'Session complete';
       session = null;
       if (typeof window !== 'undefined') {
@@ -327,6 +540,10 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
   onDestroy(() => {
     resetListeners();
     releaseAchievements();
+    if (shareToastTimer) {
+      clearTimeout(shareToastTimer);
+      shareToastTimer = null;
+    }
   });
 
   const goBack = () => goto('/app/games');
@@ -457,6 +674,50 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
     requestId={achievementsRequestId}
     on:close={() => achievementsUI.close()}
   />
+
+  {#if (runSharePrompt.open && runSharePrompt.payload && runSharePrompt.meta) || activeAchievementPrompt || shareToast}
+    <Portal target="#modal-root">
+      <div class="share-prompts">
+        {#if runSharePrompt.open && runSharePrompt.payload && runSharePrompt.meta}
+          <div class="share-prompt-card">
+            <ShareComposer
+              kind="run"
+              run={runSharePrompt.payload}
+              defaults={runSharePrompt.defaults}
+              preview={runSharePrompt.preview}
+              on:submitted={handleRunShareSubmitted}
+              on:cancel={handleRunShareCancel}
+            />
+            <RunShareCard meta={runSharePrompt.meta} compact />
+            <button type="button" class="share-optout" on:click={() => optOutShare('run')}>
+              Don't ask again
+            </button>
+          </div>
+        {/if}
+
+        {#if activeAchievementPrompt}
+          <div class="share-prompt-card">
+            <ShareComposer
+              kind="achievement"
+              achievement={activeAchievementPrompt.payload}
+              defaults={activeAchievementPrompt.defaults}
+              preview={activeAchievementPrompt.preview}
+              on:submitted={handleAchievementShareSubmitted}
+              on:cancel={handleAchievementShareCancel}
+            />
+            <AchievementShareCard meta={activeAchievementPrompt.meta} compact />
+            <button type="button" class="share-optout" on:click={() => optOutShare('achievement')}>
+              Don't ask again
+            </button>
+          </div>
+        {/if}
+
+        {#if shareToast}
+          <div class={`share-toast ${shareToast.kind}`}>{shareToast.message}</div>
+        {/if}
+      </div>
+    </Portal>
+  {/if}
 </div>
 
 <style>
@@ -582,6 +843,72 @@ const releaseAchievements = achievementsUI.subscribe((state) => {
     border-color: rgba(210, 230, 255, 0.8);
     transform: translateY(-1px);
     outline: none;
+  }
+
+  .share-prompts {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: grid;
+    gap: 1.1rem;
+    width: min(360px, calc(100vw - 2.5rem));
+    z-index: 95;
+    pointer-events: none;
+  }
+
+  .share-prompt-card {
+    display: grid;
+    gap: 0.75rem;
+    pointer-events: auto;
+  }
+
+  .share-optout {
+    justify-self: flex-end;
+    background: none;
+    border: none;
+    color: rgba(200, 220, 255, 0.65);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .share-optout:hover,
+  .share-optout:focus-visible {
+    color: rgba(240, 248, 255, 0.92);
+    outline: none;
+  }
+
+  .share-toast {
+    padding: 0.75rem 1rem;
+    border-radius: 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(20, 26, 45, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(240, 250, 255, 0.9);
+    box-shadow: 0 16px 40px rgba(8, 12, 25, 0.45);
+    pointer-events: auto;
+  }
+
+  .share-toast.success {
+    background: rgba(120, 240, 200, 0.9);
+    border-color: rgba(140, 250, 210, 0.6);
+    color: rgba(12, 32, 28, 0.9);
+  }
+
+  .share-toast.error {
+    background: rgba(255, 120, 140, 0.9);
+    border-color: rgba(255, 160, 180, 0.62);
+    color: rgba(55, 12, 20, 0.92);
+  }
+
+  @media (max-width: 640px) {
+    .share-prompts {
+      right: 50%;
+      transform: translateX(50%);
+      width: min(92vw, 360px);
+    }
   }
 
   .error-banner {

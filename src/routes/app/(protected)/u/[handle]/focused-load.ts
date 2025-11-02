@@ -20,7 +20,9 @@ type FocusedAuthor = {
 type FocusedPostRow = {
   id: string;
   slug: string | null;
+  kind: string | null;
   body: string | null;
+  text: string | null;
   meta: Record<string, unknown> | null;
   created_at: string;
   author_id: string;
@@ -54,7 +56,9 @@ export async function loadFocusedPost(
       `
         id,
         slug,
+        kind,
         body,
+        text,
         meta,
         created_at,
         author_id,
@@ -114,11 +118,16 @@ export async function loadFocusedPost(
   const meta = (postRow.meta ?? {}) as Record<string, unknown>;
   const rawTitle = typeof meta.title === 'string' ? meta.title : null;
 
+  const bodyText =
+    typeof postRow.text === 'string' && postRow.text.trim().length > 0
+      ? postRow.text
+      : postRow.body ?? '';
+
   const thread: Thread = {
     id: postRow.id,
     slug: postRow.slug ?? null,
     title: rawTitle && rawTitle.trim() !== '' ? rawTitle.trim() : null,
-    body: postRow.body ?? '',
+    body: bodyText,
     created_at: postRow.created_at,
     comment_count: commentCount ?? 0,
     author: {
@@ -126,7 +135,10 @@ export async function loadFocusedPost(
       display_name: postRow.author?.display_name ?? profile.display_name ?? null,
       handle: authorHandle ?? null,
       avatar_url: postRow.author?.avatar_url ?? profile.avatar_url ?? null
-    }
+    },
+    kind: postRow.kind ?? null,
+    text: postRow.text ?? null,
+    meta
   };
 
   let commentRows: Comment[] = [];

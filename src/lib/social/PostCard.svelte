@@ -4,8 +4,10 @@
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
-  import { canonicalPostPath } from '$lib/threads/permalink';
-  import { browser } from '$app/environment';
+import { canonicalPostPath } from '$lib/threads/permalink';
+import { browser } from '$app/environment';
+import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
 
   let supabase: ReturnType<typeof supabaseBrowser> | null = null;
 
@@ -69,6 +71,18 @@
     authorHandle && authorHandle.length > 0 ? `/app/u/${authorHandle}` : `/u/${authorHandle ?? post.user_id}`;
   $: threadSlug = (post.slug ?? null) as string | null;
   $: threadLink = canonicalPostPath(authorHandle, threadSlug, post.id);
+  $: shareKind = typeof post?.kind === 'string' ? post.kind.toLowerCase() : '';
+  $: isRunShare = shareKind === 'run';
+  $: isAchievementShare = shareKind === 'achievement';
+  $: postText =
+    typeof post?.text === 'string' && post.text.trim().length > 0
+      ? post.text
+      : typeof post?.body === 'string'
+      ? post.body
+      : '';
+  $: hasCaption = postText.trim().length > 0;
+  $: runShareMeta = (post.meta ?? null) as RunShareMeta;
+  $: achievementShareMeta = (post.meta ?? null) as AchievementShareMeta;
 
   function relativeTime(value: string) {
     const ts = new Date(value).getTime();
@@ -285,7 +299,19 @@
   </header>
 
   <div class="body">
-    <p>{post.body}</p>
+    {#if hasCaption}
+      <p>{postText}</p>
+    {/if}
+
+    {#if isRunShare}
+      <div class="share-card">
+        <RunShareCard meta={runShareMeta} />
+      </div>
+    {:else if isAchievementShare}
+      <div class="share-card">
+        <AchievementShareCard meta={achievementShareMeta} />
+      </div>
+    {/if}
   </div>
 
   {#if imageUrl}
@@ -410,11 +436,20 @@
     opacity: 0.7;
   }
 
+  .body {
+    display: grid;
+    gap: 0.9rem;
+  }
+
   .body p {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.5;
     white-space: pre-wrap;
+  }
+
+  .share-card {
+    display: block;
   }
 
   .media {
