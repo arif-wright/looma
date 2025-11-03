@@ -17,9 +17,17 @@ import { createAchievementEvaluator } from '$lib/server/achievements/evaluator';
 import type { UnlockSummary } from '$lib/server/achievements/evaluator';
 import { getCurrentStreakDays } from '$lib/server/games/streak';
 import { createAchievementNotification } from '$lib/server/notifications';
+import { applyStreakMultiplier, getStreakMultiplier, walletGrant } from '$lib/server/econ/index';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+type SessionRewardResponse = {
+  xpDelta: number;
+  currencyDelta: number;
+  baseCurrencyDelta: number;
+  currencyMultiplier: number;
+};
 
 const compareVersions = (current: string | null, minimum: string) => {
   if (!minimum) return true;
@@ -41,6 +49,14 @@ export const POST: RequestHandler = async (event) => {
   const { user, supabase } = await ensureAuth(event);
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
   const admin = getAdminClient();
+
+  let rewards: SessionRewardResponse = {
+    xpDelta: 0,
+    currencyDelta: 0,
+    baseCurrencyDelta: 0,
+    currencyMultiplier: 1
+  };
+  let currentStreakDays = 0;
 
   limit(`games:complete:user:${user.id}`, rateLimitPerMinute);
   if (clientIp) {
@@ -260,17 +276,6 @@ export const POST: RequestHandler = async (event) => {
     throw error(500, { code: 'server_error', message: 'Unable to complete session.' });
   }
 
-  const rewards = calculateRewards(score);
-  rewards.xpDelta = clamp(rewards.xpDelta, 0, 100);
-  rewards.currencyDelta = clamp(rewards.currencyDelta, 0, 200);
-
-  try {
-    await persistRewards({ sessionId, userId: user.id, ...rewards });
-  } catch (err) {
-    console.error('[games] persist rewards failed', err);
-    throw error(500, { code: 'server_error', message: 'Unable to record rewards.' });
-  }
-
   let achievementsUnlocked: UnlockSummary[] = [];
 
   try {
@@ -306,7 +311,7 @@ export const POST: RequestHandler = async (event) => {
 
   try {
     const evaluator = createAchievementEvaluator({ supabase: admin });
-    const [{ count: sessionCount, error: sessionCountError }, currentStreakDays] = await Promise.all([
+    const [{ count: sessionCount, error: sessionCountError }, streakDays] = await Promise.all([
       admin
         .from('game_sessions')
         .select('id', { head: true, count: 'exact' })
@@ -315,6 +320,8 @@ export const POST: RequestHandler = async (event) => {
         .eq('status', 'completed'),
       getCurrentStreakDays(user.id, { supabase: admin })
     ]);
+
+    currentStreakDays = Number.isFinite(streakDays) ? Number(streakDays) : 0;
 
     if (sessionCountError) {
       console.error('[games] failed to count completed sessions', sessionCountError);
@@ -359,6 +366,57 @@ export const POST: RequestHandler = async (event) => {
     console.error('[games] achievement evaluation failed', err);
   }
 
+  const baseRewards = calculateRewards(score);
+  const xpDelta = clamp(baseRewards.xpDelta, 0, 100);
+  const baseCurrencyDelta = clamp(baseRewards.currencyDelta, 0, 200);
+  const streakMultiplier = getStreakMultiplier(currentStreakDays);
+  const currencyDelta = applyStreakMultiplier(baseCurrencyDelta, currentStreakDays);
+
+  rewards = {
+    xpDelta,
+    currencyDelta,
+    baseCurrencyDelta,
+    currencyMultiplier: streakMultiplier
+  };
+
+  try {
+    await persistRewards({
+      sessionId,
+      userId: user.id,
+      xpDelta: rewards.xpDelta,
+      currencyDelta: rewards.currencyDelta,
+      meta: {
+        multiplier: rewards.currencyMultiplier,
+        base_currency: rewards.baseCurrencyDelta
+      }
+    });
+  } catch (err) {
+    console.error('[games] persist rewards failed', err);
+    throw error(500, { code: 'server_error', message: 'Unable to record rewards.' });
+  }
+
+  if (rewards.currencyDelta > 0) {
+    try {
+      await walletGrant({
+        userId: user.id,
+        amount: rewards.currencyDelta,
+        source: 'game_session',
+        refId: session.id,
+        meta: {
+          slug: game.slug,
+          score,
+          durationMs,
+          multiplier: rewards.currencyMultiplier,
+          base_currency: rewards.baseCurrencyDelta
+        },
+        client: admin
+      });
+    } catch (err) {
+      console.error('[games] wallet grant failed', err);
+      throw error(500, { code: 'server_error', message: 'Unable to credit wallet.' });
+    }
+  }
+
   await logGameAudit({
     userId: user.id,
     sessionId,
@@ -372,7 +430,8 @@ export const POST: RequestHandler = async (event) => {
       rewards,
       achievements: achievementsUnlocked.map((item) => ({
         key: item.key,
-        points: item.points
+        points: item.points,
+        shards: item.shards
       }))
     }
   });
@@ -384,7 +443,8 @@ export const POST: RequestHandler = async (event) => {
       name: entry.name,
       points: entry.points,
       icon: entry.icon,
-      rarity: entry.rarity
+      rarity: entry.rarity,
+      shards: entry.shards
     }))
   });
 };

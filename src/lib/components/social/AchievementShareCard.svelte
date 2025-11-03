@@ -1,21 +1,6 @@
 <script lang="ts">
   import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
-
-  export type AchievementShareMeta = {
-    achievement?: {
-      key?: string | null;
-      name?: string | null;
-      points?: number | null;
-      icon?: string | null;
-      rarity?: string | null;
-    } | null;
-    deepLink?: string | null;
-    preview?: {
-      title?: string | null;
-      subtitle?: string | null;
-      icon?: string | null;
-    } | null;
-  };
+  import type { AchievementShareMeta } from '$lib/social/types';
 
   export let meta: AchievementShareMeta;
   export let compact = false;

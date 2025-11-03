@@ -9,8 +9,9 @@
 import type { PostRow } from '$lib/social/types';
 import CommentThread from '$lib/components/comments/CommentThread.svelte';
 import PostCard from '$lib/social/PostCard.svelte';
-import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
-import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
+import RunShareCard from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
+import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
 import { canonicalPostPath } from '$lib/threads/permalink';
 import { copyToClipboard } from '$lib/utils/copy';
 import { formatCommentBody } from '$lib/social/commentHelpers';

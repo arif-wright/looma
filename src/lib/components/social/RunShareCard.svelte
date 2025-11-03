@@ -1,19 +1,5 @@
 <script lang="ts">
-  export type RunShareMeta = {
-    game?: {
-      slug?: string | null;
-      name?: string | null;
-    } | null;
-    score?: number | null;
-    durationMs?: number | null;
-    sessionId?: string | null;
-    deepLink?: string | null;
-    preview?: {
-      title?: string | null;
-      subtitle?: string | null;
-      thumbnail?: string | null;
-    } | null;
-  };
+  import type { RunShareMeta } from '$lib/social/types';
 
   export let meta: RunShareMeta;
   export let compact = false;

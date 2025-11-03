@@ -83,3 +83,36 @@ export type FeedItem = PostRow & {
   recency: number;
   score: number;
 };
+
+export type RunShareMeta = {
+  game?: {
+    slug?: string | null;
+    name?: string | null;
+  } | null;
+  score?: number | null;
+  durationMs?: number | null;
+  sessionId?: string | null;
+  deepLink?: string | null;
+  preview?: {
+    title?: string | null;
+    subtitle?: string | null;
+    kind?: string | null;
+  } | null;
+};
+
+export type AchievementShareMeta = {
+  achievement?: {
+    key?: string | null;
+    name?: string | null;
+    points?: number | null;
+    icon?: string | null;
+    rarity?: string | null;
+  } | null;
+  deepLink?: string | null;
+  preview?: {
+    kind?: string | null;
+    title?: string | null;
+    subtitle?: string | null;
+    icon?: string | null;
+  } | null;
+};

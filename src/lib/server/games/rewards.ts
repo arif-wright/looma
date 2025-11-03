@@ -17,14 +17,16 @@ export const calculateRewards = (score: number): RewardResult => {
 type PersistArgs = RewardResult & {
   sessionId: string;
   userId: string;
+  meta?: Record<string, unknown> | null;
 };
 
-export const persistRewards = async ({ sessionId, userId, xpDelta, currencyDelta }: PersistArgs) => {
+export const persistRewards = async ({ sessionId, userId, xpDelta, currencyDelta, meta }: PersistArgs) => {
+  const rewardMeta = { source: 'game_sdk', ...(meta ?? {}) };
   const rewardInsert = await supabaseAdmin.from('game_rewards').insert({
     session_id: sessionId,
     xp_delta: xpDelta,
     currency_delta: currencyDelta,
-    meta: { source: 'game_sdk' }
+    meta: rewardMeta
   });
 
   if (rewardInsert.error) {
@@ -37,7 +39,7 @@ export const persistRewards = async ({ sessionId, userId, xpDelta, currencyDelta
     source: 'game_session',
     amount: currencyDelta,
     currency: 'shards',
-    meta: { session_id: sessionId }
+    meta: { session_id: sessionId, ...rewardMeta }
   });
 
   if (grantInsert.error) {

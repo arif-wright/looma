@@ -32,6 +32,13 @@
     rewards: RewardEntry[];
   } | null;
 
+  const wallet = data?.wallet ?? null;
+  const walletBalance = typeof wallet?.balance === 'number' ? wallet.balance : null;
+  const walletCurrency = typeof wallet?.currency === 'string' ? wallet.currency : 'shards';
+  const walletDelta = Array.isArray(wallet?.recentTx) && wallet.recentTx.length > 0
+    ? Number(wallet.recentTx[0]?.amount ?? 0)
+    : null;
+
   let playerSummary: PlayerSummary = data?.playerState
     ? {
         level: data.playerState.level ?? null,
@@ -39,7 +46,7 @@
         xpNext: data.playerState.xpNext ?? null,
         energy: data.playerState.energy ?? null,
         energyMax: data.playerState.energyMax ?? null,
-        currency: data.playerState.currency ?? null,
+        currency: walletBalance,
         rewards: Array.isArray(data.playerState.rewards)
           ? (data.playerState.rewards as RewardEntry[])
           : []
@@ -113,17 +120,17 @@
         energy={playerSummary?.energy ?? null}
         energyMax={playerSummary?.energyMax ?? null}
         notifications={playerSummary?.rewards?.length ?? 0}
-        unreadCount={0}
-        userEmail={null}
-        onLogout={() => {}}
+        walletBalance={walletBalance}
+        walletCurrency={walletCurrency}
+        walletDelta={walletDelta}
       />
 
       <section class="progress-overview" aria-label="Player rewards">
         <div class="progress-tile">
           <span class="progress-label">Shard balance</span>
           <strong class="progress-value" data-testid="shard-balance">
-            {#if typeof playerSummary?.currency === 'number'}
-              {playerSummary.currency}
+            {#if typeof walletBalance === 'number'}
+              {walletBalance.toLocaleString()}
             {:else}
               —
             {/if}
@@ -136,7 +143,12 @@
             <ul class="reward-log" data-testid="reward-log">
               {#each rewardList as reward (reward.id)}
                 <li class="reward-row">
-                  <span class="reward-delta">+{reward.xpDelta} XP • +{reward.currencyDelta} shards</span>
+                  <span class="reward-delta">
+                    +{reward.xpDelta} XP • +{reward.currencyDelta} shards
+                    {#if reward.currencyMultiplier && reward.currencyMultiplier > 1}
+                      <span class="reward-multiplier">(x{reward.currencyMultiplier.toFixed(1)})</span>
+                    {/if}
+                  </span>
                   <span class="reward-meta">
                     {reward.gameName ?? reward.game ?? 'Mini-game'}
                     {#if formatRewardTime(reward.insertedAt)}
@@ -238,6 +250,13 @@
   .reward-delta {
     font-weight: 600;
     color: rgba(244, 247, 255, 0.9);
+  }
+
+  .reward-delta .reward-multiplier {
+    margin-left: 0.35rem;
+    color: rgba(144, 241, 226, 0.9);
+    font-weight: 600;
+    font-size: 0.85rem;
   }
 
   .reward-meta {

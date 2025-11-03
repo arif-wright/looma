@@ -5,6 +5,7 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { reportHomeLoadIssue } from '$lib/server/logging';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import type { FeedItem } from '$lib/social/types';
+import { getWalletWithTransactions } from '$lib/server/econ/index';
 
 type MissionSummary = {
   id: string;
@@ -44,7 +45,9 @@ export const load: PageServerLoad = async (event) => {
     landingVariant: parent.landingVariant ?? null,
     diagnostics,
     preferences: parent.preferences ?? null,
-    notificationsUnread: parent.notificationsUnread ?? 0
+    notificationsUnread: parent.notificationsUnread ?? 0,
+    wallet: null as Awaited<ReturnType<typeof getWalletWithTransactions>>['wallet'] | null,
+    walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions']
   };
 
   try {
@@ -136,6 +139,22 @@ export const load: PageServerLoad = async (event) => {
       }
     }
 
+    let wallet = safe.wallet;
+    let walletTx = safe.walletTx;
+
+    if (session?.user?.id) {
+      try {
+        const summary = await getWalletWithTransactions(supabase, session.user.id, 10);
+        wallet = summary.wallet;
+        walletTx = summary.transactions;
+      } catch (err) {
+        diagnostics.push('wallet_query_failed');
+        reportHomeLoadIssue('wallet_query_failed', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+
     const endcap =
       missionSuggestions[0]
         ? {
@@ -174,7 +193,9 @@ export const load: PageServerLoad = async (event) => {
       landingVariant: parent.landingVariant ?? null,
       diagnostics,
       preferences: parent.preferences ?? null,
-      notificationsUnread: parent.notificationsUnread ?? 0
+      notificationsUnread: parent.notificationsUnread ?? 0,
+      wallet,
+      walletTx
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

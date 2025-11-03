@@ -121,11 +121,14 @@ export type SessionAchievement = {
   icon: string;
   points: number;
   rarity?: string | null;
+  shards?: number;
 };
 
 type CompleteResponse = {
   xpDelta: number;
   currencyDelta: number;
+  baseCurrencyDelta?: number;
+  currencyMultiplier?: number;
   achievements?: SessionAchievement[];
 };
 

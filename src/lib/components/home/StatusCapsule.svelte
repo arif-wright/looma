@@ -5,6 +5,9 @@
   export let energy: number | null = null;
   export let energyMax: number | null = null;
   export let notifications: number | null = null;
+  export let walletBalance: number | null = null;
+  export let walletCurrency: string = 'shards';
+  export let walletDelta: number | null = null;
   export let className = '';
 
 let pulse = false;
@@ -19,6 +22,28 @@ $: xpPercent =
     energyMax && energyMax > 0 && typeof energy === 'number'
       ? Math.min(100, Math.round((energy / energyMax) * 100))
       : null;
+
+  $: walletDisplay =
+    typeof walletBalance === 'number' && Number.isFinite(walletBalance)
+      ? walletBalance.toLocaleString()
+      : '—';
+
+  $: walletDeltaDisplay =
+    typeof walletDelta === 'number' && Number.isFinite(walletDelta) && walletDelta !== 0
+      ? `${walletDelta > 0 ? '+' : ''}${walletDelta.toLocaleString()}`
+      : null;
+
+  $: walletDeltaSign =
+    typeof walletDelta === 'number' && Number.isFinite(walletDelta) && walletDelta !== 0
+      ? walletDelta > 0
+        ? 'positive'
+        : 'negative'
+      : null;
+
+  $: walletCurrencyLabel =
+    walletDisplay !== '—' && typeof walletCurrency === 'string'
+      ? walletCurrency.toUpperCase()
+      : '';
 
   $: if (typeof xp === 'number' && previousXp !== null && xp > previousXp) {
     triggerPulse();
@@ -82,6 +107,21 @@ $: xpPercent =
           Calibrating…
         {/if}
       </p>
+    </div>
+  </div>
+
+  <div class="wallet-line">
+    <div class="wallet">
+      <span class="label">Wallet</span>
+      <div class="pill wallet-pill" aria-live="polite">
+        <span class="pill-icon" aria-hidden="true">💎</span>
+        <span class="pill-text">
+          {walletDisplay} {walletCurrencyLabel}
+        </span>
+        {#if walletDeltaDisplay && walletDeltaSign}
+          <span class={`delta ${walletDeltaSign}`}>{walletDeltaDisplay}</span>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -197,6 +237,48 @@ $: xpPercent =
   .notifications {
     display: grid;
     gap: 8px;
+  }
+
+  .wallet-line {
+    display: grid;
+    gap: 8px;
+  }
+
+  .wallet {
+    display: grid;
+    gap: 6px;
+  }
+
+  .wallet-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(244, 247, 255, 0.9);
+    font-size: 0.85rem;
+  }
+
+  .wallet-pill .pill-icon {
+    font-size: 1rem;
+  }
+
+  .wallet-pill .pill-text {
+    font-weight: 600;
+  }
+
+  .wallet-pill .delta {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wallet-pill .delta.positive {
+    color: #5bf5c6;
+  }
+
+  .wallet-pill .delta.negative {
+    color: #fca5a5;
   }
 
   .pill {

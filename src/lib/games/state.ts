@@ -10,6 +10,8 @@ export type RewardEntry = {
   insertedAt: string | null;
   game: string | null;
   gameName: string | null;
+  baseCurrencyDelta?: number | null;
+  currencyMultiplier?: number | null;
 };
 
 export type PlayerProgressState = {
@@ -90,7 +92,9 @@ const normalizeRewards = (rows: unknown): RewardEntry[] => {
         currencyDelta: normalizeNumber(payload.currencyDelta ?? payload.currency_delta) ?? 0,
         insertedAt,
         game: gameSlug,
-        gameName
+        gameName,
+        baseCurrencyDelta: normalizeNumber(payload.baseCurrencyDelta ?? payload.base_currency_delta),
+        currencyMultiplier: normalizeNumber(payload.currencyMultiplier ?? payload.currency_multiplier)
       } satisfies RewardEntry;
     })
     .filter(Boolean) as RewardEntry[];
@@ -165,15 +169,31 @@ export const getPlayerProgressSnapshot = (): PlayerProgressState => {
 type RecordRewardArgs = {
   xpDelta: number;
   currencyDelta: number;
+  baseCurrencyDelta?: number | null;
+  currencyMultiplier?: number | null;
   game?: string | null;
   gameName?: string | null;
   insertedAt?: string | null;
 };
 
-export const recordRewardResult = ({ xpDelta, currencyDelta, game = null, gameName = null, insertedAt = null }: RecordRewardArgs) => {
+export const recordRewardResult = ({
+  xpDelta,
+  currencyDelta,
+  baseCurrencyDelta = null,
+  currencyMultiplier = null,
+  game = null,
+  gameName = null,
+  insertedAt = null
+}: RecordRewardArgs) => {
   if (!browser) return;
   const safeXp = Number.isFinite(xpDelta) ? Math.max(0, Math.floor(xpDelta)) : 0;
   const safeCurrency = Number.isFinite(currencyDelta) ? Math.max(0, Math.floor(currencyDelta)) : 0;
+  const safeBaseCurrency = Number.isFinite(baseCurrencyDelta as number)
+    ? Math.max(0, Math.floor(baseCurrencyDelta as number))
+    : null;
+  const safeMultiplier = Number.isFinite(currencyMultiplier as number)
+    ? Number(currencyMultiplier)
+    : null;
   const timestamp = insertedAt ?? new Date().toISOString();
 
   mergeState((state) => {
@@ -186,7 +206,9 @@ export const recordRewardResult = ({ xpDelta, currencyDelta, game = null, gameNa
       currencyDelta: safeCurrency,
       insertedAt: timestamp,
       game,
-      gameName
+      gameName,
+      baseCurrencyDelta: safeBaseCurrency,
+      currencyMultiplier: safeMultiplier
     };
 
     const nextRewards = [rewardEntry, ...state.rewards].slice(0, 20);

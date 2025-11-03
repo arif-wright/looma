@@ -9,6 +9,7 @@ export type AchievementToastItem = {
   icon: string;
   points: number;
   rarity?: string | null;
+  shards?: number | null;
 };
 
 export let achievements: AchievementToastItem[] = [];
@@ -53,6 +54,10 @@ const dispatch = createEventDispatcher<{ view: { key: string; slug: string | nul
             </span>
             <span aria-hidden="true">·</span>
             <span class="achievement-points">+{achievement.points} pts</span>
+            {#if typeof achievement.shards === 'number' && achievement.shards > 0}
+              <span aria-hidden="true">·</span>
+              <span class="achievement-shards">+{achievement.shards} shards</span>
+            {/if}
           </p>
         </div>
         <button
@@ -117,6 +122,11 @@ const dispatch = createEventDispatcher<{ view: { key: string; slug: string | nul
     text-transform: uppercase;
     letter-spacing: 0.08em;
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .achievement-shards {
+    font-weight: 600;
+    color: rgba(140, 244, 215, 0.9);
   }
 
   .rarity-rare {

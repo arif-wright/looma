@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
+  import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
   import PlayerSummary from '$lib/app/dashboard/PlayerSummary.svelte';
   import StatsPanel from '$lib/app/dashboard/StatsPanel.svelte';
   import CreaturesSnapshot from '$lib/app/dashboard/CreaturesSnapshot.svelte';
@@ -70,11 +71,13 @@
 
     handleSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (!session) {
+          goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
+        }
       }
-    });
+    );
 
     const mq = window.matchMedia('(min-width: 1024px)');
     const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)');

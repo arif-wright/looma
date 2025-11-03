@@ -1,18 +1,5 @@
 <script lang="ts">
-  import type { LeaderboardScope } from '$lib/server/games/leaderboard';
-
-  export type LeaderboardDisplayRow = {
-    rank: number;
-    user: {
-      id: string;
-      handle: string | null;
-      displayName: string | null;
-      avatar: string | null;
-    };
-    score: number;
-    when: string | null;
-    isSelf: boolean;
-  };
+  import type { LeaderboardScope, LeaderboardDisplayRow } from '$lib/server/games/leaderboard';
 
   export let rows: LeaderboardDisplayRow[] = [];
   export let loading = false;

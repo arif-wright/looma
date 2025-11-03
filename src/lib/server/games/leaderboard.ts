@@ -10,6 +10,19 @@ export type LeaderboardRow = {
   period_start?: string | null;
 };
 
+export type LeaderboardDisplayRow = {
+  rank: number;
+  user: {
+    id: string;
+    handle: string | null;
+    displayName: string | null;
+    avatar: string | null;
+  };
+  score: number;
+  when: string | null;
+  isSelf: boolean;
+};
+
 const scopeConfig: Record<LeaderboardScope, { fetchFn: string; countFn: string }> = {
   alltime: {
     fetchFn: 'fn_leader_fetch_alltime',

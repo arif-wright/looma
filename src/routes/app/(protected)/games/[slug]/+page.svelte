@@ -13,15 +13,17 @@ import {
 import type { SessionAchievement } from '$lib/games/sdk';
 import { applyPlayerState, recordRewardResult } from '$lib/games/state';
 import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
-import LeaderboardList, { type LeaderboardDisplayRow } from '$lib/components/games/LeaderboardList.svelte';
+import LeaderboardList from '$lib/components/games/LeaderboardList.svelte';
 import type { LeaderboardScope } from '$lib/server/games/leaderboard';
 import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
 import { achievementsUI } from '$lib/achievements/store';
 import AchievementsPanel from '$lib/components/games/AchievementsPanel.svelte';
 import ShareComposer from '$lib/components/social/ShareComposer.svelte';
-import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
-import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
+import RunShareCard from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
+import type { AchievementShareMeta, RunShareMeta } from '$lib/social/types';
 import type { RunShareInput, AchievementShareInput } from '$lib/social/share';
+import type { LeaderboardDisplayRow } from '$lib/server/games/leaderboard';
 import Portal from '$lib/ui/Portal.svelte';
   import type { PageData } from './$types';
 
@@ -35,7 +37,13 @@ import Portal from '$lib/ui/Portal.svelte';
 
   let status = isTilesRun ? 'Waiting for game bridge…' : 'Preparing bridge…';
   let errorMessage: string | null = null;
-let reward: { xpDelta: number; currencyDelta: number; achievements: SessionAchievement[] } | null = null;
+let reward: {
+  xpDelta: number;
+  currencyDelta: number;
+  baseCurrencyDelta?: number | null;
+  currencyMultiplier?: number | null;
+  achievements: SessionAchievement[];
+} | null = null;
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -194,6 +202,12 @@ const formatRarity = (value?: string | null) => {
 const enqueueAchievementShare = (achievement: SessionAchievement) => {
   if (sharePreferences.achievement) return;
   const rarityLabel = formatRarity(achievement.rarity ?? 'common');
+  const shardBonus =
+    typeof achievement.shards === 'number' && achievement.shards > 0 ? achievement.shards : null;
+  const subtitle = `${achievement.points} pts • ${rarityLabel}${
+    shardBonus ? ` • +${shardBonus} shards` : ''
+  }`;
+
   const meta: AchievementShareMeta = {
     achievement: {
       key: achievement.key,
@@ -206,7 +220,7 @@ const enqueueAchievementShare = (achievement: SessionAchievement) => {
     preview: {
       kind: 'achievement',
       title: achievement.name,
-      subtitle: `${achievement.points} pts • ${rarityLabel}`,
+      subtitle,
       icon: achievement.icon
     }
   };
@@ -214,7 +228,11 @@ const enqueueAchievementShare = (achievement: SessionAchievement) => {
   const prompt: AchievementPrompt = {
     payload: { key: achievement.key },
     meta,
-    defaults: { text: `Unlocked ${achievement.name} (+${achievement.points} pts)!` },
+    defaults: {
+      text: `Unlocked ${achievement.name} (+${achievement.points} pts${
+        shardBonus ? `, +${shardBonus} shards` : ''
+      })!`
+    },
     preview: meta.preview ?? null
   };
 
@@ -433,6 +451,8 @@ const handleAchievementShareCancel = () => {
       reward = {
         xpDelta: result.xpDelta,
         currencyDelta: result.currencyDelta,
+        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
+        currencyMultiplier: result.currencyMultiplier ?? null,
         achievements: Array.isArray(result.achievements) ? result.achievements : []
       };
 
@@ -459,6 +479,8 @@ const handleAchievementShareCancel = () => {
       recordRewardResult({
         xpDelta: result.xpDelta,
         currencyDelta: result.currencyDelta,
+        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
+        currencyMultiplier: result.currencyMultiplier ?? null,
         game: slug,
         gameName: game.name
       });
@@ -596,6 +618,11 @@ const handleAchievementShareCancel = () => {
           <p class="reward-toast__label">Session rewards</p>
           <p class="reward-toast__value">
             +{reward.xpDelta} XP • +{reward.currencyDelta} shards
+            {#if reward.currencyMultiplier && reward.currencyMultiplier > 1}
+              <span class="reward-multiplier">
+                (x{reward.currencyMultiplier.toFixed(1)} streak)
+              </span>
+            {/if}
           </p>
           <div class="toast-actions">
             <button class="toast-button" type="button" on:click={replaySession}>
@@ -793,6 +820,13 @@ const handleAchievementShareCancel = () => {
     font-size: 1.05rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.95);
+  }
+
+  .reward-multiplier {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(144, 224, 255, 0.9);
+    margin-left: 0.35rem;
   }
 
   .toast-actions {

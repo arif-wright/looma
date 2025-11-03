@@ -1,13 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-
-  export type QuickLink = {
-    id: string;
-    label: string;
-    description: string;
-    href: string;
-    icon?: string | null;
-  };
+  import type { QuickLink } from './types';
 
   export let links: QuickLink[] = [];
 

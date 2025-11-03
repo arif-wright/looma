@@ -6,8 +6,9 @@
   import type { CommentNode, PostRow } from './types';
 import { canonicalPostPath } from '$lib/threads/permalink';
 import { browser } from '$app/environment';
-import RunShareCard, { type RunShareMeta } from '$lib/components/social/RunShareCard.svelte';
-import AchievementShareCard, { type AchievementShareMeta } from '$lib/components/social/AchievementShareCard.svelte';
+import RunShareCard from '$lib/components/social/RunShareCard.svelte';
+import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
+import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
 
   let supabase: ReturnType<typeof supabaseBrowser> | null = null;
 

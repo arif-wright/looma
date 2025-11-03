@@ -9,7 +9,8 @@
   import CreatureMoments from '$lib/components/home/CreatureMoments.svelte';
   import EndcapCard from '$lib/components/home/EndcapCard.svelte';
   import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
-  import QuickLinks, { type QuickLink } from '$lib/components/home/QuickLinks.svelte';
+  import QuickLinks from '$lib/components/home/QuickLinks.svelte';
+  import type { QuickLink } from '$lib/components/home/types';
   import QuickPostPanel from '$lib/components/home/QuickPostPanel.svelte';
 
   import type { PageData } from './$types';
@@ -24,6 +25,9 @@
   const variant = data.landingVariant ?? null;
   const preferences = data.preferences ?? null;
   const notificationsUnread = data.notificationsUnread ?? 0;
+  const wallet = data.wallet;
+  const walletTx = data.walletTx ?? [];
+  const latestWalletTx = walletTx[0] ?? null;
 
   const energy = stats?.energy ?? 0;
   const energyMax = stats?.energy_max ?? 0;
@@ -166,7 +170,7 @@
         id="path"
         class="space-y-4"
       >
-        <EndcapCard {endcap} />
+        <EndcapCard id="home-endcap" {endcap} />
       </OrbPanel>
     </section>
 
@@ -184,6 +188,9 @@
           energy={stats?.energy ?? null}
           energyMax={stats?.energy_max ?? null}
           notifications={notificationsUnread}
+          walletBalance={wallet?.balance ?? null}
+          walletCurrency={wallet?.currency ?? 'shards'}
+          walletDelta={latestWalletTx?.amount ?? null}
         />
       </OrbPanel>
     </aside>

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabase';
+import { convertAchievementPointsToShards, walletGrant } from '$lib/server/econ/index';
 
 type SupabaseService = SupabaseClient<any, 'public', any>;
 
@@ -72,6 +73,7 @@ export type UnlockSummary = {
   icon: string;
   points: number;
   rarity: AchievementDefinition['rarity'];
+  shards: number;
   meta: UnlockMeta;
 };
 
@@ -331,6 +333,8 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
       throw insert.error;
     }
 
+    const insertedId = (insert.data as { id?: string } | null)?.id ?? null;
+
     let cache = unlockedCache.get(userId);
     if (!cache) {
       cache = new Set([achievement.id]);
@@ -338,6 +342,8 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
     } else {
       cache.add(achievement.id);
     }
+
+    let shardsGranted = 0;
 
     if (achievement.points > 0) {
       const { error } = await supabase.rpc('fn_add_points', {
@@ -353,6 +359,37 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
       }
     }
 
+    const shards = convertAchievementPointsToShards(achievement.points);
+    if (shards > 0) {
+      try {
+        await walletGrant({
+          userId,
+          amount: shards,
+          source: 'achievement',
+          refId: achievement.id,
+          meta: {
+            key: achievement.key,
+            points: achievement.points
+          },
+          client: supabase
+        });
+        shardsGranted = shards;
+      } catch (err) {
+        console.error('[achievements] failed to grant shards', err, {
+          userId,
+          achievementId: achievement.id
+        });
+        if (insertedId) {
+          await supabase
+            .from('user_achievements')
+            .delete()
+            .eq('id', insertedId)
+            .catch(() => undefined);
+        }
+        throw err;
+      }
+    }
+
     return {
       achievementId: achievement.id,
       key: achievement.key,
@@ -360,6 +397,7 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
       icon: achievement.icon,
       points: achievement.points,
       rarity: achievement.rarity,
+      shards: shardsGranted,
       meta
     };
   };
