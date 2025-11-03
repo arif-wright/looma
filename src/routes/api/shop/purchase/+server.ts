@@ -7,6 +7,7 @@ import { getShopItem } from '$lib/server/econ/catalog';
 import { walletSpend, fetchWallet } from '$lib/server/econ/index';
 import { enforceEconomyRateLimit } from '$lib/server/econ/rate';
 import { logGameAudit } from '$lib/server/games/audit';
+import { logEvent } from '$lib/server/analytics/log';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
@@ -143,6 +144,21 @@ export const POST: RequestHandler = async (event) => {
         subtotal,
         discountPct,
         pointsBefore: points
+      }
+    });
+
+    await logEvent(event, 'wallet_spend', {
+      userId: user.id,
+      amount: total,
+      currency: 'shards',
+      meta: {
+        source: 'shop_purchase',
+        itemId: item.id,
+        qty,
+        unitPrice: item.price,
+        subtotal,
+        discountPct,
+        orderId
       }
     });
 

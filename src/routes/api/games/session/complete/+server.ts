@@ -18,6 +18,9 @@ import type { UnlockSummary } from '$lib/server/achievements/evaluator';
 import { getCurrentStreakDays } from '$lib/server/games/streak';
 import { createAchievementNotification } from '$lib/server/notifications';
 import { applyStreakMultiplier, getStreakMultiplier, walletGrant } from '$lib/server/econ/index';
+import { getDeviceHash } from '$lib/server/utils/device';
+import { logEvent } from '$lib/server/analytics/log';
+import { inspectSessionComplete } from '$lib/server/anti/inspect';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -49,6 +52,7 @@ export const POST: RequestHandler = async (event) => {
   const { user, supabase } = await ensureAuth(event);
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
   const admin = getAdminClient();
+  const deviceHash = getDeviceHash(event);
 
   let rewards: SessionRewardResponse = {
     xpDelta: 0,
@@ -415,6 +419,83 @@ export const POST: RequestHandler = async (event) => {
       console.error('[games] wallet grant failed', err);
       throw error(500, { code: 'server_error', message: 'Unable to credit wallet.' });
     }
+  }
+
+  await inspectSessionComplete({
+    userId: user.id,
+    sessionId,
+    gameId: session.game_id,
+    score,
+    durationMs,
+    ip: clientIp,
+    deviceHash,
+    caps: {
+      maxScorePerMin: caps.maxScorePerMin,
+      minDurationMs: caps.minDurationMs
+    }
+  });
+
+  await logEvent(event, 'game_complete', {
+    userId: user.id,
+    sessionId,
+    gameId: session.game_id,
+    score,
+    durationMs,
+    meta: {
+      slug: game.slug,
+      multiplier: rewards.currencyMultiplier,
+      baseCurrency: rewards.baseCurrencyDelta,
+      deviceHash,
+      caps
+    }
+  });
+
+  if (rewards.currencyDelta > 0) {
+    await logEvent(event, 'wallet_grant', {
+      userId: user.id,
+      amount: rewards.currencyDelta,
+      currency: 'shards',
+      sessionId,
+      gameId: session.game_id,
+      meta: {
+        source: 'game_session',
+        slug: game.slug,
+        multiplier: rewards.currencyMultiplier,
+        baseCurrency: rewards.baseCurrencyDelta
+      }
+    });
+  }
+
+  if (achievementsUnlocked.length > 0) {
+    await Promise.all(
+      achievementsUnlocked.map(async (entry) => {
+        await logEvent(event, 'achievement_unlock', {
+          userId: user.id,
+          sessionId,
+          gameId: session.game_id,
+          meta: {
+            key: entry.key,
+            points: entry.points,
+            shards: entry.shards,
+            rarity: entry.rarity
+          }
+        });
+        if (entry.shards && entry.shards > 0) {
+          await logEvent(event, 'wallet_grant', {
+            userId: user.id,
+            amount: entry.shards,
+            currency: 'shards',
+            sessionId,
+            gameId: session.game_id,
+            meta: {
+              source: 'achievement',
+              key: entry.key,
+              points: entry.points
+            }
+          });
+        }
+      })
+    );
   }
 
   await logGameAudit({

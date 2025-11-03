@@ -7,6 +7,7 @@ import { sanitizeShareText, generateShareSlug, formatScore, toSeconds } from '$l
 import { logGameAudit } from '$lib/server/games/audit';
 import { createNotification } from '$lib/server/notifications';
 import { canonicalPostPath } from '$lib/threads/permalink';
+import { logEvent } from '$lib/server/analytics/log';
 
 type ShareRunPayload = {
   sessionId?: unknown;
@@ -269,6 +270,18 @@ export const POST: RequestHandler = async (event) => {
   } catch (err) {
     console.warn('[social/share/run] notification insert failed', err);
   }
+
+  await logEvent(event, 'share_post', {
+    userId: user.id,
+    sessionId,
+    gameId: gameRow.id as string,
+    meta: {
+      kind: 'run',
+      slug: gameRow.slug,
+      score: finalScore,
+      durationMs: finalDuration
+    }
+  });
 
   return json({ postId: inserted.id }, { headers: CACHE_HEADERS });
 };

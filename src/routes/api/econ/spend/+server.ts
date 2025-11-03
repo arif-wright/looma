@@ -6,6 +6,7 @@ import { fetchWallet, walletSpend } from '$lib/server/econ/index';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { getShopItem } from '$lib/server/econ/catalog';
 import { logGameAudit } from '$lib/server/games/audit';
+import { logEvent } from '$lib/server/analytics/log';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
@@ -175,6 +176,17 @@ export const POST: RequestHandler = async (event) => {
       source,
       refId,
       meta: spendMeta
+    });
+
+    await logEvent(event, 'wallet_spend', {
+      userId: user.id,
+      amount: finalAmount,
+      currency: 'shards',
+      meta: {
+        source,
+        refId,
+        ...spendMeta
+      }
     });
 
     const wallet = await fetchWallet(supabaseAdmin, user.id);

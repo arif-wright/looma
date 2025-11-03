@@ -6,6 +6,7 @@ import { enforceEconomyRateLimit } from '$lib/server/econ/rate';
 import { fetchWallet, walletGrant } from '$lib/server/econ/index';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { logGameAudit } from '$lib/server/games/audit';
+import { logEvent } from '$lib/server/analytics/log';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
@@ -136,6 +137,18 @@ export const POST: RequestHandler = async (event) => {
       meta: {
         ...meta,
         granted_by: user.id
+      }
+    });
+
+    await logEvent(event, 'wallet_grant', {
+      userId: targetUserId,
+      amount: Math.floor(amountRaw),
+      currency: 'shards',
+      meta: {
+        source,
+        grantedBy: user.id,
+        refId,
+        ...meta
       }
     });
 

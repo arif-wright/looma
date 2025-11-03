@@ -6,6 +6,7 @@ import { sanitizeShareText, generateShareSlug } from '$lib/server/social/share-u
 import { logGameAudit } from '$lib/server/games/audit';
 import { createNotification } from '$lib/server/notifications';
 import { canonicalPostPath } from '$lib/threads/permalink';
+import { logEvent } from '$lib/server/analytics/log';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
@@ -217,6 +218,15 @@ export const POST: RequestHandler = async (event) => {
   } catch (err) {
     console.warn('[social/share/achievement] notification insert failed', err);
   }
+
+  await logEvent(event, 'share_post', {
+    userId: user.id,
+    meta: {
+      kind: 'achievement',
+      key: achievement.key,
+      points: achievement.points
+    }
+  });
 
   return json({ postId: inserted.id }, { headers: CACHE_HEADERS });
 };

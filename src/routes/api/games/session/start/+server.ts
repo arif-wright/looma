@@ -4,6 +4,8 @@ import { env } from '$env/dynamic/private';
 import { ensureAuth, getActiveGameBySlug, getConfigForGame, hasAbuseFlag } from '$lib/server/games/guard';
 import { limit } from '$lib/server/games/rate';
 import { logGameAudit } from '$lib/server/games/audit';
+import { getDeviceHash } from '$lib/server/utils/device';
+import { logEvent } from '$lib/server/analytics/log';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 
@@ -79,6 +81,20 @@ export const POST: RequestHandler = async (event) => {
     details: {
       slug,
       clientVersion
+    }
+  });
+
+  const deviceHash = getDeviceHash(event);
+
+  await logEvent(event, 'game_start', {
+    userId: user.id,
+    sessionId: session.session_id,
+    gameId: game.id,
+    meta: {
+      slug,
+      clientVersion,
+      deviceHash,
+      caps
     }
   });
 
