@@ -244,7 +244,7 @@
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: 280px minmax(520px, 640px) 320px;
+    grid-template-columns: 260px 560px 310px;
     column-gap: 3.5rem;
     row-gap: 2.5rem;
     align-items: start;
