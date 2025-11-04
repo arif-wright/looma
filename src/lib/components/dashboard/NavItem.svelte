@@ -47,25 +47,24 @@
     align-items: center;
     gap: 0.85rem;
     width: 100%;
-    padding: 0.85rem 1rem;
-    border-radius: 1.15rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.8rem;
     border: 1px solid transparent;
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(240, 249, 255, 0.82);
+    background: transparent;
+    color: rgba(222, 227, 241, 0.8);
     text-align: left;
     cursor: pointer;
-    transition: all 180ms ease;
+    transition: all 160ms ease;
   }
 
   .nav-item:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55);
   }
 
   .nav-item:hover,
   .nav-item[data-active="true"] {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(147, 197, 253, 0.18);
+    background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.95);
   }
 

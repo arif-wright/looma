@@ -8,6 +8,7 @@
   import StreakCard from '$lib/components/dashboard/StreakCard.svelte';
   import TelemetryCapsule from '$lib/components/dashboard/TelemetryCapsule.svelte';
   import ContactChip from '$lib/components/dashboard/ContactChip.svelte';
+  import StoryStrip from '$lib/components/dashboard/StoryStrip.svelte';
   import {
     Sparkles,
     Compass,
@@ -60,6 +61,13 @@
     { name: 'Jun Ember', status: 'away' },
     { name: 'Sol Vega', status: 'offline' }
   ] as const;
+
+  const stories = [
+    { id: 'story-1', name: 'Nova', status: 'new' },
+    { id: 'story-2', name: 'Mira', status: 'new' },
+    { id: 'story-3', name: 'Kai', status: 'seen' },
+    { id: 'story-4', name: 'Sol', status: 'seen' }
+  ];
 
   const handleNav = (href: string) => {
     if (!href) return;
@@ -119,18 +127,22 @@
       </aside>
 
       <section class="content" aria-label="Activity feed">
-        <article id="greeting" class="panel animate-in" data-delay="0">
+        <article id="greeting" class="panel panel--plain animate-in" data-delay="0">
           <header class="panel__header">
             <h2 class="panel__title">Your bond pulses brighter today.</h2>
             <p class="panel__subtitle">Take a breath, share a whisper, and glide into the circle.</p>
           </header>
         </article>
 
-        <article id="whisper" class="panel animate-in" data-delay="1" aria-label="Whisper composer">
+        <article id="stories" class="panel panel--compact animate-in" data-delay="1" aria-label="Stories">
+          <StoryStrip stories={stories} />
+        </article>
+
+        <article id="whisper" class="panel panel--compose animate-in" data-delay="1" aria-label="Whisper composer">
           <WhisperComposer on:submit={handleWhisperSubmit} />
         </article>
 
-        <article id="feed" class="panel animate-in" data-delay="2" aria-label="Feed">
+        <article id="feed" class="panel panel--stack animate-in" data-delay="2" aria-label="Feed">
           <header class="panel__header">
             <h2 class="panel__title">Signals from your circle</h2>
             <p class="panel__subtitle">Whispers, pulses, and mission echoes.</p>
@@ -179,10 +191,10 @@
       </section>
 
       <aside class="sidebar sidebar--right" aria-label="Telemetry and contacts">
-        <div class="sidebar__section animate-in" data-delay="1">
+        <div class="sidebar__section sidebar__section--card animate-in" data-delay="1">
           <TelemetryCapsule level={7} xp={1820} xpNext={2400} walletBalance={640} walletCurrency="shards" />
         </div>
-        <div class="sidebar__section animate-in" data-delay="2">
+        <div class="sidebar__section sidebar__section--card animate-in" data-delay="2">
           <p class="sidebar__label">Contacts</p>
           <div class="sidebar__items sidebar__items--vertical">
             {#each contacts as contact}
@@ -220,7 +232,7 @@
   .dashboard__backdrop {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, #2c1f4f 0%, #2a205a 45%, #1b173a 100%);
+    background: linear-gradient(180deg, #1f2125 0%, #17181b 70%, #141518 100%);
     z-index: -2;
   }
 
@@ -233,8 +245,8 @@
   .dashboard__grid {
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr) 320px;
-    column-gap: 6rem;
-    row-gap: 3rem;
+    column-gap: 4.5rem;
+    row-gap: 2.5rem;
     align-items: start;
   }
 
@@ -242,52 +254,75 @@
     position: sticky;
     top: 5rem;
     display: grid;
-    gap: 2.5rem;
+    gap: 2rem;
     align-self: start;
   }
 
   .sidebar__section {
     display: grid;
-    gap: 1rem;
-    padding: 1.4rem;
-    border-radius: 1.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(147, 197, 253, 0.2);
-    box-shadow: 0 0 16px rgba(147, 197, 253, 0.15);
-    backdrop-filter: blur(16px);
+    gap: 0.85rem;
+  }
+
+  .sidebar__section--card {
+    padding: 1.2rem;
+    border-radius: 1.2rem;
+    background: #242526;
+    border: 1px solid rgba(59, 64, 75, 0.85);
   }
 
   .sidebar__label {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(226, 232, 240, 0.6);
+    color: rgba(198, 205, 220, 0.55);
   }
 
   .sidebar__items {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .sidebar__items--vertical {
-    gap: 0.9rem;
+    gap: 0.8rem;
   }
 
   .content {
     display: grid;
-    gap: 3rem;
+    gap: 2.2rem;
   }
 
   .panel {
     display: grid;
-    gap: 1.5rem;
-    padding: 2.1rem clamp(1.6rem, 4vw, 2.4rem);
-    border-radius: 1.85rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(147, 197, 253, 0.2);
-    box-shadow: 0 0 16px rgba(147, 197, 253, 0.15);
-    backdrop-filter: blur(18px);
+    gap: 1.4rem;
+    padding: 1.8rem clamp(1.6rem, 4vw, 2.3rem);
+    border-radius: 1.4rem;
+    background: #242526;
+    border: 1px solid rgba(59, 64, 75, 0.9);
+    box-shadow: 0 12px 24px rgba(10, 12, 16, 0.4);
+  }
+
+  .panel--compact {
+    padding: 1.4rem 1.2rem;
+  }
+
+  .panel--compose {
+    padding: 1.4rem 1.4rem 1.2rem;
+  }
+
+  .panel--plain {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .panel--stack {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    gap: 1.8rem;
   }
 
   .panel__header {
@@ -304,10 +339,10 @@
 
   .panel__subtitle {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(226, 232, 240, 0.62);
+    color: rgba(198, 205, 220, 0.55);
   }
 
   .panel__body {
@@ -315,6 +350,11 @@
     font-size: 0.95rem;
     color: rgba(226, 232, 240, 0.78);
     line-height: 1.7;
+  }
+
+  .panel--stack .panel__header {
+    padding: 0 0 1rem;
+    border-bottom: 1px solid rgba(59, 64, 75, 0.75);
   }
 
   .feed {
@@ -330,11 +370,10 @@
   }
 
   .mini-card {
-    padding: 1.2rem;
-    border-radius: 1.4rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    box-shadow: 0 0 16px rgba(147, 197, 253, 0.12);
+    padding: 1.1rem;
+    border-radius: 1.2rem;
+    background: #242526;
+    border: 1px solid rgba(59, 64, 75, 0.85);
     display: grid;
     gap: 0.4rem;
   }
@@ -358,10 +397,9 @@
 
   .companion__card {
     padding: 1.1rem 1.3rem;
-    border-radius: 1.4rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    box-shadow: 0 0 16px rgba(147, 197, 253, 0.12);
+    border-radius: 1.2rem;
+    background: #242526;
+    border: 1px solid rgba(59, 64, 75, 0.85);
     display: grid;
     gap: 0.35rem;
   }

@@ -15,10 +15,9 @@
     display: grid;
     gap: 0.6rem;
     padding: 1.2rem;
-    border-radius: 1.4rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    box-shadow: 0 0 16px rgba(147, 197, 253, 0.12);
+    border-radius: 1.2rem;
+    background: #242526;
+    border: 1px solid rgba(59, 64, 75, 0.85);
   }
 
   header {
