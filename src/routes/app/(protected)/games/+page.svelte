@@ -2,6 +2,8 @@
   import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import GameGrid from '$lib/components/games/GameGrid.svelte';
+  import { games as gameCatalog } from '$lib/data/games';
   import {
     applyPlayerState,
     getPlayerProgressSnapshot,
@@ -9,6 +11,7 @@
     type PlayerProgressState,
     type RewardEntry
   } from '$lib/games/state';
+  import type { GameMeta } from '$lib/data/games';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -105,15 +108,20 @@
     return Array.from(unique.values());
   };
 
-  const glowForGame = (slug: string) => {
-    if (slug.includes('tile') || slug.includes('run')) return 'glow-cyan';
-    if (slug.includes('astro') || slug.includes('match')) return 'glow-magenta';
-    return 'glow-violet';
-  };
-
   const fallbackRecent = games.slice(0, 6).map((game) => ({ slug: game.slug, name: game.name }));
   $: recentGames = recentGamesFromRewards();
   $: recentCatalog = recentGames.length > 0 ? recentGames : fallbackRecent;
+
+  const metaBySlug = new Map(gameCatalog.map((entry) => [entry.slug, entry]));
+  const gamesWithArtwork: GameMeta[] = games
+    .map((game) => metaBySlug.get(game.slug))
+    .filter((entry): entry is GameMeta => Boolean(entry));
+  const gridGames: GameMeta[] = gamesWithArtwork.length
+    ? [
+        ...gamesWithArtwork,
+        ...gameCatalog.filter((entry) => !gamesWithArtwork.some((item) => item.slug === entry.slug))
+      ]
+    : gameCatalog;
 
   const findFeatured = () => {
     if (recentCatalog.length > 0) {
@@ -127,9 +135,6 @@
   };
 
   $: featuredGame = findFeatured();
-
-  const supportingGames = games.filter((game) => !featuredGame || game.slug !== featuredGame.slug);
-
   const PAGE_SIZE = 3;
   let rewardPage = 0;
 
@@ -260,38 +265,17 @@
       {/if}
     </section>
 
-    <section class="games-grid" aria-label="All games" data-testid="games-grid">
-      <header class="games-grid__header">
-        <p class="games-grid__kicker">Game library</p>
-        <h2 class="games-grid__title">All games</h2>
-        <p class="games-grid__lead">Browse the latest sims ready for playtesting.</p>
+    <section
+      class="games-grid-section space-y-3"
+      aria-label="All games"
+      data-testid="games-grid"
+    >
+      <header class="space-y-2 text-left">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">Game library</p>
+        <h2 class="text-2xl font-semibold text-white">All games</h2>
+        <p class="max-w-xl text-sm text-white/70">Browse the latest sims ready for playtesting.</p>
       </header>
-      {#each games as game (game.slug)}
-        <article
-          class={`game-card panel-glass ${glowForGame(game.slug)}`}
-          data-testid={`game-card-${game.slug}`}
-        >
-          <div class="game-card__meta">
-            <span class="badge">Playtest</span>
-            <span class="chip">v{game.min_version ?? '1.0.0'}</span>
-          </div>
-          <h2>{game.name}</h2>
-          <p>
-            Navigate the neuro field, chase shards, and post a top score. Sessions max at
-            {game.max_score ?? 100000} points.
-          </p>
-          <div class="game-card__cta">
-            <a
-              class="brand-cta"
-              href={`/app/games/${game.slug}`}
-              data-testid={`game-cta-${game.slug}`}
-              data-ana="cta:play"
-            >
-              Play {game.name}
-            </a>
-          </div>
-        </article>
-      {/each}
+      <GameGrid items={gridGames} aspect="16:9" />
     </section>
   </main>
 </div>
@@ -631,90 +615,6 @@
     color: rgba(248, 250, 255, 0.6);
   }
 
-  .games-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .games-grid__header {
-    grid-column: 1 / -1;
-    display: grid;
-    gap: 0.4rem;
-  }
-
-  .games-grid__kicker {
-    margin: 0;
-    font-size: 0.75rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .games-grid__title {
-    margin: 0;
-    font-size: clamp(1.6rem, 2.4vw, 2rem);
-    font-weight: 600;
-  }
-
-  .games-grid__lead {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.68);
-    max-width: 520px;
-  }
-
-  .game-card {
-    position: relative;
-    padding: 1.7rem;
-    border-radius: 1.5rem;
-    background: rgba(6, 9, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 18px 34px rgba(3, 4, 14, 0.45);
-    transition: transform 160ms ease, box-shadow 200ms ease;
-  }
-
-  .game-card:hover,
-  .game-card:focus-within {
-    transform: translateY(-3px);
-    box-shadow: 0 22px 44px rgba(3, 4, 14, 0.55);
-  }
-
-  .game-card__meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.65);
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-  }
-
-  .badge {
-    padding: 0.2rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-  }
-
-  .chip {
-    padding: 0.2rem 0.65rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .game-card h2 {
-    margin: 1rem 0 0.4rem;
-    font-size: 1.65rem;
-  }
-
-  .game-card p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .game-card__cta {
-    margin-top: 1.5rem;
-  }
-
   @media (max-width: 768px) {
     .games-main {
       padding-bottom: 6rem;
@@ -733,7 +633,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .game-card,
     .games-main {
       transition: none;
     }
