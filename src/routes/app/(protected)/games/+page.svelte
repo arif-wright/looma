@@ -1,7 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
-  import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import StatusCapsule from '$lib/components/home/StatusCapsule.svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import {
@@ -96,24 +95,30 @@
   let rewardList: RewardEntry[] = playerSummary?.rewards ? playerSummary.rewards.slice(0, 5) : [];
 
   $: rewardList = (playerSummary?.rewards ?? []).slice(0, 5);
+
+  const glowForGame = (slug: string) => {
+    if (slug.includes('tile') || slug.includes('run')) return 'glow-cyan';
+    if (slug.includes('astro') || slug.includes('match')) return 'glow-magenta';
+    return 'glow-violet';
+  };
 </script>
 
 <svelte:head>
   <title>Looma — Game Hub</title>
 </svelte:head>
 
-<div class="bg-neuro min-h-screen" data-testid="game-hub">
-  <BackgroundStack />
-  <main class="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-24 pt-24">
-    <header class="flex flex-col gap-3 text-white/80">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Arcade</p>
-      <h1 class="text-4xl font-semibold text-white">Mini-games hub</h1>
-      <p class="max-w-2xl text-sm text-white/70">
-        Discover experimental Looma mini-games. Sessions earn small rewards and help us tune the new
-        play loop.
+<div class="games-surface" data-testid="games-hub">
+  <BackgroundStack class="games-particles" />
+  <main class="games-main">
+    <header class="games-hero panel-glass">
+      <p class="eyebrow">Arcade Flow</p>
+      <h1>Your reflex is the catalyst</h1>
+      <p class="lead">
+        Experimental Kinforge mini-games tuned for shard flow. Earn rewards, fuel the shop, and feed
+        the analytics loop.
       </p>
       <StatusCapsule
-        className="w-full max-w-xl"
+        className="w-full max-w-2xl"
         level={playerSummary?.level ?? null}
         xp={playerSummary?.xp ?? null}
         xpNext={playerSummary?.xpNext ?? null}
@@ -125,8 +130,8 @@
         walletDelta={walletDelta}
       />
 
-      <section class="progress-overview" aria-label="Player rewards">
-        <div class="progress-tile">
+      <section class="progress-grid" aria-label="Player rewards">
+        <article class="progress-card panel-glass glow-cyan">
           <span class="progress-label">Shard balance</span>
           <strong class="progress-value" data-testid="shard-balance">
             {#if typeof walletBalance === 'number'}
@@ -135,9 +140,9 @@
               —
             {/if}
           </strong>
-          <p class="progress-hint">Rewards from recent sessions and grants sum here.</p>
-        </div>
-        <div class="progress-tile">
+          <p class="progress-hint">Missions, arcade, and promos flow currency here.</p>
+        </article>
+        <article class="progress-card panel-glass glow-violet">
           <span class="progress-label">Recent rewards</span>
           {#if rewardList.length > 0}
             <ul class="reward-log" data-testid="reward-log">
@@ -159,127 +164,225 @@
               {/each}
             </ul>
           {:else}
-            <p class="progress-hint">Complete a session to see rewards appear here.</p>
+            <p class="progress-hint">Complete a session to see rewards animate here.</p>
           {/if}
-        </div>
+        </article>
       </section>
     </header>
 
-    <section class="grid gap-6 md:grid-cols-2" aria-label="Available games">
+    <section class="games-grid" aria-label="Available games" data-testid="games-grid">
       {#each games as game (game.slug)}
-        <OrbPanel class="space-y-4">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-white/50">Playtest</p>
-              <h2 class="text-2xl font-semibold text-white">{game.name}</h2>
-            </div>
-            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
-              v{game.min_version ?? '1.0.0'}
-            </span>
+        <article
+          class={`game-card panel-glass ${glowForGame(game.slug)}`}
+          data-testid={`game-card-${game.slug}`}
+        >
+          <div class="game-card__meta">
+            <span class="badge">Playtest</span>
+            <span class="chip">v{game.min_version ?? '1.0.0'}</span>
           </div>
-
-          <p class="text-sm text-white/70">
-            Navigate the neuro field, chase shards, and post a top score. Sessions are capped at
+          <h2>{game.name}</h2>
+          <p>
+            Navigate the neuro field, chase shards, and post a top score. Sessions max at
             {game.max_score ?? 100000} points.
           </p>
-
-          <div class="flex items-center justify-end">
+          <div class="game-card__cta">
             <a
-              class="btn-primary whitespace-nowrap"
+              class="brand-cta"
               href={`/app/games/${game.slug}`}
-              data-testid={`game-card-${game.slug}`}
+              data-testid={`game-cta-${game.slug}`}
+              data-ana="cta:play"
             >
               Play {game.name}
             </a>
           </div>
-        </OrbPanel>
+        </article>
       {/each}
     </section>
   </main>
 </div>
 
 <style>
-  .progress-overview {
+  .games-surface {
+    position: relative;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, rgba(91, 216, 255, 0.12), transparent 50%),
+      var(--brand-navy, #050712);
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .games-particles :global(canvas) {
+    opacity: 0.4;
+  }
+
+  .games-main {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem clamp(1rem, 4vw, 3rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .games-hero {
     display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    text-align: left;
+  }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .games-hero h1 {
+    font-size: clamp(2.5rem, 4vw, 3.4rem);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .lead {
+    margin: 0;
+    max-width: 640px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1rem;
+  }
+
+  .progress-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
     margin-top: 1rem;
   }
 
-  .progress-tile {
-    border-radius: 1rem;
+  .progress-card {
+    position: relative;
+    padding: 1.35rem;
+    border-radius: 1.35rem;
+    background: rgba(6, 9, 26, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(13, 18, 41, 0.65);
-    padding: 1rem 1.2rem;
-    display: grid;
-    gap: 0.55rem;
   }
 
   .progress-label {
-    font-size: 0.75rem;
-    letter-spacing: 0.18em;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(226, 232, 255, 0.6);
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .progress-value {
-    font-size: 1.85rem;
-    font-weight: 600;
-    color: rgba(244, 247, 255, 0.93);
+    font-size: 2rem;
+    margin-top: 0.5rem;
+    display: block;
   }
 
   .progress-hint {
-    margin: 0;
-    font-size: 0.8rem;
-    color: rgba(214, 224, 255, 0.65);
+    margin: 0.4rem 0 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.65);
   }
 
   .reward-log {
-    margin: 0;
-    padding: 0;
+    margin: 0.75rem 0 0;
     list-style: none;
+    padding: 0;
     display: grid;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
 
   .reward-row {
-    display: grid;
-    gap: 0.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
   }
 
   .reward-delta {
     font-weight: 600;
-    color: rgba(244, 247, 255, 0.9);
+    color: #fff;
   }
 
-  .reward-delta .reward-multiplier {
+  .reward-multiplier {
     margin-left: 0.35rem;
-    color: rgba(144, 241, 226, 0.9);
-    font-weight: 600;
-    font-size: 0.85rem;
+    color: var(--brand-cyan, #5ef2ff);
   }
 
   .reward-meta {
     font-size: 0.78rem;
-    color: rgba(182, 198, 255, 0.7);
+    color: rgba(255, 255, 255, 0.55);
   }
 
-  .btn-primary {
-    border-radius: 999px;
-    padding: 0.65rem 1.5rem;
-    background: linear-gradient(120deg, rgba(155, 92, 255, 0.85), rgba(77, 244, 255, 0.85));
-    color: rgba(10, 14, 32, 0.92);
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    border: none;
-    cursor: pointer;
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .game-card {
+    position: relative;
+    padding: 1.8rem;
+    border-radius: 1.5rem;
+    background: rgba(6, 9, 26, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 38px rgba(3, 4, 14, 0.65);
     transition: transform 160ms ease, box-shadow 200ms ease;
   }
 
-  .btn-primary:hover,
-  .btn-primary:focus-visible {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 34px rgba(77, 244, 255, 0.25);
-    outline: none;
+  .game-card:hover,
+  .game-card:focus-within {
+    transform: translateY(-3px);
+    box-shadow: 0 32px 52px rgba(3, 4, 14, 0.75);
+  }
+
+  .game-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+
+  .badge {
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .chip {
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .game-card h2 {
+    margin: 1rem 0 0.4rem;
+    font-size: 1.65rem;
+  }
+
+  .game-card p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .game-card__cta {
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .games-main {
+      padding-bottom: 6rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-card,
+    .games-main {
+      transition: none;
+    }
   }
 </style>

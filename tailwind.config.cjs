@@ -23,17 +23,32 @@ module.exports = {
           violet: "#9b5cff",
           magenta: "#ff4fd8",
           gold: "#ffd36e"
+        },
+        brand: {
+          cyan: "#5ef2ff",
+          violet: "#9b5cff",
+          magenta: "#ff4fd8",
+          amber: "#ffcf6a",
+          navy: "#050712"
         }
+      },
+      borderRadius: {
+        brand: "22px",
+        "brand-pill": "999px"
       },
       backgroundImage: {
         "looma-gradient":
           "linear-gradient(140deg, rgba(77,244,255,0.18), rgba(155,92,255,0.22), rgba(255,79,216,0.18))",
         "looma-accent":
-          "radial-gradient(140% 160% at 10% -10%, rgba(157,92,255,0.28), transparent 60%), radial-gradient(120% 160% at 120% 120%, rgba(77,244,255,0.22), transparent 60%)"
+          "radial-gradient(140% 160% at 10% -10%, rgba(157,92,255,0.28), transparent 60%), radial-gradient(120% 160% at 120% 120%, rgba(77,244,255,0.22), transparent 60%)",
+        "brand-gradient":
+          "linear-gradient(135deg, rgba(8,12,24,0.92), rgba(24,7,33,0.94))"
       },
       boxShadow: {
         orb: "0 18px 40px rgba(155, 92, 255, 0.35)",
-        "orb-strong": "0 30px 60px rgba(77, 244, 255, 0.32)"
+        "orb-strong": "0 30px 60px rgba(77, 244, 255, 0.32)",
+        "brand-panel": "0 32px 46px rgba(6, 9, 26, 0.45)",
+        "brand-glow": "0 0 24px rgba(94, 242, 255, 0.45)"
       },
       keyframes: {
         "bg-shift": {
@@ -49,11 +64,17 @@ module.exports = {
           "0%": { transform: "scale(0)", opacity: "0.45" },
           "75%": { transform: "scale(1.8)", opacity: "0.1" },
           "100%": { transform: "scale(2.1)", opacity: "0" }
+        },
+        "ribbon-sheen": {
+          "0%": { transform: "translateX(-100%)", opacity: "0" },
+          "40%": { opacity: "1" },
+          "100%": { transform: "translateX(120%)", opacity: "0" }
         }
       },
       animation: {
         "bg-shift": "bg-shift 60s linear infinite",
-        "pulse-soft": "pulse-soft 3s ease-in-out infinite"
+        "pulse-soft": "pulse-soft 3s ease-in-out infinite",
+        "ribbon-sheen": "ribbon-sheen 3s ease-in-out infinite"
       }
     }
   },

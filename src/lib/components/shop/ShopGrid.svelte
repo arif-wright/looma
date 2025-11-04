@@ -28,33 +28,43 @@
 
   const currencyLabel = (currency: string) => (currency ?? 'shards').toUpperCase();
 
+  const glowForRarity = (rarity: string | null | undefined) => {
+    const key = (rarity ?? 'common').toLowerCase();
+    if (key === 'legendary') return 'glow-amber';
+    if (key === 'epic') return 'glow-magenta';
+    if (key === 'rare') return 'glow-cyan';
+    return 'glow-violet';
+  };
+
   function select(item: ShopGridItem) {
     dispatch('select', { item });
   }
 </script>
 
-<div class="shop-grid" role="list">
+<div class="shop-grid" role="list" data-testid="shop-grid">
   {#each items as item (item.sku)}
     <button
       type="button"
-      class="shop-card"
+      class={`shop-card panel-glass ${glowForRarity(item.rarity)}`}
       role="listitem"
       data-testid={`shop-card-${item.sku}`}
+      aria-label={`Inspect ${item.displayName}`}
+      data-ana="shop:open-modal"
       on:click={() => select(item)}
     >
+      {#if item.promoPercent > 0}
+        <span
+          class={`promo-ribbon ${item.isFlash ? 'flash' : ''}`}
+          aria-label={item.isFlash ? 'Flash promo active' : 'Promotion active'}
+          data-testid="promo-ribbon"
+        >
+          {item.isFlash ? 'Flash -' : '-'}{item.promoPercent}%
+        </span>
+      {/if}
       <div class="shop-card__header">
         <span class={`shop-card__rarity rarity-${(item.rarity ?? 'common').toLowerCase()}`}>
           {rarityLabel(item.rarity)}
         </span>
-        {#if item.promoPercent > 0}
-          <span
-            class={`shop-card__promo ${item.isFlash ? 'flash' : ''}`}
-            aria-label={item.isFlash ? 'Flash promo active' : 'Promotion active'}
-            data-testid={item.isFlash ? 'shop-promo-flash' : 'shop-promo'}
-          >
-            {item.isFlash ? 'Flash -' : '-'}{item.promoPercent}%
-          </span>
-        {/if}
       </div>
 
       <div class="shop-card__icon" aria-hidden="true">{item.icon}</div>
@@ -65,8 +75,11 @@
       </div>
 
       <div class="shop-card__footer">
-        <span class="price">{item.price.toLocaleString()} {currencyLabel(item.currency)}</span>
-        <span class="cta">View</span>
+        <span class="price" aria-label="Price">
+          <span class="shard" aria-hidden="true">💎</span>
+          {item.price.toLocaleString()} {currencyLabel(item.currency)}
+        </span>
+        <span class="cta">Inspect</span>
       </div>
     </button>
   {/each}
@@ -75,8 +88,8 @@
 <style>
   .shop-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.3rem;
     width: 100%;
   }
 
@@ -84,24 +97,41 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.15rem;
-    border-radius: 1.2rem;
-    background: linear-gradient(160deg, rgba(17, 25, 40, 0.85), rgba(15, 23, 42, 0.6));
-    border: 1px solid rgba(94, 234, 212, 0.08);
-    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
-    color: #e2e8f0;
+    gap: 0.9rem;
+    padding: 1.35rem;
+    border-radius: 1.4rem;
     text-align: left;
-    transition: transform 0.22s ease, box-shadow 0.22s ease, border 0.22s ease;
     cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(5, 7, 18, 0.78);
+    color: #f8f6ff;
+    overflow: hidden;
+    transition: transform 180ms ease, box-shadow 220ms ease;
   }
 
   .shop-card:hover,
   .shop-card:focus-visible {
     transform: translateY(-4px);
-    border-color: rgba(94, 234, 212, 0.38);
-    box-shadow: 0 32px 64px rgba(13, 25, 51, 0.45);
+    box-shadow: 0 28px 48px rgba(2, 4, 12, 0.55);
     outline: none;
+  }
+
+  .promo-ribbon {
+    position: absolute;
+    top: 0.75rem;
+    left: -0.15rem;
+    padding: 0.25rem 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    background: linear-gradient(120deg, rgba(255, 79, 216, 0.9), rgba(155, 92, 255, 0.9));
+    color: #fff;
+    clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+    box-shadow: 0 12px 24px rgba(155, 92, 255, 0.45);
+  }
+
+  .promo-ribbon.flash {
+    background: linear-gradient(120deg, rgba(255, 207, 106, 0.95), rgba(255, 149, 5, 0.9));
   }
 
   .shop-card__header {
@@ -112,87 +142,60 @@
   }
 
   .shop-card__rarity {
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    padding: 0.2rem 0.55rem;
+    padding: 0.25rem 0.65rem;
     border-radius: 999px;
-    background: rgba(226, 232, 240, 0.08);
-    color: rgba(226, 232, 240, 0.85);
-    border: 1px solid transparent;
-  }
-
-  .rarity-rare {
-    border-color: rgba(79, 255, 176, 0.4);
-  }
-
-  .rarity-epic {
-    border-color: rgba(129, 140, 248, 0.55);
-  }
-
-  .rarity-legendary {
-    border-color: rgba(251, 191, 36, 0.55);
-  }
-
-  .shop-card__promo {
-    padding: 0.2rem 0.6rem;
-    border-radius: 0.75rem;
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    background: rgba(52, 211, 153, 0.18);
-    color: rgba(110, 231, 183, 0.95);
-    border: 1px solid rgba(16, 185, 129, 0.35);
-  }
-
-  .shop-card__promo.flash {
-    background: rgba(251, 191, 36, 0.25);
-    color: rgba(253, 224, 71, 0.95);
-    border-color: rgba(252, 211, 77, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.78);
   }
 
   .shop-card__icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 1rem;
+    width: 70px;
+    height: 70px;
+    border-radius: 1.2rem;
     display: grid;
     place-items: center;
-    font-size: 2.25rem;
-    background: linear-gradient(145deg, rgba(59, 130, 246, 0.22), rgba(45, 212, 191, 0.18));
-    align-self: flex-start;
+    font-size: 2.35rem;
+    background: radial-gradient(circle at 30% 20%, rgba(94, 242, 255, 0.4), transparent 60%),
+      rgba(255, 255, 255, 0.08);
   }
 
   .shop-card__body h3 {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.95);
+    font-size: 1.2rem;
   }
 
   .shop-card__body p {
-    margin: 0.25rem 0 0;
-    font-size: 0.88rem;
-    color: rgba(203, 213, 225, 0.78);
-    line-height: 1.35;
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .shop-card__footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.9rem;
     margin-top: auto;
+    font-size: 0.9rem;
   }
 
-  .shop-card__footer .price {
+  .price {
     font-weight: 600;
-    color: rgba(244, 247, 255, 0.92);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 
-  .shop-card__footer .cta {
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
+  .shard {
+    font-size: 1rem;
+  }
+
+  .cta {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(94, 234, 212, 0.9);
+    color: rgba(255, 255, 255, 0.7);
   }
 </style>

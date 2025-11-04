@@ -6,11 +6,11 @@ test.describe('Neuro UI dashboard', () => {
     const header = page.locator('header.app-header');
     await expect(header).toBeVisible();
     await expect(page.locator('.logo-dot')).toBeVisible();
-    await expect(page.getByPlaceholder('Search threads…')).toBeVisible();
+    await expect(page.getByPlaceholder('Search Kinforge…')).toBeVisible();
 
-    const navIcons = page.locator('[data-testid^="center-nav-"]');
+    const navIcons = page.locator('[data-testid^="nav-icon-"]');
     await expect(navIcons).toHaveCount(5);
-    await expect(page.locator('[data-testid="center-nav-home"]')).toBeVisible();
+    await expect(page.locator('[data-testid="nav-icon-feed"]')).toBeVisible();
 
     const statusCapsule = page.locator('[data-testid="top-status"]');
     await expect(statusCapsule).toBeVisible();
@@ -62,9 +62,9 @@ test.describe('Neuro UI dashboard', () => {
   test('mobile dock replaces center nav on small screens', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/app/home');
-    await expect(page.locator('[data-testid="center-nav-home"]')).toBeHidden();
+    await expect(page.locator('[data-testid="nav-icon-feed"]')).toBeHidden();
     const dockItems = page.locator('[data-testid^="dock-"]');
     await expect(dockItems).toHaveCount(5);
-    await expect(page.locator('[data-testid="dock-home"]')).toBeVisible();
+    await expect(page.locator('[data-testid="dock-feed"]')).toBeVisible();
   });
 });

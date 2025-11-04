@@ -11,7 +11,7 @@
   import { page } from '$app/stores';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, ShoppingBag } from 'lucide-svelte';
+  import { Search, Gamepad2, ShoppingBag, MessageCircle, Trophy, UserRound } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
 
   export let data;
@@ -42,20 +42,21 @@ import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, Shopp
   let isHome = false;
   let isGames = false;
   let hideRail = false;
+  let walletBalance: number | null = null;
 
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
   $: isGames = currentPath.startsWith('/app/games');
   $: hideRail = isHome || isGames;
+  $: walletBalance =
+    typeof $playerProgress?.currency === 'number' ? ($playerProgress.currency as number) : null;
 
   const iconNavItems: IconNavItem[] = [
-    { href: '/app/home', label: 'Home', icon: Home },
-    { href: '/app/creatures', label: 'Creatures', icon: PawPrint },
-    { href: '/app/missions', label: 'Missions', icon: ListChecks },
-    { href: '/app/shop', label: 'Shop', icon: ShoppingBag },
-    { href: '/app/games', label: 'Games', icon: Gamepad2 },
-    { href: '/app/inventory', label: 'Inventory', icon: Package },
-    { href: '/app/profile', label: 'Profile', icon: UserRound }
+    { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
+    { href: '/app/shop', label: 'Shop', icon: ShoppingBag, analyticsKey: 'shop' },
+    { href: '/app/home', label: 'Feed', icon: MessageCircle, analyticsKey: 'feed' },
+    { href: '/app/dashboard', label: 'Achievements', icon: Trophy, analyticsKey: 'achievements' },
+    { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ];
 
   if (browser) {
@@ -93,25 +94,32 @@ import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, Shopp
     <header class="app-header">
       <div class="app-header__inner">
         <div class="header-left">
-          <span class="logo-dot" aria-hidden="true"></span>
-          <div class="search" role="search" aria-label="Search threads">
-            <Search class="search-icon" aria-hidden="true" />
-            <input type="search" placeholder="Search threads…" aria-label="Search threads" />
+          <div class="logo-lockup" role="img" aria-label="Looma sigil">
+            <span class="logo-dot" aria-hidden="true"></span>
+            <span class="logo-text">Looma</span>
           </div>
+          <label class="search-omnibox panel-glass" role="search" aria-label="Search Kinforge">
+            <Search class="search-icon" aria-hidden="true" />
+            <input type="search" placeholder="Search Kinforge…" aria-label="Search Kinforge" />
+          </label>
         </div>
-        <CenterIconNav className="hidden md:flex flex-1 justify-center" items={iconNavItems} />
-        <StatusCapsuleNav
-          className="ml-auto shrink-0"
-          energy={$playerProgress.energy}
-          energyMax={$playerProgress.energyMax}
-          level={$playerProgress.level}
-          xp={$playerProgress.xp}
-          xpNext={$playerProgress.xpNext}
-          unreadCount={bellUnread}
-          notifications={bellNotifications}
-          userEmail={userEmail}
-          onLogout={handleLogout}
-        />
+        <CenterIconNav className="header-nav hidden md:flex" items={iconNavItems} />
+        <div class="header-right">
+          <StatusCapsuleNav
+            className="ml-auto shrink-0"
+            energy={$playerProgress.energy}
+            energyMax={$playerProgress.energyMax}
+            level={$playerProgress.level}
+            xp={$playerProgress.xp}
+            xpNext={$playerProgress.xpNext}
+            walletBalance={walletBalance}
+            walletCurrency="SHARDS"
+            unreadCount={bellUnread}
+            notifications={bellNotifications}
+            userEmail={userEmail}
+            onLogout={handleLogout}
+          />
+        </div>
       </div>
     </header>
 
@@ -134,7 +142,7 @@ import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, Shopp
     display: grid;
     grid-template-columns: auto 1fr;
     min-height: 100vh;
-    background: transparent;
+    background: var(--brand-navy, #050712);
   }
 
   .app-shell--home {
@@ -149,90 +157,125 @@ import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, Shopp
     display: grid;
     grid-template-rows: auto 1fr;
     min-height: 100vh;
+    background: radial-gradient(circle at top, rgba(155, 92, 255, 0.15), transparent 55%),
+      radial-gradient(circle at bottom, rgba(94, 242, 255, 0.08), transparent 45%),
+      var(--brand-navy, #050712);
   }
 
   .app-header {
     position: sticky;
     top: 0;
     z-index: 40;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(6, 11, 23, 0.7);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
+    background: transparent;
+  }
+
+  .app-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(8, 12, 24, 0.85), rgba(24, 7, 33, 0.78));
+    opacity: 0.94;
+    z-index: -1;
   }
 
   .app-header__inner {
-    margin: 0;
     width: 100%;
-    padding: 0 clamp(1rem, 3vw, 2.75rem);
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 3vw, 3rem);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: clamp(0.5rem, 1.5vw, 1.25rem);
-    height: 3.5rem;
+    gap: 1.5rem;
+    min-height: 3.5rem;
   }
 
   .header-left {
-    display: inline-flex;
-    flex: 1 1 0;
+    display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
     min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .logo-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 10px 26px rgba(5, 7, 18, 0.6);
   }
 
   .logo-dot {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     border-radius: 999px;
-    background: linear-gradient(135deg, rgba(77, 244, 255, 0.35), rgba(155, 92, 255, 0.45));
-    box-shadow: 0 12px 28px rgba(77, 244, 255, 0.22);
+    background: radial-gradient(circle at 30% 30%, rgba(94, 242, 255, 0.9), rgba(155, 92, 255, 0.5));
+    box-shadow: 0 0 24px rgba(94, 242, 255, 0.6);
   }
 
-  .search {
-    display: none;
+  .logo-text {
+    font-size: 0.8rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(248, 250, 255, 0.8);
+  }
+
+  .search-omnibox {
+    display: flex;
     align-items: center;
-    gap: 0.45rem;
-    border-radius: 0.9rem;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    padding: 0 0.65rem;
-    height: 2.1rem;
-    color: rgba(244, 247, 255, 0.82);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(7, 11, 23, 0.4);
-    flex: 1 1 0;
-    min-width: 12rem;
-    max-width: clamp(12rem, 28vw, 22rem);
+    gap: 0.5rem;
+    border-radius: 20px;
+    padding: 0 0.85rem;
+    height: 2.35rem;
+    width: clamp(12rem, 30vw, 22rem);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 12, 28, 0.55);
+    color: rgba(244, 247, 255, 0.85);
   }
 
-  .search:focus-within {
-    border-color: rgba(77, 244, 255, 0.4);
-    box-shadow: 0 0 0 2px rgba(77, 244, 255, 0.32), 0 12px 28px rgba(7, 11, 23, 0.4);
-  }
-
-  .search input {
+  .search-omnibox input {
+    flex: 1;
     border: none;
     background: transparent;
-    color: rgba(244, 247, 255, 0.9);
-    font-size: 0.84rem;
-    width: 100%;
+    color: inherit;
+    font-size: 0.88rem;
   }
 
-  .search input::placeholder {
-    color: rgba(244, 247, 255, 0.38);
+  .search-omnibox input::placeholder {
+    color: rgba(244, 247, 255, 0.45);
   }
 
-  .search input:focus-visible {
+  .search-omnibox input:focus-visible {
     outline: none;
+  }
+
+  .search-omnibox:focus-within {
+    border-color: rgba(94, 242, 255, 0.5);
+    box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.35), 0 12px 28px rgba(5, 7, 18, 0.45);
   }
 
   .search-icon {
     width: 1rem;
     height: 1rem;
-    color: rgba(244, 247, 255, 0.45);
-    transition: color 0.16s ease;
+    color: rgba(244, 247, 255, 0.5);
   }
 
-  .search:focus-within .search-icon {
-    color: rgba(244, 247, 255, 0.8);
+  .header-nav {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+
+  .header-right {
+    display: flex;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .app-main {
@@ -247,26 +290,19 @@ import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, Shopp
 
     .app-header__inner {
       padding: 0 1.25rem;
+      gap: 0.75rem;
     }
 
-    .search {
+    .search-omnibox {
       display: none;
     }
-
-    .app-main {
-      padding: 0;
-    }
   }
 
-  @media (min-width: 768px) {
-    .search {
-      display: inline-flex;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .app-header__inner {
-      padding: 0 2.25rem;
+  @media (prefers-reduced-motion: reduce) {
+    .logo-dot,
+    .search-omnibox,
+    .logo-lockup {
+      transition: none;
     }
   }
 </style>

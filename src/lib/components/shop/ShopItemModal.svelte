@@ -278,11 +278,14 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="shop-modal-title"
-      class="shop-modal"
+      class="shop-modal panel-glass"
+      data-testid="shop-modal"
       on:click|stopPropagation
     >
       <header class="shop-modal__header">
-        <div>
+        <div class="shop-modal__icon" aria-hidden="true">{item.icon}</div>
+        <div class="shop-modal__title">
+          <p class="shop-modal__eyebrow">{item?.productName ?? 'Featured item'}</p>
           <h2 id="shop-modal-title">{item.displayName}</h2>
           <p>{item.description}</p>
         </div>
@@ -337,8 +340,9 @@
         <div class="wallet">Wallet: {formatCurrency(walletBalance, item.currency)}</div>
         <button
           type="button"
-          class="shop-modal__primary"
+          class="shop-modal__primary brand-cta"
           data-testid="shop-modal-buy"
+          data-ana="shop:purchase"
           on:click={handlePurchase}
           disabled={purchasing || loadingPrice || !!pricingError}
         >
@@ -369,13 +373,13 @@
     position: fixed;
     inset: 50% auto auto 50%;
     transform: translate(-50%, -50%);
-    width: min(520px, 90vw);
-    background: linear-gradient(160deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.86));
-    border-radius: 1.4rem;
-    border: 1px solid rgba(94, 234, 212, 0.12);
-    box-shadow: 0 36px 64px rgba(8, 20, 35, 0.6);
-    padding: 1.6rem;
-    color: #e2e8f0;
+    width: min(540px, 92vw);
+    background: rgba(5, 7, 18, 0.92);
+    border-radius: 1.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 40px 64px rgba(0, 0, 0, 0.55);
+    padding: 1.5rem;
+    color: #f5f6ff;
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
@@ -383,30 +387,49 @@
   }
 
   .shop-modal__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1.2rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.25rem 0.25rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .shop-modal__header h2 {
+  .shop-modal__icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 1.1rem;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    background: radial-gradient(circle at 30% 20%, rgba(94, 242, 255, 0.5), transparent 55%),
+      rgba(94, 242, 255, 0.1);
+    border: 1px solid rgba(94, 242, 255, 0.25);
+  }
+
+  .shop-modal__title h2 {
     margin: 0;
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: rgba(248, 250, 252, 0.96);
+    font-size: 1.35rem;
   }
 
-  .shop-modal__header p {
-    margin: 0.25rem 0 0;
-    color: rgba(203, 213, 225, 0.78);
+  .shop-modal__title p {
+    margin: 0.2rem 0 0;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.9rem;
-    line-height: 1.4;
+  }
+
+  .shop-modal__eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0 0 0.3rem;
   }
 
   .shop-modal__close {
     border: none;
-    background: rgba(148, 163, 184, 0.14);
-    color: rgba(226, 232, 240, 0.85);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
     border-radius: 999px;
     width: 2rem;
     height: 2rem;
@@ -445,8 +468,8 @@
     gap: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 1rem;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(8, 12, 28, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .shop-modal__qty span {
@@ -457,13 +480,19 @@
 
   .shop-modal__qty input {
     width: 80px;
-    border: none;
-    border-radius: 0.75rem;
-    background: rgba(10, 18, 35, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.9rem;
+    background: rgba(5, 7, 18, 0.8);
     color: #f8fafc;
     font-size: 1rem;
     padding: 0.4rem 0.6rem;
     text-align: center;
+  }
+
+  .shop-modal__qty input:focus-visible {
+    outline: none;
+    border-color: rgba(94, 242, 255, 0.6);
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.25);
   }
 
   .shop-modal__pricing {
@@ -472,8 +501,8 @@
     gap: 0.55rem;
     padding: 1rem;
     border-radius: 1rem;
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(94, 234, 212, 0.15);
+    background: rgba(8, 12, 28, 0.75);
+    border: 1px solid rgba(94, 242, 255, 0.15);
   }
 
   .shop-modal__pricing .loading {
@@ -515,6 +544,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
   .shop-modal__footer .wallet {
@@ -523,27 +554,13 @@
   }
 
   .shop-modal__primary {
-    min-width: 160px;
-    padding: 0.75rem 1.25rem;
-    border-radius: 999px;
+    min-width: 180px;
     border: none;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.92), rgba(59, 130, 246, 0.88));
-    color: rgba(15, 23, 42, 0.95);
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .shop-modal__primary:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  .shop-modal__primary:not(:disabled):hover,
-  .shop-modal__primary:not(:disabled):focus-visible {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 36px rgba(56, 189, 248, 0.3);
-    outline: none;
+    opacity: 0.45;
   }
 
   .shop-modal__error {

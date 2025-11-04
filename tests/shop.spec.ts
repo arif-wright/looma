@@ -37,7 +37,7 @@ test.describe.serial('Shop core', () => {
     await loginAs(page, VIEWER_CREDENTIALS);
     await page.goto('/app/shop');
     await expect(page.getByTestId('shop-card-energy-refill-large')).toBeVisible();
-    await expect(page.getByTestId('shop-promo-flash').first()).toBeVisible();
+    await expect(page.getByTestId('promo-ribbon').first()).toBeVisible();
   });
 
   test('price endpoint applies promo and achievement discounts', async () => {
