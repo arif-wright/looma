@@ -123,14 +123,12 @@
       ]
     : gameCatalog;
 
-  const HERO_COVER_SIZES = '(min-width: 1280px) 360px, (min-width: 1024px) 320px, 80vw';
-
   $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
   $: featuredCoverSrcset = featuredMeta
     ? `${featuredMeta.cover.sources['512']} 512w, ${featuredMeta.cover.sources['640']} 640w, ${featuredMeta.cover.sources['960']} 960w, ${featuredMeta.cover.sources['1280']} 1280w`
     : '';
   $: featuredCoverPoster = featuredMeta
-    ? featuredMeta.cover.square ?? featuredMeta.cover.sources['960']
+    ? featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960']
     : null;
 
   const findFeatured = () => {
@@ -172,7 +170,20 @@
 <div class="games-surface" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
   <main class="games-main">
-    <section class="games-hero" aria-label="Featured games">
+    <section class={`games-hero ${featuredCoverPoster ? 'with-cover' : ''}`} aria-label="Featured games">
+      {#if featuredCoverPoster}
+        <div class="hero-cover">
+          <img
+            src={featuredCoverPoster}
+            srcset={featuredCoverSrcset}
+            sizes="(min-width: 1280px) 1000px, (min-width: 1024px) 80vw, 130vw"
+            alt={featuredMeta?.cover.alt ?? ''}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <div class="hero-cover__veil" aria-hidden="true"></div>
+      {/if}
       <div class="hero-copy">
         <p class="hero-kicker">Pick up where you left off</p>
         <h1>{featuredGame ? `Jump back into ${featuredGame.name}` : 'Choose your next flow'}</h1>
@@ -200,22 +211,6 @@
       {#if featuredGame}
         <div class="hero-card panel-glass">
           <div class="hero-card__badge">Spotlight</div>
-          {#if featuredMeta && featuredCoverPoster}
-            <div class="hero-card__media">
-              <div class="hero-card__media-frame">
-                <div class="hero-card__media-inner">
-                  <img
-                    src={featuredCoverPoster}
-                    srcset={featuredCoverSrcset}
-                    sizes={HERO_COVER_SIZES}
-                    alt={featuredMeta.cover.alt}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-              </div>
-            </div>
-          {/if}
           <div class="hero-card__body">
             <h2>{featuredGame.name}</h2>
             <p>Master the course, bank shards, and climb the community leaderboard.</p>
@@ -332,10 +327,42 @@
   }
 
   .games-hero {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
     gap: 2rem;
     align-items: stretch;
+    overflow: hidden;
+  }
+
+  .games-hero.with-cover {
+    background: linear-gradient(135deg, rgba(5, 7, 18, 0.88), rgba(7, 10, 24, 0.88));
+  }
+
+  .hero-cover {
+    position: absolute;
+    inset: -12% -30% -20%;
+    z-index: 0;
+  }
+
+  .hero-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.1) brightness(0.65);
+    transform: scale(1.08);
+  }
+
+  .hero-cover__veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, rgba(5, 6, 15, 0.92) 30%, rgba(7, 10, 24, 0.7) 65%, rgba(7, 10, 24, 0.4));
+    z-index: 0;
+  }
+
+  .games-hero > * {
+    position: relative;
+    z-index: 1;
   }
 
   .hero-copy {
@@ -458,10 +485,10 @@
     position: relative;
     padding: 1.6rem;
     border-radius: 1.5rem;
-    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.15), transparent 60%),
-      rgba(8, 12, 28, 0.85);
+    background: rgba(8, 12, 28, 0.88);
     display: grid;
     gap: 1.15rem;
+    backdrop-filter: blur(12px);
   }
 
   .hero-card__badge {
@@ -473,38 +500,6 @@
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(248, 250, 255, 0.75);
-  }
-
-  .hero-card__media {
-    margin-top: -0.25rem;
-  }
-
-  .hero-card__media-frame {
-    border-radius: 1.35rem;
-    padding: 2px;
-    background: linear-gradient(135deg, rgba(0, 255, 255, 0.38), rgba(255, 0, 255, 0.38));
-  }
-
-  .hero-card__media-inner {
-    position: relative;
-    border-radius: 1.2rem;
-    overflow: hidden;
-    background: rgba(9, 12, 25, 0.85);
-    aspect-ratio: 16 / 9;
-  }
-
-  .hero-card__media-inner img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transform: scale(1.02);
-    transition: transform 220ms ease;
-  }
-
-  .hero-card:hover .hero-card__media-inner img,
-  .hero-card:focus-within .hero-card__media-inner img {
-    transform: scale(1.05);
   }
 
   .hero-card__body h2 {
@@ -681,6 +676,10 @@
 
     .games-hero {
       grid-template-columns: 1fr;
+    }
+
+    .hero-cover {
+      inset: -18% -40% -10%;
     }
 
     .hero-card__footer {
