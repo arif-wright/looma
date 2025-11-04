@@ -123,13 +123,19 @@
       ]
     : gameCatalog;
 
+  const toUrl = (src: string) => `url('${src}')`;
+
   $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
-  $: featuredCoverSrcset = featuredMeta
-    ? `${featuredMeta.cover.sources['512']} 512w, ${featuredMeta.cover.sources['640']} 640w, ${featuredMeta.cover.sources['960']} 960w, ${featuredMeta.cover.sources['1280']} 1280w`
+  $: heroHasCover = Boolean(featuredMeta);
+  $: heroCoverImage = heroHasCover
+    ? toUrl(featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960'])
     : '';
-  $: featuredCoverPoster = featuredMeta
-    ? featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960']
-    : null;
+  $: heroCoverImageSet = heroHasCover
+    ? `image-set(${toUrl(featuredMeta.cover.sources['640'])} 640w, ${toUrl(featuredMeta.cover.sources['960'])} 960w, ${toUrl(featuredMeta.cover.sources['1280'])} 1280w)`
+    : '';
+  $: heroCoverStyle = heroHasCover
+    ? `--hero-cover-image:${heroCoverImage}; --hero-cover-image-set:${heroCoverImageSet};`
+    : '';
 
   const findFeatured = () => {
     if (recentCatalog.length > 0) {
@@ -170,20 +176,11 @@
 <div class="games-surface" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
   <main class="games-main">
-    <section class={`games-hero ${featuredCoverPoster ? 'with-cover' : ''}`} aria-label="Featured games">
-      {#if featuredCoverPoster}
-        <div class="hero-cover">
-          <img
-            src={featuredCoverPoster}
-            srcset={featuredCoverSrcset}
-            sizes="(min-width: 1280px) 1000px, (min-width: 1024px) 80vw, 130vw"
-            alt={featuredMeta?.cover.alt ?? ''}
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-        <div class="hero-cover__veil" aria-hidden="true"></div>
-      {/if}
+    <section
+      class={`games-hero ${heroHasCover ? 'with-cover' : ''}`}
+      style={heroCoverStyle}
+      aria-label="Featured games"
+    >
       <div class="hero-copy">
         <p class="hero-kicker">Pick up where you left off</p>
         <h1>{featuredGame ? `Jump back into ${featuredGame.name}` : 'Choose your next flow'}</h1>
@@ -333,31 +330,29 @@
     gap: 2rem;
     align-items: stretch;
     overflow: hidden;
+    background-color: rgba(6, 8, 20, 0.92);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .games-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, rgba(5, 6, 15, 0.92) 25%, rgba(7, 10, 24, 0.72) 60%, rgba(8, 12, 24, 0.45));
+    z-index: 0;
+    pointer-events: none;
   }
 
   .games-hero.with-cover {
-    background: linear-gradient(135deg, rgba(5, 7, 18, 0.88), rgba(7, 10, 24, 0.88));
+    background-image: var(--hero-cover-image);
   }
 
-  .hero-cover {
-    position: absolute;
-    inset: -12% -30% -20%;
-    z-index: 0;
-  }
-
-  .hero-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(1.1) brightness(0.65);
-    transform: scale(1.08);
-  }
-
-  .hero-cover__veil {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(110deg, rgba(5, 6, 15, 0.92) 30%, rgba(7, 10, 24, 0.7) 65%, rgba(7, 10, 24, 0.4));
-    z-index: 0;
+  @supports (background-image: image-set(url('') 1x)) {
+    .games-hero.with-cover {
+      background-image: var(--hero-cover-image-set);
+    }
   }
 
   .games-hero > * {
@@ -676,10 +671,6 @@
 
     .games-hero {
       grid-template-columns: 1fr;
-    }
-
-    .hero-cover {
-      inset: -18% -40% -10%;
     }
 
     .hero-card__footer {
