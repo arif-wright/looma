@@ -244,7 +244,7 @@
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: 260px 560px 310px;
+    grid-template-columns: 260px auto 310px;
     column-gap: 3.5rem;
     row-gap: 2.5rem;
     align-items: start;
@@ -291,7 +291,7 @@
   .content {
     display: grid;
     gap: 2rem;
-    width: 100%;
+    width: 520px;
   }
 
   .panel {
@@ -498,6 +498,10 @@
       position: static;
       top: auto;
     }
+
+    .content {
+      width: min(100%, 560px);
+    }
   }
 
   @media (max-width: 992px) {
@@ -521,6 +525,10 @@
     .panel {
       padding: 1.8rem;
       border-radius: 1.6rem;
+    }
+
+    .content {
+      width: 100%;
     }
   }
 </style>
