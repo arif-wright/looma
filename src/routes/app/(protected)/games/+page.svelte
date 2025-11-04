@@ -84,9 +84,9 @@
     });
   };
 
-  let rewardList: RewardEntry[] = playerSummary?.rewards ? playerSummary.rewards.slice(0, 5) : [];
+  let rewardList: RewardEntry[] = playerSummary?.rewards ? playerSummary.rewards.slice() : [];
 
-  $: rewardList = (playerSummary?.rewards ?? []).slice(0, 5);
+  $: rewardList = (playerSummary?.rewards ?? []).slice();
 
   const recentGamesFromRewards = () => {
     const unique = new Map<string, { slug: string; name: string }>();
@@ -129,6 +129,25 @@
   $: featuredGame = findFeatured();
 
   const supportingGames = games.filter((game) => !featuredGame || game.slug !== featuredGame.slug);
+
+  const PAGE_SIZE = 3;
+  let rewardPage = 0;
+
+  $: totalRewardPages = Math.ceil(rewardList.length / PAGE_SIZE) || 1;
+  $: rewardPage = Math.min(rewardPage, Math.max(totalRewardPages - 1, 0));
+  $: pagedRewards = rewardList.slice(rewardPage * PAGE_SIZE, rewardPage * PAGE_SIZE + PAGE_SIZE);
+
+  const nextRewardPage = () => {
+    if (rewardPage < totalRewardPages - 1) {
+      rewardPage += 1;
+    }
+  };
+
+  const prevRewardPage = () => {
+    if (rewardPage > 0) {
+      rewardPage -= 1;
+    }
+  };
 </script>
 
 <svelte:head>
@@ -188,10 +207,37 @@
       <header>
         <h2>Latest rewards</h2>
         <p>Recent XP bursts and shard drops from your sessions.</p>
+        {#if rewardList.length > PAGE_SIZE}
+          <div class="rewards-pagination">
+            <button
+              type="button"
+              class="pager-btn"
+              on:click={prevRewardPage}
+              disabled={rewardPage === 0}
+              aria-label="Previous rewards page"
+              data-testid="reward-page-prev"
+            >
+              ‹
+            </button>
+            <span class="pager-status" aria-live="polite">
+              Page {rewardPage + 1} of {totalRewardPages}
+            </span>
+            <button
+              type="button"
+              class="pager-btn"
+              on:click={nextRewardPage}
+              disabled={rewardPage >= totalRewardPages - 1}
+              aria-label="Next rewards page"
+              data-testid="reward-page-next"
+            >
+              ›
+            </button>
+          </div>
+        {/if}
       </header>
-      {#if rewardList.length > 0}
+      {#if pagedRewards.length > 0}
         <ul class="rewards-list" data-testid="reward-log">
-          {#each rewardList as reward (reward.id)}
+          {#each pagedRewards as reward (reward.id)}
             <li class="rewards-row">
               <div class="rewards-game">
                 <span class="rewards-avatar" aria-hidden="true">
@@ -452,6 +498,14 @@
     border-radius: 1.4rem;
   }
 
+  .games-rewards header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
   .games-rewards header h2 {
     margin: 0;
     font-size: clamp(1.35rem, 2vw, 1.75rem);
@@ -459,6 +513,52 @@
 
   .games-rewards header p {
     margin: 0.25rem 0 0;
+    flex: 1 1 100%;
+    color: rgba(248, 250, 255, 0.65);
+  }
+
+  .rewards-pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .pager-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    color: rgba(248, 250, 255, 0.85);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border 150ms ease;
+  }
+
+  .pager-btn:hover:not(:disabled),
+  .pager-btn:focus-visible:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.24);
+    outline: none;
+  }
+
+  .pager-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .pager-status {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: rgba(248, 250, 255, 0.65);
   }
 
