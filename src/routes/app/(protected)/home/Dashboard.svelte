@@ -244,10 +244,11 @@
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: 280px minmax(540px, 1fr) 320px;
-    column-gap: 4rem;
+    grid-template-columns: 280px minmax(520px, 640px) 320px;
+    column-gap: 3.5rem;
     row-gap: 2.5rem;
     align-items: start;
+    justify-content: center;
   }
 
   .sidebar {
@@ -290,8 +291,7 @@
   .content {
     display: grid;
     gap: 2rem;
-    max-width: 660px;
-    width: min(100%, 660px);
+    width: 100%;
   }
 
   .panel {
