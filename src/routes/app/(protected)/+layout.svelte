@@ -123,6 +123,7 @@
         unreadCount={bellUnread}
         userEmail={userEmail}
         onLogout={handleLogout}
+        iconNavItems={iconNavItems}
       />
     {/if}
 
