@@ -123,6 +123,16 @@
       ]
     : gameCatalog;
 
+  const HERO_COVER_SIZES = '(min-width: 1280px) 360px, (min-width: 1024px) 320px, 80vw';
+
+  $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
+  $: featuredCoverSrcset = featuredMeta
+    ? `${featuredMeta.cover.sources['512']} 512w, ${featuredMeta.cover.sources['640']} 640w, ${featuredMeta.cover.sources['960']} 960w, ${featuredMeta.cover.sources['1280']} 1280w`
+    : '';
+  $: featuredCoverPoster = featuredMeta
+    ? featuredMeta.cover.square ?? featuredMeta.cover.sources['960']
+    : null;
+
   const findFeatured = () => {
     if (recentCatalog.length > 0) {
       const preferred = games.find((game) => game.slug === recentCatalog[0].slug);
@@ -190,6 +200,22 @@
       {#if featuredGame}
         <div class="hero-card panel-glass">
           <div class="hero-card__badge">Spotlight</div>
+          {#if featuredMeta && featuredCoverPoster}
+            <div class="hero-card__media">
+              <div class="hero-card__media-frame">
+                <div class="hero-card__media-inner">
+                  <img
+                    src={featuredCoverPoster}
+                    srcset={featuredCoverSrcset}
+                    sizes={HERO_COVER_SIZES}
+                    alt={featuredMeta.cover.alt}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </div>
+            </div>
+          {/if}
           <div class="hero-card__body">
             <h2>{featuredGame.name}</h2>
             <p>Master the course, bank shards, and climb the community leaderboard.</p>
@@ -435,7 +461,7 @@
     background: radial-gradient(circle at top, rgba(94, 242, 255, 0.15), transparent 60%),
       rgba(8, 12, 28, 0.85);
     display: grid;
-    gap: 1.25rem;
+    gap: 1.15rem;
   }
 
   .hero-card__badge {
@@ -447,6 +473,38 @@
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(248, 250, 255, 0.75);
+  }
+
+  .hero-card__media {
+    margin-top: -0.25rem;
+  }
+
+  .hero-card__media-frame {
+    border-radius: 1.35rem;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.38), rgba(255, 0, 255, 0.38));
+  }
+
+  .hero-card__media-inner {
+    position: relative;
+    border-radius: 1.2rem;
+    overflow: hidden;
+    background: rgba(9, 12, 25, 0.85);
+    aspect-ratio: 16 / 9;
+  }
+
+  .hero-card__media-inner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scale(1.02);
+    transition: transform 220ms ease;
+  }
+
+  .hero-card:hover .hero-card__media-inner img,
+  .hero-card:focus-within .hero-card__media-inner img {
+    transform: scale(1.05);
   }
 
   .hero-card__body h2 {
