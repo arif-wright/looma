@@ -13,6 +13,7 @@
   import { sendAnalytics } from '$lib/utils/analytics';
 
   export let items: FeedItemType[] = [];
+  export let prepend: FeedItemType | null = null;
   export let pageSize = 10;
 
   const supabase = browser ? supabaseBrowser() : null;
@@ -23,6 +24,7 @@
   let exhausted = false;
   let cursor: string | null = null;
   let lastScroll = 0;
+  let lastPrependId: string | null = null;
 
   let missionModalOpen = false;
   let missionModalData: MissionRow | null = null;
@@ -225,6 +227,17 @@
 
   $: if (!browser) {
     primeFeed(items);
+  }
+
+  $: if (browser && prepend && prepend.id && prepend.id !== lastPrependId) {
+    const existingIds = new Set(feed.map((item) => item.id));
+    if (!existingIds.has(prepend.id)) {
+      feed = [prepend, ...feed];
+    } else {
+      feed = [prepend, ...feed.filter((item) => item.id !== prepend.id)];
+    }
+    feed = sortFeed(feed);
+    lastPrependId = prepend.id;
   }
 
   onDestroy(() => {

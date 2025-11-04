@@ -3,7 +3,7 @@
   import { SendHorizontal } from 'lucide-svelte';
 
   const MAX_LENGTH = 280;
-  const dispatch = createEventDispatcher<{ posted: void }>();
+  const dispatch = createEventDispatcher<{ posted: { item: Record<string, unknown> | null } }>();
 
   export let placeholder = 'Share a quick win…';
 
@@ -44,8 +44,9 @@
         error = data?.error ?? 'Unable to share right now.';
         return;
       }
+      const payload = await res.json().catch(() => ({ item: null }));
       reset();
-      dispatch('posted');
+      dispatch('posted', { item: payload?.item ?? null });
     } catch (err) {
       console.error('quick post error', err);
       error = err instanceof Error ? err.message : 'Unexpected error';
@@ -62,58 +63,162 @@
   };
 </script>
 
-<div class="quick-post orb-panel space-y-3 p-3 md:p-4">
-  <div class="flex items-start gap-3">
+<section class="quick-post" aria-live="polite">
+  <div class="composer" data-state={posting ? 'loading' : 'idle'}>
     <input
       type="text"
-      class="input-glass flex-1 min-w-0"
+      class="composer__input"
       placeholder={placeholder}
       bind:value={body}
       maxlength={MAX_LENGTH}
-      aria-label="Share a quick win"
+      aria-label="Whisper something kind"
       on:keydown={handleKey}
     />
     <button
-      class="btn-glass btn-ripple hover-glow send-btn"
+      class="composer__send"
       type="button"
       on:click={submit}
       disabled={posting || body.trim().length === 0 || body.length > MAX_LENGTH}
-      aria-label="Post quick win"
+      aria-label="Send whisper"
     >
-      <SendHorizontal size={16} stroke-width={1.8} />
+      <SendHorizontal class="composer__icon" stroke-width={1.6} />
     </button>
   </div>
 
-  {#if error}
-    <p class="text-xs text-rose-300" role="alert">{error}</p>
-  {/if}
-
-  <div class="flex justify-end text-xs text-white/50">
-    <span class={`counter ${remaining() < 0 ? 'error' : ''}`}>{body.length}/{MAX_LENGTH}</span>
+  <div class="composer__meta">
+    {#if error}
+      <p class="composer__error" role="alert">{error}</p>
+    {/if}
+    <span class={`composer__counter ${remaining() < 0 ? 'error' : ''}`}>{body.length}/{MAX_LENGTH}</span>
   </div>
-</div>
+</section>
 
 <style>
-  .send-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
+.quick-post {
+  display: grid;
+  gap: 0.75rem;
+}
 
-  .send-btn:disabled {
-    opacity: 0.5;
-    cursor: default;
-    box-shadow: none;
-  }
+.composer {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  box-shadow: 0 0 18px rgba(147, 197, 253, 0.2);
+  transition: box-shadow 200ms ease, border 200ms ease;
+}
 
-  .counter {
-    font-variant-numeric: tabular-nums;
-  }
+.composer::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.35), transparent 65%);
+  opacity: 0.6;
+  z-index: -1;
+  animation: breathe 4.6s ease-in-out infinite;
+}
 
-  .counter.error {
-    color: rgb(248 113 113);
+.composer[data-state='loading'] {
+  opacity: 0.8;
+}
+
+.composer__input {
+  background: transparent;
+  border: none;
+  color: rgba(248, 250, 252, 0.95);
+  font-size: 1rem;
+  min-width: 0;
+}
+
+.composer__input::placeholder {
+  color: rgba(226, 232, 240, 0.5);
+}
+
+.composer__input:focus-visible {
+  outline: none;
+}
+
+.composer__send {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(130deg, rgba(56, 189, 248, 0.95), rgba(147, 197, 253, 0.92));
+  color: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 0 16px rgba(147, 197, 253, 0.22);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.composer__send:hover,
+.composer__send:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(56, 189, 248, 0.35);
+}
+
+.composer__send:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55), 0 10px 22px rgba(56, 189, 248, 0.35);
+}
+
+.composer__send:disabled {
+  cursor: default;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+.composer__icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.composer__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.composer__error {
+  margin: 0;
+  color: rgb(248 113 113);
+}
+
+.composer__counter {
+  font-variant-numeric: tabular-nums;
+  color: rgba(226, 232, 240, 0.55);
+}
+
+.composer__counter.error {
+  color: rgb(248 113 113);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer::before {
+    animation: none;
   }
+  .composer,
+  .composer__send {
+    transition: none;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
 </style>

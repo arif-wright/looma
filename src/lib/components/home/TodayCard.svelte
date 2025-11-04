@@ -304,16 +304,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem 1.8rem;
-    border-radius: 999px;
+    padding: 0.95rem 1.9rem;
+    border-radius: 1.5rem;
     border: none;
     font-weight: 600;
     font-size: 1rem;
-    color: rgba(9, 12, 26, 0.92);
-    background: linear-gradient(120deg, #9b5cff, #4df4ff);
+    color: rgba(8, 15, 30, 0.92);
+    background: linear-gradient(120deg, rgba(56, 189, 248, 0.95), rgba(168, 85, 247, 0.92));
     cursor: pointer;
-    box-shadow: 0 18px 40px rgba(155, 92, 255, 0.4);
-    transition: transform 160ms ease, box-shadow 180ms ease;
+    box-shadow: 0 0 16px rgba(147, 197, 253, 0.22);
+    transition: all 180ms ease;
     overflow: hidden;
   }
 
@@ -321,8 +321,8 @@
     content: '';
     position: absolute;
     inset: -40%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 70%);
-    transform: scale(0);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.45), transparent 70%);
+    transform: scale(0.2);
     opacity: 0;
     transition: transform 420ms ease, opacity 420ms ease;
   }
@@ -331,29 +331,28 @@
   .primary-cta:focus-visible,
   .primary-cta:focus {
     transform: translateY(-1px);
-    box-shadow: 0 24px 50px rgba(155, 92, 255, 0.48);
+    box-shadow: 0 18px 36px rgba(56, 189, 248, 0.35);
   }
 
   .primary-cta:focus-visible,
   .primary-cta:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 24px 50px rgba(155, 92, 255, 0.48);
+    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.55), 0 18px 36px rgba(56, 189, 248, 0.35);
   }
 
   .primary-cta:active::after {
-    transform: scale(1.8);
-    opacity: 0.35;
-    transition: none;
+    transform: scale(1.5);
+    opacity: 0.32;
   }
 
   .primary-cta:disabled {
-    opacity: 0.6;
+    opacity: 0.58;
     cursor: default;
     box-shadow: none;
   }
 
   .primary-cta.is-pulsing {
-    animation: ctaPulse 1.8s ease-in-out infinite;
+    animation: ctaPulse 2s ease-in-out infinite;
   }
 
   .callout-head {

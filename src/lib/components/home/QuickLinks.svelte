@@ -72,15 +72,23 @@
           class="link-row btn-ripple hover-glow"
           type="button"
           tabindex={index === activeIndex ? 0 : -1}
+          data-active={index === activeIndex}
           on:focus={() => (activeIndex = index)}
           on:keydown={(event) => handleKey(event, index)}
           on:click={() => activate(link.href)}
           aria-label={`${link.label} — ${link.description}`}
           data-href={link.href}
         >
-          <span class="link-row__icon" aria-hidden="true">
-            {link.icon ?? '•'}
-          </span>
+          {#if link.icon}
+            <svelte:component
+              this={link.icon}
+              aria-hidden="true"
+              class="link-row__icon"
+              stroke-width={1.6}
+            />
+          {:else}
+            <span class="link-row__icon" aria-hidden="true">•</span>
+          {/if}
           <span class="link-row__copy">
             <span class="link-row__label">{link.label}</span>
             <span class="link-row__description">{link.description}</span>
@@ -133,32 +141,27 @@
     align-items: center;
     justify-content: flex-start;
     gap: 0.9rem;
-    padding: 0.95rem 1.1rem;
-    border: none;
-    border-radius: 1.1rem;
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(244, 247, 255, 0.9);
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 1.2rem;
+    background: rgba(15, 23, 42, 0.55);
+    color: rgba(226, 232, 240, 0.75);
     text-align: left;
     cursor: pointer;
-    transition: transform 150ms ease, box-shadow 200ms ease, background 180ms ease;
+    transition: all 200ms ease;
   }
 
   .link-row:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--ring-focus, rgba(77, 244, 255, 0.6));
+    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.55);
+    border-color: transparent;
   }
 
   .link-row__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.2rem;
-    height: 2.2rem;
-    border-radius: 999px;
-    background: linear-gradient(135deg, rgba(77, 244, 255, 0.26), rgba(155, 92, 255, 0.34));
-    color: rgba(10, 16, 36, 0.8);
-    font-size: 1rem;
-    font-weight: 600;
+    width: 1.6rem;
+    height: 1.6rem;
+    color: rgba(226, 232, 240, 0.7);
+    transition: color 200ms ease;
   }
 
   .link-row__copy {
@@ -175,6 +178,28 @@
   .link-row__description {
     font-size: 0.82rem;
     color: rgba(226, 232, 255, 0.8);
+  }
+
+  .link-row:hover,
+  .link-row:focus-visible {
+    background: rgba(17, 24, 39, 0.78);
+    color: rgba(248, 250, 252, 0.95);
+    transform: translateY(-1px);
+  }
+
+  .link-row:hover .link-row__icon,
+  .link-row:focus-visible .link-row__icon {
+    color: rgb(165 243 252);
+  }
+
+  .link-row[data-active='true'] {
+    color: rgba(240, 249, 255, 0.95);
+    border-color: rgba(56, 189, 248, 0.35);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.18);
+  }
+
+  .link-row[data-active='true'] .link-row__icon {
+    color: rgb(165 243 252);
   }
 
   @media (prefers-reduced-motion: reduce) {
