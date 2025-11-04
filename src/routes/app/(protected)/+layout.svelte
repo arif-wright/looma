@@ -11,7 +11,7 @@
   import { page } from '$app/stores';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-  import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2 } from 'lucide-svelte';
+import { Search, Home, PawPrint, ListChecks, Package, UserRound, Gamepad2, ShoppingBag } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
 
   export let data;
@@ -52,6 +52,7 @@
     { href: '/app/home', label: 'Home', icon: Home },
     { href: '/app/creatures', label: 'Creatures', icon: PawPrint },
     { href: '/app/missions', label: 'Missions', icon: ListChecks },
+    { href: '/app/shop', label: 'Shop', icon: ShoppingBag },
     { href: '/app/games', label: 'Games', icon: Gamepad2 },
     { href: '/app/inventory', label: 'Inventory', icon: Package },
     { href: '/app/profile', label: 'Profile', icon: UserRound }

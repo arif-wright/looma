@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '$lib/server/supabase';
 
-type AuditEvent = 'start' | 'complete' | 'reject' | 'share_reject' | 'econ_reject';
+type AuditEvent = 'start' | 'complete' | 'reject' | 'share_reject' | 'econ_reject' | 'shop_reject';
 
 type AuditPayload = {
   userId: string;

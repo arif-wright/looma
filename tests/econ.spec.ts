@@ -167,33 +167,6 @@ test.describe.serial('Economy ledger', () => {
     expect(walletBody.balance).toBe(82);
   });
 
-  test('shop purchase re-prices from catalog', async () => {
-    await admin.rpc('fn_wallet_grant', {
-      p_user: viewerId,
-      p_amount: 200,
-      p_source: 'admin_adjust',
-      p_ref: null,
-      p_meta: { test: true }
-    });
-
-    const before = await viewerCtx.get('/api/econ/wallet');
-    const beforeBody = await before.json();
-    expect(beforeBody.balance).toBe(282);
-
-    const spend = await viewerCtx.post('/api/econ/spend', {
-      data: {
-        amount: 1,
-        source: 'shop_purchase',
-        itemId: 'booster-small',
-        qty: 1
-      }
-    });
-
-    expect(spend.status(), 'shop spend status').toBe(200);
-    const spendBody = await spend.json();
-    expect(spendBody.balance).toBe(162);
-  });
-
   test('economy endpoints enforce rate limits', async () => {
     const previousLimit = process.env.ECON_RATE_LIMIT_PER_MINUTE;
     process.env.ECON_RATE_LIMIT_PER_MINUTE = '2';

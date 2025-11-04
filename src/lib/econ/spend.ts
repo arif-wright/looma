@@ -41,15 +41,6 @@ export const spendCurrency = async (input: SpendPayload) => {
   return handleEconomyResponse(response);
 };
 
-export const purchaseShopItem = async (itemId: string, qty = 1) => {
-  const response = await fetch('/api/shop/purchase', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
-    body: JSON.stringify({ itemId, qty })
-  });
-  return handleEconomyResponse(response);
-};
-
 export const fetchWalletSummary = async () => {
   const response = await fetch('/api/econ/wallet', {
     headers: { 'cache-control': 'no-store' }

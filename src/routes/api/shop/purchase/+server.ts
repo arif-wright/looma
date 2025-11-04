@@ -1,198 +1,175 @@
-import { json, type HttpError } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { randomUUID } from 'crypto';
-import { supabaseServer } from '$lib/supabaseClient';
+import { ensureAuth } from '$lib/server/games/guard';
+import { enforceShopRateLimit } from '$lib/server/shop/rate';
+import {
+  priceOrder,
+  finalizeOrder,
+  type PurchaseLineInput,
+  type PricedLine,
+  ShopError,
+  checkPerUserLimits,
+  checkCooldown
+} from '$lib/server/shop';
 import { supabaseAdmin } from '$lib/server/supabase';
-import { getShopItem } from '$lib/server/econ/catalog';
-import { walletSpend, fetchWallet } from '$lib/server/econ/index';
-import { enforceEconomyRateLimit } from '$lib/server/econ/rate';
 import { logGameAudit } from '$lib/server/games/audit';
-import { logEvent } from '$lib/server/analytics/log';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
-const normalizeQuantity = (value: unknown) => {
-  const numeric = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-  if (!Number.isFinite(numeric)) return 1;
-  return Math.max(1, Math.floor(numeric));
+const parseLines = (payload: unknown): PurchaseLineInput[] => {
+  if (!payload || typeof payload !== 'object') {
+    throw new ShopError('Body must include lines array.', 'invalid_payload', 400);
+  }
+
+  const lines = (payload as Record<string, unknown>).lines;
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new ShopError('Body must include lines array.', 'invalid_payload', 400);
+  }
+
+  return lines as PurchaseLineInput[];
 };
 
-const getDiscountForPoints = (points: number) => {
-  if (!Number.isFinite(points) || points <= 0) return 0;
-  if (points >= 600) return 0.15;
-  if (points >= 300) return 0.1;
-  if (points >= 100) return 0.05;
-  return 0;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const summarizeLine = (line: PricedLine) => ({
+  sku: line.sku,
+  qty: line.qty,
+  unitPrice: line.unitPrice,
+  subtotal: line.subtotal,
+  discount: line.discount,
+  total: line.total,
+  promoPercent: line.promoPercent,
+  achievementPercent: Math.round(line.achievementRate * 100),
+  effectivePercent: Math.round(line.effectiveRate * 100 * 100) / 100
+});
+
+const respondWithShopError = async (
+  params: {
+    error: ShopError;
+    userId: string;
+    ip: string | null;
+    endpoint: string;
+  }
+) => {
+  const { error, userId, ip, endpoint } = params;
+  await logGameAudit({
+    userId,
+    sessionId: null,
+    event: 'shop_reject',
+    ip,
+    details: { reason: error.code, endpoint }
+  });
+  return json({ code: error.code, message: error.message }, { status: error.status, headers: CACHE_HEADERS });
 };
 
 export const POST: RequestHandler = async (event) => {
-  const supabase = supabaseServer(event);
+  const { user } = await ensureAuth(event);
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
-  const authorization = event.request.headers.get('authorization');
-  const bearer = authorization && authorization.toLowerCase().startsWith('bearer ')
-    ? authorization.slice(7).trim()
-    : null;
-
-  const {
-    data: { user },
-    error: authError
-  } = await supabase.auth.getUser(bearer && bearer.length > 0 ? bearer : undefined);
-
-  if (authError) {
-    console.error('[shop/purchase] auth error', authError);
-    return json({ code: 'server_error', message: 'Unable to verify session.' }, {
-      status: 500,
-      headers: CACHE_HEADERS
-    });
-  }
-
-  if (!user) {
-    return json({ code: 'unauthorized', message: 'Authentication required.' }, {
-      status: 401,
-      headers: CACHE_HEADERS
-    });
-  }
-
-  let payload: {
-    itemId?: unknown;
-    qty?: unknown;
-  };
 
   try {
-    payload = await event.request.json();
+    enforceShopRateLimit(user.id, clientIp);
   } catch (err) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId: null,
-      event: 'econ_reject',
-      ip: clientIp,
-      details: { reason: 'invalid_json', endpoint: 'shop/purchase' }
-    });
-    return json({ code: 'bad_request', message: 'Invalid JSON body.' }, {
-      status: 400,
-      headers: CACHE_HEADERS
-    });
-  }
-
-  const itemId = typeof payload.itemId === 'string' && payload.itemId.trim().length > 0 ? payload.itemId.trim() : null;
-  const qty = normalizeQuantity(payload.qty);
-
-  const item = getShopItem(itemId);
-  if (!item) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId: null,
-      event: 'econ_reject',
-      ip: clientIp,
-      details: { reason: 'unknown_item', endpoint: 'shop/purchase', itemId }
-    });
-    return json({ code: 'bad_request', message: 'Unknown shop item.' }, {
-      status: 400,
-      headers: CACHE_HEADERS
-    });
-  }
-
-  try {
-    enforceEconomyRateLimit(user.id, clientIp);
-  } catch (err) {
-    const httpError = err as HttpError;
-    if (httpError?.status === 429) {
+    const body = (err as any)?.body ?? null;
+    if (body?.code === 'rate_limited') {
       await logGameAudit({
         userId: user.id,
         sessionId: null,
-        event: 'econ_reject',
+        event: 'shop_reject',
         ip: clientIp,
-        details: { reason: 'rate_limit', endpoint: 'shop/purchase', itemId }
+        details: { reason: 'rate_limit', endpoint: 'shop/purchase' }
       });
+      return json(body, { status: 429, headers: CACHE_HEADERS });
     }
     throw err;
   }
 
-  let points = 0;
+  let body: unknown;
   try {
-    const { data, error } = await supabaseAdmin
-      .from('user_points')
-      .select('points')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('[shop/purchase] failed to load user points', error, { userId: user.id });
-    } else {
-      points = Number(data?.points ?? 0);
-    }
-  } catch (err) {
-    console.warn('[shop/purchase] user points query failed', err, { userId: user.id });
+    body = await event.request.json();
+  } catch {
+    await logGameAudit({
+      userId: user.id,
+      sessionId: null,
+      event: 'shop_reject',
+      ip: clientIp,
+      details: { reason: 'invalid_json', endpoint: 'shop/purchase' }
+    });
+    return json({ code: 'bad_request', message: 'Invalid JSON body.' }, { status: 400, headers: CACHE_HEADERS });
   }
 
-  const subtotal = item.price * qty;
-  const discountPct = getDiscountForPoints(points);
-  const discounted = Math.max(0, Math.floor(subtotal * (1 - discountPct)));
-  const total = Math.max(1, discounted);
-  const orderId = randomUUID();
+  let requestedLines: PurchaseLineInput[];
+  try {
+    requestedLines = parseLines(body);
+  } catch (error) {
+    return respondWithShopError({ error: error as ShopError, userId: user.id, ip: clientIp, endpoint: 'shop/purchase' });
+  }
+
+  const meta = isRecord((body as any)?.meta) ? ((body as any).meta as Record<string, unknown>) : undefined;
+
+  let summary;
+  try {
+    summary = await priceOrder({ userId: user.id, lines: requestedLines, client: supabaseAdmin });
+  } catch (error) {
+    if (error instanceof ShopError) {
+      return respondWithShopError({ error, userId: user.id, ip: clientIp, endpoint: 'shop/purchase' });
+    }
+    console.error('[shop/purchase] priceOrder failed', error);
+    return json({ code: 'server_error', message: 'Unable to price order.' }, { status: 500, headers: CACHE_HEADERS });
+  }
+
+  for (const line of summary.lines) {
+    try {
+      await checkPerUserLimits({ userId: user.id, sku: line.sku, qty: line.qty, client: supabaseAdmin });
+    } catch (error) {
+      if (error instanceof ShopError) {
+        return respondWithShopError({ error, userId: user.id, ip: clientIp, endpoint: 'shop/purchase' });
+      }
+      console.error('[shop/purchase] per-user limit check failed', error, { userId: user.id, sku: line.sku });
+      return json({ code: 'server_error', message: 'Unable to verify limits.' }, { status: 500, headers: CACHE_HEADERS });
+    }
+
+    try {
+      await checkCooldown({ userId: user.id, sku: line.sku, client: supabaseAdmin });
+    } catch (error) {
+      if (error instanceof ShopError) {
+        return respondWithShopError({ error, userId: user.id, ip: clientIp, endpoint: 'shop/purchase' });
+      }
+      console.error('[shop/purchase] cooldown check failed', error, { userId: user.id, sku: line.sku });
+      return json({ code: 'server_error', message: 'Unable to verify cooldowns.' }, { status: 500, headers: CACHE_HEADERS });
+    }
+  }
 
   try {
-    await walletSpend({
+    const result = await finalizeOrder({
       userId: user.id,
-      amount: total,
-      source: 'shop_purchase',
-      refId: orderId,
-      meta: {
-        itemId: item.id,
-        qty,
-        unitPrice: item.price,
-        subtotal,
-        discountPct,
-        pointsBefore: points
-      }
+      lines: summary.lines,
+      total: summary.total,
+      currency: summary.currency,
+      meta,
+      client: supabaseAdmin,
+      event
     });
 
-    await logEvent(event, 'wallet_spend', {
-      userId: user.id,
-      amount: total,
-      currency: 'shards',
-      meta: {
-        source: 'shop_purchase',
-        itemId: item.id,
-        qty,
-        unitPrice: item.price,
-        subtotal,
-        discountPct,
-        orderId
-      }
-    });
-
-    const wallet = await fetchWallet(supabaseAdmin, user.id);
     return json(
       {
-        balance: wallet.balance,
-        currency: wallet.currency,
-        orderId,
-        discountPct
+        orderId: result.orderId,
+        total: summary.total,
+        currency: summary.currency,
+        balance: result.balance,
+        inventoryDeltas: result.inventoryDeltas,
+        achievementPercent: Math.round(summary.achievementRate * 100),
+        maxPromoPercent: summary.maxPromoPercent,
+        lines: summary.lines.map(summarizeLine)
       },
       { headers: CACHE_HEADERS }
     );
-  } catch (err) {
-    console.error('[shop/purchase] spend failed', err);
-    const message = err instanceof Error && err.message.includes('insufficient')
-      ? 'Insufficient funds.'
-      : 'Unable to complete purchase.';
-    const status = message === 'Insufficient funds.' ? 400 : 500;
-    if (status === 400 && message === 'Insufficient funds.') {
-      await logGameAudit({
-        userId: user.id,
-        sessionId: null,
-        event: 'econ_reject',
-        ip: clientIp,
-        details: { reason: 'insufficient_funds', endpoint: 'shop/purchase', itemId: item.id, qty }
-      });
+  } catch (error) {
+    if (error instanceof ShopError) {
+      return respondWithShopError({ error, userId: user.id, ip: clientIp, endpoint: 'shop/purchase' });
     }
-    return json({
-      code: status === 400 ? 'insufficient_funds' : 'server_error',
-      message
-    }, {
-      status,
-      headers: CACHE_HEADERS
-    });
+
+    console.error('[shop/purchase] finalize failed', error);
+    return json({ code: 'server_error', message: 'Unable to complete purchase.' }, { status: 500, headers: CACHE_HEADERS });
   }
 };

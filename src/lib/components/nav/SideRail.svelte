@@ -10,6 +10,7 @@
     { href: '/app/home', label: 'Home', icon: '🏠' },
     { href: '/app/creatures', label: 'Creatures', icon: '🐾' },
     { href: '/app/missions', label: 'Missions', icon: '🎯' },
+    { href: '/app/shop', label: 'Shop', icon: '🛒' },
     { href: '/app/inventory', label: 'Inventory', icon: '💾', disabled: true },
     { href: '/app/u/me', label: 'Profile', icon: '👤' }
   ];
