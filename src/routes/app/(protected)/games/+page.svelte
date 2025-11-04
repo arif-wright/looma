@@ -261,6 +261,11 @@
     </section>
 
     <section class="games-grid" aria-label="All games" data-testid="games-grid">
+      <header class="games-grid__header">
+        <p class="games-grid__kicker">Game library</p>
+        <h2 class="games-grid__title">All games</h2>
+        <p class="games-grid__lead">Browse the latest sims ready for playtesting.</p>
+      </header>
       {#each games as game (game.slug)}
         <article
           class={`game-card panel-glass ${glowForGame(game.slug)}`}
@@ -630,6 +635,32 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
+  }
+
+  .games-grid__header {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .games-grid__kicker {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .games-grid__title {
+    margin: 0;
+    font-size: clamp(1.6rem, 2.4vw, 2rem);
+    font-weight: 600;
+  }
+
+  .games-grid__lead {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    max-width: 520px;
   }
 
   .game-card {
