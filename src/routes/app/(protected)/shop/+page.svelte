@@ -376,11 +376,11 @@
   }
 
   .shop-shell {
-    max-width: 1200px;
+    max-width: 1180px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.4rem;
   }
 
   .shop-header {
@@ -499,6 +499,7 @@
 
   .shop-main {
     min-height: 360px;
+    box-shadow: 0 12px 28px rgba(10, 14, 24, 0.35);
   }
 
   .shop-empty {
@@ -513,11 +514,12 @@
   }
 
   .sidebar-card {
-    padding: 1.15rem;
-    border-radius: 1.2rem;
-    background: rgba(8, 12, 28, 0.75);
+    padding: 1.1rem;
+    border-radius: 1.15rem;
+    background: rgba(8, 12, 28, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: rgba(248, 250, 255, 0.9);
+    box-shadow: 0 12px 28px rgba(10, 14, 24, 0.35);
   }
 
   .sidebar-card h3 {

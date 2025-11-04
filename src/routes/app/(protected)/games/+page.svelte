@@ -220,10 +220,10 @@
     z-index: 1;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 4rem clamp(1rem, 4vw, 3rem) 5rem;
+    padding: 3.5rem clamp(1rem, 4vw, 2.5rem) 4.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 2.25rem;
   }
 
   .games-hero {
@@ -240,9 +240,10 @@
   }
 
   .games-hero h1 {
-    font-size: clamp(2.5rem, 4vw, 3.4rem);
+    font-size: clamp(2.25rem, 3.5vw, 3rem);
     font-weight: 600;
     margin: 0;
+    line-height: 1.1;
   }
 
   .lead {
@@ -261,10 +262,11 @@
 
   .progress-card {
     position: relative;
-    padding: 1.35rem;
-    border-radius: 1.35rem;
-    background: rgba(6, 9, 26, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1.25rem;
+    border-radius: 1.3rem;
+    background: rgba(6, 9, 26, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 12px 28px rgba(10, 14, 24, 0.35);
   }
 
   .progress-label {
@@ -323,18 +325,18 @@
 
   .game-card {
     position: relative;
-    padding: 1.8rem;
+    padding: 1.7rem;
     border-radius: 1.5rem;
-    background: rgba(6, 9, 26, 0.82);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 24px 38px rgba(3, 4, 14, 0.65);
+    background: rgba(6, 9, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 18px 34px rgba(3, 4, 14, 0.45);
     transition: transform 160ms ease, box-shadow 200ms ease;
   }
 
   .game-card:hover,
   .game-card:focus-within {
     transform: translateY(-3px);
-    box-shadow: 0 32px 52px rgba(3, 4, 14, 0.75);
+    box-shadow: 0 22px 44px rgba(3, 4, 14, 0.55);
   }
 
   .game-card__meta {

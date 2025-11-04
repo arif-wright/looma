@@ -5,12 +5,8 @@ test.describe('Neuro UI dashboard', () => {
     await page.goto('/app/home');
     const header = page.locator('header.app-header');
     await expect(header).toBeVisible();
-    await expect(page.locator('.logo-dot')).toBeVisible();
-    await expect(page.getByPlaceholder('Search Kinforge…')).toBeVisible();
-
-    const navIcons = page.locator('[data-testid^="nav-icon-"]');
-    await expect(navIcons).toHaveCount(5);
-    await expect(page.locator('[data-testid="nav-icon-feed"]')).toBeVisible();
+    await expect(page.locator('[data-testid="lean-header"]')).toBeVisible();
+    await expect(page.locator('[data-testid^="nav-icon-"]')).toHaveCount(0);
 
     const statusCapsule = page.locator('[data-testid="top-status"]');
     await expect(statusCapsule).toBeVisible();

@@ -98,21 +98,22 @@
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-    padding: 1.35rem;
-    border-radius: 1.4rem;
+    padding: 1.3rem;
+    border-radius: 1.35rem;
     text-align: left;
     cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(5, 7, 18, 0.78);
     color: #f8f6ff;
     overflow: hidden;
+    box-shadow: 0 18px 32px rgba(10, 14, 24, 0.35);
     transition: transform 180ms ease, box-shadow 220ms ease;
   }
 
   .shop-card:hover,
   .shop-card:focus-visible {
     transform: translateY(-4px);
-    box-shadow: 0 28px 48px rgba(2, 4, 12, 0.55);
+    box-shadow: 0 24px 40px rgba(10, 14, 24, 0.45);
     outline: none;
   }
 
