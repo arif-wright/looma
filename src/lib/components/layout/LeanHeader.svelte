@@ -99,10 +99,8 @@
     align-items: center;
     justify-content: space-between;
     min-height: 56px;
-    padding: 0 1.75rem;
-    max-width: 1220px;
-    margin: 0 auto;
-    gap: 1.5rem;
+    padding: 0 2.5rem;
+    max-width: none;
   }
 
   .lean-header__left,
