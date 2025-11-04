@@ -95,14 +95,14 @@
 
   .lean-header__inner {
     position: relative;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     min-height: 56px;
     padding: 0 1.75rem;
     max-width: 1220px;
     margin: 0 auto;
-    column-gap: 1rem;
+    gap: 1.5rem;
   }
 
   .lean-header__left,
@@ -111,14 +111,6 @@
     align-items: center;
     gap: 0.9rem;
     min-width: 0;
-  }
-
-  .lean-header__left {
-    justify-self: start;
-  }
-
-  .lean-header__right {
-    justify-self: end;
   }
 
   .lean-logo {
@@ -193,7 +185,15 @@
   }
 
   .lean-header__center {
-    justify-self: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  :global(nav.lean-icon-nav) {
+    pointer-events: auto;
   }
 
   :global(nav.lean-icon-nav > div) {
@@ -368,26 +368,19 @@
 
   @media (max-width: 768px) {
     .lean-header__inner {
-      grid-template-columns: auto auto;
-      grid-template-rows: auto auto;
+      flex-wrap: wrap;
       padding: 0 1rem;
       row-gap: 0.6rem;
     }
 
-    .lean-header__left {
-      grid-column: 1 / 2;
-      grid-row: 1 / 2;
-    }
-
     .lean-header__center {
-      grid-column: 1 / -1;
-      grid-row: 2 / 3;
-      justify-self: center;
-    }
-
-    .lean-header__right {
-      grid-column: 2 / 3;
-      grid-row: 1 / 2;
+      position: static;
+      transform: none;
+      width: 100%;
+      order: 3;
+      display: flex;
+      justify-content: center;
+      pointer-events: auto;
     }
 
     .lean-status__bar {
