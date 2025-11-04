@@ -111,14 +111,24 @@
     return 'glow-violet';
   };
 
-  const featuredGame = games[0] ?? null;
-  const supportingGames = games.slice(1);
   const fallbackRecent = games.slice(0, 6).map((game) => ({ slug: game.slug, name: game.name }));
   $: recentGames = recentGamesFromRewards();
-  $: recentCatalog =
-    recentGames.length > 0
-      ? recentGames
-      : fallbackRecent;
+  $: recentCatalog = recentGames.length > 0 ? recentGames : fallbackRecent;
+
+  const findFeatured = () => {
+    if (recentCatalog.length > 0) {
+      const preferred = games.find((game) => game.slug === recentCatalog[0].slug);
+      if (preferred) return preferred;
+      const fromRecent = recentCatalog[0];
+      const fallback = games.find((game) => game.slug === fromRecent.slug);
+      return fallback ?? { slug: fromRecent.slug, name: fromRecent.name, min_version: '1.0.0', max_score: null };
+    }
+    return games[0] ?? null;
+  };
+
+  $: featuredGame = findFeatured();
+
+  const supportingGames = games.filter((game) => !featuredGame || game.slug !== featuredGame.slug);
 </script>
 
 <svelte:head>
