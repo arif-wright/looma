@@ -1,160 +1,103 @@
 <script lang="ts">
-  import StatusCapsule from '$lib/components/ui/StatusCapsule.svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
-  import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
-  import { Search } from 'lucide-svelte';
+  // Optional props – wire these up to your stores if you have them
+  export let level = 1;
+  export let xp = 97; // current XP
+  export let xpMax = 100; // XP to next
+  export let energy = 50; // current energy
+  export let energyMax = 50;
+  export let shards = 115;
+  export let email = 'liquidsilver@gmail.com';
 
-  export let energy: number | null = null;
-  export let energyMax: number | null = null;
-  export let level: number | null = null;
-  export let xp: number | null = null;
-  export let xpNext: number | null = null;
-  export let walletBalance: number | null = null;
-  export let walletCurrency = 'SHARDS';
-  export let notifications: NotificationItem[] = [];
-  export let unreadCount = 0;
-  export let userEmail: string | null = null;
-  export let onLogout: () => void = () => {};
-  export let iconNavItems: IconNavItem[] = [];
+  // derived
+  $: xpPct = Math.min(100, Math.round((xp / xpMax) * 100));
 </script>
 
-<header class="lean-header app-header" data-testid="lean-header">
-  <div class="lean-header__inner">
-    <div class="lean-group lean-group--left">
-      <a href="/app/home" class="lean-logo" aria-label="Go home">Looma</a>
-      <label class="lean-search" role="search" aria-label="Search Looma">
-        <Search class="lean-search__icon" aria-hidden="true" />
-        <input type="search" placeholder="Search" aria-label="Search" />
-      </label>
-    </div>
+<header class="sticky top-0 z-50 border-b border-white/5 bg-[#0B0E13]/70 backdrop-blur-md" data-testid="lean-header">
+  <div class="relative mx-auto max-w-screen-2xl px-3 sm:px-4">
+    <!-- Bar -->
+    <div class="h-14 flex items-center justify-between">
+      <!-- LEFT: logo + search (flush left) -->
+      <div class="flex min-w-0 items-center gap-3">
+        <!-- Logo placeholder (slim) -->
+        <a href="/" class="flex items-center gap-2">
+          <div class="h-6 w-6 rounded-md bg-gradient-to-br from-cyan-400/80 to-fuchsia-400/80 ring-1 ring-white/10" aria-hidden="true"></div>
+          <span class="hidden sm:block text-sm tracking-[0.25em] text-white/80">LOOMA</span>
+        </a>
 
-    <CenterIconNav className="lean-center-nav hidden md:flex" items={iconNavItems} />
+        <!-- Search pill -->
+        <div class="hidden md:flex items-center h-9 rounded-full border border-white/10 bg-white/5 px-3">
+          <!-- search icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+          <input
+            class="ml-2 w-56 bg-transparent text-sm text-white/80 placeholder-white/50 outline-none"
+            placeholder="Search Looma"
+            type="search"
+            aria-label="Search Looma"
+          />
+        </div>
+      </div>
 
-    <div class="lean-group lean-group--right">
-      <StatusCapsule
-        className="lean-status"
-        energy={energy}
-        energyMax={energyMax}
-        level={level}
-        xp={xp}
-        xpNext={xpNext}
-        walletBalance={walletBalance}
-        walletCurrency={walletCurrency}
-        unreadCount={unreadCount}
-        notifications={notifications}
-        userEmail={userEmail}
-        onLogout={onLogout}
-      />
+      <!-- CENTER: icon nav (true center, regardless of side widths) -->
+      <nav class="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div class="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+          {#each [
+            {label:'Games', icon:'🎮'},
+            {label:'Gallery', icon:'🖼️'},
+            {label:'Inbox', icon:'💬'},
+            {label:'Trophies', icon:'🏆'},
+            {label:'Profile', icon:'👤'}
+          ] as item}
+            <button
+              class="group inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 ring-inset ring-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+              aria-label={item.label}
+              title={item.label}
+            >
+              <span class="text-[15px]">{item.icon}</span>
+            </button>
+          {/each}
+        </div>
+      </nav>
+
+      <!-- RIGHT: slim status capsule (flush right) -->
+      <div class="flex items-center gap-3">
+        <!-- Slim capsule -->
+        <div class="hidden sm:flex items-center h-10 rounded-full border border-white/10 bg-white/5 pl-3 pr-2">
+          <!-- Level + XP bar (tight) -->
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] uppercase tracking-wide text-white/60">Level</span>
+            <span class="text-sm font-semibold text-white">{level}</span>
+          </div>
+          <div class="mx-3 h-1.5 w-24 rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full" style={`width:${xpPct}%`}
+                 class="bg-gradient-to-r from-cyan-400/80 to-fuchsia-400/80"></div>
+          </div>
+          <!-- Energy -->
+          <div class="flex items-center gap-1 text-xs text-white/70">
+            <span>⚡</span><span>{energy}/{energyMax}</span>
+          </div>
+          <!-- Shards -->
+          <div class="ml-3 flex items-center gap-1 text-xs text-white/70">
+            <span>💎</span><span>{shards} SHARDS</span>
+          </div>
+          <!-- Separator dot -->
+          <span class="mx-2 h-1 w-1 rounded-full bg-white/20" aria-hidden="true"></span>
+          <!-- Email pill -->
+          <div class="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 h-7">
+            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px]">L</div>
+            <span class="text-[12px] text-white/70 truncate max-w-[200px]">{email}</span>
+          </div>
+          <!-- Bell -->
+          <button class="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-inset ring-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60" aria-label="Notifications">🔔</button>
+        </div>
+
+        <!-- Compact menu for xs screens -->
+        <button class="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">⋯</button>
+      </div>
     </div>
   </div>
 </header>
 
 <style>
-  .lean-header {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(5, 7, 18, 0.65);
-  }
-
-  .lean-header__inner {
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 0 1.25rem;
-    height: 3.5rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .lean-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-  }
-
-  .lean-logo {
-    font-size: 1.05rem;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: rgba(248, 250, 255, 0.9);
-    text-decoration: none;
-  }
-
-  .lean-search {
-    display: none;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 1.25rem;
-    padding: 0 0.9rem;
-    height: 2.2rem;
-    background: rgba(12, 16, 32, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: rgba(248, 250, 255, 0.85);
-  }
-
-  .lean-search:focus-within {
-    border-color: rgba(94, 242, 255, 0.4);
-    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.24);
-  }
-
-  .lean-search input {
-    border: none;
-    background: transparent;
-    color: inherit;
-    font-size: 0.88rem;
-    width: 14rem;
-  }
-
-  .lean-search input::placeholder {
-    color: rgba(248, 250, 255, 0.55);
-  }
-
-  .lean-search input:focus-visible {
-    outline: none;
-  }
-
-  .lean-search__icon {
-    width: 1rem;
-    height: 1rem;
-    color: rgba(248, 250, 255, 0.6);
-  }
-
-  .lean-status :global(.status-pill) {
-    border-radius: 1rem;
-    padding: 0.35rem 0.75rem;
-    box-shadow: 0 12px 24px rgba(4, 5, 14, 0.4);
-  }
-
-  .lean-group--right {
-    justify-content: flex-end;
-  }
-
-  .lean-center-nav {
-    justify-content: center;
-  }
-
-  @media (min-width: 900px) {
-    .lean-search {
-      display: inline-flex;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .lean-header__inner {
-      grid-template-columns: minmax(0, 1fr);
-      height: auto;
-      padding-top: 0.75rem;
-      padding-bottom: 0.75rem;
-      gap: 0.75rem;
-    }
-
-    .lean-group--right {
-      width: 100%;
-    }
-  }
+  /* Keep the bar slim & crisp on high-DPI */
+  :global(header) { -webkit-font-smoothing: antialiased; }
 </style>
