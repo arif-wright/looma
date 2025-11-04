@@ -244,8 +244,8 @@
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr) 320px;
-    column-gap: 4.5rem;
+    grid-template-columns: 280px minmax(540px, 1fr) 320px;
+    column-gap: 4rem;
     row-gap: 2.5rem;
     align-items: start;
   }
@@ -289,7 +289,9 @@
 
   .content {
     display: grid;
-    gap: 2.2rem;
+    gap: 2rem;
+    max-width: 660px;
+    width: min(100%, 660px);
   }
 
   .panel {
