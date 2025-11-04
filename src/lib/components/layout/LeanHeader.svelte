@@ -35,7 +35,10 @@
 <header class="lean-header" data-testid="lean-header">
   <div class="lean-header__inner">
     <div class="lean-header__left">
-      <a href="/app/home" class="lean-logo" aria-label="Go home">Looma</a>
+      <a href="/app/home" class="lean-logo" aria-label="Go home">
+        <span class="lean-logo__mark" aria-hidden="true"></span>
+        <span class="lean-logo__word">Looma</span>
+      </a>
       <label class="lean-search" role="search" aria-label="Search Looma">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="lean-search__icon" aria-hidden="true">
           <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" />
@@ -92,14 +95,14 @@
 
   .lean-header__inner {
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     min-height: 56px;
-    padding: 0 1.5rem;
+    padding: 0 1.75rem;
     max-width: 1220px;
     margin: 0 auto;
-    gap: 1rem;
+    column-gap: 1rem;
   }
 
   .lean-header__left,
@@ -110,21 +113,51 @@
     min-width: 0;
   }
 
+  .lean-header__left {
+    justify-self: start;
+  }
+
+  .lean-header__right {
+    justify-self: end;
+  }
+
   .lean-logo {
-    font-size: 1rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(248, 250, 255, 0.82);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     text-decoration: none;
+    min-width: 0;
+  }
+
+  .lean-logo__mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(94, 242, 255, 0.85), rgba(155, 92, 255, 0.85));
+    box-shadow: 0 8px 18px rgba(94, 242, 255, 0.35);
+  }
+
+  .lean-logo__word {
+    display: none;
+    font-size: 0.82rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(248, 250, 255, 0.78);
     font-weight: 600;
+  }
+
+  @media (min-width: 900px) {
+    .lean-logo__word {
+      display: inline;
+    }
   }
 
   .lean-search {
     display: none;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 0.9rem;
-    height: 2.25rem;
+    padding: 0 0.85rem;
+    height: 2.1rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(22, 27, 40, 0.85);
@@ -135,8 +168,8 @@
     border: none;
     background: transparent;
     color: inherit;
-    font-size: 0.9rem;
-    width: 13rem;
+    font-size: 0.85rem;
+    width: 11.5rem;
   }
 
   .lean-search input::placeholder {
@@ -160,15 +193,7 @@
   }
 
   .lean-header__center {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-
-  :global(nav.lean-icon-nav) {
-    pointer-events: auto;
+    justify-self: center;
   }
 
   :global(nav.lean-icon-nav > div) {
@@ -343,11 +368,26 @@
 
   @media (max-width: 768px) {
     .lean-header__inner {
+      grid-template-columns: auto auto;
+      grid-template-rows: auto auto;
       padding: 0 1rem;
+      row-gap: 0.6rem;
+    }
+
+    .lean-header__left {
+      grid-column: 1 / 2;
+      grid-row: 1 / 2;
     }
 
     .lean-header__center {
-      display: none;
+      grid-column: 1 / -1;
+      grid-row: 2 / 3;
+      justify-self: center;
+    }
+
+    .lean-header__right {
+      grid-column: 2 / 3;
+      grid-row: 1 / 2;
     }
 
     .lean-status__bar {
