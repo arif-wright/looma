@@ -203,26 +203,6 @@
       {/if}
     </section>
 
-    {#if recentCatalog.length > 0}
-      <section class="games-strip" aria-label="Recently played carousel">
-        <header class="strip-header">
-          <h2>Recently played</h2>
-          <p>Resume a run or chase a new multiplier.</p>
-        </header>
-        <div class="strip-scroll" data-testid="recent-games-strip">
-          {#each recentCatalog as recent (recent.slug)}
-            <a class="strip-card" href={`/app/games/${recent.slug}`}>
-              <span class="strip-card__icon">{recent.name.charAt(0)}</span>
-              <span class="strip-card__text">
-                <strong>{recent.name}</strong>
-                <span>Continue session</span>
-              </span>
-            </a>
-          {/each}
-        </div>
-      </section>
-    {/if}
-
     <section class="games-rewards panel-glass" aria-label="Latest rewards">
       <header>
         <h2>Latest rewards</h2>
@@ -484,88 +464,6 @@
     font-weight: 600;
   }
 
-  .games-strip {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .strip-header h2 {
-    margin: 0;
-    font-size: clamp(1.35rem, 2vw, 1.75rem);
-  }
-
-  .strip-header p {
-    margin: 0.15rem 0 0;
-    color: rgba(248, 250, 255, 0.65);
-  }
-
-  .strip-scroll {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(220px, 1fr);
-    gap: 1rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-    scroll-snap-type: x mandatory;
-  }
-
-  .strip-scroll::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .strip-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .strip-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 999px;
-  }
-
-  .strip-card {
-    scroll-snap-align: start;
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 0.9rem 1rem;
-    border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(8, 12, 28, 0.72);
-    text-decoration: none;
-    color: rgba(248, 250, 255, 0.88);
-    transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
-  }
-
-  .strip-card__icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(94, 242, 255, 0.25), rgba(155, 92, 255, 0.25));
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .strip-card__text {
-    display: grid;
-    gap: 0.15rem;
-  }
-
-  .strip-card__text span {
-    font-size: 0.78rem;
-    color: rgba(248, 250, 255, 0.6);
-  }
-
-  .strip-card:hover,
-  .strip-card:focus-visible {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.25);
-    outline: none;
-  }
-
   .games-rewards {
     display: grid;
     gap: 1.25rem;
@@ -720,9 +618,6 @@
       gap: 0.75rem;
     }
 
-    .strip-scroll {
-      grid-auto-columns: minmax(200px, 0.7fr);
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
