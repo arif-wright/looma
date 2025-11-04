@@ -1,103 +1,361 @@
 <script lang="ts">
-  // Optional props – wire these up to your stores if you have them
-  export let level = 1;
-  export let xp = 97; // current XP
-  export let xpMax = 100; // XP to next
-  export let energy = 50; // current energy
-  export let energyMax = 50;
-  export let shards = 115;
-  export let email = 'liquidsilver@gmail.com';
+  import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
 
-  // derived
-  $: xpPct = Math.min(100, Math.round((xp / xpMax) * 100));
+  export let iconNavItems: IconNavItem[] = [];
+  export let energy: number | null = null;
+  export let energyMax: number | null = null;
+  export let level: number | null = null;
+  export let xp: number | null = null;
+  export let xpNext: number | null = null;
+  export let walletBalance: number | null = null;
+  export let walletCurrency = 'SHARDS';
+  export let notifications: NotificationItem[] = [];
+  export let unreadCount = 0;
+  export let userEmail: string | null = null;
+  export let onLogout: () => void = () => {};
+
+  $: levelLabel = typeof level === 'number' ? level : '—';
+  $: xpPct = typeof xp === 'number' && typeof xpNext === 'number' && xpNext > 0
+    ? Math.min(100, Math.round((xp / xpNext) * 100))
+    : 0;
+  $: xpLabel = typeof xp === 'number' && typeof xpNext === 'number'
+    ? `${xp}/${xpNext}`
+    : 'Aligning…';
+  $: energyLabel = typeof energy === 'number' && typeof energyMax === 'number'
+    ? `${energy}/${energyMax}`
+    : '—';
+  $: shardLabel = typeof walletBalance === 'number'
+    ? `${walletBalance.toLocaleString()} ${walletCurrency.toUpperCase()}`
+    : `0 ${walletCurrency.toUpperCase()}`;
+  $: initials = userEmail && userEmail.length > 0 ? userEmail.charAt(0).toUpperCase() : '•';
 </script>
 
-<header class="sticky top-0 z-50 border-b border-white/5 bg-[#0B0E13]/70 backdrop-blur-md" data-testid="lean-header">
-  <div class="relative mx-auto max-w-screen-2xl px-3 sm:px-4">
-    <!-- Bar -->
-    <div class="h-14 flex items-center justify-between">
-      <!-- LEFT: logo + search (flush left) -->
-      <div class="flex min-w-0 items-center gap-3">
-        <!-- Logo placeholder (slim) -->
-        <a href="/" class="flex items-center gap-2">
-          <div class="h-6 w-6 rounded-md bg-gradient-to-br from-cyan-400/80 to-fuchsia-400/80 ring-1 ring-white/10" aria-hidden="true"></div>
-          <span class="hidden sm:block text-sm tracking-[0.25em] text-white/80">LOOMA</span>
-        </a>
+<header class="lean-header" data-testid="lean-header">
+  <div class="lean-header__inner">
+    <div class="lean-header__left">
+      <a href="/app/home" class="lean-logo" aria-label="Go home">Looma</a>
+      <label class="lean-search" role="search" aria-label="Search Looma">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="lean-search__icon" aria-hidden="true">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" />
+        </svg>
+        <input type="search" placeholder="Search Looma" aria-label="Search Looma" />
+      </label>
+    </div>
 
-        <!-- Search pill -->
-        <div class="hidden md:flex items-center h-9 rounded-full border border-white/10 bg-white/5 px-3">
-          <!-- search icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
-          <input
-            class="ml-2 w-56 bg-transparent text-sm text-white/80 placeholder-white/50 outline-none"
-            placeholder="Search Looma"
-            type="search"
-            aria-label="Search Looma"
-          />
+    <div class="lean-header__center">
+      <CenterIconNav className="lean-icon-nav" items={iconNavItems} />
+    </div>
+
+    <div class="lean-header__right">
+      <div class="lean-status" aria-label="Player status">
+        <div class="lean-status__level">
+          <span class="lean-status__label">Level</span>
+          <strong>{levelLabel}</strong>
+        </div>
+        <div class="lean-status__progress" aria-hidden={xpLabel === 'Aligning…'}>
+          <div class="lean-status__bar"><span style={`width:${xpPct}%`}></span></div>
+          <span class="lean-status__meta">{xpLabel}</span>
+        </div>
+        <div class="lean-status__metric" aria-label="Energy">
+          <span>⚡</span>
+          <span>{energyLabel}</span>
+        </div>
+        <div class="lean-status__metric" aria-label="Shard balance">
+          <span>💎</span>
+          <span>{shardLabel}</span>
         </div>
       </div>
 
-      <!-- CENTER: icon nav (true center, regardless of side widths) -->
-      <nav class="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div class="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-          {#each [
-            {label:'Games', icon:'🎮'},
-            {label:'Gallery', icon:'🖼️'},
-            {label:'Inbox', icon:'💬'},
-            {label:'Trophies', icon:'🏆'},
-            {label:'Profile', icon:'👤'}
-          ] as item}
-            <button
-              class="group inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 ring-inset ring-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
-              aria-label={item.label}
-              title={item.label}
-            >
-              <span class="text-[15px]">{item.icon}</span>
-            </button>
-          {/each}
-        </div>
-      </nav>
+      <NotificationBell notifications={notifications} unreadCount={unreadCount} />
 
-      <!-- RIGHT: slim status capsule (flush right) -->
-      <div class="flex items-center gap-3">
-        <!-- Slim capsule -->
-        <div class="hidden sm:flex items-center h-10 rounded-full border border-white/10 bg-white/5 pl-3 pr-2">
-          <!-- Level + XP bar (tight) -->
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] uppercase tracking-wide text-white/60">Level</span>
-            <span class="text-sm font-semibold text-white">{level}</span>
-          </div>
-          <div class="mx-3 h-1.5 w-24 rounded-full bg-white/10 overflow-hidden">
-            <div class="h-full" style={`width:${xpPct}%`}
-                 class="bg-gradient-to-r from-cyan-400/80 to-fuchsia-400/80"></div>
-          </div>
-          <!-- Energy -->
-          <div class="flex items-center gap-1 text-xs text-white/70">
-            <span>⚡</span><span>{energy}/{energyMax}</span>
-          </div>
-          <!-- Shards -->
-          <div class="ml-3 flex items-center gap-1 text-xs text-white/70">
-            <span>💎</span><span>{shards} SHARDS</span>
-          </div>
-          <!-- Separator dot -->
-          <span class="mx-2 h-1 w-1 rounded-full bg-white/20" aria-hidden="true"></span>
-          <!-- Email pill -->
-          <div class="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 h-7">
-            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px]">L</div>
-            <span class="text-[12px] text-white/70 truncate max-w-[200px]">{email}</span>
-          </div>
-          <!-- Bell -->
-          <button class="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-inset ring-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60" aria-label="Notifications">🔔</button>
-        </div>
-
-        <!-- Compact menu for xs screens -->
-        <button class="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">⋯</button>
-      </div>
+      <button type="button" class="lean-account" on:click={onLogout} aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}>
+        <span class="lean-account__initial" aria-hidden="true">{initials}</span>
+        {#if userEmail}
+          <span class="lean-account__email">{userEmail}</span>
+        {/if}
+      </button>
     </div>
   </div>
 </header>
 
 <style>
-  /* Keep the bar slim & crisp on high-DPI */
-  :global(header) { -webkit-font-smoothing: antialiased; }
+  .lean-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(11, 14, 19, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .lean-header__inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 56px;
+    padding: 0 1.5rem;
+    max-width: 1220px;
+    margin: 0 auto;
+    gap: 1rem;
+  }
+
+  .lean-header__left,
+  .lean-header__right {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+  }
+
+  .lean-logo {
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(248, 250, 255, 0.82);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .lean-search {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.9rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(22, 27, 40, 0.85);
+    color: rgba(248, 250, 255, 0.75);
+  }
+
+  .lean-search input {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 0.9rem;
+    width: 13rem;
+  }
+
+  .lean-search input::placeholder {
+    color: rgba(248, 250, 255, 0.55);
+  }
+
+  .lean-search input:focus-visible {
+    outline: none;
+  }
+
+  .lean-search:focus-within {
+    border-color: rgba(94, 242, 255, 0.45);
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.2);
+  }
+
+  .lean-search__icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.65;
+    fill: none;
+  }
+
+  .lean-header__center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  :global(nav.lean-icon-nav) {
+    pointer-events: auto;
+  }
+
+  :global(nav.lean-icon-nav > div) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+    backdrop-filter: blur(14px);
+  }
+
+  :global(nav.lean-icon-nav .brand-icon-button) {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    color: rgba(248, 250, 255, 0.75);
+    border: 1px solid transparent;
+    transition: background 150ms ease, color 150ms ease;
+  }
+
+  :global(nav.lean-icon-nav .brand-icon-button:hover),
+  :global(nav.lean-icon-nav .brand-icon-button:focus-visible) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  :global(nav.lean-icon-nav .brand-icon-button:focus-visible) {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.45);
+  }
+
+  :global(nav.lean-icon-nav .brand-icon-button.active) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.35);
+  }
+
+  .lean-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(248, 250, 255, 0.85);
+  }
+
+  .lean-status__level {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .lean-status__label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(248, 250, 255, 0.6);
+  }
+
+  .lean-status__progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lean-status__bar {
+    width: 100px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+  }
+
+  .lean-status__bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(94, 242, 255, 0.9), rgba(155, 92, 255, 0.9));
+    transition: width 220ms ease;
+  }
+
+  .lean-status__meta {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: rgba(248, 250, 255, 0.6);
+  }
+
+  .lean-status__metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+  }
+
+  :global(.lean-header__right .notification-wrapper) {
+    position: relative;
+  }
+
+  :global(.lean-header__right .notification-wrapper .bell) {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    transition: background 150ms ease, border-color 150ms ease;
+  }
+
+  :global(.lean-header__right .notification-wrapper .bell svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  :global(.lean-header__right .notification-wrapper .bell:hover),
+  :global(.lean-header__right .notification-wrapper .bell:focus-visible) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.22);
+    outline: none;
+  }
+
+  .lean-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(248, 250, 255, 0.85);
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease;
+  }
+
+  .lean-account:hover,
+  .lean-account:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    outline: none;
+  }
+
+  .lean-account__initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .lean-account__email {
+    max-width: 180px;
+    font-size: 0.75rem;
+    color: rgba(248, 250, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (min-width: 768px) {
+    .lean-search {
+      display: inline-flex;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .lean-header__inner {
+      padding: 0 1rem;
+    }
+
+    .lean-header__center {
+      display: none;
+    }
+
+    .lean-status__bar {
+      width: 72px;
+    }
+
+    .lean-account__email {
+      display: none;
+    }
+  }
 </style>
