@@ -146,25 +146,6 @@
           Continue your streak, explore new worlds, and keep the shard economy humming. Your recent
           sessions are ready when you are.
         </p>
-        {#if recentCatalog.length > 0}
-          <div class="hero-recent" aria-label="Recently played">
-            <span class="hero-label">Recently played</span>
-            <div class="hero-recent__chips">
-              {#each recentCatalog.slice(0, 5) as recent}
-                <a
-                  href={`/app/games/${recent.slug}`}
-                  class="recent-chip"
-                  data-testid={`recent-game-${recent.slug}`}
-                >
-                  <span class="recent-chip__avatar" aria-hidden="true">
-                    {recent.name.charAt(0)}
-                  </span>
-                  <span class="recent-chip__name">{recent.name}</span>
-                </a>
-              {/each}
-            </div>
-          </div>
-        {/if}
         {#if featuredGame}
           <div class="hero-actions">
             <a
