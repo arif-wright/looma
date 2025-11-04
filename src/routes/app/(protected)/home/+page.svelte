@@ -333,18 +333,18 @@
     z-index: 10;
     min-height: 100vh;
     width: 100%;
-    max-width: 1460px;
-    padding: clamp(3rem, 6vw, 4.5rem) clamp(1.5rem, 6vw, 5rem) 6rem;
+    max-width: 1600px;
+    padding: clamp(3rem, 6vw, 4.5rem) clamp(3rem, 8vw, 6rem) 6rem;
     margin: 0 auto;
   }
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 240px minmax(560px, 620px) 320px;
-    column-gap: 5.5rem;
+    grid-template-columns: 260px minmax(640px, 720px) 320px;
+    column-gap: clamp(6rem, 8vw, 7.5rem);
     row-gap: 1.5rem;
     align-items: start;
-    justify-content: center;
+    justify-content: space-between;
   }
 
   .column-left,
@@ -359,7 +359,7 @@
   .column-center {
     display: grid;
     gap: 1.5rem;
-    width: clamp(560px, 38vw, 620px);
+    width: clamp(640px, 43vw, 720px);
   }
 
   .panel {
@@ -469,12 +469,12 @@
 
   @media (max-width: 1280px) {
     .dashboard-grid {
-      column-gap: 4rem;
+      column-gap: 5rem;
       grid-template-columns: 200px minmax(0, 1fr);
     }
 
     .column-center {
-      width: min(100%, 580px);
+      width: min(100%, 640px);
     }
 
     .column-right {
@@ -509,6 +509,10 @@
     .panel {
       padding: 1.6rem;
       border-radius: 1.4rem;
+    }
+
+    .column-center {
+      width: 100%;
     }
   }
 </style>
