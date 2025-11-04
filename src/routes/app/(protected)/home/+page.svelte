@@ -338,10 +338,11 @@
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr) 280px;
-    column-gap: 6rem;
+    grid-template-columns: 240px auto 280px;
+    column-gap: 3.5rem;
     row-gap: 1.5rem;
     align-items: start;
+    justify-content: center;
   }
 
   .column-left,
@@ -356,6 +357,7 @@
   .column-center {
     display: grid;
     gap: 1.5rem;
+    width: 520px;
   }
 
   .panel {
@@ -465,8 +467,12 @@
 
   @media (max-width: 1280px) {
     .dashboard-grid {
-      column-gap: 4rem;
-      grid-template-columns: 220px minmax(0, 1fr);
+      column-gap: 3rem;
+      grid-template-columns: 200px minmax(0, 1fr);
+    }
+
+    .column-center {
+      width: min(100%, 520px);
     }
 
     .column-right {
@@ -486,6 +492,10 @@
     .column-right {
       position: static;
       top: auto;
+    }
+
+    .column-center {
+      width: 100%;
     }
   }
 
