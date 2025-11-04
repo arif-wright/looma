@@ -123,18 +123,16 @@
       ]
     : gameCatalog;
 
-  const toUrl = (src: string) => `url('${src}')`;
-
   $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
   $: heroHasCover = Boolean(featuredMeta);
   $: heroCoverImage = heroHasCover
-    ? toUrl(featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960'])
+    ? featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960']
     : '';
   $: heroCoverImageSet = heroHasCover
-    ? `image-set(${toUrl(featuredMeta.cover.sources['640'])} 640w, ${toUrl(featuredMeta.cover.sources['960'])} 960w, ${toUrl(featuredMeta.cover.sources['1280'])} 1280w)`
+    ? `url('${featuredMeta.cover.sources['640']}') 640w, url('${featuredMeta.cover.sources['960']}') 960w, url('${featuredMeta.cover.sources['1280']}') 1280w`
     : '';
   $: heroCoverStyle = heroHasCover
-    ? `--hero-cover-image:${heroCoverImage}; --hero-cover-image-set:${heroCoverImageSet};`
+    ? `--hero-cover-image:url('${heroCoverImage}'); --hero-cover-image-set:${heroCoverImageSet};`
     : '';
 
   const findFeatured = () => {
@@ -340,7 +338,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(110deg, rgba(5, 6, 15, 0.92) 25%, rgba(7, 10, 24, 0.72) 60%, rgba(8, 12, 24, 0.45));
+    background: linear-gradient(110deg, rgba(5, 6, 15, 0.65) 20%, rgba(7, 10, 24, 0.45) 55%, rgba(8, 12, 24, 0.18));
     z-index: 0;
     pointer-events: none;
   }
@@ -351,7 +349,7 @@
 
   @supports (background-image: image-set(url('') 1x)) {
     .games-hero.with-cover {
-      background-image: var(--hero-cover-image-set);
+      background-image: image-set(var(--hero-cover-image-set));
     }
   }
 
