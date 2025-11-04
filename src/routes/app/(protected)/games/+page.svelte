@@ -127,13 +127,7 @@
   $: heroHasCover = Boolean(featuredMeta);
   $: heroCoverImage = heroHasCover
     ? featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960']
-    : '';
-  $: heroCoverImageSet = heroHasCover
-    ? `url('${featuredMeta.cover.sources['640']}') 640w, url('${featuredMeta.cover.sources['960']}') 960w, url('${featuredMeta.cover.sources['1280']}') 1280w`
-    : '';
-  $: heroCoverStyle = heroHasCover
-    ? `--hero-cover-image:url('${heroCoverImage}'); --hero-cover-image-set:${heroCoverImageSet};`
-    : '';
+    : null;
 
   const findFeatured = () => {
     if (recentCatalog.length > 0) {
@@ -174,11 +168,10 @@
 <div class="games-surface" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
   <main class="games-main">
-    <section
-      class={`games-hero ${heroHasCover ? 'with-cover' : ''}`}
-      style={heroCoverStyle}
-      aria-label="Featured games"
-    >
+    <section class={`games-hero ${heroHasCover ? 'with-cover' : ''}`} aria-label="Featured games">
+      {#if heroHasCover && heroCoverImage}
+        <div class="hero-cover" style={`background-image: url('${heroCoverImage}')`}></div>
+      {/if}
       <div class="hero-copy">
         <p class="hero-kicker">Pick up where you left off</p>
         <h1>{featuredGame ? `Jump back into ${featuredGame.name}` : 'Choose your next flow'}</h1>
@@ -334,11 +327,28 @@
     background-repeat: no-repeat;
   }
 
+  .hero-cover {
+    position: absolute;
+    inset: -12% -30% -22%;
+    background-size: cover;
+    background-position: center;
+    filter: saturate(1.08) brightness(0.75);
+    transform: scale(1.05);
+    z-index: 0;
+  }
+
+  .hero-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, rgba(5, 6, 15, 0.48) 24%, rgba(7, 10, 24, 0.32) 58%, rgba(8, 12, 24, 0.12));
+  }
+
   .games-hero::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(110deg, rgba(5, 6, 15, 0.65) 20%, rgba(7, 10, 24, 0.45) 55%, rgba(8, 12, 24, 0.18));
+    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.1), transparent 60%);
     z-index: 0;
     pointer-events: none;
   }
@@ -669,6 +679,10 @@
 
     .games-hero {
       grid-template-columns: 1fr;
+    }
+
+    .hero-cover {
+      inset: -18% -45% -6%;
     }
 
     .hero-card__footer {
