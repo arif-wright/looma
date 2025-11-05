@@ -1,4 +1,4 @@
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const FALLBACK_ITEMS = [
   {
@@ -83,4 +83,26 @@ export const load: PageServerLoad = async ({ locals }) => {
   const items = rows.length > 0 ? rows : FALLBACK_ITEMS;
 
   return { items, source: rows.length > 0 ? 'db' : 'fallback' as const };
+};
+
+export const actions: Actions = {
+  default: async ({ request }) => {
+    const form = await request.formData();
+    const price = Number(form.get('price') ?? 0);
+    const slug = String(form.get('slug') ?? '');
+
+    if (!slug || Number.isNaN(price) || price < 0) {
+      return new Response(JSON.stringify({ ok: false, error: 'Invalid purchase data' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
 };

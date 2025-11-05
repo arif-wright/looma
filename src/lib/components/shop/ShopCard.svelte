@@ -1,8 +1,24 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+
   export let item: any;
+
+  const dispatch = createEventDispatcher<{ open: { item: any } }>();
+
+  const open = () => dispatch('open', { item });
 </script>
 
-<article class="group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition hover:ring-white/20">
+<article
+  tabindex="0"
+  on:click={open}
+  on:keypress={(event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      open();
+    }
+  }}
+  class="group cursor-pointer overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition hover:ring-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+>
   <div class="relative aspect-[16/9] overflow-hidden">
     <img
       src={item.image_url}
