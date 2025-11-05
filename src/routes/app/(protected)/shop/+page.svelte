@@ -1,18 +1,17 @@
 <script lang="ts">
-  import { get } from 'svelte/store';
+  export let data: { items: any[]; shards: number | null; error?: string | null };
+
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
-  import { shards } from '$lib/stores/wallet';
-
-  export let data: { items: any[]; error?: string };
 
   let modalOpen = false;
   let selected: any = null;
   let busy = false;
   let modalError: string | null = null;
+  let wallet = data.shards ?? 0;
 
-  const openModal = (event: CustomEvent<{ item: any }>) => {
-    selected = event.detail.item;
+  const openModal = (e: CustomEvent) => {
+    selected = e.detail.item;
     modalError = null;
     modalOpen = true;
   };
@@ -25,117 +24,47 @@
 
   async function purchase(item: any) {
     modalError = null;
-    const current = get(shards);
 
-    if (item.price_shards > current) {
+    if (item.price_shards > wallet) {
       modalError = 'Insufficient shards';
       return;
     }
 
     busy = true;
-    shards.set(current - item.price_shards);
 
     try {
       const form = new FormData();
-      form.set('id', item.id);
       form.set('slug', item.slug);
-      form.set('price', String(item.price_shards));
 
-      const response = await fetch('?/', { method: 'POST', body: form });
-      if (!response.ok) {
-        throw new Error('Network error');
-      }
-      const payload = await response.json();
-      if (!payload?.ok) {
-        throw new Error(payload?.error ?? 'Purchase failed');
-      }
+      const res = await fetch('?/purchase', { method: 'POST', body: form });
+      const out = await res.json();
 
+      if (!res.ok || !out?.ok) throw new Error(out?.error || 'Purchase failed');
+
+      wallet = typeof out.shards === 'number' ? out.shards : wallet;
       closeModal();
-    } catch (error: any) {
-      shards.set(current);
-      modalError = error?.message ?? 'Purchase failed';
+    } catch (err: any) {
+      modalError = err?.message || 'Purchase failed';
     } finally {
       busy = false;
     }
   }
 </script>
 
-<div class="wallet-bar">
-  <div class="wallet-chip">
+<!-- Wallet pill -->
+<div class="mb-4 flex items-center justify-end">
+  <div class="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-white/80">
     <span>Wallet</span>
-    <span class="amount">💎 {$shards}</span>
+    <span class="font-semibold text-white">💎 {wallet}</span>
   </div>
 </div>
 
-<section class="shop-grid-panel panel-glass">
-  {#if data.error}
-    <div class="shop-alert">
-      Failed to load shop items: {data.error}
-    </div>
-  {:else if !data.items?.length}
-    <p class="shop-empty">No items match your filters right now.</p>
-  {:else}
-    <ShopGrid items={data.items} on:open={openModal} />
-  {/if}
-</section>
+{#if data.error}
+  <div class="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+    Failed to load shop items: {data.error}
+  </div>
+{:else}
+  <ShopGrid items={data.items} on:open={openModal} />
+{/if}
 
-<ShopModal
-  item={selected}
-  open={modalOpen}
-  busy={busy}
-  error={modalError}
-  onClose={closeModal}
-  onPurchase={purchase}
-/>
-
-<style>
-  .wallet-bar {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: -0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .wallet-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    height: 2.25rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(8, 12, 28, 0.55);
-    padding: 0 1rem;
-    font-size: 0.85rem;
-    color: rgba(248, 250, 255, 0.8);
-  }
-
-  .wallet-chip .amount {
-    font-weight: 600;
-    color: rgba(248, 250, 255, 0.95);
-  }
-
-  .shop-grid-panel {
-    display: grid;
-    gap: 1.6rem;
-    padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
-    border-radius: 1.75rem;
-  }
-
-  .shop-alert {
-    border: 1px solid rgba(255, 123, 123, 0.3);
-    background: rgba(255, 86, 86, 0.15);
-    color: rgba(255, 214, 214, 0.92);
-    padding: 0.85rem 1.1rem;
-    border-radius: 1rem;
-    font-size: 0.95rem;
-  }
-
-  .shop-empty {
-    margin: 0;
-    text-align: center;
-    color: rgba(226, 232, 240, 0.72);
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-</style>
+<ShopModal open={modalOpen} item={selected} {busy} error={modalError} onClose={closeModal} onPurchase={purchase} />

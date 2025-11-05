@@ -1,108 +1,93 @@
 import type { Actions, PageServerLoad } from './$types';
 
-const FALLBACK_ITEMS = [
-  {
-    id: 'fallback-radiant',
-    slug: 'radiant-shard-pack',
-    title: 'Radiant Shard Pack',
-    subtitle: '5x premium shards',
-    description: 'Bundle of radiant currency',
-    type: 'bundle',
-    rarity: 'rare',
-    price_shards: 200,
-    image_url: '/games/tiles-run/cover-640.webp',
-    tags: ['boost', 'limited'],
-    sort: 10,
-    active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fallback-tiles-skin',
-    slug: 'tiles-run-skin-nebula',
-    title: 'Tiles Run – Nebula Skin',
-    subtitle: 'Color-burst cosmetic',
-    description: 'Reactive prism trail for Tiles Run',
-    type: 'cosmetic',
-    rarity: 'epic',
-    price_shards: 120,
-    image_url: '/games/tiles-run/cover-512.webp',
-    tags: ['tiles-run', 'cosmetic'],
-    sort: 20,
-    active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fallback-double-xp',
-    slug: 'double-xp-30m',
-    title: 'Double XP (30m)',
-    subtitle: 'Stackable boost',
-    description: 'Doubles XP gain for 30 minutes',
-    type: 'boost',
-    rarity: 'uncommon',
-    price_shards: 90,
-    image_url: '/games/tiles-run/cover-640.webp',
-    tags: ['boost'],
-    sort: 30,
-    active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fallback-avatar-frame',
-    slug: 'avatar-frame-prism',
-    title: 'Avatar Frame — Prism',
-    subtitle: 'Reactive glow',
-    description: 'Profile frame that pulses to your level',
-    type: 'cosmetic',
-    rarity: 'legendary',
-    price_shards: 260,
-    image_url: '/games/tiles-run/cover-512.webp',
-    tags: ['profile', 'cosmetic'],
-    sort: 40,
-    active: true,
-    created_at: new Date().toISOString()
-  }
-];
-
 export const load: PageServerLoad = async ({ locals }) => {
   const supabase = (locals as any)?.supabase;
+  const user = (locals as any)?.user;
 
   if (!supabase) {
-    return { items: FALLBACK_ITEMS, source: 'fallback-no-client' as const };
-  }
-  const { data, error } = await supabase
-    .from('shop_items_view')
-    .select('*')
-    .order('sort', { ascending: true });
-
-  if (error) {
-    console.error('shop load error', error);
-    return { items: FALLBACK_ITEMS, error: error.message, source: 'db-error' as const };
+    return {
+      items: [],
+      shards: null,
+      source: 'no-client' as const,
+      error: 'Missing Supabase client'
+    };
   }
 
-  const rows = Array.isArray(data) ? data : [];
-  const items = rows.length > 0 ? rows : FALLBACK_ITEMS;
+  const [itemsRes, walletRes] = await Promise.all([
+    supabase
+      .from('shop_items_view')
+      .select('*')
+      .eq('active', true)
+      .order('sort', { ascending: true }),
+    supabase.from('user_wallets').select('shards').single()
+  ]);
 
-  return { items, source: rows.length > 0 ? 'db' : 'fallback' as const };
+  const items = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+  let shards = walletRes.data?.shards ?? null;
+
+  if (walletRes.error && walletRes.error.code === 'PGRST116') {
+    if (user?.id) {
+      const created = await supabase
+        .from('user_wallets')
+        .insert({ user_id: user.id })
+        .select('shards')
+        .single();
+      shards = created.data?.shards ?? 1000;
+    } else {
+      shards = null;
+    }
+  }
+
+  return {
+    items,
+    shards,
+    source: 'db' as const,
+    error: itemsRes.error?.message ?? null
+  };
 };
 
 export const actions: Actions = {
-  default: async ({ request }) => {
+  purchase: async ({ request, locals }) => {
+    const supabase = (locals as any)?.supabase;
+    const user = (locals as any)?.user;
+
+    if (!supabase || !user?.id) {
+      return new Response(JSON.stringify({ ok: false, error: 'Not authenticated' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+
     const form = await request.formData();
-    const price = Number(form.get('price') ?? 0);
     const slug = String(form.get('slug') ?? '');
 
-    if (!slug || Number.isNaN(price) || price < 0) {
-      return new Response(JSON.stringify({ ok: false, error: 'Invalid purchase data' }), {
+    if (!slug) {
+      return new Response(JSON.stringify({ ok: false, error: 'Missing slug' }), {
         status: 400,
         headers: { 'content-type': 'application/json' }
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    const { data, error, status } = await supabase
+      .rpc('purchase_item', { p_item_slug: slug })
+      .single();
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    });
+    if (error || !data) {
+      return new Response(
+        JSON.stringify({ ok: false, error: error?.message ?? 'Purchase failed' }),
+        {
+          status: status || 400,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, order_id: data.order_id, shards: data.new_shards }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      }
+    );
   }
 };
