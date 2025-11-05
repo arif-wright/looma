@@ -43,6 +43,7 @@
   let currentPath = '';
   let isHome = false;
   let isGames = false;
+  let isShop = false;
   let hideRail = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
@@ -50,7 +51,8 @@
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
   $: isGames = currentPath.startsWith('/app/games');
-  $: hideRail = isHome || isGames;
+  $: isShop = currentPath.startsWith('/app/shop');
+  $: hideRail = isHome || isGames || isShop;
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' ? ($playerProgress.currency as number) : null;
   $: walletCurrency = 'SHARDS';
