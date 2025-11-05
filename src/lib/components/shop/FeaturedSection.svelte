@@ -41,8 +41,12 @@
 
 {#if hasItems()}
   <section class="mb-5">
-    <div class="relative overflow-hidden rounded-2xl ring-1 ring-white/10">
-      <div class="relative aspect-[16/9]" on:mouseenter={stop} on:mouseleave={start}>
+    <div class="relative mx-auto overflow-hidden rounded-2xl ring-1 ring-white/10 max-w-5xl">
+      <div
+        class="relative aspect-[5/2] sm:aspect-[16/6] lg:aspect-[21/8] xl:aspect-[16/5] max-h-[340px]"
+        on:mouseenter={stop}
+        on:mouseleave={start}
+      >
         {#each items as item, i}
           <img
             src={item.image_url}
