@@ -1,8 +1,11 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onDestroy } from 'svelte';
+  import ShopLayout, { type NavItem } from '$lib/components/shop/ShopLayout.svelte';
+  import FeaturedSection, { type FeaturedBanner } from '$lib/components/shop/FeaturedSection.svelte';
+  import FilterBar, { type FilterChip, type SortOption } from '$lib/components/shop/FilterBar.svelte';
   import ShopGrid, { type ShopGridItem } from '$lib/components/shop/ShopGrid.svelte';
-  import ShopItemModal, { type PriceSummary, type PurchaseResult } from '$lib/components/shop/ShopItemModal.svelte';
+  import ShopModal, { type PriceSummary, type PurchaseResult } from '$lib/components/shop/ShopModal.svelte';
 
   type CatalogProduct = {
     slug: string;
@@ -90,24 +93,37 @@
   };
 
   $: allItems = buildItems();
-  $: rarityOptions = ['all', ...Array.from(new Set(allItems.map((item) => (item.rarity ?? 'common').toLowerCase())))];
-  $: categoryOptions = ['all', ...Array.from(new Set(allItems.map((item) => categoryFor(item))))].filter(
-    (key, idx, arr) => key === 'all' || arr.indexOf(key) === idx
-  );
+  $: categoryChips = [{ id: 'all', label: 'All' }, ...Array.from(new Set(allItems.map((item) => categoryFor(item)))).map((key) => ({ id: key, label: categoryLabel(key) }))] as FilterChip[];
+  $: rarityChips = [{ id: 'all', label: 'All Rarities' }, ...Array.from(new Set(allItems.map((item) => (item.rarity ?? 'common').toLowerCase()))).map((value) => ({ id: value, label: rarityLabel(value) }))] as FilterChip[];
 
-  let filterRarity = 'all';
   let filterCategory = 'all';
+  let filterRarity = 'all';
+  let sortMode = 'featured';
+  let searchTerm = '';
 
-  $: filteredItems = allItems.filter((item) => {
-    const rarityKey = (item.rarity ?? 'common').toLowerCase();
-    const categoryKey = categoryFor(item);
-    const matchesRarity = filterRarity === 'all' || rarityKey === filterRarity;
-    const matchesCategory = filterCategory === 'all' || categoryKey === filterCategory;
-    return matchesRarity && matchesCategory;
-  });
+  $: filteredItems = allItems
+    .filter((item) => {
+      const rarityKey = (item.rarity ?? 'common').toLowerCase();
+      const categoryKey = categoryFor(item);
+      const matchesRarity = filterRarity === 'all' || rarityKey === filterRarity;
+      const matchesCategory = filterCategory === 'all' || categoryKey === filterCategory;
+      const matchesSearch = !searchTerm
+        || item.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+        || item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesRarity && matchesCategory && matchesSearch;
+    });
+
+  const sorters: Record<string, (a: ShopGridItem, b: ShopGridItem) => number> = {
+    featured: () => 0,
+    'price-asc': (a, b) => a.price - b.price,
+    'price-desc': (a, b) => b.price - a.price,
+    name: (a, b) => a.displayName.localeCompare(b.displayName)
+  };
+
+  $: sortedItems = [...filteredItems].sort(sorters[sortMode] ?? sorters.featured);
 
   $: flashPromos = allItems.filter((item) => item.isFlash && item.promoPercent > 0);
-  $: tickerText = flashPromos.map((item) => `${item.displayName} ${item.promoPercent}% off`).join(' • ');
+  $: featuredBanners = buildBanners(flashPromos, allItems);
 
   let selectedItem: ShopGridItem | null = null;
   let modalOpen = false;
@@ -130,46 +146,28 @@
       : []
   }));
 
+  const navItems: NavItem[] = [
+    { id: 'shop', label: 'Shop', href: '/app/shop' },
+    { id: 'creatures', label: 'Creatures' },
+    { id: 'items', label: 'Items' },
+    { id: 'bundles', label: 'Bundles' },
+    { id: 'flash', label: 'Flash Deals' }
+  ];
+
+  const sortOptions: SortOption[] = [
+    { id: 'featured', label: 'Featured' },
+    { id: 'price-asc', label: 'Price: Low to High' },
+    { id: 'price-desc', label: 'Price: High to Low' },
+    { id: 'name', label: 'Name' }
+  ];
+
   function showToast(message: string) {
     toast = { message };
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       toast = null;
       toastTimer = null;
-    }, 3500);
-  }
-
-  let flashCountdown = '02:00:00';
-  let countdownTimer: ReturnType<typeof setInterval> | null = null;
-  let countdownEndsAt: number | null = null;
-
-  const updateCountdown = () => {
-    if (!countdownEndsAt) return;
-    const remaining = Math.max(0, countdownEndsAt - Date.now());
-    const hours = String(Math.floor(remaining / 3_600_000)).padStart(2, '0');
-    const minutes = String(Math.floor((remaining % 3_600_000) / 60_000)).padStart(2, '0');
-    const seconds = String(Math.floor((remaining % 60_000) / 1000)).padStart(2, '0');
-    flashCountdown = `${hours}:${minutes}:${seconds}`;
-    if (remaining <= 0 && countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
-  };
-
-  const startCountdown = () => {
-    if (!browser) return;
-    countdownEndsAt = Date.now() + 2 * 60 * 60 * 1000;
-    updateCountdown();
-    countdownTimer = window.setInterval(updateCountdown, 1000);
-  };
-
-  $: {
-    if (browser && flashPromos.length > 0) {
-      if (!countdownTimer) startCountdown();
-    } else if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
+    }, 3200);
   }
 
   $: {
@@ -186,7 +184,6 @@
   onDestroy(() => {
     if (toastTimer) clearTimeout(toastTimer);
     if (walletPulseTimer) clearTimeout(walletPulseTimer);
-    if (countdownTimer) clearInterval(countdownTimer);
   });
 
   function handleSelect(event: CustomEvent<{ item: ShopGridItem }>) {
@@ -252,357 +249,189 @@
   };
 
   const formatAmount = (amount: number, currency: string) => `${amount.toLocaleString()} ${currency.toUpperCase()}`;
+
+  function handleCategory(event: CustomEvent<{ id: string }>) {
+    filterCategory = event.detail.id;
+  }
+
+  function handleRarity(event: CustomEvent<{ id: string }>) {
+    filterRarity = event.detail.id;
+  }
+
+  function handleSort(event: CustomEvent<{ id: string }>) {
+    sortMode = event.detail.id;
+  }
+
+  function handleSearch(event: CustomEvent<{ value: string }>) {
+    searchTerm = event.detail.value;
+  }
+
+  const isImage = (source: string | null | undefined) => {
+    if (!source) return false;
+    return source.startsWith('/') || source.startsWith('http') || /\.(png|jpe?g|webp|svg)$/i.test(source);
+  };
+
+  function buildBanners(promos: ShopGridItem[], items: ShopGridItem[]): FeaturedBanner[] {
+    const sources = promos.length > 0 ? promos.slice(0, 3) : items.slice(0, 3);
+    return sources.map((entry, index) => ({
+      id: entry.sku,
+      title: entry.displayName,
+      description: entry.description,
+      ctaLabel: entry.promoPercent > 0 ? `Save ${entry.promoPercent}%` : 'View Item',
+      href: '#shop-grid',
+      image: isImage(entry.icon) ? entry.icon : '/og/shop-banner.webp',
+      accent: ['cyan', 'magenta', 'amber'][index % 3] as FeaturedBanner['accent']
+    }));
+  }
 </script>
 
 <svelte:window on:keydown={(event) => event.key === 'Escape' && modalOpen && handleClose()} />
 
-<div class="shop-page">
-  <div class="shop-shell">
-    <header class="shop-header panel-glass">
-      <div class={`shop-wallet ${walletPulse ? 'pulse-soft' : ''}`} aria-live="polite">
-        <span class="label">Wallet</span>
-        <span class="amount">{formatAmount(walletBalance, walletCurrency)}</span>
-      </div>
+<ShopLayout
+  navItems={navItems}
+  activeId="shop"
+  walletLabel={formatAmount(walletBalance, walletCurrency)}
+  {walletPulse}
+  on:search={handleSearch}
+>
+  <FeaturedSection slot="featured" banners={featuredBanners} />
 
-      {#if flashPromos.length > 0 && tickerText}
-        <div class="flash-banner panel-glass" role="status">
-          <div class="flash-meta">
-            <span class="flash-label">Flash Sale</span>
-            <span class="flash-countdown" aria-live="polite">{flashCountdown}</span>
-          </div>
-          <div class="flash-ticker">
-            <span>{tickerText}</span>
-          </div>
-        </div>
-      {/if}
-
-      <div class="shop-filters">
-        <div class="filter-group" role="group" aria-label="Filter by rarity">
-          {#each rarityOptions as rarity}
-            <button
-              type="button"
-              class={`filter-btn ${filterRarity === rarity ? 'active' : ''}`}
-              on:click={() => (filterRarity = rarity)}
-            >
-              {rarity === 'all' ? 'All' : rarityLabel(rarity)}
-            </button>
-          {/each}
-        </div>
-        <div class="filter-group" role="group" aria-label="Filter by type">
-          {#each categoryOptions as category}
-            <button
-              type="button"
-              class={`filter-btn ${filterCategory === category ? 'active' : ''}`}
-              on:click={() => (filterCategory = category)}
-            >
-              {category === 'all' ? 'All Types' : categoryLabel(category)}
-            </button>
-          {/each}
-        </div>
-      </div>
-    </header>
-
-    <div class="shop-content">
-      <main class="shop-main panel-glass">
-        {#if filteredItems.length === 0}
-          <p class="shop-empty">No items match your filters right now.</p>
-        {:else}
-          <ShopGrid items={filteredItems} on:select={handleSelect} />
-        {/if}
-      </main>
-
-      <aside class="shop-sidebar">
-        <section class="sidebar-card panel-glass">
-          <h3>Recent Orders</h3>
-          {#if orders.length === 0}
-            <p class="muted">No purchases yet.</p>
-          {:else}
-            <ul>
-              {#each orders.slice(0, 5) as order}
-                <li>
-                  <div class="order-head">
-                    <span>#{order.id.slice(0, 8)}</span>
-                    <span>{formatAmount(order.total, order.currency)}</span>
-                  </div>
-                  <time datetime={order.insertedAt}>{new Date(order.insertedAt).toLocaleString()}</time>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </section>
-
-        <section class="sidebar-card panel-glass">
-          <h3>Inventory</h3>
-          {#if Array.from(inventoryMap.values()).every((qty) => qty === 0)}
-            <p class="muted">Purchases will appear here.</p>
-          {:else}
-            <ul>
-              {#each Array.from(inventoryMap.entries()).filter(([, qty]) => qty > 0) as [sku, qty]}
-                <li>
-                  <span class="sku">{sku}</span>
-                  <span class="qty">x{qty}</span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </section>
-      </aside>
-    </div>
-
-    {#if toast}
-      <div class="shop-toast toast-panel" role="status" data-testid="shop-toast">{toast.message}</div>
-    {/if}
-  </div>
-
-  <ShopItemModal
-    open={modalOpen}
-    item={selectedItem}
-    walletBalance={walletBalance}
-    inventoryQty={selectedItem ? inventoryQtyFor(selectedItem.sku) : 0}
-    maxQty={SHOP_MAX_QTY_PER_LINE}
-    on:close={handleClose}
-    on:purchased={handlePurchased}
+  <FilterBar
+    slot="filters"
+    categories={categoryChips}
+    activeCategory={filterCategory}
+    rarities={rarityChips}
+    activeRarity={filterRarity}
+    sortOptions={sortOptions}
+    activeSort={sortMode}
+    on:category={handleCategory}
+    on:rarity={handleRarity}
+    on:sort={handleSort}
   />
-</div>
+
+  <section id="shop-grid" class="shop-grid-panel panel-glass">
+    {#if sortedItems.length === 0}
+      <p class="shop-empty">No items match your filters right now.</p>
+    {:else}
+      <ShopGrid items={sortedItems} on:select={handleSelect} />
+    {/if}
+  </section>
+
+  {#if orders.length > 0}
+    <section class="shop-orders panel-glass" aria-label="Recent orders">
+      <header>
+        <h2>Recent Orders</h2>
+        <p>Your latest marketplace activity.</p>
+      </header>
+      <ul>
+        {#each orders.slice(0, 5) as order}
+          <li>
+            <div>
+              <span class="order-id">#{order.id.slice(0, 8)}</span>
+              <time datetime={order.insertedAt}>{new Date(order.insertedAt).toLocaleString()}</time>
+            </div>
+            <strong>{formatAmount(order.total, order.currency)}</strong>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if toast}
+    <div class="shop-toast" role="status">{toast.message}</div>
+  {/if}
+</ShopLayout>
+
+<ShopModal
+  open={modalOpen}
+  item={selectedItem}
+  walletBalance={walletBalance}
+  inventoryQty={selectedItem ? inventoryQtyFor(selectedItem.sku) : 0}
+  maxQty={SHOP_MAX_QTY_PER_LINE}
+  on:close={handleClose}
+  on:purchased={handlePurchased}
+  on:error={(event) => showToast(event.detail.message)}
+/>
 
 <style>
-  .shop-page {
-    position: relative;
-    min-height: 100vh;
-    background: radial-gradient(circle at top, rgba(155, 92, 255, 0.15), transparent 55%),
-      radial-gradient(circle at bottom, rgba(94, 242, 255, 0.1), transparent 45%),
-      var(--brand-navy, #050712);
-    padding: clamp(1.2rem, 4vw, 3rem);
-  }
-
-  .shop-shell {
-    max-width: 1180px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.4rem;
-  }
-
-  .shop-header {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .shop-wallet {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.65rem 1.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(8, 12, 28, 0.75);
-    color: rgba(248, 250, 255, 0.9);
-    font-size: 0.95rem;
-  }
-
-  .shop-wallet .label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  .shop-wallet .amount {
-    font-size: 1.15rem;
-    font-weight: 600;
-  }
-
-  .flash-banner {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    padding: 1rem;
-    border-radius: 1.2rem;
-    background: rgba(21, 15, 6, 0.6);
-    border: 1px solid rgba(255, 207, 106, 0.4);
-    box-shadow: 0 18px 32px rgba(255, 149, 5, 0.22);
-  }
-
-  .flash-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .flash-label {
-    font-size: 0.78rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(255, 207, 106, 0.8);
-  }
-
-  .flash-countdown {
-    font-family: 'Inter', monospace;
-    font-size: 1.25rem;
-    letter-spacing: 0.1em;
-    color: #ffcf6a;
-    text-shadow: 0 0 16px rgba(255, 207, 106, 0.6);
-  }
-
-  .flash-ticker {
-    overflow: hidden;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    padding-top: 0.4rem;
-  }
-
-  .flash-ticker span {
-    display: inline-block;
-    white-space: nowrap;
-    color: rgba(255, 255, 255, 0.75);
-    animation: flash-marquee 18s linear infinite;
-  }
-
-  .shop-filters {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .filter-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-  }
-
-  .filter-btn {
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(8, 12, 28, 0.55);
-    color: rgba(248, 250, 255, 0.8);
-    padding: 0.45rem 1rem;
-    border-radius: 999px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    font-size: 0.68rem;
-    transition: background 180ms ease, color 180ms ease, border 180ms ease;
-  }
-
-  .filter-btn.active,
-  .filter-btn:hover,
-  .filter-btn:focus-visible {
-    border-color: rgba(94, 242, 255, 0.5);
-    background: rgba(94, 242, 255, 0.18);
-    color: #fff;
-    outline: none;
-  }
-
-  .shop-content {
+  .shop-grid-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
     gap: 1.5rem;
-  }
-
-  .shop-main {
-    min-height: 360px;
-    box-shadow: 0 12px 28px rgba(10, 14, 24, 0.35);
+    padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
+    border-radius: 1.75rem;
   }
 
   .shop-empty {
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 0.95rem;
+    margin: 0;
+    color: rgba(226, 232, 240, 0.75);
+    text-align: center;
+    padding: 3rem 0;
   }
 
-  .shop-sidebar {
-    display: flex;
-    flex-direction: column;
+  .shop-orders {
+    display: grid;
     gap: 1rem;
+    padding: 1.8rem clamp(1.4rem, 3vw, 2.2rem);
+    border-radius: 1.75rem;
   }
 
-  .sidebar-card {
-    padding: 1.1rem;
-    border-radius: 1.15rem;
-    background: rgba(8, 12, 28, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: rgba(248, 250, 255, 0.9);
-    box-shadow: 0 12px 28px rgba(10, 14, 24, 0.35);
+  .shop-orders header {
+    display: grid;
+    gap: 0.35rem;
   }
 
-  .sidebar-card h3 {
-    margin: 0 0 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.65);
+  .shop-orders h2 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+    color: rgba(248, 250, 252, 0.96);
   }
 
-  .sidebar-card ul {
+  .shop-orders p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.72);
+  }
+
+  .shop-orders ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.65rem;
+    gap: 0.8rem;
   }
 
-  .order-head {
+  .shop-orders li {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    font-size: 0.85rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .sidebar-card time {
+  .shop-orders li:last-child {
+    border-bottom: none;
+  }
+
+  .shop-orders time {
+    display: block;
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(148, 163, 184, 0.78);
   }
 
-  .sku {
-    font-weight: 600;
-  }
-
-  .qty {
+  .order-id {
     font-size: 0.85rem;
-    color: rgba(94, 242, 255, 0.85);
-  }
-
-  .muted {
-    color: rgba(255, 255, 255, 0.55);
-    font-size: 0.85rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.72);
   }
 
   .shop-toast {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 50;
-  }
-
-  @keyframes flash-marquee {
-    0% {
-      transform: translateX(10%);
-    }
-    100% {
-      transform: translateX(-110%);
-    }
-  }
-
-  @media (max-width: 1024px) {
-    .shop-content {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .shop-page {
-      padding: 1rem;
-    }
-
-    .shop-shell {
-      gap: 1rem;
-    }
-
-    .shop-content {
-      gap: 1rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .flash-ticker span {
-      animation: none;
-    }
+    justify-self: center;
+    margin-top: 1rem;
+    padding: 0.75rem 1.8rem;
+    border-radius: 999px;
+    background: rgba(8, 12, 28, 0.7);
+    border: 1px solid rgba(94, 242, 255, 0.35);
+    color: rgba(248, 250, 255, 0.9);
+    box-shadow: 0 18px 32px rgba(94, 242, 255, 0.2);
   }
 </style>
