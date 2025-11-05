@@ -166,9 +166,9 @@
   <title>Looma — Game Hub</title>
 </svelte:head>
 
-<div class="games-surface" data-testid="games-hub">
+<div class="games-root bg-neuro" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
-  <main class="games-main">
+  <main class="games-shell">
     <section
       class="games-hero"
       style={heroBackground ? `background-image: ${heroBackground};` : undefined}
@@ -276,15 +276,11 @@
       {/if}
     </section>
 
-    <section
-      class="games-grid-section space-y-3"
-      aria-label="All games"
-      data-testid="games-grid"
-    >
-      <header class="space-y-2 text-left">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">Game library</p>
-        <h2 class="text-2xl font-semibold text-white">All games</h2>
-        <p class="max-w-xl text-sm text-white/70">Browse the latest sims ready for playtesting.</p>
+    <section class="games-grid-panel panel-glass" aria-label="All games" data-testid="games-grid">
+      <header class="games-grid-panel__header">
+        <p class="games-grid-panel__kicker">Game library</p>
+        <h2 class="games-grid-panel__title">All games</h2>
+        <p class="games-grid-panel__lead">Browse the latest sims ready for playtesting.</p>
       </header>
       <GameGrid items={gridGames} aspect="16:9" />
     </section>
@@ -292,11 +288,9 @@
 </div>
 
 <style>
-  .games-surface {
+  .games-root {
     position: relative;
     min-height: 100vh;
-    background: radial-gradient(circle at top, rgba(91, 216, 255, 0.12), transparent 50%),
-      var(--brand-navy, #050712);
     color: #fff;
     overflow: hidden;
   }
@@ -305,15 +299,17 @@
     opacity: 0.4;
   }
 
-  .games-main {
+  .games-shell {
     position: relative;
     z-index: 1;
-    max-width: 1360px;
+    max-width: 1680px;
     margin: 0 auto;
-    padding: 3.5rem clamp(1rem, 4vw, 3rem) 4.5rem;
+    padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 2.75rem;
+    width: 100%;
+    min-height: 100vh;
   }
 
   .games-hero {
@@ -327,16 +323,16 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    padding: clamp(2.4rem, 5vw, 3.5rem) clamp(2rem, 4vw, 3rem);
-    border-radius: 2rem;
-    box-shadow: 0 28px 48px rgba(5, 6, 18, 0.45);
+    padding: clamp(2.8rem, 5.5vw, 3.9rem) clamp(2.2rem, 4.4vw, 3.2rem);
+    border-radius: 1.75rem;
+    box-shadow: 0 32px 60px rgba(6, 9, 22, 0.48);
   }
 
   .games-hero::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg, rgba(5, 6, 15, 0.78) 0%, rgba(7, 10, 24, 0.52) 55%, rgba(8, 12, 24, 0.42) 100%);
+    background: linear-gradient(120deg, rgba(5, 6, 15, 0.78) 0%, rgba(7, 10, 24, 0.58) 52%, rgba(8, 12, 24, 0.48) 100%);
     z-index: 0;
     pointer-events: none;
   }
@@ -345,7 +341,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.18), transparent 65%);
+    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.16), transparent 65%);
     z-index: 0;
     pointer-events: none;
   }
@@ -364,8 +360,9 @@
     font-size: 0.75rem;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(226, 232, 240, 0.68);
     margin: 0;
+    text-shadow: 0 6px 18px rgba(4, 6, 16, 0.6);
   }
 
   .hero-copy h1 {
@@ -380,6 +377,7 @@
     margin: 0;
     max-width: 560px;
     color: rgba(255, 255, 255, 0.8);
+    text-shadow: 0 10px 24px rgba(4, 6, 16, 0.45);
   }
 
   .hero-recent {
@@ -480,6 +478,8 @@
     display: grid;
     gap: 1.15rem;
     backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 22px 48px rgba(6, 9, 22, 0.38);
   }
 
   .hero-card__badge {
@@ -527,8 +527,8 @@
   .games-rewards {
     display: grid;
     gap: 1.25rem;
-    padding: 1.5rem;
-    border-radius: 1.4rem;
+    padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
+    border-radius: 1.75rem;
   }
 
   .games-rewards header {
@@ -541,13 +541,14 @@
 
   .games-rewards header h2 {
     margin: 0;
-    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-size: clamp(1.45rem, 2.1vw, 1.85rem);
+    color: rgba(248, 250, 252, 0.96);
   }
 
   .games-rewards header p {
     margin: 0.25rem 0 0;
     flex: 1 1 100%;
-    color: rgba(248, 250, 255, 0.65);
+    color: rgba(226, 232, 240, 0.72);
   }
 
   .rewards-pagination {
@@ -656,11 +657,44 @@
 
   .rewards-empty {
     margin: 0;
-    color: rgba(248, 250, 255, 0.6);
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  .games-grid-panel {
+    display: grid;
+    gap: 1.5rem;
+    padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
+    border-radius: 1.75rem;
+  }
+
+  .games-grid-panel__header {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .games-grid-panel__kicker {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.62);
+  }
+
+  .games-grid-panel__title {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.3vw, 1.9rem);
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.98);
+  }
+
+  .games-grid-panel__lead {
+    margin: 0;
+    max-width: 640px;
+    color: rgba(226, 232, 240, 0.78);
   }
 
   @media (max-width: 768px) {
-    .games-main {
+    .games-shell {
       padding-bottom: 6rem;
       gap: 2rem;
     }
@@ -677,7 +711,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .games-main {
+    .games-shell {
       transition: none;
     }
   }
