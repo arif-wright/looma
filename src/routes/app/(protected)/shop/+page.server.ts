@@ -7,23 +7,31 @@ export const load: PageServerLoad = async ({ locals }) => {
   if (!supabase) {
     return {
       items: [],
+      featured: [],
       shards: 0,
       ownedIds: [],
       error: 'Missing Supabase client'
     };
   }
 
-  const [itemsRes, walletRes, inventoryRes] = await Promise.all([
+  const [itemsRes, walletRes, inventoryRes, featuredRes] = await Promise.all([
     supabase
       .from('shop_items_view')
       .select('*')
       .eq('active', true)
       .order('sort', { ascending: true }),
     supabase.from('user_wallets').select('shards').single(),
-    supabase.from('shop_inventory').select('item_id')
+    supabase.from('shop_inventory').select('item_id'),
+    supabase
+      .from('shop_items')
+      .select('*')
+      .eq('active', true)
+      .eq('featured', true)
+      .order('featured_sort', { ascending: true })
   ]);
 
   const items = Array.isArray(itemsRes.data) ? itemsRes.data : [];
+  const featured = Array.isArray(featuredRes.data) ? featuredRes.data : [];
   let shards = walletRes.data?.shards ?? 0;
   const ownedIds = Array.isArray(inventoryRes.data)
     ? inventoryRes.data.map((row: { item_id: string }) => row.item_id)
@@ -44,6 +52,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   return {
     items,
+    featured,
     shards,
     ownedIds,
     error: itemsRes.error?.message ?? null

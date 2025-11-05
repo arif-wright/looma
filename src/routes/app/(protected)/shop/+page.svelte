@@ -1,6 +1,18 @@
 <script lang="ts">
-  export let data: { items: any[]; shards: number; ownedIds: string[]; error?: string | null };
+  export let data: {
+    items: any[];
+    featured: any[];
+    shards: number;
+    ownedIds: string[];
+    error?: string | null;
+  };
 
+  import FeaturedSection from '$lib/components/shop/FeaturedSection.svelte';
+  import FilterBar, {
+    type Category,
+    type Rarity,
+    type SortKey
+  } from '$lib/components/shop/FilterBar.svelte';
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
 
@@ -10,6 +22,10 @@
   let modalError: string | null = null;
   let wallet = data.shards ?? 0;
   let owned = new Set(data.ownedIds);
+
+  let category: Category = 'all';
+  let rarity: Rarity = 'all';
+  let sortKey: SortKey = 'newest';
 
   const openModal = (e: CustomEvent) => {
     selected = e.detail.item;
@@ -51,6 +67,54 @@
       busy = false;
     }
   }
+
+  function applyFilters(list: any[]) {
+    let out = Array.isArray(list) ? [...list] : [];
+
+    if (category !== 'all') {
+      out = out.filter((item) => item.type === category);
+    }
+
+    if (rarity !== 'all') {
+      out = out.filter((item) => item.rarity === rarity);
+    }
+
+    switch (sortKey) {
+      case 'priceAsc':
+        out.sort((a, b) => a.price_shards - b.price_shards);
+        break;
+      case 'priceDesc':
+        out.sort((a, b) => b.price_shards - a.price_shards);
+        break;
+      case 'rarity': {
+        const order = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+        out.sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
+        break;
+      }
+      default:
+        out.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }
+
+    return out.map((item) => ({ ...item, __owned: owned.has(item.id) }));
+  }
+
+  const onFilterChange = (state: {
+    category: Category;
+    rarity: Rarity;
+    sortKey: SortKey;
+  }) => {
+    category = state.category;
+    rarity = state.rarity;
+    sortKey = state.sortKey;
+  };
+
+  const openFeatured = (item: any) => {
+    selected = item;
+    modalError = null;
+    modalOpen = true;
+  };
 </script>
 
 <!-- Wallet pill -->
@@ -61,13 +125,17 @@
   </div>
 </div>
 
+<FeaturedSection items={data.featured} onClickItem={openFeatured} />
+
+<FilterBar {category} {rarity} {sortKey} onChange={onFilterChange} />
+
 {#if data.error}
   <div class="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
     Failed to load shop items: {data.error}
   </div>
 {:else}
   <ShopGrid
-    items={data.items.map((item) => ({ ...item, __owned: owned.has(item.id) }))}
+    items={applyFilters(data.items)}
     on:open={openModal}
   />
 {/if}

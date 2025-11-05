@@ -33,6 +33,11 @@
       decoding="async"
       class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
     />
+    {#if item.badge}
+      <span class="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wide text-white/90 ring-1 ring-white/10">
+        {item.badge}
+      </span>
+    {/if}
     <div class="absolute right-2 top-2 flex gap-1">
       <span class="rounded-full bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wide ring-1 ring-white/10">
         {item.rarity}
