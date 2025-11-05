@@ -125,7 +125,7 @@
 
   $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
   $: heroBackground = featuredMeta
-    ? `linear-gradient(115deg, rgba(5, 6, 15, 0.72) 20%, rgba(8, 12, 24, 0.36) 65%), url('${
+    ? `linear-gradient(115deg, rgba(5, 6, 15, 0.82) 18%, rgba(7, 10, 24, 0.58) 60%, rgba(8, 12, 24, 0.32) 100%), url('${
         featuredMeta.cover.sources['1280'] ?? featuredMeta.cover.sources['960']
       }')`
     : '';
@@ -327,13 +327,25 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    padding: clamp(2.4rem, 5vw, 3.5rem) clamp(2rem, 4vw, 3rem);
+    border-radius: 2rem;
+    box-shadow: 0 28px 48px rgba(5, 6, 18, 0.45);
   }
 
   .games-hero::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.1), transparent 60%);
+    background: linear-gradient(120deg, rgba(5, 6, 15, 0.78) 0%, rgba(7, 10, 24, 0.52) 55%, rgba(8, 12, 24, 0.42) 100%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .games-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(94, 242, 255, 0.18), transparent 65%);
     z-index: 0;
     pointer-events: none;
   }
@@ -361,12 +373,13 @@
     font-size: clamp(2.4rem, 4vw, 3.2rem);
     font-weight: 600;
     line-height: 1.05;
+    text-shadow: 0 12px 32px rgba(4, 6, 16, 0.55);
   }
 
   .hero-lead {
     margin: 0;
     max-width: 560px;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(255, 255, 255, 0.8);
   }
 
   .hero-recent {
