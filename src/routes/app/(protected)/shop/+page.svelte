@@ -118,11 +118,17 @@
 </script>
 
 <!-- Wallet pill -->
-<div class="mb-4 flex items-center justify-end">
+<div class="mb-4 flex items-center justify-end gap-2">
   <div class="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-white/80">
     <span>Wallet</span>
     <span class="font-semibold text-white">💎 {wallet}</span>
   </div>
+  <a
+    class="flex h-9 items-center rounded-full border border-white/10 px-3 text-sm text-white/85 transition hover:bg-white/5"
+    href="/app/(protected)/wallet"
+  >
+    Add shards
+  </a>
 </div>
 
 <FeaturedSection items={data.featured} onClickItem={openFeatured} />

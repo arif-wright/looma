@@ -1,0 +1,72 @@
+import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
+import { stripe, serviceClient } from '$lib/server/billing';
+
+export const POST: RequestHandler = async ({ request }) => {
+  const signature = request.headers.get('stripe-signature');
+  if (!signature) {
+    return new Response('Missing signature', { status: 400 });
+  }
+
+  const secret = env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    return new Response('Webhook secret not configured', { status: 500 });
+  }
+
+  const payload = await request.text();
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(payload, signature, secret);
+  } catch (err: any) {
+    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+  }
+
+  const supabase = serviceClient();
+
+  const { data: existing } = await supabase
+    .from('webhook_events')
+    .select('id')
+    .eq('id', event.id)
+    .maybeSingle();
+
+  if (existing) {
+    return new Response('Already processed', { status: 200 });
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as any;
+    const userId = session.client_reference_id as string | null;
+    const shards = parseInt(session.metadata?.shards ?? '0', 10);
+    const paymentIntent = session.payment_intent ?? session.id;
+
+    if (userId && shards > 0) {
+      const { error } = await supabase.rpc('credit_wallet', {
+        p_user: userId,
+        p_amount: shards,
+        p_source: 'purchase',
+        p_ref: String(paymentIntent),
+        p_meta: {
+          session_id: session.id,
+          amount_total: session.amount_total ?? null,
+          currency: session.currency ?? null
+        }
+      } as any);
+
+      if (error) {
+        console.error('[stripe-webhook] credit_wallet error', error);
+        return new Response(`RPC error: ${error.message}`, { status: 400 });
+      }
+    }
+  }
+
+  const { error: insertError } = await supabase
+    .from('webhook_events')
+    .insert({ id: event.id });
+
+  if (insertError) {
+    console.error('[stripe-webhook] failed to record event', insertError);
+  }
+
+  return new Response('OK', { status: 200 });
+};
