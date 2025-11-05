@@ -3,6 +3,8 @@
   export let open = false;
   export let busy = false;
   export let error: string | null = null;
+  export let owned = false;
+  export let stackable = true;
   export let onClose: () => void = () => {};
   export let onPurchase: (item: any) => Promise<void> = async () => {};
 
@@ -45,7 +47,7 @@
             {item.rarity}
           </span>
           <span class="rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold ring-1 ring-white/10">
-            💎 {item.price_shards}
+            {owned && !stackable ? 'Owned' : `💎 ${item.price_shards}`}
           </span>
         </div>
       </div>
@@ -83,9 +85,15 @@
         <button
           class="h-9 rounded-full bg-gradient-to-r from-cyan-400/80 to-fuchsia-400/80 px-4 text-sm font-semibold text-black/90 transition hover:brightness-110 disabled:opacity-60"
           on:click={() => onPurchase(item)}
-          disabled={busy}
+          disabled={busy || (owned && !stackable)}
         >
-          {#if busy}Processing…{:else}Purchase{/if}
+          {#if owned && !stackable}
+            Owned
+          {:else if busy}
+            Processing…
+          {:else}
+            Purchase
+          {/if}
         </button>
       </footer>
     </section>

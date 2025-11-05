@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let data: { items: any[]; shards: number | null; error?: string | null };
+  export let data: { items: any[]; shards: number; ownedIds: string[]; error?: string | null };
 
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
@@ -9,6 +9,7 @@
   let busy = false;
   let modalError: string | null = null;
   let wallet = data.shards ?? 0;
+  let owned = new Set(data.ownedIds);
 
   const openModal = (e: CustomEvent) => {
     selected = e.detail.item;
@@ -42,6 +43,7 @@
       if (!res.ok || !out?.ok) throw new Error(out?.error || 'Purchase failed');
 
       wallet = typeof out.shards === 'number' ? out.shards : wallet;
+      owned = new Set([...owned, item.id]);
       closeModal();
     } catch (err: any) {
       modalError = err?.message || 'Purchase failed';
@@ -64,7 +66,19 @@
     Failed to load shop items: {data.error}
   </div>
 {:else}
-  <ShopGrid items={data.items} on:open={openModal} />
+  <ShopGrid
+    items={data.items.map((item) => ({ ...item, __owned: owned.has(item.id) }))}
+    on:open={openModal}
+  />
 {/if}
 
-<ShopModal open={modalOpen} item={selected} {busy} error={modalError} onClose={closeModal} onPurchase={purchase} />
+<ShopModal
+  open={modalOpen}
+  item={selected}
+  {busy}
+  error={modalError}
+  owned={selected ? owned.has(selected.id) : false}
+  stackable={selected?.stackable ?? true}
+  onClose={closeModal}
+  onPurchase={purchase}
+/>

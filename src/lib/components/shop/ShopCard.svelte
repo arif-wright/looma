@@ -5,11 +5,15 @@
 
   const dispatch = createEventDispatcher<{ open: { item: any } }>();
 
-  const open = () => dispatch('open', { item });
+  const open = () => {
+    if (!item?.__owned) {
+      dispatch('open', { item });
+    }
+  };
 </script>
 
 <article
-  tabindex="0"
+  tabindex={item.__owned ? -1 : 0}
   on:click={open}
   on:keypress={(event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -17,7 +21,9 @@
       open();
     }
   }}
-  class="group cursor-pointer overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition hover:ring-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+  class={`group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
+    item.__owned ? 'cursor-default opacity-75' : 'cursor-pointer hover:ring-white/20'
+  }`}
 >
   <div class="relative aspect-[16/9] overflow-hidden">
     <img
@@ -32,9 +38,12 @@
         {item.rarity}
       </span>
       <span class="rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold ring-1 ring-white/10">
-        💎 {item.price_shards}
+        {item.__owned ? 'Owned' : `💎 ${item.price_shards}`}
       </span>
     </div>
+    {#if item.__owned}
+      <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+    {/if}
   </div>
 
   <div class="px-3 py-2">

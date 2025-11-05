@@ -7,23 +7,27 @@ export const load: PageServerLoad = async ({ locals }) => {
   if (!supabase) {
     return {
       items: [],
-      shards: null,
-      source: 'no-client' as const,
+      shards: 0,
+      ownedIds: [],
       error: 'Missing Supabase client'
     };
   }
 
-  const [itemsRes, walletRes] = await Promise.all([
+  const [itemsRes, walletRes, inventoryRes] = await Promise.all([
     supabase
       .from('shop_items_view')
       .select('*')
       .eq('active', true)
       .order('sort', { ascending: true }),
-    supabase.from('user_wallets').select('shards').single()
+    supabase.from('user_wallets').select('shards').single(),
+    supabase.from('shop_inventory').select('item_id')
   ]);
 
   const items = Array.isArray(itemsRes.data) ? itemsRes.data : [];
-  let shards = walletRes.data?.shards ?? null;
+  let shards = walletRes.data?.shards ?? 0;
+  const ownedIds = Array.isArray(inventoryRes.data)
+    ? inventoryRes.data.map((row: { item_id: string }) => row.item_id)
+    : [];
 
   if (walletRes.error && walletRes.error.code === 'PGRST116') {
     if (user?.id) {
@@ -34,14 +38,14 @@ export const load: PageServerLoad = async ({ locals }) => {
         .single();
       shards = created.data?.shards ?? 1000;
     } else {
-      shards = null;
+      shards = 0;
     }
   }
 
   return {
     items,
     shards,
-    source: 'db' as const,
+    ownedIds,
     error: itemsRes.error?.message ?? null
   };
 };

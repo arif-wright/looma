@@ -23,6 +23,7 @@ create table if not exists public.shop_inventory (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   item_id uuid not null references public.shop_items(id) on delete restrict,
+  stackable boolean not null default true,
   acquired_at timestamptz not null default now()
 );
 
@@ -82,13 +83,24 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select id, slug, price_shards, active
+  select id, slug, price_shards, active, stackable
     into v_item
   from public.shop_items
   where slug = p_item_slug;
 
   if v_item.id is null or v_item.active = false then
     raise exception 'Item not available';
+  end if;
+
+  if v_item.stackable = false then
+    perform 1
+      from public.shop_inventory
+     where user_id = v_user
+       and item_id = v_item.id;
+
+    if found then
+      raise exception 'Item already owned';
+    end if;
   end if;
 
   -- ensure wallet row exists
@@ -118,8 +130,8 @@ begin
   returning id into order_id;
 
   -- grant inventory item
-  insert into public.shop_inventory (user_id, item_id)
-  values (v_user, v_item.id);
+  insert into public.shop_inventory (user_id, item_id, stackable)
+  values (v_user, v_item.id, v_item.stackable);
 
   -- fetch updated wallet balance
   select shards
