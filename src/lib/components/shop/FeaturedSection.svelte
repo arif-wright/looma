@@ -69,14 +69,23 @@
           </span>
         </div>
 
-        <div class="absolute left-3 bottom-3 flex items-center gap-2">
-          <button
-            class="h-9 rounded-full bg-gradient-to-r from-cyan-400/80 to-fuchsia-400/80 px-4 text-sm font-semibold text-black/90 transition hover:brightness-110"
-            on:click={() => onClickItem?.(items[idx])}
-            aria-label="View offer"
-          >
-            View offer
-          </button>
+        <div class="info-panel">
+          <div>
+            <h3>{items[idx]?.title}</h3>
+            {#if items[idx]?.subtitle || items[idx]?.description}
+              <p>{items[idx]?.subtitle ?? items[idx]?.description}</p>
+            {/if}
+          </div>
+          <div class="cta-row">
+            <span class="price">💎 {items[idx]?.price_shards}</span>
+            <button
+              class="cta"
+              on:click={() => onClickItem?.(items[idx])}
+              aria-label="View offer"
+            >
+              View offer
+            </button>
+          </div>
         </div>
 
         {#if items.length > 1}
@@ -154,5 +163,77 @@
 
   .dot.active {
     background: white;
+  }
+
+  .info-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(8, 11, 20, 0.85) 55%, rgba(5, 7, 14, 0.95) 100%);
+    color: white;
+  }
+
+  .info-panel h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  .info-panel p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 46ch;
+    line-height: 1.35;
+  }
+
+  .cta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  .price {
+    font-weight: 600;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .cta {
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.85), rgba(168, 85, 247, 0.85));
+    color: rgba(17, 24, 39, 0.92);
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    box-shadow: 0 6px 18px rgba(56, 189, 248, 0.25);
+    transition: filter 0.2s ease;
+  }
+
+  .cta:hover,
+  .cta:focus-visible {
+    filter: brightness(1.08);
+  }
+
+  @media (max-width: 640px) {
+    .info-panel {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 16px;
+    }
+
+    .cta-row {
+      width: 100%;
+      justify-content: space-between;
+    }
   }
 </style>
