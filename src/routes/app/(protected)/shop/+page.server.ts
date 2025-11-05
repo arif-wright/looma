@@ -13,5 +13,75 @@ export const load: PageServerLoad = async ({ locals }) => {
     return { items: [], error: error.message, source: 'db' as const };
   }
 
-  return { items: data ?? [], source: 'db' as const };
+  const items = data ?? [];
+
+  if (items.length === 0) {
+    return {
+      items: [
+        {
+          id: 'fallback-radiant',
+          slug: 'radiant-shard-pack',
+          title: 'Radiant Shard Pack',
+          subtitle: '5x premium shards',
+          description: 'Bundle of radiant currency',
+          type: 'bundle',
+          rarity: 'rare',
+          price_shards: 200,
+          image_url: '/games/tiles-run/cover-640.webp',
+          tags: ['boost', 'limited'],
+          sort: 10,
+          active: true,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'fallback-tiles-skin',
+          slug: 'tiles-run-skin-nebula',
+          title: 'Tiles Run – Nebula Skin',
+          subtitle: 'Color-burst cosmetic',
+          description: 'Reactive prism trail for Tiles Run',
+          type: 'cosmetic',
+          rarity: 'epic',
+          price_shards: 120,
+          image_url: '/games/tiles-run/cover-512.webp',
+          tags: ['tiles-run', 'cosmetic'],
+          sort: 20,
+          active: true,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'fallback-double-xp',
+          slug: 'double-xp-30m',
+          title: 'Double XP (30m)',
+          subtitle: 'Stackable boost',
+          description: 'Doubles XP gain for 30 minutes',
+          type: 'boost',
+          rarity: 'uncommon',
+          price_shards: 90,
+          image_url: '/games/tiles-run/cover-640.webp',
+          tags: ['boost'],
+          sort: 30,
+          active: true,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'fallback-avatar-frame',
+          slug: 'avatar-frame-prism',
+          title: 'Avatar Frame — Prism',
+          subtitle: 'Reactive glow',
+          description: 'Profile frame that pulses to your level',
+          type: 'cosmetic',
+          rarity: 'legendary',
+          price_shards: 260,
+          image_url: '/games/tiles-run/cover-512.webp',
+          tags: ['profile', 'cosmetic'],
+          sort: 40,
+          active: true,
+          created_at: new Date().toISOString()
+        }
+      ],
+      source: 'fallback' as const
+    };
+  }
+
+  return { items, source: 'db' as const };
 };
