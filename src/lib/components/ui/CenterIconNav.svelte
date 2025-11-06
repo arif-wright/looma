@@ -14,13 +14,15 @@
   export let className = '';
 
   const pageStore = page;
+  let currentPath = '';
+
+  $: currentPath = $pageStore.url.pathname;
 
   const isActive = (href: string) => {
-    const path = $pageStore.url.pathname;
     if (href === '/app/home') {
-      return path === '/app/home';
+      return currentPath === '/app/home';
     }
-    return path.startsWith(href);
+    return currentPath.startsWith(href);
   };
 </script>
 
