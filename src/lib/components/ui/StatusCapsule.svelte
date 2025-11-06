@@ -154,6 +154,11 @@ const openWallet = (event: MouseEvent) => {
 </div>
 
 <style>
+  :global(:root) {
+    --pill-h: 36px;
+    --pill-pad-x: 10px;
+  }
+
   .status-pill {
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
@@ -162,7 +167,11 @@ const openWallet = (event: MouseEvent) => {
     pointer-events: auto;
     position: relative;
     z-index: 0;
-    padding: 0.25rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: var(--pill-h);
+    padding: 0 var(--pill-pad-x);
     font-size: 0.8rem;
   }
 
@@ -183,27 +192,31 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .stat--xp {
+    display: inline-flex;
     flex-direction: column;
+    justify-content: center;
     align-items: flex-start;
     min-width: 120px;
-    gap: 0.15rem;
+    gap: 2px;
+    transform: scale(0.86);
+    transform-origin: left center;
   }
 
   .stat-label {
     font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;
     color: rgba(248, 250, 255, 0.7);
   }
 
   .stat-label strong {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: #fff;
-    margin-left: 0.35rem;
+    margin-left: 0.28rem;
   }
 
   .xp-meter {
-    width: 100px;
+    width: 92px;
     height: 3px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
@@ -220,7 +233,7 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .stat-meta {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: rgba(255, 255, 255, 0.5);
@@ -240,7 +253,7 @@ const openWallet = (event: MouseEvent) => {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.25rem 0.75rem;
+    padding: 0 var(--pill-pad-x);
     border-radius: var(--brand-radius);
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.04);
@@ -253,7 +266,7 @@ const openWallet = (event: MouseEvent) => {
     border-width: 1px;
     position: relative;
     z-index: 20;
-    min-height: 32px;
+    height: var(--pill-h);
   }
 
   .wallet-pill span:first-child {
@@ -284,6 +297,14 @@ const openWallet = (event: MouseEvent) => {
     color: var(--brand-magenta, #ff4fd8);
   }
 
+  :global(.lean-status__metric) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: var(--pill-h);
+    padding: 0 var(--pill-pad-x);
+  }
+
   .account-pill {
     display: inline-flex;
     align-items: center;
@@ -291,10 +312,11 @@ const openWallet = (event: MouseEvent) => {
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.08);
-    padding: 0.15rem 0.5rem;
+    padding: 0 var(--pill-pad-x);
     font-size: 0.78rem;
     color: #fff;
     transition: background 150ms ease, border-color 150ms ease;
+    height: var(--pill-h);
   }
 
   .account-pill:focus-visible {
