@@ -25,7 +25,7 @@ const openWallet = (event: MouseEvent) => {
     return;
   }
   event.preventDefault();
-  window.location.href = '/app/wallet';
+  window.location.assign('/app/wallet');
 };
 
   const capsuleBaseClass =
