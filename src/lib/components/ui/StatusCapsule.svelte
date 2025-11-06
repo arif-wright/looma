@@ -162,7 +162,7 @@ const openWallet = (event: MouseEvent) => {
   .status-pill {
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
-    background: rgba(8, 12, 28, 0.6);
+    background: #0f141f;
     box-shadow: 0 20px 35px rgba(2, 4, 12, 0.55);
     pointer-events: auto;
     position: relative;
@@ -174,6 +174,11 @@ const openWallet = (event: MouseEvent) => {
     padding: 0 var(--pill-px);
     box-sizing: border-box;
     font-size: 0.8rem;
+  }
+
+  .status-pill:hover {
+    background: #161c29;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .status-pill > * {
@@ -265,8 +270,8 @@ const openWallet = (event: MouseEvent) => {
     gap: 0.4rem;
     padding: 0 var(--pill-px);
     border-radius: var(--brand-radius);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #0f141f;
     font-size: 0.78rem;
     color: rgba(247, 249, 255, 0.9);
     cursor: pointer;
@@ -285,8 +290,8 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .wallet-pill:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.24);
+    background: #161c29;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .wallet-pill:focus-visible {
@@ -315,6 +320,15 @@ const openWallet = (event: MouseEvent) => {
     height: var(--pill-h);
     padding: 0 var(--pill-px);
     box-sizing: border-box;
+    background: #0f141f;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    transition: background 150ms ease, border-color 150ms ease;
+  }
+
+  :global(.lean-status__metric:hover) {
+    background: #161c29;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .account-pill {
@@ -323,7 +337,7 @@ const openWallet = (event: MouseEvent) => {
     gap: 0.35rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.08);
+    background: #0f141f;
     padding: 0 var(--pill-px);
     font-size: 0.78rem;
     color: #fff;
@@ -338,8 +352,8 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .account-pill:hover {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.24);
+    background: #161c29;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .account-pill span:first-child {
