@@ -282,11 +282,23 @@
     border-color: rgba(255, 255, 255, 0.2);
   }
 
+  .lean-status .pill {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: transparent;
+    color: rgba(248, 250, 255, 0.9);
+  }
+
+  .lean-status .pill:hover,
+  .lean-status .pill:focus-visible {
+    background: rgba(255, 255, 255, 0.16) !important;
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
   .lean-status {
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0 var(--pill-px);
+    padding: 0 0 0 var(--pill-px);
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
