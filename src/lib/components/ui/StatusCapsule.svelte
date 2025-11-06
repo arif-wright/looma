@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
+import { onDestroy } from 'svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
 
@@ -21,9 +20,6 @@
   let walletPulse = false;
   let lastBalance: number | null = null;
   let pulseTimer: ReturnType<typeof setTimeout> | null = null;
-  const navigateToWallet = () => {
-    void goto('/app/wallet');
-  };
 
   const capsuleBaseClass =
     'status-pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
@@ -103,7 +99,6 @@
     aria-live="polite"
     data-ana="nav:wallet"
     href="/app/wallet"
-    on:click|preventDefault={navigateToWallet}
   >
     <span aria-hidden="true">💎</span>
     <span>
@@ -233,6 +228,8 @@
     text-decoration: none;
     transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     border-width: 1px;
+    position: relative;
+    z-index: 1;
   }
 
   .wallet-pill:hover {
