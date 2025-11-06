@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
@@ -30,6 +31,14 @@
     ? `${walletBalance.toLocaleString()} ${walletCurrency.toUpperCase()}`
     : `0 ${walletCurrency.toUpperCase()}`;
   $: initials = userEmail && userEmail.length > 0 ? userEmail.charAt(0).toUpperCase() : '•';
+
+  const navWallet = (event: MouseEvent) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    goto('/app/wallet');
+  };
 </script>
 
 <header class="lean-header" data-testid="lean-header">
@@ -61,14 +70,20 @@
           <div class="lean-status__bar"><span style={`width:${xpPct}%`}></span></div>
           <span class="lean-status__meta">{xpLabel}</span>
         </div>
-        <div class="lean-status__metric" aria-label="Energy">
+        <div class="lean-status__metric is-static" aria-label="Energy">
           <span>⚡</span>
           <span>{energyLabel}</span>
         </div>
-        <div class="lean-status__metric" aria-label="Shard balance">
-          <span>💎</span>
+        <a
+          class="lean-status__metric"
+          data-testid="header-wallet-pill-lean"
+          href="/app/wallet"
+          aria-label="Shard balance"
+          on:click={navWallet}
+        >
+          <span aria-hidden="true">💎</span>
           <span>{shardLabel}</span>
-        </div>
+        </a>
       </div>
 
       <NotificationBell notifications={notifications} unreadCount={unreadCount} />
@@ -288,8 +303,40 @@
   .lean-status__metric {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.75rem;
+    gap: 0.45rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: var(--brand-radius, 9999px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.82rem;
+    color: rgba(247, 249, 255, 0.9);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .lean-status__metric:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .lean-status__metric:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.45);
+  }
+
+  .lean-status__metric span:first-child {
+    font-size: 0.9rem;
+  }
+
+  .lean-status__metric.is-static {
+    cursor: default;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
   }
 
   :global(.lean-header__right .notification-wrapper) {
