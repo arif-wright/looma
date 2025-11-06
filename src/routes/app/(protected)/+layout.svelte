@@ -52,7 +52,7 @@
   $: isHome = currentPath === '/app/home';
   $: isGames = currentPath.startsWith('/app/games');
   $: isShop = currentPath.startsWith('/app/shop');
-  $: hideRail = isHome || isGames || isShop;
+  $: hideRail = isHome || isGames || isShop || currentPath === '/app/wallet';
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' ? ($playerProgress.currency as number) : null;
   $: walletCurrency = 'SHARDS';
