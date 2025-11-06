@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { stripe, productCatalog } from '$lib/server/billing';
 import { env } from '$env/dynamic/private';
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, url }) => {
   const supabase = (locals as any)?.supabase;
   let user = (locals as any)?.user ?? null;
 
@@ -30,30 +30,33 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return new Response('Invalid pack', { status: 400 });
   }
 
-  const successUrl = env.PUBLIC_APP_URL
-    ? `${env.PUBLIC_APP_URL}/app/wallet?status=success`
-    : null;
-  const cancelUrl = env.PUBLIC_APP_URL
-    ? `${env.PUBLIC_APP_URL}/app/wallet?status=cancelled`
-    : null;
-
-  if (!successUrl || !cancelUrl) {
+  const baseUrl = env.PUBLIC_APP_URL ?? url.origin;
+  if (!baseUrl) {
     return new Response('App URL not configured', { status: 500 });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    client_reference_id: user.id,
-    line_items: [{ price: item.priceId, quantity: 1 }],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      shards: String(item.shards)
-    }
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      client_reference_id: user.id,
+      line_items: [{ price: item.priceId, quantity: 1 }],
+      success_url: `${baseUrl}/app/wallet?status=success`,
+      cancel_url: `${baseUrl}/app/wallet?status=cancelled`,
+      metadata: {
+        shards: String(item.shards)
+      }
+    });
 
-  return new Response(JSON.stringify({ url: session.url }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' }
-  });
+    return new Response(JSON.stringify({ url: session.url }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  } catch (error: any) {
+    console.error('[billing] failed to create checkout session', {
+      message: error?.message,
+      type: error?.type,
+      code: error?.code
+    });
+    return new Response('Unable to start checkout', { status: 500 });
+  }
 };
