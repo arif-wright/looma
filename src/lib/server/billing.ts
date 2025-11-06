@@ -3,15 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 
-const secretKey = env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
 
-if (!secretKey) {
-  throw new Error('STRIPE_SECRET_KEY is not configured');
-}
+export const getStripe = () => {
+  if (stripeClient) return stripeClient;
 
-export const stripe = new Stripe(secretKey, {
-  apiVersion: '2024-06-20'
-});
+  const secretKey = env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY is not configured');
+  }
+
+  stripeClient = new Stripe(secretKey, {
+    apiVersion: '2024-06-20'
+  });
+
+  return stripeClient;
+};
 
 const getServiceKey = () => {
   const key = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SERVICE_ROLE ?? '';

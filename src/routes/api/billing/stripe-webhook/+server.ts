@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { stripe, serviceClient } from '$lib/server/billing';
+import { getStripe, serviceClient } from '$lib/server/billing';
 
 export const POST: RequestHandler = async ({ request }) => {
   const signature = request.headers.get('stripe-signature');
@@ -16,6 +16,7 @@ export const POST: RequestHandler = async ({ request }) => {
   const payload = await request.text();
 
   let event;
+  const stripe = getStripe();
   try {
     event = stripe.webhooks.constructEvent(payload, signature, secret);
   } catch (err: any) {

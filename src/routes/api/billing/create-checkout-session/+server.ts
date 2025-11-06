@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { stripe, productCatalog } from '$lib/server/billing';
+import { getStripe, productCatalog } from '$lib/server/billing';
 import { env } from '$env/dynamic/private';
 
 export const POST: RequestHandler = async ({ request, locals, url }) => {
@@ -36,6 +36,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
   }
 
   try {
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       client_reference_id: user.id,
