@@ -23,6 +23,8 @@
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
+  const initialWalletBalance =
+    typeof data?.wallet?.shards === 'number' ? (data.wallet.shards as number) : null;
 
   $: bellNotifications = (data?.notifications ?? bellNotifications) as NotificationItem[];
   $: bellUnread = typeof data?.notificationsUnread === 'number' ? data.notificationsUnread : bellUnread;
@@ -54,7 +56,9 @@
   $: isShop = currentPath.startsWith('/app/shop');
   $: hideRail = isHome || isGames || isShop || currentPath === '/app/wallet';
   $: walletBalance =
-    typeof $playerProgress?.currency === 'number' ? ($playerProgress.currency as number) : null;
+    typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
+      ? ($playerProgress.currency as number)
+      : initialWalletBalance;
   $: walletCurrency = 'SHARDS';
 
   const iconNavItems: IconNavItem[] = [

@@ -229,6 +229,15 @@ export const load: LayoutServerLoad = async (event) => {
   let notifications: Array<Record<string, any>> = [];
   let notificationsUnread = 0;
   const headerStats = await getPlayerStats(event, supabase).catch(() => null);
+  const { data: walletRow, error: walletError } = await supabase
+    .from('user_wallets')
+    .select('shards')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (walletError) {
+    console.error('[resolver] wallet lookup failed', walletError);
+  }
 
   try {
     const { data: notificationRows, error: notificationError } = await supabase
@@ -300,6 +309,9 @@ export const load: LayoutServerLoad = async (event) => {
     navActivity: computeNavActivity(preferences),
     notifications,
     notificationsUnread,
-    headerStats
+    headerStats,
+    wallet: {
+      shards: walletRow?.shards ?? null
+    }
   };
 };

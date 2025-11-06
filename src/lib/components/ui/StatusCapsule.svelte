@@ -93,10 +93,12 @@
 
   <span aria-hidden="true" class="divider">•</span>
 
-  <span
+  <a
     class={`wallet-pill ${walletPulse ? 'pulse-soft' : ''}`.trim()}
     data-testid="header-wallet-pill"
     aria-live="polite"
+    href="/app/wallet"
+    data-ana="nav:wallet"
   >
     <span aria-hidden="true">💎</span>
     <span>
@@ -112,7 +114,7 @@
         {walletDelta > 0 ? '+' : '−'}{Math.abs(walletDelta).toLocaleString()}
       </span>
     {/if}
-  </span>
+  </a>
 
   <span aria-hidden="true" class="divider">•</span>
 
@@ -222,6 +224,18 @@
     background: rgba(255, 255, 255, 0.04);
     font-size: 0.82rem;
     color: rgba(247, 249, 255, 0.9);
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .wallet-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .wallet-pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.45);
   }
 
   .wallet-delta {
