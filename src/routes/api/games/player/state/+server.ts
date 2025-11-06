@@ -11,8 +11,8 @@ export const GET: RequestHandler = async (event) => {
   const [stats, walletRes, rewardsRes] = await Promise.all([
     getPlayerStats(event, auth.supabase),
     auth.supabase
-      .from('wallets')
-      .select('balance, currency, updated_at')
+      .from('user_wallets')
+      .select('shards, updated_at')
       .eq('user_id', auth.user.id)
       .maybeSingle(),
     supabaseAdmin
@@ -62,8 +62,8 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: 'server_error' }, { status: 500 });
     }
 
-    walletBalance = Number(walletRes.data?.balance ?? 0);
-    walletCurrency = typeof walletRes.data?.currency === 'string' ? walletRes.data.currency : 'shards';
+    walletBalance = Number(walletRes.data?.shards ?? 0);
+    walletCurrency = 'shards';
 
     rewards = (rewardsRes.data ?? []).map((row) => ({
       id: row.id,
@@ -95,7 +95,7 @@ export const GET: RequestHandler = async (event) => {
       currency: walletCurrency,
       updatedAt:
         walletRes.data?.updated_at ?? (walletMissing ? new Date().toISOString() : new Date(0).toISOString())
-    },
+  },
     rewards
   });
 };
