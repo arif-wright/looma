@@ -13,10 +13,9 @@
   export let items: IconNavItem[] = [];
   export let className = '';
 
-  const pageStore = page;
   let currentPath = '';
 
-  $: currentPath = $pageStore.url.pathname;
+  $: currentPath = $page.url.pathname;
 
   const isActive = (href: string) => {
     if (href === '/app/home') {
