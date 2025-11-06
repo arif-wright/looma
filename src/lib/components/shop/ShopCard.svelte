@@ -12,18 +12,13 @@
   };
 </script>
 
-<article
-  tabindex={item.__owned ? -1 : 0}
+<button
+  type="button"
   on:click={open}
-  on:keypress={(event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      open();
-    }
-  }}
   class={`group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
     item.__owned ? 'cursor-default opacity-75' : 'cursor-pointer hover:ring-white/20'
   }`}
+  disabled={item.__owned}
 >
   <div class="relative aspect-[16/9] overflow-hidden">
     <img
@@ -47,7 +42,7 @@
       </span>
     </div>
     {#if item.__owned}
-      <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+      <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
     {/if}
   </div>
 
@@ -57,4 +52,4 @@
       <p class="mt-1 line-clamp-2 text-xs text-white/60">{item.subtitle}</p>
     {/if}
   </div>
-</article>
+</button>

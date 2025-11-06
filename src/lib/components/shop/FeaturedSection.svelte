@@ -43,6 +43,7 @@
   <section class="mb-5">
     <div class="relative mx-auto overflow-hidden rounded-2xl ring-1 ring-white/10 max-w-5xl">
       <div
+        role="presentation"
         class="relative aspect-[5/2] sm:aspect-[16/6] lg:aspect-[21/8] xl:aspect-[16/5] max-h-[340px]"
         on:mouseenter={stop}
         on:mouseleave={start}
@@ -107,12 +108,13 @@
           <div class="absolute bottom-3 right-3 flex gap-1">
             {#each items as _, i}
               <button
+                type="button"
                 class="dot"
                 class:active={i === idx}
                 aria-label={`Go to slide ${i + 1}`}
                 aria-current={i === idx ? 'true' : 'false'}
                 on:click={() => go(i)}
-              />
+              ></button>
             {/each}
           </div>
         {/if}

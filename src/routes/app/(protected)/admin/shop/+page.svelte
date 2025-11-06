@@ -334,7 +334,7 @@
           </label>
           <label class="field col-span-full">
             <span>Description</span>
-            <textarea class="textarea" rows="3" bind:value={edit.description} placeholder="Optional description" />
+            <textarea class="textarea" rows="3" bind:value={edit.description} placeholder="Optional description"></textarea>
           </label>
           <label class="field">
             <span>Tags (comma separated)</span>
@@ -378,7 +378,7 @@
 
     <datalist id="image-options">
       {#each data.imageOptions as option}
-        <option value={option} />
+        <option value={option}></option>
       {/each}
     </datalist>
 
@@ -409,7 +409,7 @@
                   <span class="badge">💎 {item.price_shards}</span>
                 </div>
                 {#if !item.active}
-                  <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+                  <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]"></div>
                 {/if}
               </div>
               <div class="flex items-start justify-between gap-3 px-3 py-2">

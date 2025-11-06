@@ -16,9 +16,15 @@
 </script>
 
 {#if open && item}
-  <div class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm" data-backdrop="1" on:click={closeIfBackdrop} />
+  <button
+    type="button"
+    class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+    data-backdrop="1"
+    aria-label="Dismiss modal"
+    on:click={closeIfBackdrop}
+  ></button>
   <div class="fixed inset-0 z-[80] flex items-center justify-center px-4">
-    <section
+    <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -96,6 +102,6 @@
           {/if}
         </button>
       </footer>
-    </section>
+    </div>
   </div>
 {/if}
