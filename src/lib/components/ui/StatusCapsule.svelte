@@ -162,6 +162,8 @@ const openWallet = (event: MouseEvent) => {
     pointer-events: auto;
     position: relative;
     z-index: 0;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
   }
 
   :global(.panel-glass::before),
@@ -174,19 +176,21 @@ const openWallet = (event: MouseEvent) => {
   .stat {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     color: rgba(248, 250, 255, 0.9);
     white-space: nowrap;
+    font-size: 0.78rem;
   }
 
   .stat--xp {
     flex-direction: column;
     align-items: flex-start;
-    min-width: 140px;
+    min-width: 120px;
+    gap: 0.15rem;
   }
 
   .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: rgba(248, 250, 255, 0.7);
@@ -199,8 +203,8 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .xp-meter {
-    width: 120px;
-    height: 4px;
+    width: 100px;
+    height: 3px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
     overflow: hidden;
@@ -216,7 +220,7 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .stat-meta {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: rgba(255, 255, 255, 0.5);
@@ -224,7 +228,7 @@ const openWallet = (event: MouseEvent) => {
 
   .stat--energy {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     gap: 0.35rem;
   }
 
@@ -235,12 +239,12 @@ const openWallet = (event: MouseEvent) => {
   .wallet-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.35rem 0.9rem;
+    gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
     border-radius: var(--brand-radius);
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.04);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: rgba(247, 249, 255, 0.9);
     cursor: pointer;
     pointer-events: auto;
@@ -249,6 +253,11 @@ const openWallet = (event: MouseEvent) => {
     border-width: 1px;
     position: relative;
     z-index: 20;
+    min-height: 32px;
+  }
+
+  .wallet-pill span:first-child {
+    font-size: 0.9rem;
   }
 
   .wallet-pill:hover {
@@ -262,7 +271,7 @@ const openWallet = (event: MouseEvent) => {
   }
 
   .wallet-delta {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
