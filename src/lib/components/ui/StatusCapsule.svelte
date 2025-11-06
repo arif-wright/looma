@@ -21,11 +21,7 @@
   let walletPulse = false;
   let lastBalance: number | null = null;
   let pulseTimer: ReturnType<typeof setTimeout> | null = null;
-  const navigateToWallet = (event: MouseEvent) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-      return;
-    }
-    event.preventDefault();
+  const navigateToWallet = () => {
     void goto('/app/wallet');
   };
 
@@ -101,13 +97,13 @@
 
   <span aria-hidden="true" class="divider">•</span>
 
-  <button
-    type="button"
+  <a
     class={`wallet-pill ${walletPulse ? 'pulse-soft' : ''}`.trim()}
     data-testid="header-wallet-pill"
     aria-live="polite"
     data-ana="nav:wallet"
-    on:click={navigateToWallet}
+    href="/app/wallet"
+    on:click|preventDefault={navigateToWallet}
   >
     <span aria-hidden="true">💎</span>
     <span>
@@ -123,7 +119,7 @@
         {walletDelta > 0 ? '+' : '−'}{Math.abs(walletDelta).toLocaleString()}
       </span>
     {/if}
-  </button>
+  </a>
 
   <span aria-hidden="true" class="divider">•</span>
 
