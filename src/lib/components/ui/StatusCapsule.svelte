@@ -159,6 +159,7 @@ const openWallet = (event: MouseEvent) => {
     border-radius: 999px;
     background: rgba(8, 12, 28, 0.6);
     box-shadow: 0 20px 35px rgba(2, 4, 12, 0.55);
+    pointer-events: auto;
   }
 
   .stat {
