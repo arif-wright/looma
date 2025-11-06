@@ -156,7 +156,7 @@ const openWallet = (event: MouseEvent) => {
 <style>
   :global(:root) {
     --pill-h: 36px;
-    --pill-pad-x: 10px;
+    --pill-px: 10px;
   }
 
   .status-pill {
@@ -171,8 +171,13 @@ const openWallet = (event: MouseEvent) => {
     align-items: center;
     gap: 0.5rem;
     height: var(--pill-h);
-    padding: 0 var(--pill-pad-x);
+    padding: 0 var(--pill-px);
+    box-sizing: border-box;
     font-size: 0.8rem;
+  }
+
+  .status-pill > * {
+    max-height: 100%;
   }
 
   :global(.panel-glass::before),
@@ -189,6 +194,7 @@ const openWallet = (event: MouseEvent) => {
     color: rgba(248, 250, 255, 0.9);
     white-space: nowrap;
     font-size: 0.78rem;
+    line-height: 1;
   }
 
   .stat--xp {
@@ -200,6 +206,7 @@ const openWallet = (event: MouseEvent) => {
     gap: 2px;
     transform: scale(0.86);
     transform-origin: left center;
+    line-height: 1;
   }
 
   .stat-label {
@@ -207,12 +214,14 @@ const openWallet = (event: MouseEvent) => {
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: rgba(248, 250, 255, 0.7);
+    line-height: 1;
   }
 
   .stat-label strong {
     font-size: 0.82rem;
     color: #fff;
     margin-left: 0.28rem;
+    line-height: 1;
   }
 
   .xp-meter {
@@ -234,6 +243,7 @@ const openWallet = (event: MouseEvent) => {
 
   .stat-meta {
     font-size: 0.66rem;
+    line-height: 1;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: rgba(255, 255, 255, 0.5);
@@ -253,7 +263,7 @@ const openWallet = (event: MouseEvent) => {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0 var(--pill-pad-x);
+    padding: 0 var(--pill-px);
     border-radius: var(--brand-radius);
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.04);
@@ -267,6 +277,7 @@ const openWallet = (event: MouseEvent) => {
     position: relative;
     z-index: 20;
     height: var(--pill-h);
+    box-sizing: border-box;
   }
 
   .wallet-pill span:first-child {
@@ -302,7 +313,8 @@ const openWallet = (event: MouseEvent) => {
     align-items: center;
     gap: 0.35rem;
     height: var(--pill-h);
-    padding: 0 var(--pill-pad-x);
+    padding: 0 var(--pill-px);
+    box-sizing: border-box;
   }
 
   .account-pill {
@@ -312,11 +324,12 @@ const openWallet = (event: MouseEvent) => {
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.08);
-    padding: 0 var(--pill-pad-x);
+    padding: 0 var(--pill-px);
     font-size: 0.78rem;
     color: #fff;
     transition: background 150ms ease, border-color 150ms ease;
     height: var(--pill-h);
+    box-sizing: border-box;
   }
 
   .account-pill:focus-visible {
