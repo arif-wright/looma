@@ -10,12 +10,19 @@
     analyticsKey?: string;
   };
 
+  import { onDestroy } from 'svelte';
+
   export let items: IconNavItem[] = [];
   export let className = '';
 
   let currentPath = '';
+  const unsubscribe = page.subscribe(($page) => {
+    currentPath = $page.url.pathname;
+  });
 
-  $: currentPath = $page.url.pathname;
+  onDestroy(() => {
+    unsubscribe();
+  });
 
   const isActive = (href: string) => {
     if (href === '/app/home') {
