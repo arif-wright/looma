@@ -366,7 +366,7 @@ import { achievementsUI } from '$lib/achievements/store';
   <button
     bind:this={anchor}
     type="button"
-    class={`bell ${unread > 0 ? 'has-unread' : ''} ${open ? 'is-open' : ''}`}
+    class={`bell pill ${unread > 0 ? 'has-unread' : ''} ${open ? 'is-open' : ''}`}
     aria-label={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}
     on:click={toggleDropdown}
     data-testid="notification-bell"
@@ -473,18 +473,26 @@ import { achievementsUI } from '$lib/achievements/store';
     z-index: 2147483646;
   }
 
+  :global(:root) {
+    --pill-h: 36px;
+    --pill-px: 10px;
+    --pill-bg: #0f141f;
+    --pill-bg-hover: #161c29;
+  }
+
   .bell {
     position: relative;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    background: rgba(15, 23, 42, 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--pill-h);
+    height: var(--pill-h);
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--pill-bg);
     color: rgba(226, 232, 240, 0.92);
     cursor: pointer;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 150ms ease;
   }
 
   .bell svg {
@@ -497,6 +505,7 @@ import { achievementsUI } from '$lib/achievements/store';
   .bell:focus-visible,
   .bell.is-open {
     border-color: rgba(56, 189, 248, 0.5);
+    background: var(--pill-bg-hover);
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
     transform: translateY(-1px);
   }

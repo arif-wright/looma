@@ -29,7 +29,7 @@ const openWallet = (event: MouseEvent) => {
 };
 
   const capsuleBaseClass =
-    'status-pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
+    'status-pill pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
 
   let energyDisplay = '—';
   let levelDisplay: string | number = '—';
@@ -101,7 +101,7 @@ const openWallet = (event: MouseEvent) => {
   <span aria-hidden="true" class="divider">•</span>
 
   <a
-    class={`wallet-pill ${walletPulse ? 'pulse-soft' : ''}`.trim()}
+    class={`wallet-pill pill ${walletPulse ? 'pulse-soft' : ''}`.trim()}
     data-testid="header-wallet-pill"
     aria-live="polite"
     data-ana="nav:wallet"
@@ -137,7 +137,7 @@ const openWallet = (event: MouseEvent) => {
 
   <button
     type="button"
-    class="account-pill"
+    class="account-pill pill"
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
@@ -157,28 +157,47 @@ const openWallet = (event: MouseEvent) => {
   :global(:root) {
     --pill-h: 36px;
     --pill-px: 10px;
+    --pill-bg: #0f141f;
+    --pill-bg-hover: #161c29;
+  }
+
+  :global(.pill),
+  .status-pill,
+  .wallet-pill,
+  .account-pill,
+  :global(.lean-status__metric) {
+    height: var(--pill-h);
+    padding: 0 var(--pill-px) !important;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    border-radius: 9999px;
+    background: var(--pill-bg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: background 150ms ease, border-color 150ms ease;
+  }
+
+  :global(.pill:hover),
+  :global(.pill:focus-visible),
+  .status-pill:hover,
+  .status-pill:focus-visible,
+  .wallet-pill:hover,
+  .wallet-pill:focus-visible,
+  .account-pill:hover,
+  .account-pill:focus-visible,
+  :global(.lean-status__metric:hover),
+  :global(.lean-status__metric:focus-visible) {
+    background: var(--pill-bg-hover) !important;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .status-pill {
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 999px;
-    background: #0f141f;
     box-shadow: 0 20px 35px rgba(2, 4, 12, 0.55);
     pointer-events: auto;
     position: relative;
     z-index: 0;
-    display: inline-flex;
-    align-items: center;
     gap: 0.5rem;
-    height: var(--pill-h);
-    padding: 0 var(--pill-px);
-    box-sizing: border-box;
     font-size: 0.8rem;
-  }
-
-  .status-pill:hover {
-    background: #161c29;
-    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .status-pill > * {

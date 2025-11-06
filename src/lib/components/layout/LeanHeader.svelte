@@ -70,12 +70,12 @@
           <div class="lean-status__bar"><span style={`width:${xpPct}%`}></span></div>
           <span class="lean-status__meta">{xpLabel}</span>
         </div>
-        <div class="lean-status__metric is-static" aria-label="Energy">
+        <div class="lean-status__metric pill is-static" aria-label="Energy">
           <span>⚡</span>
           <span>{energyLabel}</span>
         </div>
         <a
-          class="lean-status__metric"
+          class="lean-status__metric pill"
           data-testid="header-wallet-pill-lean"
           href="/app/wallet"
           aria-label="Shard balance"
@@ -88,7 +88,7 @@
 
       <NotificationBell notifications={notifications} unreadCount={unreadCount} />
 
-      <button type="button" class="lean-account" on:click={onLogout} aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}>
+      <button type="button" class="lean-account pill" on:click={onLogout} aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}>
         <span class="lean-account__initial" aria-hidden="true">{initials}</span>
         {#if userEmail}
           <span class="lean-account__email">{userEmail}</span>
@@ -248,6 +248,40 @@
     box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.35);
   }
 
+  :global(:root) {
+    --pill-h: 36px;
+    --pill-px: 10px;
+    --pill-bg: #0f141f;
+    --pill-bg-hover: #161c29;
+  }
+
+  :global(.pill),
+  .lean-status__metric,
+  .lean-account,
+  :global(.lean-header__right .notification-wrapper .bell) {
+    height: var(--pill-h);
+    padding: 0 var(--pill-px) !important;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    border-radius: 9999px;
+    background: var(--pill-bg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: background 150ms ease, border-color 150ms ease;
+  }
+
+  :global(.pill:hover),
+  :global(.pill:focus-visible),
+  .lean-status__metric:hover,
+  .lean-status__metric:focus-visible,
+  .lean-account:hover,
+  .lean-account:focus-visible,
+  :global(.lean-header__right .notification-wrapper .bell:hover),
+  :global(.lean-header__right .notification-wrapper .bell:focus-visible) {
+    background: var(--pill-bg-hover) !important;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
   .lean-status {
     display: inline-flex;
     align-items: center;
@@ -301,25 +335,13 @@
   }
 
   .lean-status__metric {
-    display: inline-flex;
-    align-items: center;
     gap: 0.45rem;
-    padding: 0.35rem 0.9rem;
-    border-radius: var(--brand-radius, 9999px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.04);
     font-size: 0.82rem;
     color: rgba(247, 249, 255, 0.9);
     cursor: pointer;
     text-decoration: none;
-    transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     position: relative;
     z-index: 1;
-  }
-
-  .lean-status__metric:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.24);
   }
 
   .lean-status__metric:focus-visible {
@@ -334,8 +356,6 @@
   .lean-status__metric.is-static {
     cursor: default;
     pointer-events: none;
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
     box-shadow: none;
   }
 
@@ -343,45 +363,22 @@
     position: relative;
   }
 
-  :global(.lean-header__right .notification-wrapper .bell) {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
-    transition: background 150ms ease, border-color 150ms ease;
-  }
-
   :global(.lean-header__right .notification-wrapper .bell svg) {
     width: 18px;
     height: 18px;
-  }
-
-  :global(.lean-header__right .notification-wrapper .bell:hover),
-  :global(.lean-header__right .notification-wrapper .bell:focus-visible) {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.22);
-    outline: none;
   }
 
   .lean-account {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.05);
     color: rgba(248, 250, 255, 0.85);
     cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease;
   }
 
-  .lean-account:hover,
   .lean-account:focus-visible {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.22);
     outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.4);
   }
 
   .lean-account__initial {
