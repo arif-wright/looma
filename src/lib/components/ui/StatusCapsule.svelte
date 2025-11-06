@@ -17,9 +17,16 @@ import { onDestroy } from 'svelte';
   export let walletCurrency = 'SHARDS';
   export let walletDelta: number | null = null;
 
-  let walletPulse = false;
-  let lastBalance: number | null = null;
-  let pulseTimer: ReturnType<typeof setTimeout> | null = null;
+let walletPulse = false;
+let lastBalance: number | null = null;
+let pulseTimer: ReturnType<typeof setTimeout> | null = null;
+const openWallet = (event: MouseEvent) => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+    return;
+  }
+  event.preventDefault();
+  window.location.href = '/app/wallet';
+};
 
   const capsuleBaseClass =
     'status-pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
@@ -99,6 +106,7 @@ import { onDestroy } from 'svelte';
     aria-live="polite"
     data-ana="nav:wallet"
     href="/app/wallet"
+    on:click={openWallet}
   >
     <span aria-hidden="true">💎</span>
     <span>
@@ -225,6 +233,7 @@ import { onDestroy } from 'svelte';
     font-size: 0.82rem;
     color: rgba(247, 249, 255, 0.9);
     cursor: pointer;
+    pointer-events: auto;
     text-decoration: none;
     transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     border-width: 1px;
