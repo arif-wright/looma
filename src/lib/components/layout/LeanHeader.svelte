@@ -283,15 +283,17 @@
   }
 
   .lean-status .pill {
-    background: rgba(255, 255, 255, 0.06) !important;
+    background: transparent !important;
     border-color: transparent;
-    color: rgba(248, 250, 255, 0.9);
+    color: rgba(248, 250, 255, 0.75);
+    box-shadow: none;
   }
 
   .lean-status .pill:hover,
   .lean-status .pill:focus-visible {
     background: rgba(255, 255, 255, 0.16) !important;
-    border-color: rgba(255, 255, 255, 0.24);
+    border-color: transparent;
+    color: #fff;
   }
 
   .lean-status {
