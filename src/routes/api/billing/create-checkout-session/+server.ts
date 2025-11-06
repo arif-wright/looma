@@ -31,10 +31,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const successUrl = env.PUBLIC_APP_URL
-    ? `${env.PUBLIC_APP_URL}/app/(protected)/wallet?status=success`
+    ? `${env.PUBLIC_APP_URL}/app/wallet?status=success`
     : null;
   const cancelUrl = env.PUBLIC_APP_URL
-    ? `${env.PUBLIC_APP_URL}/app/(protected)/wallet?status=cancelled`
+    ? `${env.PUBLIC_APP_URL}/app/wallet?status=cancelled`
     : null;
 
   if (!successUrl || !cancelUrl) {

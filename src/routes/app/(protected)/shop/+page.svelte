@@ -125,7 +125,7 @@
   </div>
   <a
     class="flex h-9 items-center rounded-full border border-white/10 px-3 text-sm text-white/85 transition hover:bg-white/5"
-    href="/app/(protected)/wallet"
+    href="/app/wallet"
   >
     Add shards
   </a>
