@@ -160,6 +160,15 @@ const openWallet = (event: MouseEvent) => {
     background: rgba(8, 12, 28, 0.6);
     box-shadow: 0 20px 35px rgba(2, 4, 12, 0.55);
     pointer-events: auto;
+    position: relative;
+    z-index: 0;
+  }
+
+  :global(.panel-glass::before),
+  :global(.panel-glass::after),
+  :global(.ring-neon::before),
+  :global(.ring-neon::after) {
+    pointer-events: none !important;
   }
 
   .stat {
@@ -239,7 +248,7 @@ const openWallet = (event: MouseEvent) => {
     transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     border-width: 1px;
     position: relative;
-    z-index: 1;
+    z-index: 20;
   }
 
   .wallet-pill:hover {
