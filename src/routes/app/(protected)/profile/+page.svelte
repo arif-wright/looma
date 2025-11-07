@@ -8,17 +8,15 @@
   export let data: PageData;
 
   const profile = data.profile;
-
-  const stats = {
-    level: profile.level ?? null,
-    xp: profile.xp ?? null,
-    xp_next: profile.xp_next ?? null,
-    energy: profile.energy ?? null,
-    energy_max: profile.energy_max ?? null
+  const stats = data.stats ?? {
+    level: null,
+    xp: null,
+    xp_next: null,
+    energy: null,
+    energy_max: null
   };
 
   const handleEdit = () => {
-    if (!data.isOwner) return;
     void goto('/app/profile/edit');
   };
 </script>
@@ -41,7 +39,7 @@
     xpNext={stats.xp_next}
     energy={stats.energy}
     energyMax={stats.energy_max}
-    shards={null}
+    shards={data.walletShards}
   />
 
   <ProfileAbout bio={profile.bio} links={profile.links} />

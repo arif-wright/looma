@@ -6,6 +6,7 @@
 
   setContext('profile', data.profile);
   setContext('viewerId', data.viewerId);
+  setContext('isOwner', data.isOwner);
 </script>
 
 <slot />
