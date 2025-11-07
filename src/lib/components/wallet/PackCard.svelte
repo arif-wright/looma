@@ -5,7 +5,7 @@
   export let onBuy: () => void;
 </script>
 
-<article class="card">
+<article class="card" role="listitem" data-test="wallet-pack-card">
   <div class="card-body">
     {#if badge}
       <span class="badge">{badge}</span>
@@ -19,7 +19,12 @@
       </div>
     </div>
 
-    <button type="button" class="card-button" on:click={onBuy}>
+    <button
+      type="button"
+      class="card-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      aria-label={`Purchase ${shards.toLocaleString()} shards`}
+      on:click={onBuy}
+    >
       Purchase
     </button>
   </div>

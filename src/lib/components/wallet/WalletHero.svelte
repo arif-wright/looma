@@ -106,4 +106,10 @@
     font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.65);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-glow {
+      animation: none;
+    }
+  }
 </style>

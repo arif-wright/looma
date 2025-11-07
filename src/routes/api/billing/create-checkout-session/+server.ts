@@ -2,12 +2,21 @@ import type { RequestHandler } from './$types';
 import { getStripe, productCatalog } from '$lib/server/billing';
 import { env } from '$env/dynamic/private';
 
+const jsonResponse = (body: Record<string, unknown>, init: ResponseInit = {}) =>
+  new Response(JSON.stringify(body), {
+    ...init,
+    headers: {
+      'content-type': 'application/json',
+      ...(init.headers ?? {})
+    }
+  });
+
 export const POST: RequestHandler = async ({ request, locals, url }) => {
   const supabase = (locals as any)?.supabase;
   let user = (locals as any)?.user ?? null;
 
   if (!supabase) {
-    return new Response('Supabase client missing', { status: 500 });
+    return jsonResponse({ error: 'Supabase client missing', where: 'server' }, { status: 500 });
   }
 
   if (!user) {
@@ -18,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
   }
 
   if (!user) {
-    return new Response('Unauthorized', { status: 401 });
+    return jsonResponse({ error: 'Unauthorized', where: 'auth' }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -27,12 +36,12 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
   const item = catalog.find((entry) => entry.key === pack);
 
   if (!item) {
-    return new Response('Invalid pack', { status: 400 });
+    return jsonResponse({ error: 'Invalid pack', where: 'input' }, { status: 400 });
   }
 
   const baseUrl = env.PUBLIC_APP_URL ?? url.origin;
   if (!baseUrl) {
-    return new Response('App URL not configured', { status: 500 });
+    return jsonResponse({ error: 'App URL not configured', where: 'config' }, { status: 500 });
   }
 
   try {
@@ -48,16 +57,13 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
       }
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    });
+    return jsonResponse({ url: session.url });
   } catch (error: any) {
     console.error('[billing] failed to create checkout session', {
       message: error?.message,
       type: error?.type,
       code: error?.code
     });
-    return new Response('Unable to start checkout', { status: 500 });
+    return jsonResponse({ error: 'Unable to start checkout', where: 'stripe' }, { status: 500 });
   }
 };

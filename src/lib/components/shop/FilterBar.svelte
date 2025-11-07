@@ -46,6 +46,8 @@
       <button
         class={`pill ${category === option ? 'active' : ''}`}
         type="button"
+        aria-pressed={category === option}
+        aria-label={`Filter by ${option}`}
         on:click={() => setCategory(option)}
       >
         {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -101,12 +103,14 @@
     font-size: 0.85rem;
     font-weight: 500;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    outline: none;
   }
 
   .pill:hover,
   .pill:focus-visible {
     background: rgba(148, 163, 184, 0.18);
     color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
   }
 
   .pill.active {
@@ -143,6 +147,11 @@
     background: rgba(15, 23, 42, 0.25);
     color: rgba(255, 255, 255, 0.9);
     font-size: 0.85rem;
+    outline: none;
+  }
+
+  .select:focus-visible {
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
   }
 
   @media (max-width: 560px) {

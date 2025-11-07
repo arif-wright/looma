@@ -69,6 +69,14 @@ body::before {
     radial-gradient(120% 120% at 50% 100%, rgba(0, 0, 0, 0.4), transparent 50%);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow,
+  .animate-in {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 ::selection {
   background: rgba(160, 107, 255, 0.25);
   color: var(--text);

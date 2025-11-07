@@ -5,6 +5,8 @@
     source: string;
     created_at: string;
   }> = [];
+  export let formatter: (value: number) => string = (value) =>
+    new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
 
   const formatDate = (value: string) => {
     const date = new Date(value);
@@ -20,7 +22,7 @@
       <li class="item">
         <div class="item-source">{t.source || 'Transaction'}</div>
         <div class={`item-amount ${t.kind === 'credit' ? 'credit' : 'debit'}`}>
-          {t.kind === 'credit' ? '+' : ''}{t.amount}
+          {t.kind === 'credit' ? '+' : ''}{formatter(t.amount)}
         </div>
         <div class="item-date">{formatDate(t.created_at)}</div>
       </li>

@@ -14,8 +14,10 @@
 
 <button
   type="button"
+  data-test="shop-card"
+  aria-label={item.__owned ? `${item.title} owned` : `View ${item.title}`}
   on:click={open}
-  class={`group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
+  class={`group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
     item.__owned ? 'cursor-default opacity-75' : 'cursor-pointer hover:ring-white/20'
   }`}
   disabled={item.__owned}
