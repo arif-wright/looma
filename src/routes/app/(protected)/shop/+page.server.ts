@@ -50,10 +50,13 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
   }
 
+  const wallet = typeof shards === 'number' && Number.isFinite(shards) ? shards : Number(shards) || 0;
+
   return {
     items,
     featured,
-    shards,
+    shards: wallet,
+    wallet,
     ownedIds,
     error: itemsRes.error?.message ?? null
   };

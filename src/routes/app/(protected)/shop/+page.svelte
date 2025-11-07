@@ -5,7 +5,7 @@
   import Panel from '$lib/components/ui/Panel.svelte';
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
-  import { walletBalance } from '$lib/stores/economy';
+  import { walletBalance, setWalletBalance } from '$lib/stores/economy';
 
   type FilterState = {
     category: Category;
@@ -24,6 +24,26 @@
   };
 
   const defaultFilters: FilterState = { category: 'all', rarity: 'all', sortKey: 'newest' };
+  const numberFormatter = new Intl.NumberFormat();
+
+  const asNumber = (value: unknown, fallback = 0) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    if (typeof value === 'object' && value !== null) {
+      const candidate = (value as Record<string, unknown>).balance ?? (value as Record<string, unknown>).shards;
+      if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+        return candidate;
+      }
+    }
+    return Number.isFinite(Number(fallback)) ? Number(fallback) : 0;
+  };
 
   let modalOpen = false;
   let selected: any = null;
@@ -37,8 +57,7 @@
       : data.filters ?? {})
   };
 
-  const fallbackBalance = data.wallet ?? data.shards ?? 0;
-  const numberFormatter = new Intl.NumberFormat();
+  const fallbackBalance = asNumber(data.wallet ?? data.shards, 0);
 
   const openModal = (event: CustomEvent) => {
     selected = event.detail.item;
@@ -71,8 +90,8 @@
 
       if (!res.ok || !out?.ok) throw new Error(out?.error || 'Purchase failed');
 
-      const nextBalance = typeof out.shards === 'number' ? out.shards : balance;
-      walletBalance.set(nextBalance);
+      const nextBalance = asNumber(out.shards, balance);
+      setWalletBalance(nextBalance, balance);
       owned = new Set([...owned, item.id]);
       closeModal();
     } catch (err: any) {
@@ -87,10 +106,10 @@
   }
 
   onMount(() => {
-    walletBalance.set(fallbackBalance);
+    setWalletBalance(fallbackBalance);
   });
 
-  $: balance = typeof $walletBalance === 'number' ? $walletBalance : fallbackBalance;
+  $: balance = asNumber($walletBalance, fallbackBalance);
   $: featuredItems = Array.isArray(data.featured) ? data.featured : [];
   $: catalogItems = (data.items ?? []).map((item) => ({ ...item, __owned: owned.has(item.id) }));
 </script>

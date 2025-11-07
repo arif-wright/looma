@@ -10,7 +10,7 @@
   import Panel from '$lib/components/ui/Panel.svelte';
   import { celebrateWalletCredit } from '$lib/ux/confetti';
   import InlineToast from '$lib/components/ui/InlineToast.svelte';
-  import { walletBalance, walletTx, formatShards } from '$lib/stores/economy';
+  import { walletBalance, walletTx, formatShards, setWalletBalance } from '$lib/stores/economy';
 
   export let data: { shards: number; tx: any[] };
 
@@ -19,7 +19,7 @@
   let txList = data.tx ?? [];
 
   onMount(() => {
-    walletBalance.set(data.shards ?? 0);
+    setWalletBalance(data.shards ?? 0);
     walletTx.set(data.tx ?? []);
     const unsubscribe = walletTx.subscribe((value) => {
       txList = value;
