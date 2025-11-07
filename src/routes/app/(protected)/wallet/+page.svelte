@@ -1,10 +1,43 @@
 <script lang="ts">
-  export let data: { shards: number; tx: any[] };
+  import { onMount } from 'svelte';
+  import type { ComponentType } from 'svelte';
+  import { page } from '$app/stores';
+  import { get } from 'svelte/store';
 
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import WalletHero from '$lib/components/wallet/WalletHero.svelte';
   import PackCard from '$lib/components/wallet/PackCard.svelte';
   import HistoryList from '$lib/components/wallet/HistoryList.svelte';
+  import { celebrateWalletCredit } from '$lib/ux/confetti';
+  import InlineToastComponent from '$lib/components/ui/InlineToast.svelte';
+
+  const InlineToast = InlineToastComponent as ComponentType<any>;
+
+  export let data: { shards: number; tx: any[] };
+
+  let toastShow = false;
+  let toastMsg = '';
+
+  function showToast(msg: string) {
+    toastMsg = msg;
+    toastShow = true;
+  }
+
+  onMount(() => {
+    const url = get(page).url;
+    const status = url.searchParams.get('status');
+    if (status === 'success') {
+      const latestCredit = (data.tx || []).find((t) => t?.kind === 'credit');
+      const amount = latestCredit?.amount ?? null;
+
+      celebrateWalletCredit();
+      showToast(amount ? `+${amount} shards added to your wallet` : 'Purchase successful');
+
+      const clean = new URL(url);
+      clean.searchParams.delete('status');
+      history.replaceState({}, '', clean.toString());
+    }
+  });
 
   async function buy(pack: '500' | '1200' | '2600') {
     const res = await fetch('/api/billing/create-checkout-session', {
@@ -24,6 +57,7 @@
 </script>
 
 <div class="wallet-root bg-neuro">
+  <InlineToast show={toastShow} message={toastMsg} onClose={() => (toastShow = false)} />
   <BackgroundStack class="wallet-bg" />
   <main class="wallet-shell">
     <WalletHero shards={data.shards} />
