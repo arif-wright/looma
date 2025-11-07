@@ -54,10 +54,10 @@
 </script>
 
 {#if hasItems()}
-  <section class="featured-section rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
+  <section class="featured-section w-full rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
     <div
       role="presentation"
-      class="featured-stage"
+      class="featured-stage w-full h-[240px] md:h-[340px] lg:h-[420px]"
       on:mouseenter={stop}
       on:mouseleave={start}
     >
@@ -65,7 +65,7 @@
         <img
           src={item.image_url}
           alt={item.title}
-          class="featured-image"
+          class="featured-image w-full h-[240px] md:h-[340px] lg:h-[420px] object-cover"
           style={`opacity: ${i === idx ? 1 : 0}; pointer-events: ${i === idx ? 'auto' : 'none'};`}
           loading="lazy"
           decoding="async"
@@ -134,16 +134,11 @@
 <style>
   .featured-stage {
     position: relative;
-    aspect-ratio: 16 / 6;
-    max-height: 340px;
   }
 
   .featured-image {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
     transition: opacity 0.4s ease;
   }
 

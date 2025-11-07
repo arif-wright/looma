@@ -56,7 +56,7 @@
   };
 </script>
 
-<nav role="region" aria-label="Shop filters" class="filter-bar">
+<nav role="region" aria-label="Shop filters" class="filter-bar flex flex-wrap items-center gap-2 mb-3 md:mb-4">
   <div class="categories">
     {#each categories as option}
       <button
@@ -95,13 +95,6 @@
 </nav>
 
 <style>
-  .filter-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
   .categories {
     display: flex;
     flex-wrap: wrap;

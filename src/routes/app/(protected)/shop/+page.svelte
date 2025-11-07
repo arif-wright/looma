@@ -30,7 +30,6 @@
   let busy = false;
   let modalError: string | null = null;
   let owned = new Set(data.ownedIds ?? []);
-  let walletReady = false;
   let current: FilterState = {
     ...defaultFilters,
     ...(data.filters && 'current' in (data.filters as any)
@@ -38,7 +37,8 @@
       : data.filters ?? {})
   };
 
-  const initialWallet = data.wallet ?? data.shards ?? 0;
+  const fallbackBalance = data.wallet ?? data.shards ?? 0;
+  const numberFormatter = new Intl.NumberFormat();
 
   const openModal = (event: CustomEvent) => {
     selected = event.detail.item;
@@ -55,7 +55,7 @@
   async function purchase(item: any) {
     modalError = null;
 
-    if (item.price_shards > ($walletBalance ?? initialWallet)) {
+    if (item.price_shards > balance) {
       modalError = 'Insufficient shards';
       return;
     }
@@ -71,7 +71,7 @@
 
       if (!res.ok || !out?.ok) throw new Error(out?.error || 'Purchase failed');
 
-      const nextBalance = typeof out.shards === 'number' ? out.shards : ($walletBalance ?? initialWallet);
+      const nextBalance = typeof out.shards === 'number' ? out.shards : balance;
       walletBalance.set(nextBalance);
       owned = new Set([...owned, item.id]);
       closeModal();
@@ -87,11 +87,10 @@
   }
 
   onMount(() => {
-    walletBalance.set(initialWallet);
-    walletReady = true;
+    walletBalance.set(fallbackBalance);
   });
 
-  $: balance = walletReady ? $walletBalance ?? initialWallet : initialWallet;
+  $: balance = typeof $walletBalance === 'number' ? $walletBalance : fallbackBalance;
   $: featuredItems = Array.isArray(data.featured) ? data.featured : [];
   $: catalogItems = (data.items ?? []).map((item) => ({ ...item, __owned: owned.has(item.id) }));
 </script>
@@ -105,7 +104,7 @@
 
     <div class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10">
       <span class="text-white/60 text-xs uppercase tracking-wide">Wallet</span>
-      <span class="tabular-nums font-semibold text-white">{balance}</span>
+      <span class="tabular-nums font-semibold text-white">{numberFormatter.format(balance)}</span>
       <a
         class="rounded-full bg-gradient-to-r from-cyan-400/85 to-fuchsia-400/85 px-2 py-1 text-xs font-semibold text-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
         href="/app/wallet"
