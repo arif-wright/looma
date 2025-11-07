@@ -426,17 +426,15 @@
 
   @media (max-width: 768px) {
     .lean-header__inner {
-      flex-wrap: wrap;
-      padding: 0.75rem 1rem;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0.85rem 1rem 0.6rem;
     }
 
     .lean-header__left,
     .lean-header__right {
       width: 100%;
       justify-content: space-between;
-    }
-
-    .lean-header__left {
       gap: 0.5rem;
     }
 
@@ -445,17 +443,26 @@
       transform: none;
       width: 100%;
       order: 3;
-      display: flex;
-      justify-content: center;
+      display: block;
       pointer-events: auto;
-      padding-top: 0.35rem;
+      padding-top: 0.5rem;
+    }
+
+    :global(nav.lean-icon-nav) {
+      width: 100%;
+    }
+
+    :global(nav.lean-icon-nav > div) {
+      width: 100%;
+      justify-content: space-between;
+      gap: 0.35rem;
     }
 
     .lean-status {
       width: 100%;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .lean-status__bar {
@@ -464,6 +471,16 @@
 
     .lean-account__email {
       display: none;
+    }
+
+    .lean-logo__word {
+      display: none !important;
+    }
+
+    .lean-search {
+      display: flex;
+      flex: 1;
+      width: 100%;
     }
   }
 </style>
