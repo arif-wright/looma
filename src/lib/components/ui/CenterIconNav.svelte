@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/stores';
 
   export type IconComponent = typeof import('lucide-svelte').Home;
@@ -10,49 +11,55 @@
     analyticsKey?: string;
   };
 
-  import { onDestroy } from 'svelte';
-
   export let items: IconNavItem[] = [];
   export let className = '';
 
-  let currentPath = '';
-  const unsubscribe = page.subscribe(($page) => {
-    currentPath = $page.url.pathname;
+  $: pathFromStore = $page.url.pathname;
+  let pathBump = 0;
+  afterNavigate(() => {
+    pathBump += 1;
   });
 
-  onDestroy(() => {
-    unsubscribe();
-  });
+  $: currentPath = (() => {
+    pathBump; // ensure dependency on SPA transitions
+    return pathFromStore;
+  })();
 
-  const isActive = (href: string) => {
-    if (href === '/app/home') {
-      return currentPath === '/app/home';
-    }
-    return currentPath.startsWith(href);
+  const norm = (p: string) => {
+    const compact = (p || '/').replace(/\/+/g, '/');
+    const trimmed = compact.replace(/\/+$/, '');
+    return trimmed.length ? trimmed : '/';
+  };
+
+  const isActive = (href: string, path: string) => {
+    const h = norm(href);
+    const c = norm(path);
+    if (h === '/app/home') return c === '/app/home';
+    return c === h || c.startsWith(`${h}/`);
   };
 </script>
 
 <nav class={`pointer-events-auto ${className}`.trim()} aria-label="Primary navigation">
   <div class="flex w-fit items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-1 backdrop-blur-xl md:gap-4">
     {#each items as item (item.href)}
-      {#key item.href}
-        <a
-          href={item.href}
-          class={`brand-icon-button ${isActive(item.href) ? 'active' : ''}`}
-          title={item.label}
-          aria-label={item.label}
-          aria-current={isActive(item.href) ? 'page' : undefined}
-          data-testid={`nav-icon-${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-          data-ana={`nav:${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-        >
-          <svelte:component
-            this={item.icon}
-            class="h-5 w-5 text-inherit transition-colors duration-150 ease-out motion-reduce:transition-none"
-            aria-hidden="true"
-          />
-          <span class="sr-only">{item.label}</span>
-        </a>
-      {/key}
+      <a
+        href={item.href}
+        class={`brand-icon-button ${isActive(item.href, currentPath) ? 'active' : ''}`}
+        title={item.label}
+        aria-label={item.label}
+        aria-current={isActive(item.href, currentPath) ? 'page' : undefined}
+        data-active={isActive(item.href, currentPath) ? 'true' : 'false'}
+        data-testid={`nav-icon-${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+        data-ana={`nav:${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+        sveltekit:prefetch
+      >
+        <svelte:component
+          this={item.icon}
+          class="h-5 w-5 text-inherit transition-colors duration-150 ease-out motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+        <span class="sr-only">{item.label}</span>
+      </a>
     {/each}
   </div>
 </nav>
@@ -68,7 +75,9 @@
     border-radius: 16px;
   }
 
-  .brand-icon-button.active {
+  .brand-icon-button.active,
+  .brand-icon-button.active:hover,
+  .brand-icon-button.active:focus-visible {
     color: #fff;
     background: rgba(255, 255, 255, 0.16);
     box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.45), 0 12px 26px rgba(94, 242, 255, 0.25);
