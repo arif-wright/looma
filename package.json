@@ -39,6 +39,7 @@
 	"dependencies": {
 		"@supabase/ssr": "^0.5.0",
 		"@supabase/supabase-js": "^2.46.0",
+		"canvas-confetti": "^1.9.4",
 		"lucide-svelte": "^0.552.0",
 		"stripe": "^14.25.0",
 		"ua-parser-js": "^1.0.41",
