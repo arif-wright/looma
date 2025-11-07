@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { walletBalance } from '$lib/stores/economy';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
 
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
@@ -68,17 +69,12 @@
       <span class="tabular-nums">{fmt(currentBalance)}</span>
     </a>
 
-    <a
-      href="/app/notifications"
-      aria-label="Notifications"
-      class="icon-btn"
-    >
-      {#if notifCount > 0}
-        <span class="badge motion-safe:animate-badgeBump">{notifCount}</span>
-      {/if}
-      <span class="sr-only">Notifications</span>
-      <div class="icon-dot" aria-hidden="true"></div>
-    </a>
+    <NotificationBell
+      {notifications}
+      unreadCount={notifCount}
+      compact={true}
+      class="icon-btn notification-compact"
+    />
 
     <a href="/app/profile" aria-label="Account" class="icon-btn">
       <span class="avatar-text">{initials}</span>
@@ -185,27 +181,17 @@
     box-shadow: 0 0 12px rgba(94, 242, 255, 0.8);
   }
 
-  .icon-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.85);
+  .notification-compact :global(.bell) {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  .badge {
-    position: absolute;
+  .notification-compact :global(.badge) {
     top: -2px;
     right: -2px;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    background: rgba(244, 114, 182, 0.95);
-    color: #0f172a;
-    font-size: 0.65rem;
-    display: grid;
-    place-items: center;
-    padding: 0 4px;
-    font-weight: 700;
   }
 
   .avatar-text {

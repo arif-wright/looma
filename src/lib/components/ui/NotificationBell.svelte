@@ -21,6 +21,9 @@ import { achievementsUI } from '$lib/achievements/store';
 
   export let notifications: NotificationItem[] = [];
   export let unreadCount = 0;
+  export let compact = false;
+  export let open = false;
+  export let onToggle: (() => void) | null = null;
 
   type ToastState = { kind: 'success'; message: string } | null;
 
@@ -31,7 +34,6 @@ import { achievementsUI } from '$lib/achievements/store';
   syncSeenIds(items);
 
   let unread = unreadCount;
-  let open = false;
   let anchor: HTMLButtonElement | null = null;
   let listEl: HTMLElement | null = null;
   let liveMessage: string | null = null;
@@ -197,8 +199,20 @@ import { achievementsUI } from '$lib/achievements/store';
 
   function toggleDropdown() {
     open = !open;
+    syncDocumentHandlers();
     if (open) {
       void refresh();
+    }
+  }
+
+  function syncDocumentHandlers() {
+    if (typeof document === 'undefined') return;
+    if (open) {
+      document.addEventListener('click', handleDocumentClick, true);
+      document.addEventListener('keydown', handleKey, true);
+    } else {
+      document.removeEventListener('click', handleDocumentClick, true);
+      document.removeEventListener('keydown', handleKey, true);
     }
   }
 
@@ -262,10 +276,7 @@ import { achievementsUI } from '$lib/achievements/store';
   onMount(() => {
     supabase = supabaseBrowser();
     void initRealtime();
-
-    if (typeof document === 'undefined') return;
-    document.addEventListener('click', handleDocumentClick, true);
-    document.addEventListener('keydown', handleKey, true);
+    syncDocumentHandlers();
   });
 
   onDestroy(() => {
@@ -284,6 +295,7 @@ import { achievementsUI } from '$lib/achievements/store';
       liveTimer = null;
     }
 
+    if (typeof document === 'undefined') return;
     if (typeof document === 'undefined') return;
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleKey, true);
@@ -366,11 +378,14 @@ import { achievementsUI } from '$lib/achievements/store';
   <button
     bind:this={anchor}
     type="button"
-    class={`bell pill ${unread > 0 ? 'has-unread' : ''} ${open ? 'is-open' : ''}`}
+    class={`bell ${compact ? 'bell--compact' : 'pill'} ${unread > 0 ? 'has-unread' : ''} ${
+      open ? 'is-open' : ''
+    }`}
     aria-label={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}
-    on:click={toggleDropdown}
+    on:click={() => (onToggle ? onToggle() : toggleDropdown())}
     data-testid="notification-bell"
     aria-expanded={open ? 'true' : 'false'}
+    aria-haspopup="dialog"
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path
@@ -394,10 +409,11 @@ import { achievementsUI } from '$lib/achievements/store';
   {#if open}
     <div
       bind:this={listEl}
-      class="dropdown"
-      role="menu"
+      class={`dropdown ${compact ? 'dropdown--compact' : ''}`}
+      role="dialog"
       aria-label="Notifications"
       data-testid="notification-dropdown"
+      tabindex="-1"
     >
       <header>
         <div>
