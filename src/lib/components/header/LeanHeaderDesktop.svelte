@@ -327,4 +327,100 @@
     align-items: center;
     gap: 0.5rem;
   }
-*** End Patch
+
+  .lean-status__bar {
+    width: 100px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+  }
+
+  .lean-status__bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(94, 242, 255, 0.9), rgba(155, 92, 255, 0.9));
+    transition: width 220ms ease;
+  }
+
+  .lean-status__meta {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: rgba(248, 250, 255, 0.6);
+  }
+
+  .lean-status__metric {
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: rgba(247, 249, 255, 0.9);
+    cursor: pointer;
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+  }
+
+  .lean-status__metric:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.45);
+  }
+
+  .lean-status__metric span:first-child {
+    font-size: 0.9rem;
+  }
+
+  .lean-status__metric.is-static {
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
+  }
+
+  :global(.lean-header__right .notification-wrapper) {
+    position: relative;
+  }
+
+  :global(.lean-header__right .notification-wrapper .bell svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lean-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(248, 250, 255, 0.85);
+    cursor: pointer;
+  }
+
+  .lean-account:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.4);
+  }
+
+  .lean-account__initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .lean-account__email {
+    max-width: 180px;
+    font-size: 0.75rem;
+    color: rgba(248, 250, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (min-width: 768px) {
+    .lean-search {
+      display: inline-flex;
+    }
+  }
+</style>

@@ -51,7 +51,7 @@
         data-active={isActive(item.href, currentPath) ? 'true' : 'false'}
         data-testid={`nav-icon-${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
         data-ana={`nav:${(item.analyticsKey ?? item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-        sveltekit:prefetch
+        data-sveltekit-prefetch
       >
         <svelte:component
           this={item.icon}
