@@ -57,7 +57,7 @@
   <section class="featured-section w-full rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
     <div
       role="presentation"
-      class="featured-stage w-full h-[240px] md:h-[340px] lg:h-[420px]"
+      class="featured-stage w-full h-[220px] sm:h-[260px] md:h-[340px] lg:h-[420px]"
       on:mouseenter={stop}
       on:mouseleave={start}
     >
@@ -65,7 +65,7 @@
         <img
           src={item.image_url}
           alt={item.title}
-          class="featured-image w-full h-[240px] md:h-[340px] lg:h-[420px] object-cover"
+          class="featured-image w-full h-[220px] sm:h-[260px] md:h-[340px] lg:h-[420px] object-cover"
           style={`opacity: ${i === idx ? 1 : 0}; pointer-events: ${i === idx ? 'auto' : 'none'};`}
           loading="lazy"
           decoding="async"

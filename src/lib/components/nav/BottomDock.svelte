@@ -56,7 +56,7 @@
 </script>
 
 {#if browser}
-  <nav class={`dock ${hidden ? 'dock--hidden' : ''}`} aria-label="Dock navigation">
+  <nav class={`dock pb-safe ${hidden ? 'dock--hidden' : ''}`} aria-label="Dock navigation">
     <button type="button" class="dock__compose" on:click={onCompose}>
       <span aria-hidden="true">➕</span>
       <span class="sr-only">Add Post</span>

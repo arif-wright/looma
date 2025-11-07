@@ -58,6 +58,12 @@
   };
 
   const fallbackBalance = asNumber(data.wallet ?? data.shards, 0);
+  const subNavItems = [
+    { label: 'Shop', href: '/app/shop', active: true },
+    { label: 'Creatures', href: '/app/creatures', active: false },
+    { label: 'Items', href: '/app/items', active: false },
+    { label: 'Bundles', href: '/app/bundles', active: false }
+  ];
 
   const openModal = (event: CustomEvent) => {
     selected = event.detail.item;
@@ -114,15 +120,15 @@
   $: catalogItems = (data.items ?? []).map((item) => ({ ...item, __owned: owned.has(item.id) }));
 </script>
 
-<div class="mx-auto max-w-screen-xl px-4 py-6 space-y-6">
-  <header class="flex flex-wrap items-start justify-between gap-4">
+<div class="mx-auto max-w-screen-xl px-4 pt-4 md:pt-6 space-y-4 md:space-y-6 safe-bottom">
+  <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
     <div>
       <h1 class="text-2xl font-semibold text-white">Shop</h1>
       <p class="text-sm text-white/60">Browse featured drops, filter gear, and spend shards.</p>
     </div>
 
-    <div class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10">
-      <span class="text-white/60 text-xs uppercase tracking-wide">Wallet</span>
+    <div class="inline-flex items-center gap-2 self-start md:self-auto rounded-full bg-white/5 px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10">
+      <span class="text-white/70 text-xs">WALLET</span>
       <span class="tabular-nums font-semibold text-white">{numberFormatter.format(balance)}</span>
       <a
         class="rounded-full bg-gradient-to-r from-cyan-400/85 to-fuchsia-400/85 px-2 py-1 text-xs font-semibold text-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
@@ -133,11 +139,39 @@
     </div>
   </header>
 
+  <section class="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 md:p-4 space-y-3">
+    <div
+      class="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 md:pb-3"
+      style="-webkit-overflow-scrolling: touch;"
+    >
+      {#each subNavItems as item}
+        <a
+          href={item.href}
+          class={`snap-start whitespace-nowrap rounded-full px-4 py-2 text-sm ring-1 ring-white/10 ${
+            item.active
+              ? 'bg-cyan-500/20 text-white font-semibold'
+              : 'bg-white/5 text-white/80'
+          }`}
+        >
+          {item.label}
+        </a>
+      {/each}
+    </div>
+
+    <div>
+      <input
+        type="search"
+        placeholder="Search the market…"
+        class="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white/90 placeholder:text-white/40 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
+      />
+    </div>
+  </section>
+
   {#if featuredItems.length > 0}
     <FeaturedSection items={featuredItems} />
   {/if}
 
-  <Panel className="space-y-4">
+  <Panel className="space-y-4 md:space-y-6">
     <FilterBar current={current} on:change={(event) => onFilterChange(event.detail)} />
 
     {#if data.error}
@@ -168,5 +202,14 @@
     .animate-spin {
       animation: none !important;
     }
+  }
+
+  :global(.scrollbar-hide) {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  :global(.scrollbar-hide::-webkit-scrollbar) {
+    display: none;
   }
 </style>

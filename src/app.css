@@ -27,6 +27,7 @@
   --lavender: #e9c3ff;
   --space: clamp(24px, 5vw, 40px);
   --vh: 1vh;
+  --bottom-bar-h: 64px;
 }
 
 * {
@@ -650,3 +651,10 @@ p:last-child {
 }
 
 /* keep as-is */
+.safe-bottom {
+  padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom, 0px));
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
