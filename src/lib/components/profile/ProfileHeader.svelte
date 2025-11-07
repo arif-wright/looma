@@ -26,10 +26,14 @@
 </script>
 
 <section class="profile-header" data-private={isPrivate}>
-  <div class={`banner ${bannerUrl ? 'has-image' : ''}`} style={bannerStyle} aria-hidden="true"></div>
+  <div
+    class={`banner ${bannerUrl ? 'has-image' : 'bg-brand-gradient panel-glass'}`}
+    style={bannerStyle}
+    aria-hidden="true"
+  ></div>
 
   <div class="header-card">
-    <Panel className="profile-card">
+    <Panel className="profile-card panel-glass">
       <div class="card-inner">
         <div class="identity">
           <div class="avatar-wrap">
@@ -73,16 +77,16 @@
     width: 100%;
     aspect-ratio: 3 / 1;
     border-radius: 32px;
-    background: radial-gradient(circle at 30% 40%, rgba(155, 92, 255, 0.35), transparent 60%),
-      linear-gradient(135deg, rgba(6, 9, 27, 0.9), rgba(10, 13, 31, 0.85));
-    background-size: cover;
-    background-position: center;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgba(8, 12, 24, 0.9), rgba(18, 7, 32, 0.85));
+    border: 1px solid var(--brand-panel-border, rgba(255, 255, 255, 0.1));
+    box-shadow: var(--brand-panel-shadow, 0 32px 46px rgba(6, 9, 26, 0.45));
     overflow: hidden;
   }
 
   .banner.has-image {
-    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.35);
+    background-size: cover;
+    background-position: center;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.4);
   }
 
   .header-card {

@@ -27,7 +27,7 @@
   $: hasBio = typeof bio === 'string' && bio.trim().length > 0;
 </script>
 
-<Panel title="About" className="profile-panel profile-about">
+<Panel title="About" className="profile-panel profile-about panel-glass">
   <div class="about-body">
     <section>
       <h3>Bio</h3>

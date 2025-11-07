@@ -37,7 +37,7 @@
   $: shardLabel = `${formatNumber(shards)} ${walletCurrency.toUpperCase()}`;
 </script>
 
-<Panel title="Player stats" className="profile-panel profile-stats">
+<Panel title="Player stats" className="profile-panel profile-stats panel-glass">
   <div class="stat-grid">
     <article class="stat-card">
       <p class="label">Level</p>
@@ -91,7 +91,7 @@
   .stat-card {
     padding: 0.9rem 1rem;
     border-radius: 16px;
-    background: rgba(6, 9, 27, 0.45);
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.02);
   }
