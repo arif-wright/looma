@@ -54,99 +54,84 @@
 </script>
 
 {#if hasItems()}
-  <section class="featured-section">
-    <div class="featured-frame">
-      <div
-        role="presentation"
-        class="featured-stage"
-        on:mouseenter={stop}
-        on:mouseleave={start}
-      >
-        {#each items as item, i}
-          <img
-            src={item.image_url}
-            alt={item.title}
-            class="featured-image"
-            style={`opacity: ${i === idx ? 1 : 0}; pointer-events: ${i === idx ? 'auto' : 'none'};`}
-            loading="lazy"
-            decoding="async"
-          />
-        {/each}
+  <section class="featured-section rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
+    <div
+      role="presentation"
+      class="featured-stage"
+      on:mouseenter={stop}
+      on:mouseleave={start}
+    >
+      {#each items as item, i}
+        <img
+          src={item.image_url}
+          alt={item.title}
+          class="featured-image"
+          style={`opacity: ${i === idx ? 1 : 0}; pointer-events: ${i === idx ? 'auto' : 'none'};`}
+          loading="lazy"
+          decoding="async"
+        />
+      {/each}
 
-        <div class="featured-badges">
-          {#if items[idx]?.badge}
-            <span class="badge">{items[idx].badge}</span>
-          {/if}
-          <span class="badge uppercase">{items[idx]?.rarity}</span>
-        </div>
-
-        <div class="info-panel">
-          <div>
-            <h3>{items[idx]?.title}</h3>
-            {#if items[idx]?.subtitle || items[idx]?.description}
-              <p>{items[idx]?.subtitle ?? items[idx]?.description}</p>
-            {/if}
-          </div>
-          <div class="cta-row">
-            <span class="price">💎 {items[idx]?.price_shards}</span>
-            <button
-              class="cta"
-              on:click={() => onClickItem?.(items[idx])}
-              aria-label="View offer"
-            >
-              View offer
-            </button>
-          </div>
-        </div>
-
-        {#if items.length > 1}
-          <button
-            class="nav prev"
-            on:click={prev}
-            aria-label="Previous"
-          >
-            ‹
-          </button>
-          <button
-            class="nav next"
-            on:click={next}
-            aria-label="Next"
-          >
-            ›
-          </button>
-
-          <div class="dots">
-            {#each items as _, i}
-              <button
-                type="button"
-                class="dot"
-                class:active={i === idx}
-                aria-label={`Go to slide ${i + 1}`}
-                aria-current={i === idx ? 'true' : 'false'}
-                on:click={() => go(i)}
-              ></button>
-            {/each}
-          </div>
+      <div class="featured-badges">
+        {#if items[idx]?.badge}
+          <span class="badge">{items[idx].badge}</span>
         {/if}
+        <span class="badge uppercase">{items[idx]?.rarity}</span>
       </div>
+
+      <div class="info-panel">
+        <div>
+          <h3>{items[idx]?.title}</h3>
+          {#if items[idx]?.subtitle || items[idx]?.description}
+            <p>{items[idx]?.subtitle ?? items[idx]?.description}</p>
+          {/if}
+        </div>
+        <div class="cta-row">
+          <span class="price">💎 {items[idx]?.price_shards}</span>
+          <button
+            class="cta"
+            on:click={() => onClickItem?.(items[idx])}
+            aria-label="View offer"
+          >
+            View offer
+          </button>
+        </div>
+      </div>
+
+      {#if items.length > 1}
+        <button
+          class="nav prev"
+          on:click={prev}
+          aria-label="Previous"
+        >
+          ‹
+        </button>
+        <button
+          class="nav next"
+          on:click={next}
+          aria-label="Next"
+        >
+          ›
+        </button>
+
+        <div class="dots">
+          {#each items as _, i}
+            <button
+              type="button"
+              class="dot"
+              class:active={i === idx}
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === idx ? 'true' : 'false'}
+              on:click={() => go(i)}
+            ></button>
+          {/each}
+        </div>
+      {/if}
     </div>
   </section>
 {/if}
 
 <style>
-  .featured-section {
-    margin-bottom: 1rem;
-  }
-
-  .featured-frame {
-    position: relative;
-    max-width: 65rem;
-    margin: 0 auto;
-    border-radius: 1.5rem;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
   .featured-stage {
     position: relative;
     aspect-ratio: 16 / 6;
