@@ -120,7 +120,7 @@
   $: catalogItems = (data.items ?? []).map((item) => ({ ...item, __owned: owned.has(item.id) }));
 </script>
 
-<div class="mx-auto max-w-screen-xl px-4 pt-4 md:pt-6 space-y-4 md:space-y-6 safe-bottom">
+<div class="mx-auto max-w-screen-xl px-4 pt-4 md:pt-6 space-y-4 md:space-y-6 safe-bottom min-h-screen">
   <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
     <div>
       <h1 class="text-2xl font-semibold text-white">Shop</h1>

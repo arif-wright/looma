@@ -106,6 +106,7 @@
     background: rgba(11, 14, 19, 0.92);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .lean-header__inner {
@@ -116,6 +117,7 @@
     min-height: 56px;
     padding: 0 2.5rem;
     max-width: none;
+    gap: 1rem;
   }
 
   .lean-header__left,
@@ -425,8 +427,17 @@
   @media (max-width: 768px) {
     .lean-header__inner {
       flex-wrap: wrap;
-      padding: 0 1rem;
-      row-gap: 0.6rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .lean-header__left,
+    .lean-header__right {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .lean-header__left {
+      gap: 0.5rem;
     }
 
     .lean-header__center {
@@ -437,6 +448,14 @@
       display: flex;
       justify-content: center;
       pointer-events: auto;
+      padding-top: 0.35rem;
+    }
+
+    .lean-status {
+      width: 100%;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
 
     .lean-status__bar {
