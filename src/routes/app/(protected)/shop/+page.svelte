@@ -139,7 +139,7 @@
     </div>
   </header>
 
-  <section class="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 md:p-4 space-y-3">
+  <section class="hidden md:block rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 md:p-4 space-y-3">
     <div
       class="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 md:pb-3"
       style="-webkit-overflow-scrolling: touch;"

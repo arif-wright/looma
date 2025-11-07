@@ -658,3 +658,38 @@ p:last-child {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+@keyframes chipPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 240, 255, 0.35);
+  }
+  60% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 12px rgba(59, 240, 255, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 240, 255, 0);
+  }
+}
+
+@keyframes badgeBump {
+  0% {
+    transform: scale(0.8);
+  }
+  40% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.motion-safe\:animate-chipPulse {
+  animation: chipPulse 0.9s ease-out;
+}
+
+.motion-safe\:animate-badgeBump {
+  animation: badgeBump 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
