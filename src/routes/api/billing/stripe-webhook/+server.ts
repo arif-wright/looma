@@ -25,14 +25,18 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const supabase = serviceClient();
 
-  const { data: existing } = await supabase
+  const insertAttempt = await supabase
     .from('webhook_events')
-    .select('id')
-    .eq('id', event.id)
-    .maybeSingle();
+    .insert({ id: event.id })
+    .select()
+    .single();
 
-  if (existing) {
-    return new Response('Already processed', { status: 200 });
+  if (insertAttempt.error) {
+    if (insertAttempt.error.code === '23505') {
+      return new Response('Already processed', { status: 200 });
+    }
+    console.error('[stripe-webhook] failed to record event start', insertAttempt.error);
+    return new Response('Unable to record event', { status: 500 });
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -59,14 +63,6 @@ export const POST: RequestHandler = async ({ request }) => {
         return new Response(`RPC error: ${error.message}`, { status: 400 });
       }
     }
-  }
-
-  const { error: insertError } = await supabase
-    .from('webhook_events')
-    .insert({ id: event.id });
-
-  if (insertError) {
-    console.error('[stripe-webhook] failed to record event', insertError);
   }
 
   return new Response('OK', { status: 200 });

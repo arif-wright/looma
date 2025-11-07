@@ -7,7 +7,7 @@
   const dispatch = createEventDispatcher<{ open: { item: any } }>();
 </script>
 
-<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 2xl:grid-cols-5">
+<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 2xl:grid-cols-5" role="list">
   {#each items as item}
     <ShopCard {item} on:open={(event) => dispatch('open', event.detail)} />
   {/each}

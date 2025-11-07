@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   export let items: any[] = [];
   export let onClickItem: (item: any) => void = () => {};
 
   let idx = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
+  let reducedMotion = false;
 
   const hasItems = () => Array.isArray(items) && items.length > 0;
 
@@ -24,7 +27,7 @@
 
   const start = () => {
     stop();
-    if (hasItems() && items.length > 1) {
+    if (hasItems() && items.length > 1 && !reducedMotion) {
       timer = setInterval(next, 5000);
     }
   };
@@ -36,15 +39,26 @@
     }
   };
 
-  $: hasItems() ? start() : stop();
+  $: hasItems() && !reducedMotion ? start() : stop();
+
+  onMount(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handle = () => {
+      reducedMotion = media.matches;
+      if (reducedMotion) stop();
+    };
+    handle();
+    media.addEventListener('change', handle);
+    return () => media.removeEventListener('change', handle);
+  });
 </script>
 
 {#if hasItems()}
-  <section class="mb-5">
-    <div class="relative mx-auto overflow-hidden rounded-2xl ring-1 ring-white/10 max-w-5xl">
+  <section class="featured-section">
+    <div class="featured-frame">
       <div
         role="presentation"
-        class="relative aspect-[5/2] sm:aspect-[16/6] lg:aspect-[21/8] xl:aspect-[16/5] max-h-[340px]"
+        class="featured-stage"
         on:mouseenter={stop}
         on:mouseleave={start}
       >
@@ -52,22 +66,18 @@
           <img
             src={item.image_url}
             alt={item.title}
-            class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+            class="featured-image"
             style={`opacity: ${i === idx ? 1 : 0}; pointer-events: ${i === idx ? 'auto' : 'none'};`}
             loading="lazy"
             decoding="async"
           />
         {/each}
 
-        <div class="absolute left-3 top-3 flex gap-2">
+        <div class="featured-badges">
           {#if items[idx]?.badge}
-            <span class="rounded-full bg-black/60 px-2 py-1 text-[11px] text-white/90 ring-1 ring-white/10">
-              {items[idx].badge}
-            </span>
+            <span class="badge">{items[idx].badge}</span>
           {/if}
-          <span class="rounded-full bg-black/60 px-2 py-1 text-[11px] uppercase text-white/90 ring-1 ring-white/10">
-            {items[idx]?.rarity}
-          </span>
+          <span class="badge uppercase">{items[idx]?.rarity}</span>
         </div>
 
         <div class="info-panel">
@@ -105,7 +115,7 @@
             ›
           </button>
 
-          <div class="absolute bottom-3 right-3 flex gap-1">
+          <div class="dots">
             {#each items as _, i}
               <button
                 type="button"
@@ -124,6 +134,104 @@
 {/if}
 
 <style>
+  .featured-section {
+    margin-bottom: 1rem;
+  }
+
+  .featured-frame {
+    position: relative;
+    max-width: 65rem;
+    margin: 0 auto;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .featured-stage {
+    position: relative;
+    aspect-ratio: 16 / 6;
+    max-height: 340px;
+  }
+
+  .featured-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.4s ease;
+  }
+
+  .featured-badges {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .badge {
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .info-panel {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.5rem;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(8, 11, 20, 0.85) 55%, rgba(5, 7, 14, 0.95) 100%);
+    color: #fff;
+  }
+
+  .info-panel h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1.15rem;
+  }
+
+  .info-panel p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 46ch;
+  }
+
+  .cta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .price {
+    font-weight: 600;
+  }
+
+  .cta {
+    border-radius: 999px;
+    padding: 0.45rem 1.3rem;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.85), rgba(168, 85, 247, 0.85));
+    border: none;
+    color: rgba(17, 24, 39, 0.9);
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.2s ease;
+    outline: none;
+  }
+
+  .cta:hover,
+  .cta:focus-visible {
+    filter: brightness(1.08);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
+  }
+
   .nav {
     position: absolute;
     top: 50%;
@@ -139,11 +247,7 @@
     line-height: 1;
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: background 0.2s ease;
-  }
-
-  .nav:hover,
-  .nav:focus-visible {
-    background: rgba(0, 0, 0, 0.6);
+    outline: none;
   }
 
   .nav.prev {
@@ -154,6 +258,20 @@
     right: 8px;
   }
 
+  .nav:hover,
+  .nav:focus-visible {
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
+  }
+
+  .dots {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    display: flex;
+    gap: 0.35rem;
+  }
+
   .dot {
     height: 10px;
     width: 10px;
@@ -161,76 +279,25 @@
     border: 1px solid rgba(255, 255, 255, 0.4);
     background: transparent;
     transition: background 0.2s ease;
+    outline: none;
   }
 
   .dot.active {
     background: white;
   }
 
-  .info-panel {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 18px 22px;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(8, 11, 20, 0.85) 55%, rgba(5, 7, 14, 0.95) 100%);
-    color: white;
-  }
-
-  .info-panel h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    margin: 0 0 6px;
-  }
-
-  .info-panel p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.78);
-    max-width: 46ch;
-    line-height: 1.35;
-  }
-
-  .cta-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
-  }
-
-  .price {
-    font-weight: 600;
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.92);
-  }
-
-  .cta {
-    height: 38px;
-    padding: 0 18px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(34, 211, 238, 0.85), rgba(168, 85, 247, 0.85));
-    color: rgba(17, 24, 39, 0.92);
-    font-size: 0.9rem;
-    font-weight: 600;
-    border: none;
-    box-shadow: 0 6px 18px rgba(56, 189, 248, 0.25);
-    transition: filter 0.2s ease;
-  }
-
-  .cta:hover,
-  .cta:focus-visible {
-    filter: brightness(1.08);
+  .dot:focus-visible {
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
   }
 
   @media (max-width: 640px) {
+    .featured-stage {
+      aspect-ratio: 16 / 8;
+    }
+
     .info-panel {
       flex-direction: column;
       align-items: flex-start;
-      padding: 16px;
     }
 
     .cta-row {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   export let data: {
     forbidden: boolean;
     items: any[];
@@ -93,6 +94,9 @@
   let deletingId: string | null = null;
   let message: string | null = data.loadError ?? null;
   let imagePickerOpen = false;
+  let imagePickerLoading = false;
+  let imageLoadError: string | null = null;
+  let imageOptions = data.imageOptions ?? [];
 
   const matchesFilter = (item: ShopItem): boolean => {
     if (!filter) return true;
@@ -135,6 +139,28 @@
       edit.image_url = path;
     }
     imagePickerOpen = false;
+  }
+
+  async function toggleImagePicker() {
+    if (imagePickerOpen) {
+      imagePickerOpen = false;
+      return;
+    }
+
+    if (!imageOptions.length && !imagePickerLoading) {
+      imagePickerLoading = true;
+      imageLoadError = null;
+      try {
+        const { fetchImageOptions } = await import('$lib/services/admin-images');
+        imageOptions = await fetchImageOptions();
+      } catch (err: any) {
+        imageLoadError = err?.message || 'Unable to load image options';
+      } finally {
+        imagePickerLoading = false;
+      }
+    }
+
+    imagePickerOpen = !!imageOptions.length && !imagePickerLoading;
   }
 
   async function save() {
@@ -230,6 +256,40 @@
   }
 
   $: filtered = list.filter((item) => matchesFilter(item));
+
+  onMount(() => {
+    let destroyed = false;
+    let cleanup: (() => void) | null = null;
+
+    (async () => {
+      const [{ default: Sortable }] = await Promise.all([import('sortablejs')]);
+      if (destroyed) return;
+      const grid = document.getElementById('admin-shop-grid');
+      if (!grid) return;
+      const sortable = Sortable.create(grid, {
+        animation: 160,
+        handle: '.card',
+        onStart: (evt) => {
+          const current = filtered?.[evt.oldIndex ?? -1];
+          draggingId = current?.id ?? null;
+        },
+        onEnd: (evt) => {
+          const target = filtered?.[evt.newIndex ?? -1];
+          if (draggingId && target) {
+            onDrop(target);
+          } else {
+            draggingId = null;
+          }
+        }
+      });
+      cleanup = () => sortable.destroy();
+    })();
+
+    return () => {
+      destroyed = true;
+      cleanup?.();
+    };
+  });
 </script>
 
 {#if data.forbidden}
@@ -308,19 +368,21 @@
                 bind:value={edit.image_url}
                 list="image-options"
               />
-              {#if data.imageOptions.length}
-                <button
-                  type="button"
-                  class="h-9 rounded-full border border-white/15 bg-white/10 px-3 text-xs font-medium text-white/80 hover:bg-white/15"
-                  on:click={() => (imagePickerOpen = !imagePickerOpen)}
-                >
-                  {imagePickerOpen ? 'Close' : 'Browse'}
-                </button>
-              {/if}
+              <button
+                type="button"
+                class="h-9 rounded-full border border-white/15 bg-white/10 px-3 text-xs font-medium text-white/80 hover:bg-white/15 disabled:opacity-60"
+                on:click={toggleImagePicker}
+                disabled={imagePickerLoading}
+              >
+                {imagePickerLoading ? 'Loading…' : imagePickerOpen ? 'Close' : 'Browse'}
+              </button>
             </div>
+            {#if imageLoadError}
+              <p class="mt-2 text-xs text-amber-200">{imageLoadError}</p>
+            {/if}
             {#if imagePickerOpen}
               <div class="mt-2 max-h-40 overflow-y-auto rounded-lg border border-white/10 bg-white/5">
-                {#each data.imageOptions as option}
+                {#each imageOptions as option}
                   <button
                     type="button"
                     class="block w-full px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
@@ -377,7 +439,7 @@
     </div>
 
     <datalist id="image-options">
-      {#each data.imageOptions as option}
+      {#each imageOptions as option}
         <option value={option}></option>
       {/each}
     </datalist>
@@ -387,7 +449,7 @@
         No items match the current filter.
       </p>
     {:else}
-      <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul id="admin-shop-grid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {#each filtered as item (item.id)}
           <li
             draggable="true"
@@ -395,6 +457,7 @@
             on:drop={() => onDrop(item)}
             on:dragover|preventDefault
             on:dragend={() => (draggingId = null)}
+            data-id={item.id}
           >
             <article class={`card ${draggingId === item.id ? 'opacity-70' : ''}`}>
               <div class="relative aspect-[16/9]">
