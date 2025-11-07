@@ -1,9 +1,8 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { afterNavigate, goto } from '$app/navigation';
+  import { afterNavigate } from '$app/navigation';
   import { onMount } from 'svelte';
   import SideRail from '$lib/components/nav/SideRail.svelte';
-  import BottomDock from '$lib/components/nav/BottomDock.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { sendAnalytics } from '$lib/utils/analytics';
   import { logout } from '$lib/auth/logout';
@@ -31,10 +30,6 @@
 
   $: if (browser) {
     applyHeaderStats(data?.headerStats ?? null);
-  }
-
-  function handleCompose() {
-    void goto('/app/u/me?compose=1');
   }
 
   function handleLogout() {
@@ -139,13 +134,7 @@
   </div>
 </div>
 
-{#if !isHome}
-  <BottomDock activity={activity} on:compose={handleCompose} />
-{/if}
-
-{#if isHome}
-  <MobileDock items={iconNavItems} />
-{/if}
+<MobileDock items={iconNavItems} />
 
 <style>
   .app-shell {
