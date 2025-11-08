@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { resizeImage } from '$lib/utils/image-resize';
   import { bust } from '$lib/utils/cachebust';
+  import { currentProfile } from '$lib/stores/profile';
 
   const ACCEPT = 'image/png,image/jpeg,image/webp';
   const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
@@ -62,6 +63,7 @@
       const busted = bust(data?.url);
       preview = busted;
       dispatch('changed', { url: busted });
+      currentProfile.update((profile) => (profile ? { ...profile, avatar_url: busted } : profile));
     } catch (err) {
       console.error('avatar upload failed', err);
       error = err instanceof Error ? err.message : 'Upload failed';

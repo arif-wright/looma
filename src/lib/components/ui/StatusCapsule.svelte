@@ -1,7 +1,8 @@
 <script lang="ts">
-import { onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import { currentProfile } from '$lib/stores/profile';
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
@@ -28,7 +29,8 @@ const openWallet = (event: MouseEvent) => {
   window.location.assign('/app/wallet');
 };
 
-  const capsuleBaseClass =
+const profileStore = currentProfile;
+const capsuleBaseClass =
     'status-pill pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
 
   let energyDisplay = '—';
@@ -36,8 +38,13 @@ const openWallet = (event: MouseEvent) => {
   let xpDisplay = 'Aligning…';
   let xpRatio = 0;
 
-  const initials =
-    userEmail && userEmail.length > 0 ? userEmail.charAt(0).toUpperCase() : '•';
+  $: profileAvatar = $profileStore?.avatar_url ?? null;
+  $: initials =
+    ($profileStore?.display_name?.charAt(0) ??
+      $profileStore?.handle?.charAt(0) ??
+      userEmail?.charAt(0) ??
+      '•'
+    ).toUpperCase();
 
   $: {
     const numeric = typeof walletBalance === 'number' ? walletBalance : null;
@@ -141,12 +148,16 @@ const openWallet = (event: MouseEvent) => {
     on:click={onLogout}
     aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
   >
-    <span
-      class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
-      aria-hidden="true"
-    >
-      {initials}
-    </span>
+    {#if profileAvatar}
+      <img src={profileAvatar} alt="" class="avatar-thumb" />
+    {:else}
+      <span
+        class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
+        aria-hidden="true"
+      >
+        {initials}
+      </span>
+    {/if}
     {#if userEmail}
       <span class="max-w-[140px] truncate text-xs text-white/75">{userEmail}</span>
     {/if}
@@ -385,6 +396,14 @@ const openWallet = (event: MouseEvent) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .avatar-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   @media (max-width: 768px) {

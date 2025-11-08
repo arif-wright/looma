@@ -60,13 +60,6 @@
 <section class="profile-header" data-private={isPrivate}>
   <BannerUploader url={bannerUrl} editable={isOwner} on:changed={handleBannerChanged} />
 
-  <div class="sticky-identity">
-    <div class="sticky-chip panel-glass">
-      <img src={avatarUrl ?? '/avatar.svg'} alt="" width="32" height="32" />
-      <span>{displayName || '@' + handle}</span>
-    </div>
-  </div>
-
   <div class="header-card">
     <Panel className="profile-card panel-glass">
       <div class="card-inner">
@@ -105,33 +98,6 @@
     position: relative;
     display: grid;
     gap: 0;
-  }
-
-  .sticky-identity {
-    position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 56px);
-    z-index: 10;
-    display: flex;
-    justify-content: flex-end;
-    padding: 0 1.25rem;
-    pointer-events: none;
-  }
-
-  .sticky-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.8rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    pointer-events: auto;
-  }
-
-  .sticky-chip img {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    object-fit: cover;
   }
 
   .header-card {
