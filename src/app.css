@@ -98,25 +98,29 @@
 
   .cover-frame {
     max-width: 1280px;
-    @apply mx-auto relative px-4 sm:px-6 lg:px-8;
+    @apply mx-auto px-4 sm:px-6 lg:px-8 relative;
+  }
+
+  .cover-card {
+    @apply relative overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-xl;
+    min-height: 220px;
   }
 
   .cover-media {
-    @apply h-[240px] w-full object-cover sm:h-[280px] lg:h-[320px];
+    display: block;
+    @apply w-full h-full object-cover object-center select-none;
   }
 
   .cover-bleed {
     margin-left: -16px;
     margin-right: -16px;
   }
-
   @media (min-width: 640px) {
     .cover-bleed {
       margin-left: -24px;
       margin-right: -24px;
     }
   }
-
   @media (min-width: 1024px) {
     .cover-bleed {
       margin-left: -32px;
@@ -125,7 +129,10 @@
   }
 
   .cover-scrim {
-    @apply absolute inset-0 bg-gradient-to-b from-black/20 via-black/0 to-black/40;
+    @apply absolute inset-0 pointer-events-none;
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0.2) 70%),
+      radial-gradient(60% 50% at 50% 0%, rgba(129, 140, 248, 0.18) 0%, transparent 70%);
   }
 
   .cover-compact {

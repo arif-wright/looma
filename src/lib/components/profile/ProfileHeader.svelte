@@ -46,21 +46,24 @@
   });
 </script>
 
-<section class="cover-wrap">
+<section class="mt-4">
   <div class="cover-frame">
-    {#if coverUrl}
-      <img src={coverUrl} alt="" class="cover-media cover-bleed" />
-    {:else}
-      <div
-        class="cover-media cover-bleed bg-[radial-gradient(1200px_400px_at_50%_0%,rgba(80,0,255,0.25),transparent_60%),radial-gradient(900px_300px_at_30%_20%,rgba(0,255,240,0.18),transparent_55%)]"
-        aria-hidden="true"
-      ></div>
-    {/if}
-    <div class="cover-scrim" aria-hidden="true"></div>
+    <div class="cover-card">
+      {#if coverUrl}
+        <img src={coverUrl} alt="" class="cover-media cover-bleed" />
+      {:else}
+        <div
+          class="cover-media cover-bleed bg-[radial-gradient(1200px_400px_at_50%_0%,rgba(80,0,255,0.25),transparent_60%),radial-gradient(900px_300px_at_30%_20%,rgba(0,255,240,0.18),transparent_55%)]"
+          aria-hidden="true"
+        ></div>
+      {/if}
+      <div class="cover-scrim" aria-hidden="true"></div>
+      <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/25 to-transparent" aria-hidden="true"></div>
+    </div>
   </div>
 </section>
 
-<header class="profile-grid -mt-14 sm:-mt-16">
+<header class="cover-frame relative z-10 -mt-10 sm:-mt-12">
   <div class="panel cover-compact" class:shadow-lg={compact}>
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
