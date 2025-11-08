@@ -1,0 +1,183 @@
+<script lang="ts">
+  import { createEventDispatcher, onDestroy } from 'svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import EditProfileDetails from '$lib/components/profile/EditProfileDetails.svelte';
+  import { normalizeHandle, validateHandle } from '$lib/utils/handle';
+  import { currentProfile } from '$lib/stores/profile';
+
+  export let open = false;
+  export let onClose: () => void = () => {};
+  export let profile: Record<string, any> | null = null;
+
+  const dispatch = createEventDispatcher<{ profileUpdated: Record<string, any> }>();
+
+  let handle = profile?.handle ?? '';
+  let checking = false;
+  let available: boolean | null = null;
+  let msg = '';
+  let dirty = false;
+  let handleTimer: ReturnType<typeof setTimeout> | null = null;
+  let handleSaving = false;
+
+  $: if (profile && !dirty) {
+    handle = profile.handle ?? '';
+  }
+
+  onDestroy(() => {
+    if (handleTimer) clearTimeout(handleTimer);
+  });
+
+  $: {
+    if (handleTimer) clearTimeout(handleTimer);
+    if (!dirty || !handle || typeof window === 'undefined') {
+      if (!dirty) {
+        msg = '';
+        available = null;
+      }
+    } else {
+      handleTimer = window.setTimeout(async () => {
+        checking = true;
+        try {
+          const normalized = normalizeHandle(handle);
+          const res = await fetch(`/api/profile/handle/availability?q=${encodeURIComponent(normalized)}`);
+          if (!res.ok) {
+            available = null;
+            msg = 'Unable to check';
+            return;
+          }
+          const payload = await res.json();
+          available = !!payload?.available;
+          msg = available ? 'Available' : 'Not available';
+        } catch (err) {
+          console.error('handle check failed', err);
+          available = null;
+          msg = 'Unable to check';
+        } finally {
+          checking = false;
+        }
+      }, 350);
+    }
+  }
+
+  function closeModal() {
+    open = false;
+    onClose?.();
+  }
+
+  function handleInput(value: string) {
+    handle = value;
+    dirty = handle !== (profile?.handle ?? '');
+    available = null;
+    msg = '';
+  }
+
+  function resetHandle() {
+    handle = profile?.handle ?? '';
+    dirty = false;
+    msg = '';
+    available = null;
+  }
+
+  async function saveHandle() {
+    const validation = validateHandle(handle);
+    if (!validation.ok || !validation.handle) {
+      msg = validation.reason ?? 'Invalid handle';
+      available = false;
+      return;
+    }
+    handleSaving = true;
+    try {
+      const res = await fetch('/app/profile/handle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle: validation.handle })
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        msg = payload?.reason ?? 'Could not update';
+        available = false;
+      } else {
+        dirty = false;
+        available = true;
+        msg = 'Saved';
+        handle = payload.handle;
+        const patch = { handle: payload.handle };
+        currentProfile.update((p) => (p ? { ...p, ...patch } : p));
+        dispatch('profileUpdated', patch);
+      }
+    } catch (err) {
+      console.error('handle update failed', err);
+      msg = 'Error updating handle';
+      available = false;
+    } finally {
+      handleSaving = false;
+    }
+  }
+
+  function handleDetailsUpdated(event: CustomEvent<Record<string, any>>) {
+    currentProfile.update((p) => (p ? { ...p, ...event.detail } : p));
+    dispatch('profileUpdated', event.detail);
+  }
+</script>
+
+<Modal {open} title="Edit profile" onClose={closeModal}>
+  <div class="edit-profile-modal space-y-6">
+    <section class="panel-glass p-4 rounded-2xl space-y-4">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <label class="text-[0.7rem] tracking-[0.2em] uppercase" for="handle-input">Handle</label>
+        <span class="text-xs text-white/70 min-h-[1rem]">
+          {#if checking}
+            Checking…
+          {:else if dirty}
+            {msg || ' '}
+          {:else}
+            &nbsp;
+          {/if}
+        </span>
+      </div>
+      <input
+        id="handle-input"
+        class="input input-sm w-full"
+        bind:value={handle}
+        maxlength="32"
+        placeholder="yourhandle"
+        on:input={(event) => handleInput((event.target as HTMLInputElement).value)}
+      />
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          class="btn btn-sm"
+          type="button"
+          on:click={saveHandle}
+          disabled={!dirty || checking || available === false || handleSaving}
+        >
+          {handleSaving ? 'Saving…' : 'Save handle'}
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" on:click={resetHandle} disabled={!dirty}>
+          Reset
+        </button>
+        {#if available !== null}
+          <span class:status-available={available} class:status-unavailable={!available} class="text-sm">
+            {available ? 'Available' : 'Not available'}
+          </span>
+        {/if}
+      </div>
+    </section>
+
+    <EditProfileDetails {profile} on:updated={handleDetailsUpdated} />
+  </div>
+</Modal>
+
+<style>
+  .edit-profile-modal :global(.btn-ghost) {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .status-available {
+    color: #5ef2ff;
+  }
+
+  .status-unavailable {
+    color: #ff4fd8;
+  }
+</style>

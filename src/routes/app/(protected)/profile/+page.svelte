@@ -1,6 +1,5 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import { onDestroy } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileStats from '$lib/components/profile/ProfileStats.svelte';
@@ -10,11 +9,10 @@
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import ProfileComposer from '$lib/components/profile/ProfileComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
-  import EditProfileDetails from '$lib/components/profile/EditProfileDetails.svelte';
   import ShareProfile from '$lib/components/profile/ShareProfile.svelte';
+  import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
-  import { validateHandle, normalizeHandle } from '$lib/utils/handle';
   import { currentProfile } from '$lib/stores/profile';
 
   export let data: PageData;
@@ -25,25 +23,22 @@
   let pickerOpen = false;
   let pickerBusy = false;
   let feedRef: InstanceType<typeof ProfileFeed> | null = null;
-  let showEditPanel = false;
-  let handle = profile.handle ?? '';
-  let checking = false;
-  let available: boolean | null = null;
-  let msg = '';
-  let dirty = false;
-  let handleTimer: ReturnType<typeof setTimeout> | null = null;
-  let handleSaving = false;
-  const shareBaseMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
-  const shareBase = shareBaseMatch ? shareBaseMatch[1] : data.shareUrl ?? '';
-  $: shareUrl = shareBase ? `${shareBase}/app/u/${profile.handle}` : '';
+  let editOpen = false;
+  const appUrl = import.meta.env.PUBLIC_APP_URL || '';
+  const legacyShareMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
+  const legacyShareBase = legacyShareMatch ? legacyShareMatch[1] : data.shareUrl ?? '';
+
+  $: shareUrl = (() => {
+    const identifier = profile.handle || data.user?.id;
+    if (!identifier) return '';
+    if (appUrl) return `${appUrl}/u/${identifier}`;
+    if (legacyShareBase) return `${legacyShareBase}/app/u/${identifier}`;
+    return '';
+  })();
 
   const handleEdit = () => {
-    showEditPanel = true;
-    if (typeof document !== 'undefined') {
-      setTimeout(() => {
-        document.getElementById('handle-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
-    }
+    if (!data.isOwner) return;
+    editOpen = true;
   };
 
   const handleSwap = () => {
@@ -82,74 +77,12 @@
     }
   };
 
-  onDestroy(() => {
-    if (handleTimer) clearTimeout(handleTimer);
-  });
-
-  $: {
-    if (handleTimer) clearTimeout(handleTimer);
-    if (!dirty || !handle || typeof window === 'undefined') {
-      if (!dirty) {
-        msg = '';
-        available = null;
-      }
-    } else {
-      handleTimer = window.setTimeout(async () => {
-        checking = true;
-        try {
-          const normalized = normalizeHandle(handle);
-          const res = await fetch(`/api/profile/handle/availability?q=${encodeURIComponent(normalized)}`);
-          if (!res.ok) {
-            available = null;
-            msg = 'Unable to check';
-            return;
-          }
-          const payload = await res.json();
-          available = !!payload?.available;
-          msg = available ? 'Available' : 'Not available';
-        } catch {
-          available = null;
-          msg = 'Unable to check';
-        } finally {
-          checking = false;
-        }
-      }, 350);
-    }
-  }
-
-  async function saveHandle() {
-    const validation = validateHandle(handle);
-    if (!validation.ok || !validation.handle) {
-      msg = validation.reason ?? 'Invalid handle';
-      available = false;
-      return;
-    }
-    handleSaving = true;
-    try {
-      const res = await fetch('/app/profile/handle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handle: validation.handle })
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok || !payload?.ok) {
-        msg = payload?.reason ?? 'Could not update';
-        available = false;
-      } else {
-        profile = { ...profile, handle: payload.handle };
-        handle = payload.handle;
-        dirty = false;
-        available = true;
-        msg = 'Saved';
-        currentProfile.update((p) => (p ? { ...p, handle: payload.handle } : p));
-      }
-    } catch (err) {
-      console.error('handle update failed', err);
-      msg = 'Error updating handle';
-      available = false;
-    } finally {
-      handleSaving = false;
-    }
+  function onProfileUpdated(event: CustomEvent<Record<string, any>>) {
+    const patch = event.detail ?? {};
+    if (!Object.keys(patch).length) return;
+    profile = { ...profile, ...patch };
+    data.profile = { ...data.profile, ...patch };
+    currentProfile.update((p) => (p ? { ...p, ...patch } : p));
   }
 </script>
 
@@ -172,10 +105,19 @@
       on:bannerChange={(event) => (profile = { ...profile, banner_url: event.detail.url })}
     />
 
-    {#if shareUrl}
-      <div class="share-controls">
-        <ShareProfile url={shareUrl} title={`Check out @${profile.handle} on Looma`} />
+    <div class="profile-header-actions">
+      <div class="flex flex-col items-start gap-2">
+        {#if data.isOwner}
+          <button class="btn btn-sm" type="button" on:click={() => (editOpen = true)}>Edit profile</button>
+        {/if}
+        {#if shareUrl}
+          <ShareProfile url={shareUrl} title={`Check out @${profile.handle} on Looma`} />
+        {/if}
       </div>
+    </div>
+
+    {#if data.isOwner}
+      <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
     {/if}
 
     <FeaturedCompanionCard
@@ -203,39 +145,6 @@
       companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
       profileHandle={profile.handle}
     />
-
-    {#if data.isOwner && showEditPanel}
-      <section id="handle-editor" class="handle-editor panel-glass">
-        <div class="handle-fields">
-          <label class="text-xs opacity-70" for="handle-input">Handle</label>
-          <input
-            id="handle-input"
-            class="handle-input"
-            maxlength="32"
-            bind:value={handle}
-            placeholder="yourhandle"
-            on:input={() => {
-              dirty = handle !== (profile.handle ?? '');
-              available = null;
-              msg = '';
-            }}
-          />
-          <div class="hint">{checking ? 'Checking…' : dirty ? msg || ' ' : ' '}</div>
-          <div class="handle-meta">
-            <button
-              type="button"
-              class="save-btn"
-              on:click={saveHandle}
-              disabled={!dirty || checking || available === false || handleSaving}
-            >
-              {handleSaving ? 'Saving…' : 'Save handle'}
-            </button>
-            <button type="button" class="ghost-btn" on:click={() => (showEditPanel = false)}>Close</button>
-          </div>
-        </div>
-        <EditProfileDetails {profile} on:updated={(event) => applyProfilePatch(event.detail)} />
-      </section>
-    {/if}
 
     <ProfileComposer on:posted={handleComposerPosted} />
 
@@ -273,92 +182,18 @@
     }
   }
 
-  .share-controls {
+  .profile-header-actions {
+    width: 100%;
+    max-width: 960px;
+    margin: -0.5rem auto 0;
+    padding: 0 clamp(1rem, 4vw, 2rem);
     display: flex;
     justify-content: flex-end;
   }
 
-  .handle-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 1rem;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(4, 6, 18, 0.65);
-  }
-
-  .handle-fields {
-    flex: 1;
-    min-width: 220px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .handle-fields label {
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .handle-input {
-    padding: 0.55rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.04);
-    color: inherit;
-  }
-
-  .hint {
-    font-size: 0.82rem;
-    margin-top: 0.35rem;
-    min-height: 1em;
-  }
-
-  .handle-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .status {
-    font-size: 0.85rem;
-    min-width: 90px;
-  }
-
-  .status.available {
-    color: #5ef2ff;
-  }
-
-  .status.unavailable {
-    color: #ff4fd8;
-  }
-
-  .status.checking {
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .save-btn {
-    padding: 0.45rem 1.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(94, 242, 255, 0.4);
-    background: linear-gradient(120deg, rgba(94, 242, 255, 0.2), rgba(155, 92, 255, 0.2));
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .save-btn:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .ghost-btn {
-    padding: 0.35rem 0.9rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 0.82rem;
+  @media (max-width: 720px) {
+    .profile-header-actions {
+      justify-content: flex-start;
+    }
   }
 </style>
