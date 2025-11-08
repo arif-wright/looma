@@ -27,13 +27,15 @@
     lastActive?.focus?.();
   });
 
-  $: if (open) {
-    lastActive = document.activeElement as HTMLElement;
-    setTimeout(() => dialogEl?.focus(), 0);
-    document.documentElement.style.overflow = 'hidden';
-  } else {
-    document.documentElement.style.overflow = '';
-    lastActive?.focus?.();
+  $: if (typeof document !== 'undefined') {
+    if (open) {
+      lastActive = document.activeElement as HTMLElement;
+      setTimeout(() => dialogEl?.focus(), 0);
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.documentElement.style.overflow = '';
+      lastActive?.focus?.();
+    }
   }
 </script>
 
