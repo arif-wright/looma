@@ -3,6 +3,7 @@
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import { currentProfile } from '$lib/stores/profile';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -30,7 +31,14 @@
   $: shardLabel = typeof walletBalance === 'number'
     ? `${walletBalance.toLocaleString()} ${walletCurrency.toUpperCase()}`
     : `0 ${walletCurrency.toUpperCase()}`;
-  $: initials = userEmail && userEmail.length > 0 ? userEmail.charAt(0).toUpperCase() : '•';
+  const profileStore = currentProfile;
+  $: profileAvatar = $profileStore?.avatar_url ?? null;
+  $: initials =
+    ($profileStore?.display_name?.charAt(0) ??
+      $profileStore?.handle?.charAt(0) ??
+      userEmail?.charAt(0) ??
+      '•'
+    ).toUpperCase();
 
   const navWallet = (event: MouseEvent) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
@@ -89,7 +97,11 @@
       <NotificationBell notifications={notifications} unreadCount={unreadCount} />
 
       <button type="button" class="lean-account pill" on:click={onLogout} aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}>
-        <span class="lean-account__initial" aria-hidden="true">{initials}</span>
+        {#if profileAvatar}
+          <img src={profileAvatar} alt="" class="lean-account__avatar" aria-hidden="true" />
+        {:else}
+          <span class="lean-account__initial" aria-hidden="true">{initials}</span>
+        {/if}
         {#if userEmail}
           <span class="lean-account__email">{userEmail}</span>
         {/if}
@@ -401,12 +413,20 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     font-weight: 600;
+  }
+
+  .lean-account__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .lean-account__email {
