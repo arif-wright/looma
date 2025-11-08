@@ -3,7 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, links, is_private, joined_at, featured_companion_id';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
 
 const parseLinks = (value: unknown) => {
   if (!Array.isArray(value)) return [];
@@ -62,10 +62,15 @@ export const load: LayoutServerLoad = async (event) => {
     avatar_url: profileRow.avatar_url,
     banner_url: profileRow.banner_url,
     bio: profileRow.bio,
+    pronouns: profileRow.pronouns,
+    location: profileRow.location,
     links: parseLinks(profileRow.links),
     is_private: isPrivate,
     joined_at: profileRow.joined_at,
     featured_companion_id: profileRow.featured_companion_id,
+    show_shards: profileRow.show_shards ?? true,
+    show_level: profileRow.show_level ?? true,
+    show_joined: profileRow.show_joined ?? true,
     level: statsRow?.level ?? null,
     xp: statsRow?.xp ?? null,
     xp_next: statsRow?.xp_next ?? null,

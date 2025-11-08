@@ -16,10 +16,11 @@
   export let unreadCount = 0;
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
+  export let profile: { display_name?: string | null; handle?: string | null; avatar_url?: string | null } | null = null;
 </script>
 
 <div class="md:hidden">
-  <LeanHeaderMobile {notifications} {userEmail} />
+  <LeanHeaderMobile {notifications} {userEmail} {profile} />
 </div>
 <div class="hidden md:block">
   <LeanHeaderDesktop
@@ -34,6 +35,7 @@
     {notifications}
     {unreadCount}
     {userEmail}
+    {profile}
     {onLogout}
   />
 </div>

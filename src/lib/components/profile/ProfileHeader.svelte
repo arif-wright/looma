@@ -10,6 +10,7 @@
   export let avatarUrl: string | null = null;
   export let bannerUrl: string | null = null;
   export let joinedAt: string | null = null;
+  export let showJoined = true;
   export let isOwner = false;
   export let isPrivate = false;
   export let level: number | null = null;
@@ -84,7 +85,7 @@
               <span class="privacy-chip">Private</span>
             {/if}
           </div>
-          {#if joinedLabel}
+          {#if showJoined && joinedLabel}
             <p class="meta">Joined {joinedLabel}</p>
           {/if}
         </div>

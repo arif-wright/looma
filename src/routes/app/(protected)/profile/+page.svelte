@@ -10,6 +10,8 @@
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import ProfileComposer from '$lib/components/profile/ProfileComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
+  import EditProfileDetails from '$lib/components/profile/EditProfileDetails.svelte';
+  import ShareProfile from '$lib/components/profile/ShareProfile.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { validateHandle, normalizeHandle } from '$lib/utils/handle';
@@ -31,6 +33,9 @@
   let dirty = false;
   let handleTimer: ReturnType<typeof setTimeout> | null = null;
   let handleSaving = false;
+  const shareBaseMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
+  const shareBase = shareBaseMatch ? shareBaseMatch[1] : data.shareUrl ?? '';
+  $: shareUrl = shareBase ? `${shareBase}/app/u/${profile.handle}` : '';
 
   const handleEdit = () => {
     showEditPanel = true;
@@ -161,10 +166,17 @@
       isOwner={data.isOwner}
       isPrivate={profile.is_private}
       level={stats?.level ?? null}
+      showJoined={true}
       on:edit={handleEdit}
       on:avatarChange={(event) => (profile = { ...profile, avatar_url: event.detail.url })}
       on:bannerChange={(event) => (profile = { ...profile, banner_url: event.detail.url })}
     />
+
+    {#if shareUrl}
+      <div class="share-controls">
+        <ShareProfile url={shareUrl} title={`Check out @${profile.handle} on Looma`} />
+      </div>
+    {/if}
 
     <FeaturedCompanionCard
       companion={data.featuredCompanion}
@@ -180,9 +192,11 @@
       energy={stats?.energy ?? null}
       energyMax={stats?.energy_max ?? null}
       shards={data.walletShards}
+      showLevel={true}
+      showShards={true}
     />
 
-    <ProfileAbout bio={profile.bio} links={profile.links} />
+    <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
 
     <ProfileHighlights
       pinnedPost={data.pinnedPost}
@@ -219,6 +233,7 @@
             <button type="button" class="ghost-btn" on:click={() => (showEditPanel = false)}>Close</button>
           </div>
         </div>
+        <EditProfileDetails {profile} on:updated={(event) => applyProfilePatch(event.detail)} />
       </section>
     {/if}
 
@@ -258,10 +273,15 @@
     }
   }
 
+  .share-controls {
+    display: flex;
+    justify-content: flex-end;
+  }
+
   .handle-editor {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 1.5rem;
     padding: 1rem;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.12);

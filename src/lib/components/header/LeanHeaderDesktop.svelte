@@ -3,7 +3,7 @@
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
-  import { currentProfile } from '$lib/stores/profile';
+  import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -17,6 +17,7 @@
   export let unreadCount = 0;
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
+  export let profile: CurrentProfile = null;
 
   $: levelLabel = typeof level === 'number' ? level : '—';
   $: xpPct = typeof xp === 'number' && typeof xpNext === 'number' && xpNext > 0
@@ -32,10 +33,11 @@
     ? `${walletBalance.toLocaleString()} ${walletCurrency.toUpperCase()}`
     : `0 ${walletCurrency.toUpperCase()}`;
   const profileStore = currentProfile;
-  $: profileAvatar = $profileStore?.avatar_url ?? null;
+  $: mergedProfile = $profileStore ?? profile;
+  $: profileAvatar = mergedProfile?.avatar_url ?? null;
   $: initials =
-    ($profileStore?.display_name?.charAt(0) ??
-      $profileStore?.handle?.charAt(0) ??
+    (mergedProfile?.display_name?.charAt(0) ??
+      mergedProfile?.handle?.charAt(0) ??
       userEmail?.charAt(0) ??
       '•'
     ).toUpperCase();

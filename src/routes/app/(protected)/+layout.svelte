@@ -128,6 +128,7 @@
         userEmail={userEmail}
         onLogout={handleLogout}
         iconNavItems={iconNavItems}
+        profile={data?.profile ?? null}
       />
     {/if}
 

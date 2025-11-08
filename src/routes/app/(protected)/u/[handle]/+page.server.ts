@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
+import { env } from '$env/dynamic/public';
 
 type CompanionRow = {
   id: string;
@@ -100,13 +101,43 @@ export const load: PageServerLoad = async (event) => {
     fetchPinnedPreview(supabase, profile.id, isOwner)
   ]);
 
+  const showShards = isOwner ? true : profile.show_shards ?? true;
+  const showLevel = isOwner ? true : profile.show_level ?? true;
+  const showJoined = isOwner ? true : profile.show_joined ?? true;
+  const sanitizedProfile = {
+    ...profile,
+    show_shards: showShards,
+    show_level: showLevel,
+    show_joined: showJoined,
+    joined_at: showJoined ? profile.joined_at : null
+  };
+
+  const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
+  const profileUrl = `${baseUrl}/app/u/${profile.handle}`;
+  const metaTitle =
+    profile.display_name?.trim()?.length
+      ? `${profile.display_name} (@${profile.handle}) · Looma`
+      : `@${profile.handle} · Looma`;
+  const metaDescription =
+    profile.bio && profile.bio.trim().length > 0
+      ? profile.bio.trim().slice(0, 160)
+      : 'Explore this Looma profile.';
+  const metaImage = profile.banner_url ?? profile.avatar_url ?? null;
+
   return {
-    profile,
+    profile: sanitizedProfile,
     viewerId: parentData.viewerId ?? null,
     isOwner,
     featuredCompanion: companion,
     posts: posts.items,
     nextCursor: posts.nextCursor,
-    pinnedPost: pinned
+    pinnedPost: pinned,
+    meta: {
+      title: metaTitle,
+      description: metaDescription,
+      image: metaImage,
+      url: profileUrl
+    },
+    shareUrl: profileUrl
   };
 };

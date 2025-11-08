@@ -7,6 +7,7 @@
   import FeaturedCompanionCard from '$lib/components/profile/FeaturedCompanionCard.svelte';
   import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
+  import ShareProfile from '$lib/components/profile/ShareProfile.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -26,6 +27,21 @@
   };
 </script>
 
+<svelte:head>
+  <title>{data.meta.title}</title>
+  <meta property="og:title" content={data.meta.title} />
+  <meta property="og:description" content={data.meta.description} />
+  <meta property="og:url" content={data.meta.url} />
+  <meta property="og:type" content="profile" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={data.meta.title} />
+  <meta name="twitter:description" content={data.meta.description} />
+  {#if data.meta.image}
+    <meta property="og:image" content={data.meta.image} />
+    <meta name="twitter:image" content={data.meta.image} />
+  {/if}
+</svelte:head>
+
 <BackgroundStack class="profile-bg" />
 
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
@@ -39,8 +55,15 @@
       isOwner={data.isOwner}
       isPrivate={profile.is_private}
       level={stats.level}
+      showJoined={profile.show_joined ?? true}
       on:edit={handleEdit}
     />
+
+    {#if data.shareUrl}
+      <div class="share-controls">
+        <ShareProfile url={data.shareUrl} title={`Check out @${profile.handle} on Looma`} />
+      </div>
+    {/if}
 
     <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />
 
@@ -51,9 +74,11 @@
       energy={stats.energy}
       energyMax={stats.energy_max}
       shards={null}
+      showLevel={profile.show_level ?? true}
+      showShards={profile.show_shards ?? true}
     />
 
-    <ProfileAbout bio={profile.bio} links={profile.links} />
+    <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
 
     <ProfileHighlights
       pinnedPost={data.pinnedPost}
@@ -85,5 +110,10 @@
     .profile-page {
       padding-bottom: 96px;
     }
+  }
+
+  .share-controls {
+    display: flex;
+    justify-content: flex-end;
   }
 </style>

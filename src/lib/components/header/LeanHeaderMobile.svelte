@@ -3,9 +3,11 @@
   import { walletBalance } from '$lib/stores/economy';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
 
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
+  export let profile: CurrentProfile = null;
 
   let search = '';
   let showExpanded = false;
@@ -16,7 +18,16 @@
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.max(0, Math.floor(n ?? 0)));
 
-  const initials = (userEmail && userEmail.charAt(0).toUpperCase()) || '•';
+  const profileStore = currentProfile;
+
+  $: mergedProfile = $profileStore ?? profile;
+  $: profileAvatar = mergedProfile?.avatar_url ?? null;
+  $: initials =
+    (mergedProfile?.display_name?.charAt(0) ??
+      mergedProfile?.handle?.charAt(0) ??
+      userEmail?.charAt(0) ??
+      '•'
+    ).toUpperCase();
 
   $: notifCount = Array.isArray(notifications)
     ? notifications.filter((n: any) => !n?.read).length || notifications.length || 0
@@ -76,8 +87,12 @@
       class="icon-btn notification-compact"
     />
 
-    <a href="/app/profile" aria-label="Account" class="icon-btn">
-      <span class="avatar-text">{initials}</span>
+    <a href="/app/profile" aria-label="Account" class="icon-btn account-btn">
+      {#if profileAvatar}
+        <img src={profileAvatar} alt="" class="avatar-img" aria-hidden="true" />
+      {:else}
+        <span class="avatar-text" aria-hidden="true">{initials}</span>
+      {/if}
     </a>
   </div>
 </nav>
@@ -192,6 +207,17 @@
   .notification-compact :global(.badge) {
     top: -2px;
     right: -2px;
+  }
+
+  .account-btn {
+    overflow: hidden;
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
   }
 
   .avatar-text {

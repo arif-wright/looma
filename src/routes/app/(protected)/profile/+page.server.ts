@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { env } from '$env/dynamic/public';
 import type { User } from '@supabase/supabase-js';
 import type { PageServerLoad } from './$types';
 import { requireUserServer } from '$lib/server/auth';
@@ -39,7 +40,7 @@ type CompanionRow = {
 };
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, links, is_private, joined_at, featured_companion_id';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
 
 const POSTS_PAGE_SIZE = 10;
 
@@ -259,6 +260,8 @@ export const load: PageServerLoad = async (event) => {
     energy_max: null
   };
 
+  const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
+
   return {
     profile: {
       ...profileRow,
@@ -272,6 +275,7 @@ export const load: PageServerLoad = async (event) => {
     companionOptions,
     posts: posts.items,
     nextCursor: posts.nextCursor,
-    pinnedPost: pinned
+    pinnedPost: pinned,
+    shareUrl: `${baseUrl}/app/u/${profileRow.handle}`
   };
 };

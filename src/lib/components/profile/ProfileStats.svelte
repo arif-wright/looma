@@ -8,6 +8,8 @@
   export let energyMax: number | null = null;
   export let shards: number | null = null;
   export let walletCurrency = 'SHARDS';
+  export let showLevel = true;
+  export let showShards = true;
 
   const fmt = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : '—';
@@ -28,27 +30,31 @@
 
 <Panel title="Player stats" className="profile-panel profile-stats panel-glass">
   <div class="stat-grid">
-    <article>
-      <p class="label">Level</p>
-      <p class="value">{fmt(level)}</p>
-    </article>
-    <article>
-      <p class="label">XP</p>
-      <p class="value">{xpLabel}</p>
-      <div class="xp-bar" role="progressbar" aria-valuenow={xpPercent} aria-valuemin="0" aria-valuemax="100">
-        <span class="xp-fill xp-sweep" style={`width:${xpPercent}%`}></span>
-      </div>
-    </article>
+    {#if showLevel}
+      <article>
+        <p class="label">Level</p>
+        <p class="value">{fmt(level)}</p>
+      </article>
+      <article>
+        <p class="label">XP</p>
+        <p class="value">{xpLabel}</p>
+        <div class="xp-bar" role="progressbar" aria-valuenow={xpPercent} aria-valuemin="0" aria-valuemax="100">
+          <span class="xp-fill xp-sweep" style={`width:${xpPercent}%`}></span>
+        </div>
+      </article>
+    {/if}
     <article>
       <p class="label">Energy</p>
       <p class="value">{energyLabel}</p>
     </article>
-    <article>
-      <p class="label">Shards</p>
-      <p class="value">
-        {fmt(shards)} {walletCurrency?.toUpperCase?.() ?? walletCurrency}
-      </p>
-    </article>
+    {#if showShards}
+      <article>
+        <p class="label">Shards</p>
+        <p class="value">
+          {fmt(shards)} {walletCurrency?.toUpperCase?.() ?? walletCurrency}
+        </p>
+      </article>
+    {/if}
   </div>
 </Panel>
 

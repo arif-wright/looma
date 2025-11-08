@@ -7,10 +7,21 @@
   };
 
   export let bio: string | null = null;
+  export let pronouns: string | null = null;
+  export let location: string | null = null;
   export let links: ProfileLink[] = [];
 </script>
 
 <Panel title="About" className="profile-panel profile-about panel-glass">
+  <div class="meta-line">
+    {#if pronouns}
+      <span class="chip">{pronouns}</span>
+    {/if}
+    {#if location}
+      <span class="chip">{location}</span>
+    {/if}
+  </div>
+
   <div class="section">
     <h3>Bio</h3>
     {#if bio && bio.trim().length > 0}
@@ -55,6 +66,20 @@
     margin: 0;
     white-space: pre-wrap;
     line-height: 1.6;
+  }
+
+  .meta-line {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .chip {
+    padding: 0.25rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.8rem;
   }
 
   .ghost {
