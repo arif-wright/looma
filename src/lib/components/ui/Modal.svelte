@@ -23,8 +23,10 @@
   });
 
   onDestroy(() => {
-    document.documentElement.style.overflow = '';
-    lastActive?.focus?.();
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.overflow = '';
+      lastActive?.focus?.();
+    }
   });
 
   $: if (typeof document !== 'undefined') {
