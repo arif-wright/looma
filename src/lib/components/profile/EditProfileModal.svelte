@@ -137,10 +137,10 @@
       </div>
       <input
         id="handle-input"
-        class="input input-sm w-full"
+        class="input input-md w-full"
         bind:value={handle}
         maxlength="32"
-        placeholder="yourhandle"
+        placeholder="your-handle"
         on:input={(event) => handleInput((event.target as HTMLInputElement).value)}
       />
       <div class="flex flex-wrap items-center gap-2">

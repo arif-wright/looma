@@ -98,7 +98,7 @@
     <label class="field md:col-span-2">
       <span class="field-label">Bio <span class="opacity-60">(max 300)</span></span>
       <textarea
-        class="textarea textarea-sm w-full"
+        class="textarea textarea-md w-full"
         rows="4"
         maxlength="300"
         bind:value={bio}
@@ -112,14 +112,14 @@
     {#each [0, 1, 2] as index}
       <div class="grid grid-cols-[1fr_2fr] gap-2">
         <input
-          class="input input-sm"
+          class="input input-sm w-full"
           bind:value={links[index].label}
           maxlength="40"
           placeholder="Label"
           on:input={(event) => handleLinkChange(index, 'label', (event.target as HTMLInputElement).value)}
         />
         <input
-          class="input input-sm"
+          class="input input-sm w-full"
           bind:value={links[index].url}
           placeholder="https://example.com"
           on:input={(event) => handleLinkChange(index, 'url', (event.target as HTMLInputElement).value)}
