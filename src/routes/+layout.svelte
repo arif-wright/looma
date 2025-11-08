@@ -4,8 +4,7 @@
   import favicon from '$lib/assets/favicon.svg';
   import { currentProfile } from '$lib/stores/profile';
 
-  export let data;
-  let { children } = $props();
+  let { data, children } = $props();
 
   $: currentProfile.set(data?.profile ?? null);
 </script>
