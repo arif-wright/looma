@@ -15,6 +15,8 @@
     return new Intl.NumberFormat().format(value);
   };
 
+  $: achList = achievements?.length ? achievements : profile?.achievements ?? [];
+
   function handleChoose() {
     if (!isOwner) return;
     dispatch('chooseCompanion');
@@ -51,24 +53,30 @@
 
   <section class="panel">
     <h3 class="panel-title">Recent Achievements</h3>
-    {#if achievements?.length}
+    {#if achList.length}
       <ul class="space-y-2">
-        {#each achievements.slice(0, 5) as achievement}
+        {#each achList.slice(0, 5) as achievement}
           <li class="flex items-center gap-3">
-            {#if achievement.icon}
-              <img src={achievement.icon} alt={achievement.title ?? ''} class="h-8 w-8 rounded-lg ring-1 ring-white/10" />
-            {/if}
-            <div>
-              <div class="text-sm font-medium">{achievement.title ?? achievement.name}</div>
+            <img
+              src={achievement.icon ?? '/icons/trophy.svg'}
+              alt=""
+              class="h-8 w-8 rounded-lg ring-1 ring-white/10 object-cover"
+              loading="lazy"
+            />
+            <div class="min-w-0">
+              <div class="text-sm font-medium truncate">{achievement.title ?? achievement.name ?? 'Achievement'}</div>
               {#if achievement.when_label}
-                <div class="text-xs text-white/60">{achievement.when_label}</div>
+                <div class="text-xs text-white/60 truncate">{achievement.when_label}</div>
               {/if}
             </div>
           </li>
         {/each}
       </ul>
+      {#if achList.length > 5}
+        <a href="/app/achievements" class="btn-ghost mt-3 w-full text-center">View all</a>
+      {/if}
     {:else}
-      <p class="text-sm text-white/60">Unlock achievements to populate this space.</p>
+      <p class="text-sm text-white/60">No achievements yet—play missions to unlock your first badge.</p>
     {/if}
   </section>
 

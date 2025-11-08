@@ -96,8 +96,32 @@
     @apply relative overflow-hidden rounded-b-3xl;
   }
 
+  .cover-frame {
+    max-width: 1280px;
+    @apply mx-auto relative px-4 sm:px-6 lg:px-8;
+  }
+
   .cover-media {
     @apply h-[240px] w-full object-cover sm:h-[280px] lg:h-[320px];
+  }
+
+  .cover-bleed {
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+
+  @media (min-width: 640px) {
+    .cover-bleed {
+      margin-left: -24px;
+      margin-right: -24px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .cover-bleed {
+      margin-left: -32px;
+      margin-right: -32px;
+    }
   }
 
   .cover-scrim {

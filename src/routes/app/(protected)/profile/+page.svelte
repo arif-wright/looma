@@ -28,8 +28,7 @@
   const legacyShareMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
   const legacyShareBase = legacyShareMatch ? legacyShareMatch[1] : data.shareUrl ?? '';
 
-  $: sidebarAchievements =
-    ((data as LooseRecord)?.recentAchievements as LooseRecord[] | undefined) ?? (profile?.achievements as LooseRecord[]) ?? [];
+  $: sidebarAchievements = (profile?.achievements as LooseRecord[]) ?? [];
 
   $: shareUrl = (() => {
     const identifier = profile.handle || data.user?.id;
@@ -139,8 +138,11 @@
 
         {#if data.pinnedPost}
           <section class="panel" aria-labelledby="pinned-heading">
-            <h3 id="pinned-heading" class="panel-title">Pinned</h3>
-            <p class="text-white/80">{data.pinnedPost?.body}</p>
+            <div class="flex items-center justify-between">
+              <h3 id="pinned-heading" class="panel-title m-0">Pinned</h3>
+              <span class="text-[10px] uppercase tracking-wide text-white/40">Profile</span>
+            </div>
+            <p class="mt-2 text-white/80 leading-relaxed">{data.pinnedPost?.body}</p>
           </section>
         {/if}
 

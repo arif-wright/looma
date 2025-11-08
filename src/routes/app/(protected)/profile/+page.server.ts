@@ -39,6 +39,17 @@ type CompanionRow = {
   created_at: string;
 };
 
+type AchievementRow = {
+  unlocked_at: string | null;
+  achievements: {
+    name?: string | null;
+    title?: string | null;
+    key?: string | null;
+    icon?: string | null;
+    icon_url?: string | null;
+  } | null;
+};
+
 const PROFILE_COLUMNS =
   'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
 
@@ -196,6 +207,63 @@ const fetchCompanionOptions = async (supabase: App.Locals['supabase'], ownerId: 
   return (data as CompanionRow[]) ?? [];
 };
 
+const formatWhenLabel = (iso: string | null | undefined) => {
+  if (!iso) return '';
+  const timestamp = Date.parse(iso);
+  if (Number.isNaN(timestamp)) return '';
+  const diffMs = Date.now() - timestamp;
+  const minute = 60 * 1000;
+  const hour = minute * 60;
+  const day = hour * 24;
+  if (diffMs < hour) {
+    const minutes = Math.max(1, Math.round(diffMs / minute));
+    return `${minutes}m ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.max(1, Math.round(diffMs / hour));
+    return `${hours}h ago`;
+  }
+  if (diffMs < day * 30) {
+    const days = Math.max(1, Math.round(diffMs / day));
+    return `${days}d ago`;
+  }
+  const months = Math.round(diffMs / (day * 30));
+  if (months < 12) {
+    return `${Math.max(1, months)}mo ago`;
+  }
+  const years = Math.max(1, Math.round(months / 12));
+  return `${years}y ago`;
+};
+
+const fetchRecentAchievements = async (supabase: App.Locals['supabase'], userId: string) => {
+  const { data, error } = await supabase
+    .from('user_achievements')
+    .select(
+      'unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon, icon_url )'
+    )
+    .eq('user_id', userId)
+    .order('unlocked_at', { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.error('[profile] achievements fetch failed', error);
+    return [];
+  }
+
+  const rows = (data as AchievementRow[] | null) ?? [];
+  return rows
+    .map((row) => {
+      const achievement = row.achievements;
+      if (!achievement) return null;
+      return {
+        title: achievement.title ?? achievement.name ?? achievement.key ?? 'Achievement',
+        icon: achievement.icon_url ?? achievement.icon ?? null,
+        when_label: formatWhenLabel(row.unlocked_at)
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+};
+
 const fetchPinnedPreview = async (
   supabase: App.Locals['supabase'],
   ownerId: string,
@@ -232,7 +300,7 @@ export const load: PageServerLoad = async (event) => {
   const profileRow = await ensureProfile(supabase, user);
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, walletResult, companion, companionOptions, posts, pinned] = await Promise.all([
+  const [statsResult, walletResult, companion, companionOptions, posts, pinned, achievements] = await Promise.all([
     supabase
       .from('player_stats')
       .select('level, xp, xp_next, energy, energy_max')
@@ -242,7 +310,8 @@ export const load: PageServerLoad = async (event) => {
     fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
     fetchCompanionOptions(supabase, user.id),
     fetchPosts(supabase, user.id, true),
-    fetchPinnedPreview(supabase, user.id, true)
+    fetchPinnedPreview(supabase, user.id, true),
+    fetchRecentAchievements(supabase, user.id)
   ]);
 
   if (statsResult.error) {
@@ -266,7 +335,8 @@ export const load: PageServerLoad = async (event) => {
     profile: {
       ...profileRow,
       links: parsedLinks,
-      is_private: Boolean(profileRow.is_private)
+      is_private: Boolean(profileRow.is_private),
+      achievements
     },
     stats,
     walletShards: walletResult.data?.shards ?? null,

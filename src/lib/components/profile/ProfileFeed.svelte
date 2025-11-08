@@ -78,7 +78,7 @@
   {/if}
   <ul class="items">
     {#each items as post (post.id)}
-      <li>
+      <li class="panel post-panel">
         {#if browser}
           <PostCard {post} />
         {/if}
@@ -107,6 +107,16 @@
     margin: 0;
     display: grid;
     gap: 0.75rem;
+  }
+
+  .post-panel {
+    padding: 0;
+    background: rgba(16, 18, 28, 0.82);
+    transition: background 0.2s ease;
+  }
+
+  .post-panel:hover {
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .load-more {

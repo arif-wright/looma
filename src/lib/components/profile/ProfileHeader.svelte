@@ -47,15 +47,17 @@
 </script>
 
 <section class="cover-wrap">
-  {#if coverUrl}
-    <img src={coverUrl} alt="" class="cover-media" />
-  {:else}
-    <div
-      class="cover-media bg-[radial-gradient(1200px_400px_at_50%_0%,rgba(80,0,255,0.25),transparent_60%),radial-gradient(900px_300px_at_30%_20%,rgba(0,255,240,0.18),transparent_55%)]"
-      aria-hidden="true"
-    ></div>
-  {/if}
-  <div class="cover-scrim" aria-hidden="true"></div>
+  <div class="cover-frame">
+    {#if coverUrl}
+      <img src={coverUrl} alt="" class="cover-media cover-bleed" />
+    {:else}
+      <div
+        class="cover-media cover-bleed bg-[radial-gradient(1200px_400px_at_50%_0%,rgba(80,0,255,0.25),transparent_60%),radial-gradient(900px_300px_at_30%_20%,rgba(0,255,240,0.18),transparent_55%)]"
+        aria-hidden="true"
+      ></div>
+    {/if}
+    <div class="cover-scrim" aria-hidden="true"></div>
+  </div>
 </section>
 
 <header class="profile-grid -mt-14 sm:-mt-16">

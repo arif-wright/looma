@@ -15,6 +15,17 @@ type CompanionRow = {
   created_at: string;
 };
 
+type AchievementRow = {
+  unlocked_at: string | null;
+  achievements: {
+    name?: string | null;
+    title?: string | null;
+    key?: string | null;
+    icon?: string | null;
+    icon_url?: string | null;
+  } | null;
+};
+
 const POSTS_PAGE_SIZE = 10;
 const encodeCursor = (row: PostRow | null | undefined) =>
   row ? `${row.created_at}|${row.id}` : null;
@@ -89,16 +100,74 @@ const fetchPinnedPreview = async (
   };
 };
 
+const formatWhenLabel = (iso: string | null | undefined) => {
+  if (!iso) return '';
+  const timestamp = Date.parse(iso);
+  if (Number.isNaN(timestamp)) return '';
+  const diffMs = Date.now() - timestamp;
+  const minute = 60 * 1000;
+  const hour = minute * 60;
+  const day = hour * 24;
+  if (diffMs < hour) {
+    const minutes = Math.max(1, Math.round(diffMs / minute));
+    return `${minutes}m ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.max(1, Math.round(diffMs / hour));
+    return `${hours}h ago`;
+  }
+  if (diffMs < day * 30) {
+    const days = Math.max(1, Math.round(diffMs / day));
+    return `${days}d ago`;
+  }
+  const months = Math.round(diffMs / (day * 30));
+  if (months < 12) {
+    return `${Math.max(1, months)}mo ago`;
+  }
+  const years = Math.max(1, Math.round(months / 12));
+  return `${years}y ago`;
+};
+
+const fetchRecentAchievements = async (supabase: ReturnType<typeof supabaseServer>, userId: string) => {
+  const { data, error } = await supabase
+    .from('user_achievements')
+    .select(
+      'unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon, icon_url )'
+    )
+    .eq('user_id', userId)
+    .order('unlocked_at', { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.error('[public profile] achievements lookup failed', error);
+    return [];
+  }
+
+  const rows = (data as AchievementRow[] | null) ?? [];
+  return rows
+    .map((row) => {
+      const achievement = row.achievements;
+      if (!achievement) return null;
+      return {
+        title: achievement.title ?? achievement.name ?? achievement.key ?? 'Achievement',
+        icon: achievement.icon_url ?? achievement.icon ?? null,
+        when_label: formatWhenLabel(row.unlocked_at)
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+};
+
 export const load: PageServerLoad = async (event) => {
   const parentData = await event.parent();
   const supabase = supabaseServer(event);
   const profile = parentData.profile;
   const isOwner = parentData.isOwner ?? false;
 
-  const [companion, posts, pinned] = await Promise.all([
+  const [companion, posts, pinned, achievements] = await Promise.all([
     fetchFeaturedCompanion(supabase, profile.featured_companion_id ?? null),
     fetchPosts(supabase, profile.id, isOwner),
-    fetchPinnedPreview(supabase, profile.id, isOwner)
+    fetchPinnedPreview(supabase, profile.id, isOwner),
+    fetchRecentAchievements(supabase, profile.id)
   ]);
 
   const showShards = isOwner ? true : profile.show_shards ?? true;
@@ -109,7 +178,8 @@ export const load: PageServerLoad = async (event) => {
     show_shards: showShards,
     show_level: showLevel,
     show_joined: showJoined,
-    joined_at: showJoined ? profile.joined_at : null
+    joined_at: showJoined ? profile.joined_at : null,
+    achievements
   };
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
