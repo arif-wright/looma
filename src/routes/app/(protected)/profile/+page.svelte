@@ -2,12 +2,11 @@
   import { invalidateAll } from '$app/navigation';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
-  import ProfileStats from '$lib/components/profile/ProfileStats.svelte';
+  import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
-  import FeaturedCompanionCard from '$lib/components/profile/FeaturedCompanionCard.svelte';
   import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
-  import ProfileComposer from '$lib/components/profile/ProfileComposer.svelte';
+  import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import type { PageData } from './$types';
@@ -16,7 +15,9 @@
 
   export let data: PageData;
 
-  let profile = { ...data.profile };
+  type LooseRecord = Record<string, any>;
+
+  let profile: LooseRecord = { ...data.profile };
   const stats = data.stats;
 
   let pickerOpen = false;
@@ -26,6 +27,9 @@
   const appUrl = import.meta.env.PUBLIC_APP_URL || '';
   const legacyShareMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
   const legacyShareBase = legacyShareMatch ? legacyShareMatch[1] : data.shareUrl ?? '';
+
+  $: sidebarAchievements =
+    ((data as LooseRecord)?.recentAchievements as LooseRecord[] | undefined) ?? (profile?.achievements as LooseRecord[]) ?? [];
 
   $: shareUrl = (() => {
     const identifier = profile.handle || data.user?.id;
@@ -38,6 +42,26 @@
   const handleEdit = () => {
     if (!data.isOwner) return;
     editOpen = true;
+  };
+
+  const handleShare = async () => {
+    if (!shareUrl) return;
+    try {
+      if (typeof navigator !== 'undefined') {
+        if (navigator.share) {
+          await navigator.share({ title: `View @${profile.handle} on Looma`, url: shareUrl });
+          return;
+        }
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareUrl);
+          window?.alert?.('Profile link copied');
+          return;
+        }
+      }
+      window?.prompt?.('Copy your profile link:', shareUrl);
+    } catch (err) {
+      console.error('share failed', err);
+    }
   };
 
   const handleSwap = () => {
@@ -88,63 +112,65 @@
 <BackgroundStack class="profile-bg" />
 
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
-  <main class="profile-page">
-    <ProfileHeader
-      displayName={profile.display_name}
-      handle={profile.handle}
-      avatarUrl={profile.avatar_url}
-      bannerUrl={profile.banner_url}
-      joinedAt={profile.joined_at}
-      isOwner={data.isOwner}
-      isPrivate={profile.is_private}
-      level={stats?.level ?? null}
-      showJoined={true}
-      shareUrl={shareUrl}
-      shareTitle={`Check out @${profile.handle} on Looma`}
-      on:edit={handleEdit}
-      on:avatarChange={(event) => (profile = { ...profile, avatar_url: event.detail.url })}
-      on:bannerChange={(event) => (profile = { ...profile, banner_url: event.detail.url })}
-    />
+  <ProfileHeader
+    profile={profile}
+    coverUrl={profile.banner_url}
+    avatarUrl={profile.avatar_url}
+    canEdit={data.isOwner}
+    canShare={!!shareUrl}
+    on:edit={handleEdit}
+    on:share={handleShare}
+  />
 
-    {#if data.isOwner}
-      <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
-    {/if}
+  <main class="profile-grid mt-6">
+    <div class="profile-cols">
+      <ProfileSidebar
+        profile={profile}
+        stats={stats}
+        shards={data.walletShards ?? null}
+        featuredCompanion={data.featuredCompanion}
+        achievements={sidebarAchievements}
+        isOwner={data.isOwner}
+        on:chooseCompanion={handleSwap}
+      />
 
-    <FeaturedCompanionCard
-      companion={data.featuredCompanion}
-      isOwner={data.isOwner}
-      busy={pickerBusy}
-      on:swap={handleSwap}
-    />
+      <div class="space-y-4">
+        <SmartComposer avatarUrl={profile.avatar_url} on:posted={handleComposerPosted} />
 
-    <ProfileStats
-      level={stats?.level ?? null}
-      xp={stats?.xp ?? null}
-      xpNext={stats?.xp_next ?? null}
-      energy={stats?.energy ?? null}
-      energyMax={stats?.energy_max ?? null}
-      shards={data.walletShards}
-      showLevel={true}
-      showShards={true}
-    />
+        {#if data.pinnedPost}
+          <section class="panel" aria-labelledby="pinned-heading">
+            <h3 id="pinned-heading" class="panel-title">Pinned</h3>
+            <p class="text-white/80">{data.pinnedPost?.body}</p>
+          </section>
+        {/if}
 
-    <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+        <section class="panel" id="overview">
+          <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+        </section>
 
-    <ProfileHighlights
-      pinnedPost={data.pinnedPost}
-      companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
-      profileHandle={profile.handle}
-    />
+        <section class="panel" id="companions">
+          <ProfileHighlights
+            pinnedPost={data.pinnedPost}
+            companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+            profileHandle={profile.handle}
+          />
+        </section>
 
-    <ProfileComposer on:posted={handleComposerPosted} />
-
-    <ProfileFeed
-      bind:this={feedRef}
-      authorIdentifier={profile.handle || profile.id}
-      initialItems={data.posts ?? []}
-      initialCursor={data.nextCursor}
-    />
+        <section id="activity" class="space-y-4">
+          <ProfileFeed
+            bind:this={feedRef}
+            authorIdentifier={profile.handle || profile.id}
+            initialItems={data.posts ?? []}
+            initialCursor={data.nextCursor}
+          />
+        </section>
+      </div>
+    </div>
   </main>
+
+  {#if data.isOwner}
+    <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
+  {/if}
 </div>
 
 <CompanionPickerModal
@@ -154,22 +180,3 @@
   on:close={handlePickerClose}
   on:select={handlePickerSelect}
 />
-
-<style>
-  .profile-page {
-    width: 100%;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: calc(env(safe-area-inset-top, 0px) + 20px) clamp(1rem, 4vw, 2rem) 64px;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-  }
-
-  @media (max-width: 720px) {
-    .profile-page {
-      padding-bottom: 96px;
-    }
-  }
-
-</style>

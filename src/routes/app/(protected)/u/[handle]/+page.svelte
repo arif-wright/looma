@@ -24,6 +24,26 @@
     if (!data.isOwner) return;
     void goto('/app/profile/edit');
   };
+
+  async function handleShare() {
+    if (!data.shareUrl) return;
+    try {
+      if (typeof navigator !== 'undefined') {
+        if (navigator.share) {
+          await navigator.share({ title: `Check out @${profile.handle} on Looma`, url: data.shareUrl });
+          return;
+        }
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(data.shareUrl);
+          window?.alert?.('Profile link copied');
+          return;
+        }
+      }
+      window?.prompt?.('Copy this profile link:', data.shareUrl);
+    } catch (err) {
+      console.error('share failed', err);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -46,18 +66,13 @@
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
   <main class="profile-page">
     <ProfileHeader
-      displayName={profile.display_name}
-      handle={profile.handle}
+      profile={profile}
+      coverUrl={profile.banner_url}
       avatarUrl={profile.avatar_url}
-      bannerUrl={profile.banner_url}
-      joinedAt={profile.joined_at}
-      isOwner={data.isOwner}
-      isPrivate={profile.is_private}
-      level={stats.level}
-      showJoined={profile.show_joined ?? true}
-      shareUrl={data.shareUrl}
-      shareTitle={`Check out @${profile.handle} on Looma`}
+      canEdit={data.isOwner}
+      canShare={!!data.shareUrl}
       on:edit={handleEdit}
+      on:share={handleShare}
     />
 
     <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />

@@ -1,301 +1,109 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
   import { formatJoined } from '$lib/format/date';
-  import AvatarUploader from '$lib/components/profile/AvatarUploader.svelte';
-  import BannerUploader from '$lib/components/profile/BannerUploader.svelte';
 
-  export let displayName: string | null = null;
-  export let handle = 'player';
+  export let profile: Record<string, any> | null = null;
+  export let coverUrl: string | null = null;
   export let avatarUrl: string | null = null;
-  export let bannerUrl: string | null = null;
-  export let joinedAt: string | null = null;
-  export let showJoined = true;
-  export let isOwner = false;
-  export let isPrivate = false;
-  export let level: number | null = null;
-  export let shareUrl: string | null = null;
-  export let shareTitle = '';
+  export let canEdit = false;
+  export let canShare = false;
 
-  const dispatch = createEventDispatcher<{
-    edit: void;
-    avatarChange: { url: string };
-    bannerChange: { url: string };
-  }>();
+  const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
-  let copied = false;
-  let copyTimer: ReturnType<typeof setTimeout> | null = null;
-  let shareMessage = '';
-  let shareTimer: ReturnType<typeof setTimeout> | null = null;
+  let compact = false;
+  let scrollHandler: ((event: Event) => void) | null = null;
 
-  $: joinedLabel = formatJoined(joinedAt);
-  $: titleChip = level !== null && Number.isFinite(level) ? `Level ${level}` : 'Explorer';
-  $: shareLabel = shareTitle || (handle ? `Check out @${handle} on Looma` : 'Share profile');
-
-  function handleCopy() {
-    if (copyTimer) clearTimeout(copyTimer);
-    navigator?.clipboard
-      ?.writeText(`@${handle}`)
-      .then(() => {
-        copied = true;
-        copyTimer = setTimeout(() => (copied = false), 1500);
-      })
-      .catch(() => {
-        copied = true;
-        copyTimer = setTimeout(() => (copied = false), 1500);
-      });
-  }
+  $: displayName = profile?.display_name ?? 'Anonymous Explorer';
+  $: handle = profile?.handle ?? 'player';
+  $: levelLabel = Number.isFinite(profile?.level) ? `LEVEL ${profile?.level}` : 'Explorer';
+  $: joinedLabel = formatJoined(profile?.joined_at ?? null);
 
   function handleEdit() {
+    if (!canEdit) return;
     dispatch('edit');
   }
 
-  function handleAvatarChanged(event: CustomEvent<{ url: string }>) {
-    dispatch('avatarChange', { url: event.detail.url });
+  function handleShare() {
+    if (!canShare) return;
+    dispatch('share');
   }
 
-  function handleBannerChanged(event: CustomEvent<{ url: string }>) {
-    dispatch('bannerChange', { url: event.detail.url });
+  function updateCompact() {
+    if (typeof window === 'undefined') return;
+    compact = window.scrollY > 120;
   }
 
-  function setShareMessage(text: string) {
-    shareMessage = text;
-    if (shareTimer) clearTimeout(shareTimer);
-    shareTimer = setTimeout(() => (shareMessage = ''), 1600);
-  }
-
-  async function handleShare() {
-    if (!shareUrl) return;
-    if (typeof navigator === 'undefined') {
-      setShareMessage('Share not available');
-      return;
-    }
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: shareLabel, url: shareUrl });
-        return;
-      }
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareMessage('Link copied');
-      } else {
-        setShareMessage('Share unavailable');
-      }
-    } catch {
-      setShareMessage('Share failed');
-    }
+  if (typeof window !== 'undefined') {
+    scrollHandler = () => updateCompact();
+    window.addEventListener('scroll', scrollHandler, { passive: true });
+    updateCompact();
   }
 
   onDestroy(() => {
-    if (copyTimer) clearTimeout(copyTimer);
-    if (shareTimer) clearTimeout(shareTimer);
+    if (scrollHandler && typeof window !== 'undefined') {
+      window.removeEventListener('scroll', scrollHandler);
+    }
   });
 </script>
 
-<section class="profile-header" data-private={isPrivate}>
-  <BannerUploader url={bannerUrl} editable={isOwner} on:changed={handleBannerChanged} />
-
-  <div class="header-card">
-    <Panel className="profile-card panel-glass">
-      <div class="card-inner">
-        <div class="avatar-wrap">
-          <span class="pulse-ring"></span>
-          <AvatarUploader url={avatarUrl} editable={isOwner} on:changed={handleAvatarChanged} />
-        </div>
-        <div class="identity">
-          <div class="headline">
-            <h1>{displayName || 'Anonymous Explorer'}</h1>
-            {#if isOwner || shareUrl}
-              <div class="header-actions">
-                {#if isOwner}
-                  <button type="button" class="profile-action-btn" on:click={handleEdit}>Edit profile</button>
-                {/if}
-                {#if shareUrl}
-                  <button type="button" class="profile-action-btn" on:click={handleShare}>Share profile</button>
-                  {#if shareMessage}
-                    <span class="share-note">{shareMessage}</span>
-                  {/if}
-                {/if}
-              </div>
-            {/if}
-          </div>
-          <div class="handle-row">
-            <button type="button" class="handle-chip" on:click={handleCopy}>
-              @{handle}
-              <span class="copy-status">{copied ? 'Copied' : 'Tap to copy'}</span>
-            </button>
-            <span class="title-chip">{titleChip}</span>
-            {#if isPrivate}
-              <span class="privacy-chip">Private</span>
-            {/if}
-          </div>
-          {#if showJoined && joinedLabel}
-            <p class="meta">Joined {joinedLabel}</p>
-          {/if}
-        </div>
-      </div>
-    </Panel>
-  </div>
+<section class="cover-wrap">
+  {#if coverUrl}
+    <img src={coverUrl} alt="" class="cover-media" />
+  {:else}
+    <div
+      class="cover-media bg-[radial-gradient(1200px_400px_at_50%_0%,rgba(80,0,255,0.25),transparent_60%),radial-gradient(900px_300px_at_30%_20%,rgba(0,255,240,0.18),transparent_55%)]"
+      aria-hidden="true"
+    ></div>
+  {/if}
+  <div class="cover-scrim" aria-hidden="true"></div>
 </section>
 
-<style>
-  .profile-header {
-    position: relative;
-    display: grid;
-    gap: 0;
-  }
+<header class="profile-grid -mt-14 sm:-mt-16">
+  <div class="panel cover-compact" class:shadow-lg={compact}>
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div class="flex items-center gap-4">
+          <img
+            src={avatarUrl ?? '/avatars/default.png'}
+            alt=""
+            class="h-16 w-16 rounded-2xl ring-1 ring-white/20 object-cover sm:h-20 sm:w-20"
+            loading="lazy"
+          />
+          <div>
+            <h1 class="text-xl font-semibold sm:text-2xl">{displayName}</h1>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/70">
+              <span>@{handle}</span>
+              {#if joinedLabel}
+                <span class="h-1 w-1 rounded-full bg-white/30" aria-hidden="true"></span>
+                <span>Joined {joinedLabel}</span>
+              {/if}
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2 text-xs text-white/70">
+              <span class="rounded-full bg-white/10 px-3 py-1">{levelLabel}</span>
+              {#if profile?.is_private}
+                <span class="rounded-full bg-white/10 px-3 py-1">Private</span>
+              {/if}
+            </div>
+          </div>
+        </div>
+        {#if canEdit || canShare}
+          <div class="action-group self-end md:self-start">
+            {#if canShare}
+              <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
+            {/if}
+            {#if canEdit}
+              <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
+            {/if}
+          </div>
+        {/if}
+      </div>
 
-  .header-card {
-    position: relative;
-    margin-top: -80px;
-    padding: 0 1rem;
-  }
-
-  :global(.profile-card) {
-    max-width: 960px;
-    margin: 0 auto;
-  }
-
-  .card-inner {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 1.5rem;
-    align-items: center;
-  }
-
-  .avatar-wrap {
-    position: relative;
-    width: 140px;
-    height: 140px;
-  }
-
-  .pulse-ring {
-    position: absolute;
-    inset: -8px;
-    border-radius: 40px;
-    border: 1px solid rgba(94, 242, 255, 0.3);
-    animation: pulse 3s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  .identity {
-    display: grid;
-    gap: 0.6rem;
-  }
-
-  .headline {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-start;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: clamp(1.6rem, 4vw, 2.4rem);
-  }
-
-  .header-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .handle-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    align-items: center;
-  }
-
-  .handle-chip {
-    display: inline-flex;
-    gap: 0.35rem;
-    align-items: center;
-    padding: 0.35rem 0.8rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.05);
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .copy-status {
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-
-  .title-chip,
-  .privacy-chip {
-    padding: 0.35rem 0.9rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .privacy-chip {
-    border-color: rgba(255, 207, 106, 0.6);
-  }
-
-  .meta {
-    margin: 0;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.75);
-  }
-
-  .profile-action-btn {
-    padding: 0.45rem 1.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(94, 242, 255, 0.45);
-    background: linear-gradient(120deg, rgba(94, 242, 255, 0.15), rgba(155, 92, 255, 0.15));
-    color: inherit;
-    cursor: pointer;
-    text-align: center;
-    min-width: 140px;
-  }
-
-  .share-note {
-    font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.75);
-    padding-left: 0.25rem;
-  }
-
-  @media (max-width: 720px) {
-    .banner {
-      border-radius: 20px;
-    }
-
-    .header-card {
-      margin-top: -70px;
-      padding: 0;
-    }
-
-    .card-inner {
-      grid-template-columns: 1fr;
-      text-align: left;
-    }
-
-    .avatar-wrap {
-      width: 110px;
-      height: 110px;
-      justify-self: center;
-    }
-  }
-
-  @keyframes pulse {
-    0% {
-      transform: scale(0.95);
-      opacity: 0.4;
-    }
-    50% {
-      transform: scale(1.05);
-      opacity: 0.8;
-    }
-    100% {
-      transform: scale(0.95);
-      opacity: 0.4;
-    }
-  }
-</style>
+      <nav class="tabs" aria-label="Profile sections">
+        <a class="tab tab-active" href="#overview">Overview</a>
+        <a class="tab" href="#companions">Companions</a>
+        <a class="tab" href="#achievements">Achievements</a>
+        <a class="tab" href="#activity">Activity</a>
+      </nav>
+    </div>
+  </div>
+</header>
