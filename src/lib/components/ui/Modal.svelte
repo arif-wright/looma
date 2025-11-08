@@ -50,13 +50,21 @@
       aria-label={title}
       tabindex="0"
       bind:this={dialogEl}
-      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(720px,92vw)] max-h-[85vh] overflow-auto rounded-2xl bg-[rgba(20,22,35,0.9)] backdrop-blur-md ring-1 ring-white/10 p-4 sm:p-6"
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(720px,92vw)] max-h-[85vh] rounded-2xl bg-[rgba(20,22,35,0.9)] backdrop-blur-md ring-1 ring-white/10 p-4 sm:p-6 flex flex-col overflow-hidden"
     >
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-base sm:text-lg font-semibold">{title}</h2>
         <button class="btn btn-xs" on:click={close} aria-label="Close">✕</button>
       </div>
-      <slot />
+      <div class="modal-body flex-1 overflow-y-auto pr-1 -mr-1">
+        <slot />
+      </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .modal-body {
+    scrollbar-gutter: stable;
+  }
+</style>
