@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto, invalidateAll } from '$app/navigation';
+  import { invalidateAll } from '$app/navigation';
   import { onDestroy } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
@@ -23,14 +23,22 @@
   let pickerOpen = false;
   let pickerBusy = false;
   let feedRef: InstanceType<typeof ProfileFeed> | null = null;
-  let handleInput = profile.handle ?? '';
-  let handleStatus: 'idle' | 'checking' | 'available' | 'unavailable' = 'idle';
-  let handleMessage = '';
-  let handleDebounce: ReturnType<typeof setTimeout> | null = null;
+  let showEditPanel = false;
+  let handle = profile.handle ?? '';
+  let checking = false;
+  let available: boolean | null = null;
+  let msg = '';
+  let dirty = false;
+  let handleTimer: ReturnType<typeof setTimeout> | null = null;
   let handleSaving = false;
 
   const handleEdit = () => {
-    void goto('/app/profile/edit');
+    showEditPanel = true;
+    if (typeof document !== 'undefined') {
+      setTimeout(() => {
+        document.getElementById('handle-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
   };
 
   const handleSwap = () => {
@@ -69,69 +77,46 @@
     }
   };
 
-  const clearHandleDebounce = () => {
-    if (handleDebounce) {
-      clearTimeout(handleDebounce);
-      handleDebounce = null;
-    }
-  };
-
-  onDestroy(clearHandleDebounce);
-
-  async function checkHandleAvailability(value: string) {
-    const normalized = normalizeHandle(value);
-    if (!normalized || normalized.length < 3) {
-      handleStatus = 'unavailable';
-      handleMessage = 'At least 3 characters';
-      return;
-    }
-    try {
-      const res = await fetch(`/api/profile/handle/availability?q=${encodeURIComponent(normalized)}`);
-      if (!res.ok) {
-        handleStatus = 'unavailable';
-        handleMessage = 'Unable to check';
-        return;
-      }
-      const payload = await res.json();
-      handleStatus = payload.available ? 'available' : 'unavailable';
-      handleMessage = payload.available ? 'Available' : 'Not available';
-    } catch {
-      handleStatus = 'unavailable';
-      handleMessage = 'Unable to check';
-    }
-  }
+  onDestroy(() => {
+    if (handleTimer) clearTimeout(handleTimer);
+  });
 
   $: {
-    clearHandleDebounce();
-    if (!data.isOwner) {
-      handleStatus = 'idle';
-      handleMessage = '';
-    } else if (handleInput === profile.handle) {
-      handleStatus = 'idle';
-      handleMessage = '';
-    } else {
-      const normalized = normalizeHandle(handleInput);
-      if (!normalized || normalized.length < 3) {
-        handleStatus = 'unavailable';
-        handleMessage = 'At least 3 characters';
-      } else {
-        handleStatus = 'checking';
-        handleMessage = 'Checking…';
-        handleDebounce = setTimeout(() => checkHandleAvailability(handleInput), 400);
+    if (handleTimer) clearTimeout(handleTimer);
+    if (!dirty || !handle || typeof window === 'undefined') {
+      if (!dirty) {
+        msg = '';
+        available = null;
       }
+    } else {
+      handleTimer = window.setTimeout(async () => {
+        checking = true;
+        try {
+          const normalized = normalizeHandle(handle);
+          const res = await fetch(`/api/profile/handle/availability?q=${encodeURIComponent(normalized)}`);
+          if (!res.ok) {
+            available = null;
+            msg = 'Unable to check';
+            return;
+          }
+          const payload = await res.json();
+          available = !!payload?.available;
+          msg = available ? 'Available' : 'Not available';
+        } catch {
+          available = null;
+          msg = 'Unable to check';
+        } finally {
+          checking = false;
+        }
+      }, 350);
     }
   }
 
   async function saveHandle() {
-    const validation = validateHandle(handleInput);
+    const validation = validateHandle(handle);
     if (!validation.ok || !validation.handle) {
-      handleStatus = 'unavailable';
-      handleMessage = validation.reason ?? 'Invalid handle';
-      return;
-    }
-    if (validation.handle === profile.handle) {
-      handleStatus = 'idle';
-      handleMessage = '';
+      msg = validation.reason ?? 'Invalid handle';
+      available = false;
       return;
     }
     handleSaving = true;
@@ -143,19 +128,20 @@
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload?.ok) {
-        handleStatus = 'unavailable';
-        handleMessage = payload?.reason ?? 'Could not update';
+        msg = payload?.reason ?? 'Could not update';
+        available = false;
       } else {
         profile = { ...profile, handle: payload.handle };
-        handleInput = payload.handle;
-        handleStatus = 'idle';
-        handleMessage = 'Updated';
+        handle = payload.handle;
+        dirty = false;
+        available = true;
+        msg = 'Saved';
         currentProfile.update((p) => (p ? { ...p, handle: payload.handle } : p));
       }
     } catch (err) {
       console.error('handle update failed', err);
-      handleStatus = 'unavailable';
-      handleMessage = 'Error updating handle';
+      msg = 'Error updating handle';
+      available = false;
     } finally {
       handleSaving = false;
     }
@@ -204,32 +190,34 @@
       profileHandle={profile.handle}
     />
 
-    {#if data.isOwner}
-      <section class="handle-editor panel-glass">
+    {#if data.isOwner && showEditPanel}
+      <section id="handle-editor" class="handle-editor panel-glass">
         <div class="handle-fields">
-          <label for="handle-input">Handle</label>
+          <label class="text-xs opacity-70" for="handle-input">Handle</label>
           <input
             id="handle-input"
             class="handle-input"
             maxlength="32"
-            bind:value={handleInput}
+            bind:value={handle}
             placeholder="yourhandle"
+            on:input={() => {
+              dirty = handle !== (profile.handle ?? '');
+              available = null;
+              msg = '';
+            }}
           />
-        </div>
-        <div class="handle-meta">
-          <span class={`status ${handleStatus}`}>{handleMessage}</span>
-          <button
-            type="button"
-            class="save-btn"
-            on:click={saveHandle}
-            disabled={
-              handleSaving ||
-              handleInput === profile.handle ||
-              handleStatus !== 'available'
-            }
-          >
-            {handleSaving ? 'Saving…' : 'Save handle'}
-          </button>
+          <div class="hint">{checking ? 'Checking…' : dirty ? msg || ' ' : ' '}</div>
+          <div class="handle-meta">
+            <button
+              type="button"
+              class="save-btn"
+              on:click={saveHandle}
+              disabled={!dirty || checking || available === false || handleSaving}
+            >
+              {handleSaving ? 'Saving…' : 'Save handle'}
+            </button>
+            <button type="button" class="ghost-btn" on:click={() => (showEditPanel = false)}>Close</button>
+          </div>
         </div>
       </section>
     {/if}
@@ -303,6 +291,12 @@
     color: inherit;
   }
 
+  .hint {
+    font-size: 0.82rem;
+    margin-top: 0.35rem;
+    min-height: 1em;
+  }
+
   .handle-meta {
     display: flex;
     align-items: center;
@@ -338,5 +332,13 @@
   .save-btn:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  .ghost-btn {
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.82rem;
   }
 </style>
