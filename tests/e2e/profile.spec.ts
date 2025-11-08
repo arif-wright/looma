@@ -19,15 +19,22 @@ const getAdminClient = () => {
 };
 
 test.describe('Profile overview', () => {
-  test('self profile shows identity and shards', async ({ page }) => {
+  test('self profile shows identity and featured companion', async ({ page }) => {
     await page.goto('/app/profile');
-    await expect(page.getByRole('heading', { level: 1, name: new RegExp(TEST_USERS.viewer.displayName, 'i') })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: new RegExp(TEST_USERS.viewer.displayName, 'i')
+      })
+    ).toBeVisible();
+    await expect(page.getByText(/Featured Companion/i)).toBeVisible();
     await expect(page.getByText(/SHARDS/i)).toBeVisible();
   });
 
-  test('public profile route renders by handle', async ({ page }) => {
+  test('public profile route renders by handle with companion card', async ({ page }) => {
     await page.goto(`/app/u/${TEST_USERS.author.handle}`);
     await expect(page.getByText(`@${TEST_USERS.author.handle}`)).toBeVisible();
+    await expect(page.getByText(/Featured Companion/i)).toBeVisible();
   });
 
   test('private profiles return 404 for non-owners', async ({ page }) => {

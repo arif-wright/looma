@@ -118,11 +118,7 @@ const ensureProfile = async (admin: SupabaseClient, user: User, config: SeedUser
   }
 };
 
-const ensurePostAndComment = async (
-  admin: SupabaseClient,
-  author: User,
-  viewer: User
-) => {
+const ensurePostAndComment = async (admin: SupabaseClient, author: User, viewer: User) => {
   const { error: postError } = await admin.from('posts').upsert(
     {
       id: POST_ID,
@@ -157,6 +153,59 @@ const ensurePostAndComment = async (
   if (commentError) {
     throw new Error(`Failed to upsert seed comment: ${commentError.message}`);
   }
+
+  const { error: pinError } = await admin
+    .from('posts')
+    .update({ is_pinned: true })
+    .eq('id', POST_ID);
+
+  if (pinError) {
+    console.error('[seed] failed to pin post', pinError);
+  }
+};
+
+const ensureCompanions = async (
+  admin: SupabaseClient,
+  owner: User,
+  entries: Array<{ name: string; species: string; mood: string; featured?: boolean }>
+) => {
+  const createdIds: string[] = [];
+  for (const entry of entries) {
+    const { data: existing } = await admin
+      .from('companions')
+      .select('id')
+      .eq('owner_id', owner.id)
+      .eq('name', entry.name)
+      .maybeSingle();
+
+    let companionId = existing?.id ?? null;
+    if (!companionId) {
+      const { data, error } = await admin
+        .from('companions')
+        .insert({
+          owner_id: owner.id,
+          name: entry.name,
+          species: entry.species,
+          mood: entry.mood,
+          bond_level: 3,
+          bond_xp: 60,
+          bond_next: 100
+        })
+        .select('id')
+        .single();
+      if (error) {
+        throw new Error(`Failed to insert companion ${entry.name}: ${error.message}`);
+      }
+      companionId = data?.id as string;
+    }
+
+    if (entry.featured) {
+      await admin.from('profiles').update({ featured_companion_id: companionId }).eq('id', owner.id);
+    }
+
+    createdIds.push(companionId);
+  }
+  return createdIds;
 };
 
 export const seed = async (): Promise<SeedResult> => {
@@ -173,6 +222,13 @@ export const seed = async (): Promise<SeedResult> => {
   await ensureProfile(admin, authorUser, SEED_USERS.author);
   await ensureProfile(admin, viewerUser, SEED_USERS.viewer);
   await ensurePostAndComment(admin, authorUser, viewerUser);
+  await ensureCompanions(admin, viewerUser, [
+    { name: 'Nova', species: 'Lumen Wisp', mood: 'Radiant', featured: true },
+    { name: 'Quill', species: 'Arc Owl', mood: 'Curious' }
+  ]);
+  await ensureCompanions(admin, authorUser, [
+    { name: 'Ember', species: 'Sol Fox', mood: 'Calm', featured: true }
+  ]);
 
   return {
     author: { ...SEED_USERS.author, id: authorUser.id },

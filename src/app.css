@@ -659,6 +659,35 @@ p:last-child {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+@keyframes glowSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.xp-sweep {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 255, 0.25),
+    rgba(255, 0, 255, 0.25),
+    rgba(0, 255, 255, 0.25)
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .xp-sweep {
+    animation: glowSweep 4s linear infinite;
+  }
+}
+
+.bond-glow {
+  box-shadow: inset 0 0 24px rgba(0, 255, 255, 0.08);
+}
+
 @keyframes chipPulse {
   0% {
     transform: scale(1);

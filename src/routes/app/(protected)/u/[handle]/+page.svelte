@@ -3,12 +3,14 @@
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileStats from '$lib/components/profile/ProfileStats.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
+  import FeaturedCompanionCard from '$lib/components/profile/FeaturedCompanionCard.svelte';
+  import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
+  import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
 
   const profile = data.profile;
-
   const stats = {
     level: profile.level ?? null,
     xp: profile.xp ?? null,
@@ -23,7 +25,7 @@
   };
 </script>
 
-<div class="profile-page">
+<div class="profile-page safe-bottom">
   <ProfileHeader
     displayName={profile.display_name}
     handle={profile.handle}
@@ -32,8 +34,11 @@
     joinedAt={profile.joined_at}
     isOwner={data.isOwner}
     isPrivate={profile.is_private}
+    level={stats.level}
     on:edit={handleEdit}
   />
+
+  <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />
 
   <ProfileStats
     level={stats.level}
@@ -45,6 +50,19 @@
   />
 
   <ProfileAbout bio={profile.bio} links={profile.links} />
+
+  <ProfileHighlights
+    pinnedPost={data.pinnedPost}
+    companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+    profileHandle={profile.handle}
+  />
+
+  <ProfileFeed
+    authorIdentifier={profile.handle || profile.id}
+    initialItems={data.posts ?? []}
+    initialCursor={data.nextCursor}
+    emptyMessage="No public posts yet."
+  />
 </div>
 
 <style>
@@ -55,13 +73,12 @@
     padding: calc(env(safe-area-inset-top, 0px) + 20px) clamp(1rem, 4vw, 2rem) 64px;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   @media (max-width: 720px) {
     .profile-page {
       padding-bottom: 96px;
-      gap: 1.25rem;
     }
   }
 </style>

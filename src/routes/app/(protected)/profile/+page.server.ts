@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import type { PageServerLoad } from './$types';
 import { requireUserServer } from '$lib/server/auth';
 import { normalizeHandle } from '$lib/utils/handle';
+import type { PostRow } from '$lib/social/types';
 
 type ProfileRow = {
   id: string;
@@ -14,6 +15,7 @@ type ProfileRow = {
   links: Record<string, unknown>[] | null;
   is_private: boolean | null;
   joined_at: string | null;
+  featured_companion_id: string | null;
 };
 
 type StatsRow = {
@@ -24,8 +26,22 @@ type StatsRow = {
   energy_max: number | null;
 };
 
+type CompanionRow = {
+  id: string;
+  name: string;
+  species: string;
+  avatar_url: string | null;
+  bond_level: number;
+  bond_xp: number;
+  bond_next: number;
+  mood: string;
+  created_at: string;
+};
+
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, links, is_private, joined_at';
+  'id, handle, display_name, avatar_url, banner_url, bio, links, is_private, joined_at, featured_companion_id';
+
+const POSTS_PAGE_SIZE = 10;
 
 const randomSuffix = () => Math.random().toString(36).slice(2, 8);
 
@@ -38,13 +54,13 @@ const buildHandleCandidate = (base: string, suffix: string) => {
 
 const resolveDisplayName = (user: User) => {
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const candidate =
+  return (
     (metadata.display_name as string) ??
     (metadata.full_name as string) ??
     (metadata.name as string) ??
     user.email?.split('@')[0] ??
-    'Explorer';
-  return candidate;
+    'Explorer'
+  );
 };
 
 const ensureProfile = async (supabase: App.Locals['supabase'], user: User): Promise<ProfileRow> => {
@@ -117,19 +133,115 @@ const parseLinks = (value: ProfileRow['links']) => {
     .filter((entry): entry is { label: string; url: string } => Boolean(entry));
 };
 
+const encodeCursor = (row: PostRow | null | undefined) =>
+  row ? `${row.created_at}|${row.id}` : null;
+
+const fetchPosts = async (
+  supabase: App.Locals['supabase'],
+  authorId: string,
+  includePrivate: boolean
+) => {
+  const { data, error: postsError } = await supabase.rpc('get_user_posts', {
+    p_user: authorId,
+    p_limit: POSTS_PAGE_SIZE,
+    p_before: new Date().toISOString()
+  });
+
+  if (postsError) {
+    console.error('[profile] feed lookup failed', postsError);
+    return { items: [] as PostRow[], nextCursor: null };
+  }
+
+  const rows = Array.isArray(data) ? (data as PostRow[]) : [];
+  const filtered = includePrivate ? rows : rows.filter((row) => row.is_public ?? true);
+  return {
+    items: filtered,
+    nextCursor: filtered.length === POSTS_PAGE_SIZE ? encodeCursor(filtered.at(-1)) : null
+  };
+};
+
+const fetchFeaturedCompanion = async (
+  supabase: App.Locals['supabase'],
+  companionId: string | null
+) => {
+  if (!companionId) return null;
+  const { data, error: companionError } = await supabase
+    .from('companions')
+    .select('id, name, species, avatar_url, bond_level, bond_xp, bond_next, mood, created_at')
+    .eq('id', companionId)
+    .maybeSingle();
+
+  if (companionError) {
+    console.error('[profile] featured companion lookup failed', companionError);
+    return null;
+  }
+
+  return (data as CompanionRow | null) ?? null;
+};
+
+const fetchCompanionOptions = async (supabase: App.Locals['supabase'], ownerId: string) => {
+  const { data, error } = await supabase
+    .from('companions')
+    .select('id, name, species, avatar_url, bond_level, bond_xp, bond_next, mood, created_at')
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('[profile] companion picker lookup failed', error);
+    return [];
+  }
+
+  return (data as CompanionRow[]) ?? [];
+};
+
+const fetchPinnedPreview = async (
+  supabase: App.Locals['supabase'],
+  ownerId: string,
+  includePrivate: boolean
+) => {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, body, text, created_at, is_public, slug')
+    .eq('user_id', ownerId)
+    .eq('is_pinned', true)
+    .eq('is_deleted', false)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[profile] pinned post lookup failed', error);
+    return null;
+  }
+
+  if (!data) return null;
+  if (!includePrivate && data.is_public === false) return null;
+  return {
+    id: data.id as string,
+    body: (data.text as string | null) ?? (data.body as string | null) ?? '',
+    created_at: data.created_at as string,
+    slug: (data.slug as string | null) ?? null
+  };
+};
+
 export const load: PageServerLoad = async (event) => {
   const { supabase, user } = await requireUserServer(event);
 
   const profileRow = await ensureProfile(supabase, user);
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, walletResult] = await Promise.all([
+  const [statsResult, walletResult, companion, companionOptions, posts, pinned] = await Promise.all([
     supabase
       .from('player_stats')
       .select('level, xp, xp_next, energy, energy_max')
       .eq('id', user.id)
       .maybeSingle(),
-    supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle()
+    supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle(),
+    fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
+    fetchCompanionOptions(supabase, user.id),
+    fetchPosts(supabase, user.id, true),
+    fetchPinnedPreview(supabase, user.id, true)
   ]);
 
   if (statsResult.error) {
@@ -155,6 +267,11 @@ export const load: PageServerLoad = async (event) => {
     },
     stats,
     walletShards: walletResult.data?.shards ?? null,
-    isOwner: true
+    isOwner: true,
+    featuredCompanion: companion,
+    companionOptions,
+    posts: posts.items,
+    nextCursor: posts.nextCursor,
+    pinnedPost: pinned
   };
 };
