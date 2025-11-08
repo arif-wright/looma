@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileStats from '$lib/components/profile/ProfileStats.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
@@ -25,44 +26,48 @@
   };
 </script>
 
-<div class="profile-page safe-bottom">
-  <ProfileHeader
-    displayName={profile.display_name}
-    handle={profile.handle}
-    avatarUrl={profile.avatar_url}
-    bannerUrl={profile.banner_url}
-    joinedAt={profile.joined_at}
-    isOwner={data.isOwner}
-    isPrivate={profile.is_private}
-    level={stats.level}
-    on:edit={handleEdit}
-  />
+<BackgroundStack class="profile-bg" />
 
-  <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />
+<div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
+  <main class="profile-page">
+    <ProfileHeader
+      displayName={profile.display_name}
+      handle={profile.handle}
+      avatarUrl={profile.avatar_url}
+      bannerUrl={profile.banner_url}
+      joinedAt={profile.joined_at}
+      isOwner={data.isOwner}
+      isPrivate={profile.is_private}
+      level={stats.level}
+      on:edit={handleEdit}
+    />
 
-  <ProfileStats
-    level={stats.level}
-    xp={stats.xp}
-    xpNext={stats.xp_next}
-    energy={stats.energy}
-    energyMax={stats.energy_max}
-    shards={null}
-  />
+    <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />
 
-  <ProfileAbout bio={profile.bio} links={profile.links} />
+    <ProfileStats
+      level={stats.level}
+      xp={stats.xp}
+      xpNext={stats.xp_next}
+      energy={stats.energy}
+      energyMax={stats.energy_max}
+      shards={null}
+    />
 
-  <ProfileHighlights
-    pinnedPost={data.pinnedPost}
-    companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
-    profileHandle={profile.handle}
-  />
+    <ProfileAbout bio={profile.bio} links={profile.links} />
 
-  <ProfileFeed
-    authorIdentifier={profile.handle || profile.id}
-    initialItems={data.posts ?? []}
-    initialCursor={data.nextCursor}
-    emptyMessage="No public posts yet."
-  />
+    <ProfileHighlights
+      pinnedPost={data.pinnedPost}
+      companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+      profileHandle={profile.handle}
+    />
+
+    <ProfileFeed
+      authorIdentifier={profile.handle || profile.id}
+      initialItems={data.posts ?? []}
+      initialCursor={data.nextCursor}
+      emptyMessage="No public posts yet."
+    />
+  </main>
 </div>
 
 <style>

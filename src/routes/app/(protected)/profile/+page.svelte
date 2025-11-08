@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto, invalidateAll } from '$app/navigation';
+  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileStats from '$lib/components/profile/ProfileStats.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
@@ -61,51 +62,55 @@
   };
 </script>
 
-<div class="profile-page safe-bottom">
-  <ProfileHeader
-    displayName={profile.display_name}
-    handle={profile.handle}
-    avatarUrl={profile.avatar_url}
-    bannerUrl={profile.banner_url}
-    joinedAt={profile.joined_at}
-    isOwner={data.isOwner}
-    isPrivate={profile.is_private}
-    level={stats?.level ?? null}
-    on:edit={handleEdit}
-  />
+<BackgroundStack class="profile-bg" />
 
-  <FeaturedCompanionCard
-    companion={data.featuredCompanion}
-    isOwner={data.isOwner}
-    busy={pickerBusy}
-    on:swap={handleSwap}
-  />
+<div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
+  <main class="profile-page">
+    <ProfileHeader
+      displayName={profile.display_name}
+      handle={profile.handle}
+      avatarUrl={profile.avatar_url}
+      bannerUrl={profile.banner_url}
+      joinedAt={profile.joined_at}
+      isOwner={data.isOwner}
+      isPrivate={profile.is_private}
+      level={stats?.level ?? null}
+      on:edit={handleEdit}
+    />
 
-  <ProfileStats
-    level={stats?.level ?? null}
-    xp={stats?.xp ?? null}
-    xpNext={stats?.xp_next ?? null}
-    energy={stats?.energy ?? null}
-    energyMax={stats?.energy_max ?? null}
-    shards={data.walletShards}
-  />
+    <FeaturedCompanionCard
+      companion={data.featuredCompanion}
+      isOwner={data.isOwner}
+      busy={pickerBusy}
+      on:swap={handleSwap}
+    />
 
-  <ProfileAbout bio={profile.bio} links={profile.links} />
+    <ProfileStats
+      level={stats?.level ?? null}
+      xp={stats?.xp ?? null}
+      xpNext={stats?.xp_next ?? null}
+      energy={stats?.energy ?? null}
+      energyMax={stats?.energy_max ?? null}
+      shards={data.walletShards}
+    />
 
-  <ProfileHighlights
-    pinnedPost={data.pinnedPost}
-    companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
-    profileHandle={profile.handle}
-  />
+    <ProfileAbout bio={profile.bio} links={profile.links} />
 
-  <ProfileComposer on:posted={handleComposerPosted} />
+    <ProfileHighlights
+      pinnedPost={data.pinnedPost}
+      companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+      profileHandle={profile.handle}
+    />
 
-  <ProfileFeed
-    bind:this={feedRef}
-    authorIdentifier={profile.handle || profile.id}
-    initialItems={data.posts ?? []}
-    initialCursor={data.nextCursor}
-  />
+    <ProfileComposer on:posted={handleComposerPosted} />
+
+    <ProfileFeed
+      bind:this={feedRef}
+      authorIdentifier={profile.handle || profile.id}
+      initialItems={data.posts ?? []}
+      initialCursor={data.nextCursor}
+    />
+  </main>
 </div>
 
 <CompanionPickerModal
