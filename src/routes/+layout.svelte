@@ -6,7 +6,9 @@
 
   let { data, children } = $props();
 
-  $: currentProfile.set(data?.profile ?? null);
+  $effect(() => {
+    currentProfile.set(data?.profile ?? null);
+  });
 </script>
 
 <svelte:head>
