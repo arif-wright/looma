@@ -14,6 +14,8 @@
   export let isOwner = false;
   export let isPrivate = false;
   export let level: number | null = null;
+  export let shareUrl: string | null = null;
+  export let shareTitle = '';
 
   const dispatch = createEventDispatcher<{
     edit: void;
@@ -23,9 +25,12 @@
 
   let copied = false;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
+  let shareMessage = '';
+  let shareTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: joinedLabel = formatJoined(joinedAt);
   $: titleChip = level !== null && Number.isFinite(level) ? `Level ${level}` : 'Explorer';
+  $: shareLabel = shareTitle || (handle ? `Check out @${handle} on Looma` : 'Share profile');
 
   function handleCopy() {
     if (copyTimer) clearTimeout(copyTimer);
@@ -53,8 +58,37 @@
     dispatch('bannerChange', { url: event.detail.url });
   }
 
+  function setShareMessage(text: string) {
+    shareMessage = text;
+    if (shareTimer) clearTimeout(shareTimer);
+    shareTimer = setTimeout(() => (shareMessage = ''), 1600);
+  }
+
+  async function handleShare() {
+    if (!shareUrl) return;
+    if (typeof navigator === 'undefined') {
+      setShareMessage('Share not available');
+      return;
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: shareLabel, url: shareUrl });
+        return;
+      }
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage('Link copied');
+      } else {
+        setShareMessage('Share unavailable');
+      }
+    } catch {
+      setShareMessage('Share failed');
+    }
+  }
+
   onDestroy(() => {
     if (copyTimer) clearTimeout(copyTimer);
+    if (shareTimer) clearTimeout(shareTimer);
   });
 </script>
 
@@ -71,8 +105,18 @@
         <div class="identity">
           <div class="headline">
             <h1>{displayName || 'Anonymous Explorer'}</h1>
-            {#if isOwner}
-              <button type="button" class="edit-btn" on:click={handleEdit}>Edit profile</button>
+            {#if isOwner || shareUrl}
+              <div class="header-actions">
+                {#if isOwner}
+                  <button type="button" class="profile-action-btn" on:click={handleEdit}>Edit profile</button>
+                {/if}
+                {#if shareUrl}
+                  <button type="button" class="profile-action-btn" on:click={handleShare}>Share profile</button>
+                  {#if shareMessage}
+                    <span class="share-note">{shareMessage}</span>
+                  {/if}
+                {/if}
+              </div>
             {/if}
           </div>
           <div class="handle-row">
@@ -143,12 +187,18 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    align-items: center;
+    align-items: flex-start;
   }
 
   h1 {
     margin: 0;
     font-size: clamp(1.6rem, 4vw, 2.4rem);
+  }
+
+  .header-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 
   .handle-row {
@@ -195,13 +245,21 @@
     color: rgba(255, 255, 255, 0.75);
   }
 
-  .edit-btn {
+  .profile-action-btn {
     padding: 0.45rem 1.4rem;
     border-radius: 999px;
     border: 1px solid rgba(94, 242, 255, 0.45);
     background: linear-gradient(120deg, rgba(94, 242, 255, 0.15), rgba(155, 92, 255, 0.15));
     color: inherit;
     cursor: pointer;
+    text-align: center;
+    min-width: 140px;
+  }
+
+  .share-note {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    padding-left: 0.25rem;
   }
 
   @media (max-width: 720px) {

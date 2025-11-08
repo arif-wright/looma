@@ -9,7 +9,6 @@
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import ProfileComposer from '$lib/components/profile/ProfileComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
-  import ShareProfile from '$lib/components/profile/ShareProfile.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
@@ -100,21 +99,12 @@
       isPrivate={profile.is_private}
       level={stats?.level ?? null}
       showJoined={true}
+      shareUrl={shareUrl}
+      shareTitle={`Check out @${profile.handle} on Looma`}
       on:edit={handleEdit}
       on:avatarChange={(event) => (profile = { ...profile, avatar_url: event.detail.url })}
       on:bannerChange={(event) => (profile = { ...profile, banner_url: event.detail.url })}
     />
-
-    <div class="profile-header-actions">
-      <div class="flex flex-col items-start gap-2">
-        {#if data.isOwner}
-          <button class="btn btn-sm" type="button" on:click={() => (editOpen = true)}>Edit profile</button>
-        {/if}
-        {#if shareUrl}
-          <ShareProfile url={shareUrl} title={`Check out @${profile.handle} on Looma`} />
-        {/if}
-      </div>
-    </div>
 
     {#if data.isOwner}
       <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
@@ -182,18 +172,4 @@
     }
   }
 
-  .profile-header-actions {
-    width: 100%;
-    max-width: 960px;
-    margin: -0.5rem auto 0;
-    padding: 0 clamp(1rem, 4vw, 2rem);
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  @media (max-width: 720px) {
-    .profile-header-actions {
-      justify-content: flex-start;
-    }
-  }
 </style>

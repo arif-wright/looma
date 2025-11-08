@@ -7,7 +7,6 @@
   import FeaturedCompanionCard from '$lib/components/profile/FeaturedCompanionCard.svelte';
   import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
-  import ShareProfile from '$lib/components/profile/ShareProfile.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -56,14 +55,10 @@
       isPrivate={profile.is_private}
       level={stats.level}
       showJoined={profile.show_joined ?? true}
+      shareUrl={data.shareUrl}
+      shareTitle={`Check out @${profile.handle} on Looma`}
       on:edit={handleEdit}
     />
-
-    {#if data.shareUrl}
-      <div class="share-controls">
-        <ShareProfile url={data.shareUrl} title={`Check out @${profile.handle} on Looma`} />
-      </div>
-    {/if}
 
     <FeaturedCompanionCard companion={data.featuredCompanion} isOwner={false} />
 
@@ -112,8 +107,4 @@
     }
   }
 
-  .share-controls {
-    display: flex;
-    justify-content: flex-end;
-  }
 </style>
