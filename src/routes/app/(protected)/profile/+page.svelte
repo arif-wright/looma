@@ -14,7 +14,7 @@
 
   export let data: PageData;
 
-  const profile = data.profile;
+  let profile = { ...data.profile };
   const stats = data.stats;
 
   let pickerOpen = false;
@@ -76,6 +76,8 @@
       isPrivate={profile.is_private}
       level={stats?.level ?? null}
       on:edit={handleEdit}
+      on:avatarChange={(event) => (profile = { ...profile, avatar_url: event.detail.url })}
+      on:bannerChange={(event) => (profile = { ...profile, banner_url: event.detail.url })}
     />
 
     <FeaturedCompanionCard

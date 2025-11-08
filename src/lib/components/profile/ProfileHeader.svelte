@@ -2,8 +2,8 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import { formatJoined } from '$lib/format/date';
-
-  const fallbackAvatar = '/avatar.svg';
+  import AvatarUploader from '$lib/components/profile/AvatarUploader.svelte';
+  import BannerUploader from '$lib/components/profile/BannerUploader.svelte';
 
   export let displayName: string | null = null;
   export let handle = 'player';
@@ -14,15 +14,17 @@
   export let isPrivate = false;
   export let level: number | null = null;
 
-  const dispatch = createEventDispatcher<{ edit: void }>();
+  const dispatch = createEventDispatcher<{
+    edit: void;
+    avatarChange: { url: string };
+    bannerChange: { url: string };
+  }>();
 
   let copied = false;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: joinedLabel = formatJoined(joinedAt);
-  $: avatarSrc = avatarUrl ?? fallbackAvatar;
   $: titleChip = level !== null && Number.isFinite(level) ? `Level ${level}` : 'Explorer';
-  $: bannerStyle = bannerUrl ? `background-image: url("${bannerUrl}")` : '';
 
   function handleCopy() {
     if (copyTimer) clearTimeout(copyTimer);
@@ -42,17 +44,25 @@
     dispatch('edit');
   }
 
+  function handleAvatarChanged(event: CustomEvent<{ url: string }>) {
+    dispatch('avatarChange', { url: event.detail.url });
+  }
+
+  function handleBannerChanged(event: CustomEvent<{ url: string }>) {
+    dispatch('bannerChange', { url: event.detail.url });
+  }
+
   onDestroy(() => {
     if (copyTimer) clearTimeout(copyTimer);
   });
 </script>
 
 <section class="profile-header" data-private={isPrivate}>
-  <div class={`banner ${bannerUrl ? 'has-image' : 'gradient'}`} style={bannerStyle} aria-hidden="true"></div>
+  <BannerUploader url={bannerUrl} editable={isOwner} on:changed={handleBannerChanged} />
 
   <div class="sticky-identity">
     <div class="sticky-chip panel-glass">
-      <img src={avatarSrc} alt="" width="32" height="32" />
+      <img src={avatarUrl ?? '/avatar.svg'} alt="" width="32" height="32" />
       <span>{displayName || '@' + handle}</span>
     </div>
   </div>
@@ -62,13 +72,7 @@
       <div class="card-inner">
         <div class="avatar-wrap">
           <span class="pulse-ring"></span>
-          <img
-            src={avatarSrc}
-            alt={`Avatar for ${displayName ?? handle}`}
-            class="avatar"
-            loading="lazy"
-            decoding="async"
-          />
+          <AvatarUploader url={avatarUrl} editable={isOwner} on:changed={handleAvatarChanged} />
         </div>
         <div class="identity">
           <div class="headline">
@@ -101,25 +105,6 @@
     position: relative;
     display: grid;
     gap: 0;
-  }
-
-  .banner {
-    width: 100%;
-    aspect-ratio: 3 / 1;
-    border-radius: 32px;
-    background: linear-gradient(135deg, rgba(8, 12, 24, 0.95), rgba(18, 7, 32, 0.88));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-  }
-
-  .gradient {
-    background-image: radial-gradient(circle at 20% 20%, rgba(94, 242, 255, 0.4), transparent 55%),
-      radial-gradient(circle at 80% 0%, rgba(155, 92, 255, 0.25), transparent 45%);
-  }
-
-  .banner.has-image {
-    background-size: cover;
-    background-position: center;
   }
 
   .sticky-identity {
@@ -171,15 +156,6 @@
     position: relative;
     width: 140px;
     height: 140px;
-  }
-
-  .avatar {
-    width: 100%;
-    height: 100%;
-    border-radius: 32px;
-    object-fit: cover;
-    border: 2px solid rgba(94, 242, 255, 0.45);
-    box-shadow: 0 20px 40px rgba(5, 6, 18, 0.55);
   }
 
   .pulse-ring {
