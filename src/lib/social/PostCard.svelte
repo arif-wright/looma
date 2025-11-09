@@ -9,6 +9,7 @@ import { browser } from '$app/environment';
 import RunShareCard from '$lib/components/social/RunShareCard.svelte';
 import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
 import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
+import ReportModal from '$lib/components/modals/ReportModal.svelte';
 
   let supabase: ReturnType<typeof supabaseBrowser> | null = null;
 
@@ -43,6 +44,8 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
 
   let likeChannel: ReturnType<typeof supabase.channel> | null = null;
   let commentChannel: ReturnType<typeof supabase.channel> | null = null;
+  let menuOpen = false;
+  let reportOpen = false;
 
   let lastPropLikeCount = likeCount;
   $: {
@@ -203,6 +206,15 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
     }
   }
 
+  function toggleMenu() {
+    menuOpen = !menuOpen;
+  }
+
+  function handleReport() {
+    reportOpen = true;
+    menuOpen = false;
+  }
+
   async function toggleComments() {
     if (detail) {
       dispatch('focus-comments');
@@ -288,14 +300,26 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
 
 <article class={`post-card ${highlighted ? 'highlighted' : ''}`}>
   <header class="post-header">
-    <img class="avatar" src={authorAvatar} alt="" width="40" height="40" loading="lazy" />
-    <div class="meta">
-      <a class="name" href={profileHref}>{authorName}</a>
-      <div class="sub">
-        <span class="handle">@{authorHandle ?? 'user'}</span>
-        <span aria-hidden="true">•</span>
-        <span>{relativeTime(post.created_at)}</span>
+    <div class="identity">
+      <img class="avatar" src={authorAvatar} alt="" width="40" height="40" loading="lazy" />
+      <div class="meta">
+        <a class="name" href={profileHref}>{authorName}</a>
+        <div class="sub">
+          <span class="handle">@{authorHandle ?? 'user'}</span>
+          <span aria-hidden="true">•</span>
+          <span>{relativeTime(post.created_at)}</span>
+        </div>
       </div>
+    </div>
+    <div class="post-menu">
+      <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded={menuOpen} on:click={toggleMenu}>
+        ⋯
+      </button>
+      {#if menuOpen}
+        <div class="menu-panel" role="menu">
+          <button type="button" class="menu-item" on:click={handleReport}>Report post…</button>
+        </div>
+      {/if}
     </div>
   </header>
 
@@ -365,6 +389,7 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
   {#if showCreatureReact}
     <div class="creature-pop" aria-hidden="true">🐾</div>
   {/if}
+  <ReportModal bind:open={reportOpen} targetKind="post" targetId={post.id} />
 </article>
 
 <style>
@@ -405,6 +430,13 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
     display: flex;
     gap: 12px;
     align-items: center;
+    justify-content: space-between;
+  }
+
+  .identity {
+    display: flex;
+    gap: 12px;
+    align-items: center;
   }
 
   .avatar {
@@ -416,6 +448,49 @@ import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
   .meta {
     display: grid;
     gap: 3px;
+  }
+
+  .post-menu {
+    position: relative;
+  }
+
+  .menu-btn {
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    background: rgba(10, 12, 20, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    padding: 0.3rem;
+    min-width: 9rem;
+    z-index: 30;
+  }
+
+  .menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    border-radius: 0.55rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .name {

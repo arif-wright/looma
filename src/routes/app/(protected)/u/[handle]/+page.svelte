@@ -58,8 +58,9 @@ import type { PageData } from './$types';
     isFollowing={data.isFollowing ?? false}
     requested={data.requested ?? false}
     gated={data.gated ?? false}
+    blocked={data.blocked ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
-    viewerCanFollow={Boolean(data.viewerId)}
+    viewerCanFollow={!data.blocked && Boolean(data.viewerId)}
     on:edit={handleEdit}
   />
 

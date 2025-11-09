@@ -4,6 +4,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import QRCode from '$lib/components/ui/QRCode.svelte';
   import FollowListModal from '$lib/components/profile/FollowListModal.svelte';
+  import ReportModal from '$lib/components/modals/ReportModal.svelte';
 
   type FollowCounts = { followers: number; following: number };
 
@@ -19,6 +20,7 @@ export let requested = false;
 export let gated = false;
 export let followCounts: FollowCounts = { followers: 0, following: 0 };
 export let viewerCanFollow = false;
+export let blocked = false;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
@@ -45,6 +47,10 @@ let lastCountsProp: FollowCounts = followCounts;
 let requestPending = false;
 let gatedState = gated;
 let lastGatedProp = gated;
+let menuOpen = false;
+let blockPending = false;
+let menuError = '';
+let reportOpen = false;
 
   $: displayName = profile?.display_name ?? 'Anonymous Explorer';
   $: handle = profile?.handle ?? 'player';
@@ -63,7 +69,7 @@ $: targetUserId =
     : typeof profile?.id === 'string'
       ? profile.id
       : null;
-$: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId);
+$: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId && !blocked);
   $: if (!targetUserId && followListOpen) {
     followListOpen = false;
   }
@@ -208,6 +214,64 @@ async function toggleFollow() {
   }
 }
 
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  menuError = '';
+}
+
+async function blockUser() {
+  if (!targetUserId || blockPending) return;
+  blockPending = true;
+  menuError = '';
+  try {
+    const res = await fetch('/api/safety/block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Unable to block user');
+    }
+    window.location.reload();
+  } catch (err) {
+    console.error('[ProfileHeader] block failed', err);
+    menuError = err instanceof Error ? err.message : 'Unable to block user';
+  } finally {
+    blockPending = false;
+  }
+}
+
+async function unblockUser() {
+  if (!targetUserId || blockPending) return;
+  blockPending = true;
+  menuError = '';
+  try {
+    const res = await fetch('/api/safety/unblock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Unable to unblock user');
+    }
+    window.location.reload();
+  } catch (err) {
+    console.error('[ProfileHeader] unblock failed', err);
+    menuError = err instanceof Error ? err.message : 'Unable to unblock user';
+  } finally {
+    blockPending = false;
+  }
+}
+
+function openReport() {
+  if (!targetUserId) return;
+  reportOpen = true;
+  menuOpen = false;
+  menuError = '';
+}
+
   function openFollowList(kind: 'followers' | 'following') {
     if (!targetUserId) return;
     followListKind = kind;
@@ -307,51 +371,88 @@ async function toggleFollow() {
             </div>
           </div>
         </div>
-        {#if canEdit || canShare || showFollowButton}
+        {#if canEdit || canShare || showFollowButton || (!isOwnProfile && targetUserId)}
           <div class="action-group self-end md:self-start">
-            {#if showFollowButton}
-              {#if gatedState}
-                <button
-                  class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
-                  type="button"
-                  data-testid="profile-follow-request"
-                  on:click={requestFollow}
-                  disabled={requestedState || requestPending}
-                >
-                  {#if requestPending}
-                    Working…
-                  {:else}
-                    {requestedState ? 'Requested' : 'Request to follow'}
-                  {/if}
-                </button>
-              {:else}
-                <button
-                  class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
-                  type="button"
-                  data-testid="profile-follow-toggle"
-                  on:click={toggleFollow}
-                  disabled={followPending}
-                >
-                  {#if followPending}
-                    Working…
-                  {:else}
-                    {followingState ? 'Following' : 'Follow'}
-                  {/if}
-                </button>
+            <div class="flex items-center gap-2">
+              {#if showFollowButton}
+                {#if gatedState}
+                  <button
+                    class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
+                    type="button"
+                    data-testid="profile-follow-request"
+                    on:click={requestFollow}
+                    disabled={requestedState || requestPending}
+                  >
+                    {#if requestPending}
+                      Working…
+                    {:else}
+                      {requestedState ? 'Requested' : 'Request to follow'}
+                    {/if}
+                  </button>
+                {:else}
+                  <button
+                    class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
+                    type="button"
+                    data-testid="profile-follow-toggle"
+                    on:click={toggleFollow}
+                    disabled={followPending}
+                  >
+                    {#if followPending}
+                      Working…
+                    {:else}
+                      {followingState ? 'Following' : 'Follow'}
+                    {/if}
+                  </button>
+                {/if}
               {/if}
-            {/if}
-            {#if canShare}
-              <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
-            {/if}
-            {#if canEdit}
-              <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
-            {/if}
+              {#if canShare}
+                <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
+              {/if}
+              {#if canEdit}
+                <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
+              {/if}
+              {#if !isOwnProfile && targetUserId}
+                <div class="menu-wrap">
+                  <button
+                    class="btn-ghost icon"
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded={menuOpen}
+                    on:click={toggleMenu}
+                  >
+                    ⋯
+                  </button>
+                  {#if menuOpen}
+                    <div class="menu-panel" role="menu">
+                      {#if blocked}
+                        <button type="button" class="menu-item" on:click={unblockUser} disabled={blockPending}>
+                          {blockPending ? 'Working…' : 'Unblock user'}
+                        </button>
+                      {:else}
+                        <button type="button" class="menu-item" on:click={blockUser} disabled={blockPending}>
+                          {blockPending ? 'Working…' : 'Block user'}
+                        </button>
+                      {/if}
+                      <button type="button" class="menu-item" on:click={openReport}>
+                        Report profile…
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
           </div>
           {#if followError && showFollowButton}
             <p class="follow-error" aria-live="polite">{followError}</p>
           {/if}
+          {#if menuError}
+            <p class="follow-error" aria-live="polite">{menuError}</p>
+          {/if}
         {/if}
       </div>
+      {#if blocked && !isOwnProfile}
+        <p class="blocked-note">You’ve blocked this user. You won’t see each other’s updates until you unblock them.</p>
+      {/if}
 
       <nav class="tabs" aria-label="Profile sections">
         <a class="tab tab-active" href="#overview">Overview</a>
@@ -386,6 +487,7 @@ async function toggleFollow() {
 </Modal>
 
 <FollowListModal open={followListOpen} userId={targetUserId} kind={followListKind} onClose={closeFollowList} />
+<ReportModal bind:open={reportOpen} targetKind="profile" targetId={targetUserId} />
 
 <style>
   .follow-counts {
@@ -429,6 +531,11 @@ async function toggleFollow() {
     text-align: right;
   }
 
+  .blocked-note {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
   .share-modal {
     display: flex;
     gap: 1rem;
@@ -462,5 +569,47 @@ async function toggleFollow() {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.6);
+  }
+
+  .menu-wrap {
+    position: relative;
+  }
+
+  .btn-ghost.icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+
+  .menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    background: rgba(15, 18, 28, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    padding: 0.2rem;
+    min-width: 10rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+  }
+
+  .menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.6rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+  }
+
+  .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 </style>

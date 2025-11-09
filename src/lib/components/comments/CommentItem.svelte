@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { canonicalCommentPath } from '$lib/threads/permalink';
-  import type { Comment } from '$lib/threads/types';
-  import { copyToClipboard } from '$lib/utils/copy';
-  import { formatCommentBody, relativeTime } from '$lib/social/commentHelpers';
-  import ReactionBar from '$lib/components/common/ReactionBar.svelte';
-  import ReplyComposer from './ReplyComposer.svelte';
-  import CommentThread from './CommentThread.svelte';
+import { canonicalCommentPath } from '$lib/threads/permalink';
+import type { Comment } from '$lib/threads/types';
+import { copyToClipboard } from '$lib/utils/copy';
+import { formatCommentBody, relativeTime } from '$lib/social/commentHelpers';
+import ReactionBar from '$lib/components/common/ReactionBar.svelte';
+import ReplyComposer from './ReplyComposer.svelte';
+import CommentThread from './CommentThread.svelte';
+import ReportModal from '$lib/components/modals/ReportModal.svelte';
 
   export let comment: Comment;
   export let postId: string;
@@ -23,10 +24,11 @@
   let loadingMore = false;
   let loadError: string | null = null;
   let hasMore = comment.hasMoreChildren ?? false;
-  let moreCount = Math.max(
-    comment.moreChildrenCount ?? 0,
-    Math.max(0, (comment.reply_count ?? 0) - (comment.children?.length ?? 0))
-  );
+let moreCount = Math.max(
+  comment.moreChildrenCount ?? 0,
+  Math.max(0, (comment.reply_count ?? 0) - (comment.children?.length ?? 0))
+);
+let reportOpen = false;
 
   $: permalink = canonicalCommentPath(threadHandle, threadSlug, postId, comment.id);
   $: isHighlighted = highlightedId === comment.id;
@@ -163,6 +165,9 @@
       >
         Copy link
       </button>
+      <button type="button" class="action-btn" on:click={() => (reportOpen = true)}>
+        Report
+      </button>
       {#if copyStatus !== 'idle'}
         <span class={`copy-status ${copyStatus}`}>{copyStatus === 'success' ? 'Copied!' : 'Copy failed'}</span>
       {/if}
@@ -219,6 +224,7 @@
   {#if loadError}
     <p class="load-error" role="status">{loadError}</p>
   {/if}
+  <ReportModal bind:open={reportOpen} targetKind="comment" targetId={commentId} />
 </article>
 
 <style>
