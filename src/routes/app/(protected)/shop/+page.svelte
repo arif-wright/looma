@@ -6,6 +6,7 @@
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
   import { walletBalance, setWalletBalance } from '$lib/stores/economy';
+  import { logEvent } from '$lib/analytics';
 
   type FilterState = {
     category: Category;
@@ -99,6 +100,7 @@
       const nextBalance = asNumber(out.shards, balance);
       setWalletBalance(nextBalance, balance);
       owned = new Set([...owned, item.id]);
+      logEvent('purchase', { itemId: item.id, priceShards: item.price_shards });
       closeModal();
     } catch (err: any) {
       modalError = err?.message || 'Purchase failed';
@@ -113,6 +115,7 @@
 
   onMount(() => {
     setWalletBalance(fallbackBalance);
+    logEvent('pageview', { path: '/app/shop' });
   });
 
   $: balance = asNumber($walletBalance, fallbackBalance);

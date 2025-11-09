@@ -10,7 +10,7 @@ import {
   type MissionCandidate
 } from '$lib/server/landing';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
-import { isAdminEmail } from '$lib/server/admin';
+import { getAdminFlags } from '$lib/server/admin-guard';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -303,6 +303,8 @@ export const load: LayoutServerLoad = async (event) => {
     }
   }
 
+  const adminFlags = user ? await getAdminFlags(user.email ?? null, user.id) : { isAdmin: false, isFinance: false };
+
   return {
     user,
     preferences,
@@ -315,6 +317,7 @@ export const load: LayoutServerLoad = async (event) => {
     wallet: {
       shards: walletRow?.shards ?? null
     },
-    isAdmin: isAdminEmail(user.email ?? null)
+    isAdmin: adminFlags.isAdmin,
+    adminFlags
   };
 };

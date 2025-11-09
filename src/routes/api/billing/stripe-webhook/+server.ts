@@ -65,5 +65,25 @@ export const POST: RequestHandler = async ({ request }) => {
     }
   }
 
+  if (event.type === 'charge.succeeded') {
+    const charge = event.data.object as any;
+    const chargeCreated = typeof charge.created === 'number' ? charge.created * 1000 : Date.now();
+    const { error } = await supabase.from('stripe_payments').upsert({
+      id: charge.id,
+      amount: charge.amount,
+      currency: charge.currency,
+      status: charge.status,
+      brand: charge.payment_method_details?.card?.brand ?? null,
+      last4: charge.payment_method_details?.card?.last4 ?? null,
+      created_at: new Date(chargeCreated).toISOString(),
+      raw: charge
+    });
+
+    if (error) {
+      console.error('[stripe-webhook] failed to upsert stripe_payments', error);
+      return new Response('Unable to persist charge', { status: 500 });
+    }
+  }
+
   return new Response('OK', { status: 200 });
 };

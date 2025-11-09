@@ -17,6 +17,7 @@
   import type { FeedItem as FeedItemType } from '$lib/social/types';
   import type { QuickLink } from '$lib/components/home/types';
   import { PenSquare, MessageCircleHeart, Rss, Target, PawPrint, Compass } from 'lucide-svelte';
+  import { logEvent } from '$lib/analytics';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -194,6 +195,8 @@
 
   onMount(async () => {
     if (!browser) return;
+
+    logEvent('login');
 
     if (preferences) {
       const contextKind = extractContext(preferences.last_context ?? null);

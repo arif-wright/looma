@@ -1,11 +1,18 @@
 import type { Actions, PageServerLoad } from './$types';
-import { isAdminEmail, serviceClient } from '$lib/server/admin';
 import { json } from '@sveltejs/kit';
+import { serviceClient } from '$lib/server/admin';
+import { getAdminFlags } from '$lib/server/admin-guard';
+
+const hasAdminAccess = async (locals: App.Locals) => {
+  const email = locals.session?.user?.email ?? locals.user?.email ?? null;
+  const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
+  const flags = await getAdminFlags(email, userId);
+  return flags.isAdmin;
+};
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const user = (locals as any)?.user;
-
-  if (!isAdminEmail(user?.email)) {
+  const isAdmin = await hasAdminAccess(locals);
+  if (!isAdmin) {
     return { forbidden: true, items: [], imageOptions: [] };
   }
 
@@ -47,8 +54,8 @@ const toTags = (value: FormDataEntryValue | null): string[] => {
 
 export const actions: Actions = {
   upsert: async ({ request, locals }) => {
-    const user = (locals as any)?.user;
-    if (!isAdminEmail(user?.email)) {
+    const isAdmin = await hasAdminAccess(locals);
+    if (!isAdmin) {
       return json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -106,8 +113,8 @@ export const actions: Actions = {
   },
 
   delete: async ({ request, locals }) => {
-    const user = (locals as any)?.user;
-    if (!isAdminEmail(user?.email)) {
+    const isAdmin = await hasAdminAccess(locals);
+    if (!isAdmin) {
       return json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -130,8 +137,8 @@ export const actions: Actions = {
   },
 
   reorder: async ({ request, locals }) => {
-    const user = (locals as any)?.user;
-    if (!isAdminEmail(user?.email)) {
+    const isAdmin = await hasAdminAccess(locals);
+    if (!isAdmin) {
       return json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 

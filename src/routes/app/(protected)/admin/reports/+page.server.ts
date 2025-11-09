@@ -1,11 +1,17 @@
 import type { Actions, PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { isAdminEmail, serviceClient } from '$lib/server/admin';
+import { serviceClient } from '$lib/server/admin';
+import { getAdminFlags } from '$lib/server/admin-guard';
 
-const adminEmail = (locals: App.Locals) => (locals.user?.email ?? null);
+const hasAdminAccess = async (locals: App.Locals) => {
+  const email = locals.session?.user?.email ?? locals.user?.email ?? null;
+  const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
+  const flags = await getAdminFlags(email, userId);
+  return flags.isAdmin;
+};
 
 export const load: PageServerLoad = async ({ locals }) => {
-  if (!isAdminEmail(adminEmail(locals))) {
+  if (!(await hasAdminAccess(locals))) {
     throw redirect(302, '/app/home');
   }
 
@@ -26,7 +32,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   update: async ({ request, locals }) => {
-    if (!isAdminEmail(adminEmail(locals))) {
+    if (!(await hasAdminAccess(locals))) {
       return { error: 'unauthorized' };
     }
 
