@@ -4,6 +4,7 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
+import { getFollowPrivacyStatus } from '$lib/server/privacy';
 
 type ProfileRow = {
   id: string;
@@ -16,11 +17,15 @@ type ProfileRow = {
   location: string | null;
   links: Record<string, unknown>[] | null;
   is_private: boolean | null;
+  account_private: boolean | null;
   joined_at: string | null;
   featured_companion_id: string | null;
   show_shards: boolean | null;
   show_level: boolean | null;
   show_joined: boolean | null;
+  show_location: boolean | null;
+  show_achievements: boolean | null;
+  show_feed: boolean | null;
 };
 
 type StatsRow = {
@@ -54,7 +59,7 @@ type AchievementRow = {
 };
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
 const POSTS_PAGE_SIZE = 10;
 
@@ -225,25 +230,25 @@ export const load: PageServerLoad = async (event) => {
     throw error(404, 'Profile not found');
   }
 
-  const isOwner = viewerId === profileRow.id;
-  if (profileRow.is_private && !isOwner) {
-    throw error(404, 'Profile not found');
-  }
+  const isOwnProfile = viewerId === profileRow.id;
+  const accountPrivate = Boolean(profileRow.account_private ?? profileRow.is_private ?? false);
 
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, companion, posts, pinned, achievements, followCounts] = await Promise.all([
-    supabase
-      .from('player_stats')
-      .select('level, xp, xp_next, energy, energy_max')
-      .eq('id', profileRow.id)
-      .maybeSingle(),
-    fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
-    fetchPosts(supabase, profileRow.id, isOwner),
-    fetchPinnedPreview(supabase, profileRow.id, isOwner),
-    fetchRecentAchievements(supabase, profileRow.id),
-    getFollowCounts(profileRow.id)
-  ]);
+  const [statsResult, companion, posts, pinned, achievements, followCounts, privacyStatus] =
+    await Promise.all([
+      supabase
+        .from('player_stats')
+        .select('level, xp, xp_next, energy, energy_max')
+        .eq('id', profileRow.id)
+        .maybeSingle(),
+      fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
+      fetchPosts(supabase, profileRow.id, isOwnProfile),
+      fetchPinnedPreview(supabase, profileRow.id, isOwnProfile),
+      fetchRecentAchievements(supabase, profileRow.id),
+      getFollowCounts(profileRow.id),
+      getFollowPrivacyStatus(viewerId, profileRow.id)
+    ]);
 
   if (statsResult.error) {
     console.error('[public profile] stats lookup failed', statsResult.error);
@@ -257,38 +262,30 @@ export const load: PageServerLoad = async (event) => {
     energy_max: null
   };
 
-  let isFollowing = false;
-  if (viewerId && !isOwner) {
-    const { data: followEdge, error: followError } = await supabase
-      .from('follows')
-      .select('followee_id')
-      .eq('follower_id', viewerId)
-      .eq('followee_id', profileRow.id)
-      .maybeSingle();
-
-    if (followError) {
-      console.error('[public profile] follow edge lookup failed', followError);
-    }
-
-    isFollowing = Boolean(followEdge);
-  }
-
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
   const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
   const metaDescription = profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
+
+  const isFollowing = privacyStatus?.isFollowing ?? false;
+  const requested = privacyStatus?.requested ?? false;
+  const gated = accountPrivate && !isOwnProfile && !isFollowing;
 
   return {
     profile: {
       ...profileRow,
       links: parsedLinks,
       is_private: Boolean(profileRow.is_private),
+      account_private: accountPrivate,
       achievements
     },
     stats,
-    isOwner,
+    isOwner: isOwnProfile,
     viewerId,
-    followCounts,
+    isOwnProfile,
     isFollowing,
+    requested,
+    gated,
+    followCounts,
     featuredCompanion: companion,
     posts: posts.items,
     nextCursor: posts.nextCursor,

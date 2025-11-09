@@ -2,9 +2,10 @@ import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getFollowCounts } from '$lib/server/follows';
+import { getFollowPrivacyStatus } from '$lib/server/privacy';
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
 const parseLinks = (value: unknown) => {
   if (!Array.isArray(value)) return [];
@@ -40,40 +41,25 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   const isOwner = viewerId === profileRow.id;
-  const isPrivate = Boolean(profileRow.is_private);
+  const accountPrivate = Boolean(profileRow.account_private ?? profileRow.is_private ?? false);
 
-  if (isPrivate && !isOwner) {
-    throw error(404, 'Profile not found');
-  }
-
-  const [{ data: statsRow, error: statsError }, followCounts] = await Promise.all([
+  const [{ data: statsRow, error: statsError }, followCounts, privacyStatus] = await Promise.all([
     supabase
       .from('player_stats')
       .select('level, xp, xp_next, energy, energy_max, bonded_count')
       .eq('id', profileRow.id)
       .maybeSingle(),
-    getFollowCounts(profileRow.id)
+    getFollowCounts(profileRow.id),
+    getFollowPrivacyStatus(viewerId, profileRow.id)
   ]);
 
   if (statsError) {
     console.error('[profile layout] stats lookup failed', statsError);
   }
 
-  let isFollowing = false;
-  if (viewerId && !isOwner) {
-    const { data: followEdge, error: followError } = await supabase
-      .from('follows')
-      .select('followee_id')
-      .eq('follower_id', viewerId)
-      .eq('followee_id', profileRow.id)
-      .maybeSingle();
-
-    if (followError) {
-      console.error('[profile layout] follow edge lookup failed', followError);
-    }
-
-    isFollowing = Boolean(followEdge);
-  }
+  const isFollowing = privacyStatus?.isFollowing ?? false;
+  const requested = privacyStatus?.requested ?? false;
+  const gated = accountPrivate && !isOwner && !isFollowing;
 
   const profile = {
     id: profileRow.id,
@@ -85,7 +71,8 @@ export const load: LayoutServerLoad = async (event) => {
     pronouns: profileRow.pronouns,
     location: profileRow.location,
     links: parseLinks(profileRow.links),
-    is_private: isPrivate,
+    is_private: Boolean(profileRow.is_private),
+    account_private: accountPrivate,
     joined_at: profileRow.joined_at,
     featured_companion_id: profileRow.featured_companion_id,
     show_shards: profileRow.show_shards ?? true,
@@ -104,6 +91,9 @@ export const load: LayoutServerLoad = async (event) => {
     viewerId,
     isOwner,
     followCounts,
-    isFollowing
+    isFollowing,
+    requested,
+    gated,
+    isOwnProfile: isOwner
   };
 };

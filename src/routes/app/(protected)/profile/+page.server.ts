@@ -16,6 +16,7 @@ type ProfileRow = {
   bio: string | null;
   links: Record<string, unknown>[] | null;
   is_private: boolean | null;
+  account_private: boolean | null;
   joined_at: string | null;
   featured_companion_id: string | null;
 };
@@ -51,7 +52,7 @@ type AchievementRow = {
 };
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
 const POSTS_PAGE_SIZE = 10;
 
@@ -340,17 +341,26 @@ export const load: PageServerLoad = async (event) => {
   };
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
+  const isOwnProfile = true;
+  const isFollowing = true;
+  const requested = false;
+  const gated = false;
 
   return {
     profile: {
       ...profileRow,
       links: parsedLinks,
       is_private: Boolean(profileRow.is_private),
+      account_private: Boolean(profileRow.account_private),
       achievements
     },
     stats,
     walletShards: walletResult.data?.shards ?? null,
     isOwner: true,
+    isOwnProfile,
+    isFollowing,
+    requested,
+    gated,
     featuredCompanion: companion,
     companionOptions,
     posts: posts.items,
