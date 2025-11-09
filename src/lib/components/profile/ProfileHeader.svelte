@@ -1,17 +1,23 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { formatJoined } from '$lib/format/date';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import QRCode from '$lib/components/ui/QRCode.svelte';
 
   export let profile: Record<string, any> | null = null;
   export let coverUrl: string | null = null;
   export let avatarUrl: string | null = null;
   export let canEdit = false;
   export let canShare = false;
+  export let shareUrl: string | null = null;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
   let compact = false;
   let scrollHandler: ((event: Event) => void) | null = null;
+  let shareOpen = false;
+  let shareStatus = '';
+  let downloading = false;
 
   $: displayName = profile?.display_name ?? 'Anonymous Explorer';
   $: handle = profile?.handle ?? 'player';
@@ -29,9 +35,63 @@
     dispatch('edit');
   }
 
-  function handleShare() {
-    if (!canShare) return;
-    dispatch('share');
+  async function handleShare() {
+    if (!canShare || !shareUrl) return;
+    const payload = {
+      title: `${displayName} on Looma`,
+      text: profile?.bio?.slice(0, 120) ?? 'View this explorer on Looma',
+      url: shareUrl
+    };
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(payload);
+        dispatch('share');
+        return;
+      }
+    } catch (err) {
+      console.error('share failed', err);
+    }
+    shareOpen = true;
+  }
+
+  async function copyLink() {
+    if (!shareUrl) return;
+    try {
+      await navigator?.clipboard?.writeText(shareUrl);
+      shareStatus = 'Link copied to clipboard';
+    } catch (err) {
+      console.error('copy failed', err);
+      shareStatus = 'Unable to copy link';
+    }
+  }
+
+  async function downloadCard() {
+    if (!profile?.handle) return;
+    downloading = true;
+    try {
+      const res = await fetch(`/api/og/profile?handle=${encodeURIComponent(profile.handle)}`);
+      if (!res.ok) {
+        throw new Error('Unable to download');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `looma-profile-${profile.handle}.png`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      shareStatus = 'Image downloaded';
+    } catch (err) {
+      console.error('download failed', err);
+      shareStatus = 'Unable to download card';
+    } finally {
+      downloading = false;
+    }
+  }
+
+  function closeShare() {
+    shareOpen = false;
+    shareStatus = '';
   }
 
   function updateCompact() {
@@ -120,3 +180,62 @@
     </div>
   </div>
 </header>
+
+<Modal open={shareOpen} title="Share profile" onClose={closeShare}>
+  <div class="share-modal">
+    <div class="share-actions">
+      <button class="btn btn-sm" type="button" on:click={copyLink} disabled={!shareUrl}>
+        Copy link
+      </button>
+      <button class="btn btn-sm" type="button" on:click={downloadCard} disabled={downloading}>
+        {downloading ? 'Preparing…' : 'Download card'}
+      </button>
+      {#if shareStatus}
+        <p class="share-status">{shareStatus}</p>
+      {/if}
+    </div>
+    {#if shareUrl}
+      <div class="share-qr">
+        <QRCode value={shareUrl} size={140} />
+        <span>Scan to view</span>
+      </div>
+    {/if}
+  </div>
+</Modal>
+
+<style>
+  .share-modal {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .share-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .share-status {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0.2rem 0 0;
+  }
+
+  .share-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 140px;
+  }
+
+  .share-qr span {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+  }
+</style>

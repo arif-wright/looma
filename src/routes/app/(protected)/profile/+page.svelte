@@ -43,26 +43,6 @@
     editOpen = true;
   };
 
-  const handleShare = async () => {
-    if (!shareUrl) return;
-    try {
-      if (typeof navigator !== 'undefined') {
-        if (navigator.share) {
-          await navigator.share({ title: `View @${profile.handle} on Looma`, url: shareUrl });
-          return;
-        }
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(shareUrl);
-          window?.alert?.('Profile link copied');
-          return;
-        }
-      }
-      window?.prompt?.('Copy your profile link:', shareUrl);
-    } catch (err) {
-      console.error('share failed', err);
-    }
-  };
-
   const handleSwap = () => {
     pickerOpen = true;
   };
@@ -117,8 +97,8 @@
     avatarUrl={profile.avatar_url}
     canEdit={data.isOwner}
     canShare={!!shareUrl}
+    shareUrl={shareUrl}
     on:edit={handleEdit}
-    on:share={handleShare}
   />
 
   <main class="profile-grid mt-6">

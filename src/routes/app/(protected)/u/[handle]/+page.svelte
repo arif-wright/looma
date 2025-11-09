@@ -24,27 +24,6 @@ import type { PageData } from './$types';
     void goto('/app/profile/edit');
   };
 
-  async function handleShare() {
-    if (!data.shareUrl) return;
-    try {
-      const url = data.shareUrl;
-      if (typeof navigator !== 'undefined') {
-        if (navigator.share) {
-          await navigator.share({ title: `${profile.display_name ?? profile.handle} on Looma`, url });
-          return;
-        }
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(url);
-          window?.alert?.('Profile link copied');
-          return;
-        }
-      }
-      window?.prompt?.('Copy this profile link:', url);
-    } catch (err) {
-      console.error('share failed', err);
-    }
-  }
-
   function onChooseCompanion() {
     // read-only for public view
   }
@@ -74,8 +53,8 @@ import type { PageData } from './$types';
     avatarUrl={profile.avatar_url}
     canEdit={data.isOwner}
     canShare={!!data.shareUrl}
+    shareUrl={data.shareUrl}
     on:edit={handleEdit}
-    on:share={handleShare}
   />
 
   <main class="profile-grid mt-6">

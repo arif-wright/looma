@@ -12,27 +12,26 @@
   const profile = data.profile;
   const stats = data.stats;
   const shareUrl = data.shareUrl ?? '';
-
-  async function handleShare() {
-    if (!shareUrl) return;
-    try {
-      if (typeof navigator !== 'undefined') {
-        if (navigator.share) {
-          await navigator.share({ title: `${profile.display_name ?? profile.handle} on Looma`, url: shareUrl });
-          return;
-        }
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(shareUrl);
-          window?.alert?.('Profile link copied');
-          return;
-        }
-      }
-      window?.prompt?.('Copy this profile link:', shareUrl);
-    } catch (err) {
-      console.error('share failed', err);
-    }
-  }
+  const ogImageUrl = data.ogImageUrl ?? `${shareUrl ? new URL('/api/og/profile?handle=' + profile.handle, shareUrl).toString() : ''}`;
+  const metaTitle = `${profile.display_name ?? profile.handle} (@${profile.handle}) • Looma`;
+  const metaDescription = data.metaDescription ?? profile.bio?.slice(0, 160) ?? 'View this explorer on Looma';
 </script>
+
+<svelte:head>
+  <title>{metaTitle}</title>
+  <meta name="description" content={metaDescription} />
+  <meta property="og:title" content={metaTitle} />
+  <meta property="og:description" content={metaDescription} />
+  {#if shareUrl}
+    <meta property="og:url" content={shareUrl} />
+    <link rel="canonical" href={shareUrl} />
+  {/if}
+  {#if ogImageUrl}
+    <meta property="og:image" content={ogImageUrl} />
+    <meta name="twitter:image" content={ogImageUrl} />
+  {/if}
+  <meta name="twitter:card" content="summary_large_image" />
+</svelte:head>
 
 <BackgroundStack class="profile-bg" />
 
@@ -43,7 +42,7 @@
     avatarUrl={profile.avatar_url}
     canEdit={false}
     canShare={!!shareUrl}
-    on:share={handleShare}
+    shareUrl={shareUrl}
   />
 
   <main class="profile-grid mt-6">

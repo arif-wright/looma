@@ -259,6 +259,8 @@ export const load: PageServerLoad = async (event) => {
   };
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
+  const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
+  const metaDescription = profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
 
   return {
     profile: {
@@ -274,6 +276,8 @@ export const load: PageServerLoad = async (event) => {
     posts: posts.items,
     nextCursor: posts.nextCursor,
     pinnedPost: pinned,
-    shareUrl: `${baseUrl}/u/${profileRow.handle}`
+    shareUrl,
+    ogImageUrl: `${baseUrl}/api/og/profile?handle=${profileRow.handle}`,
+    metaDescription
   };
 };
