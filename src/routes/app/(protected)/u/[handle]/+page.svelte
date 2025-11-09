@@ -56,6 +56,8 @@ import type { PageData } from './$types';
     shareUrl={data.shareUrl}
     isOwnProfile={data.isOwner}
     isFollowing={data.isFollowing ?? false}
+    requested={data.requested ?? false}
+    gated={data.gated ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={Boolean(data.viewerId)}
     on:edit={handleEdit}
@@ -98,42 +100,49 @@ import type { PageData } from './$types';
           />
         </section>
 
-        <section id="activity" class="space-y-3">
-          {#if feed.length === 0}
-            <article class="panel text-sm text-white/60">No public activity yet.</article>
-          {:else}
-            {#each feed as item}
-              <article class="panel">
-                <header class="flex items-center justify-between gap-3">
-                  <div class="flex items-center gap-3 min-w-0">
-                    <img src={item.author_avatar ?? profile.avatar_url} alt="" class="h-8 w-8 rounded-full ring-1 ring-white/15" />
-                    <div class="min-w-0">
-                      <div class="text-sm font-medium truncate">{item.author_name ?? profile.display_name ?? '@' + profile.handle}</div>
-                      <div class="text-xs text-white/60 truncate">{item.when_label}</div>
+        {#if data.gated && !data.isOwnProfile && !data.isFollowing}
+          <section class="panel text-white/70">
+            <h3 class="panel-title">This profile is private</h3>
+            <p>Only approved followers can see {profile.display_name ?? profile.handle}'s activity.</p>
+          </section>
+        {:else if profile.show_feed !== false}
+          <section id="activity" class="space-y-3">
+            {#if feed.length === 0}
+              <article class="panel text-sm text-white/60">No public activity yet.</article>
+            {:else}
+              {#each feed as item}
+                <article class="panel">
+                  <header class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <img src={item.author_avatar ?? profile.avatar_url} alt="" class="h-8 w-8 rounded-full ring-1 ring-white/15" />
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium truncate">{item.author_name ?? profile.display_name ?? '@' + profile.handle}</div>
+                        <div class="text-xs text-white/60 truncate">{item.when_label}</div>
+                      </div>
                     </div>
+                    {#if item.kind}
+                      <span class="text-[10px] uppercase tracking-wide text-white/40">{item.kind}</span>
+                    {/if}
+                  </header>
+                  <div class="mt-3">
+                    {#if item.html}
+                      {@html item.html}
+                    {:else if item.text}
+                      <p class="text-white/80 whitespace-pre-wrap">{item.text}</p>
+                    {/if}
                   </div>
-                  {#if item.kind}
-                    <span class="text-[10px] uppercase tracking-wide text-white/40">{item.kind}</span>
+                  {#if item.media?.length}
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                      {#each item.media as media}
+                        <img src={media.url} alt="" class="h-40 w-full rounded-lg object-cover ring-1 ring-white/10" />
+                      {/each}
+                    </div>
                   {/if}
-                </header>
-                <div class="mt-3">
-                  {#if item.html}
-                    {@html item.html}
-                  {:else if item.text}
-                    <p class="text-white/80 whitespace-pre-wrap">{item.text}</p>
-                  {/if}
-                </div>
-                {#if item.media?.length}
-                  <div class="mt-3 grid grid-cols-2 gap-2">
-                    {#each item.media as media}
-                      <img src={media.url} alt="" class="h-40 w-full rounded-lg object-cover ring-1 ring-white/10" />
-                    {/each}
-                  </div>
-                {/if}
-              </article>
-            {/each}
-          {/if}
-        </section>
+                </article>
+              {/each}
+            {/if}
+          </section>
+        {/if}
       </div>
     </div>
   </main>

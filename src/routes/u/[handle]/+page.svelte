@@ -44,8 +44,10 @@
     canEdit={false}
     canShare={!!shareUrl}
     shareUrl={shareUrl}
-    isOwnProfile={data.isOwner}
+    isOwnProfile={data.isOwnProfile ?? data.isOwner}
     isFollowing={data.isFollowing ?? false}
+    requested={data.requested ?? false}
+    gated={data.gated ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={Boolean(data.viewerId)}
   />
@@ -89,14 +91,23 @@
           />
         </section>
 
-        <section id="activity" class="space-y-4">
-          <ProfileFeed
-            authorIdentifier={profile.handle || profile.id}
-            initialItems={data.posts ?? []}
-            initialCursor={data.nextCursor}
-            emptyMessage="No public posts yet."
-          />
-        </section>
+        {#if data.gated && !data.isOwnProfile && !data.isFollowing}
+          <section class="panel text-white/70">
+            <h3 class="panel-title">This profile is private</h3>
+            <p>Only approved followers can see {profile.display_name ?? profile.handle}'s activity.</p>
+          </section>
+        {:else}
+          {#if data.profile.show_feed !== false}
+            <section id="activity" class="space-y-4">
+              <ProfileFeed
+                authorIdentifier={profile.handle || profile.id}
+                initialItems={data.posts ?? []}
+                initialCursor={data.nextCursor}
+                emptyMessage="No public posts yet."
+              />
+            </section>
+          {/if}
+        {/if}
       </div>
     </div>
   </main>

@@ -63,6 +63,7 @@ export const load: LayoutServerLoad = async (event) => {
 
   const profile = {
     id: profileRow.id,
+    user_id: profileRow.id,
     handle: profileRow.handle,
     display_name: profileRow.display_name,
     avatar_url: profileRow.avatar_url,
@@ -78,6 +79,9 @@ export const load: LayoutServerLoad = async (event) => {
     show_shards: profileRow.show_shards ?? true,
     show_level: profileRow.show_level ?? true,
     show_joined: profileRow.show_joined ?? true,
+    show_location: profileRow.show_location ?? true,
+    show_achievements: profileRow.show_achievements ?? true,
+    show_feed: profileRow.show_feed ?? true,
     level: statsRow?.level ?? null,
     xp: statsRow?.xp ?? null,
     xp_next: statsRow?.xp_next ?? null,

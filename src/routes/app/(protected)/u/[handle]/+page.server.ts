@@ -159,6 +159,7 @@ export const load: PageServerLoad = async (event) => {
   const supabase = supabaseServer(event);
   const profile = parentData.profile;
   const isOwner = parentData.isOwner ?? false;
+  const gated = parentData.gated ?? false;
 
   const [companion, posts, pinned, achievements] = await Promise.all([
     fetchFeaturedCompanion(supabase, profile.featured_companion_id ?? null),
@@ -170,13 +171,20 @@ export const load: PageServerLoad = async (event) => {
   const showShards = isOwner ? true : profile.show_shards ?? true;
   const showLevel = isOwner ? true : profile.show_level ?? true;
   const showJoined = isOwner ? true : profile.show_joined ?? true;
+  const showLocation = isOwner ? true : profile.show_location ?? true;
+  const showAchievements = !gated && (isOwner ? true : profile.show_achievements ?? true);
+  const showFeed = !gated && (isOwner ? true : profile.show_feed ?? true);
   const sanitizedProfile = {
     ...profile,
     show_shards: showShards,
     show_level: showLevel,
     show_joined: showJoined,
+    show_feed: showFeed,
+    show_achievements: showAchievements,
+    show_location: showLocation,
     joined_at: showJoined ? profile.joined_at : null,
-    achievements
+    location: showLocation ? profile.location : null,
+    achievements: showAchievements ? achievements : []
   };
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
@@ -191,16 +199,18 @@ export const load: PageServerLoad = async (event) => {
       : 'Explore this Looma profile.';
   const metaImage = profile.banner_url ?? profile.avatar_url ?? null;
 
-  const feed = posts.items.map((item) => ({
-    id: item.id,
-    text: item.text ?? item.body ?? '',
-    html: (item.meta as Record<string, any> | undefined)?.html ?? null,
-    when_label: formatWhenLabel(item.created_at),
-    kind: item.kind ?? null,
-    media: (item.meta as Record<string, any> | undefined)?.media ?? [],
-    author_avatar: item.author_avatar ?? sanitizedProfile.avatar_url,
-    author_name: item.author_name ?? sanitizedProfile.display_name
-  }));
+  const feed = showFeed
+    ? posts.items.map((item) => ({
+        id: item.id,
+        text: item.text ?? item.body ?? '',
+        html: (item.meta as Record<string, any> | undefined)?.html ?? null,
+        when_label: formatWhenLabel(item.created_at),
+        kind: item.kind ?? null,
+        media: (item.meta as Record<string, any> | undefined)?.media ?? [],
+        author_avatar: item.author_avatar ?? sanitizedProfile.avatar_url,
+        author_name: item.author_name ?? sanitizedProfile.display_name
+      }))
+    : [];
 
   return {
     profile: sanitizedProfile,
@@ -217,6 +227,8 @@ export const load: PageServerLoad = async (event) => {
     },
     shareUrl: profileUrl,
     followCounts: parentData.followCounts,
-    isFollowing: parentData.isFollowing
+    isFollowing: parentData.isFollowing,
+    requested: parentData.requested ?? false,
+    gated
   };
 };

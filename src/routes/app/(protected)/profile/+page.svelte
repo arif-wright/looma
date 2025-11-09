@@ -9,6 +9,7 @@
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
+  import FollowRequestsPanel from '$lib/components/profile/FollowRequestsPanel.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { currentProfile } from '$lib/stores/profile';
@@ -100,6 +101,8 @@
     shareUrl={shareUrl}
     isOwnProfile={data.isOwner}
     isFollowing={data.isFollowing ?? false}
+    requested={data.requested ?? false}
+    gated={data.gated ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={false}
     on:edit={handleEdit}
@@ -107,15 +110,19 @@
 
   <main class="profile-grid mt-6">
     <div class="profile-cols">
-      <ProfileSidebar
-        profile={profile}
-        stats={stats}
-        shards={data.walletShards ?? null}
-        featuredCompanion={data.featuredCompanion}
-        achievements={sidebarAchievements}
-        isOwner={data.isOwner}
-        on:chooseCompanion={handleSwap}
-      />
+      <div class="flex flex-col gap-4">
+        <ProfileSidebar
+          profile={profile}
+          stats={stats}
+          shards={data.walletShards ?? null}
+          featuredCompanion={data.featuredCompanion}
+          achievements={sidebarAchievements}
+          isOwner={data.isOwner}
+          on:chooseCompanion={handleSwap}
+        />
+
+        <FollowRequestsPanel items={data.followRequests ?? []} />
+      </div>
 
       <div class="space-y-4">
         <SmartComposer avatarUrl={profile.avatar_url} on:posted={handleComposerPosted} />

@@ -1,11 +1,18 @@
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/public';
-import type { User } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import type { PageServerLoad } from './$types';
 import { requireUserServer } from '$lib/server/auth';
 import { normalizeHandle } from '$lib/utils/handle';
 import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
+import { getFollowPrivacyStatus } from '$lib/server/privacy';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+
+const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+});
 
 type ProfileRow = {
   id: string;
@@ -309,7 +316,8 @@ export const load: PageServerLoad = async (event) => {
     posts,
     pinned,
     achievements,
-    followCounts
+    followCounts,
+    privacyStatus
   ] = await Promise.all([
     supabase
       .from('player_stats')
@@ -322,7 +330,8 @@ export const load: PageServerLoad = async (event) => {
     fetchPosts(supabase, user.id, true),
     fetchPinnedPreview(supabase, user.id, true),
     fetchRecentAchievements(supabase, user.id),
-    getFollowCounts(user.id)
+    getFollowCounts(user.id),
+    getFollowPrivacyStatus(user.id, profileRow.id)
   ]);
 
   if (statsResult.error) {
@@ -342,13 +351,55 @@ export const load: PageServerLoad = async (event) => {
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
   const isOwnProfile = true;
-  const isFollowing = true;
-  const requested = false;
+  const isFollowing = privacyStatus?.isFollowing ?? false;
+  const requested = privacyStatus?.requested ?? false;
   const gated = false;
+
+  const { data: reqs, error: reqError } = await service
+    .from('follow_requests')
+    .select('requester_id, created_at')
+    .eq('target_id', profileRow.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (reqError) {
+    console.error('[profile] follow requests lookup failed', reqError);
+  }
+
+  let followRequests: Array<{
+    requester_id: string;
+    display_name?: string | null;
+    handle?: string | null;
+    avatar_url?: string | null;
+  }> = [];
+
+  if (reqs?.length) {
+    const ids = reqs.map((r) => r.requester_id);
+    const { data: people, error: peopleError } = await service
+      .from('profiles')
+      .select('id, display_name, handle, avatar_url')
+      .in('id', ids);
+
+    if (peopleError) {
+      console.error('[profile] follow request profile lookup failed', peopleError);
+    }
+
+    const map = new Map((people ?? []).map((person) => [person.id, person]));
+    followRequests = ids.map((id) => {
+      const person = map.get(id) ?? {};
+      return {
+        requester_id: id,
+        display_name: person.display_name ?? 'Explorer',
+        handle: person.handle ?? 'player',
+        avatar_url: person.avatar_url ?? null
+      };
+    });
+  }
 
   return {
     profile: {
       ...profileRow,
+      user_id: profileRow.id,
       links: parsedLinks,
       is_private: Boolean(profileRow.is_private),
       account_private: Boolean(profileRow.account_private),
@@ -368,6 +419,6 @@ export const load: PageServerLoad = async (event) => {
     pinnedPost: pinned,
     shareUrl: `${baseUrl}/app/u/${profileRow.handle}`,
     followCounts,
-    isFollowing: false
+    followRequests
   };
 };

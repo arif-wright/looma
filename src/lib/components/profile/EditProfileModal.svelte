@@ -164,6 +164,40 @@
     </section>
 
     <EditProfileDetails {profile} on:updated={handleDetailsUpdated} />
+
+    {#if profile}
+      <section class="panel mt-6">
+        <h3 class="panel-title">Privacy</h3>
+
+        <label class="flex items-center justify-between py-2">
+          <span>Account is private</span>
+          <input type="checkbox" bind:checked={profile.account_private} />
+        </label>
+
+        <div class="mt-3 grid sm:grid-cols-2 gap-2">
+          <label class="flex items-center justify-between py-2"
+            ><span>Show level</span><input type="checkbox" bind:checked={profile.show_level} /></label
+          >
+          <label class="flex items-center justify-between py-2"
+            ><span>Show shards</span><input type="checkbox" bind:checked={profile.show_shards} /></label
+          >
+          <label class="flex items-center justify-between py-2"
+            ><span>Show location</span><input type="checkbox" bind:checked={profile.show_location} /></label
+          >
+          <label class="flex items-center justify-between py-2"
+            ><span>Show achievements</span
+            ><input type="checkbox" bind:checked={profile.show_achievements} /></label
+          >
+          <label class="flex items-center justify-between py-2"
+            ><span>Show feed</span><input type="checkbox" bind:checked={profile.show_feed} /></label
+          >
+        </div>
+
+        <p class="text-xs text-white/60 mt-2">
+          When your account is private, only approved followers can see items you hide here.
+        </p>
+      </section>
+    {/if}
   </div>
 </Modal>
 

@@ -11,12 +11,14 @@
   export let coverUrl: string | null = null;
   export let avatarUrl: string | null = null;
   export let canEdit = false;
-  export let canShare = false;
-  export let shareUrl: string | null = null;
-  export let isOwnProfile = false;
-  export let isFollowing = false;
-  export let followCounts: FollowCounts = { followers: 0, following: 0 };
-  export let viewerCanFollow = false;
+export let canShare = false;
+export let shareUrl: string | null = null;
+export let isOwnProfile = false;
+export let isFollowing = false;
+export let requested = false;
+export let gated = false;
+export let followCounts: FollowCounts = { followers: 0, following: 0 };
+export let viewerCanFollow = false;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
@@ -25,19 +27,24 @@
   let shareOpen = false;
   let shareStatus = '';
   let downloading = false;
-  let followPending = false;
-  let followError = '';
-  let followListOpen = false;
-  let followListKind: 'followers' | 'following' = 'followers';
-  let targetUserId: string | null = null;
-  let showFollowButton = false;
-  let followingState = isFollowing;
-  let lastFollowingProp = isFollowing;
-  let countsState: FollowCounts = {
-    followers: followCounts?.followers ?? 0,
-    following: followCounts?.following ?? 0
-  };
-  let lastCountsProp: FollowCounts = followCounts;
+let followPending = false;
+let followError = '';
+let followListOpen = false;
+let followListKind: 'followers' | 'following' = 'followers';
+let targetUserId: string | null = null;
+let showFollowButton = false;
+let followingState = isFollowing;
+let lastFollowingProp = isFollowing;
+let requestedState = requested;
+let lastRequestedProp = requested;
+let countsState: FollowCounts = {
+  followers: followCounts?.followers ?? 0,
+  following: followCounts?.following ?? 0
+};
+let lastCountsProp: FollowCounts = followCounts;
+let requestPending = false;
+let gatedState = gated;
+let lastGatedProp = gated;
 
   $: displayName = profile?.display_name ?? 'Anonymous Explorer';
   $: handle = profile?.handle ?? 'player';
@@ -50,22 +57,35 @@
     return 'low';
   })();
 
-  $: targetUserId = typeof profile?.id === 'string' ? profile.id : null;
-  $: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId);
+$: targetUserId =
+  typeof profile?.user_id === 'string'
+    ? profile.user_id
+    : typeof profile?.id === 'string'
+      ? profile.id
+      : null;
+$: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId);
   $: if (!targetUserId && followListOpen) {
     followListOpen = false;
   }
-  $: if (isFollowing !== lastFollowingProp) {
-    lastFollowingProp = isFollowing;
-    followingState = isFollowing;
-  }
-  $: if (followCounts !== lastCountsProp) {
-    lastCountsProp = followCounts;
-    countsState = {
-      followers: followCounts?.followers ?? 0,
-      following: followCounts?.following ?? 0
-    };
-  }
+$: if (isFollowing !== lastFollowingProp) {
+  lastFollowingProp = isFollowing;
+  followingState = isFollowing;
+}
+$: if (requested !== lastRequestedProp) {
+  lastRequestedProp = requested;
+  requestedState = requested;
+}
+$: if (followCounts !== lastCountsProp) {
+  lastCountsProp = followCounts;
+  countsState = {
+    followers: followCounts?.followers ?? 0,
+    following: followCounts?.following ?? 0
+  };
+}
+$: if (gated !== lastGatedProp) {
+  lastGatedProp = gated;
+  gatedState = gated;
+}
 
   function handleEdit() {
     if (!canEdit) return;
@@ -131,35 +151,62 @@
     shareStatus = '';
   }
 
-  async function toggleFollow() {
-    if (!showFollowButton || !targetUserId || followPending) return;
-    followPending = true;
-    followError = '';
-    const action = followingState ? 'unfollow' : 'follow';
-    try {
-      const res = await fetch('/api/follow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: targetUserId, action })
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Unable to update follow status');
-      }
-      const nextState = !followingState;
-      const delta = nextState ? 1 : -1;
-      followingState = nextState;
-      countsState = {
-        ...countsState,
-        followers: Math.max(0, countsState.followers + delta)
-      };
-    } catch (err) {
-      console.error('[ProfileHeader] follow toggle failed', err);
-      followError = err instanceof Error ? err.message : 'Unable to update follow status';
-    } finally {
-      followPending = false;
+async function requestFollow() {
+  if (!showFollowButton || !targetUserId || requestPending || requestedState) return;
+  requestPending = true;
+  followError = '';
+  try {
+    const res = await fetch('/api/privacy/follow-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Unable to send follow request');
     }
+    requestedState = true;
+  } catch (err) {
+    console.error('[ProfileHeader] follow request failed', err);
+    followError = err instanceof Error ? err.message : 'Unable to send follow request';
+  } finally {
+    requestPending = false;
   }
+}
+
+async function toggleFollow() {
+  if (!showFollowButton || !targetUserId || followPending) return;
+  followPending = true;
+  followError = '';
+  const action = followingState ? 'unfollow' : 'follow';
+  try {
+    const res = await fetch('/api/follow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId, action })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Unable to update follow status');
+    }
+    const nextState = !followingState;
+    const delta = nextState ? 1 : -1;
+    followingState = nextState;
+    countsState = {
+      ...countsState,
+      followers: Math.max(0, countsState.followers + delta)
+    };
+    if (nextState) {
+      gatedState = false;
+      requestedState = false;
+    }
+  } catch (err) {
+    console.error('[ProfileHeader] follow toggle failed', err);
+    followError = err instanceof Error ? err.message : 'Unable to update follow status';
+  } finally {
+    followPending = false;
+  }
+}
 
   function openFollowList(kind: 'followers' | 'following') {
     if (!targetUserId) return;
@@ -238,6 +285,7 @@
               <button
                 type="button"
                 class="follow-count-btn"
+                class:dimmed={gatedState && !followingState && !isOwnProfile}
                 data-testid="profile-followers-count"
                 on:click={() => openFollowList('followers')}
                 disabled={!targetUserId}
@@ -248,6 +296,7 @@
               <button
                 type="button"
                 class="follow-count-btn"
+                class:dimmed={gatedState && !followingState && !isOwnProfile}
                 data-testid="profile-following-count"
                 on:click={() => openFollowList('following')}
                 disabled={!targetUserId}
@@ -261,19 +310,35 @@
         {#if canEdit || canShare || showFollowButton}
           <div class="action-group self-end md:self-start">
             {#if showFollowButton}
-              <button
-                class="follow-btn"
-                type="button"
-                data-testid="profile-follow-toggle"
-                on:click={toggleFollow}
-                disabled={followPending}
-              >
-                {#if followPending}
-                  Working…
-                {:else}
-                  {followingState ? 'Following' : 'Follow'}
-                {/if}
-              </button>
+              {#if gatedState}
+                <button
+                  class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
+                  type="button"
+                  data-testid="profile-follow-request"
+                  on:click={requestFollow}
+                  disabled={requestedState || requestPending}
+                >
+                  {#if requestPending}
+                    Working…
+                  {:else}
+                    {requestedState ? 'Requested' : 'Request to follow'}
+                  {/if}
+                </button>
+              {:else}
+                <button
+                  class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
+                  type="button"
+                  data-testid="profile-follow-toggle"
+                  on:click={toggleFollow}
+                  disabled={followPending}
+                >
+                  {#if followPending}
+                    Working…
+                  {:else}
+                    {followingState ? 'Following' : 'Follow'}
+                  {/if}
+                </button>
+              {/if}
             {/if}
             {#if canShare}
               <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
@@ -349,32 +414,12 @@
     color: rgba(255, 255, 255, 0.95);
   }
 
+  .follow-count-btn.dimmed {
+    opacity: 0.45;
+  }
+
   .count-value {
     font-weight: 600;
-  }
-
-  .follow-btn {
-    padding: 0.4rem 1.25rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
-    font-weight: 600;
-    transition: all 160ms ease;
-  }
-
-  .follow-btn:not(:disabled):hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .follow-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6);
-  }
-
-  .follow-btn:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
   }
 
   .follow-error {

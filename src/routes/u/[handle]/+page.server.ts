@@ -8,6 +8,7 @@ import { getFollowPrivacyStatus } from '$lib/server/privacy';
 
 type ProfileRow = {
   id: string;
+  user_id?: string | null;
   handle: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -15,6 +16,8 @@ type ProfileRow = {
   bio: string | null;
   pronouns: string | null;
   location: string | null;
+  level?: number | null;
+  shards_label?: string | null;
   links: Record<string, unknown>[] | null;
   is_private: boolean | null;
   account_private: boolean | null;
@@ -210,6 +213,20 @@ const fetchRecentAchievements = async (
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 };
 
+const redactProfile = (profile: Record<string, any>) => {
+  const out = { ...profile };
+  if (profile?.show_level === false) {
+    out.level = null;
+  }
+  if (profile?.show_shards === false) {
+    out.shards_label = null;
+  }
+  if (profile?.show_location === false) {
+    out.location = null;
+  }
+  return out;
+};
+
 export const load: PageServerLoad = async (event) => {
   const supabase = supabaseServer(event);
   const handle = event.params.handle;
@@ -264,20 +281,34 @@ export const load: PageServerLoad = async (event) => {
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
   const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
-  const metaDescription = profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
+  const defaultDescription = profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
 
   const isFollowing = privacyStatus?.isFollowing ?? false;
   const requested = privacyStatus?.requested ?? false;
   const gated = accountPrivate && !isOwnProfile && !isFollowing;
+  const feedAllowed = !gated && profileRow.show_feed !== false;
+  const achievementsAllowed = !gated && profileRow.show_achievements !== false;
+  const safeAchievements = achievementsAllowed ? achievements : [];
+  const safeFeed = feedAllowed ? posts.items : [];
+  const safeNextCursor = feedAllowed ? posts.nextCursor : null;
+
+  const profilePayload = redactProfile({
+    ...profileRow,
+    user_id: profileRow.user_id ?? profileRow.id,
+    links: parsedLinks,
+    is_private: Boolean(profileRow.is_private),
+    account_private: accountPrivate,
+    achievements: safeAchievements
+  });
+
+  const isGatedPublic = gated;
+  const metaDescription = isGatedPublic ? 'This profile is private on Looma' : defaultDescription;
+  const ogImageUrl = isGatedPublic
+    ? `${baseUrl}/og/default-profile.png`
+    : `${baseUrl}/api/og/profile?handle=${profileRow.handle}`;
 
   return {
-    profile: {
-      ...profileRow,
-      links: parsedLinks,
-      is_private: Boolean(profileRow.is_private),
-      account_private: accountPrivate,
-      achievements
-    },
+    profile: profilePayload,
     stats,
     isOwner: isOwnProfile,
     viewerId,
@@ -287,11 +318,11 @@ export const load: PageServerLoad = async (event) => {
     gated,
     followCounts,
     featuredCompanion: companion,
-    posts: posts.items,
-    nextCursor: posts.nextCursor,
+    posts: safeFeed,
+    nextCursor: safeNextCursor,
     pinnedPost: pinned,
     shareUrl,
-    ogImageUrl: `${baseUrl}/api/og/profile?handle=${profileRow.handle}`,
+    ogImageUrl,
     metaDescription
   };
 };
