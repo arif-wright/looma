@@ -1,285 +1,96 @@
 <script lang="ts">
-  import PostComposer from '$lib/social/PostComposer.svelte';
-  import PostList from '$lib/social/PostList.svelte';
+  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
+  import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
+  import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
+  import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
+  import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
+  import type { PageData } from './$types';
 
-  export let data: any;
-  const p = data.profile;
-  let feed = data.feed ?? [];
-  const viewerId: string | null = data.viewerId ?? null;
+  export let data: PageData;
 
-  let loading = false;
-  let reachedEnd = feed.length < 12;
-  let tab: 'activity' | 'posts' = 'activity';
-  let postsRefreshToken = 0;
-  let postListRef: any = null;
+  const profile = data.profile;
+  const stats = data.stats;
+  const shareUrl = data.shareUrl ?? '';
 
-  const isSelf = !!viewerId && p?.id === viewerId;
-
-  async function loadMoreActivity() {
-    if (loading || reachedEnd || !p?.id) return;
-    if (feed.length === 0) return;
-    loading = true;
-    const last = feed[feed.length - 1]?.created_at ?? new Date().toISOString();
+  async function handleShare() {
+    if (!shareUrl) return;
     try {
-      const res = await fetch(`/api/user-feed?user=${p.id}&before=${encodeURIComponent(last)}`);
-      if (!res.ok) {
-        console.error('user-feed load more failed', await res.text());
-        reachedEnd = true;
-      } else {
-        const more = await res.json();
-        if (Array.isArray(more) && more.length > 0) {
-          const existing = new Set(feed.map((item: any) => item.id));
-          const additions = more.filter((item: any) => !existing.has(item.id));
-          feed = [...feed, ...additions];
-          reachedEnd = additions.length === 0 || more.length < 12;
-        } else {
-          reachedEnd = true;
+      if (typeof navigator !== 'undefined') {
+        if (navigator.share) {
+          await navigator.share({ title: `${profile.display_name ?? profile.handle} on Looma`, url: shareUrl });
+          return;
+        }
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareUrl);
+          window?.alert?.('Profile link copied');
+          return;
         }
       }
+      window?.prompt?.('Copy this profile link:', shareUrl);
     } catch (err) {
-      console.error('user-feed load more error', err);
-      reachedEnd = true;
-    } finally {
-      loading = false;
+      console.error('share failed', err);
     }
-  }
-
-  function refreshPosts() {
-    postsRefreshToken += 1;
-    postListRef?.refresh?.();
   }
 </script>
 
-<main class="wrap">
-  <header class="hero">
-    <img class="avatar" src={p?.avatar_url || '/avatar.svg'} alt="" />
-    <div>
-      <h1>{p?.display_name || p?.handle}</h1>
-      <p class="sub">@{p?.handle}</p>
-      <div class="stats">
-        <div class="tile">
-          <span class="k">Level</span>
-          <b>{p?.level ?? '—'}</b>
-        </div>
-        <div class="tile">
-          <span class="k">XP</span>
-          <b>{p?.xp ?? 0} / {p?.xp_next ?? 0}</b>
-        </div>
-        <div class="tile">
-          <span class="k">Bonded</span>
-          <b>{p?.bonded_count ?? 0}</b>
-        </div>
+<BackgroundStack class="profile-bg" />
+
+<div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
+  <ProfileHeader
+    profile={profile}
+    coverUrl={profile.banner_url}
+    avatarUrl={profile.avatar_url}
+    canEdit={false}
+    canShare={!!shareUrl}
+    on:share={handleShare}
+  />
+
+  <main class="profile-grid mt-6">
+    <div class="profile-cols">
+      <ProfileSidebar
+        profile={profile}
+        stats={stats}
+        shards={null}
+        featuredCompanion={data.featuredCompanion}
+        achievements={profile.achievements ?? []}
+        isOwner={false}
+        hideCompanionActions={true}
+        hidePrivate={true}
+      />
+
+      <div class="space-y-4">
+        {#if data.pinnedPost}
+          <section class="panel">
+            <div class="flex items-center justify-between">
+              <h3 class="panel-title m-0">Pinned</h3>
+              <span class="text-[10px] uppercase tracking-wide text-white/40">Public</span>
+            </div>
+            <p class="mt-2 text-white/80 leading-relaxed">{data.pinnedPost?.body}</p>
+          </section>
+        {/if}
+
+        <section class="panel" id="overview">
+          <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+        </section>
+
+        <section class="panel" id="companions">
+          <ProfileHighlights
+            pinnedPost={data.pinnedPost}
+            companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+            profileHandle={profile.handle}
+          />
+        </section>
+
+        <section id="activity" class="space-y-4">
+          <ProfileFeed
+            authorIdentifier={profile.handle || profile.id}
+            initialItems={data.posts ?? []}
+            initialCursor={data.nextCursor}
+            emptyMessage="No public posts yet."
+          />
+        </section>
       </div>
     </div>
-  </header>
-
-  <div class="tabs" role="tablist">
-    <button
-      role="tab"
-      type="button"
-      class:active={tab === 'activity'}
-      aria-selected={tab === 'activity'}
-      on:click={() => (tab = 'activity')}
-    >
-      Activity
-    </button>
-    <button
-      role="tab"
-      type="button"
-      class:active={tab === 'posts'}
-      aria-selected={tab === 'posts'}
-      on:click={() => (tab = 'posts')}
-    >
-      Posts
-    </button>
-  </div>
-
-  {#if tab === 'activity'}
-    <section class="feed">
-      <h2>Recent activity</h2>
-      {#if !feed || feed.length === 0}
-        <p class="empty">No recent public activity.</p>
-      {:else}
-        <ul class="timeline">
-          {#each feed as r (r.id)}
-            <li>
-              <span class="when">{new Date(r.created_at).toLocaleString()}</span>
-              <span class="msg">{r.message ?? ''}</span>
-            </li>
-          {/each}
-        </ul>
-        <div class="more">
-          <button class="btn" on:click={loadMoreActivity} disabled={loading || reachedEnd}>
-            {loading ? 'Loading…' : reachedEnd ? 'No more activity' : 'Load more'}
-          </button>
-        </div>
-      {/if}
-    </section>
-  {:else}
-    <section class="posts-panel">
-      {#if isSelf}
-        <PostComposer on:posted={refreshPosts} />
-      {/if}
-      <PostList
-        userId={p?.id}
-        pageSize={10}
-        refreshToken={postsRefreshToken}
-        emptyMessage={isSelf ? 'No posts yet — share something uplifting!' : 'No posts yet.'}
-        bind:this={postListRef}
-      />
-    </section>
-  {/if}
-</main>
-
-<style>
-  .wrap {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 24px;
-    display: grid;
-    gap: 24px;
-  }
-
-  .hero {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    object-fit: cover;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-  }
-
-  .sub {
-    margin: 4px 0 12px;
-    opacity: 0.75;
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .tile {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    padding: 10px 12px;
-    border-radius: 12px;
-  }
-
-  .tile .k {
-    font-size: 12px;
-    opacity: 0.7;
-    display: block;
-  }
-
-  .tabs {
-    display: inline-flex;
-    gap: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding-bottom: 6px;
-  }
-
-  .tabs button {
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-
-  .tabs button.active {
-    border-color: rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .feed h2 {
-    margin: 0;
-    font-size: 1.1rem;
-  }
-
-  .timeline {
-    list-style: none;
-    padding: 0;
-    margin: 14px 0 0;
-    display: grid;
-    gap: 12px;
-  }
-
-  .timeline li {
-    display: grid;
-    gap: 8px;
-    grid-template-columns: minmax(140px, 180px) 1fr;
-    align-items: start;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .timeline .when {
-    font-size: 12px;
-    opacity: 0.65;
-  }
-
-  .timeline .msg {
-    opacity: 0.95;
-  }
-
-  .more {
-    display: flex;
-    justify-content: center;
-    margin-top: 12px;
-  }
-
-  .btn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .empty {
-    opacity: 0.7;
-  }
-
-  .posts-panel {
-    display: grid;
-    gap: 16px;
-  }
-
-  @media (max-width: 640px) {
-    .hero {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .timeline {
-      gap: 18px;
-    }
-
-    .timeline li {
-      grid-template-columns: 1fr;
-      padding-bottom: 18px;
-    }
-  }
-</style>
+  </main>
+</div>

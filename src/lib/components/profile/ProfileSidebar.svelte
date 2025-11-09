@@ -82,30 +82,32 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h3 class="panel-title">Stats</h3>
-    <div class="grid grid-cols-3 gap-2 text-center">
-      <div class="rounded-xl bg-white/5 p-3">
-        <div class="text-xs text-white/60">Level</div>
-        <div class="font-semibold">{formatNumber(stats?.level ?? profile?.level ?? 1)}</div>
+  {#if !hidePrivate}
+    <section class="panel">
+      <h3 class="panel-title">Stats</h3>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="rounded-xl bg-white/5 p-3">
+          <div class="text-xs text-white/60">Level</div>
+          <div class="font-semibold">{formatNumber(stats?.level ?? profile?.level ?? 1)}</div>
+        </div>
+        <div class="rounded-xl bg-white/5 p-3">
+          <div class="text-xs text-white/60">XP</div>
+          <div class="font-semibold">{formatNumber(stats?.xp ?? profile?.xp ?? null)}</div>
+        </div>
+        <div class="rounded-xl bg-white/5 p-3">
+          <div class="text-xs text-white/60">Shards</div>
+          <div class="font-semibold">{formatNumber(shards)}</div>
+        </div>
       </div>
-      <div class="rounded-xl bg-white/5 p-3">
-        <div class="text-xs text-white/60">XP</div>
-        <div class="font-semibold">{formatNumber(stats?.xp ?? profile?.xp ?? null)}</div>
-      </div>
-      <div class="rounded-xl bg-white/5 p-3">
-        <div class="text-xs text-white/60">Shards</div>
-        <div class="font-semibold">{formatNumber(shards)}</div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <h3 class="panel-title">Quick Links</h3>
-    <ul class="grid gap-2">
-      <li><a class="btn-ghost w-full text-left" href="/app/companions">My Companions</a></li>
-      <li><a class="btn-ghost w-full text-left" href="/app/achievements">Achievements</a></li>
-      <li><a class="btn-ghost w-full text-left" href="/app/settings">Settings</a></li>
-    </ul>
-  </section>
+    <section class="panel">
+      <h3 class="panel-title">Quick Links</h3>
+      <ul class="grid gap-2">
+        <li><a class="btn-ghost w-full text-left" href="/app/companions">My Companions</a></li>
+        <li><a class="btn-ghost w-full text-left" href="/app/achievements">Achievements</a></li>
+        <li><a class="btn-ghost w-full text-left" href="/app/settings">Settings</a></li>
+      </ul>
+    </section>
+  {/if}
 </aside>
