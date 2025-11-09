@@ -15,9 +15,10 @@ export const entries = (data?: PageData) => {
       ...DEFAULT_META,
       openGraph: {
         title: DEFAULT_META.title,
-        description: DEFAULT_META.description
+        description: DEFAULT_META.description,
+        images: []
       },
-      twitter: { card: 'summary_large_image' }
+      twitter: { card: 'summary_large_image', images: [] }
     };
   }
 
@@ -35,6 +36,7 @@ export const entries = (data?: PageData) => {
     ? `${base}${isGatedPublic ? '/og/default-profile.png' : `/api/og/profile?handle=${profile.handle}`}`
     : undefined;
   const url = base ? `${base}/u/${profile.handle}` : undefined;
+  const images = og ? [og] : [];
 
   return {
     title,
@@ -42,9 +44,9 @@ export const entries = (data?: PageData) => {
     openGraph: {
       title,
       description: desc,
-      ...(og ? { images: [og] } : {}),
+      images,
       ...(url ? { url } : {})
     },
-    twitter: { card: 'summary_large_image', ...(og ? { images: [og] } : {}) }
+    twitter: { card: 'summary_large_image', images }
   };
 };
