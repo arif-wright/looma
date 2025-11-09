@@ -22,7 +22,6 @@ type AchievementRow = {
     title?: string | null;
     key?: string | null;
     icon?: string | null;
-    icon_url?: string | null;
   } | null;
 };
 
@@ -131,9 +130,7 @@ const formatWhenLabel = (iso: string | null | undefined) => {
 const fetchRecentAchievements = async (supabase: ReturnType<typeof supabaseServer>, userId: string) => {
   const { data, error } = await supabase
     .from('user_achievements')
-    .select(
-      'unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon, icon_url )'
-    )
+    .select('unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon )')
     .eq('user_id', userId)
     .order('unlocked_at', { ascending: false })
     .limit(8);
@@ -150,7 +147,7 @@ const fetchRecentAchievements = async (supabase: ReturnType<typeof supabaseServe
       if (!achievement) return null;
       return {
         title: achievement.title ?? achievement.name ?? achievement.key ?? 'Achievement',
-        icon: achievement.icon_url ?? achievement.icon ?? null,
+        icon: achievement.icon ?? null,
         when_label: formatWhenLabel(row.unlocked_at)
       };
     })

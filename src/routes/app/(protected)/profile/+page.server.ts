@@ -5,6 +5,7 @@ import type { PageServerLoad } from './$types';
 import { requireUserServer } from '$lib/server/auth';
 import { normalizeHandle } from '$lib/utils/handle';
 import type { PostRow } from '$lib/social/types';
+import { getFollowCounts } from '$lib/server/follows';
 
 type ProfileRow = {
   id: string;
@@ -46,7 +47,6 @@ type AchievementRow = {
     title?: string | null;
     key?: string | null;
     icon?: string | null;
-    icon_url?: string | null;
   } | null;
 };
 
@@ -239,7 +239,7 @@ const fetchRecentAchievements = async (supabase: App.Locals['supabase'], userId:
   const { data, error } = await supabase
     .from('user_achievements')
     .select(
-      'unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon, icon_url )'
+      'unlocked_at, achievements:achievements!user_achievements_achievement_id_fkey ( name, title, key, icon )'
     )
     .eq('user_id', userId)
     .order('unlocked_at', { ascending: false })
@@ -257,7 +257,7 @@ const fetchRecentAchievements = async (supabase: App.Locals['supabase'], userId:
       if (!achievement) return null;
       return {
         title: achievement.title ?? achievement.name ?? achievement.key ?? 'Achievement',
-        icon: achievement.icon_url ?? achievement.icon ?? null,
+        icon: achievement.icon ?? null,
         when_label: formatWhenLabel(row.unlocked_at)
       };
     })
