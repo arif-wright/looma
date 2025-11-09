@@ -11,6 +11,7 @@
   import CreatureMoments from '$lib/components/home/CreatureMoments.svelte';
   import EndcapCard from '$lib/components/home/EndcapCard.svelte';
   import TelemetryCapsule from '$lib/components/home/TelemetryCapsule.svelte';
+  import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
   import type { MissionRow as MissionRowType } from '$lib/data/missions';
   import type { FeedItem as FeedItemType } from '$lib/social/types';
@@ -298,6 +299,7 @@
           walletCurrency={wallet?.currency ?? 'shards'}
           walletDelta={latestWalletTx?.amount ?? null}
         />
+        <PeopleToFollow title="People you may know" dense />
       </aside>
     </div>
 

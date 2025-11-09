@@ -5,6 +5,7 @@
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
   import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
+  import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -51,16 +52,19 @@
 
   <main class="profile-grid mt-6">
     <div class="profile-cols">
-      <ProfileSidebar
-        profile={profile}
-        stats={stats}
-        shards={null}
-        featuredCompanion={data.featuredCompanion}
-        achievements={profile.achievements ?? []}
-        isOwner={false}
-        hideCompanionActions={true}
-        hidePrivate={true}
-      />
+      <div class="flex flex-col gap-4">
+        <ProfileSidebar
+          profile={profile}
+          stats={stats}
+          shards={null}
+          featuredCompanion={data.featuredCompanion}
+          achievements={profile.achievements ?? []}
+          isOwner={false}
+          hideCompanionActions={true}
+          hidePrivate={true}
+        />
+        <PeopleToFollow title="People you may know" />
+      </div>
 
       <div class="space-y-4">
         {#if data.pinnedPost}
