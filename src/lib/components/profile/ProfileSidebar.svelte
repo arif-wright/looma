@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
 
   export let profile: Record<string, any> | null = null;
   export let featuredCompanion: Record<string, any> | null = null;
@@ -59,11 +60,11 @@
       <ul class="space-y-2">
         {#each achList.slice(0, 5) as achievement}
           <li class="flex items-center gap-3">
-            <img
-              src={achievement.icon ?? '/icons/trophy.svg'}
-              alt=""
-              class="h-8 w-8 rounded-lg ring-1 ring-white/10 object-cover"
-              loading="lazy"
+            <AchievementIcon
+              icon={typeof achievement.icon === 'string' ? achievement.icon : 'trophy'}
+              label={achievement.title ?? achievement.name ?? 'Achievement'}
+              size={20}
+              style="--achievement-icon-size:2.5rem"
             />
             <div class="min-w-0">
               <div class="text-sm font-medium truncate">{achievement.title ?? achievement.name ?? 'Achievement'}</div>
