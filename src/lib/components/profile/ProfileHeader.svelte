@@ -63,7 +63,7 @@
   </div>
 </section>
 
-<header class="cover-frame relative z-10 -mt-10 sm:-mt-12">
+<header class="profile-grid relative z-10 -mt-10 sm:-mt-12">
   <div class="panel cover-compact" class:shadow-lg={compact}>
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

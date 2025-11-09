@@ -103,7 +103,7 @@
 
   .cover-card {
     @apply relative overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-xl;
-    min-height: 220px;
+    height: clamp(220px, 28vw, 360px);
   }
 
   .cover-media {
