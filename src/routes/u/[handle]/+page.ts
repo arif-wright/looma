@@ -3,8 +3,7 @@ import type { PageData } from './$types';
 
 const DEFAULT_META = {
   title: 'Profile • Looma',
-  description: 'Explore profiles on Looma',
-  images: [] as { url: string }[]
+  description: 'Explore profiles on Looma'
 };
 
 const withBase = (url?: string | null) => (url ?? '').replace(/\/?$/, '');
@@ -18,9 +17,9 @@ export const entries = (data?: PageData) => {
       openGraph: {
         title: DEFAULT_META.title,
         description: DEFAULT_META.description,
-        images: DEFAULT_META.images
+        images: []
       },
-      twitter: { card: 'summary_large_image', images: DEFAULT_META.images }
+      twitter: { card: 'summary_large_image', images: [] }
     };
   }
 
@@ -38,7 +37,7 @@ export const entries = (data?: PageData) => {
     ? `${base}${isGatedPublic ? '/og/default-profile.png' : `/api/og/profile?handle=${profile.handle}`}`
     : undefined;
   const url = base ? `${base}/u/${profile.handle}` : undefined;
-  const images = og ? [{ url: og }] : [];
+  const images = og ? [og] : [];
 
   return {
     title,
