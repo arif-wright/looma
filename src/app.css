@@ -103,28 +103,35 @@
 
   .cover-card {
     @apply relative overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-xl;
-    height: clamp(220px, 28vw, 360px);
+    min-height: clamp(220px, 28vw, 360px);
+    aspect-ratio: 21 / 9;
   }
 
   .cover-media {
-    display: block;
-    @apply w-full h-full object-cover object-center select-none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    user-select: none;
   }
 
   .cover-bleed {
-    margin-left: -16px;
-    margin-right: -16px;
+    left: -16px;
+    right: -16px;
+    width: auto;
   }
   @media (min-width: 640px) {
     .cover-bleed {
-      margin-left: -24px;
-      margin-right: -24px;
+      left: -24px;
+      right: -24px;
     }
   }
   @media (min-width: 1024px) {
     .cover-bleed {
-      margin-left: -32px;
-      margin-right: -32px;
+      left: -32px;
+      right: -32px;
     }
   }
 
