@@ -184,6 +184,52 @@
       transition: none !important;
     }
   }
+
+  /* Radiating Looma avatar ring */
+  .avatar-ring {
+    @apply relative inline-block rounded-full ring-2 ring-offset-2 ring-offset-black/20 ring-transparent;
+  }
+
+  .avatar-ring::before {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    background: conic-gradient(from 0deg, #00eaff, #ff00ff, #a855f7, #00eaff);
+    animation: loomaPulse 4s linear infinite;
+    opacity: 0.75;
+    z-index: -1;
+  }
+
+  .avatar-ring:hover::before {
+    filter: blur(14px) brightness(1.5);
+    opacity: 1;
+  }
+
+  .avatar-ring[data-intensity='low']::before {
+    opacity: 0.5;
+  }
+
+  .avatar-ring[data-intensity='medium']::before {
+    opacity: 0.8;
+  }
+
+  .avatar-ring[data-intensity='high']::before {
+    opacity: 1;
+    filter: blur(14px);
+  }
+
+  @keyframes loomaPulse {
+    0%,
+    100% {
+      transform: scale(1);
+      filter: blur(6px) brightness(1);
+      opacity: 0.75;
+    }
+    50% {
+      transform: scale(1.05);
+      filter: blur(12px) brightness(1.3);
+      opacity: 1;
+    }
+  }
 }
 
 :root {

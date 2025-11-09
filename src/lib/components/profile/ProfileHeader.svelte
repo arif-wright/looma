@@ -17,6 +17,12 @@
   $: handle = profile?.handle ?? 'player';
   $: levelLabel = Number.isFinite(profile?.level) ? `LEVEL ${profile?.level}` : 'Explorer';
   $: joinedLabel = formatJoined(profile?.joined_at ?? null);
+  $: pulseIntensity = (() => {
+    const lvl = Number(profile?.level ?? 0);
+    if (lvl >= 20) return 'high';
+    if (lvl >= 5) return 'medium';
+    return 'low';
+  })();
 
   function handleEdit() {
     if (!canEdit) return;
@@ -68,12 +74,14 @@
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div class="flex items-center gap-4">
-          <img
-            src={avatarUrl ?? '/avatars/default.png'}
-            alt=""
-            class="h-16 w-16 rounded-2xl ring-1 ring-white/20 object-cover sm:h-20 sm:w-20"
-            loading="lazy"
-          />
+          <div class="avatar-ring" data-intensity={pulseIntensity}>
+            <img
+              src={avatarUrl ?? '/avatars/default.png'}
+              alt=""
+              class="relative z-10 h-16 w-16 rounded-full object-cover ring-2 ring-black/20 sm:h-20 sm:w-20"
+              loading="lazy"
+            />
+          </div>
           <div>
             <h1 class="text-xl font-semibold sm:text-2xl">{displayName}</h1>
             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/70">
