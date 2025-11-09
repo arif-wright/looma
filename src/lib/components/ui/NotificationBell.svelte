@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { onDestroy, onMount, tick } from 'svelte';
-  import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
-import { supabaseBrowser } from '$lib/supabaseClient';
-import { relativeTime } from '$lib/social/commentHelpers';
-import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
-import { achievementsUI } from '$lib/achievements/store';
+  import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+  import { supabaseBrowser } from '$lib/supabaseClient';
+  import { relativeTime } from '$lib/social/commentHelpers';
+  import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
+  import { achievementsUI } from '$lib/achievements/store';
 
   export type NotificationItem = {
     id: string;
@@ -42,6 +42,7 @@ import { achievementsUI } from '$lib/achievements/store';
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let supabase: ReturnType<typeof supabaseBrowser> | null = null;
   let channel: RealtimeChannel | null = null;
+  let realtimeRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: if (notifications !== lastNotificationsRef) {
     lastNotificationsRef = notifications;
@@ -280,12 +281,7 @@ import { achievementsUI } from '$lib/achievements/store';
   });
 
   onDestroy(() => {
-    if (channel) {
-      channel
-        .unsubscribe()
-        .catch((err) => console.error('[NotificationBell] failed to unsubscribe', err));
-      channel = null;
-    }
+    void teardownChannel();
     if (toastTimer) {
       clearTimeout(toastTimer);
       toastTimer = null;
@@ -293,6 +289,10 @@ import { achievementsUI } from '$lib/achievements/store';
     if (liveTimer) {
       clearTimeout(liveTimer);
       liveTimer = null;
+    }
+    if (realtimeRetryTimer) {
+      clearTimeout(realtimeRetryTimer);
+      realtimeRetryTimer = null;
     }
 
     if (typeof document === 'undefined') return;
@@ -330,6 +330,24 @@ import { achievementsUI } from '$lib/achievements/store';
     showToast(message);
   }
 
+  function scheduleRealtimeRetry() {
+    if (realtimeRetryTimer) return;
+    realtimeRetryTimer = setTimeout(() => {
+      realtimeRetryTimer = null;
+      void initRealtime();
+    }, 3000);
+  }
+
+  async function teardownChannel() {
+    if (!channel || !supabase) return;
+    try {
+      await supabase.removeChannel(channel);
+    } catch (err) {
+      console.error('[NotificationBell] failed to remove realtime channel', err);
+    }
+    channel = null;
+  }
+
   async function initRealtime() {
     if (!supabase) return;
 
@@ -338,38 +356,54 @@ import { achievementsUI } from '$lib/achievements/store';
       const userId = sessionData?.session?.user?.id;
       if (!userId) return;
 
-      if (channel) {
-        await channel.unsubscribe();
-        channel = null;
-      }
+      await teardownChannel();
 
       const newChannel = supabase
-        .channel(`notifs:user:${userId}`);
+        .channel(`notifs:${userId}`, {
+          config: {
+            broadcast: { ack: true },
+            presence: { key: userId }
+          }
+        })
+        .on<RealtimePostgresChangesPayload<NotificationItem>>(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          },
+          async (payload) => {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              await handleRealtimeInsert(payload.new as NotificationItem);
+              return;
+            }
 
-      newChannel.on<RealtimePostgresInsertPayload<NotificationItem>>(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`
-        },
-        async (payload) => {
-          if (!payload.new) return;
-          const incoming = payload.new as NotificationItem;
-          await handleRealtimeInsert(incoming);
-        }
-      );
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+              await refresh();
+            }
+          }
+        );
 
       newChannel.subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[NotificationBell] realtime channel error for notifications');
+        if (status === 'SUBSCRIBED') {
+          if (realtimeRetryTimer) {
+            clearTimeout(realtimeRetryTimer);
+            realtimeRetryTimer = null;
+          }
+          return;
+        }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error('[NotificationBell] realtime channel issue', status);
+          scheduleRealtimeRetry();
         }
       });
 
       channel = newChannel;
     } catch (err) {
       console.error('[NotificationBell] realtime setup failed', err);
+      scheduleRealtimeRetry();
     }
   }
 </script>
