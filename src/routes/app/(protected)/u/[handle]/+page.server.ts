@@ -194,13 +194,23 @@ export const load: PageServerLoad = async (event) => {
       : 'Explore this Looma profile.';
   const metaImage = profile.banner_url ?? profile.avatar_url ?? null;
 
+  const feed = posts.items.map((item) => ({
+    id: item.id,
+    text: item.text ?? item.body ?? '',
+    html: (item.meta as Record<string, any> | undefined)?.html ?? null,
+    when_label: formatWhenLabel(item.created_at),
+    kind: item.kind ?? null,
+    media: (item.meta as Record<string, any> | undefined)?.media ?? [],
+    author_avatar: item.author_avatar ?? sanitizedProfile.avatar_url,
+    author_name: item.author_name ?? sanitizedProfile.display_name
+  }));
+
   return {
     profile: sanitizedProfile,
     viewerId: parentData.viewerId ?? null,
     isOwner,
     featuredCompanion: companion,
-    posts: posts.items,
-    nextCursor: posts.nextCursor,
+    feed,
     pinnedPost: pinned,
     meta: {
       title: metaTitle,

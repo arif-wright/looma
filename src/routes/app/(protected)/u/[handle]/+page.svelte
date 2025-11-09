@@ -6,9 +6,7 @@ import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
 import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
 import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
 import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
-import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
 import type { PageData } from './$types';
-import type { PostRow } from '$lib/social/types';
 
   export let data: PageData;
 
@@ -19,7 +17,7 @@ import type { PostRow } from '$lib/social/types';
     xp_next: profile.xp_next ?? null
   };
 
-  let feedRef: InstanceType<typeof ProfileFeed> | null = null;
+  const feed = data.feed ?? [];
 
   const handleEdit = () => {
     if (!data.isOwner) return;
@@ -29,30 +27,27 @@ import type { PostRow } from '$lib/social/types';
   async function handleShare() {
     if (!data.shareUrl) return;
     try {
+      const url = data.shareUrl;
       if (typeof navigator !== 'undefined') {
         if (navigator.share) {
-          await navigator.share({ title: `${profile.display_name ?? profile.handle} on Looma`, url: data.shareUrl });
+          await navigator.share({ title: `${profile.display_name ?? profile.handle} on Looma`, url });
           return;
         }
         if (navigator.clipboard) {
-          await navigator.clipboard.writeText(data.shareUrl);
+          await navigator.clipboard.writeText(url);
           window?.alert?.('Profile link copied');
           return;
         }
       }
-      window?.prompt?.('Copy this profile link:', data.shareUrl);
+      window?.prompt?.('Copy this profile link:', url);
     } catch (err) {
       console.error('share failed', err);
     }
   }
 
   function onChooseCompanion() {
-    // public view - no action
+    // read-only for public view
   }
-
-  const handleComposerPosted = (event: CustomEvent<PostRow>) => {
-    feedRef?.prepend(event.detail);
-  };
 </script>
 
 <svelte:head>
@@ -91,18 +86,13 @@ import type { PostRow } from '$lib/social/types';
         shards={profile.shards ?? null}
         featuredCompanion={data.featuredCompanion}
         achievements={profile.achievements ?? []}
-        isOwner={data.isOwner}
+        isOwner={false}
+        hideCompanionActions={true}
+        hidePrivate={true}
         on:chooseCompanion={onChooseCompanion}
       />
 
       <div class="space-y-4">
-        {#if data.isOwner}
-          <SmartComposer avatarUrl={profile.avatar_url} on:posted={handleComposerPosted} />
-          <section class="panel">
-            <div class="text-sm text-white/70">You’re viewing your public profile.</div>
-          </section>
-        {/if}
-
         {#if data.pinnedPost}
           <section class="panel">
             <div class="flex items-center justify-between">
@@ -125,14 +115,41 @@ import type { PostRow } from '$lib/social/types';
           />
         </section>
 
-        <section id="activity" class="space-y-4">
-          <ProfileFeed
-            bind:this={feedRef}
-            authorIdentifier={profile.handle || profile.id}
-            initialItems={data.posts ?? []}
-            initialCursor={data.nextCursor}
-            emptyMessage="No public posts yet."
-          />
+        <section id="activity" class="space-y-3">
+          {#if feed.length === 0}
+            <article class="panel text-sm text-white/60">No public activity yet.</article>
+          {:else}
+            {#each feed as item}
+              <article class="panel">
+                <header class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <img src={item.author_avatar ?? profile.avatar_url} alt="" class="h-8 w-8 rounded-full ring-1 ring-white/15" />
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium truncate">{item.author_name ?? profile.display_name ?? '@' + profile.handle}</div>
+                      <div class="text-xs text-white/60 truncate">{item.when_label}</div>
+                    </div>
+                  </div>
+                  {#if item.kind}
+                    <span class="text-[10px] uppercase tracking-wide text-white/40">{item.kind}</span>
+                  {/if}
+                </header>
+                <div class="mt-3">
+                  {#if item.html}
+                    {@html item.html}
+                  {:else if item.text}
+                    <p class="text-white/80 whitespace-pre-wrap">{item.text}</p>
+                  {/if}
+                </div>
+                {#if item.media?.length}
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    {#each item.media as media}
+                      <img src={media.url} alt="" class="h-40 w-full rounded-lg object-cover ring-1 ring-white/10" />
+                    {/each}
+                  </div>
+                {/if}
+              </article>
+            {/each}
+          {/if}
         </section>
       </div>
     </div>

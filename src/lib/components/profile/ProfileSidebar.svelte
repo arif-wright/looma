@@ -7,6 +7,8 @@
   export let stats: Record<string, any> | null = null;
   export let shards: number | null = null;
   export let isOwner = false;
+  export let hideCompanionActions = false;
+  export let hidePrivate = false;
 
   const dispatch = createEventDispatcher<{ chooseCompanion: void }>();
 
@@ -18,7 +20,7 @@
   $: achList = achievements?.length ? achievements : profile?.achievements ?? [];
 
   function handleChoose() {
-    if (!isOwner) return;
+    if (!isOwner || hideCompanionActions) return;
     dispatch('chooseCompanion');
   }
 </script>
@@ -40,12 +42,12 @@
           {/if}
         </div>
       </div>
-      {#if isOwner}
+      {#if isOwner && !hideCompanionActions}
         <button class="btn-ghost w-full mt-3" type="button" on:click={handleChoose}>Swap companion</button>
       {/if}
     {:else}
       <p class="text-sm text-white/60 mb-3">Invite your first companion to showcase them here.</p>
-      {#if isOwner}
+      {#if isOwner && !hideCompanionActions}
         <button class="btn-ghost w-full" type="button" on:click={handleChoose}>Choose companion</button>
       {/if}
     {/if}
