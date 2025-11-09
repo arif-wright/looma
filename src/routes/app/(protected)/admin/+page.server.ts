@@ -182,13 +182,22 @@ export const load: PageServerLoad = async ({ locals }) => {
   });
   const extraFlags = (featureFlagRows ?? []).filter((row) => !FEATURE_FLAG_KEYS.includes(row.key as any));
 
-  const { data: maintenanceRow, error: maintenanceError } = await admin
-    .from('maintenance')
-    .select('id, enabled, message, updated_at')
-    .limit(1)
-    .maybeSingle();
-  if (maintenanceError) {
-    console.error('[admin hub] maintenance fetch failed', maintenanceError);
+  let maintenanceRow: { id: number; enabled: boolean; message: string | null; updated_at: string | null } | null = null;
+  try {
+    const { data, error } = await admin
+      .from('maintenance')
+      .select('id, enabled, message, updated_at')
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (error.code !== 'PGRST205') {
+        console.error('[admin hub] maintenance fetch failed', error);
+      }
+    } else {
+      maintenanceRow = data as typeof maintenanceRow;
+    }
+  } catch (err) {
+    console.error('[admin hub] maintenance query threw', err);
   }
 
   let dbOk = false;

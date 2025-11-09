@@ -12,17 +12,24 @@ const fetchMaintenance = async (): Promise<MaintenanceState> => {
     return maintenanceCache.state;
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('maintenance')
-    .select('enabled, message, updated_at')
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error('[maintenance] fetch failed', error);
+  let state: MaintenanceState = { enabled: false, message: null, updated_at: null };
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('maintenance')
+      .select('enabled, message, updated_at')
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (error.code !== 'PGRST205') {
+        console.error('[maintenance] fetch failed', error);
+      }
+    } else {
+      state = data ?? state;
+    }
+  } catch (err) {
+    console.error('[maintenance] fetch threw', err);
   }
 
-  const state = data ?? { enabled: false, message: null, updated_at: null };
   maintenanceCache = { state, expires: Date.now() + 30_000 };
   return state;
 };
