@@ -2,6 +2,13 @@
   import { createEventDispatcher } from 'svelte';
 
   export let profile: Record<string, any> | null = null;
+  export let account_private = false;
+  export let show_shards = true;
+  export let show_level = true;
+  export let show_joined = true;
+  export let show_location = true;
+  export let show_achievements = true;
+  export let show_feed = true;
 
   const dispatch = createEventDispatcher<{ updated: Record<string, any> }>();
 
@@ -10,9 +17,6 @@
   let pronouns = profile?.pronouns ?? '';
   let location = profile?.location ?? '';
   let links = Array.isArray(profile?.links) ? [...profile.links] : [];
-  let show_shards = profile?.show_shards ?? true;
-  let show_level = profile?.show_level ?? true;
-  let show_joined = profile?.show_joined ?? true;
   let saving = false;
   let message = '';
 
@@ -32,9 +36,6 @@
     pronouns = profile.pronouns ?? pronouns;
     location = profile.location ?? location;
     links = Array.isArray(profile.links) ? [...profile.links] : links;
-    show_shards = profile.show_shards ?? show_shards;
-    show_level = profile.show_level ?? show_level;
-    show_joined = profile.show_joined ?? show_joined;
     ensureLinks();
   }
 
@@ -55,9 +56,13 @@
           pronouns,
           location,
           links,
+          account_private,
           show_shards,
           show_level,
-          show_joined
+          show_joined,
+          show_location,
+          show_achievements,
+          show_feed
         })
       });
       const payload = await res.json().catch(() => ({}));
@@ -128,21 +133,6 @@
     {/each}
   </div>
 
-  <div class="privacy-grid">
-    <label class="privacy-item">
-      <input type="checkbox" bind:checked={show_shards} />
-      <span>Show shards</span>
-    </label>
-    <label class="privacy-item">
-      <input type="checkbox" bind:checked={show_level} />
-      <span>Show level</span>
-    </label>
-    <label class="privacy-item">
-      <input type="checkbox" bind:checked={show_joined} />
-      <span>Show join date</span>
-    </label>
-  </div>
-
   <div class="actions">
     <button class="btn btn-sm" type="button" on:click={save} disabled={saving}>
       {saving ? 'Saving…' : 'Save profile'}
@@ -169,19 +159,6 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.65);
-  }
-
-  .privacy-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-  }
-
-  .privacy-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
   }
 
   .actions {

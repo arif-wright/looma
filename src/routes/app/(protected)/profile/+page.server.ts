@@ -26,6 +26,12 @@ type ProfileRow = {
   account_private: boolean | null;
   joined_at: string | null;
   featured_companion_id: string | null;
+  show_shards: boolean | null;
+  show_level: boolean | null;
+  show_joined: boolean | null;
+  show_location: boolean | null;
+  show_achievements: boolean | null;
+  show_feed: boolean | null;
 };
 
 type StatsRow = {

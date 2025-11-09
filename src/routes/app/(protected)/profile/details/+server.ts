@@ -16,15 +16,37 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   const pronouns = (payload?.pronouns ?? '').trim().slice(0, 30);
   const location = (payload?.location ?? '').trim().slice(0, 60);
   const links = safeLinks(payload?.links ?? []);
-  const show_shards = Boolean(payload?.show_shards);
-  const show_level = Boolean(payload?.show_level);
-  const show_joined = Boolean(payload?.show_joined);
+  const toBool = (value: unknown, fallback: boolean) =>
+    typeof value === 'boolean' ? value : fallback;
+
+  const account_private = toBool(payload?.account_private, false);
+  const show_shards = toBool(payload?.show_shards, true);
+  const show_level = toBool(payload?.show_level, true);
+  const show_joined = toBool(payload?.show_joined, true);
+  const show_location = toBool(payload?.show_location, true);
+  const show_achievements = toBool(payload?.show_achievements, true);
+  const show_feed = toBool(payload?.show_feed, true);
 
   const { data, error: updateError } = await locals.supabase
     .from('profiles')
-    .update({ display_name, bio, pronouns, location, links, show_shards, show_level, show_joined })
+    .update({
+      display_name,
+      bio,
+      pronouns,
+      location,
+      links,
+      account_private,
+      show_shards,
+      show_level,
+      show_joined,
+      show_location,
+      show_achievements,
+      show_feed
+    })
     .eq('id', user.id)
-    .select('id, display_name, bio, pronouns, location, links, show_shards, show_level, show_joined, avatar_url, handle, banner_url, joined_at')
+    .select(
+      'id, display_name, bio, pronouns, location, links, account_private, show_shards, show_level, show_joined, show_location, show_achievements, show_feed, avatar_url, handle, banner_url, joined_at'
+    )
     .maybeSingle();
 
   if (updateError) {

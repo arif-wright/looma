@@ -18,9 +18,26 @@
   let dirty = false;
   let handleTimer: ReturnType<typeof setTimeout> | null = null;
   let handleSaving = false;
+  let accountPrivate = false;
+  let showLevel = true;
+  let showShards = true;
+  let showLocation = true;
+  let showAchievements = true;
+  let showFeed = true;
+  let showJoined = true;
 
   $: if (profile && !dirty) {
     handle = profile.handle ?? '';
+  }
+
+  $: if (profile) {
+    accountPrivate = Boolean(profile.account_private ?? false);
+    showLevel = profile.show_level ?? true;
+    showShards = profile.show_shards ?? true;
+    showLocation = profile.show_location ?? true;
+    showAchievements = profile.show_achievements ?? true;
+    showFeed = profile.show_feed ?? true;
+    showJoined = profile.show_joined ?? true;
   }
 
   onDestroy(() => {
@@ -163,7 +180,17 @@
       </div>
     </section>
 
-    <EditProfileDetails {profile} on:updated={handleDetailsUpdated} />
+    <EditProfileDetails
+      {profile}
+      account_private={accountPrivate}
+      show_level={showLevel}
+      show_shards={showShards}
+      show_joined={showJoined}
+      show_location={showLocation}
+      show_achievements={showAchievements}
+      show_feed={showFeed}
+      on:updated={handleDetailsUpdated}
+    />
 
     {#if profile}
       <section class="panel mt-6">
@@ -171,25 +198,28 @@
 
         <label class="flex items-center justify-between py-2">
           <span>Account is private</span>
-          <input type="checkbox" bind:checked={profile.account_private} />
+          <input type="checkbox" bind:checked={accountPrivate} />
         </label>
 
         <div class="mt-3 grid sm:grid-cols-2 gap-2">
           <label class="flex items-center justify-between py-2"
-            ><span>Show level</span><input type="checkbox" bind:checked={profile.show_level} /></label
+            ><span>Show level</span><input type="checkbox" bind:checked={showLevel} /></label
           >
           <label class="flex items-center justify-between py-2"
-            ><span>Show shards</span><input type="checkbox" bind:checked={profile.show_shards} /></label
+            ><span>Show shards</span><input type="checkbox" bind:checked={showShards} /></label
           >
           <label class="flex items-center justify-between py-2"
-            ><span>Show location</span><input type="checkbox" bind:checked={profile.show_location} /></label
+            ><span>Show location</span><input type="checkbox" bind:checked={showLocation} /></label
           >
           <label class="flex items-center justify-between py-2"
             ><span>Show achievements</span
-            ><input type="checkbox" bind:checked={profile.show_achievements} /></label
+            ><input type="checkbox" bind:checked={showAchievements} /></label
           >
           <label class="flex items-center justify-between py-2"
-            ><span>Show feed</span><input type="checkbox" bind:checked={profile.show_feed} /></label
+            ><span>Show feed</span><input type="checkbox" bind:checked={showFeed} /></label
+          >
+          <label class="flex items-center justify-between py-2"
+            ><span>Show join date</span><input type="checkbox" bind:checked={showJoined} /></label
           >
         </div>
 
