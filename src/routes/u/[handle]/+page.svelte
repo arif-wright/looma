@@ -43,6 +43,10 @@
     canEdit={false}
     canShare={!!shareUrl}
     shareUrl={shareUrl}
+    isOwnProfile={data.isOwner}
+    isFollowing={data.isFollowing ?? false}
+    followCounts={data.followCounts ?? { followers: 0, following: 0 }}
+    viewerCanFollow={Boolean(data.viewerId)}
   />
 
   <main class="profile-grid mt-6">

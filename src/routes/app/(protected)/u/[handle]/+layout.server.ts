@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
+import { getFollowCounts } from '$lib/server/follows';
 
 const PROFILE_COLUMNS =
   'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, joined_at, featured_companion_id, show_shards, show_level, show_joined';
@@ -45,14 +46,33 @@ export const load: LayoutServerLoad = async (event) => {
     throw error(404, 'Profile not found');
   }
 
-  const { data: statsRow, error: statsError } = await supabase
-    .from('player_stats')
-    .select('level, xp, xp_next, energy, energy_max, bonded_count')
-    .eq('id', profileRow.id)
-    .maybeSingle();
+  const [{ data: statsRow, error: statsError }, followCounts] = await Promise.all([
+    supabase
+      .from('player_stats')
+      .select('level, xp, xp_next, energy, energy_max, bonded_count')
+      .eq('id', profileRow.id)
+      .maybeSingle(),
+    getFollowCounts(profileRow.id)
+  ]);
 
   if (statsError) {
     console.error('[profile layout] stats lookup failed', statsError);
+  }
+
+  let isFollowing = false;
+  if (viewerId && !isOwner) {
+    const { data: followEdge, error: followError } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', viewerId)
+      .eq('followee_id', profileRow.id)
+      .maybeSingle();
+
+    if (followError) {
+      console.error('[profile layout] follow edge lookup failed', followError);
+    }
+
+    isFollowing = Boolean(followEdge);
   }
 
   const profile = {
@@ -82,6 +102,8 @@ export const load: LayoutServerLoad = async (event) => {
   return {
     profile,
     viewerId,
-    isOwner
+    isOwner,
+    followCounts,
+    isFollowing
   };
 };

@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/public';
 import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
+import { getFollowCounts } from '$lib/server/follows';
 
 type ProfileRow = {
   id: string;
@@ -234,7 +235,7 @@ export const load: PageServerLoad = async (event) => {
 
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, companion, posts, pinned, achievements] = await Promise.all([
+  const [statsResult, companion, posts, pinned, achievements, followCounts] = await Promise.all([
     supabase
       .from('player_stats')
       .select('level, xp, xp_next, energy, energy_max')
@@ -243,7 +244,8 @@ export const load: PageServerLoad = async (event) => {
     fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
     fetchPosts(supabase, profileRow.id, isOwner),
     fetchPinnedPreview(supabase, profileRow.id, isOwner),
-    fetchRecentAchievements(supabase, profileRow.id)
+    fetchRecentAchievements(supabase, profileRow.id),
+    getFollowCounts(profileRow.id)
   ]);
 
   if (statsResult.error) {
@@ -257,6 +259,22 @@ export const load: PageServerLoad = async (event) => {
     energy: null,
     energy_max: null
   };
+
+  let isFollowing = false;
+  if (viewerId && !isOwner) {
+    const { data: followEdge, error: followError } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', viewerId)
+      .eq('followee_id', profileRow.id)
+      .maybeSingle();
+
+    if (followError) {
+      console.error('[public profile] follow edge lookup failed', followError);
+    }
+
+    isFollowing = Boolean(followEdge);
+  }
 
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
   const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
@@ -272,6 +290,8 @@ export const load: PageServerLoad = async (event) => {
     stats,
     isOwner,
     viewerId,
+    followCounts,
+    isFollowing,
     featuredCompanion: companion,
     posts: posts.items,
     nextCursor: posts.nextCursor,

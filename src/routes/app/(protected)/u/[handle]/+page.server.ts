@@ -218,6 +218,8 @@ export const load: PageServerLoad = async (event) => {
       image: metaImage,
       url: profileUrl
     },
-    shareUrl: profileUrl
+    shareUrl: profileUrl,
+    followCounts: parentData.followCounts,
+    isFollowing: parentData.isFollowing
   };
 };

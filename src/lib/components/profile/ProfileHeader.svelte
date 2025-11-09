@@ -3,6 +3,9 @@
   import { formatJoined } from '$lib/format/date';
   import Modal from '$lib/components/ui/Modal.svelte';
   import QRCode from '$lib/components/ui/QRCode.svelte';
+  import FollowListModal from '$lib/components/profile/FollowListModal.svelte';
+
+  type FollowCounts = { followers: number; following: number };
 
   export let profile: Record<string, any> | null = null;
   export let coverUrl: string | null = null;
@@ -10,6 +13,10 @@
   export let canEdit = false;
   export let canShare = false;
   export let shareUrl: string | null = null;
+  export let isOwnProfile = false;
+  export let isFollowing = false;
+  export let followCounts: FollowCounts = { followers: 0, following: 0 };
+  export let viewerCanFollow = false;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
@@ -18,6 +25,19 @@
   let shareOpen = false;
   let shareStatus = '';
   let downloading = false;
+  let followPending = false;
+  let followError = '';
+  let followListOpen = false;
+  let followListKind: 'followers' | 'following' = 'followers';
+  let targetUserId: string | null = null;
+  let showFollowButton = false;
+  let followingState = isFollowing;
+  let lastFollowingProp = isFollowing;
+  let countsState: FollowCounts = {
+    followers: followCounts?.followers ?? 0,
+    following: followCounts?.following ?? 0
+  };
+  let lastCountsProp: FollowCounts = followCounts;
 
   $: displayName = profile?.display_name ?? 'Anonymous Explorer';
   $: handle = profile?.handle ?? 'player';
@@ -29,6 +49,23 @@
     if (lvl >= 5) return 'medium';
     return 'low';
   })();
+
+  $: targetUserId = typeof profile?.id === 'string' ? profile.id : null;
+  $: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId);
+  $: if (!targetUserId && followListOpen) {
+    followListOpen = false;
+  }
+  $: if (isFollowing !== lastFollowingProp) {
+    lastFollowingProp = isFollowing;
+    followingState = isFollowing;
+  }
+  $: if (followCounts !== lastCountsProp) {
+    lastCountsProp = followCounts;
+    countsState = {
+      followers: followCounts?.followers ?? 0,
+      following: followCounts?.following ?? 0
+    };
+  }
 
   function handleEdit() {
     if (!canEdit) return;
@@ -94,6 +131,46 @@
     shareStatus = '';
   }
 
+  async function toggleFollow() {
+    if (!showFollowButton || !targetUserId || followPending) return;
+    followPending = true;
+    followError = '';
+    const action = followingState ? 'unfollow' : 'follow';
+    try {
+      const res = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId, action })
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error ?? 'Unable to update follow status');
+      }
+      const nextState = !followingState;
+      const delta = nextState ? 1 : -1;
+      followingState = nextState;
+      countsState = {
+        ...countsState,
+        followers: Math.max(0, countsState.followers + delta)
+      };
+    } catch (err) {
+      console.error('[ProfileHeader] follow toggle failed', err);
+      followError = err instanceof Error ? err.message : 'Unable to update follow status';
+    } finally {
+      followPending = false;
+    }
+  }
+
+  function openFollowList(kind: 'followers' | 'following') {
+    if (!targetUserId) return;
+    followListKind = kind;
+    followListOpen = true;
+  }
+
+  function closeFollowList() {
+    followListOpen = false;
+  }
+
   function updateCompact() {
     if (typeof window === 'undefined') return;
     compact = window.scrollY > 120;
@@ -157,10 +234,47 @@
                 <span class="rounded-full bg-white/10 px-3 py-1">Private</span>
               {/if}
             </div>
+            <div class="follow-counts flex items-center gap-4 text-white/80 text-sm">
+              <button
+                type="button"
+                class="follow-count-btn"
+                data-testid="profile-followers-count"
+                on:click={() => openFollowList('followers')}
+                disabled={!targetUserId}
+              >
+                <span class="count-value">{countsState.followers}</span>
+                Followers
+              </button>
+              <button
+                type="button"
+                class="follow-count-btn"
+                data-testid="profile-following-count"
+                on:click={() => openFollowList('following')}
+                disabled={!targetUserId}
+              >
+                <span class="count-value">{countsState.following}</span>
+                Following
+              </button>
+            </div>
           </div>
         </div>
-        {#if canEdit || canShare}
+        {#if canEdit || canShare || showFollowButton}
           <div class="action-group self-end md:self-start">
+            {#if showFollowButton}
+              <button
+                class="follow-btn"
+                type="button"
+                data-testid="profile-follow-toggle"
+                on:click={toggleFollow}
+                disabled={followPending}
+              >
+                {#if followPending}
+                  Working…
+                {:else}
+                  {followingState ? 'Following' : 'Follow'}
+                {/if}
+              </button>
+            {/if}
             {#if canShare}
               <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
             {/if}
@@ -168,6 +282,9 @@
               <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
             {/if}
           </div>
+          {#if followError && showFollowButton}
+            <p class="follow-error" aria-live="polite">{followError}</p>
+          {/if}
         {/if}
       </div>
 
@@ -203,7 +320,70 @@
   </div>
 </Modal>
 
+<FollowListModal open={followListOpen} userId={targetUserId} kind={followListKind} onClose={closeFollowList} />
+
 <style>
+  .follow-counts {
+    margin-top: 0.75rem;
+  }
+
+  .follow-count-btn {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    color: inherit;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    transition: color 150ms ease;
+  }
+
+  .follow-count-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .follow-count-btn:not(:disabled):hover {
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .count-value {
+    font-weight: 600;
+  }
+
+  .follow-btn {
+    padding: 0.4rem 1.25rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-weight: 600;
+    transition: all 160ms ease;
+  }
+
+  .follow-btn:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .follow-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6);
+  }
+
+  .follow-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .follow-error {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    color: #f87171;
+    text-align: right;
+  }
+
   .share-modal {
     display: flex;
     gap: 1rem;

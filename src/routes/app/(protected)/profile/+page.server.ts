@@ -300,7 +300,16 @@ export const load: PageServerLoad = async (event) => {
   const profileRow = await ensureProfile(supabase, user);
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, walletResult, companion, companionOptions, posts, pinned, achievements] = await Promise.all([
+  const [
+    statsResult,
+    walletResult,
+    companion,
+    companionOptions,
+    posts,
+    pinned,
+    achievements,
+    followCounts
+  ] = await Promise.all([
     supabase
       .from('player_stats')
       .select('level, xp, xp_next, energy, energy_max')
@@ -311,7 +320,8 @@ export const load: PageServerLoad = async (event) => {
     fetchCompanionOptions(supabase, user.id),
     fetchPosts(supabase, user.id, true),
     fetchPinnedPreview(supabase, user.id, true),
-    fetchRecentAchievements(supabase, user.id)
+    fetchRecentAchievements(supabase, user.id),
+    getFollowCounts(user.id)
   ]);
 
   if (statsResult.error) {
@@ -346,6 +356,8 @@ export const load: PageServerLoad = async (event) => {
     posts: posts.items,
     nextCursor: posts.nextCursor,
     pinnedPost: pinned,
-    shareUrl: `${baseUrl}/app/u/${profileRow.handle}`
+    shareUrl: `${baseUrl}/app/u/${profileRow.handle}`,
+    followCounts,
+    isFollowing: false
   };
 };

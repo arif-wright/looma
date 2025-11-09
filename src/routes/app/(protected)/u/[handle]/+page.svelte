@@ -54,6 +54,10 @@ import type { PageData } from './$types';
     canEdit={data.isOwner}
     canShare={!!data.shareUrl}
     shareUrl={data.shareUrl}
+    isOwnProfile={data.isOwner}
+    isFollowing={data.isFollowing ?? false}
+    followCounts={data.followCounts ?? { followers: 0, following: 0 }}
+    viewerCanFollow={Boolean(data.viewerId)}
     on:edit={handleEdit}
   />
 
