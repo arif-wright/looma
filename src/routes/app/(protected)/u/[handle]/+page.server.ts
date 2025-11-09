@@ -160,20 +160,24 @@ export const load: PageServerLoad = async (event) => {
   const profile = parentData.profile;
   const isOwner = parentData.isOwner ?? false;
   const gated = parentData.gated ?? false;
+  const blocked = parentData.blocked ?? false;
 
-  const [companion, posts, pinned, achievements] = await Promise.all([
-    fetchFeaturedCompanion(supabase, profile.featured_companion_id ?? null),
-    fetchPosts(supabase, profile.id, isOwner),
-    fetchPinnedPreview(supabase, profile.id, isOwner),
-    fetchRecentAchievements(supabase, profile.id)
-  ]);
+  const allowContent = !gated && !blocked;
+  const [companion, posts, pinned, achievements] = allowContent
+    ? await Promise.all([
+        fetchFeaturedCompanion(supabase, profile.featured_companion_id ?? null),
+        fetchPosts(supabase, profile.id, isOwner),
+        fetchPinnedPreview(supabase, profile.id, isOwner),
+        fetchRecentAchievements(supabase, profile.id)
+      ])
+    : [null, { items: [] as PostRow[], nextCursor: null }, null, [] as AchievementRow[]];
 
   const showShards = isOwner ? true : profile.show_shards ?? true;
   const showLevel = isOwner ? true : profile.show_level ?? true;
   const showJoined = isOwner ? true : profile.show_joined ?? true;
   const showLocation = isOwner ? true : profile.show_location ?? true;
-  const showAchievements = !gated && (isOwner ? true : profile.show_achievements ?? true);
-  const showFeed = !gated && (isOwner ? true : profile.show_feed ?? true);
+  const showAchievements = allowContent && (isOwner ? true : profile.show_achievements ?? true);
+  const showFeed = allowContent && (isOwner ? true : profile.show_feed ?? true);
   const sanitizedProfile = {
     ...profile,
     show_shards: showShards,
@@ -229,6 +233,7 @@ export const load: PageServerLoad = async (event) => {
     followCounts: parentData.followCounts,
     isFollowing: parentData.isFollowing,
     requested: parentData.requested ?? false,
-    gated
+    gated,
+    blocked
   };
 };

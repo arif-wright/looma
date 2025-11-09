@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadFocusedPost, handleReplyAction } from '../../focused-load';
 import { supabaseServer } from '$lib/supabaseClient';
@@ -12,6 +12,10 @@ export const load: PageServerLoad = async (event) => {
     throw error(400, 'Missing post id');
   }
 
+  if (parent.blocked) {
+    throw redirect(302, `/app/u/${profile.handle}${event.url.search}`);
+  }
+
   return loadFocusedPost(event, profile, { kind: 'id', id });
 };
 
@@ -22,6 +26,10 @@ export const actions = {
     const id = event.params.id;
     if (!id) {
       throw error(400, 'Missing post id');
+    }
+
+    if (parent.blocked) {
+      throw redirect(302, `/app/u/${profile.handle}${event.url.search}`);
     }
 
     const supabase = supabaseServer(event);

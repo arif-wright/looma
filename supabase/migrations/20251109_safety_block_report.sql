@@ -25,12 +25,26 @@ create or replace function public.is_blocked(a uuid, b uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public, auth
 as $$
   select exists (
     select 1 from public.blocks
     where (blocker_id = a and blocked_id = b)
        or (blocker_id = b and blocked_id = a)
   );
+$$;
+
+create or replace function public.blocked_peers(viewer uuid)
+returns table(user_id uuid)
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select case when blocker_id = viewer then blocked_id else blocker_id end as user_id
+  from public.blocks
+  where blocker_id = viewer or blocked_id = viewer;
 $$;
 
 do $$

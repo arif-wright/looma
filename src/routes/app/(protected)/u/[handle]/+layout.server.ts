@@ -3,6 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 const PROFILE_COLUMNS =
   'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
@@ -42,6 +43,9 @@ export const load: LayoutServerLoad = async (event) => {
 
   const isOwner = viewerId === profileRow.id;
   const accountPrivate = Boolean(profileRow.account_private ?? profileRow.is_private ?? false);
+  const blockPeers = await ensureBlockedPeers(event, supabase);
+  const blocked = isBlockedPeer(blockPeers, profileRow.id);
+  const blockedView = blocked && !isOwner;
 
   const [{ data: statsRow, error: statsError }, followCounts, privacyStatus] = await Promise.all([
     supabase
@@ -57,10 +61,9 @@ export const load: LayoutServerLoad = async (event) => {
     console.error('[profile layout] stats lookup failed', statsError);
   }
 
-  const isFollowing = privacyStatus?.isFollowing ?? false;
-  const requested = privacyStatus?.requested ?? false;
-  const gated = accountPrivate && !isOwner && !isFollowing;
-
+  const isFollowing = blockedView ? false : privacyStatus?.isFollowing ?? false;
+  const requested = blockedView ? false : privacyStatus?.requested ?? false;
+  const gated = blockedView || (accountPrivate && !isOwner && !isFollowing);
   const profile = {
     id: profileRow.id,
     user_id: profileRow.id,
@@ -68,26 +71,26 @@ export const load: LayoutServerLoad = async (event) => {
     display_name: profileRow.display_name,
     avatar_url: profileRow.avatar_url,
     banner_url: profileRow.banner_url,
-    bio: profileRow.bio,
-    pronouns: profileRow.pronouns,
-    location: profileRow.location,
-    links: parseLinks(profileRow.links),
+    bio: blockedView ? null : profileRow.bio,
+    pronouns: blockedView ? null : profileRow.pronouns,
+    location: blockedView ? null : profileRow.location,
+    links: blockedView ? [] : parseLinks(profileRow.links),
     is_private: Boolean(profileRow.is_private),
     account_private: accountPrivate,
-    joined_at: profileRow.joined_at,
-    featured_companion_id: profileRow.featured_companion_id,
-    show_shards: profileRow.show_shards ?? true,
-    show_level: profileRow.show_level ?? true,
-    show_joined: profileRow.show_joined ?? true,
-    show_location: profileRow.show_location ?? true,
-    show_achievements: profileRow.show_achievements ?? true,
-    show_feed: profileRow.show_feed ?? true,
-    level: statsRow?.level ?? null,
-    xp: statsRow?.xp ?? null,
-    xp_next: statsRow?.xp_next ?? null,
-    bonded_count: statsRow?.bonded_count ?? null,
-    energy: statsRow?.energy ?? null,
-    energy_max: statsRow?.energy_max ?? null
+    joined_at: blockedView ? null : profileRow.joined_at,
+    featured_companion_id: blockedView ? null : profileRow.featured_companion_id,
+    show_shards: blockedView ? false : profileRow.show_shards ?? true,
+    show_level: blockedView ? false : profileRow.show_level ?? true,
+    show_joined: blockedView ? false : profileRow.show_joined ?? true,
+    show_location: blockedView ? false : profileRow.show_location ?? true,
+    show_achievements: blockedView ? false : profileRow.show_achievements ?? true,
+    show_feed: blockedView ? false : profileRow.show_feed ?? true,
+    level: blockedView ? null : statsRow?.level ?? null,
+    xp: blockedView ? null : statsRow?.xp ?? null,
+    xp_next: blockedView ? null : statsRow?.xp_next ?? null,
+    bonded_count: blockedView ? null : statsRow?.bonded_count ?? null,
+    energy: blockedView ? null : statsRow?.energy ?? null,
+    energy_max: blockedView ? null : statsRow?.energy_max ?? null
   };
 
   return {
@@ -98,6 +101,7 @@ export const load: LayoutServerLoad = async (event) => {
     isFollowing,
     requested,
     gated,
-    isOwnProfile: isOwner
+    isOwnProfile: isOwner,
+    blocked: blockedView
   };
 };

@@ -5,6 +5,7 @@ import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import { createNotification } from '$lib/server/notifications';
 import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/comments/tree';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 const parseLimit = (value: string | null, fallback = 10) => {
   if (!value) return fallback;
@@ -16,6 +17,18 @@ const parseLimit = (value: string | null, fallback = 10) => {
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
+const filterBlockedRows = <T extends Record<string, unknown>>(rows: T[], peers: Set<string>): T[] => {
+  if (!peers.size) return rows;
+  return rows.filter((row) => {
+    const authorId =
+      (typeof row.author_id === 'string' && row.author_id) ||
+      (typeof row.comment_user_id === 'string' && row.comment_user_id) ||
+      (typeof row.user_id === 'string' && row.user_id) ||
+      null;
+    return !isBlockedPeer(peers, authorId);
+  });
+};
+
 export const GET: RequestHandler = async (event) => {
   const supabase = event.locals.supabase ?? supabaseServer(event);
   const user = event.locals.user;
@@ -23,6 +36,8 @@ export const GET: RequestHandler = async (event) => {
   if (!user?.id) {
     return json({ error: 'Not authenticated' }, { status: 401 });
   }
+
+  const blockPeers = await ensureBlockedPeers(event, supabase);
 
   const search = event.url.searchParams;
   const postId = search.get('postId');
@@ -61,7 +76,10 @@ export const GET: RequestHandler = async (event) => {
 
     try {
       const allRows = await fetchTreeRows(supabase, branchPostId);
-      const branchRows = allRows.filter((row) => row.id === replyTo || (Array.isArray(row.path) && row.path.includes(replyTo)));
+      const visibleRows = filterBlockedRows(allRows, blockPeers);
+      const branchRows = visibleRows.filter(
+        (row) => row.id === replyTo || (Array.isArray(row.path) && row.path.includes(replyTo))
+      );
       if (branchRows.length === 0) {
         return json({ items: [] });
       }
@@ -86,7 +104,7 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: error.message }, { status: 400 });
     }
 
-    const items = Array.isArray(data) ? data : [];
+    const items = filterBlockedRows(Array.isArray(data) ? data : [], blockPeers);
     return json({ items });
   }
 
@@ -102,7 +120,7 @@ export const GET: RequestHandler = async (event) => {
       return json({ error: error.message }, { status: 400 });
     }
 
-    const items = Array.isArray(data) ? data : [];
+    const items = filterBlockedRows(Array.isArray(data) ? data : [], blockPeers);
     return json({ items });
   }
 

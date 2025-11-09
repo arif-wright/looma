@@ -6,6 +6,7 @@ import { reportHomeLoadIssue } from '$lib/server/logging';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import type { FeedItem } from '$lib/social/types';
 import { getWalletWithTransactions } from '$lib/server/econ/index';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 type MissionSummary = {
   id: string;
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async (event) => {
 
   try {
     const supabase: SupabaseClient = event.locals.supabase ?? supabaseServer(event);
+    const blockPeers = await ensureBlockedPeers(event, supabase);
 
     let stats = null;
     try {
@@ -102,6 +104,16 @@ export const load: PageServerLoad = async (event) => {
       }
 
       feedItems = Array.isArray(data) ? (data as FeedItem[]) : [];
+      if (blockPeers.size) {
+        feedItems = feedItems.filter((item) => {
+          const authorId = (item.author_id ?? item.user_id ?? null) as string | null;
+          if (isBlockedPeer(blockPeers, authorId)) return false;
+          if (item.sharedBy?.id && isBlockedPeer(blockPeers, item.sharedBy.id)) {
+            return false;
+          }
+          return true;
+        });
+      }
     } catch (err) {
       diagnostics.push('feed_query_failed');
       reportHomeLoadIssue('feed_query_failed', { error: err instanceof Error ? err.message : String(err) });

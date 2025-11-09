@@ -5,6 +5,7 @@ import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 type ProfileRow = {
   id: string;
@@ -65,6 +66,13 @@ const PROFILE_COLUMNS =
   'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
 const POSTS_PAGE_SIZE = 10;
+const EMPTY_STATS = {
+  level: null,
+  xp: null,
+  xp_next: null,
+  energy: null,
+  energy_max: null
+};
 
 const parseLinks = (value: ProfileRow['links']) => {
   if (!Array.isArray(value)) return [];
@@ -249,6 +257,48 @@ export const load: PageServerLoad = async (event) => {
 
   const isOwnProfile = viewerId === profileRow.id;
   const accountPrivate = Boolean(profileRow.account_private ?? profileRow.is_private ?? false);
+  const blockPeers = await ensureBlockedPeers(event, supabase);
+  const blocked = isBlockedPeer(blockPeers, profileRow.id);
+  const blockedView = blocked && !isOwnProfile;
+  const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
+  const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
+  const defaultDescription =
+    profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
+
+  if (blockedView) {
+    const followCounts = await getFollowCounts(profileRow.id);
+    return {
+      profile: {
+        id: profileRow.id,
+        user_id: profileRow.user_id ?? profileRow.id,
+        handle: profileRow.handle,
+        display_name: profileRow.display_name,
+        avatar_url: profileRow.avatar_url,
+        banner_url: profileRow.banner_url,
+        bio: null,
+        links: [],
+        is_private: Boolean(profileRow.is_private),
+        account_private: accountPrivate,
+        achievements: []
+      },
+      stats: { ...EMPTY_STATS },
+      isOwner: isOwnProfile,
+      viewerId,
+      isOwnProfile,
+      isFollowing: false,
+      requested: false,
+      gated: true,
+      blocked: true,
+      followCounts,
+      featuredCompanion: null,
+      posts: [],
+      nextCursor: null,
+      pinnedPost: null,
+      shareUrl,
+      ogImageUrl: `${baseUrl}/og/default-profile.png`,
+      metaDescription: 'This profile is not available'
+    };
+  }
 
   const parsedLinks = parseLinks(profileRow.links);
 
@@ -271,21 +321,11 @@ export const load: PageServerLoad = async (event) => {
     console.error('[public profile] stats lookup failed', statsResult.error);
   }
 
-  const stats = (statsResult.data as StatsRow | null) ?? {
-    level: null,
-    xp: null,
-    xp_next: null,
-    energy: null,
-    energy_max: null
-  };
+  const stats = (statsResult.data as StatsRow | null) ?? { ...EMPTY_STATS };
 
-  const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
-  const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
-  const defaultDescription = profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
-
-  const isFollowing = privacyStatus?.isFollowing ?? false;
-  const requested = privacyStatus?.requested ?? false;
-  const gated = accountPrivate && !isOwnProfile && !isFollowing;
+  const isFollowing = blocked ? false : privacyStatus?.isFollowing ?? false;
+  const requested = blocked ? false : privacyStatus?.requested ?? false;
+  const gated = blockedView || (accountPrivate && !isOwnProfile && !isFollowing);
   const feedAllowed = !gated && profileRow.show_feed !== false;
   const achievementsAllowed = !gated && profileRow.show_achievements !== false;
   const safeAchievements = achievementsAllowed ? achievements : [];
@@ -316,6 +356,7 @@ export const load: PageServerLoad = async (event) => {
     isFollowing,
     requested,
     gated,
+    blocked: blockedView,
     followCounts,
     featuredCompanion: companion,
     posts: safeFeed,

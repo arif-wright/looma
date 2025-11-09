@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 const parseLimit = (value: string | null, fallback = 20) => {
   if (!value) return fallback;
@@ -22,13 +23,25 @@ export const GET: RequestHandler = async (event) => {
     ? { p_user: user, p_limit: limit, p_before: before }
     : { p_limit: limit, p_before: before };
 
+  const blockPeers = await ensureBlockedPeers(event, supabase);
   const { data, error } = await supabase.rpc(rpcName, params as Record<string, unknown>);
 
   if (error) {
     return json({ error: error.message }, { status: 400 });
   }
 
-  return json({ items: data ?? [] });
+  let items = Array.isArray(data) ? (data as Record<string, any>[]) : [];
+  if (blockPeers.size) {
+    items = items.filter((row) => {
+      const authorId =
+        (typeof row.author_id === 'string' && row.author_id) ||
+        (typeof row.user_id === 'string' && row.user_id) ||
+        null;
+      return !isBlockedPeer(blockPeers, authorId);
+    });
+  }
+
+  return json({ items });
 };
 
 export const POST: RequestHandler = async (event) => {

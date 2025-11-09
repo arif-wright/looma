@@ -6,6 +6,7 @@ declare global {
 			supabase: SupabaseClient;
 			user: User | null;
 			session?: Session | null;
+			blockPeers?: Set<string>;
 		}
 		interface PageData {
 			user?: User | null;

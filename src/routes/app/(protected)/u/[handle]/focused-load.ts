@@ -7,6 +7,7 @@ import type { PostRow } from '$lib/social/types';
 import { canonicalPostPath, commentHash } from '$lib/threads/permalink';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import { buildCommentTree, fetchTreeRows, hydrateAuthors } from '$lib/server/comments/tree';
+import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 
 const MAX_VISIBLE_DEPTH = 2;
 
@@ -48,6 +49,12 @@ export async function loadFocusedPost(
   lookup: Lookup
 ): Promise<FocusedPostResult> {
   const supabase = supabaseServer(event);
+  const blockPeers = await ensureBlockedPeers(event, supabase);
+  const viewerId = event.locals.user?.id ?? null;
+
+  if (isBlockedPeer(blockPeers, profile.id) && viewerId !== profile.id) {
+    throw redirect(302, `/app/u/${safe(profile.handle)}${search}`);
+  }
   const search = event.url.search;
 
   const postQuery = supabase
@@ -144,8 +151,11 @@ export async function loadFocusedPost(
   let commentRows: Comment[] = [];
   try {
     const treeRows = await fetchTreeRows(supabase, postRow.id);
-    const profileMap = await hydrateAuthors(supabase, treeRows);
-    commentRows = buildCommentTree(treeRows, profileMap, { maxDepth: MAX_VISIBLE_DEPTH });
+    const visibleRows = blockPeers.size
+      ? treeRows.filter((row) => !isBlockedPeer(blockPeers, row.author_id))
+      : treeRows;
+    const profileMap = await hydrateAuthors(supabase, visibleRows);
+    commentRows = buildCommentTree(visibleRows, profileMap, { maxDepth: MAX_VISIBLE_DEPTH });
   } catch (treeError) {
     console.error('[profile focused post] comment tree query failed', treeError);
     throw error(500, 'Unable to load comments');
