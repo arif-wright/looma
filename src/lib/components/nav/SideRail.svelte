@@ -4,7 +4,8 @@
 
   export type NavActivity = Record<string, number | boolean | undefined>;
 
-  export let activity: NavActivity = {};
+export let activity: NavActivity = {};
+export let isAdmin = false;
 
   const navItems = [
     { href: '/app/home', label: 'Home', icon: '🏠' },
@@ -45,6 +46,15 @@
         <span class="label">{item.label}</span>
       </a>
     {/each}
+    {#if isAdmin}
+      <a
+        href="/app/(protected)/admin"
+        class={`nav-link ${isActive('/app/(protected)/admin', $currentPath) ? 'active' : ''}`}
+      >
+        <span class="icon" aria-hidden="true">🛡️</span>
+        <span class="label">Admin</span>
+      </a>
+    {/if}
   {/if}
 </nav>
 

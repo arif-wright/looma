@@ -10,6 +10,7 @@ import {
   type MissionCandidate
 } from '$lib/server/landing';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
+import { isAdminEmail } from '$lib/server/admin';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -213,7 +214,8 @@ export const load: LayoutServerLoad = async (event) => {
         navActivity: {},
         notifications: [],
         notificationsUnread: 0,
-        headerStats: null
+        headerStats: null,
+        isAdmin: false
       };
     }
 
@@ -312,6 +314,7 @@ export const load: LayoutServerLoad = async (event) => {
     headerStats,
     wallet: {
       shards: walletRow?.shards ?? null
-    }
+    },
+    isAdmin: isAdminEmail(user.email ?? null)
   };
 };

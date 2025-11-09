@@ -19,6 +19,7 @@
 
   const userEmail = data?.user?.email ?? '';
   const activity = data?.navActivity ?? {};
+  const isAdmin = Boolean(data?.isAdmin);
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
@@ -95,7 +96,7 @@
 <div class={`app-shell ${hideRail ? 'app-shell--home' : ''}`}>
   {#if !hideRail}
     <aside class="app-rail">
-      <SideRail activity={activity} />
+      <SideRail activity={activity} isAdmin={isAdmin} />
     </aside>
   {/if}
   <div class="app-surface">
