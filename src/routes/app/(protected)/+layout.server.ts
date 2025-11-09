@@ -303,7 +303,9 @@ export const load: LayoutServerLoad = async (event) => {
     }
   }
 
-  const adminFlags = user ? await getAdminFlags(user.email ?? null, user.id) : { isAdmin: false, isFinance: false };
+  const adminFlags = user
+    ? await getAdminFlags(user.email ?? null, user.id)
+    : { isAdmin: false, isFinance: false, isSuper: false };
 
   return {
     user,

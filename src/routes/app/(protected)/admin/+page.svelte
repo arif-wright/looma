@@ -1,252 +1,250 @@
 <script lang="ts">
-  type FlagEntry = { key: string; enabled: boolean; note: string | null; updated_at: string | null };
-  type PaymentRow = {
-    id: string;
-    amount: number;
-    currency: string;
-    status: string;
-    brand: string | null;
-    last4: string | null;
-    created_at: string;
-  };
+  import { goto } from '$app/navigation';
+  import { onDestroy, onMount } from 'svelte';
+  import AdminCard from '$lib/components/admin/AdminCard.svelte';
+  import SubNav, { type NavItem } from '$lib/components/admin/SubNav.svelte';
+  import Sparkline from '$lib/components/admin/Sparkline.svelte';
+  import type { PageData } from './$types';
 
-  export let data: {
-    flags: { isAdmin: boolean; isFinance: boolean };
-    metrics: {
-      profileCount: number;
-      itemCount: number;
-      reportOpenCount: number;
-      totalShards30d: number;
-      orders30d: number;
-    };
-    analytics: {
-      dau: number;
-      mau: number;
-      loginSpark: Array<{ date: string; count: number }>;
-      viewSpark: Array<{ date: string; count: number }>;
-    };
-    finance: {
-      totalCents30d: number;
-      paymentCount30d: number;
-      recentPayments: PaymentRow[];
-      canViewDetails: boolean;
-    };
-    featureFlags: { known: FlagEntry[]; extra: FlagEntry[] };
-    maintenance: { enabled: boolean; message: string | null; updated_at: string | null };
-    health: {
-      dbOk: boolean;
-      lastStripeAt: string | null;
-      pendingMigrations: number | null;
-      errorLogCount: number | null;
-    };
-    recentOrders: Array<{ id: string; price_shards: number; created_at: string; user_id: string; slug: string }>;
-    recentReports: Array<{ id: number; target_kind: string; reason: string; status: string; created_at: string }>;
-  };
+  export let data: PageData;
+
+  const { flags, metrics, analytics, finance, featureFlags, maintenance, health, recentOrders, recentReports } = data;
 
   const numberFormatter = new Intl.NumberFormat();
   const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
-  const sparkPoints = (series: Array<{ count: number }>) => {
-    if (!series?.length) return '';
-    const max = Math.max(...series.map((point) => point.count), 1);
-    const denom = Math.max(series.length - 1, 1);
-    return series
-      .map((point, idx) => {
-        const x = (idx / denom) * 100;
-        const y = 100 - (point.count / max) * 100;
-        return `${x},${Number.isFinite(y) ? y : 100}`;
-      })
-      .join(' ');
-  };
+  const subNavItems: NavItem[] = [
+    { label: 'Hub', href: '/app/admin' },
+    { label: 'Shop Admin', href: '/app/admin/shop' },
+    { label: 'Reports', href: '/app/admin/reports' },
+    { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isSuper },
+    { label: 'Feature Toggles', href: '/app/admin#feature-toggles' },
+    { label: 'Maintenance', href: '/app/admin#maintenance' }
+  ];
 
+  const formatDate = (value: string | null) => (value ? new Date(value).toLocaleString() : '—');
   const maskCard = (brand: string | null, last4: string | null) => {
     if (!brand && !last4) return 'N/A';
-    const label = brand ? brand.toUpperCase() : 'CARD';
-    return `${label} •••• ${last4 ?? '????'}`;
+    return `${brand ? brand.toUpperCase() : 'CARD'} •••• ${last4 ?? '????'}`;
   };
 
-  const formatDate = (value: string | null) => {
-    if (!value) return '—';
-    return new Date(value).toLocaleString();
+  const shortcutMap: Record<string, string> = {
+    h: '/app/admin',
+    s: '/app/admin/shop',
+    r: '/app/admin/reports',
+    a: '/app/admin/roles'
   };
 
-  $: loginSparkPoints = sparkPoints(data.analytics.loginSpark ?? []);
-  $: viewSparkPoints = sparkPoints(data.analytics.viewSpark ?? []);
-  $: healthItems = [
-    { label: 'Database', ok: data.health.dbOk, detail: data.health.dbOk ? 'OK' : 'Down' },
-    {
-      label: 'Stripe Webhook',
-      ok: Boolean(data.health.lastStripeAt),
-      detail: data.health.lastStripeAt ? formatDate(data.health.lastStripeAt) : 'No recent charge'
-    },
-    {
-      label: 'Migrations',
-      ok: (data.health.pendingMigrations ?? 0) === 0,
-      detail: `${data.health.pendingMigrations ?? 0} pending`
-    },
-    {
-      label: 'Errors (24h)',
-      ok: !(data.health.errorLogCount ?? 0),
-      detail: data.health.errorLogCount === null ? 'N/A' : `${data.health.errorLogCount}`
+  let shortcutPrimed = false;
+  let shortcutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const resetShortcut = () => {
+    shortcutPrimed = false;
+    if (shortcutTimer) {
+      clearTimeout(shortcutTimer);
+      shortcutTimer = null;
     }
-  ];
+  };
+
+  const handleShortcut = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+    const key = event.key.toLowerCase();
+    if (!shortcutPrimed) {
+      if (key === 'g') {
+        shortcutPrimed = true;
+        shortcutTimer = setTimeout(resetShortcut, 1000);
+      }
+      return;
+    }
+
+    resetShortcut();
+    if (key === 'a' && !flags.isSuper) return;
+    const targetHref = shortcutMap[key];
+    if (targetHref) {
+      event.preventDefault();
+      void goto(targetHref);
+    }
+  };
+
+  onMount(() => {
+    window.addEventListener('keydown', handleShortcut);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleShortcut);
+    resetShortcut();
+  });
 </script>
 
 <div class="admin-shell">
-  <header class="admin-header">
-    <h1>Admin Hub</h1>
-    <div class="admin-links">
-      <a href="/app/(protected)/admin/shop">Shop Admin</a>
-      <a href="/app/(protected)/admin/reports">Reports</a>
-    </div>
-  </header>
+  <aside class="admin-rail">
+    <SubNav items={subNavItems} />
+  </aside>
 
-  <section class="grid stats-grid">
-    <div class="stat-card">
-      <p class="label">Users (Profiles)</p>
-      <p class="value">{numberFormatter.format(data.metrics.profileCount)}</p>
-      <p class="hint">Active last 30d: {numberFormatter.format(data.analytics.mau)}</p>
-    </div>
-    <div class="stat-card">
-      <p class="label">Shop Items</p>
-      <p class="value">{numberFormatter.format(data.metrics.itemCount)}</p>
-      <p class="hint">Inventory health looks good</p>
-    </div>
-    <div class="stat-card">
-      <p class="label">Open Reports</p>
-      <p class="value">{numberFormatter.format(data.metrics.reportOpenCount)}</p>
-      <p class="hint"><a href="/app/(protected)/admin/reports">Review queue →</a></p>
-    </div>
-    <div class="stat-card span-2">
-      <p class="label">Shards Revenue (30d)</p>
-      <p class="value">
-        {numberFormatter.format(data.metrics.totalShards30d)}
-        <span class="unit">SHARDS</span>
-      </p>
-      <p class="hint">Orders: {numberFormatter.format(data.metrics.orders30d)}</p>
-    </div>
-    <div class="stat-card span-3 analytics-card">
+  <section class="admin-main">
+    <header class="admin-header">
       <div>
-        <p class="label">Engagement</p>
-        <div class="engagement">
+        <p class="eyebrow">Control Center</p>
+        <h1>Admin Hub</h1>
+      </div>
+      <div class="header-actions">
+        <a href="/app/admin/shop">Shop Admin</a>
+        <a href="/app/admin/reports">Reports</a>
+      </div>
+    </header>
+
+    <div class="admin-grid">
+      <AdminCard className="span-4">
+        <p class="label">Users</p>
+        <p class="value">{numberFormatter.format(metrics.profileCount)}</p>
+        <p class="hint">Profiles total · {numberFormatter.format(analytics.mau)} MAU</p>
+      </AdminCard>
+
+      <AdminCard className="span-4">
+        <p class="label">Shop Items</p>
+        <p class="value">{numberFormatter.format(metrics.itemCount)}</p>
+        <p class="hint">Inventory active in store</p>
+      </AdminCard>
+
+      <AdminCard className="span-4">
+        <p class="label">Open Reports</p>
+        <p class="value">{numberFormatter.format(metrics.reportOpenCount)}</p>
+        <p class="hint">Need attention</p>
+      </AdminCard>
+
+      <AdminCard className="span-12 revenue-card">
+        <div class="card-head">
           <div>
-            <p class="mini-label">DAU</p>
-            <p class="mini-value">{numberFormatter.format(data.analytics.dau)}</p>
+            <p class="label">Shards Revenue · 30 days</p>
+            <p class="value">{numberFormatter.format(metrics.totalShards30d)} <span>shards</span></p>
+          </div>
+          <p class="hint">Orders: {numberFormatter.format(metrics.orders30d)}</p>
+        </div>
+      </AdminCard>
+
+      <AdminCard className="span-7 engagement-card">
+        <div class="card-head">
+          <div>
+            <p class="label">Engagement</p>
+            <p class="hint">DAU & MAU from events</p>
+          </div>
+          <div class="engagement-metrics">
+            <p><span>DAU</span> {numberFormatter.format(analytics.dau)}</p>
+            <p><span>MAU</span> {numberFormatter.format(analytics.mau)}</p>
+          </div>
+        </div>
+        <div class="sparklines">
+          <div>
+            <p class="spark-label">Logins (14d)</p>
+            <Sparkline data={analytics.loginSpark} stroke="#34d399" />
           </div>
           <div>
-            <p class="mini-label">MAU</p>
-            <p class="mini-value">{numberFormatter.format(data.analytics.mau)}</p>
+            <p class="spark-label">Pageviews (14d)</p>
+            <Sparkline data={analytics.viewSpark} stroke="#60a5fa" />
           </div>
         </div>
-      </div>
-      <div class="spark-grid">
-        <div>
-          <p class="spark-label">Logins (14d)</p>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-            <polyline points={loginSparkPoints} />
-          </svg>
-        </div>
-        <div>
-          <p class="spark-label">Pageviews (14d)</p>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-            <polyline points={viewSparkPoints} />
-          </svg>
-        </div>
-      </div>
-    </div>
-  </section>
+      </AdminCard>
 
-  <section class="grid panels-grid">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <p class="panel-title">Stripe (30d)</p>
-          <p class="panel-sub">Totals and latest payments</p>
+      <AdminCard className="span-5">
+        <div class="card-head">
+          <p class="label">System Health</p>
+          <p class="hint">Realtime checks</p>
         </div>
-        <p class="panel-value">
-          {currencyFormatter.format((data.finance.totalCents30d ?? 0) / 100)}
-          <span>· {numberFormatter.format(data.finance.paymentCount30d)} payments</span>
-        </p>
-      </div>
-      <div class="panel-body">
-        {#if data.finance.canViewDetails && data.finance.recentPayments.length}
-          <table class="finance-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each data.finance.recentPayments as payment}
-                <tr>
-                  <td>{formatDate(payment.created_at)}</td>
-                  <td>{currencyFormatter.format(payment.amount / 100)}</td>
-                  <td>{maskCard(payment.brand, payment.last4)}</td>
-                  <td>{payment.status}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {:else}
-          <p class="empty">Finance totals only — detailed records require the finance role.</p>
-        {/if}
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <p class="panel-title">System Health</p>
-          <p class="panel-sub">Realtime checks</p>
-        </div>
-      </div>
-      <div class="panel-body">
         <ul class="health-list">
-          {#each healthItems as item}
-            <li>
-              <span class={`dot ${item.ok ? 'ok' : 'warn'}`} aria-hidden="true"></span>
-              <div>
-                <p class="health-label">{item.label}</p>
-                <p class="health-detail">{item.detail}</p>
-              </div>
-            </li>
-          {/each}
+          <li>
+            <span class={`dot ${health.dbOk ? 'ok' : 'warn'}`}></span>
+            <div>
+              <p>Database</p>
+              <p class="hint">{health.dbOk ? 'Connected' : 'Issue'}</p>
+            </div>
+          </li>
+          <li>
+            <span class={`dot ${health.lastStripeAt ? 'ok' : 'warn'}`}></span>
+            <div>
+              <p>Stripe Webhook</p>
+              <p class="hint">{health.lastStripeAt ? formatDate(health.lastStripeAt) : 'No recent events'}</p>
+            </div>
+          </li>
+          <li>
+            <span class={`dot ${(health.pendingMigrations ?? 0) === 0 ? 'ok' : 'warn'}`}></span>
+            <div>
+              <p>Pending migrations</p>
+              <p class="hint">{health.pendingMigrations ?? 0}</p>
+            </div>
+          </li>
+          <li>
+            <span class={`dot ${health.errorLogCount ? 'warn' : 'ok'}`}></span>
+            <div>
+              <p>Error logs (24h)</p>
+              <p class="hint">{health.errorLogCount ?? 'N/A'}</p>
+            </div>
+          </li>
         </ul>
-      </div>
-    </div>
-  </section>
+      </AdminCard>
 
-  <section class="grid panels-grid">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <p class="panel-title">Feature Toggles</p>
-          <p class="panel-sub">Quick switches for core surfaces</p>
+      <AdminCard className="span-6" id="finance">
+        <div class="card-head">
+          <div>
+            <p class="label">Finance · Stripe (30d)</p>
+            <p class="value">{currencyFormatter.format(finance.totalCents30d / 100)}</p>
+          </div>
+          <p class="hint">{numberFormatter.format(finance.paymentCount30d)} payments</p>
         </div>
-      </div>
-      <div class="panel-body">
+        {#if finance.canViewDetails && finance.recentPayments.length}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each finance.recentPayments as payment}
+                  <tr>
+                    <td>{formatDate(payment.created_at)}</td>
+                    <td>{currencyFormatter.format(payment.amount / 100)}</td>
+                    <td>{maskCard(payment.brand, payment.last4)}</td>
+                    <td>{payment.status}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else}
+          <p class="hint">Grant finance role to view detailed payment rows.</p>
+        {/if}
+      </AdminCard>
+
+      <AdminCard className="span-6" id="feature-toggles">
+        <div class="card-head">
+          <p class="label">Feature Toggles</p>
+          <p class="hint">Quick switches</p>
+        </div>
         <form method="POST" action="?/flags" class="flags-form">
-          {#each data.featureFlags.known as flag}
+          {#each featureFlags.known as flag}
             <label class="flag-row">
-              <input type="checkbox" name={`flag-${flag.key}`} checked={flag.enabled}>
-              <div>
-                <p class="flag-label">{flag.key}</p>
-                <p class="flag-note">{flag.note ?? 'No note'}</p>
+              <div class="flag-toggle">
+                <input type="checkbox" name={`flag-${flag.key}`} checked={flag.enabled}>
+                <span>{flag.key}</span>
               </div>
               <input type="text" name={`note-${flag.key}`} value={flag.note ?? ''} placeholder="Optional note" />
             </label>
           {/each}
           <button type="submit">Save toggles</button>
         </form>
-
-        {#if data.featureFlags.extra.length}
+        {#if featureFlags.extra.length}
           <div class="extra-flags">
-            <p class="extra-title">Additional flags</p>
+            <p>Additional flags</p>
             <ul>
-              {#each data.featureFlags.extra as flag}
+              {#each featureFlags.extra as flag}
                 <li>
                   <span>{flag.key}</span>
                   <span>{flag.enabled ? 'on' : 'off'}</span>
@@ -255,359 +253,197 @@
             </ul>
           </div>
         {/if}
-      </div>
-    </div>
+      </AdminCard>
 
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <p class="panel-title">Maintenance Mode</p>
-          <p class="panel-sub">Gate the app for everyone except admins</p>
+      <AdminCard className="span-12" id="maintenance">
+        <div class="card-head">
+          <p class="label">Maintenance Mode</p>
+          <p class="hint">Restrict access for non-admins</p>
         </div>
-      </div>
-      <div class="panel-body">
         <form method="POST" action="?/maintenance" class="maintenance-form">
-          <label class="toggle">
-            <input type="checkbox" name="maintenance-enabled" checked={data.maintenance.enabled}>
-            <span>Enable maintenance mode</span>
+          <label class="switch">
+            <input type="checkbox" name="maintenance-enabled" checked={maintenance.enabled}>
+            <span>Maintenance enabled</span>
           </label>
-          <textarea name="maintenance-message" placeholder="Optional message for users">{data.maintenance.message ?? ''}</textarea>
+          <textarea name="maintenance-message" placeholder="Message for users">{maintenance.message ?? ''}</textarea>
           <button type="submit">Update maintenance</button>
+          <p class="hint">Last updated {formatDate(maintenance.updated_at)}</p>
         </form>
-        <p class="hint">Last updated: {formatDate(data.maintenance.updated_at)}</p>
-      </div>
-    </div>
-  </section>
+      </AdminCard>
 
-  <section class="grid list-grid">
-    <div class="panel">
-      <div class="panel-head">Recent Orders</div>
-      <div class="panel-body">
-        {#if data.recentOrders.length}
+      <AdminCard className="span-6">
+        <div class="card-head">
+          <p class="label">Recent Orders</p>
+          <p class="hint">Latest five purchases</p>
+        </div>
+        {#if recentOrders.length}
           <ul class="list">
-            {#each data.recentOrders as o}
+            {#each recentOrders as order}
               <li>
                 <div>
-                  <p class="item-title">Order #{o.id.slice(0, 8)}</p>
-                  <p class="item-sub">{formatDate(o.created_at)}</p>
+                  <p>Order #{order.id.slice(0, 8)}</p>
+                  <p class="hint">{formatDate(order.created_at)}</p>
                 </div>
-                <p class="item-value">{numberFormatter.format(o.price_shards)} shards</p>
+                <p>{numberFormatter.format(order.price_shards)} shards</p>
               </li>
             {/each}
           </ul>
         {:else}
-          <p class="empty">No recent orders.</p>
+          <p class="hint">No orders yet.</p>
         {/if}
-      </div>
-    </div>
+      </AdminCard>
 
-    <div class="panel">
-      <div class="panel-head">Recent Reports</div>
-      <div class="panel-body">
-        {#if data.recentReports.length}
+      <AdminCard className="span-6">
+        <div class="card-head">
+          <p class="label">Recent Reports</p>
+          <p class="hint">Latest five entries</p>
+        </div>
+        {#if recentReports.length}
           <ul class="list">
-            {#each data.recentReports as r}
+            {#each recentReports as report}
               <li>
                 <div>
-                  <p class="item-title capitalize">{r.target_kind}</p>
-                  <p class="item-sub">{formatDate(r.created_at)}</p>
+                  <p class="title">{report.target_kind}</p>
+                  <p class="hint">{formatDate(report.created_at)}</p>
                 </div>
-                <div class="item-meta">
-                  <span class="badge">{r.reason}</span>
-                  <span class="status">{r.status}</span>
-                </div>
+                <span class="badge">{report.reason}</span>
               </li>
             {/each}
           </ul>
         {:else}
-          <p class="empty">No recent reports.</p>
+          <p class="hint">No reports at the moment.</p>
         {/if}
-      </div>
+      </AdminCard>
     </div>
   </section>
 </div>
 
 <style>
   .admin-shell {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
     gap: 2rem;
+    padding: 2rem clamp(1rem, 5vw, 3rem) 4rem;
+  }
+
+  @media (max-width: 1023px) {
+    .admin-shell {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .admin-rail {
+    position: sticky;
+    top: 2rem;
+    align-self: start;
   }
 
   .admin-header {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
+    margin-bottom: 2rem;
+    position: sticky;
+    top: 1rem;
+    z-index: 5;
+    backdrop-filter: blur(12px);
   }
 
   .admin-header h1 {
-    font-size: 2rem;
-    font-weight: 600;
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    margin: 0;
   }
 
-  .admin-links {
+  .eyebrow {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 0.2rem;
+  }
+
+  .header-actions {
     display: flex;
     gap: 0.75rem;
   }
 
-  .admin-links a {
-    padding: 0.5rem 0.9rem;
-    border-radius: 0.85rem;
+  .header-actions a {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.08);
+    text-decoration: none;
   }
 
-  .stats-grid,
-  .panels-grid,
-  .list-grid {
-    gap: 1.25rem;
-  }
-
-  .grid {
+  .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
   }
 
-  .stat-card {
-    border-radius: 1.2rem;
-    padding: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 10px 30px rgba(3, 7, 18, 0.35);
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
+  .span-4 { grid-column: span 4; }
+  .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
+  .span-7 { grid-column: span 7; }
+  .span-12 { grid-column: span 12; }
 
-  .span-2 {
-    grid-column: span 2;
-  }
-
-  .span-3 {
-    grid-column: span 3;
-  }
-
-  @media (max-width: 960px) {
-    .span-2,
-    .span-3 {
-      grid-column: span 1;
-    }
+  @media (max-width: 1100px) {
+    .span-4,
+    .span-5,
+    .span-6,
+    .span-7 { grid-column: span 12; }
   }
 
   .label {
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .value {
-    font-size: 2rem;
-    font-weight: 600;
-  }
-
-  .hint {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .unit {
-    font-size: 0.9rem;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.6);
-    margin-left: 0.4rem;
-  }
-
-  .analytics-card {
-    grid-column: span 3;
-  }
-
-  .analytics-card svg {
-    width: 100%;
-    height: 60px;
-  }
-
-  .analytics-card polyline {
-    fill: none;
-    stroke: #34d399;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .engagement {
-    display: flex;
-    gap: 1.5rem;
-  }
-
-  .mini-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .mini-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-
-  .spark-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1rem;
-    margin-top: 0.75rem;
-  }
-
-  .spark-label {
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .panel {
-    border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .panel-head {
-    padding: 1.1rem 1.3rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .panel-title {
-    font-weight: 600;
-    margin-bottom: 0.1rem;
-  }
-
-  .panel-sub {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .panel-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    text-align: right;
-  }
-
-  .panel-value span {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 400;
     color: rgba(255, 255, 255, 0.65);
   }
 
-  .panel-body {
-    padding: 1.2rem 1.3rem 1.4rem;
+  .value {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    font-weight: 600;
+  }
+
+  .value span {
+    font-size: 1rem;
+    text-transform: uppercase;
+    margin-left: 0.35rem;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .hint {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .engagement-metrics {
+    display: flex;
+    gap: 1rem;
+    text-align: right;
+  }
+
+  .engagement-metrics span {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .sparklines {
     display: grid;
     gap: 1rem;
   }
 
-  .finance-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-  }
-
-  .finance-table th,
-  .finance-table td {
-    padding: 0.4rem 0.35rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    text-align: left;
-  }
-
-  .finance-table th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .flags-form,
-  .maintenance-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .flag-row {
-    display: grid;
-    grid-template-columns: auto 1fr minmax(140px, 220px);
-    align-items: center;
-    gap: 0.9rem;
-    padding: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 0.9rem;
-  }
-
-  .flag-row input[type='text'] {
-    border-radius: 0.6rem;
-    padding: 0.4rem 0.6rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .flag-label {
-    font-weight: 600;
-    text-transform: capitalize;
-  }
-
-  .flag-note {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  button {
-    align-self: flex-start;
-    padding: 0.55rem 1.2rem;
-    border-radius: 0.85rem;
-    background: linear-gradient(120deg, #38bdf8, #a855f7);
-    color: #030712;
-    font-weight: 600;
-  }
-
-  textarea {
-    min-height: 80px;
-    border-radius: 0.9rem;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .toggle {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    font-weight: 600;
-  }
-
-  .extra-flags ul {
-    margin-top: 0.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-  }
-
-  .extra-flags li {
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
-    padding-bottom: 0.2rem;
-  }
-
-  .extra-title {
+  .spark-label {
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -615,8 +451,7 @@
   }
 
   .health-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 0.8rem;
   }
 
@@ -632,21 +467,111 @@
     border-radius: 999px;
   }
 
-  .dot.ok {
-    background: #34d399;
+  .dot.ok { background: #34d399; }
+  .dot.warn { background: #f87171; }
+
+  .table-wrap {
+    overflow-x: auto;
   }
 
-  .dot.warn {
-    background: #f87171;
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
   }
 
-  .health-label {
+  th,
+  td {
+    text-align: left;
+    padding: 0.45rem 0.35rem;
+  }
+
+  th {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  tbody tr + tr td {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .flags-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .flag-row {
+    display: grid;
+    grid-template-columns: minmax(0, 220px) 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .flag-row input[type='text'] {
+    border-radius: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .flag-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: capitalize;
     font-weight: 600;
   }
 
-  .health-detail {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6);
+  button {
+    align-self: flex-start;
+    padding: 0.55rem 1.2rem;
+    border-radius: 999px;
+    background: linear-gradient(120deg, #38bdf8, #a855f7);
+    color: #030712;
+    font-weight: 600;
+  }
+
+  .extra-flags ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .extra-flags li {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .maintenance-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  textarea {
+    min-height: 90px;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    color: inherit;
+  }
+
+  .switch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
   }
 
   .list {
@@ -658,40 +583,19 @@
   .list li {
     display: flex;
     justify-content: space-between;
-    gap: 0.75rem;
-    align-items: center;
-    font-size: 0.9rem;
-  }
-
-  .item-title {
-    font-weight: 600;
-  }
-
-  .item-sub {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .item-value {
-    font-weight: 600;
-  }
-
-  .item-meta {
-    display: flex;
-    gap: 0.4rem;
     align-items: center;
   }
 
-  .badge,
-  .status {
-    font-size: 0.75rem;
-    padding: 0.15rem 0.5rem;
+  .badge {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.2rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
-  .empty {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.6);
+  @media (max-width: 767px) {
+    .header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
   }
 </style>

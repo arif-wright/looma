@@ -47,10 +47,7 @@ export let isAdmin = false;
       </a>
     {/each}
     {#if isAdmin}
-      <a
-        href="/app/(protected)/admin"
-        class={`nav-link ${isActive('/app/(protected)/admin', $currentPath) ? 'active' : ''}`}
-      >
+      <a href="/app/admin" class={`nav-link ${isActive('/app/admin', $currentPath) ? 'active' : ''}`}>
         <span class="icon" aria-hidden="true">🛡️</span>
         <span class="label">Admin</span>
       </a>
