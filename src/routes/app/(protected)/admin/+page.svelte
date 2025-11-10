@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import AdminCard from '$lib/components/admin/AdminCard.svelte';
@@ -72,10 +73,12 @@
   };
 
   onMount(() => {
+    if (!browser) return;
     window.addEventListener('keydown', handleShortcut);
   });
 
   onDestroy(() => {
+    if (!browser) return;
     window.removeEventListener('keydown', handleShortcut);
     resetShortcut();
   });
