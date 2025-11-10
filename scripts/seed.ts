@@ -164,11 +164,20 @@ const ensurePostAndComment = async (admin: SupabaseClient, author: User, viewer:
   }
 };
 
-const ensureCompanions = async (
-  admin: SupabaseClient,
-  owner: User,
-  entries: Array<{ name: string; species: string; mood: string; featured?: boolean }>
-) => {
+type CompanionSeed = {
+  name: string;
+  species: string;
+  mood: string;
+  rarity?: string;
+  level?: number;
+  xp?: number;
+  affection?: number;
+  trust?: number;
+  energy?: number;
+  featured?: boolean;
+};
+
+const ensureCompanions = async (admin: SupabaseClient, owner: User, entries: CompanionSeed[]) => {
   const createdIds: string[] = [];
   for (const entry of entries) {
     const { data: existing } = await admin
@@ -187,9 +196,12 @@ const ensureCompanions = async (
           name: entry.name,
           species: entry.species,
           mood: entry.mood,
-          bond_level: 3,
-          bond_xp: 60,
-          bond_next: 100
+          rarity: entry.rarity ?? 'common',
+          level: entry.level ?? 3,
+          xp: entry.xp ?? 60,
+          affection: entry.affection ?? 45,
+          trust: entry.trust ?? 30,
+          energy: entry.energy ?? 80
         })
         .select('id')
         .single();

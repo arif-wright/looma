@@ -8,7 +8,7 @@
   import { logout } from '$lib/auth/logout';
   import { page } from '$app/stores';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-  import { Gamepad2, ShoppingBag, MessageCircle, Trophy, UserRound } from 'lucide-svelte';
+  import { Gamepad2, ShoppingBag, MessageCircle, Trophy, UserRound, PawPrint } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
   import { FLAGS } from '$lib/config/flags';
   import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
@@ -69,6 +69,7 @@
   const iconNavItems: IconNavItem[] = [
     { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
     { href: '/app/shop', label: 'Shop', icon: ShoppingBag, analyticsKey: 'shop' },
+    { href: '/app/companions', label: 'Companions', icon: PawPrint, analyticsKey: 'companions' },
     { href: '/app/home', label: 'Feed', icon: MessageCircle, analyticsKey: 'feed' },
     { href: '/app/dashboard', label: 'Achievements', icon: Trophy, analyticsKey: 'achievements' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }

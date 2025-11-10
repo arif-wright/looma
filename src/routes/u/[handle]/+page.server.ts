@@ -42,14 +42,19 @@ type StatsRow = {
 
 type CompanionRow = {
   id: string;
+  owner_id: string;
   name: string;
   species: string;
   avatar_url: string | null;
-  bond_level: number;
-  bond_xp: number;
-  bond_next: number;
+  rarity: string;
+  level: number;
+  xp: number;
+  affection: number;
+  trust: number;
+  energy: number;
   mood: string;
   created_at: string;
+  updated_at: string;
 };
 
 type AchievementRow = {
@@ -121,7 +126,9 @@ const fetchFeaturedCompanion = async (
   if (!companionId) return null;
   const { data, error: companionError } = await supabase
     .from('companions')
-    .select('id, name, species, avatar_url, bond_level, bond_xp, bond_next, mood, created_at')
+    .select(
+      'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, created_at, updated_at'
+    )
     .eq('id', companionId)
     .maybeSingle();
 

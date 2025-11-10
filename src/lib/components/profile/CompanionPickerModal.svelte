@@ -7,7 +7,8 @@
     species: string;
     avatar_url: string | null;
     mood: string;
-    bond_level: number;
+    level: number;
+    rarity?: string | null;
   };
 
   export let open = false;
@@ -64,7 +65,7 @@
                   <p class="name">{companion.name}</p>
                   <p class="species">{companion.species}</p>
                   <p class="mood">{companion.mood}</p>
-                  <span class="level">Lv {companion.bond_level}</span>
+                  <span class="level">Lv {companion.level}</span>
                 </div>
               </button>
             </li>

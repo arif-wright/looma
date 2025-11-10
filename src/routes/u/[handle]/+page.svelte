@@ -7,6 +7,8 @@
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import type { PageData } from './$types';
+  import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
+  import type { Companion } from '$lib/stores/companions';
 
   export let data: PageData;
 
@@ -16,6 +18,17 @@
   const ogImageUrl = data.ogImageUrl ?? `${shareUrl ? new URL('/api/og/profile?handle=' + profile.handle, shareUrl).toString() : ''}`;
   const metaTitle = `${profile.display_name ?? profile.handle} (@${profile.handle}) • Looma`;
   const metaDescription = data.metaDescription ?? profile.bio?.slice(0, 160) ?? 'View this explorer on Looma';
+  let featuredCompanionCard: Companion | null = data.featuredCompanion
+    ? ({ ...data.featuredCompanion, owner_id: profile.id } as Companion)
+    : null;
+  $: if (data.featuredCompanion) {
+    featuredCompanionCard = {
+      ...(data.featuredCompanion as Companion),
+      owner_id: profile.id
+    };
+  } else {
+    featuredCompanionCard = null;
+  }
 </script>
 
 <svelte:head>
@@ -53,7 +66,7 @@
     viewerCanFollow={!data.blocked && Boolean(data.viewerId)}
   />
 
-  <main class="profile-grid mt-6">
+<main class="profile-grid mt-6">
     <div class="profile-cols">
       <div class="flex flex-col gap-4">
         <ProfileSidebar
@@ -84,12 +97,20 @@
           <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
         </section>
 
-        <section class="panel" id="companions">
+        <section class="panel companion-panel" id="companions">
           <ProfileHighlights
             pinnedPost={data.pinnedPost}
             companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
             profileHandle={profile.handle}
           />
+          <div class="featured-slot">
+            <h3 class="panel-title">Featured Companion</h3>
+            {#if featuredCompanionCard}
+              <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
+            {:else}
+              <p class="text-muted">This explorer hasn’t showcased a companion yet.</p>
+            {/if}
+          </div>
         </section>
 
         {#if data.gated && !data.isOwnProfile && !data.isFollowing}
@@ -113,3 +134,21 @@
     </div>
   </main>
 </div>
+
+<style>
+  .companion-panel {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .featured-slot {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .text-muted {
+    color: rgba(255, 255, 255, 0.65);
+  }
+</style>

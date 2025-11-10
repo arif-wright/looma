@@ -8,11 +8,13 @@
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
+  import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import FollowRequestsPanel from '$lib/components/profile/FollowRequestsPanel.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { currentProfile } from '$lib/stores/profile';
+  import type { Companion } from '$lib/stores/companions';
 
   export let data: PageData;
 
@@ -20,6 +22,9 @@
 
   let profile: LooseRecord = { ...data.profile };
   const stats = data.stats;
+let featuredCompanionCard: Companion | null = data.featuredCompanion
+    ? ({ ...data.featuredCompanion, owner_id: (data.profile?.id ?? profile?.id ?? '') as string } as Companion)
+    : null;
 
   let pickerOpen = false;
   let pickerBusy = false;
@@ -87,6 +92,14 @@
     data.profile = { ...data.profile, ...patch };
     currentProfile.update((p) => (p ? { ...p, ...patch } : p));
   }
+  $: if (data.featuredCompanion) {
+    featuredCompanionCard = {
+      ...(data.featuredCompanion as Companion),
+      owner_id: (data.profile?.id ?? profile?.id ?? '') as string
+    };
+  } else {
+    featuredCompanionCard = null;
+  }
 </script>
 
 <BackgroundStack class="profile-bg" />
@@ -141,12 +154,21 @@
           <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
         </section>
 
-        <section class="panel" id="companions">
+        <section class="panel companion-panel" id="companions">
           <ProfileHighlights
             pinnedPost={data.pinnedPost}
             companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
             profileHandle={profile.handle}
           />
+          <div class="featured-slot">
+            <h3 class="panel-title">Featured Companion</h3>
+            {#if featuredCompanionCard}
+              <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
+              <a class="btn-ghost mt-3 inline-flex w-full justify-center" href="/app/companions">Open care hub</a>
+            {:else}
+              <p class="text-muted">Swap in a companion from the sidebar to highlight them here.</p>
+            {/if}
+          </div>
         </section>
 
         <section id="activity" class="space-y-4">
@@ -173,3 +195,21 @@
   on:close={handlePickerClose}
   on:select={handlePickerSelect}
 />
+
+<style>
+  .companion-panel {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .featured-slot {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .text-muted {
+    color: rgba(255, 255, 255, 0.65);
+  }
+</style>
