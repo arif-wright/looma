@@ -332,7 +332,9 @@ export const load: PageServerLoad = async (event) => {
     pinned,
     achievements,
     followCounts,
-    privacyStatus
+    privacyStatus,
+    companionCountResult,
+    flagResult
   ] = await Promise.all([
     supabase
       .from('player_stats')
@@ -346,7 +348,16 @@ export const load: PageServerLoad = async (event) => {
     fetchPinnedPreview(supabase, user.id, true),
     fetchRecentAchievements(supabase, user.id),
     getFollowCounts(user.id),
-    getFollowPrivacyStatus(user.id, profileRow.id)
+    getFollowPrivacyStatus(user.id, profileRow.id),
+    supabase
+      .from('companions')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user.id),
+    supabase
+      .from('feature_flags')
+      .select('key, enabled')
+      .eq('key', 'bond_genesis')
+      .maybeSingle()
   ]);
 
   if (statsResult.error) {
@@ -354,6 +365,12 @@ export const load: PageServerLoad = async (event) => {
   }
   if (walletResult.error) {
     console.error('[profile] wallet lookup failed', walletResult.error);
+  }
+  if (companionCountResult.error) {
+    console.error('[profile] companion count lookup failed', companionCountResult.error);
+  }
+  if (flagResult.error) {
+    console.error('[profile] feature flag lookup failed', flagResult.error);
   }
 
   const stats = (statsResult.data as StatsRow | null) ?? {
@@ -434,6 +451,10 @@ export const load: PageServerLoad = async (event) => {
     pinnedPost: pinned,
     shareUrl: `${baseUrl}/app/u/${profileRow.handle}`,
     followCounts,
-    followRequests
+    followRequests,
+    companionCount: companionCountResult.count ?? 0,
+    flags: {
+      bond_genesis: Boolean((flagResult.data as { enabled?: boolean } | null)?.enabled)
+    }
   };
 };

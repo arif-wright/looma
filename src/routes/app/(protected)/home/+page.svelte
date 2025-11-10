@@ -32,6 +32,8 @@
   const walletTx = data.walletTx ?? [];
   const latestWalletTx = walletTx[0] ?? null;
   const initialFeed: FeedItemType[] = Array.isArray(data.feed) ? data.feed : [];
+  const bondGenesisEnabled = Boolean(data.flags?.bond_genesis);
+  const companionCount = data.companionCount ?? 0;
 
   const quickLinks: QuickLink[] = [
     { id: 'greeting', label: 'Resonance', description: 'Emotional compass', href: '#greeting', icon: PenSquare },
@@ -266,6 +268,8 @@
             {activeMission}
             pendingReward={false}
             recentFail={null}
+            bondGenesisEnabled={bondGenesisEnabled}
+            companionCount={companionCount}
             on:startMission={handleStartMission}
             on:claim={handleClaimReward}
             on:checkCreature={handleCheckCreature}

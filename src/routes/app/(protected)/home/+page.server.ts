@@ -48,7 +48,9 @@ export const load: PageServerLoad = async (event) => {
     preferences: parent.preferences ?? null,
     notificationsUnread: parent.notificationsUnread ?? 0,
     wallet: null as Awaited<ReturnType<typeof getWalletWithTransactions>>['wallet'] | null,
-    walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions']
+    walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions'],
+    flags: { bond_genesis: false },
+    companionCount: 0
   };
 
   try {
@@ -153,6 +155,8 @@ export const load: PageServerLoad = async (event) => {
 
     let wallet = safe.wallet;
     let walletTx = safe.walletTx;
+    let flags = { ...safe.flags };
+    let companionCount = safe.companionCount;
 
     if (session?.user?.id) {
       try {
@@ -165,6 +169,39 @@ export const load: PageServerLoad = async (event) => {
           error: err instanceof Error ? err.message : String(err)
         });
       }
+
+      try {
+        const { count, error } = await supabase
+          .from('companions')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', session.user.id);
+        if (error) {
+          throw error;
+        }
+        companionCount = count ?? 0;
+      } catch (err) {
+        diagnostics.push('companion_count_failed');
+        reportHomeLoadIssue('companion_count_failed', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('feature_flags')
+        .select('key, enabled')
+        .eq('key', 'bond_genesis')
+        .maybeSingle();
+      if (error) {
+        throw error;
+      }
+      flags.bond_genesis = Boolean(data?.enabled);
+    } catch (err) {
+      diagnostics.push('flags_query_failed');
+      reportHomeLoadIssue('flags_query_failed', {
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
 
     const endcap =
@@ -207,7 +244,9 @@ export const load: PageServerLoad = async (event) => {
       preferences: parent.preferences ?? null,
       notificationsUnread: parent.notificationsUnread ?? 0,
       wallet,
-      walletTx
+      walletTx,
+      flags,
+      companionCount
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

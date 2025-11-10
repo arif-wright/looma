@@ -33,6 +33,8 @@
     | null = null;
   export let pendingReward: { label?: string | null } | boolean = false;
   export let recentFail: { missionId?: string | null; name?: string | null } | null = null;
+  export let bondGenesisEnabled = false;
+  export let companionCount: number | null = null;
 
   const dispatch = createEventDispatcher<{
     claim: void;
@@ -101,6 +103,7 @@
   $: showPulse = ctaState === 'reward' || ctaState === 'retry';
   $: orbIntensity =
     energyPercent !== null ? Math.max(0.28, Math.min(1, energyPercent / 100)) : 0.45;
+  $: showBondGenesisInvite = bondGenesisEnabled && (companionCount ?? 0) === 0;
 
   function handlePrimary() {
     if (ctaState === 'reward') {
@@ -214,6 +217,21 @@
       <p class="callout-summary">Short burst, fast dopamine — perfect for keeping the streak glowing.</p>
     {/if}
   </section>
+
+  {#if showBondGenesisInvite}
+    <section class="bond-genesis" aria-label="Start your first companion bond">
+      <div>
+        <span class="callout-label">New arc</span>
+        <h3>Find your first bond</h3>
+        <p class="callout-summary">
+          Take a one-minute vibe quiz and spawn a companion tuned to you.
+        </p>
+      </div>
+      <a class="bond-genesis__cta btn-ripple hover-glow" href="/app/onboarding/companion">
+        Begin quiz
+      </a>
+    </section>
+  {/if}
 
   <section
     class="companion"
@@ -385,6 +403,43 @@
     margin: 0;
     font-size: 0.96rem;
     color: rgba(226, 232, 255, 0.82);
+  }
+
+  .bond-genesis {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.1rem;
+    padding: 1.2rem 1.4rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, rgba(80, 17, 123, 0.58), rgba(14, 116, 144, 0.45));
+    box-shadow: 0 14px 40px rgba(7, 10, 24, 0.5);
+  }
+
+  .bond-genesis h3 {
+    margin: 0.15rem 0;
+    font-size: 1.3rem;
+  }
+
+  .bond-genesis__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.4rem;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 160ms ease, transform 160ms ease;
+  }
+
+  .bond-genesis__cta:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
   }
 
   .badge {

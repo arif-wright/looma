@@ -22,6 +22,9 @@
 
   let profile: LooseRecord = { ...data.profile };
   const stats = data.stats;
+  const bondGenesisEnabled = Boolean(data.flags?.bond_genesis);
+  const companionCount = data.companionCount ?? 0;
+  const showBondGenesisCta = Boolean(data.isOwner && bondGenesisEnabled && companionCount === 0);
 let featuredCompanionCard: Companion | null = data.featuredCompanion
     ? ({ ...data.featuredCompanion, owner_id: (data.profile?.id ?? profile?.id ?? '') as string } as Companion)
     : null;
@@ -118,6 +121,7 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
     gated={data.gated ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={false}
+    showBondGenesisCta={showBondGenesisCta}
     on:edit={handleEdit}
   />
 

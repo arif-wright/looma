@@ -12,15 +12,16 @@
   export let coverUrl: string | null = null;
   export let avatarUrl: string | null = null;
   export let canEdit = false;
-export let canShare = false;
-export let shareUrl: string | null = null;
-export let isOwnProfile = false;
-export let isFollowing = false;
-export let requested = false;
-export let gated = false;
-export let followCounts: FollowCounts = { followers: 0, following: 0 };
-export let viewerCanFollow = false;
-export let blocked = false;
+  export let canShare = false;
+  export let shareUrl: string | null = null;
+  export let isOwnProfile = false;
+  export let isFollowing = false;
+  export let requested = false;
+  export let gated = false;
+  export let followCounts: FollowCounts = { followers: 0, following: 0 };
+  export let viewerCanFollow = false;
+  export let blocked = false;
+  export let showBondGenesisCta = false;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
@@ -411,6 +412,9 @@ function openReport() {
               {#if canEdit}
                 <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
               {/if}
+              {#if isOwnProfile && showBondGenesisCta}
+                <a class="bond-cta" href="/app/onboarding/companion">Find your first bond</a>
+              {/if}
               {#if !isOwnProfile && targetUserId}
                 <div class="menu-wrap">
                   <button
@@ -573,6 +577,26 @@ function openReport() {
 
   .menu-wrap {
     position: relative;
+  }
+
+  .bond-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 160ms ease, box-shadow 160ms ease;
+  }
+
+  .bond-cta:hover {
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 
   .btn-ghost.icon {
