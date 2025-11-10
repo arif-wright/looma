@@ -3,7 +3,6 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import AdminCard from '$lib/components/admin/AdminCard.svelte';
-  import SubNav, { type NavItem } from '$lib/components/admin/SubNav.svelte';
   import Sparkline from '$lib/components/admin/Sparkline.svelte';
   import type { PageData } from './$types';
 
@@ -13,15 +12,6 @@
 
   const numberFormatter = new Intl.NumberFormat();
   const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-
-  const subNavItems: NavItem[] = [
-    { label: 'Hub', href: '/app/admin' },
-    { label: 'Shop Admin', href: '/app/admin/shop' },
-    { label: 'Reports', href: '/app/admin/reports' },
-    { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isSuper },
-    { label: 'Feature Toggles', href: '/app/admin#feature-toggles' },
-    { label: 'Maintenance', href: '/app/admin#maintenance' }
-  ];
 
   const formatDate = (value: string | null) => (value ? new Date(value).toLocaleString() : '—');
   const maskCard = (brand: string | null, last4: string | null) => {
@@ -85,10 +75,6 @@
 </script>
 
 <div class="admin-shell">
-  <aside class="admin-rail">
-    <SubNav items={subNavItems} />
-  </aside>
-
   <section class="admin-main">
     <header class="admin-header">
       <div>
@@ -323,22 +309,12 @@
 
 <style>
   .admin-shell {
-    display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    gap: 2rem;
     padding: 2rem clamp(1rem, 5vw, 3rem) 4rem;
   }
 
-  @media (max-width: 1023px) {
-    .admin-shell {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .admin-rail {
-    position: sticky;
-    top: 2rem;
-    align-self: start;
+  .admin-main {
+    max-width: 1400px;
+    margin: 0 auto;
   }
 
   .admin-header {
@@ -386,17 +362,19 @@
     gap: clamp(1rem, 2vw, 1.5rem);
   }
 
-  .span-4 { grid-column: span 4; }
-  .span-5 { grid-column: span 5; }
-  .span-6 { grid-column: span 6; }
-  .span-7 { grid-column: span 7; }
-  .span-12 { grid-column: span 12; }
+  :global(.span-4) { grid-column: span 4; }
+  :global(.span-5) { grid-column: span 5; }
+  :global(.span-6) { grid-column: span 6; }
+  :global(.span-7) { grid-column: span 7; }
+  :global(.span-12) { grid-column: span 12; }
 
   @media (max-width: 1100px) {
-    .span-4,
-    .span-5,
-    .span-6,
-    .span-7 { grid-column: span 12; }
+    :global(.span-4),
+    :global(.span-5),
+    :global(.span-6),
+    :global(.span-7) {
+      grid-column: span 12;
+    }
   }
 
   .label {
