@@ -53,7 +53,13 @@
   $: isShop = currentPath.startsWith('/app/shop');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
-  $: hideRail = isHome || isGames || isShop || isProfileSurface || currentPath === '/app/wallet';
+  $: hideRail =
+    isHome ||
+    isGames ||
+    isShop ||
+    isProfileSurface ||
+    currentPath === '/app/wallet' ||
+    currentPath.startsWith('/app/admin');
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
