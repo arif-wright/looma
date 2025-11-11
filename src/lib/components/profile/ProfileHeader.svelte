@@ -417,7 +417,9 @@ function openReport() {
                 <button class="btn-ghost" type="button" on:click={handleEdit}>Edit profile</button>
               {/if}
               {#if isOwnProfile && showBondGenesisCta}
-                <a class="bond-cta" href="/app/onboarding/companion">Find your first bond</a>
+                <a class="bond-cta" href="/app/onboarding/companion" sveltekit:prefetch>
+                  Find your first bond
+                </a>
               {/if}
               {#if !isOwnProfile && targetUserId}
                 <div class="menu-wrap">

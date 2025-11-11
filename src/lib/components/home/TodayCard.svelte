@@ -227,7 +227,11 @@
           Take a one-minute vibe quiz and spawn a companion tuned to you.
         </p>
       </div>
-      <a class="bond-genesis__cta btn-ripple hover-glow" href="/app/onboarding/companion">
+      <a
+        class="bond-genesis__cta btn-ripple hover-glow"
+        href="/app/onboarding/companion"
+        sveltekit:prefetch
+      >
         Begin quiz
       </a>
     </section>
