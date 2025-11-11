@@ -143,6 +143,13 @@ immutable
 as $$
   select jsonb_build_object(
     'archetype', coalesce(p_arch, 'Neutral'),
+    'color',
+      (
+        select color
+          from public.companion_archetypes
+         where key = coalesce(p_arch, '')
+         limit 1
+      ),
     'traits', jsonb_build_object(
       'empathy', coalesce((p_facets->>'empathy')::int, 0),
       'curiosity', coalesce((p_facets->>'curiosity')::int, 0),
@@ -207,7 +214,7 @@ $$;
 -- ===============================================================
 -- 6) RPC: save quiz → facets → archetype → persona summary
 -- ===============================================================
-create or replace function public.save_traits_and_match(p_raw jsonb)
+create or replace function public.save_traits_and_match(p_raw jsonb, p_consent boolean default true)
 returns table(archetype text, summary jsonb)
 language plpgsql
 security definer
@@ -215,33 +222,26 @@ set search_path = public
 as $$
 declare
   u uuid := auth.uid();
-  flag_enabled boolean;
   f jsonb;
   a text;
   s jsonb;
+  consent_value boolean := coalesce(p_consent, true);
 begin
   if u is null then
     raise exception 'unauthorized';
-  end if;
-
-  select enabled into flag_enabled
-  from public.feature_flags
-  where key = 'bond_genesis';
-
-  if flag_enabled is not true then
-    raise exception 'disabled';
   end if;
 
   f := public.compute_facets(p_raw);
   a := public.choose_archetype(f);
   s := public.persona_summary(f, a);
 
-  insert into public.player_traits (user_id, raw, facets, archetype, updated_at)
-  values (u, p_raw, f, a, now())
+  insert into public.player_traits (user_id, raw, facets, archetype, consent, updated_at)
+  values (u, p_raw, f, a, consent_value, now())
   on conflict (user_id) do update
     set raw = excluded.raw,
         facets = excluded.facets,
         archetype = excluded.archetype,
+        consent = consent_value,
         updated_at = now();
 
   insert into public.persona_profiles (user_id, summary, updated_at)
@@ -254,7 +254,7 @@ begin
 end;
 $$;
 
-grant execute on function public.save_traits_and_match(jsonb) to authenticated;
+grant execute on function public.save_traits_and_match(jsonb, boolean) to authenticated;
 
 -- ===============================================================
 -- 7) RPC: spawn companion from archetype

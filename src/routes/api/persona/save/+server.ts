@@ -15,12 +15,22 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const answers = (payload as { answers?: unknown })?.answers;
+  const answers = (payload as { answers?: unknown; consent?: unknown })?.answers;
+  const consentRaw = (payload as { consent?: unknown })?.consent;
+  const consent =
+    typeof consentRaw === 'boolean'
+      ? consentRaw
+      : typeof consentRaw === 'string'
+        ? consentRaw === 'true'
+        : undefined;
   if (!Array.isArray(answers)) {
     return json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc('save_traits_and_match', { p_raw: answers });
+  const { data, error } = await supabase.rpc('save_traits_and_match', {
+    p_raw: answers,
+    p_consent: typeof consent === 'boolean' ? consent : undefined
+  });
   if (error) {
     return json({ error: error.message }, { status: 400 });
   }

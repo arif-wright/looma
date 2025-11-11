@@ -5,6 +5,7 @@
   import QRCode from '$lib/components/ui/QRCode.svelte';
   import FollowListModal from '$lib/components/profile/FollowListModal.svelte';
   import ReportModal from '$lib/components/modals/ReportModal.svelte';
+  import ArchetypeBadge from '$lib/components/profile/ArchetypeBadge.svelte';
 
   type FollowCounts = { followers: number; following: number };
 
@@ -22,6 +23,8 @@
   export let viewerCanFollow = false;
   export let blocked = false;
   export let showBondGenesisCta = false;
+  export let personaArchetype: string | null = null;
+  export let personaColor: string | null = null;
 
   const dispatch = createEventDispatcher<{ edit: void; share: void }>();
 
@@ -340,8 +343,9 @@ function openReport() {
                 <span>Joined {joinedLabel}</span>
               {/if}
             </div>
-            <div class="mt-2 flex flex-wrap gap-2 text-xs text-white/70">
+            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/70">
               <span class="rounded-full bg-white/10 px-3 py-1">{levelLabel}</span>
+              <ArchetypeBadge archetype={personaArchetype} color={personaColor} />
               {#if profile?.is_private}
                 <span class="rounded-full bg-white/10 px-3 py-1">Private</span>
               {/if}

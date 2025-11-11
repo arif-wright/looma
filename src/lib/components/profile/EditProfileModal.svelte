@@ -25,6 +25,8 @@
   let showAchievements = true;
   let showFeed = true;
   let showJoined = true;
+  let resetPending = false;
+  let resetMessage = '';
 
   $: if (profile && !dirty) {
     handle = profile.handle ?? '';
@@ -135,6 +137,33 @@
     currentProfile.update((p) => (p ? { ...p, ...event.detail } : p));
     dispatch('profileUpdated', event.detail);
   }
+
+  async function resetPersona() {
+    if (resetPending) return;
+    const confirmed =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm('Reset personalization? Your companion stays, but traits will be cleared.');
+    if (!confirmed) return;
+    resetPending = true;
+    resetMessage = '';
+    try {
+      const res = await fetch('/api/persona/reset', { method: 'POST' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error ?? 'Unable to reset personalization');
+      }
+      resetMessage = 'Personalization reset. Retake the quiz whenever you are ready.';
+      if (typeof window !== 'undefined') {
+        window.localStorage?.removeItem('looma_bond_answers_v2');
+      }
+    } catch (err) {
+      resetMessage =
+        err instanceof Error ? err.message : 'Unable to reset personalization at this time.';
+    } finally {
+      resetPending = false;
+    }
+  }
 </script>
 
 <Modal {open} title="Edit profile" onClose={closeModal}>
@@ -226,6 +255,41 @@
         <p class="text-xs text-white/60 mt-2">
           When your account is private, only approved followers can see items you hide here.
         </p>
+      </section>
+
+      <section class="panel mt-4 space-y-2">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="panel-title m-0">Persona</h3>
+          <a
+            class="btn-ghost text-xs"
+            href="/app/onboarding/companion"
+          >
+            Retake personality quiz
+          </a>
+        </div>
+        <p class="text-xs text-white/60">
+          Refresh your archetype anytime. We only store a summarized profile for personalization—no raw answers are shared with AI.
+        </p>
+      </section>
+
+      <section class="panel mt-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="panel-title m-0">Persona</h3>
+            <p class="text-xs text-white/60">
+              Retake or reset your personalization safely.
+            </p>
+          </div>
+          <a class="btn-ghost text-xs" href="/app/onboarding/companion?retake=1">
+            Retake quiz
+          </a>
+        </div>
+        <button class="btn btn-sm" type="button" on:click={resetPersona} disabled={resetPending}>
+          {resetPending ? 'Resetting…' : 'Reset personalization'}
+        </button>
+        {#if resetMessage}
+          <p class="text-xs text-white/70">{resetMessage}</p>
+        {/if}
       </section>
     {/if}
   </div>

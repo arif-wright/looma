@@ -6,6 +6,7 @@ import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
+import { getPersonaSummary } from '$lib/server/persona';
 
 type ProfileRow = {
   id: string;
@@ -298,18 +299,28 @@ export const load: PageServerLoad = async (event) => {
       blocked: true,
       followCounts,
       featuredCompanion: null,
-      posts: [],
-      nextCursor: null,
-      pinnedPost: null,
-      shareUrl,
-      ogImageUrl: `${baseUrl}/og/default-profile.png`,
-      metaDescription: 'This profile is not available'
-    };
+    posts: [],
+    nextCursor: null,
+    pinnedPost: null,
+    shareUrl,
+    ogImageUrl: `${baseUrl}/og/default-profile.png`,
+    metaDescription: 'This profile is not available',
+    personaPublic: null
+  };
   }
 
   const parsedLinks = parseLinks(profileRow.links);
 
-  const [statsResult, companion, posts, pinned, achievements, followCounts, privacyStatus] =
+  const [
+    statsResult,
+    companion,
+    posts,
+    pinned,
+    achievements,
+    followCounts,
+    privacyStatus,
+    personaSummary
+  ] =
     await Promise.all([
       supabase
         .from('player_stats')
@@ -321,7 +332,8 @@ export const load: PageServerLoad = async (event) => {
       fetchPinnedPreview(supabase, profileRow.id, isOwnProfile),
       fetchRecentAchievements(supabase, profileRow.id),
       getFollowCounts(profileRow.id),
-      getFollowPrivacyStatus(viewerId, profileRow.id)
+      getFollowPrivacyStatus(viewerId, profileRow.id),
+      getPersonaSummary(profileRow.id)
     ]);
 
   if (statsResult.error) {
@@ -354,6 +366,8 @@ export const load: PageServerLoad = async (event) => {
     ? `${baseUrl}/og/default-profile.png`
     : `${baseUrl}/api/og/profile?handle=${profileRow.handle}`;
 
+  const personaPublic = gated ? null : personaSummary ?? null;
+
   return {
     profile: profilePayload,
     stats,
@@ -371,6 +385,7 @@ export const load: PageServerLoad = async (event) => {
     pinnedPost: pinned,
     shareUrl,
     ogImageUrl,
-    metaDescription
+    metaDescription,
+    personaPublic
   };
 };

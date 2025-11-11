@@ -9,6 +9,7 @@ import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { getPersonaSummary } from '$lib/server/persona';
 
 const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
@@ -334,7 +335,8 @@ export const load: PageServerLoad = async (event) => {
     followCounts,
     privacyStatus,
     companionCountResult,
-    flagResult
+    flagResult,
+    personaSummary
   ] = await Promise.all([
     supabase
       .from('player_stats')
@@ -357,7 +359,8 @@ export const load: PageServerLoad = async (event) => {
       .from('feature_flags')
       .select('key, enabled')
       .eq('key', 'bond_genesis')
-      .maybeSingle()
+      .maybeSingle(),
+    getPersonaSummary(user.id)
   ]);
 
   if (statsResult.error) {
@@ -455,6 +458,7 @@ export const load: PageServerLoad = async (event) => {
     companionCount: companionCountResult.count ?? 0,
     flags: {
       bond_genesis: Boolean((flagResult.data as { enabled?: boolean } | null)?.enabled)
-    }
+    },
+    persona: personaSummary ?? null
   };
 };

@@ -61,6 +61,8 @@ import type { PageData } from './$types';
     blocked={data.blocked ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={!data.blocked && Boolean(data.viewerId)}
+    personaArchetype={data.gated ? null : data.personaPublic?.archetype ?? null}
+    personaColor={data.gated ? null : data.personaPublic?.color ?? null}
     on:edit={handleEdit}
   />
 

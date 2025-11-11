@@ -8,10 +8,13 @@ const adminClient = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
   auth: { persistSession: false }
 });
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.session) {
     throw redirect(302, '/login');
   }
+
+  const retake = url.searchParams.get('retake') === '1';
+  const userId = locals.session.user.id;
 
   const { data: flag, error } = await adminClient
     .from('feature_flags')
@@ -27,5 +30,25 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(302, '/app/home');
   }
 
-  return {};
+  const [{ data: traits }, { count: companionCount, error: companionError }] = await Promise.all([
+    adminClient
+      .from('player_traits')
+      .select('consent')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    adminClient
+      .from('companions')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+  ]);
+
+  if (companionError) {
+    console.error('[bond-genesis] companion count lookup failed', companionError);
+  }
+
+  return {
+    consentDefault: traits?.consent ?? true,
+    hasCompanion: (companionCount ?? 0) > 0,
+    retake
+  };
 };

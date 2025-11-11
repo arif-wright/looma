@@ -122,6 +122,8 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
     viewerCanFollow={false}
     showBondGenesisCta={showBondGenesisCta}
+    personaArchetype={data.persona?.archetype ?? null}
+    personaColor={data.persona?.color ?? null}
     on:edit={handleEdit}
   />
 

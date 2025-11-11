@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
 import { env } from '$env/dynamic/public';
+import { getPersonaSummary } from '$lib/server/persona';
 
 type CompanionRow = {
   id: string;
@@ -179,6 +180,8 @@ export const load: PageServerLoad = async (event) => {
       ])
     : [null, { items: [] as PostRow[], nextCursor: null }, null, [] as AchievementRow[]];
 
+  const personaPublic = allowContent ? await getPersonaSummary(profile.id) : null;
+
   const showShards = isOwner ? true : profile.show_shards ?? true;
   const showLevel = isOwner ? true : profile.show_level ?? true;
   const showJoined = isOwner ? true : profile.show_joined ?? true;
@@ -241,6 +244,7 @@ export const load: PageServerLoad = async (event) => {
     isFollowing: parentData.isFollowing,
     requested: parentData.requested ?? false,
     gated,
-    blocked
+    blocked,
+    personaPublic
   };
 };
