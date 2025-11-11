@@ -1,27 +1,40 @@
 <script lang="ts">
-  import { createClient } from '@supabase/supabase-js';
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables.');
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: true, detectSessionInUrl: true }
-  });
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+  import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
   const providers = ['google', 'github'] as const;
 
   let email = '';
   let submitting = false;
   let message = '';
+  let supabase: SupabaseClient | null = null;
+  let ready = false;
+  let envError = '';
 
   const redirectTarget =
     typeof window === 'undefined' ? undefined : `${window.location.origin}/auth/callback`;
 
+  onMount(() => {
+    if (!browser) return;
+    if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
+      envError = 'Supabase credentials are not configured.';
+      message = envError;
+      return;
+    }
+
+    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, detectSessionInUrl: true }
+    });
+    ready = true;
+  });
+
   async function signInWithProvider(provider: (typeof providers)[number]) {
+    if (!supabase) {
+      message = envError || 'Supabase client not ready.';
+      return;
+    }
     submitting = true;
     message = '';
     try {
@@ -40,6 +53,10 @@
 
   async function sendMagicLink(event: SubmitEvent) {
     event.preventDefault();
+    if (!supabase) {
+      message = envError || 'Supabase client not ready.';
+      return;
+    }
     if (!email) {
       message = 'Enter your email to continue.';
       return;
@@ -68,7 +85,12 @@
 
     <div class="providers">
       {#each providers as provider}
-        <button class="provider-btn" type="button" on:click={() => signInWithProvider(provider)} disabled={submitting}>
+        <button
+          class="provider-btn"
+          type="button"
+          on:click={() => signInWithProvider(provider)}
+          disabled={submitting || !ready}
+        >
           Sign in with {provider.charAt(0).toUpperCase() + provider.slice(1)}
         </button>
       {/each}
@@ -83,7 +105,7 @@
         bind:value={email}
         required
       />
-      <button type="submit" class="provider-btn" disabled={submitting}>
+      <button type="submit" class="provider-btn" disabled={submitting || !ready}>
         {submitting ? 'Sending…' : 'Send magic link'}
       </button>
     </form>
