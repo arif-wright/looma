@@ -6,7 +6,7 @@ export const load: PageLoad = async (event) => {
   const user = event.locals.user;
   if (!user) {
     const redirectTo = event.url.pathname + event.url.search;
-    throw redirect(302, '/app/login?next=' + encodeURIComponent(redirectTo));
+    throw redirect(302, '/app/auth?next=' + encodeURIComponent(redirectTo));
   }
 
   const supabase = event.locals.supabase ?? supabaseServer(event);

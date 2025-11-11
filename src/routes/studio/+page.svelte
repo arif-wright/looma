@@ -90,8 +90,8 @@
         Looma is the command centre for Kinforge storytellers who need living creature collections in seconds.
       </p>
       <div class="hero__actions">
-        <a class="button" href="/app/login">Start with your Kinforge account</a>
-        <a class="button button--ghost" href="/app/login">Explore the demo library</a>
+        <a class="button" href="/app/auth">Start with your Kinforge account</a>
+        <a class="button button--ghost" href="/app/auth">Explore the demo library</a>
       </div>
     </div>
     <figure class="hero__media">
@@ -144,7 +144,7 @@
         <h2 id="cta-heading">Ready to bring your creatures to life?</h2>
         <p>Log in with your Kinforge credentials and start building encounters that surprise every table.</p>
       </div>
-      <a class="button button--light" href="/app/login">Sign in to Looma</a>
+      <a class="button button--light" href="/app/auth">Sign in to Looma</a>
     </section>
   </main>
 
@@ -155,8 +155,8 @@
     </div>
     <nav aria-label="Secondary">
       <ul>
-        <li><a href="/app/login">Log in</a></li>
-        <li><a href="/app/login">Request access</a></li>
+        <li><a href="/app/auth">Log in</a></li>
+        <li><a href="/app/auth">Request access</a></li>
         <li><a href="mailto:team@kinforge.gg">Contact</a></li>
       </ul>
     </nav>

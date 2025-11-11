@@ -77,7 +77,7 @@
       <p>{message}</p>
     {:else}
       <p class="error">{message}</p>
-      <a href="/app/login" class="link">Back to login</a>
+      <a href="/app/auth" class="link">Back to login</a>
     {/if}
   </div>
 </section>

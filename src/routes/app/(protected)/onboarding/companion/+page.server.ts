@@ -10,7 +10,7 @@ const adminClient = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.session) {
-    throw redirect(302, '/auth');
+    throw redirect(302, '/app/auth');
   }
 
   const retake = url.searchParams.get('retake') === '1';

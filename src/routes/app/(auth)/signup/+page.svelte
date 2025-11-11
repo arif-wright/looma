@@ -175,7 +175,7 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
 
   <p class="auth-footnote">
     Already have an account?
-    <a href="/app/login" class="auth-link">Sign in</a>
+    <a href="/app/auth" class="auth-link">Sign in</a>
   </p>
 </article>
 

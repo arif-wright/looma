@@ -13,13 +13,9 @@ export default async function globalSetup(_config: FullConfig) {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto(`${BASE_URL}/app/login`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('form[data-testid="login-form"], input[name="email"]');
-  await page.waitForTimeout(100);
-  await page.fill('input[name="email"]', seedResult.viewer.email);
-  await page.fill('input[name="password"]', seedResult.viewer.password);
   await loginAs(page, { email: seedResult.viewer.email, password: seedResult.viewer.password });
-  await page.getByTestId('email-login').click();
+  await page.goto(`${BASE_URL}/app/auth`, { waitUntil: 'networkidle' });
+  await page.reload();
   await page.waitForTimeout(1000);
 
   await page.context().storageState({ path: '.auth/viewer.json' });

@@ -194,9 +194,9 @@ const fetchCareDue = async (
 };
 
 const isAuthSurface = (path: string) =>
-  path === '/app/login' ||
+  path === '/app/auth' ||
   path === '/app/signup' ||
-  path.startsWith('/app/login') ||
+  path.startsWith('/app/auth') ||
   path.startsWith('/app/signup');
 
 export const load: LayoutServerLoad = async (event) => {

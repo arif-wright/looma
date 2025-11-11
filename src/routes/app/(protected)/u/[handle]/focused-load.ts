@@ -193,7 +193,7 @@ export async function loadFocusedPost(
 export async function handleReplyAction(event: RequestEvent, postId: string) {
   const user = event.locals.user;
   if (!user) {
-    throw redirect(303, '/app/login');
+    throw redirect(303, '/app/auth');
   }
 
   const supabase = supabaseServer(event);

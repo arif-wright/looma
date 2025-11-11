@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Looma World homepage renders key sections and CTA navigates to login', async ({ page }) => {
+test('Looma World homepage renders key sections and CTA navigates to auth', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('link', { name: 'Looma' })).toBeVisible();
@@ -20,8 +20,8 @@ test('Looma World homepage renders key sections and CTA navigates to login', asy
 
   await expect(page.getByRole('contentinfo')).toBeVisible();
 
-  const navigationPromise = page.waitForURL('**/app/login');
+  const navigationPromise = page.waitForURL('**/app/auth');
   await page.getByRole('link', { name: 'Begin your bond' }).click();
   await navigationPromise;
-  await expect(page).toHaveURL(/\/app\/login$/);
+  await expect(page).toHaveURL(/\/app\/auth$/);
 });

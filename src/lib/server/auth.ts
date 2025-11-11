@@ -47,7 +47,7 @@ export const getUserServer = async (event: RequestEvent): Promise<UserResult> =>
 export const requireUserServer = async (event: RequestEvent): Promise<UserResult> => {
   const result = await getUserServer(event);
   if (!result.user) {
-    throw redirect(302, '/app/login');
+    throw redirect(302, '/app/auth');
   }
   return result;
 };

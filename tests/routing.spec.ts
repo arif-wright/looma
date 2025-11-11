@@ -8,10 +8,10 @@ test.describe('Routing – unauthenticated', () => {
     await expect(page).toHaveURL('/');
   });
 
-  test('marketing enter button points to login', async ({ page }) => {
+  test('marketing enter button points to auth', async ({ page }) => {
     await page.goto('/');
     const enterLink = page.getByRole('link', { name: 'Enter' });
-    await expect(enterLink).toHaveAttribute('href', '/app/login');
+    await expect(enterLink).toHaveAttribute('href', '/app/auth');
   });
 });
 

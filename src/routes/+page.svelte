@@ -8,7 +8,7 @@
 
   let heroVideo: HTMLVideoElement | null = null;
   const isAuthed = data.loggedIn;
-  const enterHref = isAuthed ? '/app/home' : '/app/login';
+  const enterHref = isAuthed ? '/app/home' : '/app/auth';
   const enterLabel = 'Enter';
   const primaryHref = enterHref;
   const primaryLabel = isAuthed ? 'Enter Looma' : 'Begin your bond';

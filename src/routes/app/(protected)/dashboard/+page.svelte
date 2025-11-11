@@ -65,7 +65,7 @@
     const handleSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
+        goto('/app/auth?next=' + encodeURIComponent('/app/dashboard'));
       }
     };
 
@@ -74,7 +74,7 @@
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (!session) {
-          goto('/app/login?next=' + encodeURIComponent('/app/dashboard'));
+          goto('/app/auth?next=' + encodeURIComponent('/app/dashboard'));
         }
       }
     );
