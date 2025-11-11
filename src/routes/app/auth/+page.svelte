@@ -40,7 +40,8 @@
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: redirectTarget ? { redirectTo: redirectTarget } : undefined
+        options: redirectTarget ? { redirectTo: redirectTarget } : undefined,
+        flowType: 'pkce'
       });
       if (error) throw error;
       message = 'Redirecting to provider…';
