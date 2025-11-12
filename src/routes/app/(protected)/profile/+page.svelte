@@ -7,7 +7,6 @@
   import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
   import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
-  import CompanionPickerModal from '$lib/components/profile/CompanionPickerModal.svelte';
   import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import FollowRequestsPanel from '$lib/components/profile/FollowRequestsPanel.svelte';
@@ -29,10 +28,8 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
     ? ({ ...data.featuredCompanion, owner_id: (data.profile?.id ?? profile?.id ?? '') as string } as Companion)
     : null;
 
-  let pickerOpen = false;
-  let pickerBusy = false;
-  let feedRef: InstanceType<typeof ProfileFeed> | null = null;
-  let editOpen = false;
+let feedRef: InstanceType<typeof ProfileFeed> | null = null;
+let editOpen = false;
   const appUrl = import.meta.env.PUBLIC_APP_URL || '';
   const legacyShareMatch = data.shareUrl?.match(/^(.*)\/app\/u\/[^/]+$/);
   const legacyShareBase = legacyShareMatch ? legacyShareMatch[1] : data.shareUrl ?? '';
@@ -52,40 +49,8 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
     editOpen = true;
   };
 
-  const handleSwap = () => {
-    pickerOpen = true;
-  };
-
   const handleComposerPosted = (event: CustomEvent<PostRow>) => {
     feedRef?.prepend(event.detail);
-  };
-
-  const handlePickerClose = () => {
-    if (pickerBusy) return;
-    pickerOpen = false;
-  };
-
-  const handlePickerSelect = async (event: CustomEvent<{ id: string }>) => {
-    const id = event.detail?.id;
-    if (!id) return;
-    pickerBusy = true;
-    try {
-      const res = await fetch('/app/profile/featured-companion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: id })
-      });
-      if (!res.ok) {
-        console.error('failed to update featured companion', await res.text());
-      } else {
-        await invalidateAll();
-      }
-    } catch (err) {
-      console.error('picker error', err);
-    } finally {
-      pickerBusy = false;
-      pickerOpen = false;
-    }
   };
 
   function onProfileUpdated(event: CustomEvent<Record<string, any>>) {
@@ -137,7 +102,6 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
           featuredCompanion={data.featuredCompanion}
           achievements={sidebarAchievements}
           isOwner={data.isOwner}
-          on:chooseCompanion={handleSwap}
         />
 
         <FollowRequestsPanel items={data.followRequests ?? []} />
@@ -172,7 +136,10 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
               <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
               <a class="btn-ghost mt-3 inline-flex w-full justify-center" href="/app/companions">Open care hub</a>
             {:else}
-              <p class="text-muted">Swap in a companion from the sidebar to highlight them here.</p>
+              <p class="text-muted">
+                Set an active companion from your <a class="underline" href="/app/companions">roster</a> to
+                highlight them here.
+              </p>
             {/if}
           </div>
         </section>
@@ -193,14 +160,6 @@ let featuredCompanionCard: Companion | null = data.featuredCompanion
     <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
   {/if}
 </div>
-
-<CompanionPickerModal
-  open={pickerOpen}
-  companions={data.companionOptions ?? []}
-  busy={pickerBusy}
-  on:close={handlePickerClose}
-  on:select={handlePickerSelect}
-/>
 
 <style>
   .companion-panel {

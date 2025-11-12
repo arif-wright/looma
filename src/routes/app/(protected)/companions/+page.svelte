@@ -1,477 +1,391 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
   import type { PageData } from './$types';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
-  import CarePanel from '$lib/components/companions/CarePanel.svelte';
-  import EventRow from '$lib/components/companions/EventRow.svelte';
-  import { companionsStore, type CareAction, type Companion } from '$lib/stores/companions';
-  import { logEvent } from '$lib/analytics';
-
-  const GOAL_TARGET = 3;
+  import type { Companion } from '$lib/stores/companions';
+  import RosterFilterBar, { type RosterFilterState } from '$lib/components/companions/RosterFilterBar.svelte';
+  import RosterGrid from '$lib/components/companions/RosterGrid.svelte';
+  import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
 
   export let data: PageData;
 
-  type CareEvent = {
-    id: string | number;
-    companion_id: string;
-    owner_id: string;
-    action: string;
-    affection_delta: number;
-    trust_delta: number;
-    energy_delta: number;
-    created_at: string;
-  };
+  const sortRoster = (list: Companion[]) =>
+    list
+      .slice()
+      .sort((a, b) => {
+        const slotA = typeof a.slot_index === 'number' ? a.slot_index : Number.MAX_SAFE_INTEGER;
+        const slotB = typeof b.slot_index === 'number' ? b.slot_index : Number.MAX_SAFE_INTEGER;
+        if (slotA !== slotB) return slotA - slotB;
+        return Date.parse(a.created_at) - Date.parse(b.created_at);
+      });
 
-  type CareResult = {
-    affection: number;
-    trust: number;
-    energy: number;
-    mood: string;
-    streak?: number | null;
-    cooldownSecsRemaining: number;
-    milestones?: string[];
-    goal?: { count?: number; completed?: boolean };
-    event?: CareEvent | null;
-  };
-
-  type GoalState = {
-    count: number;
-    completed: boolean;
-  };
-
-  const fallbackDeltas: Record<CareAction, { affection: number; trust: number; energy: number }> = {
-    feed: { affection: 2, trust: 0, energy: 5 },
-    play: { affection: 2, trust: 1, energy: -5 },
-    groom: { affection: 1, trust: 2, energy: 0 }
-  };
-
-  const normalizeEvents = (rows: any[] = []): CareEvent[] =>
-    rows.map((row) => ({
-      id: row.id ?? `local-${Date.now()}`,
-      companion_id: row.companion_id ?? row.companion ?? '',
-      owner_id: row.owner_id ?? '',
-      action: (row.action ?? row.kind ?? 'feed') as CareAction | string,
-      affection_delta: row.affection_delta ?? row.delta_affection ?? 0,
-      trust_delta: row.trust_delta ?? row.delta_trust ?? 0,
-      energy_delta: row.energy_delta ?? row.delta_energy ?? 0,
-      created_at: row.created_at ?? new Date().toISOString()
-    }));
-
-  companionsStore.setList(data.companions ?? []);
-
+  let companions: Companion[] = sortRoster(((data.companions ?? []) as Companion[]) ?? []);
+  let maxSlots = data.maxSlots ?? 3;
+  let activeCompanionId: string | null = data.activeCompanionId ?? null;
   let selected: Companion | null = null;
-  let busyAction: CareAction | null = null;
-  let panelError: string | null = null;
+  let filters: RosterFilterState = { search: '', archetype: 'all', mood: 'all', sort: 'bond_desc' };
   let toast: { message: string; kind: 'success' | 'error' } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
-  let goalRibbonTimer: ReturnType<typeof setTimeout> | null = null;
-  let milestoneTimer: ReturnType<typeof setTimeout> | null = null;
-  let events: CareEvent[] = normalizeEvents(data.events as any[]);
-  let latestCompanions: Companion[] = (data.companions as Companion[]) ?? [];
-  let eventsCompanionId: string | null = events[0]?.companion_id ?? latestCompanions[0]?.id ?? null;
-  let eventsCompanionName: string | null =
-    latestCompanions.find((entry) => entry.id === eventsCompanionId)?.name ?? latestCompanions[0]?.name ?? null;
-  let eventsLoading = false;
-  let milestoneFlags: string[] = [];
-  let goalState: GoalState = {
-    count: data.goal?.actions_count ?? 0,
-    completed: data.goal?.completed ?? false
-  };
-  let goalRibbon = false;
+  let loading = false;
+  let reorderBusy = false;
+  let rosterError: string | null = data.error ?? null;
 
   const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
-    if (toastTimer) clearTimeout(toastTimer);
     toast = { message, kind };
+    if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       toast = null;
       toastTimer = null;
-    }, 3500);
+    }, 3200);
   };
-
-  const showGoalRibbon = () => {
-    goalRibbon = true;
-    if (goalRibbonTimer) clearTimeout(goalRibbonTimer);
-    goalRibbonTimer = setTimeout(() => {
-      goalRibbon = false;
-    }, 4000);
-  };
-
-  const announceMilestones = (flags: string[]) => {
-    milestoneFlags = flags;
-    if (milestoneTimer) clearTimeout(milestoneTimer);
-    milestoneTimer = setTimeout(() => {
-      milestoneFlags = [];
-    }, 4000);
-  };
-
-  const loadEvents = async (companion: Companion | null, force = false) => {
-    if (!companion) return;
-    if (!force && eventsCompanionId === companion.id && events.length) return;
-    eventsLoading = true;
-    eventsCompanionId = companion.id;
-    eventsCompanionName = companion.name;
-    try {
-      const res = await fetch(`/api/companions/events?id=${companion.id}`);
-      const payload = await res.json().catch(() => null);
-      if (!res.ok || !Array.isArray(payload?.events)) {
-        if (force) {
-          panelError = payload?.error ?? 'Unable to load events';
-        }
-        return;
-      }
-      events = normalizeEvents(payload.events).slice(0, 20);
-    } catch (err) {
-      if (force) {
-        panelError = err instanceof Error ? err.message : 'Unable to load events';
-      }
-    } finally {
-      eventsLoading = false;
-    }
-  };
-
-  const prependEvent = (event: CareEvent | null | undefined, companion: Companion) => {
-    if (!event) return;
-    eventsCompanionId = companion.id;
-    eventsCompanionName = companion.name;
-    events = [event, ...events.filter((entry) => entry.companion_id === companion.id)].slice(0, 20);
-  };
-
-  onMount(() => {
-    const initialCompanion = eventsCompanionId
-      ? latestCompanions.find((entry) => entry.id === eventsCompanionId) ?? latestCompanions[0]
-      : latestCompanions[0];
-    if (initialCompanion) {
-      void loadEvents(initialCompanion, true);
-    }
-  });
 
   onDestroy(() => {
     if (toastTimer) clearTimeout(toastTimer);
-    if (goalRibbonTimer) clearTimeout(goalRibbonTimer);
-    if (milestoneTimer) clearTimeout(milestoneTimer);
   });
 
-  $: latestCompanions = $companionsStore;
+  onMount(() => {
+    if (!browser) return;
+    const url = new URL(window.location.href);
+    const focusId = url.searchParams.get('focus');
+    if (focusId) {
+      const target = companions.find((entry) => entry.id === focusId);
+      if (target) {
+        selected = target;
+      }
+      url.searchParams.delete('focus');
+      const search = url.searchParams.toString();
+      const next = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`;
+      window.history.replaceState({}, document.title, next);
+    }
+  });
 
-  $: if (selected && latestCompanions.length) {
-    const refreshed = latestCompanions.find((entry) => entry.id === selected?.id);
+  const snapshot = () => companions.map((entry) => ({ ...entry }));
+
+  const applyFilters = (list: Companion[]) => {
+    let next = list.slice();
+    if (filters.search.trim()) {
+      const term = filters.search.trim().toLowerCase();
+      next = next.filter((companion) => companion.name.toLowerCase().includes(term));
+    }
+    if (filters.archetype !== 'all') {
+      next = next.filter((companion) => companion.species === filters.archetype);
+    }
+    if (filters.mood !== 'all') {
+      next = next.filter((companion) => (companion.state ?? companion.mood) === filters.mood);
+    }
+    if (filters.sort === 'bond_desc') {
+      next = next.sort((a, b) => b.affection + b.trust - (a.affection + a.trust));
+    } else if (filters.sort === 'newest') {
+      next = next.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+    } else if (filters.sort === 'energy') {
+      next = next.sort((a, b) => b.energy - a.energy);
+    }
+    return next;
+  };
+
+  const refreshRoster = async () => {
+    loading = true;
+    try {
+      const res = await fetch('/api/companions/list');
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Unable to load companions');
+      }
+      companions = sortRoster((payload.items as Companion[]) ?? []);
+      maxSlots = payload.maxSlots ?? maxSlots;
+      activeCompanionId = companions.find((entry) => entry.is_active)?.id ?? null;
+      rosterError = null;
+    } catch (err) {
+      rosterError = err instanceof Error ? err.message : 'Unable to load companions';
+      showToast(rosterError, 'error');
+    } finally {
+      loading = false;
+    }
+  };
+
+  const handleReorder = async (ids: string[]) => {
+    if (!ids.length) return;
+    const previous = snapshot();
+    reorderBusy = true;
+    companions = sortRoster(
+      companions.map((companion) => {
+        const nextIndex = ids.indexOf(companion.id);
+        if (nextIndex >= 0) {
+          return { ...companion, slot_index: nextIndex };
+        }
+        return companion;
+      })
+    );
+    try {
+      const res = await fetch('/api/companions/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: ids })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Reorder failed');
+      }
+      showToast('Roster updated');
+    } catch (err) {
+      companions = previous;
+      showToast(err instanceof Error ? err.message : 'Reorder failed', 'error');
+    } finally {
+      reorderBusy = false;
+    }
+  };
+
+  const renameCompanion = async (id: string, name: string) => {
+    const previous = snapshot();
+    companions = sortRoster(companions.map((companion) => (companion.id === id ? { ...companion, name } : companion)));
+    try {
+      const res = await fetch('/api/companions/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: id, name })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Rename failed');
+      }
+      showToast('Name updated');
+    } catch (err) {
+      companions = previous;
+      throw err instanceof Error ? err : new Error('Rename failed');
+    }
+  };
+
+  const activateCompanion = async (id: string) => {
+    const previous = snapshot();
+    const previousActive = activeCompanionId;
+    companions = sortRoster(
+      companions.map((companion) => {
+        if (companion.id === id) {
+          return { ...companion, is_active: true, state: 'active' };
+        }
+        if (companion.is_active) {
+          return { ...companion, is_active: false, state: companion.state === 'active' ? 'idle' : companion.state };
+        }
+        return companion;
+      })
+    );
+    activeCompanionId = id;
+    try {
+      const res = await fetch('/api/companions/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: id })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Failed to set active');
+      }
+      showToast('Active companion updated');
+    } catch (err) {
+      companions = previous;
+      activeCompanionId = previousActive;
+      throw err instanceof Error ? err : new Error('Failed to set active');
+    }
+  };
+
+  const changeState = async (id: string, state: 'idle' | 'resting' | 'active') => {
+    const previous = snapshot();
+    const previousActive = activeCompanionId;
+    companions = sortRoster(
+      companions.map((companion) => {
+        if (companion.id === id) {
+          return { ...companion, state, is_active: state === 'active' };
+        }
+        if (state === 'active') {
+          return { ...companion, is_active: false, state: companion.state === 'active' ? 'idle' : companion.state };
+        }
+        return companion;
+      })
+    );
+    activeCompanionId = state === 'active' ? id : state === 'resting' ? (activeCompanionId === id ? null : activeCompanionId) : activeCompanionId === id ? null : activeCompanionId;
+    try {
+      const res = await fetch('/api/companions/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: id, state })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Failed to update state');
+      }
+      if (state === 'resting') {
+        showToast('Companion is now resting');
+      } else if (state === 'idle') {
+        showToast('Companion returned to idle');
+      }
+    } catch (err) {
+      companions = previous;
+      activeCompanionId = previousActive;
+      throw err instanceof Error ? err : new Error('Failed to update state');
+    }
+  };
+
+  const filteredCompanions = () => applyFilters(companions);
+
+  $: visibleCompanions = filteredCompanions();
+  $: activeCompanion = companions.find((entry) => entry.is_active) ?? null;
+  $: slotsUsed = Math.min(companions.length, maxSlots);
+  $: archetypeOptions = Array.from(new Set(companions.map((companion) => companion.species))).filter(Boolean).sort();
+  $: moodOptions = Array.from(new Set(companions.map((companion) => companion.state ?? companion.mood))).filter(Boolean).sort();
+  $: if (selected) {
+    const refreshed = companions.find((entry) => entry.id === selected?.id);
     if (refreshed) {
       selected = refreshed;
     }
   }
-
-  const handleOpen = (companion: Companion) => {
-    selected = companion;
-    panelError = null;
-    void loadEvents(companion);
-  };
-
-  const formatCooldownError = (seconds: number) => {
-    if (seconds <= 60) return 'Cooldown active. Try again in a minute.';
-    const minutes = Math.ceil(seconds / 60);
-    return `Cooldown active. Ready in ${minutes}m.`;
-  };
-
-  const performCare = async (companion: Companion, action: CareAction) => {
-    if (busyAction) return;
-    busyAction = action;
-    panelError = null;
-
-    try {
-      const res = await fetch('/api/companions/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: companion.id, action })
-      });
-      const payload = await res.json().catch(() => null);
-      if (res.status === 429 && payload?.cooldownSecsRemaining) {
-        panelError = formatCooldownError(payload.cooldownSecsRemaining);
-        showToast('That action is still on cooldown.', 'error');
-        return;
-      }
-      if (!res.ok || !payload?.result) {
-        panelError = payload?.error ?? 'Care action failed';
-        showToast('Care action failed', 'error');
-        return;
-      }
-
-      const result = payload.result as CareResult;
-      companionsStore.applyCare(companion.id, {
-        affection: result.affection,
-        trust: result.trust,
-        energy: result.energy,
-        mood: result.mood,
-        streak: result.streak ?? null
-      });
-      await companionsStore.refresh();
-
-      if (result.event) {
-        const normalized = normalizeEvents([result.event])[0];
-        prependEvent(normalized, companion);
-      } else {
-        const delta = fallbackDeltas[action];
-        prependEvent(
-          {
-            id: `local-${Date.now()}`,
-            companion_id: companion.id,
-            owner_id: companion.owner_id ?? '',
-            action,
-            affection_delta: delta.affection,
-            trust_delta: delta.trust,
-            energy_delta: delta.energy,
-            created_at: new Date().toISOString()
-          },
-          companion
-        );
-      }
-
-      if (result.goal) {
-        goalState = {
-          count: result.goal.count ?? goalState.count,
-          completed: goalState.completed || Boolean(result.goal.completed)
-        };
-        if (result.goal.completed) {
-          showGoalRibbon();
-        }
-      }
-
-      if (Array.isArray(result.milestones) && result.milestones.length) {
-        announceMilestones(result.milestones);
-      }
-
-      const actionCopy =
-        action === 'groom' ? 'being groomed' : action === 'feed' ? 'that snack' : action === 'play' ? 'playtime' : 'the care';
-      showToast(`${companion.name} loved ${actionCopy}!`);
-      logEvent('companion_care', { companionId: companion.id, action });
-    } catch (err) {
-      panelError = err instanceof Error ? err.message : 'Care action failed';
-      showToast('Care action failed', 'error');
-    } finally {
-      busyAction = null;
-    }
-  };
 </script>
 
-<div class="companions-shell">
-  <section class="hero">
+<svelte:head>
+  <title>Looma — Companion Roster</title>
+</svelte:head>
+
+<main class="roster-page">
+  <header class="roster-header">
     <div>
-      <p class="eyebrow">Phase 13.2b</p>
-      <h1>Companion Core</h1>
-      <p class="lede">Raise affection, build trust, and keep your Looma allies energized.</p>
-      <div class="goal-meta" aria-live="polite">
-        <span>Daily care</span>
-        <strong>{Math.min(goalState.count, GOAL_TARGET)}/{GOAL_TARGET}</strong>
-      </div>
+      <p class="eyebrow">Phase 13.3</p>
+      <h1>Your Companions</h1>
+      <p class="lede">Arrange your squad, mark an active partner, and keep everyone rested.</p>
     </div>
-    <div class="hero-meta">
-      <span>{latestCompanions.length}</span>
-      <small>Active companions</small>
+    <div class="header-pills">
+      <span class="pill">Active: {activeCompanion ? activeCompanion.name : 'None'}</span>
+      <span class="pill">Slots: {slotsUsed}/{maxSlots}</span>
+      <button type="button" class="pill pill-action" on:click={refreshRoster} disabled={loading}>
+        {loading ? 'Refreshing…' : 'Refresh'}
+      </button>
     </div>
-  </section>
+  </header>
 
-  {#if goalRibbon}
-    <div class="goal-ribbon" role="status">Daily care complete!</div>
+  {#if rosterError}
+    <div class="roster-error">{rosterError}</div>
   {/if}
 
-  {#if milestoneFlags.length}
-    <div class="celebration-chip" role="status">
-      Milestone unlocked: {milestoneFlags.join(', ')}
-    </div>
-  {/if}
-
-  {#if data.error}
-    <div class="error" role="alert">{data.error}</div>
-  {/if}
-
-  {#if latestCompanions.length === 0}
-    <Panel title="Companions">
-      <p class="text-muted">You haven’t bonded with any companions yet.</p>
-    </Panel>
-  {:else}
-    <div class="grid">
-      {#each latestCompanions as companion (companion.id)}
-        <CompanionCard
-          {companion}
-          {busyAction}
-          on:open={() => handleOpen(companion)}
-          on:care={(event) => performCare(companion, event.detail)}
-        />
-      {/each}
-    </div>
-  {/if}
-
-  <Panel title={`Bond events${eventsCompanionName ? ` — ${eventsCompanionName}` : ''}`}>
-    {#if eventsLoading}
-      <p class="text-muted">Loading events…</p>
-    {:else if !eventsCompanionId}
-      <p class="text-muted">Select a companion to view recent care.</p>
-    {:else if events.length === 0}
-      <p class="text-muted">No care events logged yet.</p>
-    {:else}
-      <ul class="event-list">
-        {#each events as event (event.id)}
-          <EventRow {event} />
-        {/each}
-      </ul>
-    {/if}
-  </Panel>
-</div>
-
-<Modal open={Boolean(selected)} title={selected ? `${selected.name} care` : 'Care'} onClose={() => (selected = null)}>
-  {#if selected}
-    <CarePanel
-      companion={selected}
-      stats={selected.stats ?? null}
-      {busyAction}
-      error={panelError}
-      on:care={(event) => performCare(selected as Companion, event.detail)}
+  <section class="roster-shell">
+    <RosterFilterBar
+      {filters}
+      archetypes={archetypeOptions}
+      moods={moodOptions}
+      on:change={(event) => {
+        filters = event.detail;
+      }}
     />
-  {/if}
-</Modal>
+    <RosterGrid
+      companions={visibleCompanions}
+      {maxSlots}
+      activeId={activeCompanionId}
+      disableDrag={reorderBusy || loading}
+      on:select={(event) => {
+        selected = event.detail.companion;
+      }}
+      on:reorder={(event) => {
+        void handleReorder(event.detail.ids);
+      }}
+    />
+  </section>
+</main>
+
+<CompanionModal
+  open={Boolean(selected)}
+  companion={selected}
+  {maxSlots}
+  onClose={() => {
+    selected = null;
+  }}
+  {renameCompanion}
+  setActive={activateCompanion}
+  setState={changeState}
+/>
 
 {#if toast}
-  <div class={`care-toast ${toast.kind}`} role="status">{toast.message}</div>
+  <div class={`roster-toast roster-toast--${toast.kind}`} role="status">{toast.message}</div>
 {/if}
 
 <style>
-  .companions-shell {
-    padding: clamp(2.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2.5rem) 5rem;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+  .roster-page {
+    padding: clamp(2rem, 4vw, 3rem);
+    display: grid;
+    gap: 2rem;
   }
 
-  .hero {
+  .roster-header {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 1.5rem;
+    align-items: flex-end;
   }
 
   .eyebrow {
+    margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.2em;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.6);
   }
 
   .lede {
-    color: rgba(255, 255, 255, 0.75);
+    margin: 0.35rem 0 0;
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  .goal-meta {
-    margin-top: 0.8rem;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.4rem;
+  .header-pills {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 0.35rem 0.8rem;
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 0.9rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(9, 12, 25, 0.8);
   }
 
-  .goal-meta span {
+  .pill-action {
+    cursor: pointer;
     text-transform: uppercase;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 0.08em;
   }
 
-  .goal-meta strong {
-    font-size: 1.1rem;
+  .pill-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
-  .hero-meta {
-    text-align: right;
-  }
-
-  .hero-meta span {
-    display: block;
-    font-size: 2.4rem;
-    font-weight: 600;
-  }
-
-  .hero-meta small {
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .grid {
+  .roster-shell {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.25rem;
+    gap: 1.5rem;
   }
 
-  .goal-ribbon {
-    border-radius: 20px;
-    padding: 0.6rem 1rem;
-    background: linear-gradient(90deg, rgba(90, 246, 192, 0.25), rgba(255, 212, 133, 0.2));
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.92);
-    font-weight: 500;
-    margin-bottom: 0.5rem;
+  .roster-error {
+    padding: 0.85rem 1.2rem;
+    border-radius: 14px;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    color: rgba(255, 255, 255, 0.8);
   }
 
-  .celebration-chip {
-    border-radius: 999px;
-    padding: 0.35rem 0.9rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    font-size: 0.85rem;
-    width: fit-content;
-    margin-bottom: 0.5rem;
-  }
-
-  .text-muted {
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  .event-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .care-toast {
+  .roster-toast {
     position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    padding: 0.85rem 1.1rem;
+    bottom: 2rem;
+    right: 2rem;
     border-radius: 999px;
+    padding: 0.65rem 1.25rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(9, 11, 25, 0.9);
-    box-shadow: 0 20px 40px rgba(5, 6, 18, 0.45);
+    background: rgba(5, 7, 15, 0.85);
   }
 
-  .care-toast.success {
-    border-color: rgba(94, 242, 255, 0.4);
+  .roster-toast--error {
+    border-color: rgba(248, 113, 113, 0.6);
   }
 
-  .care-toast.error {
-    border-color: rgba(248, 113, 113, 0.5);
-  }
-
-  .error {
-    padding: 0.75rem 1rem;
-    border-radius: 16px;
-    background: rgba(248, 113, 113, 0.2);
-    border: 1px solid rgba(248, 113, 113, 0.5);
-  }
-
-  @media (max-width: 720px) {
-    .hero {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .hero-meta {
-      text-align: left;
+  @media (max-width: 640px) {
+    .roster-page {
+      padding: 1.25rem;
     }
   }
 </style>

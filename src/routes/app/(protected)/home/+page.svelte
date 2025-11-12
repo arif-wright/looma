@@ -182,7 +182,7 @@
   const handleCheckCreature = (event: CustomEvent<{ creatureId: string }>) => {
     const creatureId = event.detail?.creatureId;
     if (!creatureId) return;
-    void goto(`/app/creatures?focus=${creatureId}`);
+    void goto(`/app/companions?focus=${creatureId}`);
   };
 
   const extractContext = (entry: unknown): string | null => {

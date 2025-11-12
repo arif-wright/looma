@@ -25,6 +25,9 @@ export type Companion = {
   trust: number;
   energy: number;
   mood: string;
+  state?: 'idle' | 'resting' | 'active' | string;
+  is_active?: boolean;
+  slot_index?: number | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -77,7 +80,7 @@ const createCompanionsStore = () => {
       const { data, error } = await supabase
         .from('companions')
         .select(
-          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at)'
+          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at)'
         )
         .order('created_at', { ascending: true });
 

@@ -17,6 +17,9 @@ type CompanionRow = {
   trust: number;
   energy: number;
   mood: string;
+  state?: string | null;
+  is_active?: boolean | null;
+  slot_index?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -59,22 +62,26 @@ const fetchPosts = async (
   };
 };
 
-const fetchFeaturedCompanion = async (supabase: ReturnType<typeof supabaseServer>, companionId: string | null) => {
-  if (!companionId) return null;
+const COMPANION_COLUMNS =
+  'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, state, is_active, slot_index, created_at, updated_at';
+
+const fetchFeaturedCompanion = async (supabase: ReturnType<typeof supabaseServer>, ownerId: string | null) => {
+  if (!ownerId) return null;
   const { data, error } = await supabase
     .from('companions')
-    .select(
-      'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, created_at, updated_at'
-    )
-    .eq('id', companionId)
-    .maybeSingle();
+    .select(COMPANION_COLUMNS)
+    .eq('owner_id', ownerId)
+    .order('is_active', { ascending: false })
+    .order('slot_index', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+    .limit(1);
 
   if (error) {
     console.error('[public profile] companion lookup failed', error);
     return null;
   }
 
-  return (data as CompanionRow | null) ?? null;
+  return ((data as CompanionRow[] | null)?.[0] ?? null) as CompanionRow | null;
 };
 
 const fetchPinnedPreview = async (
@@ -173,7 +180,7 @@ export const load: PageServerLoad = async (event) => {
   const allowContent = !gated && !blocked;
   const [companion, posts, pinned, achievements] = allowContent
     ? await Promise.all([
-        fetchFeaturedCompanion(supabase, profile.featured_companion_id ?? null),
+        fetchFeaturedCompanion(supabase, profile.id),
         fetchPosts(supabase, profile.id, isOwner),
         fetchPinnedPreview(supabase, profile.id, isOwner),
         fetchRecentAchievements(supabase, profile.id)

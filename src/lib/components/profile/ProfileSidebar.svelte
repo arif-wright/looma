@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
 
   export let profile: Record<string, any> | null = null;
@@ -11,19 +10,12 @@
   export let hideCompanionActions = false;
   export let hidePrivate = false;
 
-  const dispatch = createEventDispatcher<{ chooseCompanion: void }>();
-
   const formatNumber = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '—';
     return new Intl.NumberFormat().format(value);
   };
 
   $: achList = achievements?.length ? achievements : profile?.achievements ?? [];
-
-  function handleChoose() {
-    if (!isOwner || hideCompanionActions) return;
-    dispatch('chooseCompanion');
-  }
 </script>
 
 <aside class="profile-sticky space-y-4" aria-label="Profile summary">
@@ -44,12 +36,12 @@
         </div>
       </div>
       {#if isOwner && !hideCompanionActions}
-        <button class="btn-ghost w-full mt-3" type="button" on:click={handleChoose}>Swap companion</button>
+        <a class="btn-ghost w-full mt-3 text-center" href="/app/companions">Manage roster</a>
       {/if}
     {:else}
       <p class="text-sm text-white/60 mb-3">Invite your first companion to showcase them here.</p>
       {#if isOwner && !hideCompanionActions}
-        <button class="btn-ghost w-full" type="button" on:click={handleChoose}>Choose companion</button>
+        <a class="btn-ghost w-full text-center" href="/app/companions">Set active companion</a>
       {/if}
     {/if}
   </section>

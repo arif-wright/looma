@@ -56,6 +56,9 @@ type CompanionRow = {
   trust: number;
   energy: number;
   mood: string;
+  state?: string | null;
+  is_active?: boolean | null;
+  slot_index?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -192,44 +195,28 @@ const fetchPosts = async (
   };
 };
 
-const fetchFeaturedCompanion = async (
-  supabase: App.Locals['supabase'],
-  companionId: string | null
-) => {
-  if (!companionId) return null;
+const COMPANION_COLUMNS =
+  'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, state, is_active, slot_index, created_at, updated_at';
+
+const fetchFeaturedCompanion = async (supabase: App.Locals['supabase'], ownerId: string | null) => {
+  if (!ownerId) return null;
   const { data, error: companionError } = await supabase
     .from('companions')
-    .select(
-      'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, created_at, updated_at'
-    )
-    .eq('id', companionId)
-    .maybeSingle();
+    .select(COMPANION_COLUMNS)
+    .eq('owner_id', ownerId)
+    .order('is_active', { ascending: false })
+    .order('slot_index', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+    .limit(1);
 
   if (companionError) {
     console.error('[profile] featured companion lookup failed', companionError);
     return null;
   }
 
-  return (data as CompanionRow | null) ?? null;
+  return ((data as CompanionRow[] | null)?.[0] ?? null) as CompanionRow | null;
 };
 
-const fetchCompanionOptions = async (supabase: App.Locals['supabase'], ownerId: string) => {
-  const { data, error } = await supabase
-    .from('companions')
-    .select(
-      'id, owner_id, name, species, rarity, avatar_url, level, xp, affection, trust, energy, mood, created_at, updated_at'
-    )
-    .eq('owner_id', ownerId)
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  if (error) {
-    console.error('[profile] companion picker lookup failed', error);
-    return [];
-  }
-
-  return (data as CompanionRow[]) ?? [];
-};
 
 const formatWhenLabel = (iso: string | null | undefined) => {
   if (!iso) return '';
@@ -328,7 +315,6 @@ export const load: PageServerLoad = async (event) => {
     statsResult,
     walletResult,
     companion,
-    companionOptions,
     posts,
     pinned,
     achievements,
@@ -344,8 +330,7 @@ export const load: PageServerLoad = async (event) => {
       .eq('id', user.id)
       .maybeSingle(),
     supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle(),
-    fetchFeaturedCompanion(supabase, profileRow.featured_companion_id),
-    fetchCompanionOptions(supabase, user.id),
+    fetchFeaturedCompanion(supabase, profileRow.id),
     fetchPosts(supabase, user.id, true),
     fetchPinnedPreview(supabase, user.id, true),
     fetchRecentAchievements(supabase, user.id),
@@ -448,7 +433,6 @@ export const load: PageServerLoad = async (event) => {
     requested,
     gated,
     featuredCompanion: companion,
-    companionOptions,
     posts: posts.items,
     nextCursor: posts.nextCursor,
     pinnedPost: pinned,

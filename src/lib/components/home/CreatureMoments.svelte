@@ -7,23 +7,26 @@
     species?: string | null;
     mood?: string | null;
     mood_label?: string | null;
-    next_care_at?: string | null;
+    state?: string | null;
+    is_active?: boolean | null;
+    slot_index?: number | null;
   };
 
   export let items: CreatureItem[] = [];
 
   const dispatch = createEventDispatcher<{ focus: { creatureId: string } }>();
 
-  const dueLabel = (iso: string | null | undefined) => {
-    if (!iso) return 'Rested';
-    const ts = Date.parse(iso);
-    if (Number.isNaN(ts)) return 'Check in soon';
-    const diff = ts - Date.now();
-    if (diff <= 0) return 'Care due now';
-    const minutes = Math.round(diff / 60000);
-    if (minutes < 60) return `Due in ${minutes}m`;
-    const hours = Math.round(diff / 3600000);
-    return `Due in ${hours}h`;
+  const statusLabel = (creature: CreatureItem) => {
+    if (creature.is_active) return 'Active companion';
+    if ((creature.state ?? '').toLowerCase() === 'resting') return 'Resting';
+    return 'Idle';
+  };
+
+  const slotLabel = (creature: CreatureItem, index: number) => {
+    if (typeof creature.slot_index === 'number') {
+      return `Slot ${creature.slot_index + 1}`;
+    }
+    return `Slot ${index + 1}`;
   };
 </script>
 
@@ -34,21 +37,21 @@
   </div>
 {:else}
   <ul class="creature-grid">
-    {#each items as creature (creature.id)}
+    {#each items as creature, index (creature.id)}
       <li>
         <article class="creature-card">
           <header>
             <h3>{creature.name ?? 'Companion'}</h3>
             <span class="species">{creature.species ?? 'Unknown species'}</span>
           </header>
-          <p class="mood">{creature.mood_label ?? creature.mood ?? 'Content'}</p>
-          <p class="status">{dueLabel(creature.next_care_at)}</p>
+          <p class="mood">{creature.mood ?? 'Steady'}</p>
+          <p class="status">{slotLabel(creature, index)} — {statusLabel(creature)}</p>
           <button
             type="button"
             class="visit-action btn-ripple hover-glow"
             on:click={() => dispatch('focus', { creatureId: creature.id })}
           >
-            Feed &amp; play
+            Open roster
           </button>
         </article>
       </li>

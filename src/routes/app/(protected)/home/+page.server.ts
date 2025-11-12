@@ -23,7 +23,9 @@ type CreatureMoment = {
   species?: string | null;
   mood?: string | null;
   mood_label?: string | null;
-  next_care_at?: string | null;
+  state?: string | null;
+  is_active?: boolean | null;
+  slot_index?: number | null;
 };
 
 const DEFAULT_ENDCAP = {
@@ -139,14 +141,19 @@ export const load: PageServerLoad = async (event) => {
     if (session?.user?.id) {
       try {
         const { data } = await supabase
-          .from('creatures')
-          .select('id, name, species, mood, mood_label, next_care_at')
+          .from('companions')
+          .select('id, name, species, mood, state, is_active, slot_index, created_at')
           .eq('owner_id', session.user.id)
-          .order('next_care_at', { ascending: true })
+          .order('is_active', { ascending: false })
+          .order('slot_index', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
           .limit(3)
           .throwOnError();
 
-        creatureMoments = (data as CreatureMoment[] | null)?.filter(Boolean) ?? [];
+        creatureMoments = (data as CreatureMoment[] | null)?.map((row) => ({
+          ...row,
+          mood_label: row.mood ?? row.state ?? 'steady'
+        })) ?? [];
       } catch (err) {
         diagnostics.push('creatures_query_failed');
         reportHomeLoadIssue('creatures_query_failed', { error: err instanceof Error ? err.message : String(err) });

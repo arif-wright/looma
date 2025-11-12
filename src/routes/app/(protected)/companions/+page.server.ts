@@ -1,42 +1,36 @@
 import type { PageServerLoad } from './$types';
 
+const COMPANION_COLUMNS =
+  'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at';
+
 export const load: PageServerLoad = async ({ locals }) => {
-  const supabase = (locals as any)?.supabase;
+  const supabase = locals.supabase as App.Locals['supabase'];
   const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
 
   if (!supabase || !userId) {
-    return { companions: [], events: [], goal: null, error: 'Missing Supabase client' };
+    return { companions: [], maxSlots: 3, activeCompanionId: null };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-
-  const [companionsResult, eventsResult, goalResult] = await Promise.all([
+  const [companionsResult, slotsResult] = await Promise.all([
     supabase
       .from('companions')
-      .select(
-        'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at)'
-      )
+      .select(COMPANION_COLUMNS)
+      .eq('owner_id', userId)
+      .order('slot_index', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true }),
-    supabase
-      .from('companion_care_events')
-      .select('id, companion_id, owner_id, action, affection_delta, trust_delta, energy_delta, created_at')
-      .eq('owner_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20),
-    supabase
-      .from('companion_daily_goals')
-      .select('actions_count, completed, action_date')
-      .eq('owner_id', userId)
-      .eq('action_date', today)
-      .maybeSingle()
+    supabase.rpc('ensure_slots')
   ]);
 
-  const error = companionsResult.error?.message ?? eventsResult.error?.message ?? goalResult.error?.message ?? null;
+  const companions = companionsResult.data ?? [];
+  const maxSlotsRaw = slotsResult.data;
+  const maxSlots = typeof maxSlotsRaw === 'number' && Number.isFinite(maxSlotsRaw) ? maxSlotsRaw : 3;
+
+  const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
 
   return {
-    companions: companionsResult.data ?? [],
-    events: eventsResult.data ?? [],
-    goal: goalResult.data ?? null,
-    error
+    companions,
+    maxSlots,
+    activeCompanionId,
+    error: companionsResult.error?.message ?? slotsResult.error?.message ?? null
   };
 };

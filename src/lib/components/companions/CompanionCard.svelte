@@ -1,30 +1,37 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import type { CareAction, Companion } from '$lib/stores/companions';
+import { createEventDispatcher } from 'svelte';
+import type { CareAction, Companion } from '$lib/stores/companions';
 
-  export let companion: Companion;
-  export let busyAction: CareAction | null = null;
-  export let showActions = true;
-  export let compact = false;
+export let companion: Companion;
+export let busyAction: CareAction | null = null;
+export let showActions = true;
+export let compact = false;
+export let context: 'care' | 'roster' = 'care';
+export let stateLabel: string | null = null;
+export let isActive = false;
+export let slotIndex: number | null = null;
+export let disabled = false;
 
   const dispatch = createEventDispatcher<{ care: CareAction; open: void }>();
   const fallbackAvatar = '/avatar.svg';
 
-  const careActions: Array<{ key: CareAction; label: string; emoji: string }> = [
+const careActions: Array<{ key: CareAction; label: string; emoji: string }> = [
     { key: 'feed', label: 'Feed', emoji: '🍓' },
     { key: 'play', label: 'Play', emoji: '🪁' },
     { key: 'groom', label: 'Groom', emoji: '✨' }
   ];
 
-  const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  $: rosterState = (stateLabel ?? companion.state ?? companion.mood ?? 'idle') as string;
 
   const handleCare = (action: CareAction, event: MouseEvent) => {
     event.stopPropagation();
-    if (busyAction) return;
+    if (busyAction || disabled) return;
     dispatch('care', action);
   };
 
   const openPanel = () => {
+    if (disabled) return;
     dispatch('open');
   };
 
@@ -37,10 +44,16 @@
 </script>
 
 <article
-  class={`companion-card ${compact ? 'companion-card--compact' : ''}`}
+  class={`companion-card ${compact ? 'companion-card--compact' : ''} ${context === 'roster' ? 'companion-card--roster' : ''} ${
+    isActive ? 'companion-card--active' : ''
+  } ${disabled ? 'companion-card--disabled' : ''}`}
+  data-test="companion-card"
+  data-roster-card={context === 'roster' ? 'true' : undefined}
+  data-roster-draggable={context === 'roster' && !disabled ? 'true' : undefined}
   on:click={openPanel}
   on:keydown={handleKey}
-  tabindex="0"
+  tabindex={disabled ? -1 : 0}
+  aria-disabled={disabled ? 'true' : undefined}
 >
   <div class="card-media">
     <img src={companion.avatar_url ?? fallbackAvatar} alt={`${companion.name} avatar`} loading="lazy" />
@@ -48,13 +61,31 @@
     <span class="level-pill">Lv {companion.level}</span>
   </div>
   <div class="card-body">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">{companion.species}</p>
-        <h3>{companion.name}</h3>
-      </div>
-      <div class="mood-chip">{companion.mood}</div>
+  <div class="card-head">
+    <div>
+      <p class="eyebrow">{companion.species}</p>
+      <h3>{companion.name}</h3>
     </div>
+    <div class="mood-chip">{companion.mood}</div>
+  </div>
+  {#if context === 'roster'}
+    <div class="roster-meta">
+      <span class="roster-pill" aria-label={`State ${rosterState}`}>{rosterState}</span>
+      {#if typeof slotIndex === 'number'}
+        <span class="roster-slot">Slot {slotIndex + 1}</span>
+      {/if}
+      <button
+        type="button"
+        class="roster-handle"
+        data-roster-handle
+        aria-label="Reorder companion"
+        disabled={disabled}
+        on:click|stopPropagation
+      >
+        ☰
+      </button>
+    </div>
+  {/if}
     <div class="metrics">
       <div class="metric">
         <span>Affection</span>
@@ -118,6 +149,26 @@
   .companion-card--compact {
     grid-template-columns: 140px 1fr;
     padding: 1rem;
+  }
+
+  .companion-card--roster {
+    position: relative;
+    cursor: grab;
+  }
+
+  .companion-card--roster:active {
+    cursor: grabbing;
+  }
+
+  .companion-card--active {
+    border-color: rgba(95, 213, 255, 0.9);
+    box-shadow: 0 0 0 2px rgba(95, 213, 255, 0.25), 0 22px 38px rgba(8, 16, 24, 0.7);
+  }
+
+  .companion-card--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   .card-media {
@@ -187,6 +238,51 @@
     background: rgba(255, 255, 255, 0.08);
     font-size: 0.85rem;
     text-transform: capitalize;
+  }
+
+  .companion-card--roster .mood-chip {
+    text-transform: none;
+  }
+
+  .roster-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .roster-pill,
+  .roster-slot {
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    text-transform: capitalize;
+  }
+
+  .roster-slot {
+    text-transform: none;
+  }
+
+  .roster-handle {
+    margin-left: auto;
+    border: 1px dashed rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.9rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: grab;
+  }
+
+  .roster-handle:active {
+    cursor: grabbing;
+  }
+
+  .roster-handle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(95, 213, 255, 0.45);
   }
 
   .metrics {

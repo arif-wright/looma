@@ -23,10 +23,6 @@ import type { PageData } from './$types';
     if (!data.isOwner) return;
     void goto('/app/profile/edit');
   };
-
-  function onChooseCompanion() {
-    // read-only for public view
-  }
 </script>
 
 <svelte:head>
@@ -77,7 +73,6 @@ import type { PageData } from './$types';
         isOwner={false}
         hideCompanionActions={true}
         hidePrivate={true}
-        on:chooseCompanion={onChooseCompanion}
       />
 
       <div class="space-y-4">
