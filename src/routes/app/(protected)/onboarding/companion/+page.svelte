@@ -293,12 +293,7 @@ function handleConsentChange(next: boolean) {
           {#if currentQuestion}
           {#key currentQuestion.id}
           <div class="space-y-6">
-            <div
-              class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10"
-              in:fade
-              out:fade
-              aria-live="polite"
-            >
+            <div class="question-card rounded-2xl bg-white/5 p-5 ring-1 ring-white/10" aria-live="polite">
               <p id={`q-${currentQuestion.id}`} class="text-lg text-white">
                 {currentQuestion.prompt}
               </p>
