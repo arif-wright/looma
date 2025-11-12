@@ -1015,11 +1015,16 @@ p:last-child {
     border-radius: 1rem;
     padding: 0.85rem 1.2rem;
     border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
     color: rgba(255, 255, 255, 0.9);
     cursor: pointer;
     font-weight: 500;
-    transition: border 120ms ease, background 120ms ease, transform 120ms ease;
+    transition:
+      border 140ms ease,
+      background 140ms ease,
+      box-shadow 140ms ease,
+      transform 120ms ease;
+    isolation: isolate;
   }
 
   .choice-button span {
@@ -1035,10 +1040,26 @@ p:last-child {
   }
 
   .choice-button[data-active='true'] {
-    border-color: rgba(58, 215, 255, 0.8);
-    background: rgba(58, 215, 255, 0.15);
-    box-shadow: 0 12px 30px rgba(58, 215, 255, 0.2);
-    color: rgba(8, 15, 30, 0.92);
+    border-color: rgba(255, 255, 255, 0.9);
+    background: linear-gradient(135deg, rgba(58, 215, 255, 0.9), rgba(255, 75, 184, 0.9));
+    box-shadow:
+      0 15px 35px rgba(58, 215, 255, 0.35),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+    color: rgba(10, 14, 25, 0.95);
+  }
+
+  .choice-button[data-active='true']::after {
+    content: '✓';
+    position: absolute;
+    top: 0.45rem;
+    right: 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(10, 14, 25, 0.8);
+  }
+
+  .choice-button[data-active='true'] span {
+    font-weight: 700;
   }
 
   .choice-button:hover {
