@@ -49,14 +49,14 @@
   let reduced = false;
   let celebrate = false;
   let lastLoggedProgress = 0;
+  let currentChoice: Choice | null = null;
 
   const currentQuestion = () => questions[currentIndex];
-
-  const selectedChoice = () => answers[currentQuestion().id]?.choice ?? null;
 
   $: progressLabel = `${currentIndex + 1} / ${totalQuestions}`;
   $: progressPercent = ((currentIndex + 1) / totalQuestions) * 100;
   $: answersComplete = questions.every((q) => Boolean(answers[q.id]));
+  $: currentChoice = answers[currentQuestion().id]?.choice ?? null;
 
   function showToast(message: string, kind: 'info' | 'error' = 'error') {
     if (toastTimer) {
@@ -147,7 +147,7 @@ function handleConsentChange(next: boolean) {
 
   function goNext() {
     if (result) return;
-    if (!selectedChoice()) {
+    if (!currentChoice) {
       errorMsg = 'Please answer before continuing.';
       return;
     }
@@ -220,7 +220,7 @@ function handleConsentChange(next: boolean) {
       handleAnswer('B');
       event.preventDefault();
     } else if (event.key === 'Enter') {
-      if (selectedChoice()) {
+      if (currentChoice) {
         goNext();
         event.preventDefault();
       }
@@ -309,14 +309,14 @@ function handleConsentChange(next: boolean) {
                 <label
                   class="choice-button"
                   data-choice="agree"
-                  data-active={selectedChoice() === 'A'}
+                  data-active={currentChoice === 'A'}
                   data-testid="quiz-choice-agree"
                 >
                   <input
                     type="radio"
                     name={`q-${question.id}`}
                     value="A"
-                    checked={selectedChoice() === 'A'}
+                    checked={currentChoice === 'A'}
                     on:change={() => handleAnswer('A')}
                   />
                   <span>Agree</span>
@@ -324,14 +324,14 @@ function handleConsentChange(next: boolean) {
                 <label
                   class="choice-button"
                   data-choice="disagree"
-                  data-active={selectedChoice() === 'B'}
+                  data-active={currentChoice === 'B'}
                   data-testid="quiz-choice-disagree"
                 >
                   <input
                     type="radio"
                     name={`q-${question.id}`}
                     value="B"
-                    checked={selectedChoice() === 'B'}
+                    checked={currentChoice === 'B'}
                     on:change={() => handleAnswer('B')}
                   />
                   <span>Disagree</span>
