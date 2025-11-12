@@ -1001,7 +1001,14 @@ p:last-child {
   background: rgba(28, 51, 68, 0.55);
 }
 
-.choice-button {
+.choice-group {
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  .choice-button {
     position: relative;
     flex: 1 1 150px;
     min-width: 150px;
@@ -1015,7 +1022,12 @@ p:last-child {
     transition: border 120ms ease, background 120ms ease, transform 120ms ease;
   }
 
-.choice-button input {
+  .choice-button span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .choice-button input {
     position: absolute;
     inset: 0;
     opacity: 0;
@@ -1026,6 +1038,12 @@ p:last-child {
     border-color: rgba(58, 215, 255, 0.8);
     background: rgba(58, 215, 255, 0.15);
     box-shadow: 0 12px 30px rgba(58, 215, 255, 0.2);
+    color: rgba(8, 15, 30, 0.92);
+  }
+
+  .choice-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.4);
   }
 
 .choice-button:focus-visible {

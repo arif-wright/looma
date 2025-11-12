@@ -302,7 +302,7 @@ function handleConsentChange(next: boolean) {
               <fieldset
                 role="radiogroup"
                 aria-labelledby={`q-${currentQuestion().id}`}
-                class="mt-4 flex flex-wrap gap-3"
+                class="choice-group mt-4 flex flex-wrap gap-3"
               >
                 <label
                   class="choice-button"
