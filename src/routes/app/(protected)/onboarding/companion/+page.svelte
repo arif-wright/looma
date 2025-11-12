@@ -289,19 +289,21 @@ function handleConsentChange(next: boolean) {
 
       <div class="mt-6 space-y-6" aria-live="polite">
         {#if !result}
+          {#key currentQuestion().id}
           <div class="space-y-6">
+            {@const question = currentQuestion()}
             <div
               class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10"
               in:fade
               out:fade
               aria-live="polite"
             >
-              <p id={`q-${currentQuestion().id}`} class="text-lg text-white">
-                {currentQuestion().prompt}
+              <p id={`q-${question.id}`} class="text-lg text-white">
+                {question.prompt}
               </p>
               <fieldset
                 role="radiogroup"
-                aria-labelledby={`q-${currentQuestion().id}`}
+                aria-labelledby={`q-${question.id}`}
                 class="choice-group mt-4 flex flex-wrap gap-3"
               >
                 <label
@@ -312,7 +314,7 @@ function handleConsentChange(next: boolean) {
                 >
                   <input
                     type="radio"
-                    name={`q-${currentQuestion().id}`}
+                    name={`q-${question.id}`}
                     value="A"
                     checked={selectedChoice() === 'A'}
                     on:change={() => handleAnswer('A')}
@@ -327,7 +329,7 @@ function handleConsentChange(next: boolean) {
                 >
                   <input
                     type="radio"
-                    name={`q-${currentQuestion().id}`}
+                    name={`q-${question.id}`}
                     value="B"
                     checked={selectedChoice() === 'B'}
                     on:change={() => handleAnswer('B')}
@@ -383,6 +385,7 @@ function handleConsentChange(next: boolean) {
               </div>
             </div>
           </div>
+          {/key}
         {:else}
           <div class="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10" in:fly={{ y: 16 }}>
             <p class="text-sm text-white/70">Your Archetype</p>
