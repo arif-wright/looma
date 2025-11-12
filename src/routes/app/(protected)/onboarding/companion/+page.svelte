@@ -290,8 +290,8 @@ function handleConsentChange(next: boolean) {
       <div class="mt-6 space-y-6" aria-live="polite">
         {#if !result}
           {#key currentQuestion().id}
+          {@const question = currentQuestion()}
           <div class="space-y-6">
-            {@const question = currentQuestion()}
             <div
               class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10"
               in:fade
