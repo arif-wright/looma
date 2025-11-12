@@ -1039,8 +1039,7 @@ p:last-child {
     pointer-events: none;
   }
 
-  .choice-button[data-active='true'],
-  .choice-button:has(input:checked) {
+  .choice-button[data-active='true'] {
     border-color: rgba(255, 255, 255, 0.9);
     background: linear-gradient(135deg, rgba(58, 215, 255, 0.9), rgba(255, 75, 184, 0.9));
     box-shadow:
@@ -1049,8 +1048,7 @@ p:last-child {
     color: rgba(10, 14, 25, 0.95);
   }
 
-  .choice-button[data-active='true']::after,
-  .choice-button:has(input:checked)::after {
+  .choice-button[data-active='true']::after {
     content: '✓';
     position: absolute;
     top: 0.45rem;
@@ -1060,8 +1058,7 @@ p:last-child {
     color: rgba(10, 14, 25, 0.8);
   }
 
-  .choice-button[data-active='true'] span,
-  .choice-button:has(input:checked) span {
+  .choice-button[data-active='true'] span {
     font-weight: 700;
   }
 
