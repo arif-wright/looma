@@ -299,34 +299,42 @@ function handleConsentChange(next: boolean) {
               <p id={`q-${currentQuestion().id}`} class="text-lg text-white">
                 {currentQuestion().prompt}
               </p>
-              <div
+              <fieldset
                 role="radiogroup"
                 aria-labelledby={`q-${currentQuestion().id}`}
                 class="mt-4 flex flex-wrap gap-3"
               >
-                <button
-                  type="button"
+                <label
                   class="choice-button"
-                  role="radio"
-                  aria-checked={selectedChoice() === 'A'}
                   data-choice="agree"
+                  data-active={selectedChoice() === 'A'}
                   data-testid="quiz-choice-agree"
-                  on:click={() => handleAnswer('A')}
                 >
-                  Agree
-                </button>
-                <button
-                  type="button"
+                  <input
+                    type="radio"
+                    name={`q-${currentQuestion().id}`}
+                    value="A"
+                    checked={selectedChoice() === 'A'}
+                    on:change={() => handleAnswer('A')}
+                  />
+                  <span>Agree</span>
+                </label>
+                <label
                   class="choice-button"
-                  role="radio"
-                  aria-checked={selectedChoice() === 'B'}
                   data-choice="disagree"
+                  data-active={selectedChoice() === 'B'}
                   data-testid="quiz-choice-disagree"
-                  on:click={() => handleAnswer('B')}
                 >
-                  Disagree
-                </button>
-              </div>
+                  <input
+                    type="radio"
+                    name={`q-${currentQuestion().id}`}
+                    value="B"
+                    checked={selectedChoice() === 'B'}
+                    on:change={() => handleAnswer('B')}
+                  />
+                  <span>Disagree</span>
+                </label>
+              </fieldset>
             </div>
 
             <div class="consent-row">

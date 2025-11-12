@@ -2,7 +2,6 @@
   import { browser } from '$app/environment';
   import { afterNavigate } from '$app/navigation';
   import { onMount } from 'svelte';
-  import SideRail from '$lib/components/nav/SideRail.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { sendAnalytics } from '$lib/utils/analytics';
   import { logout } from '$lib/auth/logout';
@@ -18,8 +17,6 @@
   export let data;
 
   const userEmail = data?.user?.email ?? '';
-  const activity = data?.navActivity ?? {};
-  const isAdmin = Boolean(data?.isAdmin);
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
@@ -43,7 +40,6 @@
   let isGames = false;
   let isShop = false;
   let isProfileSurface = false;
-  let hideRail = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
 
@@ -53,13 +49,6 @@
   $: isShop = currentPath.startsWith('/app/shop');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
-  $: hideRail =
-    isHome ||
-    isGames ||
-    isShop ||
-    isProfileSurface ||
-    currentPath === '/app/wallet' ||
-    currentPath.startsWith('/app/admin');
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
@@ -100,12 +89,7 @@
   }
 </script>
 
-<div class={`app-shell ${hideRail ? 'app-shell--home' : ''}`}>
-  {#if !hideRail}
-    <aside class="app-rail">
-      <SideRail activity={activity} isAdmin={isAdmin} />
-    </aside>
-  {/if}
+<div class="app-shell">
   <div class="app-surface">
     {#if FLAGS.NEW_BRAND_HEADER}
       <BrandHeader
@@ -150,18 +134,9 @@
 
 <style>
   .app-shell {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    min-height: 100vh;
     min-height: 100vh;
     background: var(--brand-navy, #050712);
-  }
-
-  .app-shell--home {
-    grid-template-columns: 1fr;
-  }
-
-  .app-rail {
-    backdrop-filter: blur(12px);
   }
 
   .app-surface {
@@ -179,8 +154,8 @@
   }
 
   @media (max-width: 960px) {
-    .app-shell {
-      grid-template-columns: 1fr;
+    .app-surface {
+      grid-template-rows: auto 1fr;
     }
   }
 </style>

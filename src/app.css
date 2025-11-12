@@ -1002,22 +1002,31 @@ p:last-child {
 }
 
 .choice-button {
-  flex: 1 1 150px;
-  min-width: 150px;
-  border-radius: 1rem;
-  padding: 0.85rem 1.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+    position: relative;
+    flex: 1 1 150px;
+    min-width: 150px;
+    border-radius: 1rem;
+    padding: 0.85rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-  transition: border 120ms ease, background 120ms ease, transform 120ms ease;
-}
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    font-weight: 500;
+    transition: border 120ms ease, background 120ms ease, transform 120ms ease;
+  }
 
-.choice-button[aria-checked='true'] {
-  border-color: rgba(58, 215, 255, 0.8);
-  background: rgba(58, 215, 255, 0.15);
-  box-shadow: 0 12px 30px rgba(58, 215, 255, 0.2);
-}
+.choice-button input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .choice-button[data-active='true'] {
+    border-color: rgba(58, 215, 255, 0.8);
+    background: rgba(58, 215, 255, 0.15);
+    box-shadow: 0 12px 30px rgba(58, 215, 255, 0.2);
+  }
 
 .choice-button:focus-visible {
   outline: none;
