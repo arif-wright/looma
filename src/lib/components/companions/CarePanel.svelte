@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CareAction, Companion, CompanionStats } from '$lib/stores/companions';
+  import CooldownBadge from './CooldownBadge.svelte';
 
   export let companion: Companion;
   export let stats: CompanionStats | null | undefined = null;
@@ -8,7 +9,7 @@
   export let error: string | null = null;
 
   const dispatch = createEventDispatcher<{ care: CareAction }>();
-  const COOLDOWN_MS = 15 * 60 * 1000;
+  const COOLDOWN_MS = 10 * 60 * 1000;
 
   const careActions: Array<{ key: CareAction; label: string; emoji: string; field: 'fed_at' | 'played_at' | 'groomed_at' }> = [
     { key: 'feed', label: 'Feed', emoji: '🍓', field: 'fed_at' },
@@ -40,12 +41,6 @@
     return Math.max(0, COOLDOWN_MS - elapsed);
   };
 
-  const renderCooldown = (ms: number) => {
-    if (ms <= 0) return null;
-    const minutes = Math.ceil(ms / 60000);
-    return minutes <= 1 ? 'Ready in 1m' : `Ready in ${minutes}m`;
-  };
-
   type CooldownMap = Record<CareAction, number>;
 
   $: cooldowns = {
@@ -61,6 +56,9 @@
 </script>
 
 <section class="care-panel">
+  <p class="sr-announcer" aria-live="polite">
+    {companion.name} stats — affection {pct(companion.affection)}%, trust {pct(companion.trust)}%, energy {pct(companion.energy)}%
+  </p>
   <header>
     <div>
       <p class="eyebrow">Bonding</p>
@@ -120,9 +118,9 @@
           on:click={() => handleCare(action.key)}
         >
           <span aria-hidden="true">{action.emoji}</span>
-          <div>
+          <div class="care-act__copy">
             <span class="label">{action.label}</span>
-            <small>{renderCooldown(cooldowns[action.key]) ?? 'Ready'}</small>
+            <CooldownBadge seconds={Math.ceil(cooldowns[action.key] / 1000)} busy={busyAction === action.key} />
           </div>
         </button>
       {/key}
@@ -134,6 +132,19 @@
   .care-panel {
     display: grid;
     gap: 1rem;
+    position: relative;
+  }
+
+  .sr-announcer {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   header {
@@ -272,10 +283,10 @@
     text-align: left;
   }
 
-  .care-act small {
-    display: block;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.65);
+  .care-act__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
   }
 
   .care-act:disabled {

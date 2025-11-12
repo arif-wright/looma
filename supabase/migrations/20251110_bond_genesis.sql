@@ -29,14 +29,15 @@ create table if not exists public.player_traits (
 
 alter table public.player_traits enable row level security;
 
+drop policy if exists "traits_owner_read" on public.player_traits;
 create policy "traits_owner_read" on public.player_traits
   for select to authenticated
   using (auth.uid() = user_id);
-
+drop policy if exists "traits_owner_write" on public.player_traits;
 create policy "traits_owner_write" on public.player_traits
   for insert to authenticated
   with check (auth.uid() = user_id);
-
+drop policy if exists "traits_owner_upd" on public.player_traits;
 create policy "traits_owner_upd" on public.player_traits
   for update to authenticated
   using (auth.uid() = user_id)
@@ -51,14 +52,15 @@ create table if not exists public.persona_profiles (
 
 alter table public.persona_profiles enable row level security;
 
+drop policy if exists "persona_owner_read" on public.persona_profiles;
 create policy "persona_owner_read" on public.persona_profiles
   for select to authenticated
   using (auth.uid() = user_id);
-
+drop policy if exists "persona_owner_upd" on public.persona_profiles;
 create policy "persona_owner_upd" on public.persona_profiles
   for insert to authenticated
   with check (auth.uid() = user_id);
-
+drop policy if exists "persona_owner_mod" on public.persona_profiles;
 create policy "persona_owner_mod" on public.persona_profiles
   for update to authenticated
   using (auth.uid() = user_id)
@@ -78,6 +80,7 @@ create table if not exists public.companion_archetypes (
 
 alter table public.companion_archetypes enable row level security;
 
+drop policy if exists "any_read_archetypes" on public.companion_archetypes;
 create policy "any_read_archetypes" on public.companion_archetypes
   for select to authenticated
   using (true);
@@ -273,6 +276,9 @@ declare
   color text;
   c uuid;
   has_companion boolean;
+  has_events_type boolean;
+  has_events_message boolean;
+  event_message text;
 begin
   if u is null then
     raise exception 'unauthorized';
@@ -291,31 +297,83 @@ begin
     raise exception 'already_has_companion';
   end if;
 
-  select archetype into a
-  from public.player_traits
-  where user_id = u;
+  select pt.archetype
+    into a
+  from public.player_traits as pt
+  where pt.user_id = u;
 
   if a is null then
     raise exception 'no_archetype';
   end if;
 
-  select seed, color
-    into seed, color
-  from public.companion_archetypes
-  where key = a;
+  select ca.seed,
+         ca.color
+    into seed,
+         color
+  from public.companion_archetypes as ca
+  where ca.key = a;
 
   if not found then
     raise exception 'archetype_missing';
   end if;
 
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'events'
+      and column_name = 'type'
+  ) into has_events_type;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'events'
+      and column_name = 'message'
+  ) into has_events_message;
+
   insert into public.companions (owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, avatar_url)
   values (u, initcap(a), 'looma', 'common', 1, 0, 20, 15, 100, 'neutral', null)
   returning id into c;
 
-  insert into public.events (user_id, kind, meta)
-  values (u, 'companion_spawn', jsonb_build_object('archetype', a, 'color', color, 'seed', seed));
+  event_message := format('Companion %s awakened', initcap(a));
 
-  return query select c, a;
+  if has_events_type and has_events_message then
+    insert into public.events (user_id, type, kind, message, meta)
+    values (
+      u,
+      'companion_spawn',
+      'companion_spawn',
+      event_message,
+      jsonb_build_object('archetype', a, 'color', color, 'seed', seed)
+    );
+  elsif has_events_type then
+    insert into public.events (user_id, type, kind, meta)
+    values (
+      u,
+      'companion_spawn',
+      'companion_spawn',
+      jsonb_build_object('archetype', a, 'color', color, 'seed', seed)
+    );
+  elsif has_events_message then
+    insert into public.events (user_id, kind, message, meta)
+    values (
+      u,
+      'companion_spawn',
+      event_message,
+      jsonb_build_object('archetype', a, 'color', color, 'seed', seed)
+    );
+  else
+    insert into public.events (user_id, kind, meta)
+    values (
+      u,
+      'companion_spawn',
+      jsonb_build_object('archetype', a, 'color', color, 'seed', seed)
+    );
+  end if;
+
+  return query select c as companion_id, a as archetype;
 end;
 $$;
 

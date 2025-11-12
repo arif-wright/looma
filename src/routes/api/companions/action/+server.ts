@@ -4,9 +4,15 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 
 const ACTIONS = new Set(['feed', 'play', 'groom']);
 
-type CarePayload = {
+type CareRequest = {
   companionId?: string;
   action?: string;
+};
+
+const parseCooldownDetail = (detail?: string | null) => {
+  if (!detail) return null;
+  const value = Number(detail);
+  return Number.isFinite(value) ? value : null;
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -15,9 +21,9 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  let payload: CarePayload;
+  let payload: CareRequest;
   try {
-    payload = (await event.request.json()) as CarePayload;
+    payload = (await event.request.json()) as CareRequest;
   } catch {
     return json({ error: 'bad_request' }, { status: 400 });
   }
@@ -29,14 +35,22 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc('care_action', {
+  const { data, error } = await supabase.rpc('perform_care_action', {
+    p_owner: session.user.id,
     p_companion: companionId,
-    p_kind: action
+    p_action: action
   });
 
   if (error) {
-    return json({ error: error.message }, { status: 400 });
+    const detailSeconds = parseCooldownDetail(error.details);
+    if (error.message === 'cooldown_active' && detailSeconds !== null) {
+      return json({ error: 'cooldown', cooldownSecsRemaining: detailSeconds }, { status: 429 });
+    }
+    if (error.message === 'insufficient_energy') {
+      return json({ error: 'insufficient_energy' }, { status: 400 });
+    }
+    return json({ error: error.message ?? 'care_failed' }, { status: 400 });
   }
 
-  return json({ ok: true, state: Array.isArray(data) ? data[0] ?? null : null });
+  return json({ ok: true, result: data ?? null });
 };
