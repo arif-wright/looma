@@ -13,7 +13,7 @@
   let ready = false;
   let envError = '';
 
-  const redirectTarget =
+  const getRedirectTarget = () =>
     typeof window === 'undefined' ? undefined : `${window.location.origin}/auth/callback`;
 
   onMount(() => {
@@ -40,7 +40,10 @@
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: redirectTarget ? { redirectTo: redirectTarget } : undefined,
+        options: (() => {
+          const target = getRedirectTarget();
+          return target ? { redirectTo: target } : undefined;
+        })(),
         flowType: 'pkce'
       });
       if (error) throw error;
@@ -65,9 +68,10 @@
     submitting = true;
     message = '';
     try {
+      const target = getRedirectTarget();
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: redirectTarget ? { emailRedirectTo: redirectTarget } : undefined
+        options: target ? { emailRedirectTo: target } : undefined
       });
       if (error) throw error;
       message = 'Check your email for a magic link.';
