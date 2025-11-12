@@ -50,13 +50,13 @@
   let celebrate = false;
   let lastLoggedProgress = 0;
   let currentChoice: Choice | null = null;
+  let currentQuestion: Question = questions[0];
 
-  const currentQuestion = () => questions[currentIndex];
-
+  $: currentQuestion = questions[currentIndex] ?? questions[0];
   $: progressLabel = `${currentIndex + 1} / ${totalQuestions}`;
   $: progressPercent = ((currentIndex + 1) / totalQuestions) * 100;
   $: answersComplete = questions.every((q) => Boolean(answers[q.id]));
-  $: currentChoice = answers[currentQuestion().id]?.choice ?? null;
+  $: currentChoice = currentQuestion ? answers[currentQuestion.id]?.choice ?? null : null;
 
   function showToast(message: string, kind: 'info' | 'error' = 'error') {
     if (toastTimer) {
@@ -116,7 +116,8 @@
 
   function handleAnswer(choice: Choice) {
     if (result) return;
-    const question = currentQuestion();
+    const question = currentQuestion;
+    if (!question) return;
     answers = {
       ...answers,
       [question.id]: { id: question.id, axis: question.axis, facet: question.facet, choice }
@@ -289,8 +290,8 @@ function handleConsentChange(next: boolean) {
 
       <div class="mt-6 space-y-6" aria-live="polite">
         {#if !result}
-          {#key currentQuestion().id}
-          {@const question = currentQuestion()}
+          {#if currentQuestion}
+          {#key currentQuestion.id}
           <div class="space-y-6">
             <div
               class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10"
@@ -298,12 +299,12 @@ function handleConsentChange(next: boolean) {
               out:fade
               aria-live="polite"
             >
-              <p id={`q-${question.id}`} class="text-lg text-white">
-                {question.prompt}
+              <p id={`q-${currentQuestion.id}`} class="text-lg text-white">
+                {currentQuestion.prompt}
               </p>
               <fieldset
                 role="radiogroup"
-                aria-labelledby={`q-${question.id}`}
+                aria-labelledby={`q-${currentQuestion.id}`}
                 class="choice-group mt-4 flex flex-wrap gap-3"
               >
                 <label
@@ -314,7 +315,7 @@ function handleConsentChange(next: boolean) {
                 >
                   <input
                     type="radio"
-                    name={`q-${question.id}`}
+                    name={`q-${currentQuestion.id}`}
                     value="A"
                     checked={currentChoice === 'A'}
                     on:change={() => handleAnswer('A')}
@@ -329,7 +330,7 @@ function handleConsentChange(next: boolean) {
                 >
                   <input
                     type="radio"
-                    name={`q-${question.id}`}
+                    name={`q-${currentQuestion.id}`}
                     value="B"
                     checked={currentChoice === 'B'}
                     on:change={() => handleAnswer('B')}
@@ -386,6 +387,7 @@ function handleConsentChange(next: boolean) {
             </div>
           </div>
           {/key}
+          {/if}
         {:else}
           <div class="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10" in:fly={{ y: 16 }}>
             <p class="text-sm text-white/70">Your Archetype</p>
