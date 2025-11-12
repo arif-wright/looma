@@ -108,14 +108,33 @@
 
     busy = true;
 
+    const normalizeActionPayload = (payload: any) => {
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        'type' in payload &&
+        Array.isArray((payload as Record<string, unknown>).data)
+      ) {
+        const entries = (payload as { data: unknown[] }).data;
+        const primary = entries?.[0];
+        if (primary && typeof primary === 'object') {
+          return primary;
+        }
+      }
+      return payload;
+    };
+
     try {
       const form = new FormData();
       form.set('slug', item.slug);
 
       const res = await fetch('?/purchase', { method: 'POST', body: form });
-      const out = await res.json();
+      const raw = await res.json().catch(() => ({}));
+      const out = normalizeActionPayload(raw);
 
-      if (!res.ok || !out?.ok) throw new Error(formatError(out?.error ?? out));
+      if (!res.ok || !out?.ok) {
+        throw new Error(formatError(out?.error ?? raw));
+      }
 
       const nextBalance = asNumber(out.shards, balance);
       setWalletBalance(nextBalance, balance);
