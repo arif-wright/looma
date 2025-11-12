@@ -61,6 +61,24 @@
   const fallbackBalance = asNumber(data.wallet ?? data.shards, 0);
   let highlightSlug: string | null = data?.highlightSlug ?? null;
   let highlightHandled = !highlightSlug;
+
+  const formatError = (value: unknown): string => {
+    if (!value) return 'Purchase failed';
+    if (typeof value === 'string') return value;
+    if (value instanceof Error) return value.message || 'Purchase failed';
+    if (typeof value === 'object') {
+      const candidate = (value as Record<string, unknown>).message ?? (value as Record<string, unknown>).hint ?? (value as Record<string, unknown>).details;
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return 'Purchase failed';
+      }
+    }
+    return 'Purchase failed';
+  };
   const subNavItems = [
     { label: 'Shop', href: '/app/shop', active: true },
     { label: 'Creatures', href: '/app/creatures', active: false },
@@ -97,7 +115,7 @@
       const res = await fetch('?/purchase', { method: 'POST', body: form });
       const out = await res.json();
 
-      if (!res.ok || !out?.ok) throw new Error(out?.error || 'Purchase failed');
+      if (!res.ok || !out?.ok) throw new Error(formatError(out?.error ?? out));
 
       const nextBalance = asNumber(out.shards, balance);
       setWalletBalance(nextBalance, balance);
@@ -105,7 +123,7 @@
       logEvent('purchase', { itemId: item.id, priceShards: item.price_shards });
       closeModal();
     } catch (err: any) {
-      modalError = err?.message || 'Purchase failed';
+      modalError = formatError(err);
     } finally {
       busy = false;
     }
