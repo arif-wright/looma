@@ -1,3 +1,4 @@
+import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -69,20 +70,14 @@ export const actions: Actions = {
     const user = (locals as any)?.user;
 
     if (!supabase || !user?.id) {
-      return new Response(JSON.stringify({ ok: false, error: 'Not authenticated' }), {
-        status: 401,
-        headers: { 'content-type': 'application/json' }
-      });
+      return fail(401, { error: 'Not authenticated' });
     }
 
     const form = await request.formData();
     const slug = String(form.get('slug') ?? '');
 
     if (!slug) {
-      return new Response(JSON.stringify({ ok: false, error: 'Missing slug' }), {
-        status: 400,
-        headers: { 'content-type': 'application/json' }
-      });
+      return fail(400, { error: 'Missing slug' });
     }
 
     const { data, error, status } = await supabase
@@ -90,21 +85,13 @@ export const actions: Actions = {
       .single();
 
     if (error || !data) {
-      return new Response(
-        JSON.stringify({ ok: false, error: error?.message ?? 'Purchase failed' }),
-        {
-          status: status || 400,
-          headers: { 'content-type': 'application/json' }
-        }
-      );
+      return fail(status || 400, { error: error?.message ?? 'Purchase failed' });
     }
 
-    return new Response(
-      JSON.stringify({ ok: true, order_id: data.order_id, shards: data.new_shards }),
-      {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      }
-    );
+    return {
+      ok: true,
+      order_id: data.order_id,
+      shards: data.new_shards
+    };
   }
 };
