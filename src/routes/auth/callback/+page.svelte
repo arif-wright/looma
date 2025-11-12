@@ -25,6 +25,26 @@
     try {
       const currentUrl = window.location.href;
       const parsed = new URL(currentUrl);
+      const hashParams = new URLSearchParams(parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash);
+
+      if (hashParams.has('access_token')) {
+        const access_token = hashParams.get('access_token');
+        const refresh_token = hashParams.get('refresh_token');
+        if (!access_token) {
+          fail('Access token missing from callback.');
+          return;
+        }
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token: refresh_token ?? ''
+        });
+        if (error || !data?.session) {
+          fail(error?.message ?? 'Unable to complete OAuth session.');
+          return;
+        }
+        await complete();
+        return;
+      }
 
       if (parsed.searchParams.has('error')) {
         const reason =
