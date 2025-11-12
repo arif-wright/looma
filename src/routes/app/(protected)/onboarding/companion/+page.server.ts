@@ -9,12 +9,12 @@ const adminClient = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 });
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  if (!locals.session) {
+  if (!locals.user) {
     throw redirect(302, '/app/auth');
   }
 
   const retake = url.searchParams.get('retake') === '1';
-  const userId = locals.session.user.id;
+  const userId = locals.user.id;
 
   const { data: flag, error } = await adminClient
     .from('feature_flags')
