@@ -2,6 +2,15 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 
+const MAX_LIMIT = 50;
+
+const formatDelta = (value = 0) => (value >= 0 ? `+${value}` : `${value}`);
+
+const formatLabel = (action = 'care', affection = 0, trust = 0, energy = 0) => {
+  const title = action ? `${action.charAt(0).toUpperCase()}${action.slice(1)}` : 'Care';
+  return `${title} ${formatDelta(affection)} aff ${formatDelta(trust)} trust ${formatDelta(energy)} energy`;
+};
+
 export const GET: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
   if (!session) {
@@ -10,21 +19,29 @@ export const GET: RequestHandler = async (event) => {
 
   const companionId = event.url.searchParams.get('id');
   const limitParam = event.url.searchParams.get('limit');
-  const limit = limitParam ? Number(limitParam) : 20;
+  const limitCandidate = limitParam ? Number(limitParam) : 20;
+  const limit = Number.isFinite(limitCandidate) && limitCandidate > 0 ? Math.min(Math.trunc(limitCandidate), MAX_LIMIT) : 20;
 
   if (!companionId) {
     return json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc('get_companion_events', {
-    p_owner: session.user.id,
-    p_companion: companionId,
-    p_limit: Number.isFinite(limit) && limit > 0 ? Math.min(Math.trunc(limit), 50) : 20
-  });
+  const { data, error } = await supabase
+    .from('companion_care_events')
+    .select('id, action, affection_delta, trust_delta, energy_delta, created_at')
+    .eq('owner_id', session.user.id)
+    .eq('companion_id', companionId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
   if (error) {
     return json({ error: error.message ?? 'events_failed' }, { status: 400 });
   }
 
-  return json({ ok: true, events: Array.isArray(data) ? data : [] });
+  const events = (data ?? []).map((row) => ({
+    ...row,
+    label: formatLabel(row.action ?? 'care', row.affection_delta ?? 0, row.trust_delta ?? 0, row.energy_delta ?? 0)
+  }));
+
+  return json({ ok: true, events });
 };
