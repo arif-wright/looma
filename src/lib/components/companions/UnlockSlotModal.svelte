@@ -1,30 +1,65 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { logEvent } from '$lib/analytics';
 
   export let open = false;
   export let onClose: () => void = () => {};
-  export let onUnlock: () => Promise<void> = async () => {};
+  export let onUnlocked: (newMax: number) => void = () => {};
 
   let busy = false;
+  let qtyLoading = false;
+  let qty = 0;
   let errorMsg = '';
   let dialogEl: HTMLDivElement | null = null;
   let lastFocus: HTMLElement | null = null;
+  let wasOpen = false;
 
   const tryClose = () => {
     if (busy) return;
     onClose();
   };
 
-  const unlock = async () => {
+  const loadQty = async () => {
+    if (qtyLoading) return;
+    qtyLoading = true;
+    try {
+      const res = await fetch('/api/companions/slots/license');
+      const payload = await res.json().catch(() => null);
+      qty = res.ok ? Number(payload?.qty ?? 0) : 0;
+    } catch {
+      qty = 0;
+    } finally {
+      qtyLoading = false;
+    }
+  };
+
+  const useLicense = async () => {
     busy = true;
     errorMsg = '';
+    logEvent('slot_license_use_attempt', { qtyBefore: qty });
     try {
-      await onUnlock();
+      const res = await fetch('/api/companions/slots/license', { method: 'POST' });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error ?? 'Failed to use license');
+      }
+      const maxSlots = Number(payload?.maxSlots ?? 0) || 0;
+      onUnlocked(maxSlots);
+      logEvent('slot_unlocked', { maxSlots, source: 'license' });
       onClose();
     } catch (err) {
-      errorMsg = err instanceof Error ? err.message : 'Unlock failed';
+      errorMsg = err instanceof Error ? err.message : 'Failed to use license';
+      logEvent('slot_license_use_failed', { message: errorMsg });
     } finally {
       busy = false;
+      void loadQty();
+    }
+  };
+
+  const buyLicense = () => {
+    logEvent('slot_license_buy_click');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/app/shop?slug=slot-license';
     }
   };
 
@@ -40,6 +75,15 @@
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   });
+
+  $: if (open && !wasOpen) {
+    wasOpen = true;
+    errorMsg = '';
+    logEvent('slot_unlock_modal_open');
+    void loadQty();
+  } else if (!open && wasOpen) {
+    wasOpen = false;
+  }
 
   $: if (typeof document !== 'undefined') {
     if (open) {
@@ -68,19 +112,29 @@
       <p class="unlock-copy">
         You have reached your current slot limit. Unlock another slot to welcome an additional companion into your active roster.
       </p>
+      <p class="unlock-copy">
+        Use a <strong>Companion Slot License</strong> to permanently increase your roster capacity.
+      </p>
+      <p class="unlock-meta">You currently have <span class="qty" aria-live="polite">{qtyLoading ? '…' : qty}</span> license{qty === 1 ? '' : 's'}.</p>
       {#if errorMsg}
-        <p class="unlock-error" role="alert">{errorMsg}</p>
+        <p class="unlock-error" aria-live="assertive" role="alert">{errorMsg}</p>
       {/if}
       <div class="unlock-actions">
-        <button type="button" class="unlock-primary" on:click={unlock} disabled={busy}>
-          {busy ? 'Unlocking…' : 'Unlock slot'}
-        </button>
+        {#if qty > 0}
+          <button type="button" class="unlock-primary" on:click={useLicense} disabled={busy}>
+            {busy ? 'Unlocking…' : 'Use License'}
+          </button>
+        {:else}
+          <button type="button" class="unlock-primary" on:click={buyLicense}>
+            Buy License
+          </button>
+        {/if}
         <button type="button" class="unlock-secondary" on:click={tryClose}>
           Not now
         </button>
       </div>
       <p class="unlock-footnote">
-        Future phases may require an inventory item or purchase to unlock additional slots.
+        Buying a license in the shop adds it to your inventory. Using one consumes it and unlocks a new companion slot.
       </p>
     </div>
   </div>
@@ -121,6 +175,16 @@
     margin: 0 0 1rem;
     color: rgba(255, 255, 255, 0.78);
     font-size: 0.95rem;
+  }
+
+  .unlock-meta {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .qty {
+    font-weight: 600;
   }
 
   .unlock-error {

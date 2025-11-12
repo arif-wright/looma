@@ -52,11 +52,11 @@ begin
     return query select old_slots;
   end if;
 
-  update public.player_companion_slots
+  update public.player_companion_slots pcs
      set max_slots = old_slots + 1,
          updated_at = now()
    where user_id = u
-   returning max_slots into new_slots;
+   returning pcs.max_slots into new_slots;
 
   insert into public.events (user_id, kind, meta)
   values (u, 'unlock_companion_slot', jsonb_build_object('from', old_slots, 'to', new_slots, 'reason', p_reason));

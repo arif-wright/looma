@@ -1,6 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
   const supabase = (locals as any)?.supabase;
   const user = (locals as any)?.user;
 
@@ -58,7 +58,8 @@ export const load: PageServerLoad = async ({ locals }) => {
     shards: wallet,
     wallet,
     ownedIds,
-    error: itemsRes.error?.message ?? null
+    error: itemsRes.error?.message ?? null,
+    highlightSlug: url.searchParams.get('slug') ?? null
   };
 };
 

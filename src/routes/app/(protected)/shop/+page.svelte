@@ -59,6 +59,8 @@
   };
 
   const fallbackBalance = asNumber(data.wallet ?? data.shards, 0);
+  let highlightSlug: string | null = data?.highlightSlug ?? null;
+  let highlightHandled = !highlightSlug;
   const subNavItems = [
     { label: 'Shop', href: '/app/shop', active: true },
     { label: 'Creatures', href: '/app/creatures', active: false },
@@ -121,6 +123,19 @@
   $: balance = asNumber($walletBalance, fallbackBalance);
   $: featuredItems = Array.isArray(data.featured) ? data.featured : [];
   $: catalogItems = (data.items ?? []).map((item) => ({ ...item, __owned: owned.has(item.id) }));
+
+  $: if (highlightSlug && !highlightHandled && catalogItems.length) {
+    const target = catalogItems.find((item) => item.slug === highlightSlug);
+    if (target) {
+      selected = target;
+      modalError = null;
+      modalOpen = true;
+      highlightHandled = true;
+      logEvent('shop_highlight_open', { slug: highlightSlug });
+    } else {
+      highlightHandled = true;
+    }
+  }
 </script>
 
 <div class="shop-shell mx-auto max-w-screen-xl px-4 pt-4 md:pt-6 space-y-4 md:space-y-6 safe-bottom min-h-screen">

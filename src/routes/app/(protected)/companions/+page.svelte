@@ -240,24 +240,6 @@
     logEvent('roster_unlock_prompt_shown', { reason: 'drag_blocked' });
   };
 
-  const requestUnlock = async () => {
-    const res = await fetch('/api/companions/slots', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: 'ui_unlock' })
-    });
-    const payload = await res.json().catch(() => null);
-    if (!res.ok) {
-      logEvent('roster_unlock_failed', { error: payload?.error ?? 'unknown' });
-      throw new Error(payload?.error ?? 'Unlock failed');
-    }
-    const nextSlots = payload?.maxSlots ?? maxSlots;
-    maxSlots = nextSlots;
-    showToast('Slot unlocked');
-    logEvent('roster_unlock_success', { maxSlots: nextSlots });
-    await refreshRoster();
-  };
-
   const handleSelectCompanion = (companion: Companion) => {
     selected = companion;
     logEvent('roster_card_open', { id: companion.id });
@@ -270,6 +252,14 @@
   const handleUnlockCta = () => {
     showUnlock = true;
     logEvent('roster_unlock_cta_clicked');
+  };
+
+  const handleUnlocked = async (nextSlots: number) => {
+    if (typeof nextSlots === 'number' && nextSlots > 0) {
+      maxSlots = nextSlots;
+    }
+    showToast('Slot unlocked');
+    await refreshRoster();
   };
 
   $: visibleCompanions = filteredCompanions();
@@ -347,7 +337,7 @@
   setState={changeState}
 />
 
-<UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlock={requestUnlock} />
+<UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlocked={handleUnlocked} />
 
 {#if toast}
   <div class={`roster-toast roster-toast--${toast.kind}`} role="status" aria-live="polite">{toast.message}</div>
