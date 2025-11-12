@@ -54,6 +54,13 @@ test.describe.serial('Companion roster APIs', () => {
     await resetRoster();
   };
 
+  const resetSlots = async (value = 3) => {
+    const { error } = await adminClient
+      .from('player_companion_slots')
+      .upsert({ user_id: seed.viewer.id, max_slots: value, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) throw error;
+  };
+
   const resetRoster = async () => {
     if (!companionIds.length) return;
     await adminClient
@@ -93,6 +100,7 @@ test.describe.serial('Companion roster APIs', () => {
 
   test.beforeEach(async () => {
     await resetRoster();
+    await resetSlots(3);
   });
 
   test('lists companions with slot metadata', async () => {
@@ -182,6 +190,18 @@ test.describe.serial('Companion roster APIs', () => {
       data: { companionId: target, state: 'sleeping' }
     });
     expect(badState.status()).toBe(400);
+    await viewerCtx.dispose();
+  });
+
+  test('unlock slot endpoint increments until capped', async () => {
+    await resetSlots(3);
+    const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
+    const res = await viewerCtx.post('/api/companions/slots', {
+      data: { reason: 'spec_test' }
+    });
+    expect(res.status()).toBe(200);
+    const payload = await res.json();
+    expect(payload.maxSlots).toBeGreaterThanOrEqual(4);
     await viewerCtx.dispose();
   });
 });

@@ -13,10 +13,22 @@
   const dispatch = createEventDispatcher<{
     select: { companion: Companion };
     reorder: RosterReorderDetail;
+    blocked: { reason: 'max_slots' };
   }>();
 
-  let gridEl: HTMLDivElement | null = null;
-  let sortable: any = null;
+let gridEl: HTMLDivElement | null = null;
+let sortable: any = null;
+
+const restoreOrder = () => {
+  if (!sortable) return;
+  const order = companions
+    .slice(0, maxSlots)
+    .map((companion) => companion.id)
+    .filter(Boolean);
+  if (order.length) {
+    sortable.sort(order);
+  }
+};
 
   const initSortable = async () => {
     if (disableDrag || typeof window === 'undefined' || sortable || !gridEl) return;
@@ -28,7 +40,14 @@
       draggable: '[data-roster-item="true"][data-slot-enabled="true"]',
       ghostClass: 'roster-ghost',
       dragClass: 'roster-dragging',
-      onEnd: () => {
+      onEnd: (evt: any) => {
+        const newIndex = typeof evt?.newDraggableIndex === 'number' ? evt.newDraggableIndex : evt?.newIndex;
+        if (typeof newIndex === 'number' && newIndex >= maxSlots) {
+          restoreOrder();
+          dispatch('blocked', { reason: 'max_slots' });
+          return;
+        }
+
         const ids = collectOrder();
         if (ids.length) {
           dispatch('reorder', { ids, via: 'pointer' });
@@ -94,6 +113,8 @@
         data-roster-item="true"
         data-id={companion.id}
         data-slot-enabled={isSlotEnabled(index) ? 'true' : 'false'}
+        aria-disabled={isSlotEnabled(index) ? 'false' : 'true'}
+        title={isSlotEnabled(index) ? undefined : 'Unlock more slots to activate this companion'}
         on:keydown={(event) => handleKey(event as KeyboardEvent, index)}
       >
         <CompanionCard
@@ -127,7 +148,8 @@
   }
 
   .roster-item--locked {
-    opacity: 0.65;
+    opacity: 0.55;
+    pointer-events: none;
   }
 
   .slot-locked {

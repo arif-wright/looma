@@ -4,8 +4,10 @@
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
   import RosterFilterBar, { type RosterFilterState } from '$lib/components/companions/RosterFilterBar.svelte';
-  import RosterGrid from '$lib/components/companions/RosterGrid.svelte';
+  import RosterGrid, { type RosterReorderDetail } from '$lib/components/companions/RosterGrid.svelte';
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
+  import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
+  import { logEvent } from '$lib/analytics';
 
   export let data: PageData;
 
@@ -29,6 +31,7 @@
   let loading = false;
   let reorderBusy = false;
   let rosterError: string | null = data.error ?? null;
+  let showUnlock = false;
 
   const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
     toast = { message, kind };
@@ -45,6 +48,7 @@
 
   onMount(() => {
     if (!browser) return;
+    logEvent('roster_view');
     const url = new URL(window.location.href);
     const focusId = url.searchParams.get('focus');
     if (focusId) {
@@ -103,7 +107,7 @@
     }
   };
 
-  const handleReorder = async (ids: string[]) => {
+  const handleReorder = async ({ ids, via }: RosterReorderDetail) => {
     if (!ids.length) return;
     const previous = snapshot();
     reorderBusy = true;
@@ -127,6 +131,7 @@
         throw new Error(payload?.error ?? 'Reorder failed');
       }
       showToast('Roster updated');
+      logEvent('roster_reorder_success', { via, count: ids.length });
     } catch (err) {
       companions = previous;
       showToast(err instanceof Error ? err.message : 'Reorder failed', 'error');
@@ -149,6 +154,7 @@
         throw new Error(payload?.error ?? 'Rename failed');
       }
       showToast('Name updated');
+      logEvent('companion_rename', { id, name });
     } catch (err) {
       companions = previous;
       throw err instanceof Error ? err : new Error('Rename failed');
@@ -181,6 +187,7 @@
         throw new Error(payload?.error ?? 'Failed to set active');
       }
       showToast('Active companion updated');
+      logEvent('companion_set_active', { id });
     } catch (err) {
       companions = previous;
       activeCompanionId = previousActive;
@@ -218,6 +225,7 @@
       } else if (state === 'idle') {
         showToast('Companion returned to idle');
       }
+      logEvent('companion_state_change', { id, state });
     } catch (err) {
       companions = previous;
       activeCompanionId = previousActive;
@@ -226,6 +234,43 @@
   };
 
   const filteredCompanions = () => applyFilters(companions);
+
+  const handleSlotBlocked = () => {
+    showUnlock = true;
+    logEvent('roster_unlock_prompt_shown', { reason: 'drag_blocked' });
+  };
+
+  const requestUnlock = async () => {
+    const res = await fetch('/api/companions/slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'ui_unlock' })
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      logEvent('roster_unlock_failed', { error: payload?.error ?? 'unknown' });
+      throw new Error(payload?.error ?? 'Unlock failed');
+    }
+    const nextSlots = payload?.maxSlots ?? maxSlots;
+    maxSlots = nextSlots;
+    showToast('Slot unlocked');
+    logEvent('roster_unlock_success', { maxSlots: nextSlots });
+    await refreshRoster();
+  };
+
+  const handleSelectCompanion = (companion: Companion) => {
+    selected = companion;
+    logEvent('roster_card_open', { id: companion.id });
+  };
+
+  const closeUnlockModal = () => {
+    showUnlock = false;
+  };
+
+  const handleUnlockCta = () => {
+    showUnlock = true;
+    logEvent('roster_unlock_cta_clicked');
+  };
 
   $: visibleCompanions = filteredCompanions();
   $: activeCompanion = companions.find((entry) => entry.is_active) ?? null;
@@ -254,6 +299,7 @@
     <div class="header-pills">
       <span class="pill">Active: {activeCompanion ? activeCompanion.name : 'None'}</span>
       <span class="pill">Slots: {slotsUsed}/{maxSlots}</span>
+      <button type="button" class="pill pill-action" on:click={handleUnlockCta}>Unlock slot</button>
       <button type="button" class="pill pill-action" on:click={refreshRoster} disabled={loading}>
         {loading ? 'Refreshing…' : 'Refresh'}
       </button>
@@ -279,11 +325,12 @@
       activeId={activeCompanionId}
       disableDrag={reorderBusy || loading}
       on:select={(event) => {
-        selected = event.detail.companion;
+        handleSelectCompanion(event.detail.companion);
       }}
       on:reorder={(event) => {
-        void handleReorder(event.detail.ids);
+        void handleReorder(event.detail);
       }}
+      on:blocked={handleSlotBlocked}
     />
   </section>
 </main>
@@ -300,8 +347,10 @@
   setState={changeState}
 />
 
+<UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlock={requestUnlock} />
+
 {#if toast}
-  <div class={`roster-toast roster-toast--${toast.kind}`} role="status">{toast.message}</div>
+  <div class={`roster-toast roster-toast--${toast.kind}`} role="status" aria-live="polite">{toast.message}</div>
 {/if}
 
 <style>

@@ -1,28 +1,41 @@
 <script lang="ts">
-import { createEventDispatcher } from 'svelte';
-import type { CareAction, Companion } from '$lib/stores/companions';
+  import { createEventDispatcher } from 'svelte';
+  import type { CareAction, Companion } from '$lib/stores/companions';
 
-export let companion: Companion;
-export let busyAction: CareAction | null = null;
-export let showActions = true;
-export let compact = false;
-export let context: 'care' | 'roster' = 'care';
-export let stateLabel: string | null = null;
-export let isActive = false;
-export let slotIndex: number | null = null;
-export let disabled = false;
+  export let companion: Companion;
+  export let busyAction: CareAction | null = null;
+  export let showActions = true;
+  export let compact = false;
+  export let context: 'care' | 'roster' = 'care';
+  export let stateLabel: string | null = null;
+  export let isActive = false;
+  export let slotIndex: number | null = null;
+  export let disabled = false;
 
   const dispatch = createEventDispatcher<{ care: CareAction; open: void }>();
   const fallbackAvatar = '/avatar.svg';
 
-const careActions: Array<{ key: CareAction; label: string; emoji: string }> = [
+  const careActions: Array<{ key: CareAction; label: string; emoji: string }> = [
     { key: 'feed', label: 'Feed', emoji: '🍓' },
     { key: 'play', label: 'Play', emoji: '🪁' },
     { key: 'groom', label: 'Groom', emoji: '✨' }
   ];
 
-const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   $: rosterState = (stateLabel ?? companion.state ?? companion.mood ?? 'idle') as string;
+
+  const moodMap: Record<string, { icon: string; label: string }> = {
+    happy: { icon: '🙂', label: 'Happy' },
+    tired: { icon: '😴', label: 'Tired' },
+    curious: { icon: '🤔', label: 'Curious' },
+    lonely: { icon: '😕', label: 'Lonely' },
+    radiant: { icon: '🙂', label: 'Radiant' },
+    resting: { icon: '😴', label: 'Resting' },
+    idle: { icon: '😶', label: 'Idle' }
+  };
+
+  $: moodKey = (companion.state ?? companion.mood ?? 'neutral').toLowerCase();
+  $: moodMeta = moodMap[moodKey] ?? { icon: '😶', label: 'Neutral' };
 
   const handleCare = (action: CareAction, event: MouseEvent) => {
     event.stopPropagation();
@@ -59,6 +72,14 @@ const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
     <img src={companion.avatar_url ?? fallbackAvatar} alt={`${companion.name} avatar`} loading="lazy" />
     <span class="rarity-pill">{companion.rarity}</span>
     <span class="level-pill">Lv {companion.level}</span>
+    <div
+      class="mood-indicator"
+      title={`Mood: ${moodMeta.label}`}
+      aria-label={`Companion mood: ${moodMeta.label}`}
+    >
+      <span aria-hidden="true">{moodMeta.icon}</span>
+      <span class="sr-only">{moodMeta.label}</span>
+    </div>
   </div>
   <div class="card-body">
   <div class="card-head">
@@ -205,6 +226,20 @@ const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
     bottom: 12px;
   }
 
+  .mood-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(5, 6, 15, 0.7);
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
   .card-body {
     display: flex;
     flex-direction: column;
@@ -283,6 +318,18 @@ const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   .roster-handle:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px rgba(95, 213, 255, 0.45);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .metrics {
