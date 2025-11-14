@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
   const payload = await request.json().catch(() => ({}));
 
-  const display_name = (payload?.display_name ?? '').trim().slice(0, 60);
+  const display_name = (payload?.display_name ?? '').trim().slice(0, 40);
   const bio = clampText(payload?.bio, 300);
   const pronouns = (payload?.pronouns ?? '').trim().slice(0, 30);
   const location = (payload?.location ?? '').trim().slice(0, 60);
@@ -27,22 +27,27 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   const show_achievements = toBool(payload?.show_achievements, true);
   const show_feed = toBool(payload?.show_feed, true);
 
+  const updates: Record<string, unknown> = {
+    bio,
+    pronouns,
+    location,
+    links,
+    account_private,
+    show_shards,
+    show_level,
+    show_joined,
+    show_location,
+    show_achievements,
+    show_feed
+  };
+
+  if (display_name.length > 0) {
+    updates.display_name = display_name;
+  }
+
   const { data, error: updateError } = await locals.supabase
     .from('profiles')
-    .update({
-      display_name,
-      bio,
-      pronouns,
-      location,
-      links,
-      account_private,
-      show_shards,
-      show_level,
-      show_joined,
-      show_location,
-      show_achievements,
-      show_feed
-    })
+    .update(updates)
     .eq('id', user.id)
     .select(
       'id, display_name, bio, pronouns, location, links, account_private, show_shards, show_level, show_joined, show_location, show_achievements, show_feed, avatar_url, handle, banner_url, joined_at'

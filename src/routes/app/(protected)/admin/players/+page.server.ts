@@ -69,15 +69,18 @@ export const load: PageServerLoad = async (event) => {
   const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 
   return {
-    players: ((data ?? []) as PlayerRow[]).map((row) => ({
-      id: row.id,
-      email: row.email,
-      display_name: row.display_name ?? row.handle ?? '',
-      handle: row.handle,
-      max_slots: row.max_slots ?? 3,
-      slot_license_count: row.slot_license_count ?? 0,
-      created_at: row.created_at
-    })),
+    players: ((data ?? []) as PlayerRow[]).map((row) => {
+      const displayName = row.display_name?.trim();
+      return {
+        id: row.id,
+        email: row.email,
+        display_name: displayName && displayName.length > 0 ? displayName : row.handle ?? row.email ?? 'Player',
+        handle: row.handle,
+        max_slots: row.max_slots ?? 3,
+        slot_license_count: row.slot_license_count ?? 0,
+        created_at: row.created_at
+      };
+    }),
     page,
     pageSize,
     total,

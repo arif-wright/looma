@@ -83,27 +83,47 @@
   };
 </script>
 
-<div class="details-panel">
+<form class="details-panel" on:submit|preventDefault={save}>
   <div class="grid md:grid-cols-2 gap-3">
     <label class="field">
       <span class="field-label">Display name</span>
-      <input class="input input-sm w-full" bind:value={display_name} maxlength="60" placeholder="Your name" />
+      <input
+        class="input input-sm w-full"
+        name="display_name"
+        bind:value={display_name}
+        maxlength="40"
+        autocomplete="name"
+        placeholder="Your name"
+      />
     </label>
 
     <label class="field">
       <span class="field-label">Pronouns</span>
-      <input class="input input-sm w-full" bind:value={pronouns} maxlength="30" placeholder="she/her · he/him · they/them" />
+      <input
+        class="input input-sm w-full"
+        name="pronouns"
+        bind:value={pronouns}
+        maxlength="30"
+        placeholder="she/her · he/him · they/them"
+      />
     </label>
 
     <label class="field md:col-span-2">
       <span class="field-label">Location</span>
-      <input class="input input-sm w-full" bind:value={location} maxlength="60" placeholder="City, Country" />
+      <input
+        class="input input-sm w-full"
+        name="location"
+        bind:value={location}
+        maxlength="60"
+        placeholder="City, Country"
+      />
     </label>
 
     <label class="field md:col-span-2">
       <span class="field-label">Bio <span class="opacity-60">(max 300)</span></span>
       <textarea
         class="textarea textarea-md w-full"
+        name="bio"
         rows="4"
         maxlength="300"
         bind:value={bio}
@@ -118,6 +138,7 @@
       <div class="grid grid-cols-[1fr_2fr] gap-2">
         <input
           class="input input-sm w-full"
+          name={`links[${index}].label`}
           bind:value={links[index].label}
           maxlength="40"
           placeholder="Label"
@@ -125,6 +146,7 @@
         />
         <input
           class="input input-sm w-full"
+          name={`links[${index}].url`}
           bind:value={links[index].url}
           placeholder="https://example.com"
           on:input={(event) => handleLinkChange(index, 'url', (event.target as HTMLInputElement).value)}
@@ -134,12 +156,12 @@
   </div>
 
   <div class="actions">
-    <button class="btn btn-sm" type="button" on:click={save} disabled={saving}>
+    <button class="btn btn-sm" type="submit" disabled={saving}>
       {saving ? 'Saving…' : 'Save profile'}
     </button>
     <span class="status-note">{message}</span>
   </div>
-</div>
+</form>
 
 <style>
   .details-panel {

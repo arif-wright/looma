@@ -87,15 +87,25 @@ const buildHandleCandidate = (base: string, suffix: string) => {
   return `${clipped}_${suffix}`;
 };
 
-const resolveDisplayName = (user: User) => {
-  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  return (
-    (metadata.display_name as string) ??
-    (metadata.full_name as string) ??
-    (metadata.name as string) ??
-    user.email?.split('@')[0] ??
-    'Explorer'
-  );
+const deriveDisplayName = (user: User): string | null => {
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const fullName =
+    (meta.full_name as string | undefined) ??
+    (meta.name as string | undefined) ??
+    ((meta.given_name as string | undefined) && (meta.family_name as string | undefined)
+      ? `${meta.given_name} ${meta.family_name}`
+      : undefined);
+
+  if (fullName && fullName.trim().length > 0) {
+    return fullName.trim();
+  }
+
+  if (user.email) {
+    const localPart = user.email.split('@')[0];
+    if (localPart) return localPart;
+  }
+
+  return null;
 };
 
 const ensureProfile = async (supabase: App.Locals['supabase'], user: User): Promise<ProfileRow> => {
@@ -114,7 +124,7 @@ const ensureProfile = async (supabase: App.Locals['supabase'], user: User): Prom
     return data as ProfileRow;
   }
 
-  const displayName = resolveDisplayName(user);
+  const displayName = deriveDisplayName(user) ?? 'Explorer';
   const baseHandle =
     (user.user_metadata?.handle as string | undefined) ??
     (user.user_metadata?.preferred_username as string | undefined) ??
