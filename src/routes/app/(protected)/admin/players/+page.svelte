@@ -3,6 +3,7 @@
   import type { User } from '@supabase/supabase-js';
   import { enhance, type SubmitFunction } from '$app/forms';
   import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
   import { logEvent } from '$lib/analytics';
   import { tick } from 'svelte';
 
@@ -75,6 +76,22 @@
     errorMessage = '';
     selectedUser = null;
     qty = 1;
+  }
+
+  function goToCompanions(user: User) {
+    if (!user?.id) return;
+    if (browser) {
+      void logEvent('admin_view_player_companions', { playerId: user.id });
+    }
+    void goto(`/app/admin/players/${user.id}/companions`);
+  }
+
+  function goToInventory(user: User) {
+    if (!user?.id) return;
+    if (browser) {
+      void logEvent('admin_view_player_inventory', { playerId: user.id });
+    }
+    void goto(`/app/admin/players/${user.id}/inventory`);
   }
 
   const handleModalKeydown = (event: KeyboardEvent) => {
@@ -153,7 +170,7 @@
               </span>
             </div>
           </div>
-          <div class="pt-2">
+          <div class="pt-2 flex flex-wrap gap-2">
             <button
               class="px-3 py-1.5 rounded-xl bg-white/10 ring-1 ring-white/15 hover:bg-white/20 transition"
               type="button"
@@ -161,6 +178,20 @@
             >
               Grant Slot License
             </button>
+            <a
+              href={`/app/admin/players/${user.id}/companions`}
+              class="px-3 py-1.5 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/40 text-emerald-100 text-xs hover:bg-emerald-500/25 transition"
+              on:click|preventDefault={() => goToCompanions(user)}
+            >
+              View companions
+            </a>
+            <a
+              href={`/app/admin/players/${user.id}/inventory`}
+              class="px-3 py-1.5 rounded-xl bg-sky-500/15 ring-1 ring-sky-400/40 text-sky-100 text-xs hover:bg-sky-500/25 transition"
+              on:click|preventDefault={() => goToInventory(user)}
+            >
+              View inventory
+            </a>
           </div>
         </div>
       {/each}
