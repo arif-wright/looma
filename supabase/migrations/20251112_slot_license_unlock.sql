@@ -97,8 +97,8 @@ begin
   delete from public.shop_inventory
    where id = inventory_row_id;
 
-  select max_slots into new_max
-  from public.unlock_companion_slot('license')
+  select slot_result.max_slots into new_max
+  from public.unlock_companion_slot('license') as slot_result
   limit 1;
 
   if new_max is null then

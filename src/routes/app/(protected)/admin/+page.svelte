@@ -18,6 +18,7 @@
     { label: 'Hub', href: '/app/admin' },
     { label: 'Shop Admin', href: '/app/admin/shop' },
     { label: 'Reports', href: '/app/admin/reports' },
+    { label: 'Players', href: '/app/admin/players', hidden: !flags.isSuper },
     { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isSuper },
     { label: 'Feature Toggles', href: '/app/admin#feature-toggles' },
     { label: 'Maintenance', href: '/app/admin#maintenance' }
@@ -119,6 +120,19 @@
         <p class="value">{numberFormatter.format(metrics.reportOpenCount)}</p>
         <p class="hint">Need attention</p>
       </AdminCard>
+
+      {#if flags.isSuper}
+        <AdminCard className="span-4">
+          <div class="card-head">
+            <p class="label">Players</p>
+            <p class="value">QA tools</p>
+          </div>
+          <p class="hint">Grant licenses, QA tools</p>
+          <a class="inline-flex text-sm font-medium text-emerald-300 hover:text-emerald-200" href="/app/admin/players">
+            Open Players
+          </a>
+        </AdminCard>
+      {/if}
 
       <AdminCard className="span-12 revenue-card">
         <div class="card-head">

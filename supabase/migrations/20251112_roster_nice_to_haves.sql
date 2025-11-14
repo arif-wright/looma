@@ -58,8 +58,14 @@ begin
    where user_id = u
    returning pcs.max_slots into new_slots;
 
-  insert into public.events (user_id, kind, meta)
-  values (u, 'unlock_companion_slot', jsonb_build_object('from', old_slots, 'to', new_slots, 'reason', p_reason));
+  insert into public.events (user_id, type, kind, message, meta)
+  values (
+    u,
+    'system',
+    'unlock_companion_slot',
+    concat('Unlocked slot (reason=', coalesce(p_reason, 'manual'), ')'),
+    jsonb_build_object('from', old_slots, 'to', new_slots, 'reason', p_reason)
+  );
 
   return query select coalesce(new_slots, old_slots);
 end;
