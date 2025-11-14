@@ -19,6 +19,7 @@
   let links = Array.isArray(profile?.links) ? [...profile.links] : [];
   let saving = false;
   let message = '';
+  let lastProfileRef: Record<string, any> | null = profile ?? null;
 
   const ensureLinks = () => {
     const next = [...links];
@@ -30,12 +31,13 @@
 
   ensureLinks();
 
-  $: if (profile) {
-    display_name = profile.display_name ?? display_name;
-    bio = profile.bio ?? bio;
-    pronouns = profile.pronouns ?? pronouns;
-    location = profile.location ?? location;
-    links = Array.isArray(profile.links) ? [...profile.links] : links;
+  $: if (profile && profile !== lastProfileRef) {
+    lastProfileRef = profile;
+    display_name = profile.display_name ?? '';
+    bio = profile.bio ?? '';
+    pronouns = profile.pronouns ?? '';
+    location = profile.location ?? '';
+    links = Array.isArray(profile.links) ? [...profile.links] : [];
     ensureLinks();
   }
 
