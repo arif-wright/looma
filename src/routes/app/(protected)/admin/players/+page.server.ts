@@ -1,49 +1,90 @@
 import type { Actions, PageServerLoad } from './$types';
-import type { User } from '@supabase/supabase-js';
 import { error, fail } from '@sveltejs/kit';
 import { assertSuperAdmin, getAdminServiceClient } from '$lib/server/admin';
 
-type NumberRecord = Record<string, number>;
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const SORT_OPTIONS = {
+  newest: { column: 'created_at', ascending: false },
+  oldest: { column: 'created_at', ascending: true },
+  slots_desc: { column: 'max_slots', ascending: false },
+  slots_asc: { column: 'max_slots', ascending: true },
+  licenses_desc: { column: 'slot_license_count', ascending: false },
+  licenses_asc: { column: 'slot_license_count', ascending: true }
+} as const;
+
+type PlayerRow = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  handle: string | null;
+  created_at: string;
+  max_slots: number | null;
+  slot_license_count: number | null;
+};
+
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export const load: PageServerLoad = async (event) => {
   const { supabase, session } = await getAdminServiceClient(event);
   await assertSuperAdmin(event, session);
 
-  const { data, error: listError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 });
+  const searchParams = event.url.searchParams;
+  const pageParam = Number(searchParams.get('page') ?? '1');
+  const sizeParam = Number(searchParams.get('pageSize') ?? '25');
+  const rawQuery = searchParams.get('q') ?? '';
+  const sortParam = (searchParams.get('sort') ?? 'newest') as keyof typeof SORT_OPTIONS;
+
+  const pageSize = clamp(Number.isFinite(sizeParam) ? sizeParam : 25, 10, 100);
+  const page = Math.max(Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1, 1);
+  const q = rawQuery.trim();
+  const sortKey = SORT_OPTIONS[sortParam] ? sortParam : 'newest';
+  const { column, ascending } = SORT_OPTIONS[sortKey];
+  const rangeFrom = (page - 1) * pageSize;
+  const rangeTo = rangeFrom + pageSize - 1;
+
+  let query = supabase
+    .from('admin_player_overview')
+    .select('id,email,display_name,handle,created_at,max_slots,slot_license_count', { count: 'exact' })
+    .range(rangeFrom, rangeTo)
+    .order(column, { ascending, nullsLast: !ascending });
+
+  if (q) {
+    const escaped = q.replace(/[%_]/g, (char) => `\\${char}`);
+    const like = `%${escaped}%`;
+    const clauses = [`email.ilike.${like}`, `display_name.ilike.${like}`, `handle.ilike.${like}`];
+    if (isUuid(q)) {
+      clauses.push(`id.eq.${q}`);
+    }
+    query = query.or(clauses.join(','));
+  }
+
+  const { data, count, error: listError } = await query;
   if (listError) {
-    console.error('[admin players] failed to list users', listError);
+    console.error('[admin players] failed to list players', listError);
     throw error(500, 'Unable to load players');
   }
 
-  const users = (data?.users ?? []) as User[];
-  const userIds = users.map((user) => user.id).filter(Boolean);
+  const total = count ?? 0;
+  const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 
-  const slotsQuery = supabase.from('player_companion_slots').select('user_id,max_slots');
-  const licenseQuery = supabase.from('v_inventory_slot_license').select('user_id,qty');
-
-  if (userIds.length) {
-    slotsQuery.in('user_id', userIds);
-    licenseQuery.in('user_id', userIds);
-  }
-
-  const [{ data: slots }, { data: licenses }] = await Promise.all([slotsQuery, licenseQuery]);
-
-  const slotsByUser: NumberRecord = {};
-  const licensesByUser: NumberRecord = {};
-
-  (slots ?? []).forEach((row) => {
-    if (row?.user_id) {
-      slotsByUser[row.user_id] = Number(row.max_slots ?? 3);
-    }
-  });
-
-  (licenses ?? []).forEach((row) => {
-    if (row?.user_id) {
-      licensesByUser[row.user_id] = Number(row.qty ?? 0);
-    }
-  });
-
-  return { users, slotsByUser, licensesByUser };
+  return {
+    players: ((data ?? []) as PlayerRow[]).map((row) => ({
+      id: row.id,
+      email: row.email,
+      display_name: row.display_name ?? row.handle ?? '',
+      handle: row.handle,
+      max_slots: row.max_slots ?? 3,
+      slot_license_count: row.slot_license_count ?? 0,
+      created_at: row.created_at
+    })),
+    page,
+    pageSize,
+    total,
+    totalPages,
+    q,
+    sort: sortKey
+  };
 };
 
 export const actions: Actions = {
