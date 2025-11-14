@@ -19,10 +19,22 @@
   let lastFocusable: HTMLElement | null = null;
   let previousFocus: HTMLElement | null = null;
 
-  $: filtered = data.users.filter((user) => {
-    const haystack = `${user.email ?? ''} ${user.user_metadata?.full_name ?? ''} ${user.id ?? ''}`.toLowerCase();
-    return haystack.includes(search.trim().toLowerCase());
-  });
+  const slotsByUser = data.slotsByUser ?? {};
+  const licensesByUser = data.licensesByUser ?? {};
+
+  $: filtered = data.users
+    .filter((user) => {
+      const haystack = `${user.email ?? ''} ${user.user_metadata?.full_name ?? ''} ${user.id ?? ''}`.toLowerCase();
+      return haystack.includes(search.trim().toLowerCase());
+    })
+    .sort((a, b) => {
+      const slotsA = slotsByUser[a.id] ?? 3;
+      const slotsB = slotsByUser[b.id] ?? 3;
+      const licA = licensesByUser[a.id] ?? 0;
+      const licB = licensesByUser[b.id] ?? 0;
+      if (licB !== licA) return licB - licA;
+      return slotsB - slotsA;
+    });
 
   const refreshFocusables = async () => {
     if (!grantOpen) return;
@@ -127,6 +139,20 @@
             <p class="text-xs text-white/50">{user.user_metadata?.full_name ?? 'Unnamed'}</p>
           </div>
           <p class="text-xs text-white/40 break-all">{user.id}</p>
+          <div class="mt-2 text-xs text-white/60 space-y-1">
+            <div>
+              Max slots:
+              <span class="font-semibold text-white">
+                {slotsByUser[user.id] ?? 3}
+              </span>
+            </div>
+            <div>
+              Slot licenses:
+              <span class="font-semibold text-white">
+                {licensesByUser[user.id] ?? 0}
+              </span>
+            </div>
+          </div>
           <div class="pt-2">
             <button
               class="px-3 py-1.5 rounded-xl bg-white/10 ring-1 ring-white/15 hover:bg-white/20 transition"
