@@ -44,6 +44,7 @@ const DEFAULT_ENDCAP = {
 export const load: PageServerLoad = async (event) => {
   const parent = await event.parent();
   const { session } = parent;
+  const userId = session?.user?.id ?? null;
   const parentActiveCompanion: ActiveCompanionSnapshot | null = (parent as Record<string, any>).activeCompanion ?? null;
 
   const diagnostics: string[] = [];
@@ -223,10 +224,12 @@ export const load: PageServerLoad = async (event) => {
       });
     }
 
-    try {
-      rituals = await getCompanionRituals(supabase, userId);
-    } catch (err) {
-      console.error('[home] failed to fetch rituals', err);
+    if (userId) {
+      try {
+        rituals = await getCompanionRituals(supabase, userId);
+      } catch (err) {
+        console.error('[home] failed to fetch rituals', err);
+      }
     }
 
     const endcap =
@@ -244,11 +247,11 @@ export const load: PageServerLoad = async (event) => {
           }
         : DEFAULT_ENDCAP;
 
-    if (session?.user?.id) {
+    if (userId) {
       const landedAtCookie = event.cookies.get('looma_landing_at');
       const landedAt = landedAtCookie ? Number(landedAtCookie) : null;
       const dwellMs = landedAt && Number.isFinite(landedAt) ? Date.now() - landedAt : null;
-      await recordAnalyticsEvent(supabase, session.user.id, 'app_feed_load', {
+      await recordAnalyticsEvent(supabase, userId, 'app_feed_load', {
         surface: 'home',
         variant: parent.landingVariant ?? null,
         payload: {
