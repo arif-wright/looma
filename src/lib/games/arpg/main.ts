@@ -22,7 +22,7 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
 
     const [{ default: Phaser }, { GameScene }] = await Promise.all([
       import('phaser'),
-      import('./GameScene')
+      import('./scenes/GameScene')
     ]);
 
     GameScene.setGameHandlers({ onGameOver: opts.onGameOver });
@@ -31,14 +31,20 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
       type: Phaser.AUTO,
       parent,
       backgroundColor: '#05060a',
+      pixelArt: true,
       scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 960,
-        height: 540
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH
       },
       width: 960,
       height: 540,
+      physics: {
+        default: 'arcade',
+        arcade: {
+          debug: false,
+          gravity: { y: 0 }
+        }
+      },
       scene: [GameScene]
     });
   };

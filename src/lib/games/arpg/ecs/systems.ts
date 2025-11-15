@@ -4,7 +4,14 @@ export const movementSystem = (world: World, deltaMs: number) => {
   const dt = deltaMs / 1000;
   if (!Number.isFinite(dt) || dt <= 0) return;
 
-  world.forEachMovement((entity, transform, velocity) => {
+  world.forEachMovement((_entity, transform, velocity) => {
+    const speed = Math.hypot(velocity.x, velocity.y);
+    if (speed > velocity.maxSpeed && speed > 0) {
+      const scale = velocity.maxSpeed / speed;
+      velocity.x *= scale;
+      velocity.y *= scale;
+    }
+
     transform.x += velocity.x * dt;
     transform.y += velocity.y * dt;
 
@@ -15,7 +22,7 @@ export const movementSystem = (world: World, deltaMs: number) => {
 };
 
 export const dashSystem = (world: World, deltaMs: number) => {
-  world.forEachDash((entity, dash, velocity) => {
+  world.forEachDash((_entity, dash, velocity) => {
     dash.remainingCooldown = Math.max(0, dash.remainingCooldown - deltaMs);
 
     if (dash.isDashing) {
