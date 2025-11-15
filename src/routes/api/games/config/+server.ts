@@ -16,7 +16,8 @@ export const GET: RequestHandler = async (event) => {
       console.warn('[games] config fallback engaged, schema missing');
       return json({
         games: [
-          { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 }
+          { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
+          { slug: 'arpg', name: 'Looma ARPG', min_version: '1.0.0', max_score: 150000 }
         ],
         fallback: true
       });

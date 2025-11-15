@@ -5,6 +5,8 @@
   import { currentProfile } from '$lib/stores/profile';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+  import { getBondBonusForLevel } from '$lib/companions/bond';
+  import { computeEffectiveEnergyMax } from '$lib/player/energy';
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
@@ -63,10 +65,17 @@ const capsuleBaseClass =
     }
   }
 
+  $: companionEnergyBonus =
+    activeCompanion && typeof activeCompanion.bondLevel === 'number'
+      ? getBondBonusForLevel(activeCompanion.bondLevel).missionEnergyBonus
+      : 0;
+  $: effectiveEnergyMax = computeEffectiveEnergyMax(energyMax, companionEnergyBonus);
   $: energyDisplay =
-    typeof energy === 'number' && typeof energyMax === 'number'
-      ? `${energy}/${energyMax}`
-      : '—';
+    typeof energy === 'number' && effectiveEnergyMax > 0
+      ? `${energy}/${effectiveEnergyMax}`
+      : typeof energy === 'number'
+        ? `${energy}`
+        : '—';
 
   $: levelDisplay = typeof level === 'number' ? level : '—';
 

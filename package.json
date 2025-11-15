@@ -42,6 +42,7 @@
 		"@vercel/og": "^0.8.5",
 		"canvas-confetti": "^1.9.4",
 		"lucide-svelte": "^0.552.0",
+		"phaser": "^3.80.0",
 		"qrcode": "^1.5.4",
 		"sortablejs": "^1.15.6",
 		"stripe": "^14.25.0",

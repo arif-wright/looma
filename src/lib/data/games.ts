@@ -31,5 +31,21 @@ export const games: GameMeta[] = [
       },
       square: '/games/tiles-run/cover-512.webp'
     }
+  },
+  {
+    id: 'arpg',
+    slug: 'arpg',
+    name: 'Looma ARPG',
+    tagline: 'Dash through the breach.',
+    cover: {
+      alt: 'A radiant hero sprinting through a neon rift',
+      sources: {
+        '1280': '/games/arpg/cover-1280.webp',
+        '960': '/games/arpg/cover-960.webp',
+        '640': '/games/arpg/cover-640.webp',
+        '512': '/games/arpg/cover-512.webp'
+      },
+      square: '/games/arpg/cover-512.webp'
+    }
   }
 ];

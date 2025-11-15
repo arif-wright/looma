@@ -23,7 +23,8 @@
   import type { QuickLink } from '$lib/components/home/types';
   import { PenSquare, MessageCircleHeart, Rss, Target, PawPrint, Compass } from 'lucide-svelte';
   import { logEvent } from '$lib/analytics';
-  import { getBondBonusForLevel } from '$lib/companions/bond';
+import { getBondBonusForLevel } from '$lib/companions/bond';
+import { computeEffectiveEnergyMax } from '$lib/player/energy';
 import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
 import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   import type { PageData } from './$types';
@@ -53,9 +54,11 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     { id: 'path', label: 'Path', description: 'Where to wander next', href: '#path', icon: Compass }
   ];
 
-  const energy = stats?.energy ?? 0;
+  const energyCurrent = stats?.energy ?? 0;
   const companionBonus = getBondBonusForLevel(activeCompanion?.bondLevel ?? 0);
-  const energyMax = (stats?.energy_max ?? 0) + companionBonus.missionEnergyBonus;
+  const energyBaseMax = stats?.energy_max ?? 0;
+  const companionEnergyBonus = companionBonus.missionEnergyBonus ?? 0;
+  const energyEffectiveMax = computeEffectiveEnergyMax(energyBaseMax ?? 0, companionEnergyBonus);
   const streak = stats?.missions_completed ?? 0;
   const petMood = creatures[0]?.mood_label ?? creatures[0]?.mood ?? null;
   const activeMission = missions[0]
@@ -165,6 +168,10 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   const handleStartMission = (event: CustomEvent<{ missionId: string | null; mode: 'resume' | 'quick' | 'retry' }>) => {
     const missionId = event.detail?.missionId ?? null;
     const mode = event.detail?.mode ?? 'quick';
+    if (mode === 'quick') {
+      void goto('/app/games/arpg');
+      return;
+    }
     const target = missionId ? missions.find((mission) => mission.id === missionId) : undefined;
     const mission = mapMissionSummary(target) ?? mapMissionSummary(missions[0]);
 
@@ -287,8 +294,10 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
             mission={missions[0] ?? null}
             creature={creatures[0] ?? null}
             {variant}
-            {energy}
-            {energyMax}
+            energy={energyCurrent}
+            energyMax={energyBaseMax}
+            energyEffectiveMax={energyEffectiveMax}
+            companionEnergyBonus={companionEnergyBonus}
             {streak}
             {petMood}
             {activeMission}

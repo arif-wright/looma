@@ -20,6 +20,7 @@
     ? data.games
     : [
         { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
+        { slug: 'arpg', name: 'Looma ARPG', min_version: '1.0.0', max_score: 150000 },
         { slug: 'astro-match', name: 'Astro Match', min_version: '1.0.0', max_score: 75000 }
       ];
 

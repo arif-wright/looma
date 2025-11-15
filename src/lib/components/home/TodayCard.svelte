@@ -4,6 +4,8 @@
   import type { BondBonus } from '$lib/companions/bond';
   import { computeTodayCardState } from './todayCardLogic';
   import { sendAnalytics } from '$lib/utils/analytics';
+import { computeEffectiveEnergyMax } from '$lib/player/energy';
+import { buildMissionArcs, selectMissionArc } from './missionArcs';
 
   export type MissionSnippet = {
     id: string;
@@ -27,6 +29,8 @@
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
+  export let energyEffectiveMax: number | null = null;
+  export let companionEnergyBonus: number | null = null;
   export let streak: number | null = null;
   export let petMood: string | null = null;
   export let activeMission:
@@ -47,8 +51,10 @@
   let missionForCta: string | null = null;
 
   $: resolvedEnergy = energy ?? stats?.energy ?? 0;
-  $: bonusEnergy = companionBonus?.missionEnergyBonus ?? 0;
-  $: resolvedEnergyMax = (energyMax ?? stats?.energy_max ?? 0) + bonusEnergy;
+  $: baseEnergyMax = energyMax ?? stats?.energy_max ?? 0;
+  $: bonusEnergy = companionEnergyBonus ?? companionBonus?.missionEnergyBonus ?? 0;
+  $: resolvedEnergyMax =
+    energyEffectiveMax ?? computeEffectiveEnergyMax(baseEnergyMax, bonusEnergy);
   $: energyPercent =
     resolvedEnergyMax && resolvedEnergyMax > 0
       ? Math.round((resolvedEnergy / resolvedEnergyMax) * 100)
@@ -90,6 +96,8 @@
     failMissionName,
     creatureName
   });
+  let missionArcs = buildMissionArcs({ bondGenesisEnabled, companionCount });
+  let suggestedArc = selectMissionArc(missionArcs);
 
   $: todayState = computeTodayCardState({
     rewardPending,
@@ -107,7 +115,14 @@
   $: showPulse = ctaState === 'reward' || ctaState === 'retry';
   $: orbIntensity =
     energyPercent !== null ? Math.max(0.28, Math.min(1, energyPercent / 100)) : 0.45;
-  $: showBondGenesisInvite = bondGenesisEnabled && (companionCount ?? 0) === 0;
+  $: missionArcs = buildMissionArcs({ bondGenesisEnabled, companionCount });
+  $: suggestedArc = selectMissionArc(missionArcs);
+
+  const caughtUpActions = [
+    { label: 'Play Tiles Run', href: '/app/games/tiles-run' },
+    { label: 'Play Looma ARPG', href: '/app/games/arpg' },
+    { label: 'Visit companions', href: '/app/companions' }
+  ];
 
   function handlePrimary() {
     if (ctaState === 'reward') {
@@ -144,10 +159,6 @@
     });
   }
 
-  function handleCreature() {
-    if (!creature?.id) return;
-    dispatch('checkCreature', { creatureId: creature.id });
-  }
 </script>
 
 <article class="pulse-card" data-variant={variant ?? 'C'}>
@@ -228,42 +239,55 @@
     {/if}
   </section>
 
-  {#if showBondGenesisInvite}
-    <section class="bond-genesis" aria-label="Start your first companion bond">
+  {#if suggestedArc}
+    <section class="mission-arc" aria-label="Next mission arc">
       <div>
-        <span class="callout-label">New arc</span>
-        <h3>Find your first bond</h3>
+        <span class="callout-label">Mission thread</span>
+        <h3>{suggestedArc.title}</h3>
+        <p class="callout-summary">{suggestedArc.body}</p>
+      </div>
+      <a class="mission-arc__cta btn-ripple hover-glow" href={suggestedArc.href} sveltekit:prefetch>
+        {suggestedArc.ctaLabel}
+      </a>
+    </section>
+  {:else}
+    <section class="mission-arc mission-arc--caught-up" aria-label="Caught up">
+      <div>
+        <span class="callout-label">Mission thread</span>
+        <h3>You’re caught up</h3>
         <p class="callout-summary">
-          Take a one-minute vibe quiz and spawn a companion tuned to you.
+          Keep your loop glowing with a quick game, a post, or a moment with your companion.
         </p>
       </div>
-      <a
-        class="bond-genesis__cta btn-ripple hover-glow"
-        href="/app/onboarding/companion"
-        sveltekit:prefetch
-      >
-        Begin quiz
-      </a>
+      <div class="mission-arc__actions">
+        {#each caughtUpActions as action}
+          <a class="secondary-cta btn-ripple hover-glow" href={action.href} sveltekit:prefetch>
+            {action.label}
+          </a>
+        {/each}
+      </div>
     </section>
   {/if}
 
-  <section
-    class="companion"
-    aria-label="Companion pulse"
-    style={`--pulse-intensity:${orbIntensity}`}
-  >
-    <div class="companion-orb" aria-hidden="true">
-      <span class="orb-core"></span>
-    </div>
-    <div class="companion-copy">
-      <span class="callout-label">Companion pulse</span>
-      <h3>{creature?.name ?? 'Mystery companion'}</h3>
-      <p class="callout-summary mood">{companionMood}</p>
-    </div>
-    <button type="button" class="secondary-cta btn-ripple hover-glow" on:click={handleCreature} disabled={!creature?.id}>
-      Visit {creature?.name ?? 'habitat'}
-    </button>
-  </section>
+  {#if creature?.id}
+    <section
+      class="companion"
+      aria-label="Companion pulse"
+      style={`--pulse-intensity:${orbIntensity}`}
+    >
+      <div class="companion-orb" aria-hidden="true">
+        <span class="orb-core"></span>
+      </div>
+      <div class="companion-copy">
+        <span class="callout-label">Companion pulse</span>
+        <h3>{creature?.name}</h3>
+        <p class="callout-summary mood">Always on your side.</p>
+      </div>
+      <a class="secondary-cta btn-ripple hover-glow" href="/app/companions">
+        Visit companion
+      </a>
+    </section>
+  {/if}
 
   <p class="whisper">{secondaryTip}</p>
 </article>
@@ -423,7 +447,7 @@
     color: rgba(226, 232, 255, 0.82);
   }
 
-  .bond-genesis {
+  .mission-arc {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -436,12 +460,12 @@
     box-shadow: 0 14px 40px rgba(7, 10, 24, 0.5);
   }
 
-  .bond-genesis h3 {
+  .mission-arc h3 {
     margin: 0.15rem 0;
     font-size: 1.3rem;
   }
 
-  .bond-genesis__cta {
+  .mission-arc__cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -455,9 +479,20 @@
     transition: background 160ms ease, transform 160ms ease;
   }
 
-  .bond-genesis__cta:hover {
+  .mission-arc__cta:hover {
     background: rgba(255, 255, 255, 0.25);
     transform: translateY(-1px);
+  }
+
+  .mission-arc--caught-up {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mission-arc__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .badge {
