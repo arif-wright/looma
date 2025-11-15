@@ -7,6 +7,19 @@ export type BondBonus = {
   strong?: boolean;
 };
 
+export type BondAchievementDefinition = {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  level: number;
+};
+
+export type BondAchievementStatus = BondAchievementDefinition & {
+  unlocked: boolean;
+  unlocked_at: string | null;
+};
+
 type BondBonusTier = {
   minLevel: number;
   xpMultiplier: number;
@@ -30,6 +43,88 @@ const BOND_BONUS_TABLE: BondBonusTier[] = [
   { minLevel: 4, xpMultiplier: 1.05, missionEnergyBonus: 2, label: 'In sync', description: '+5% XP, +2 mission energy' },
   { minLevel: 2, xpMultiplier: 1.02, missionEnergyBonus: 0, label: 'Tiny boost', description: '+2% XP on completions' },
   { minLevel: 0, xpMultiplier: 1, missionEnergyBonus: 0, label: 'Warming up', description: 'No bond bonuses yet.' }
+];
+
+export const BOND_ACHIEVEMENTS: BondAchievementDefinition[] = [
+  {
+    key: 'bond_first',
+    name: 'First Bond',
+    description: 'Reach bond level 1 with any companion.',
+    icon: 'heart',
+    level: 1
+  },
+  {
+    key: 'bond_growing',
+    name: 'Growing Closer',
+    description: 'Reach bond level 4 with any companion.',
+    icon: 'sparkles',
+    level: 4
+  },
+  {
+    key: 'bond_unbreakable',
+    name: 'Unbreakable Bond',
+    description: 'Reach bond level 8 with any companion.',
+    icon: 'infinity',
+    level: 8
+  }
+];
+
+export const BOND_ACHIEVEMENT_KEYS = BOND_ACHIEVEMENTS.map((item) => item.key);
+
+export type BondMilestoneDefinition = {
+  level: number;
+  action: string;
+  emoji: string;
+  label: string;
+  note: (name: string) => string;
+  toast: (name: string) => string;
+};
+
+const fallbackName = (name?: string | null) => (name && name.trim().length > 0 ? name.trim() : 'your companion');
+
+export const BOND_MILESTONES: BondMilestoneDefinition[] = [
+  {
+    level: 2,
+    action: 'bond_milestone_minor',
+    emoji: '💞',
+    label: 'Growing curious',
+    note: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `You notice ${name} watching you a little more closely.`;
+    },
+    toast: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `${name} reached Bond Level 2. XP bonus nudged up.`;
+    }
+  },
+  {
+    level: 5,
+    action: 'bond_milestone_major',
+    emoji: '🌠',
+    label: 'In sync',
+    note: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `${name} syncs with your rhythm—your bond feels steady.`;
+    },
+    toast: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `${name} reached Bond Level 5. XP bonus grew stronger.`;
+    }
+  },
+  {
+    level: 8,
+    action: 'bond_milestone_legendary',
+    emoji: '💫',
+    label: 'Unbreakable',
+    note: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `Your bond with ${name} feels unbreakable.`;
+    },
+    toast: (rawName: string) => {
+      const name = fallbackName(rawName);
+      return `${name} reached Bond Level 8. Your companion power is radiant.`;
+    }
+  }
 ];
 
 const clampScore = (score: number) => Math.max(0, Math.min(200, Math.round(score)));
@@ -83,4 +178,36 @@ export const formatBonusSummary = (bonus: BondBonus): string => {
     parts.push(`+${bonus.missionEnergyBonus} mission energy`);
   }
   return parts.length ? parts.join(', ') : 'No active bonuses';
+};
+
+export const getBondMilestoneTier = (level?: number | null): number => {
+  if (!Number.isFinite(level as number)) return 0;
+  const safe = Math.max(0, Math.floor(level as number));
+  let tier = 0;
+  for (const milestone of BOND_MILESTONES) {
+    if (safe >= milestone.level) {
+      tier += 1;
+    }
+  }
+  return tier;
+};
+
+export const milestoneForAction = (action: string) =>
+  BOND_MILESTONES.find((entry) => entry.action === action) ?? null;
+
+export const getMissingMilestoneActions = (level: number, recorded: Set<string>): string[] => {
+  const safe = Math.max(0, Math.floor(level));
+  return BOND_MILESTONES.filter((entry) => safe >= entry.level && !recorded.has(entry.action)).map((entry) => entry.action);
+};
+
+export const describeMilestoneNote = (action: string, companionName: string) => {
+  const milestone = milestoneForAction(action);
+  if (!milestone) return null;
+  return milestone.note(companionName);
+};
+
+export const describeMilestoneToast = (action: string, companionName: string) => {
+  const milestone = milestoneForAction(action);
+  if (!milestone) return null;
+  return milestone.toast(companionName);
 };

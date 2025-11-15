@@ -10,6 +10,7 @@ import { getFollowPrivacyStatus } from '$lib/server/privacy';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { getPersonaSummary } from '$lib/server/persona';
+import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
@@ -328,6 +329,7 @@ export const load: PageServerLoad = async (event) => {
     posts,
     pinned,
     achievements,
+    bondMilestones,
     followCounts,
     privacyStatus,
     companionCountResult,
@@ -344,6 +346,7 @@ export const load: PageServerLoad = async (event) => {
     fetchPosts(supabase, user.id, true),
     fetchPinnedPreview(supabase, user.id, true),
     fetchRecentAchievements(supabase, user.id),
+    fetchBondAchievementsForUser(supabase, user.id),
     getFollowCounts(user.id),
     getFollowPrivacyStatus(user.id, profileRow.id),
     supabase
@@ -454,6 +457,7 @@ export const load: PageServerLoad = async (event) => {
       bond_genesis: Boolean((flagResult.data as { enabled?: boolean } | null)?.enabled)
     },
     persona: personaSummary ?? null,
-    companionHidden: false
+    companionHidden: false,
+    bondMilestones
   };
 };

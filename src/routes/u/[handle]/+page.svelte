@@ -81,6 +81,7 @@
           hideCompanionActions={true}
           hidePrivate={true}
           companionHidden={data.companionHidden ?? false}
+          bondMilestones={data.bondMilestones ?? []}
         />
         <PeopleToFollow title="People you may know" />
       </div>

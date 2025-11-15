@@ -1,6 +1,8 @@
 <script lang="ts">
   import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+  import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
+  import type { BondAchievementStatus } from '$lib/companions/bond';
 
   export let profile: Record<string, any> | null = null;
   export let featuredCompanion: Record<string, any> | null = null;
@@ -11,6 +13,7 @@
   export let hideCompanionActions = false;
   export let hidePrivate = false;
   export let companionHidden = false;
+  export let bondMilestones: BondAchievementStatus[] = [];
 
   const formatNumber = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '—';
@@ -78,6 +81,13 @@
       {/if}
     {/if}
   </section>
+
+  {#if !hidePrivate && !companionHidden && bondMilestones?.some((item) => item.unlocked)}
+    <section class="panel">
+      <h3 class="panel-title">Bond milestones</h3>
+      <BondMilestonesPanel milestones={bondMilestones} variant="compact" maxUnlocked={3} />
+    </section>
+  {/if}
 
   <section class="panel">
     <h3 class="panel-title">Recent Achievements</h3>

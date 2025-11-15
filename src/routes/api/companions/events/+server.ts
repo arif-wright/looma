@@ -1,12 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
+import { BOND_MILESTONES } from '$lib/companions/bond';
 
 const MAX_LIMIT = 50;
 
 const formatDelta = (value = 0) => (value >= 0 ? `+${value}` : `${value}`);
 
+const milestoneMeta = new Map(BOND_MILESTONES.map((entry) => [entry.action, entry]));
+
 const formatLabel = (action = 'care', affection = 0, trust = 0, energy = 0) => {
+  const milestone = milestoneMeta.get(action);
+  if (milestone) {
+    return milestone.label;
+  }
   const title = action ? `${action.charAt(0).toUpperCase()}${action.slice(1)}` : 'Care';
   return `${title} ${formatDelta(affection)} aff ${formatDelta(trust)} trust ${formatDelta(energy)} energy`;
 };
@@ -40,6 +47,15 @@ export const GET: RequestHandler = async (event) => {
 
   const events = (data ?? []).map((row) => {
     const action = (row.action ?? 'care').toLowerCase();
+    const milestone = milestoneMeta.get(action);
+    if (milestone) {
+      return {
+        ...row,
+        kind: milestone.action,
+        message: row.note ?? milestone.note('your companion'),
+        label: milestone.label
+      };
+    }
     const kind = action === 'passive' || action === 'daily_bonus' ? action : 'care';
     return {
       ...row,

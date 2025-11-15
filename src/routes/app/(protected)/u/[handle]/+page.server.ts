@@ -3,6 +3,7 @@ import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
 import { env } from '$env/dynamic/public';
 import { getPersonaSummary } from '$lib/server/persona';
+import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 type CompanionRow = {
   id: string;
@@ -178,14 +179,15 @@ export const load: PageServerLoad = async (event) => {
   const blocked = parentData.blocked ?? false;
 
   const allowContent = !gated && !blocked;
-  const [companion, posts, pinned, achievements] = allowContent
+  const [companion, posts, pinned, achievements, bondMilestones] = allowContent
     ? await Promise.all([
         fetchFeaturedCompanion(supabase, profile.id),
         fetchPosts(supabase, profile.id, isOwner),
         fetchPinnedPreview(supabase, profile.id, isOwner),
-        fetchRecentAchievements(supabase, profile.id)
+        fetchRecentAchievements(supabase, profile.id),
+        fetchBondAchievementsForUser(supabase, profile.id)
       ])
-    : [null, { items: [] as PostRow[], nextCursor: null }, null, [] as AchievementRow[]];
+    : [null, { items: [] as PostRow[], nextCursor: null }, null, [] as AchievementRow[], []];
 
   const personaPublic = allowContent ? await getPersonaSummary(profile.id) : null;
 
@@ -252,6 +254,7 @@ export const load: PageServerLoad = async (event) => {
     requested: parentData.requested ?? false,
     gated,
     blocked,
-    personaPublic
+    personaPublic,
+    bondMilestones: showAchievements ? bondMilestones : []
   };
 };

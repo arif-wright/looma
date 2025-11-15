@@ -8,6 +8,8 @@
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
   import { logEvent } from '$lib/analytics';
+  import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
+  import type { BondAchievementStatus } from '$lib/companions/bond';
 
   export let data: PageData;
 
@@ -33,6 +35,7 @@
       });
 
   let companions: Companion[] = sortRoster(((data.companions ?? []) as Companion[]) ?? []);
+  const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
   let maxSlots = data.maxSlots ?? 3;
   let activeCompanionId: string | null = data.activeCompanionId ?? null;
   let selected: Companion | null = null;
@@ -338,6 +341,12 @@
     </div>
   </header>
 
+  {#if bondMilestones.length}
+    <section class="bond-milestones-panel">
+      <BondMilestonesPanel milestones={bondMilestones} />
+    </section>
+  {/if}
+
   {#if rosterError}
     <div class="roster-error">{rosterError}</div>
   {/if}
@@ -385,6 +394,10 @@
       selected = { ...selected, ...updated };
     }
   }}
+  on:milestone={(event) => {
+    const message = event.detail?.message ?? 'Bond milestone reached!';
+    showToast(message);
+  }}
 />
 
 <UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlocked={handleUnlocked} />
@@ -406,6 +419,13 @@
     justify-content: space-between;
     gap: 1.5rem;
     align-items: flex-end;
+  }
+
+  .bond-milestones-panel {
+    border-radius: 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem;
+    background: rgba(8, 10, 18, 0.85);
   }
 
   .eyebrow {

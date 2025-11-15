@@ -1,7 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { createAchievementEvaluator } from '$lib/server/achievements/evaluator';
-import { getBondBonusForLevel, type BondBonus } from '$lib/companions/bond';
+import {
+  getBondBonusForLevel,
+  type BondBonus,
+  BOND_MILESTONES,
+  getMissingMilestoneActions,
+  milestoneForAction,
+  describeMilestoneNote
+} from '$lib/companions/bond';
 
 export type BondStatsRow = {
   companion_id: string;
@@ -13,6 +20,16 @@ type CompanionRow = {
   id: string;
   name?: string | null;
   stats?: { bond_level?: number | null; bond_score?: number | null } | null;
+};
+
+type BondMilestoneInsert = {
+  companion_id: string;
+  owner_id: string;
+  action: string;
+  affection_delta: number;
+  trust_delta: number;
+  energy_delta: number;
+  note: string;
 };
 
 const BOND_ACHIEVEMENTS = [
@@ -98,14 +115,94 @@ const ensureAchievementsForLevel = async (
   }
 };
 
+const ensureBondMilestoneEvents = async (
+  client: SupabaseClient,
+  playerId: string,
+  rows: BondStatsRow[]
+) => {
+  if (!rows.length) return [] as BondMilestoneInsert[];
+  const companionIds = rows.map((row) => row.companion_id);
+  const milestoneActions = BOND_MILESTONES.map((entry) => entry.action);
+
+  const [{ data: existingEvents }, { data: companionRows }] = await Promise.all([
+    client
+      .from('companion_care_events')
+      .select('companion_id, action')
+      .eq('owner_id', playerId)
+      .in('companion_id', companionIds)
+      .in('action', milestoneActions),
+    client
+      .from('companions')
+      .select('id, name')
+      .eq('owner_id', playerId)
+      .in('id', companionIds)
+  ]);
+
+  const recordedByCompanion = new Map<string, Set<string>>();
+  (existingEvents ?? []).forEach((row) => {
+    if (!row?.companion_id || !row?.action) return;
+    if (!recordedByCompanion.has(row.companion_id)) {
+      recordedByCompanion.set(row.companion_id, new Set());
+    }
+    recordedByCompanion.get(row.companion_id)?.add(row.action);
+  });
+
+  const nameMap = new Map<string, string>();
+  (companionRows ?? []).forEach((row) => {
+    if (row?.id) {
+      nameMap.set(row.id as string, typeof row.name === 'string' ? row.name : '');
+    }
+  });
+
+  const inserts: BondMilestoneInsert[] = [];
+
+  rows.forEach((row) => {
+    const set = recordedByCompanion.get(row.companion_id) ?? new Set<string>();
+    const pending = getMissingMilestoneActions(row.bond_level ?? 0, set);
+    pending.forEach((action) => {
+      const milestone = milestoneForAction(action);
+      if (!milestone) return;
+      const note = describeMilestoneNote(action, nameMap.get(row.companion_id) ?? '');
+      inserts.push({
+        companion_id: row.companion_id,
+        owner_id: playerId,
+        action,
+        affection_delta: 0,
+        trust_delta: 0,
+        energy_delta: 0,
+        note: note ?? milestone.label
+      });
+      set.add(action);
+      recordedByCompanion.set(row.companion_id, set);
+    });
+  });
+
+  if (!inserts.length) {
+    return [];
+  }
+
+  const { data, error } = await client
+    .from('companion_care_events')
+    .insert(inserts)
+    .select('id, companion_id, owner_id, action, note, created_at, affection_delta, trust_delta, energy_delta');
+
+  if (error) {
+    console.error('[companions] failed to log bond milestone event', error);
+    return [];
+  }
+
+  return data ?? [];
+};
+
 export const syncPlayerBondState = async (
   client: SupabaseClient,
   playerId: string
-): Promise<{ rows: BondStatsRow[]; bonus: BondBonus }> => {
+): Promise<{ rows: BondStatsRow[]; bonus: BondBonus; milestones: BondMilestoneInsert[] }> => {
   const rows = await recalculateBondsForPlayer(client, playerId);
   const maxLevel = rows.reduce((acc, row) => Math.max(acc, row.bond_level ?? 0), 0);
   await ensureAchievementsForLevel(client, playerId, maxLevel);
-  return { rows, bonus: getBondBonusForLevel(maxLevel) };
+  const milestones = await ensureBondMilestoneEvents(client, playerId, rows);
+  return { rows, bonus: getBondBonusForLevel(maxLevel), milestones };
 };
 
 export const getActiveCompanionBond = async (

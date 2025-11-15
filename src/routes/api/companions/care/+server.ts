@@ -130,13 +130,17 @@ export const POST: RequestHandler = async (event) => {
 
   let bondLevel = statsBase.bond_level ?? 0;
   let bondScore = statsBase.bond_score ?? 0;
+  let milestoneEvents: { action: string; note?: string | null }[] = [];
   try {
-    const { rows } = await syncPlayerBondState(supabase, session.user.id);
+    const { rows, milestones } = await syncPlayerBondState(supabase, session.user.id);
     const bondRow = rows.find((row) => row.companion_id === companion.id);
     if (bondRow) {
       bondLevel = bondRow.bond_level ?? bondLevel;
       bondScore = bondRow.bond_score ?? bondScore;
     }
+    milestoneEvents = milestones
+      ?.filter((row) => row.companion_id === companion.id)
+      .map((row) => ({ action: row.action, note: row.note })) ?? [];
   } catch (err) {
     console.error('[companion care] bond sync failed', err);
   }
@@ -150,6 +154,7 @@ export const POST: RequestHandler = async (event) => {
   return json({
     ok: true,
     companion: { ...updated, bond_level: bondLevel, bond_score: bondScore, stats: statsWithBond },
-    event: eventRow ?? null
+    event: eventRow ?? null,
+    milestones: milestoneEvents
   });
 };

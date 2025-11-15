@@ -7,6 +7,7 @@ import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import { getPersonaSummary } from '$lib/server/persona';
+import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 type ProfileRow = {
   id: string;
@@ -358,6 +359,7 @@ export const load: PageServerLoad = async (event) => {
   const safeAchievements = achievementsAllowed ? achievements : [];
   const safeFeed = feedAllowed ? posts.items : [];
   const safeNextCursor = feedAllowed ? posts.nextCursor : null;
+  const safeBondMilestones = achievementsAllowed ? bondMilestones : [];
 
   const profilePayload = redactProfile({
     ...profileRow,
@@ -398,6 +400,7 @@ export const load: PageServerLoad = async (event) => {
     ogImageUrl,
     metaDescription,
     personaPublic,
-    companionHidden: !showCompanion
+    companionHidden: !showCompanion,
+    bondMilestones: safeBondMilestones
   };
 };

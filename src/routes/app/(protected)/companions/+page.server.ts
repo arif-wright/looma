@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 const COMPANION_COLUMNS =
   'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
@@ -18,7 +19,7 @@ type TickSnapshot = {
 type PassiveTickEvent = {
   id: string;
   companionId: string;
-  kind: 'passive' | 'daily_bonus';
+  kind: string;
   message: string;
   createdAt: string;
   affectionDelta: number;
@@ -116,11 +117,14 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
   const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
 
+  const bondMilestones = await fetchBondAchievementsForUser(supabase, userId);
+
   return {
     companions,
     maxSlots,
     activeCompanionId,
     tickEvents,
-    error: companionsResult.error?.message ?? slotsResult.error?.message ?? null
+    error: companionsResult.error?.message ?? slotsResult.error?.message ?? null,
+    bondMilestones
   };
 };

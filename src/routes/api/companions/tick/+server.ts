@@ -109,12 +109,26 @@ export const POST: RequestHandler = async (event) => {
   upsertRows(normalizeRows(bonusResult.data));
 
   try {
-    const { rows } = await syncPlayerBondState(supabase, playerId);
+    const { rows, milestones } = await syncPlayerBondState(supabase, playerId);
     rows.forEach((row) => {
       const entry = statsMap.get(row.companion_id);
       if (!entry) return;
       entry.bondLevel = row.bond_level ?? entry.bondLevel;
       entry.bondScore = row.bond_score ?? entry.bondScore;
+    });
+    milestones.forEach((event) => {
+      if (!event || seenEventIds.has(event.id as string)) return;
+      newEvents.push({
+        id: event.id,
+        companionId: event.companion_id,
+        kind: event.action as any,
+        message: event.note ?? 'Bond milestone reached.',
+        createdAt: event.created_at,
+        affectionDelta: event.affection_delta ?? 0,
+        trustDelta: event.trust_delta ?? 0,
+        energyDelta: event.energy_delta ?? 0
+      });
+      seenEventIds.add(event.id as string);
     });
   } catch (err) {
     console.error('[companions/tick] bond sync failed', err);

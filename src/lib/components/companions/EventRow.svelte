@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { BOND_MILESTONES, milestoneForAction } from '$lib/companions/bond';
+
   export let event: {
     id: string | number;
     action: string;
@@ -9,6 +11,10 @@
     note?: string | null;
     kind?: string | null;
   };
+
+  const milestoneMeta = Object.fromEntries(
+    BOND_MILESTONES.map((entry) => [entry.action, { emoji: entry.emoji, label: entry.label }])
+  );
 
   const actionMeta: Record<string, { emoji: string; label: string; note?: string }> = {
     feed: { emoji: '🍓', label: 'Feed' },
@@ -46,9 +52,14 @@
   };
 
   $: actionKey = (event.kind ?? event.action ?? 'system').toLowerCase();
-  $: meta = actionMeta[actionKey] ?? actionMeta.system;
+  $: meta = milestoneMeta[actionKey] ?? actionMeta[actionKey] ?? actionMeta.system;
   $: hasDeltas = Boolean((event.affection_delta ?? 0) || (event.trust_delta ?? 0) || (event.energy_delta ?? 0));
-  $: isSoftEvent = actionKey === 'passive' || actionKey === 'daily_bonus';
+  $: isMilestone = Boolean(milestoneMeta[actionKey]);
+  $: isSoftEvent = actionKey === 'passive' || actionKey === 'daily_bonus' || isMilestone;
+  $: fallbackMessage =
+    isMilestone
+      ? event.note ?? milestoneForAction(actionKey)?.note('your companion') ?? meta.label
+      : event.note ?? meta.note ?? meta.label;
 </script>
 
 <li class="event-row">
@@ -59,7 +70,7 @@
       <time datetime={event.created_at}>{formatRelative(event.created_at)}</time>
     </div>
     {#if isSoftEvent}
-      <p class="event-row__message">{event.note ?? meta.note ?? meta.label}</p>
+      <p class="event-row__message">{fallbackMessage}</p>
       {#if hasDeltas}
         <p class="event-row__delta event-row__delta--soft">
           {formatDelta(event.affection_delta, 'affection')} ·

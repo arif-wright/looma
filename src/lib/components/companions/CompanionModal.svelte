@@ -3,6 +3,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
+  import { describeMilestoneToast } from '$lib/companions/bond';
   import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 
   export let open = false;
@@ -25,7 +26,10 @@
     kind?: string | null;
   };
 
-  const dispatch = createEventDispatcher<{ careApplied: { id: string; companion: Companion } }>();
+  const dispatch = createEventDispatcher<{
+    careApplied: { id: string; companion: Companion };
+    milestone: { id: string; action: string; note?: string | null; message?: string };
+  }>();
 
   type CareAction = 'feed' | 'play' | 'groom';
 
@@ -289,6 +293,18 @@
       companion = { ...companion, ...payload.companion };
       if (payload.event) {
         events = normalizeEvents([payload.event as CareEvent, ...events]);
+      }
+      if (Array.isArray(payload?.milestones) && payload.milestones.length) {
+        payload.milestones.forEach((milestone: { action?: string; note?: string | null }) => {
+          if (!milestone?.action || !companion) return;
+          const toastMessage = describeMilestoneToast(milestone.action, companion.name) ?? 'Bond milestone reached!';
+          dispatch('milestone', {
+            id: companion.id,
+            action: milestone.action,
+            note: milestone.note ?? null,
+            message: toastMessage
+          });
+        });
       }
       startCooldown(action);
       dispatch('careApplied', { id: companion.id, companion });

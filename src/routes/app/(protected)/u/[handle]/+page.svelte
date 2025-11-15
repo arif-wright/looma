@@ -73,6 +73,7 @@ import type { PageData } from './$types';
         isOwner={false}
         hideCompanionActions={true}
         hidePrivate={true}
+        bondMilestones={data.bondMilestones ?? []}
       />
 
       <div class="space-y-4">

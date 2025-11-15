@@ -103,6 +103,7 @@ let editOpen = false;
           achievements={sidebarAchievements}
           isOwner={data.isOwner}
           companionHidden={data.companionHidden ?? false}
+          bondMilestones={data.bondMilestones ?? []}
         />
 
         <FollowRequestsPanel items={data.followRequests ?? []} />
