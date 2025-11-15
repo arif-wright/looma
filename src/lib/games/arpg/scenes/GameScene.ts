@@ -135,12 +135,15 @@ export class GameScene extends Phaser.Scene {
     const score = Math.max(0, Math.floor(this.elapsedMs));
     this.scoreText.setText(`Score ${score}`);
 
+    const currentTransform = this.playerId ? this.world.getTransform(this.playerId) : null;
+    const previous = currentTransform ? { x: currentTransform.x, y: currentTransform.y } : null;
     const hasInput = this.handleInput();
     dashSystem(this.world, delta);
     movementSystem(this.world, delta);
-    this.pushTransformToSprite();
-    this.physics.world.collide(this.playerSprite, this.wallLayer);
-    this.pullSpriteIntoTransform();
+    if (previous) {
+      this.resolveEnvironment(previous);
+    }
+    this.syncSpriteWithTransform();
     this.updateAnimation(hasInput);
 
     if (this.elapsedMs >= RUN_LIMIT_MS || Phaser.Input.Keyboard.JustDown(this.escKey)) {
@@ -188,19 +191,49 @@ export class GameScene extends Phaser.Scene {
     return axis;
   }
 
-  private pushTransformToSprite() {
+  private resolveEnvironment(previous: Vec2) {
+    if (!this.playerId) return;
+    const transform = this.world.getTransform(this.playerId);
+    if (!transform) return;
+
+    const body = this.playerSprite.body as Phaser.Physics.Arcade.Body;
+    const halfW = (body?.width ?? 20) * 0.5;
+    const halfH = (body?.height ?? 20) * 0.5;
+    const minX = halfW;
+    const minY = halfH;
+    const maxX = this.map.widthInPixels - halfW;
+    const maxY = this.map.heightInPixels - halfH;
+
+    transform.x = Phaser.Math.Clamp(transform.x, minX, maxX);
+    transform.y = Phaser.Math.Clamp(transform.y, minY, maxY);
+
+    if (this.hitsWall(transform.x, transform.y)) {
+      transform.x = previous.x;
+      transform.y = previous.y;
+    }
+  }
+
+  private hitsWall(x: number, y: number) {
+    const body = this.playerSprite.body as Phaser.Physics.Arcade.Body;
+    const halfW = (body?.width ?? 20) * 0.5;
+    const halfH = (body?.height ?? 20) * 0.5;
+    const probes: Vec2[] = [
+      { x: -halfW, y: -halfH },
+      { x: halfW, y: -halfH },
+      { x: -halfW, y: halfH },
+      { x: halfW, y: halfH }
+    ];
+    return probes.some((offset) => {
+      const tile = this.wallLayer.getTileAtWorldXY(x + offset.x, y + offset.y, true);
+      return tile ? tile.collides : false;
+    });
+  }
+
+  private syncSpriteWithTransform() {
     if (!this.playerId) return;
     const transform = this.world.getTransform(this.playerId);
     if (!transform) return;
     this.playerSprite.setPosition(transform.x, transform.y);
-  }
-
-  private pullSpriteIntoTransform() {
-    if (!this.playerId) return;
-    const transform = this.world.getTransform(this.playerId);
-    if (!transform) return;
-    transform.x = this.playerSprite.x;
-    transform.y = this.playerSprite.y;
   }
 
   private updateAnimation(isMoving: boolean) {
