@@ -6,12 +6,16 @@
     trust_delta: number;
     energy_delta: number;
     created_at: string;
+    note?: string | null;
+    kind?: string | null;
   };
 
-  const actionMeta: Record<string, { emoji: string; label: string }> = {
+  const actionMeta: Record<string, { emoji: string; label: string; note?: string }> = {
     feed: { emoji: '🍓', label: 'Feed' },
     play: { emoji: '🪁', label: 'Play' },
     groom: { emoji: '✨', label: 'Groom' },
+    passive: { emoji: '🌙', label: 'Rest', note: 'Rested while you were away.' },
+    daily_bonus: { emoji: '✨', label: 'Daily glow', note: 'Brightened when you checked in today.' },
     system: { emoji: '🌀', label: 'System' }
   };
 
@@ -41,8 +45,10 @@
     return formatter.format(diffDays, 'day');
   };
 
-  $: actionKey = (event.action ?? 'system').toLowerCase();
+  $: actionKey = (event.kind ?? event.action ?? 'system').toLowerCase();
   $: meta = actionMeta[actionKey] ?? actionMeta.system;
+  $: hasDeltas = Boolean((event.affection_delta ?? 0) || (event.trust_delta ?? 0) || (event.energy_delta ?? 0));
+  $: isSoftEvent = actionKey === 'passive' || actionKey === 'daily_bonus';
 </script>
 
 <li class="event-row">
@@ -52,11 +58,22 @@
       <strong class="event-row__action">{meta.label}</strong>
       <time datetime={event.created_at}>{formatRelative(event.created_at)}</time>
     </div>
-    <p>
-      {formatDelta(event.affection_delta, 'affection')} ·
-      {formatDelta(event.trust_delta, 'trust')} ·
-      {formatDelta(event.energy_delta, 'energy')}
-    </p>
+    {#if isSoftEvent}
+      <p class="event-row__message">{event.note ?? meta.note ?? meta.label}</p>
+      {#if hasDeltas}
+        <p class="event-row__delta event-row__delta--soft">
+          {formatDelta(event.affection_delta, 'affection')} ·
+          {formatDelta(event.trust_delta, 'trust')} ·
+          {formatDelta(event.energy_delta, 'energy')}
+        </p>
+      {/if}
+    {:else}
+      <p class="event-row__delta">
+        {formatDelta(event.affection_delta, 'affection')} ·
+        {formatDelta(event.trust_delta, 'trust')} ·
+        {formatDelta(event.energy_delta, 'energy')}
+      </p>
+    {/if}
   </div>
 </li>
 
@@ -106,9 +123,20 @@
     color: rgba(255, 255, 255, 0.6);
   }
 
-  p {
+  .event-row__message {
     margin: 0;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .event-row__delta {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .event-row__delta--soft {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
   }
 </style>

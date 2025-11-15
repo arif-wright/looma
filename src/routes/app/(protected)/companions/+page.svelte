@@ -11,6 +11,17 @@
 
   export let data: PageData;
 
+  type PrefetchedEvent = {
+    id: string;
+    action: string;
+    kind?: string;
+    affection_delta: number;
+    trust_delta: number;
+    energy_delta: number;
+    created_at: string;
+    note?: string | null;
+  };
+
   const sortRoster = (list: Companion[]) =>
     list
       .slice()
@@ -32,6 +43,25 @@
   let reorderBusy = false;
   let rosterError: string | null = data.error ?? null;
   let showUnlock = false;
+  let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
+    (acc, event) => {
+      if (!event?.companionId) return acc;
+      const mapped: PrefetchedEvent = {
+        id: event.id,
+        action: event.kind,
+        kind: event.kind,
+        affection_delta: event.affectionDelta ?? 0,
+        trust_delta: event.trustDelta ?? 0,
+        energy_delta: event.energyDelta ?? 0,
+        created_at: event.createdAt,
+        note: event.message
+      };
+      acc[event.companionId] = acc[event.companionId] ? [mapped, ...acc[event.companionId]] : [mapped];
+      return acc;
+    },
+    {}
+  );
+  let prefetchedForModal: { version: number; events: PrefetchedEvent[] } = { version: 0, events: [] };
 
   const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
     toast = { message, kind };
@@ -273,6 +303,18 @@
       selected = refreshed;
     }
   }
+
+  $: if (selected?.id) {
+    const seeds = pendingPrefetches[selected.id] ?? [];
+    if (seeds.length) {
+      prefetchedForModal = { version: prefetchedForModal.version + 1, events: seeds };
+      pendingPrefetches = { ...pendingPrefetches, [selected.id]: [] };
+    } else if (prefetchedForModal.events.length) {
+      prefetchedForModal = { ...prefetchedForModal, events: [] };
+    }
+  } else if (prefetchedForModal.events.length) {
+    prefetchedForModal = { ...prefetchedForModal, events: [] };
+  }
 </script>
 
 <svelte:head>
@@ -329,6 +371,7 @@
   open={Boolean(selected)}
   companion={selected}
   {maxSlots}
+  prefetched={prefetchedForModal}
   onClose={() => {
     selected = null;
   }}

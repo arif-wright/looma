@@ -28,7 +28,7 @@ export const GET: RequestHandler = async (event) => {
 
   const { data, error } = await supabase
     .from('companion_care_events')
-    .select('id, action, affection_delta, trust_delta, energy_delta, created_at')
+    .select('id, action, affection_delta, trust_delta, energy_delta, created_at, note')
     .eq('owner_id', session.user.id)
     .eq('companion_id', companionId)
     .order('created_at', { ascending: false })
@@ -38,10 +38,16 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: error.message ?? 'events_failed' }, { status: 400 });
   }
 
-  const events = (data ?? []).map((row) => ({
-    ...row,
-    label: formatLabel(row.action ?? 'care', row.affection_delta ?? 0, row.trust_delta ?? 0, row.energy_delta ?? 0)
-  }));
+  const events = (data ?? []).map((row) => {
+    const action = (row.action ?? 'care').toLowerCase();
+    const kind = action === 'passive' || action === 'daily_bonus' ? action : 'care';
+    return {
+      ...row,
+      kind,
+      message: row.note ?? formatLabel(action, row.affection_delta ?? 0, row.trust_delta ?? 0, row.energy_delta ?? 0),
+      label: formatLabel(action, row.affection_delta ?? 0, row.trust_delta ?? 0, row.energy_delta ?? 0)
+    };
+  });
 
   return json({ ok: true, events });
 };

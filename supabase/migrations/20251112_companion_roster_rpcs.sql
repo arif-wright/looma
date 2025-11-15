@@ -53,19 +53,19 @@ begin
     raise exception 'not_owner';
   end if;
 
-  update public.companions
+  update public.companions as c
      set is_active = false,
          state = 'idle'
-   where owner_id = u
-     and is_active = true
-     and id <> p_companion;
+   where c.owner_id = u
+     and c.is_active = true
+     and c.id <> p_companion;
 
-  update public.companions
+  update public.companions as c
      set is_active = true,
          state = 'active',
          updated_at = now()
-   where id = p_companion
-   returning id, is_active into companion_id, is_active;
+   where c.id = p_companion
+   returning c.id, c.is_active into companion_id, is_active;
 
   return next;
 end;
@@ -161,12 +161,12 @@ begin
     raise exception 'bad_state';
   end if;
 
-  update public.companions
+  update public.companions as c
      set state = p_state,
          is_active = p_state = 'active',
          updated_at = now()
-   where id = p_companion
-     and owner_id = u
+   where c.id = p_companion
+     and c.owner_id = u
    returning state into new_state;
 
   if not found then
@@ -174,12 +174,12 @@ begin
   end if;
 
   if p_state = 'active' then
-    update public.companions
+    update public.companions as c
        set is_active = false,
            state = 'idle'
-     where owner_id = u
-       and id <> p_companion
-       and is_active = true;
+     where c.owner_id = u
+       and c.id <> p_companion
+       and c.is_active = true;
   end if;
 
   return new_state;

@@ -11,6 +11,8 @@ export type CompanionStats = {
   fed_at: string | null;
   played_at: string | null;
   groomed_at: string | null;
+  last_passive_tick?: string | null;
+  last_daily_bonus_at?: string | null;
 };
 
 export type Companion = {

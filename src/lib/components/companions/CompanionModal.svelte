@@ -11,6 +11,7 @@
   export let renameCompanion: (id: string, name: string) => Promise<void> = async () => {};
   export let setActive: (id: string) => Promise<void> = async () => {};
   export let setState: (id: string, state: 'idle' | 'resting' | 'active') => Promise<void> = async () => {};
+  export let prefetched: { version: number; events: CareEvent[] } = { version: 0, events: [] };
 
   type CareEvent = {
     id: string | number;
@@ -19,6 +20,8 @@
     trust_delta: number;
     energy_delta: number;
     created_at: string;
+    note?: string | null;
+    kind?: string | null;
   };
 
   const dispatch = createEventDispatcher<{ careApplied: { id: string; companion: Companion } }>();
@@ -54,6 +57,58 @@
   let nowTick = Date.now();
   let cooldownTimer: ReturnType<typeof setInterval> | null = null;
   let lastFetchedId: string | null = null;
+  let lastPrefetchVersion = 0;
+
+  const normalizeEvents = (list: CareEvent[]) => {
+    const seen = new Set<string>();
+    return list
+      .slice()
+      .sort((a, b) => Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? ''))
+      .filter((event) => {
+        const key = String(event.id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 20);
+  };
+
+  const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const describeRelativeTime = (iso: string | null) => {
+    if (!iso) return 'No care yet';
+    const ts = Date.parse(iso);
+    if (Number.isNaN(ts)) return 'just now';
+    const diffMs = ts - Date.now();
+    const diffMinutes = Math.round(diffMs / 60000);
+    if (Math.abs(diffMinutes) < 1) {
+      const diffSeconds = Math.round(diffMs / 1000);
+      return relativeFormatter.format(diffSeconds, 'second');
+    }
+    if (Math.abs(diffMinutes) < 60) {
+      return relativeFormatter.format(diffMinutes, 'minute');
+    }
+    const diffHours = Math.round(diffMinutes / 60);
+    if (Math.abs(diffHours) < 24) {
+      return relativeFormatter.format(diffHours, 'hour');
+    }
+    const diffDays = Math.round(diffHours / 24);
+    return relativeFormatter.format(diffDays, 'day');
+  };
+
+  const pickLatest = (values: Array<string | null | undefined>) => {
+    let latest: string | null = null;
+    let maxTs = -Infinity;
+    for (const value of values) {
+      if (!value) continue;
+      const ts = Date.parse(value);
+      if (Number.isNaN(ts)) continue;
+      if (ts > maxTs) {
+        maxTs = ts;
+        latest = value;
+      }
+    }
+    return latest;
+  };
 
   onMount(() => {
     if (typeof window === 'undefined') return;
@@ -138,7 +193,7 @@
       if (!res.ok || !Array.isArray(payload?.events)) {
         throw new Error(payload?.error ?? 'Unable to load events');
       }
-      events = payload.events as CareEvent[];
+      events = normalizeEvents((payload.events as CareEvent[]) ?? []);
       lastFetchedId = companion.id;
     } catch (err) {
       eventsError = err instanceof Error ? err.message : 'Unable to load events';
@@ -172,9 +227,21 @@
     resetCareState();
   }
 
+  $: if (prefetched && prefetched.version !== lastPrefetchVersion) {
+    if (prefetched.events?.length) {
+      events = normalizeEvents([...prefetched.events, ...events]);
+    }
+    lastPrefetchVersion = prefetched.version;
+  }
+
   const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   $: moodKey = (companion?.mood ?? 'neutral').toLowerCase();
   $: moodInfo = MOOD_META[moodKey] ?? { label: 'Neutral', emoji: '😌' };
+  $: statsRecord = companion?.stats ?? null;
+  $: lastCareActive = statsRecord ? pickLatest([statsRecord.fed_at, statsRecord.played_at, statsRecord.groomed_at]) : null;
+  $: lastPassiveTick = statsRecord?.last_passive_tick ?? null;
+  $: lastCareAt = lastCareActive ?? lastPassiveTick ?? null;
+  $: lastCareLabel = lastCareAt ? describeRelativeTime(lastCareAt) : 'No care yet';
 
   const resetCareState = () => {
     careBusy = null;
@@ -216,7 +283,7 @@
 
       companion = { ...companion, ...payload.companion };
       if (payload.event) {
-        events = [payload.event as CareEvent, ...events].slice(0, 20);
+        events = normalizeEvents([payload.event as CareEvent, ...events]);
       }
       startCooldown(action);
       dispatch('careApplied', { id: companion.id, companion });
@@ -286,6 +353,10 @@
     {/if}
 
     <section class="stat-grid" aria-label="Bond stats">
+      <div class="stat-grid__meta">
+        <h3>Bond stats</h3>
+        <span class="last-care-pill">Last care: {lastCareLabel}</span>
+      </div>
       <article>
         <header>Affection</header>
         <div class="meter" role="progressbar" aria-valuenow={pct(companion.affection)} aria-valuemin="0" aria-valuemax="100">
@@ -477,6 +548,31 @@
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 1rem;
     margin: 1.5rem 0;
+  }
+
+  .stat-grid__meta {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .stat-grid__meta h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .last-care-pill {
+    border-radius: 999px;
+    padding: 0.2rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(9, 12, 25, 0.65);
   }
 
   .stat-grid header {
