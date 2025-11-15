@@ -21,15 +21,27 @@ import { applyStreakMultiplier, getStreakMultiplier, walletGrant } from '$lib/se
 import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
 import { inspectSessionComplete } from '$lib/server/anti/inspect';
-import { getCompanionXpMultiplier } from '$lib/server/companions/bonds';
+import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+type CompanionBonusPayload = {
+  companionId: string;
+  name: string | null;
+  bondLevel: number;
+  xpMultiplier: number;
+};
 
 type SessionRewardResponse = {
   xpDelta: number;
   baseXpDelta?: number;
   xpMultiplier?: number;
+  baseXp?: number;
+  finalXp?: number;
+  xpFromCompanion?: number;
+  xpFromStreak?: number;
+  companionBonus?: CompanionBonusPayload | null;
   currencyDelta: number;
   baseCurrencyDelta: number;
   currencyMultiplier: number;
@@ -375,10 +387,22 @@ export const POST: RequestHandler = async (event) => {
     console.error('[games] achievement evaluation failed', err);
   }
 
+  const companionSnapshot = await getActiveCompanionBond(user.id, admin);
+  const companionDisplay: CompanionBonusPayload | null = companionSnapshot
+    ? {
+        companionId: companionSnapshot.companionId,
+        name: companionSnapshot.name ?? null,
+        bondLevel: companionSnapshot.level,
+        xpMultiplier: companionSnapshot.bonus.xpMultiplier
+      }
+    : null;
+
   const baseRewards = calculateRewards(score);
   const baseXpDelta = clamp(baseRewards.xpDelta, 0, 100);
-  const xpMultiplier = await getCompanionXpMultiplier(user.id, admin);
+  const xpMultiplier = companionDisplay?.xpMultiplier ?? 1;
   const xpDelta = Math.max(0, Math.round(baseXpDelta * xpMultiplier));
+  const xpFromCompanion = Math.max(0, xpDelta - baseXpDelta);
+  const xpFromStreak = 0;
   const baseCurrencyDelta = clamp(baseRewards.currencyDelta, 0, 200);
   const streakMultiplier = getStreakMultiplier(currentStreakDays);
   const currencyDelta = applyStreakMultiplier(baseCurrencyDelta, currentStreakDays);
@@ -387,6 +411,11 @@ export const POST: RequestHandler = async (event) => {
     xpDelta,
     baseXpDelta,
     xpMultiplier,
+    baseXp: baseXpDelta,
+    finalXp: xpDelta,
+    xpFromCompanion,
+    xpFromStreak,
+    companionBonus: companionDisplay,
     currencyDelta,
     baseCurrencyDelta,
     currencyMultiplier: streakMultiplier

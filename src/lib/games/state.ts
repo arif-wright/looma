@@ -8,6 +8,16 @@ export type RewardEntry = {
   xpDelta: number;
   baseXpDelta?: number | null;
   xpMultiplier?: number | null;
+  baseXp?: number | null;
+  finalXp?: number | null;
+  xpFromCompanion?: number | null;
+  xpFromStreak?: number | null;
+  companionBonus?: {
+    companionId?: string | null;
+    name?: string | null;
+    bondLevel?: number | null;
+    xpMultiplier?: number | null;
+  } | null;
   currencyDelta: number;
   insertedAt: string | null;
   game: string | null;
@@ -93,6 +103,25 @@ const normalizeRewards = (rows: unknown): RewardEntry[] => {
         xpDelta: normalizeNumber(payload.xpDelta ?? payload.xp_delta) ?? 0,
         baseXpDelta: normalizeNumber(payload.baseXpDelta ?? payload.base_xp_delta),
         xpMultiplier: normalizeNumber(payload.xpMultiplier ?? payload.xp_multiplier),
+        baseXp: normalizeNumber(payload.baseXp ?? payload.base_xp),
+        finalXp: normalizeNumber(payload.finalXp ?? payload.final_xp),
+        xpFromCompanion: normalizeNumber(payload.xpFromCompanion ?? payload.xp_from_companion),
+        xpFromStreak: normalizeNumber(payload.xpFromStreak ?? payload.xp_from_streak),
+        companionBonus: (() => {
+          const raw = payload.companionBonus;
+          if (!raw || typeof raw !== 'object') return null;
+          const value = raw as Record<string, unknown>;
+          const bondLevel = normalizeNumber(value.bondLevel ?? value['bond_level']);
+          const xpMul = normalizeNumber(value.xpMultiplier ?? value['xp_multiplier']);
+          const name = typeof value.name === 'string' ? value.name : null;
+          if (bondLevel === null && xpMul === null && !name) return null;
+          return {
+            companionId: typeof value.companionId === 'string' ? value.companionId : null,
+            name,
+            bondLevel,
+            xpMultiplier: xpMul
+          } satisfies RewardEntry['companionBonus'];
+        })(),
         currencyDelta: normalizeNumber(payload.currencyDelta ?? payload.currency_delta) ?? 0,
         insertedAt,
         game: gameSlug,
@@ -174,6 +203,11 @@ type RecordRewardArgs = {
   xpDelta: number;
   baseXpDelta?: number | null;
   xpMultiplier?: number | null;
+  baseXp?: number | null;
+  finalXp?: number | null;
+  xpFromCompanion?: number | null;
+  xpFromStreak?: number | null;
+  companionBonus?: RewardEntry['companionBonus'];
   currencyDelta: number;
   baseCurrencyDelta?: number | null;
   currencyMultiplier?: number | null;
@@ -186,6 +220,11 @@ export const recordRewardResult = ({
   xpDelta,
   baseXpDelta = null,
   xpMultiplier = null,
+  baseXp = null,
+  finalXp = null,
+  xpFromCompanion = null,
+  xpFromStreak = null,
+  companionBonus = null,
   currencyDelta,
   baseCurrencyDelta = null,
   currencyMultiplier = null,
@@ -213,6 +252,15 @@ export const recordRewardResult = ({
       xpDelta: safeXp,
       baseXpDelta: Number.isFinite(baseXpDelta as number) ? Math.round(baseXpDelta as number) : null,
       xpMultiplier: Number.isFinite(xpMultiplier as number) ? Number(xpMultiplier) : null,
+      baseXp: Number.isFinite(baseXp as number) ? Math.round(baseXp as number) : null,
+      finalXp: Number.isFinite(finalXp as number) ? Math.round(finalXp as number) : safeXp,
+      xpFromCompanion: Number.isFinite(xpFromCompanion as number)
+        ? Math.max(0, Math.round(xpFromCompanion as number))
+        : null,
+      xpFromStreak: Number.isFinite(xpFromStreak as number)
+        ? Math.max(0, Math.round(xpFromStreak as number))
+        : null,
+      companionBonus,
       currencyDelta: safeCurrency,
       insertedAt: timestamp,
       game,

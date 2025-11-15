@@ -11,6 +11,7 @@ export type BondStatsRow = {
 
 type CompanionRow = {
   id: string;
+  name?: string | null;
   stats?: { bond_level?: number | null; bond_score?: number | null } | null;
 };
 
@@ -56,7 +57,7 @@ const findActiveCompanion = async (
 ): Promise<CompanionRow | null> => {
   const { data, error } = await client
     .from('companions')
-    .select('id, stats:companion_stats(bond_level, bond_score)')
+    .select('id, name, stats:companion_stats(bond_level, bond_score)')
     .eq('owner_id', playerId)
     .order('is_active', { ascending: false })
     .order('state', { ascending: false })
@@ -110,7 +111,7 @@ export const syncPlayerBondState = async (
 export const getActiveCompanionBond = async (
   playerId: string,
   client: SupabaseClient = supabaseAdmin
-): Promise<{ companionId: string; level: number; score: number; bonus: BondBonus } | null> => {
+): Promise<{ companionId: string; name: string | null; level: number; score: number; bonus: BondBonus } | null> => {
   if (!playerId) return null;
   const companion = await findActiveCompanion(client, playerId);
   if (!companion) return null;
@@ -118,6 +119,7 @@ export const getActiveCompanionBond = async (
   const score = companion.stats?.bond_score ?? 0;
   return {
     companionId: companion.id,
+    name: typeof companion.name === 'string' ? companion.name : null,
     level,
     score,
     bonus: getBondBonusForLevel(level)

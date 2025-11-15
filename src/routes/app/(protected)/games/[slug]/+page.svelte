@@ -12,6 +12,7 @@ import {
 } from '$lib/games/sdk';
 import type { SessionAchievement } from '$lib/games/sdk';
 import { applyPlayerState, recordRewardResult } from '$lib/games/state';
+import { describeCompanionBonus } from '$lib/games/rewardBonus';
 import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
 import LeaderboardList from '$lib/components/games/LeaderboardList.svelte';
 import type { LeaderboardScope } from '$lib/server/games/leaderboard';
@@ -37,15 +38,32 @@ import Portal from '$lib/ui/Portal.svelte';
 
   let status = isTilesRun ? 'Waiting for game bridge…' : 'Preparing bridge…';
   let errorMessage: string | null = null;
-let reward: {
+type SessionReward = {
   xpDelta: number;
-  baseXpDelta?: number | null;
+  baseXp?: number | null;
+  finalXp?: number | null;
+  xpFromCompanion?: number | null;
+  xpFromStreak?: number | null;
   xpMultiplier?: number | null;
+  companionBonus?: {
+    companionId?: string | null;
+    name: string | null;
+    bondLevel: number;
+    xpMultiplier: number;
+  } | null;
   currencyDelta: number;
   baseCurrencyDelta?: number | null;
   currencyMultiplier?: number | null;
   achievements: SessionAchievement[];
-} | null = null;
+};
+
+let reward: SessionReward | null = null;
+$: companionBonusDescription = reward
+  ? describeCompanionBonus({
+      xpFromCompanion: reward.xpFromCompanion ?? 0,
+      companionBonus: reward.companionBonus
+    })
+  : null;
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -450,10 +468,32 @@ const handleAchievementShareCancel = () => {
         clientVersion: game.min_version ?? '1.0.0'
       });
 
+      const fallbackBaseXp =
+        typeof result.baseXp === 'number'
+          ? result.baseXp
+          : typeof result.baseXpDelta === 'number'
+            ? result.baseXpDelta
+            : result.xpDelta;
+      const fallbackFinalXp = typeof result.finalXp === 'number' ? result.finalXp : result.xpDelta;
+      const inferredCompanionXp = Math.max(0, fallbackFinalXp - fallbackBaseXp);
+
+      const companionBonus = result.companionBonus
+        ? {
+            companionId: result.companionBonus.companionId ?? null,
+            name: result.companionBonus.name ?? null,
+            bondLevel: result.companionBonus.bondLevel ?? 0,
+            xpMultiplier: result.companionBonus.xpMultiplier ?? 1
+          }
+        : null;
+
       reward = {
         xpDelta: result.xpDelta,
-        baseXpDelta: result.baseXpDelta ?? null,
+        baseXp: fallbackBaseXp,
+        finalXp: fallbackFinalXp,
+        xpFromCompanion: result.xpFromCompanion ?? inferredCompanionXp,
+        xpFromStreak: result.xpFromStreak ?? null,
         xpMultiplier: result.xpMultiplier ?? null,
+        companionBonus,
         currencyDelta: result.currencyDelta,
         baseCurrencyDelta: result.baseCurrencyDelta ?? null,
         currencyMultiplier: result.currencyMultiplier ?? null,
@@ -484,6 +524,11 @@ const handleAchievementShareCancel = () => {
         xpDelta: result.xpDelta,
         baseXpDelta: result.baseXpDelta ?? null,
         xpMultiplier: result.xpMultiplier ?? null,
+        baseXp: fallbackBaseXp,
+        finalXp: fallbackFinalXp,
+        xpFromCompanion: reward.xpFromCompanion ?? inferredCompanionXp,
+        xpFromStreak: result.xpFromStreak ?? null,
+        companionBonus,
         currencyDelta: result.currencyDelta,
         baseCurrencyDelta: result.baseCurrencyDelta ?? null,
         currencyMultiplier: result.currencyMultiplier ?? null,
@@ -624,12 +669,20 @@ const handleAchievementShareCancel = () => {
           <p class="reward-toast__label">Session rewards</p>
           <p class="reward-toast__value">
             +{reward.xpDelta} XP • +{reward.currencyDelta} shards
-            {#if reward.currencyMultiplier && reward.currencyMultiplier > 1}
-              <span class="reward-multiplier">
-                (x{reward.currencyMultiplier.toFixed(1)} streak)
-              </span>
-            {/if}
           </p>
+          {#if (reward.currencyMultiplier && reward.currencyMultiplier > 1) || companionBonusDescription}
+            <p class="reward-toast__meta">
+              {#if reward.currencyMultiplier && reward.currencyMultiplier > 1}
+                <span class="reward-pill">x{reward.currencyMultiplier.toFixed(1)} streak</span>
+              {/if}
+              {#if companionBonusDescription}
+                <span class="reward-pill">{companionBonusDescription.pill}</span>
+              {/if}
+            </p>
+          {/if}
+          {#if companionBonusDescription?.detail}
+            <p class="reward-toast__detail">{companionBonusDescription.detail}</p>
+          {/if}
           <div class="toast-actions">
             <button class="toast-button" type="button" on:click={replaySession}>
               Replay
@@ -828,11 +881,29 @@ const handleAchievementShareCancel = () => {
     color: rgba(255, 255, 255, 0.95);
   }
 
-  .reward-multiplier {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: rgba(144, 224, 255, 0.9);
-    margin-left: 0.35rem;
+  .reward-toast__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: -0.2rem;
+  }
+
+  .reward-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(140, 206, 255, 0.35);
+    color: rgba(174, 222, 255, 0.95);
+  }
+
+  .reward-toast__detail {
+    margin: -0.15rem 0 0;
+    font-size: 0.82rem;
+    color: rgba(196, 213, 245, 0.85);
   }
 
   .toast-actions {

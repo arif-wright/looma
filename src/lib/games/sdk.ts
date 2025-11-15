@@ -126,6 +126,17 @@ export type SessionAchievement = {
 
 type CompleteResponse = {
   xpDelta: number;
+  baseXp?: number;
+  finalXp?: number;
+  xpFromCompanion?: number;
+  xpFromStreak?: number;
+  xpMultiplier?: number;
+  companionBonus?: {
+    companionId: string;
+    name: string | null;
+    bondLevel: number;
+    xpMultiplier: number;
+  } | null;
   currencyDelta: number;
   baseCurrencyDelta?: number;
   currencyMultiplier?: number;
