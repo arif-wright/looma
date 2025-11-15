@@ -164,8 +164,3 @@ const createCompanionsStore = () => {
 export const companionsStore = createCompanionsStore();
 export const activeCompanionStore = derived(companionsStore, (list) => deriveActiveSnapshot(list));
 export const getActiveCompanionSnapshot = () => latestActiveSnapshot;
-    }
-  };
-};
-
-export const companionsStore = createCompanionsStore();
