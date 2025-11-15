@@ -3,6 +3,7 @@
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { Search } from 'lucide-svelte';
+  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -16,6 +17,7 @@
   export let unreadCount = 0;
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
+  export let activeCompanion: ActiveCompanionSnapshot | null = null;
 </script>
 
 <header class="app-header" data-testid="brand-header">
@@ -44,6 +46,7 @@
         unreadCount={unreadCount}
         notifications={notifications}
         userEmail={userEmail}
+        activeCompanion={activeCompanion}
         onLogout={onLogout}
       />
     </div>

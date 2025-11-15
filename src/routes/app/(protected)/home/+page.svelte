@@ -13,6 +13,7 @@
   import TelemetryCapsule from '$lib/components/home/TelemetryCapsule.svelte';
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
+  import CompanionPresenceCard from '$lib/components/home/CompanionPresenceCard.svelte';
   import type { MissionRow as MissionRowType } from '$lib/data/missions';
   import type { FeedItem as FeedItemType } from '$lib/social/types';
   import type { QuickLink } from '$lib/components/home/types';
@@ -25,6 +26,7 @@
   const stats = data.stats;
   const missions = data.missions ?? [];
   const creatures = data.creatures ?? [];
+  const activeCompanion = data.activeCompanion ?? null;
   const endcap = data.endcap;
   const variant = data.landingVariant ?? null;
   const preferences = data.preferences ?? null;
@@ -234,6 +236,8 @@
           </div>
           <p class="panel__body">We refreshed your space for calm focus. Glide through whispers, check in on the circle, and decide when to launch your next thread.</p>
         </article>
+
+        <CompanionPresenceCard className="panel fade-up" data-delay="0" companion={activeCompanion} />
 
         <article id="whisper" class="panel fade-up" data-delay="1" aria-label="Whisper composer">
           <div class="panel__header">

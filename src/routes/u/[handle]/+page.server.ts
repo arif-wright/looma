@@ -306,14 +306,15 @@ export const load: PageServerLoad = async (event) => {
       blocked: true,
       followCounts,
       featuredCompanion: null,
-    posts: [],
-    nextCursor: null,
-    pinnedPost: null,
-    shareUrl,
-    ogImageUrl: `${baseUrl}/og/default-profile.png`,
-    metaDescription: 'This profile is not available',
-    personaPublic: null
-  };
+      posts: [],
+      nextCursor: null,
+      pinnedPost: null,
+      shareUrl,
+      ogImageUrl: `${baseUrl}/og/default-profile.png`,
+      metaDescription: 'This profile is not available',
+      personaPublic: null,
+      companionHidden: true
+    };
   }
 
   const parsedLinks = parseLinks(profileRow.links);
@@ -375,6 +376,9 @@ export const load: PageServerLoad = async (event) => {
 
   const personaPublic = gated ? null : personaSummary ?? null;
 
+  const showCompanion = !gated && !blockedView;
+  const displayedCompanion = showCompanion ? companion : null;
+
   return {
     profile: profilePayload,
     stats,
@@ -386,13 +390,14 @@ export const load: PageServerLoad = async (event) => {
     gated,
     blocked: blockedView,
     followCounts,
-    featuredCompanion: companion,
+    featuredCompanion: displayedCompanion,
     posts: safeFeed,
     nextCursor: safeNextCursor,
     pinnedPost: pinned,
     shareUrl,
     ogImageUrl,
     metaDescription,
-    personaPublic
+    personaPublic,
+    companionHidden: !showCompanion
   };
 };

@@ -44,6 +44,7 @@ const resetCompanion = async (companionId: string) => {
 test.describe('Companion care loop UI', () => {
   let companionId: string;
   let companionName: string;
+  let viewerHandle: string;
 
   test.beforeAll(async () => {
     const { data, error } = await adminClient
@@ -60,6 +61,18 @@ test.describe('Companion care loop UI', () => {
 
     companionId = data.id as string;
     companionName = data.name as string;
+
+    const { data: profileRow, error: profileError } = await adminClient
+      .from('profiles')
+      .select('handle')
+      .eq('id', TEST_USERS.viewer.id)
+      .maybeSingle();
+
+    if (profileError || !profileRow) {
+      throw new Error(`Unable to load viewer profile: ${profileError?.message ?? 'not found'}`);
+    }
+
+    viewerHandle = profileRow.handle as string;
   });
 
   test.beforeEach(async () => {
@@ -164,5 +177,42 @@ test.describe('Companion care loop UI', () => {
     expect(affectionValue).toBe(74);
     expect(trustValue).toBe(63);
     expect(energyValue).toBe(49);
+  });
+
+  test('home surfaces companion presence card', async ({ page }) => {
+    await adminClient.from('companions').update({ is_active: false }).eq('owner_id', TEST_USERS.viewer.id);
+    await adminClient
+      .from('companions')
+      .update({ is_active: true, mood: 'radiant', affection: 82, trust: 70, energy: 64 })
+      .eq('id', companionId);
+
+    await page.goto('/app/home');
+    const card = page.getByLabel('Your companion today');
+    await expect(card.getByText(companionName)).toBeVisible();
+    await expect(card.getByText(/Radiant/i)).toBeVisible();
+    await expect(card.getByRole('link', { name: /Check in/i })).toBeVisible();
+  });
+
+  test('home shows empty companion state when none are active', async ({ page }) => {
+    await adminClient.from('companions').update({ is_active: false }).eq('owner_id', TEST_USERS.viewer.id);
+    await page.goto('/app/home');
+    await expect(page.getByLabel('No companion yet')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Find your first bond/i })).toBeVisible();
+  });
+
+  test('profile surfaces featured companion card', async ({ page }) => {
+    await adminClient
+      .from('companions')
+      .update({ is_active: true, mood: 'curious', affection: 68, trust: 61 })
+      .eq('id', companionId);
+    await page.goto('/app/profile');
+    await expect(page.getByText('Featured Companion')).toBeVisible();
+    await expect(page.getByText(/Curious · eager to explore/i)).toBeVisible();
+  });
+
+  test('public profile shows companion badge', async ({ page }) => {
+    await page.goto(`/u/${viewerHandle}`);
+    await expect(page.getByText(/Bonded with/i)).toBeVisible();
+    await expect(page.getByText(new RegExp(companionName, 'i'))).toBeVisible();
   });
 });

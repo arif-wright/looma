@@ -453,6 +453,7 @@ export const load: PageServerLoad = async (event) => {
     flags: {
       bond_genesis: Boolean((flagResult.data as { enabled?: boolean } | null)?.enabled)
     },
-    persona: personaSummary ?? null
+    persona: personaSummary ?? null,
+    companionHidden: false
   };
 };

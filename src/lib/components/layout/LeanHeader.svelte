@@ -3,6 +3,7 @@
   import LeanHeaderDesktop from '$lib/components/header/LeanHeaderDesktop.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -17,10 +18,11 @@
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
   export let profile: { display_name?: string | null; handle?: string | null; avatar_url?: string | null } | null = null;
+  export let activeCompanion: ActiveCompanionSnapshot | null = null;
 </script>
 
 <div class="md:hidden">
-  <LeanHeaderMobile {notifications} {userEmail} {profile} />
+  <LeanHeaderMobile {notifications} {userEmail} {profile} {activeCompanion} />
 </div>
 <div class="hidden md:block">
   <LeanHeaderDesktop
@@ -37,5 +39,6 @@
     {userEmail}
     {profile}
     {onLogout}
+    {activeCompanion}
   />
 </div>

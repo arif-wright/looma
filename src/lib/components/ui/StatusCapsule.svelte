@@ -3,6 +3,8 @@
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { currentProfile } from '$lib/stores/profile';
+  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
@@ -13,10 +15,11 @@
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
-  export let className = '';
-  export let walletBalance: number | null = null;
-  export let walletCurrency = 'SHARDS';
-  export let walletDelta: number | null = null;
+export let className = '';
+export let walletBalance: number | null = null;
+export let walletCurrency = 'SHARDS';
+export let walletDelta: number | null = null;
+export let activeCompanion: ActiveCompanionSnapshot | null = null;
 
 let walletPulse = false;
 let lastBalance: number | null = null;
@@ -75,12 +78,25 @@ const capsuleBaseClass =
       ? Math.min(100, Math.max(0, (xp / xpNext) * 100))
       : 0;
 
+  $: capsuleMood = activeCompanion ? getCompanionMoodMeta(activeCompanion.mood) : null;
+  $: capsuleMoodTitle =
+    capsuleMood && activeCompanion
+      ? `${activeCompanion.name} is ${capsuleMood.indicatorTitle}`
+      : '';
+
   onDestroy(() => {
     if (pulseTimer) clearTimeout(pulseTimer);
   });
 </script>
 
 <div class={`${capsuleBaseClass} ${className}`.trim()} data-testid="top-status">
+  {#if capsuleMood && activeCompanion}
+    <div class={`companion-indicator companion-indicator--${capsuleMood.key}`} title={capsuleMoodTitle}>
+      <span aria-hidden="true"></span>
+      <span class="sr-only">{capsuleMoodTitle}</span>
+    </div>
+    <span aria-hidden="true" class="divider">•</span>
+  {/if}
   <div class="stat stat--xp" aria-label="Bond level progress">
     <div class="stat-label">
       <span class="text-white/75">Level</span>
@@ -220,6 +236,52 @@ const capsuleBaseClass =
   :global(.ring-neon::before),
   :global(.ring-neon::after) {
     pointer-events: none !important;
+  }
+
+  .companion-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    position: relative;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+  }
+
+  .companion-indicator span {
+    position: absolute;
+    inset: 2px;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .companion-indicator--radiant {
+    background: radial-gradient(circle at 30% 30%, rgba(98, 246, 255, 0.9), rgba(9, 132, 255, 0.75));
+    box-shadow: 0 0 16px rgba(98, 246, 255, 0.65);
+  }
+
+  .companion-indicator--curious {
+    background: radial-gradient(circle at 30% 30%, rgba(236, 146, 255, 0.92), rgba(148, 58, 255, 0.72));
+    box-shadow: 0 0 16px rgba(236, 146, 255, 0.5);
+  }
+
+  .companion-indicator--steady {
+    background: radial-gradient(circle at 30% 30%, rgba(180, 195, 219, 0.9), rgba(119, 132, 150, 0.7));
+    box-shadow: 0 0 12px rgba(180, 195, 219, 0.35);
+  }
+
+  .companion-indicator--tired {
+    background: radial-gradient(circle at 30% 30%, rgba(255, 196, 120, 0.95), rgba(255, 138, 74, 0.78));
+    box-shadow: 0 0 12px rgba(255, 196, 120, 0.45);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
   }
 
   .stat {

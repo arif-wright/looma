@@ -11,6 +11,7 @@ import {
 } from '$lib/server/landing';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getAdminFlags } from '$lib/server/admin-guard';
+import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -241,6 +242,8 @@ export const load: LayoutServerLoad = async (event) => {
     console.error('[resolver] wallet lookup failed', walletError);
   }
 
+  let activeCompanion: ActiveCompanionSnapshot | null = null;
+
   try {
     const { data: notificationRows, error: notificationError } = await supabase
       .from('notifications')
@@ -260,6 +263,35 @@ export const load: LayoutServerLoad = async (event) => {
     }
   } catch (err) {
     console.error('[resolver] notifications fetch unexpected error', err);
+  }
+
+  try {
+    const { data: activeRows, error: activeError } = await supabase
+      .from('companions')
+      .select('id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at')
+      .eq('owner_id', user.id)
+      .order('is_active', { ascending: false })
+      .order('slot_index', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (activeError) {
+      console.error('[resolver] active companion lookup failed', activeError);
+    } else if (activeRows && activeRows.length) {
+      const row = activeRows[0] as Record<string, any>;
+      activeCompanion = {
+        id: row.id as string,
+        name: (row.name as string) ?? 'Companion',
+        species: (row.species as string | null) ?? null,
+        mood: (row.mood as string | null) ?? (row.state as string | null) ?? null,
+        affection: (row.affection as number | null) ?? 0,
+        trust: (row.trust as number | null) ?? 0,
+        energy: (row.energy as number | null) ?? 0,
+        avatar_url: (row.avatar_url as string | null) ?? null
+      };
+    }
+  } catch (err) {
+    console.error('[resolver] active companion lookup threw', err);
   }
 
   let decision: LandingDecision | null = null;
@@ -319,6 +351,7 @@ export const load: LayoutServerLoad = async (event) => {
     wallet: {
       shards: walletRow?.shards ?? null
     },
+    activeCompanion,
     isAdmin: adminFlags.isAdmin,
     adminFlags
   };

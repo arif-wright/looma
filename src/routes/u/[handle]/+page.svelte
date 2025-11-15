@@ -80,6 +80,7 @@
           isOwner={false}
           hideCompanionActions={true}
           hidePrivate={true}
+          companionHidden={data.companionHidden ?? false}
         />
         <PeopleToFollow title="People you may know" />
       </div>

@@ -4,6 +4,9 @@
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
+  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+  import { activeCompanionStore } from '$lib/stores/companions';
+  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -18,6 +21,7 @@
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
   export let profile: CurrentProfile = null;
+  export let activeCompanion: ActiveCompanionSnapshot | null = null;
 
   $: levelLabel = typeof level === 'number' ? level : '—';
   $: xpPct = typeof xp === 'number' && typeof xpNext === 'number' && xpNext > 0
@@ -49,6 +53,15 @@
     event.preventDefault();
     goto('/app/wallet');
   };
+
+  const activeStore = activeCompanionStore;
+  $: storeActive = $activeStore ?? null;
+  $: headerCompanion = storeActive ?? activeCompanion ?? null;
+  $: headerMood = headerCompanion ? getCompanionMoodMeta(headerCompanion.mood) : null;
+  $: moodTitle =
+    headerCompanion && headerMood
+      ? `${headerCompanion.name} is ${headerMood.indicatorTitle}`
+      : '';
 </script>
 
 <header class="lean-header" data-testid="lean-header">
@@ -72,6 +85,12 @@
 
     <div class="lean-header__right">
       <div class="lean-status" aria-label="Player status">
+        {#if headerCompanion && headerMood}
+          <div class={`lean-status__companion lean-status__companion--${headerMood.key}`} title={moodTitle}>
+            <span aria-hidden="true"></span>
+            <span class="lean-status__sr">{moodTitle}</span>
+          </div>
+        {/if}
         <div class="lean-status__level">
           <span class="lean-status__label">Level</span>
           <strong>{levelLabel}</strong>
@@ -321,6 +340,53 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
     color: rgba(248, 250, 255, 0.85);
+  }
+
+  .lean-status__companion {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    position: relative;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+  }
+
+  .lean-status__companion span {
+    position: absolute;
+    inset: 2px;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .lean-status__companion--radiant {
+    background: radial-gradient(circle at 30% 30%, rgba(98, 246, 255, 0.9), rgba(9, 132, 255, 0.75));
+    box-shadow: 0 0 14px rgba(98, 246, 255, 0.6);
+  }
+
+  .lean-status__companion--curious {
+    background: radial-gradient(circle at 30% 30%, rgba(236, 146, 255, 0.92), rgba(148, 58, 255, 0.72));
+    box-shadow: 0 0 14px rgba(236, 146, 255, 0.45);
+  }
+
+  .lean-status__companion--steady {
+    background: radial-gradient(circle at 30% 30%, rgba(180, 195, 219, 0.9), rgba(119, 132, 150, 0.72));
+    box-shadow: 0 0 12px rgba(180, 195, 219, 0.35);
+  }
+
+  .lean-status__companion--tired {
+    background: radial-gradient(circle at 30% 30%, rgba(255, 196, 120, 0.95), rgba(255, 138, 74, 0.78));
+    box-shadow: 0 0 12px rgba(255, 196, 120, 0.45);
+  }
+
+  .lean-status__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
   }
 
   .lean-status__level {

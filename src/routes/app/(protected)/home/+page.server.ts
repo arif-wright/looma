@@ -7,6 +7,7 @@ import { recordAnalyticsEvent } from '$lib/server/analytics';
 import type { FeedItem } from '$lib/social/types';
 import { getWalletWithTransactions } from '$lib/server/econ/index';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
+import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 
 type MissionSummary = {
   id: string;
@@ -26,6 +27,10 @@ type CreatureMoment = {
   state?: string | null;
   is_active?: boolean | null;
   slot_index?: number | null;
+  affection?: number | null;
+  trust?: number | null;
+  energy?: number | null;
+  avatar_url?: string | null;
 };
 
 const DEFAULT_ENDCAP = {
@@ -37,6 +42,7 @@ const DEFAULT_ENDCAP = {
 export const load: PageServerLoad = async (event) => {
   const parent = await event.parent();
   const { session } = parent;
+  const parentActiveCompanion: ActiveCompanionSnapshot | null = (parent as Record<string, any>).activeCompanion ?? null;
 
   const diagnostics: string[] = [];
   const safe = {
@@ -52,7 +58,8 @@ export const load: PageServerLoad = async (event) => {
     wallet: null as Awaited<ReturnType<typeof getWalletWithTransactions>>['wallet'] | null,
     walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions'],
     flags: { bond_genesis: false },
-    companionCount: 0
+    companionCount: 0,
+    activeCompanion: parentActiveCompanion
   };
 
   try {
@@ -142,7 +149,7 @@ export const load: PageServerLoad = async (event) => {
       try {
         const { data } = await supabase
           .from('companions')
-          .select('id, name, species, mood, state, is_active, slot_index, created_at')
+          .select('id, name, species, mood, state, is_active, slot_index, created_at, affection, trust, energy, avatar_url')
           .eq('owner_id', session.user.id)
           .order('is_active', { ascending: false })
           .order('slot_index', { ascending: true, nullsFirst: false })
@@ -150,10 +157,11 @@ export const load: PageServerLoad = async (event) => {
           .limit(3)
           .throwOnError();
 
-        creatureMoments = (data as CreatureMoment[] | null)?.map((row) => ({
-          ...row,
-          mood_label: row.mood ?? row.state ?? 'steady'
-        })) ?? [];
+        creatureMoments =
+          (data as CreatureMoment[] | null)?.map((row) => ({
+            ...row,
+            mood_label: row.mood ?? row.state ?? 'steady'
+          })) ?? [];
       } catch (err) {
         diagnostics.push('creatures_query_failed');
         reportHomeLoadIssue('creatures_query_failed', { error: err instanceof Error ? err.message : String(err) });
@@ -240,6 +248,21 @@ export const load: PageServerLoad = async (event) => {
       });
     }
 
+    const rowToSnapshot = (row: CreatureMoment): ActiveCompanionSnapshot => ({
+      id: row.id,
+      name: row.name ?? 'Companion',
+      species: row.species ?? null,
+      mood: row.mood ?? row.state ?? null,
+      affection: row.affection ?? 0,
+      trust: row.trust ?? 0,
+      energy: row.energy ?? 0,
+      avatar_url: row.avatar_url ?? null
+    });
+
+    const fallbackCompanion = creatureMoments.find((c) => c.is_active) ?? creatureMoments[0] ?? null;
+    const activeCompanion =
+      parentActiveCompanion ?? (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null);
+
     return {
       stats,
       feed: feedItems,
@@ -253,7 +276,8 @@ export const load: PageServerLoad = async (event) => {
       wallet,
       walletTx,
       flags,
-      companionCount
+      companionCount,
+      activeCompanion
     };
   } catch (err) {
     diagnostics.push('home_load_failed');
@@ -261,6 +285,6 @@ export const load: PageServerLoad = async (event) => {
       error: err instanceof Error ? err.message : String(err)
     });
 
-    return safe;
+    return { ...safe, activeCompanion: parentActiveCompanion ?? null };
   }
 };

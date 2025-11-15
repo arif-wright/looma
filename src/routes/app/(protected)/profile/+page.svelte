@@ -102,6 +102,7 @@ let editOpen = false;
           featuredCompanion={data.featuredCompanion}
           achievements={sidebarAchievements}
           isOwner={data.isOwner}
+          companionHidden={data.companionHidden ?? false}
         />
 
         <FollowRequestsPanel items={data.followRequests ?? []} />

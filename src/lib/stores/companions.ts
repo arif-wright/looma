@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { writable } from 'svelte/store';
+import { derived, writable } from 'svelte/store';
 import { supabaseBrowser } from '$lib/supabaseClient';
 import { logEvent } from '$lib/analytics';
 
@@ -44,10 +44,42 @@ export type CareState = {
   streak?: number | null;
 };
 
+export type ActiveCompanionSnapshot = {
+  id: string;
+  name: string;
+  species: string | null;
+  mood: string | null;
+  affection: number;
+  trust: number;
+  energy: number;
+  avatar_url?: string | null;
+};
+
 type RefreshResult = {
   data: Companion[] | null;
   error: Error | null;
 };
+
+const deriveActiveSnapshot = (list: Companion[]): ActiveCompanionSnapshot | null => {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const preferred =
+    list.find((entry) => entry.is_active || entry.state === 'active') ??
+    list.find((entry) => typeof entry.slot_index === 'number') ??
+    list[0];
+  if (!preferred) return null;
+  return {
+    id: preferred.id,
+    name: preferred.name,
+    species: preferred.species ?? null,
+    mood: preferred.mood ?? preferred.state ?? 'steady',
+    affection: preferred.affection ?? 0,
+    trust: preferred.trust ?? 0,
+    energy: preferred.energy ?? 0,
+    avatar_url: preferred.avatar_url ?? null
+  };
+};
+
+let latestActiveSnapshot: ActiveCompanionSnapshot | null = null;
 
 const createCompanionsStore = () => {
   const { subscribe, set, update } = writable<Companion[]>([]);
@@ -68,11 +100,16 @@ const createCompanionsStore = () => {
     lastSnapshot = nextList;
   };
 
+  const syncActiveSnapshot = (list: Companion[]) => {
+    latestActiveSnapshot = deriveActiveSnapshot(list);
+  };
+
   return {
     subscribe,
     setList: (list: Companion[]) => {
       set(list);
       applyLevelTracking(list);
+       syncActiveSnapshot(list);
     },
     refresh: async (): Promise<RefreshResult> => {
       if (!browser) {
@@ -93,6 +130,7 @@ const createCompanionsStore = () => {
       const list = (data as Companion[]) ?? [];
       set(list);
       applyLevelTracking(list);
+      syncActiveSnapshot(list);
       return { data: list, error: null };
     },
     applyCare: (id: string, state: CareState) => {
@@ -117,6 +155,15 @@ const createCompanionsStore = () => {
         return nextList;
       });
       applyLevelTracking(nextList);
+      syncActiveSnapshot(nextList);
+    },
+    getActiveSnapshot: () => latestActiveSnapshot ?? null
+  };
+};
+
+export const companionsStore = createCompanionsStore();
+export const activeCompanionStore = derived(companionsStore, (list) => deriveActiveSnapshot(list));
+export const getActiveCompanionSnapshot = () => latestActiveSnapshot;
     }
   };
 };

@@ -104,6 +104,7 @@
         notifications={bellNotifications}
         unreadCount={bellUnread}
         userEmail={userEmail}
+        activeCompanion={data?.activeCompanion ?? null}
         onLogout={handleLogout}
       />
     {:else}
@@ -121,6 +122,7 @@
         onLogout={handleLogout}
         iconNavItems={iconNavItems}
         profile={data?.profile ?? null}
+        activeCompanion={data?.activeCompanion ?? null}
       />
     {/if}
 
