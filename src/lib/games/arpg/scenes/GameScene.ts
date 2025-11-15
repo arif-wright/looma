@@ -3,9 +3,11 @@ import { World, type Vec2 } from '../ecs/components';
 import { dashSystem, movementSystem } from '../ecs/systems';
 
 const RUN_LIMIT_MS = 60000;
-const TILESET_KEY = 'shardfront-tiles';
-const TILEMAP_KEY = 'shardfront-map';
-const HERO_KEY = 'hero-runner';
+const TILESET_KEY = 'shardfront-iso-tiles';
+const TILEMAP_KEY = 'shardfront-iso-map';
+const HERO_KEY = 'hero-iso';
+const AMBIENT_KEY = 'ambient-overlay';
+const VIGNETTE_KEY = 'vignette-overlay';
 
 export class GameScene extends Phaser.Scene {
   private static onGameOver: ((score: number) => void) | null = null;
@@ -19,6 +21,7 @@ export class GameScene extends Phaser.Scene {
   private playerSprite!: Phaser.Physics.Arcade.Sprite;
   private map!: Phaser.Tilemaps.Tilemap;
   private wallLayer!: Phaser.Tilemaps.TilemapLayer;
+  private collisionLayer!: Phaser.Tilemaps.TilemapLayer;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'w' | 'a' | 's' | 'd', Phaser.Input.Keyboard.Key>;
   private dashKeys: Phaser.Input.Keyboard.Key[] = [];
@@ -28,14 +31,19 @@ export class GameScene extends Phaser.Scene {
   private ended = false;
   private scoreText!: Phaser.GameObjects.Text;
   private instructionText!: Phaser.GameObjects.Text;
+  private shadow!: Phaser.GameObjects.Ellipse;
+  private ambientImage!: Phaser.GameObjects.Image;
+  private vignetteImage!: Phaser.GameObjects.Image;
 
   preload() {
-    this.load.image(TILESET_KEY, '/games/arpg/tileset.png');
-    this.load.tilemapTiledJSON(TILEMAP_KEY, '/games/arpg/shardfront.json');
-    this.load.spritesheet(HERO_KEY, '/games/arpg/hero.png', {
-      frameWidth: 32,
-      frameHeight: 32
+    this.load.image(TILESET_KEY, '/games/arpg/tileset_iso.png');
+    this.load.tilemapTiledJSON(TILEMAP_KEY, '/games/arpg/shardfront_iso.json');
+    this.load.spritesheet(HERO_KEY, '/games/arpg/hero_iso.png', {
+      frameWidth: 64,
+      frameHeight: 64
     });
+    this.load.image(AMBIENT_KEY, '/games/arpg/ambient.png');
+    this.load.image(VIGNETTE_KEY, '/games/arpg/vignette.png');
   }
 
   create() {
@@ -45,20 +53,25 @@ export class GameScene extends Phaser.Scene {
     this.world = new World();
 
     this.map = this.make.tilemap({ key: TILEMAP_KEY });
-    const tileset = this.map.addTilesetImage('ShardfrontTiles', TILESET_KEY);
+    const tileset = this.map.addTilesetImage('ShardfrontIso', TILESET_KEY);
     if (!tileset) {
       throw new Error('Tileset missing for Shardfront Approach');
     }
 
     this.map.createLayer('floor', tileset, 0, 0)?.setDepth(0);
-    this.wallLayer = this.map.createLayer('walls', tileset, 0, 0);
+    this.wallLayer = this.map.createLayer('walls', tileset, 0, 0).setDepth(2);
     if (!this.wallLayer) {
       throw new Error('Wall layer missing from map');
     }
-    this.wallLayer.setCollision([3, 4], true);
+    this.collisionLayer = this.map.createLayer('collision', tileset, 0, 0);
+    if (this.collisionLayer) {
+      this.collisionLayer.setVisible(false);
+      this.collisionLayer.setCollision([1, 2, 3, 4], true);
+    }
+    this.wallLayer.setAlpha(1);
 
-    const spawnX = this.map.widthInPixels * 0.18;
-    const spawnY = this.map.heightInPixels * 0.7;
+    const spawnX = this.map.widthInPixels * 0.5;
+    const spawnY = this.map.heightInPixels * 0.65;
 
     this.playerId = this.world.createEntity();
     this.world.setTransform(this.playerId, { x: spawnX, y: spawnY, rotation: 0 });
@@ -71,38 +84,60 @@ export class GameScene extends Phaser.Scene {
       remainingCooldown: 0,
       remainingDuration: 0,
       isDashing: false,
-      queuedDirection: null
-    });
+        queuedDirection: null
+      });
 
     this.playerSprite = this.physics.add.sprite(spawnX, spawnY, HERO_KEY, 0);
+    this.playerSprite.setOrigin(0.5, 0.85);
     this.playerSprite.setCollideWorldBounds(true);
-    this.playerSprite.setDepth(5);
-    this.playerSprite.body.setSize(20, 20);
-    this.playerSprite.body.setOffset(6, 8);
+    this.playerSprite.setDepth(7);
+    this.playerSprite.body.setSize(28, 24);
+    this.playerSprite.body.setOffset(18, 30);
+    this.shadow = this.add.ellipse(spawnX, spawnY, 50, 18, 0x000000, 0.4);
+    this.shadow.setDepth(6);
+    this.shadow.setAlpha(0.45);
+    this.shadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
 
     this.createAnimations();
     this.playerSprite.play('hero-idle');
 
-    this.physics.add.collider(this.playerSprite, this.wallLayer);
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
     this.cameras.main.startFollow(this.playerSprite, true, 0.18, 0.18);
 
+    this.ambientImage = this.add
+      .image(0, 0, AMBIENT_KEY)
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(8)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.vignetteImage = this.add
+      .image(0, 0, VIGNETTE_KEY)
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(20)
+      .setAlpha(0.75);
+    this.positionOverlays();
+
     this.scoreText = this.add
-      .text(18, 48, 'Score 0', {
+      .text(32, 72, 'Score 0', {
         fontFamily: 'Inter, system-ui, sans-serif',
-        fontSize: '22px',
-        color: '#e9f1ff'
+        fontSize: '24px',
+        color: '#f4fbff',
+        stroke: '#020205',
+        strokeThickness: 3
       })
       .setScrollFactor(0)
       .setDepth(30);
 
     this.instructionText = this.add
-      .text(18, 16, 'WASD or arrows to move — Shift/Space to dash', {
+      .text(32, 36, 'WASD or arrows to move — Shift/Space to dash', {
         fontFamily: 'Inter, system-ui, sans-serif',
-        fontSize: '14px',
-        color: '#90a1ff'
+        fontSize: '15px',
+        color: '#a0b8ff',
+        stroke: '#020205',
+        strokeThickness: 2
       })
       .setScrollFactor(0)
       .setDepth(30);
@@ -145,6 +180,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.syncSpriteWithTransform();
     this.updateAnimation(hasInput);
+
+    this.positionOverlays();
 
     if (this.elapsedMs >= RUN_LIMIT_MS || Phaser.Input.Keyboard.JustDown(this.escKey)) {
       this.endRun();
@@ -224,8 +261,9 @@ export class GameScene extends Phaser.Scene {
       { x: halfW, y: halfH }
     ];
     return probes.some((offset) => {
-      const tile = this.wallLayer.getTileAtWorldXY(x + offset.x, y + offset.y, true);
-      return tile ? tile.collides : false;
+      const layer = this.collisionLayer ?? this.wallLayer;
+      const tile = layer.getTileAtWorldXY(x + offset.x, y + offset.y, true);
+      return tile ? tile.collides || tile.index > 0 : false;
     });
   }
 
@@ -234,12 +272,16 @@ export class GameScene extends Phaser.Scene {
     const transform = this.world.getTransform(this.playerId);
     if (!transform) return;
     this.playerSprite.setPosition(transform.x, transform.y);
+    this.shadow?.setPosition(transform.x, transform.y + 6);
   }
 
   private updateAnimation(isMoving: boolean) {
     const animKey = isMoving ? 'hero-walk' : 'hero-idle';
     if (this.playerSprite.anims.currentAnim?.key !== animKey) {
       this.playerSprite.play(animKey, true);
+    }
+    if (this.lastDirection.x !== 0) {
+      this.playerSprite.setFlipX(this.lastDirection.x < 0);
     }
   }
 
@@ -260,6 +302,25 @@ export class GameScene extends Phaser.Scene {
         repeat: -1
       });
     }
+  }
+
+  private positionOverlays() {
+    if (!this.ambientImage || !this.vignetteImage) return;
+    const cam = this.cameras.main;
+    const cx = cam.width / 2;
+    const cy = cam.height / 2;
+    this.ambientImage.setPosition(cx, cy);
+    this.vignetteImage.setPosition(cx, cy);
+    const ambientScale = Math.max(
+      (cam.width / this.ambientImage.width) * 1.2,
+      (cam.height / this.ambientImage.height) * 1.2
+    );
+    const vignetteScale = Math.max(
+      (cam.width / this.vignetteImage.width) * 1.15,
+      (cam.height / this.vignetteImage.height) * 1.15
+    );
+    this.ambientImage.setScale(ambientScale);
+    this.vignetteImage.setScale(vignetteScale);
   }
 
   private endRun() {
