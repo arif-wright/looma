@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { PlayerStats } from '$lib/server/queries/getPlayerStats';
+  import type { BondBonus } from '$lib/companions/bond';
   import { computeTodayCardState } from './todayCardLogic';
   import { sendAnalytics } from '$lib/utils/analytics';
 
@@ -35,6 +36,7 @@
   export let recentFail: { missionId?: string | null; name?: string | null } | null = null;
   export let bondGenesisEnabled = false;
   export let companionCount: number | null = null;
+  export let companionBonus: BondBonus | null = null;
 
   const dispatch = createEventDispatcher<{
     claim: void;
@@ -45,11 +47,13 @@
   let missionForCta: string | null = null;
 
   $: resolvedEnergy = energy ?? stats?.energy ?? 0;
-  $: resolvedEnergyMax = energyMax ?? stats?.energy_max ?? 0;
+  $: bonusEnergy = companionBonus?.missionEnergyBonus ?? 0;
+  $: resolvedEnergyMax = (energyMax ?? stats?.energy_max ?? 0) + bonusEnergy;
   $: energyPercent =
     resolvedEnergyMax && resolvedEnergyMax > 0
       ? Math.round((resolvedEnergy / resolvedEnergyMax) * 100)
       : null;
+  $: xpBoost = Math.round(((companionBonus?.xpMultiplier ?? 1) - 1) * 100);
   $: resolvedStreak = streak ?? stats?.missions_completed ?? 0;
   $: rewardPending = typeof pendingReward === 'boolean' ? pendingReward : !!pendingReward;
   $: rewardLabel =
@@ -153,6 +157,9 @@
       <strong class="metric-value">
         {resolvedEnergyMax > 0 ? `${resolvedEnergy}/${resolvedEnergyMax}` : resolvedEnergy}
       </strong>
+      {#if bonusEnergy > 0}
+        <p class="metric-sub bonus">+{bonusEnergy} companion cap</p>
+      {/if}
       {#if energyPercent !== null}
         <div
           class="meter"
@@ -196,6 +203,9 @@
       </span>
       {#if missionDifficulty && ctaState !== 'reward'}
         <span class="badge">{missionDifficulty}</span>
+      {/if}
+      {#if xpBoost > 0 && ctaState !== 'reward'}
+        <span class="bonus-pill">+{xpBoost}% companion XP</span>
       {/if}
     </div>
 
@@ -303,6 +313,10 @@
     margin: 0;
     font-size: 0.85rem;
     color: rgba(226, 232, 255, 0.8);
+  }
+
+  .metric-sub.bonus {
+    color: rgba(94, 234, 212, 0.92);
   }
 
   .meter {
@@ -456,6 +470,18 @@
     font-size: 0.72rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .bonus-pill {
+    border-radius: 999px;
+    border: 1px solid rgba(94, 234, 212, 0.4);
+    padding: 0.2rem 0.75rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(94, 234, 212, 0.95);
+    display: inline-flex;
+    align-items: center;
   }
 
   .companion {

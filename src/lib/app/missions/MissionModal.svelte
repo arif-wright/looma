@@ -3,6 +3,7 @@
   import { browser } from '$app/environment';
   import Portal from '$lib/ui/Portal.svelte';
   import type { MissionRow } from '$lib/data/missions';
+  import { activeCompanionBonus } from '$lib/stores/companions';
 
   export let mission: MissionRow | null = null;
   export let open = false;
@@ -15,6 +16,9 @@
   let modalEl: HTMLElement | null = null;
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
+  $: bonus = $activeCompanionBonus;
+  $: xpBoost = Math.round(((bonus?.xpMultiplier ?? 1) - 1) * 100);
+  $: missionEnergyBonus = bonus?.missionEnergyBonus ?? 0;
 
   function close() {
     dispatch('close');
@@ -118,6 +122,18 @@
         </p>
       {/if}
 
+      {#if xpBoost > 0 || missionEnergyBonus > 0}
+        <div class="companion-bonus">
+          <span>Companion bonus:</span>
+          {#if xpBoost > 0}
+            <span>+{xpBoost}% XP</span>
+          {/if}
+          {#if missionEnergyBonus > 0}
+            <span>+{missionEnergyBonus} mission energy cap</span>
+          {/if}
+        </div>
+      {/if}
+
       <dl class="grid grid-cols-2 gap-3 text-sm text-slate-200/70">
         <div class="stat">
           <dt class="font-medium text-slate-300/90">Difficulty</dt>
@@ -161,5 +177,17 @@
   .stat {
     display: grid;
     gap: 4px;
+  }
+
+  .companion-bonus {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(125, 211, 252, 0.95);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 0.85rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(59, 130, 246, 0.08);
   }
 </style>

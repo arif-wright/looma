@@ -268,7 +268,9 @@ export const load: LayoutServerLoad = async (event) => {
   try {
     const { data: activeRows, error: activeError } = await supabase
       .from('companions')
-      .select('id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at')
+      .select(
+        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, stats:companion_stats(bond_level, bond_score)'
+      )
       .eq('owner_id', user.id)
       .order('is_active', { ascending: false })
       .order('slot_index', { ascending: true, nullsFirst: false })
@@ -287,7 +289,9 @@ export const load: LayoutServerLoad = async (event) => {
         affection: (row.affection as number | null) ?? 0,
         trust: (row.trust as number | null) ?? 0,
         energy: (row.energy as number | null) ?? 0,
-        avatar_url: (row.avatar_url as string | null) ?? null
+        avatar_url: (row.avatar_url as string | null) ?? null,
+        bondLevel: (row.stats as Record<string, unknown> | null)?.bond_level as number | null ?? 0,
+        bondScore: (row.stats as Record<string, unknown> | null)?.bond_score as number | null ?? 0
       };
     }
   } catch (err) {

@@ -19,6 +19,7 @@
   import type { QuickLink } from '$lib/components/home/types';
   import { PenSquare, MessageCircleHeart, Rss, Target, PawPrint, Compass } from 'lucide-svelte';
   import { logEvent } from '$lib/analytics';
+  import { getBondBonusForLevel } from '$lib/companions/bond';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -47,7 +48,8 @@
   ];
 
   const energy = stats?.energy ?? 0;
-  const energyMax = stats?.energy_max ?? 0;
+  const companionBonus = getBondBonusForLevel(activeCompanion?.bondLevel ?? 0);
+  const energyMax = (stats?.energy_max ?? 0) + companionBonus.missionEnergyBonus;
   const streak = stats?.missions_completed ?? 0;
   const petMood = creatures[0]?.mood_label ?? creatures[0]?.mood ?? null;
   const activeMission = missions[0]
@@ -274,6 +276,7 @@
             recentFail={null}
             bondGenesisEnabled={bondGenesisEnabled}
             companionCount={companionCount}
+            companionBonus={companionBonus}
             on:startMission={handleStartMission}
             on:claim={handleClaimReward}
             on:checkCreature={handleCheckCreature}

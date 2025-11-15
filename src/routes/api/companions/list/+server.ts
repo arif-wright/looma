@@ -16,7 +16,7 @@ export const GET: RequestHandler = async (event) => {
   const { data, error } = await supabase
     .from('companions')
     .select(
-      'id,name,species,rarity,affection,trust,energy,mood,state,is_active,slot_index,created_at,stats:companion_stats(companion_id,care_streak,fed_at,played_at,groomed_at,last_passive_tick,last_daily_bonus_at)'
+      'id,name,species,rarity,affection,trust,energy,mood,state,is_active,slot_index,created_at,stats:companion_stats(companion_id,care_streak,fed_at,played_at,groomed_at,last_passive_tick,last_daily_bonus_at,bond_level,bond_score)'
     )
     .eq('owner_id', session.user.id)
     .order('slot_index', { ascending: true, nullsFirst: false })

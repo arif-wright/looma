@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
+import { syncPlayerBondState } from '$lib/server/companions/bonds';
 
 type TickRow = {
   companion_id: string;
@@ -17,6 +18,8 @@ type TickRow = {
   affection_delta: number | null;
   trust_delta: number | null;
   energy_delta: number | null;
+  bond_score?: number | null;
+  bond_level?: number | null;
 };
 
 const normalizeRows = (rows: unknown): TickRow[] => {
@@ -45,6 +48,8 @@ export const POST: RequestHandler = async (event) => {
       mood: string | null;
       lastPassiveTick: string | null;
       lastDailyBonusAt: string | null;
+      bondLevel: number;
+      bondScore: number;
     }
   >();
   const newEvents: Array<{
@@ -67,7 +72,9 @@ export const POST: RequestHandler = async (event) => {
         energy: row.energy ?? 0,
         mood: row.mood ?? null,
         lastPassiveTick: row.last_passive_tick ?? null,
-        lastDailyBonusAt: row.last_daily_bonus_at ?? null
+        lastDailyBonusAt: row.last_daily_bonus_at ?? null,
+        bondLevel: row.bond_level ?? 0,
+        bondScore: row.bond_score ?? 0
       });
 
       if (row.event_id && row.event_action && row.event_created_at && !seenEventIds.has(row.event_id)) {
@@ -100,6 +107,18 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: bonusResult.error.message ?? 'daily_bonus_failed' }, { status: 400 });
   }
   upsertRows(normalizeRows(bonusResult.data));
+
+  try {
+    const { rows } = await syncPlayerBondState(supabase, playerId);
+    rows.forEach((row) => {
+      const entry = statsMap.get(row.companion_id);
+      if (!entry) return;
+      entry.bondLevel = row.bond_level ?? entry.bondLevel;
+      entry.bondScore = row.bond_score ?? entry.bondScore;
+    });
+  } catch (err) {
+    console.error('[companions/tick] bond sync failed', err);
+  }
 
   return json({
     companions: Array.from(statsMap.values()),

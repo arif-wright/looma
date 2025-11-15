@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 
 const COMPANION_COLUMNS =
-  'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at)';
+  'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
 
 type TickSnapshot = {
   id: string;
@@ -11,6 +11,8 @@ type TickSnapshot = {
   mood: string | null;
   lastPassiveTick: string | null;
   lastDailyBonusAt: string | null;
+  bondLevel: number;
+  bondScore: number;
 };
 
 type PassiveTickEvent = {
@@ -52,7 +54,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
             energy: row.energy ?? 0,
             mood: row.mood ?? 'neutral',
             lastPassiveTick: row.lastPassiveTick ?? null,
-            lastDailyBonusAt: row.lastDailyBonusAt ?? null
+            lastDailyBonusAt: row.lastDailyBonusAt ?? null,
+            bondLevel: row.bondLevel ?? 0,
+            bondScore: row.bondScore ?? 0
           }
         ])
       );
@@ -81,7 +85,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       ? {
           ...companion.stats,
           last_passive_tick: ticked.lastPassiveTick,
-          last_daily_bonus_at: ticked.lastDailyBonusAt
+          last_daily_bonus_at: ticked.lastDailyBonusAt,
+          bond_level: ticked.bondLevel,
+          bond_score: ticked.bondScore
         }
       : {
           companion_id: companion.id,
@@ -90,7 +96,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
           played_at: null,
           groomed_at: null,
           last_passive_tick: ticked.lastPassiveTick,
-          last_daily_bonus_at: ticked.lastDailyBonusAt
+          last_daily_bonus_at: ticked.lastDailyBonusAt,
+          bond_level: ticked.bondLevel,
+          bond_score: ticked.bondScore
         };
     return {
       ...companion,
@@ -98,7 +106,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       trust: ticked.trust,
       energy: ticked.energy,
       mood: ticked.mood ?? companion.mood,
-      stats
+      stats,
+      bond_level: stats.bond_level,
+      bond_score: stats.bond_score
     };
   });
   const maxSlotsRaw = slotsResult.data;

@@ -39,6 +39,8 @@ import Portal from '$lib/ui/Portal.svelte';
   let errorMessage: string | null = null;
 let reward: {
   xpDelta: number;
+  baseXpDelta?: number | null;
+  xpMultiplier?: number | null;
   currencyDelta: number;
   baseCurrencyDelta?: number | null;
   currencyMultiplier?: number | null;
@@ -450,6 +452,8 @@ const handleAchievementShareCancel = () => {
 
       reward = {
         xpDelta: result.xpDelta,
+        baseXpDelta: result.baseXpDelta ?? null,
+        xpMultiplier: result.xpMultiplier ?? null,
         currencyDelta: result.currencyDelta,
         baseCurrencyDelta: result.baseCurrencyDelta ?? null,
         currencyMultiplier: result.currencyMultiplier ?? null,
@@ -478,6 +482,8 @@ const handleAchievementShareCancel = () => {
 
       recordRewardResult({
         xpDelta: result.xpDelta,
+        baseXpDelta: result.baseXpDelta ?? null,
+        xpMultiplier: result.xpMultiplier ?? null,
         currencyDelta: result.currencyDelta,
         baseCurrencyDelta: result.baseCurrencyDelta ?? null,
         currencyMultiplier: result.currencyMultiplier ?? null,

@@ -3,6 +3,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
+  import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -242,6 +243,10 @@
   $: lastPassiveTick = statsRecord?.last_passive_tick ?? null;
   $: lastCareAt = lastCareActive ?? lastPassiveTick ?? null;
   $: lastCareLabel = lastCareAt ? describeRelativeTime(lastCareAt) : 'No care yet';
+  $: bondLevel = statsRecord?.bond_level ?? companion?.bond_level ?? 0;
+  $: bondScore = statsRecord?.bond_score ?? companion?.bond_score ?? 0;
+  $: bondBonus = getBondBonusForLevel(bondLevel);
+  $: bondBonusSummary = formatBonusSummary(bondBonus);
 
   const resetCareState = () => {
     careBusy = null;
@@ -326,6 +331,21 @@
         Rename
       </button>
     </div>
+
+    <section class="bond-overview" aria-label="Bond bonuses">
+      <div class="bond-overview__meter" aria-live="polite">
+        <div class={`bond-glyph bond-glyph--${bondBonus.strong ? 'strong' : 'normal'}`}>
+          <span class="bond-glyph__level">{bondLevel}</span>
+          <span class="bond-glyph__label">Bond</span>
+        </div>
+        <p class="bond-score">Score {bondScore}</p>
+      </div>
+      <div class="bond-overview__copy">
+        <p class="bond-kicker">{bondBonus.label}</p>
+        <p class="bond-summary">{bondBonusSummary}</p>
+        <p class="bond-note">Active companion bonuses apply to XP & missions.</p>
+      </div>
+    </section>
 
     {#if renameMode}
       <form class="rename-form" on:submit|preventDefault={submitRename}>
@@ -633,6 +653,84 @@
   .care-buttons {
     display: grid;
     gap: 0.75rem;
+  }
+
+  .bond-overview {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1rem;
+    background: rgba(12, 15, 26, 0.6);
+  }
+
+  .bond-overview__meter {
+    text-align: center;
+  }
+
+  .bond-glyph {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    background: radial-gradient(circle at 30% 20%, rgba(173, 216, 255, 0.6), transparent),
+      rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(94, 234, 212, 0.35);
+    box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.25);
+  }
+
+  .bond-glyph--strong {
+    border-color: rgba(248, 250, 252, 0.65);
+    box-shadow: inset 0 0 28px rgba(248, 250, 252, 0.4);
+  }
+
+  .bond-glyph__level {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .bond-glyph__label {
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .bond-score {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(226, 232, 255, 0.75);
+  }
+
+  .bond-overview__copy {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .bond-kicker {
+    margin: 0;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(189, 246, 255, 0.85);
+  }
+
+  .bond-summary,
+  .bond-note {
+    margin: 0;
+    color: rgba(226, 232, 255, 0.85);
+  }
+
+  .bond-note {
+    font-size: 0.85rem;
+    color: rgba(148, 163, 184, 0.85);
   }
 
   .care-button {

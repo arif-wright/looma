@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
+import { syncPlayerBondState } from '$lib/server/companions/bonds';
 
 type CareAction = 'feed' | 'play' | 'groom';
 
@@ -43,7 +44,7 @@ export const POST: RequestHandler = async (event) => {
   const { data: companion, error: fetchError } = await supabase
     .from('companions')
     .select(
-      'id, owner_id, name, affection, trust, energy, mood, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at)'
+      'id, owner_id, name, affection, trust, energy, mood, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
     )
     .eq('id', companionId)
     .maybeSingle();
@@ -86,7 +87,11 @@ export const POST: RequestHandler = async (event) => {
     care_streak: 0,
     fed_at: null,
     played_at: null,
-    groomed_at: null
+    groomed_at: null,
+    last_passive_tick: null,
+    last_daily_bonus_at: null,
+    bond_level: null,
+    bond_score: null
   };
   const nowIso = new Date().toISOString();
   const nextStats = {
@@ -94,7 +99,11 @@ export const POST: RequestHandler = async (event) => {
     care_streak: (statsBase.care_streak ?? 0) + 1,
     fed_at: action === 'feed' ? nowIso : statsBase.fed_at,
     played_at: action === 'play' ? nowIso : statsBase.played_at,
-    groomed_at: action === 'groom' ? nowIso : statsBase.groomed_at
+    groomed_at: action === 'groom' ? nowIso : statsBase.groomed_at,
+    last_passive_tick: statsBase.last_passive_tick ?? null,
+    last_daily_bonus_at: statsBase.last_daily_bonus_at ?? null,
+    bond_level: statsBase.bond_level ?? null,
+    bond_score: statsBase.bond_score ?? null
   };
 
   const { error: statsError } = await supabase.from('companion_stats').upsert(nextStats, { onConflict: 'companion_id' });
@@ -119,9 +128,28 @@ export const POST: RequestHandler = async (event) => {
     console.error('[companion care] failed to insert event', eventError);
   }
 
+  let bondLevel = statsBase.bond_level ?? 0;
+  let bondScore = statsBase.bond_score ?? 0;
+  try {
+    const { rows } = await syncPlayerBondState(supabase, session.user.id);
+    const bondRow = rows.find((row) => row.companion_id === companion.id);
+    if (bondRow) {
+      bondLevel = bondRow.bond_level ?? bondLevel;
+      bondScore = bondRow.bond_score ?? bondScore;
+    }
+  } catch (err) {
+    console.error('[companion care] bond sync failed', err);
+  }
+
+  const statsWithBond = {
+    ...nextStats,
+    bond_level: bondLevel,
+    bond_score: bondScore
+  };
+
   return json({
     ok: true,
-    companion: { ...updated, stats: nextStats },
+    companion: { ...updated, bond_level: bondLevel, bond_score: bondScore, stats: statsWithBond },
     event: eventRow ?? null
   });
 };

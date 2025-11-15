@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
-  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
@@ -13,6 +14,9 @@
   $: trustPct = companion ? Math.min(100, Math.max(0, companion.trust)) : 0;
   $: energyPct = companion ? Math.min(100, Math.max(0, companion.energy)) : 0;
   $: speciesLabel = companion?.species ? `${companion.species}` : 'Unknown species';
+  $: bondLevel = companion?.bondLevel ?? 0;
+  $: bondBonus = getBondBonusForLevel(bondLevel);
+  $: bonusSummary = formatBonusSummary(bondBonus);
 </script>
 
 <article
@@ -28,6 +32,11 @@
     </div>
     {#if moodMeta && companion}
       <span class={`mood-pill mood-pill--${moodMeta.key}`}>{moodMeta.label}</span>
+    {/if}
+    {#if companion}
+      <span class="bond-pill" aria-label={`Bond level ${bondLevel}`}>
+        Bond Lv {bondLevel}
+      </span>
     {/if}
   </header>
 
@@ -53,6 +62,7 @@
           </div>
         </div>
         <p class="mood-copy">{moodMeta?.description ?? 'Steady · content by your side.'}</p>
+        <p class="bonus-copy">{bonusSummary}</p>
       </div>
     </div>
     <a class="btn-check" href="/app/companions">Check in</a>
@@ -131,6 +141,17 @@
     color: rgba(255, 196, 120, 0.85);
   }
 
+  .bond-pill {
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(224, 231, 255, 0.85);
+  }
+
   .card-body {
     display: grid;
     grid-template-columns: 160px 1fr;
@@ -176,6 +197,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
+  }
+
+  .bonus-copy {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(190, 227, 248, 0.82);
   }
 
   .stat-label {

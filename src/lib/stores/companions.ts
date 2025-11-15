@@ -2,6 +2,7 @@ import { browser } from '$app/environment';
 import { derived, writable } from 'svelte/store';
 import { supabaseBrowser } from '$lib/supabaseClient';
 import { logEvent } from '$lib/analytics';
+import { getBondBonusForLevel, type BondBonus } from '$lib/companions/bond';
 
 export type CareAction = 'feed' | 'play' | 'groom';
 
@@ -13,6 +14,8 @@ export type CompanionStats = {
   groomed_at: string | null;
   last_passive_tick?: string | null;
   last_daily_bonus_at?: string | null;
+  bond_level?: number | null;
+  bond_score?: number | null;
 };
 
 export type Companion = {
@@ -34,6 +37,8 @@ export type Companion = {
   created_at: string;
   updated_at: string;
   stats?: CompanionStats | null;
+  bond_level?: number | null;
+  bond_score?: number | null;
 };
 
 export type CareState = {
@@ -42,6 +47,8 @@ export type CareState = {
   energy: number;
   mood: string;
   streak?: number | null;
+  bondLevel?: number | null;
+  bondScore?: number | null;
 };
 
 export type ActiveCompanionSnapshot = {
@@ -53,6 +60,8 @@ export type ActiveCompanionSnapshot = {
   trust: number;
   energy: number;
   avatar_url?: string | null;
+  bondLevel: number;
+  bondScore: number;
 };
 
 type RefreshResult = {
@@ -67,6 +76,8 @@ const deriveActiveSnapshot = (list: Companion[]): ActiveCompanionSnapshot | null
     list.find((entry) => typeof entry.slot_index === 'number') ??
     list[0];
   if (!preferred) return null;
+  const bondLevel = preferred.stats?.bond_level ?? preferred.bond_level ?? 0;
+  const bondScore = preferred.stats?.bond_score ?? preferred.bond_score ?? 0;
   return {
     id: preferred.id,
     name: preferred.name,
@@ -75,7 +86,9 @@ const deriveActiveSnapshot = (list: Companion[]): ActiveCompanionSnapshot | null
     affection: preferred.affection ?? 0,
     trust: preferred.trust ?? 0,
     energy: preferred.energy ?? 0,
-    avatar_url: preferred.avatar_url ?? null
+    avatar_url: preferred.avatar_url ?? null,
+    bondLevel,
+    bondScore
   };
 };
 
@@ -119,7 +132,7 @@ const createCompanionsStore = () => {
       const { data, error } = await supabase
         .from('companions')
         .select(
-          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at)'
+          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
         )
         .order('created_at', { ascending: true });
 
@@ -138,18 +151,36 @@ const createCompanionsStore = () => {
       update((list) => {
         nextList = list.map((companion) => {
           if (companion.id !== id) return companion;
-          const nextStats: CompanionStats | null = companion.stats
-            ? { ...companion.stats, care_streak: state.streak ?? companion.stats.care_streak }
-            : state.streak !== undefined
-              ? { companion_id: companion.id, care_streak: state.streak ?? 0, fed_at: null, played_at: null, groomed_at: null }
-              : null;
+          const baseStats: CompanionStats = companion.stats ?? {
+            companion_id: companion.id,
+            care_streak: state.streak ?? 0,
+            fed_at: null,
+            played_at: null,
+            groomed_at: null,
+            last_passive_tick: null,
+            last_daily_bonus_at: null,
+            bond_level: null,
+            bond_score: null
+          };
+          const nextStats: CompanionStats | null = {
+            ...baseStats,
+            care_streak: state.streak ?? baseStats.care_streak
+          };
+          if (typeof state.bondLevel === 'number') {
+            nextStats.bond_level = state.bondLevel;
+          }
+          if (typeof state.bondScore === 'number') {
+            nextStats.bond_score = state.bondScore;
+          }
           return {
             ...companion,
             affection: state.affection,
             trust: state.trust,
             energy: state.energy,
             mood: state.mood,
-            stats: nextStats
+            stats: nextStats,
+            bond_level: nextStats.bond_level ?? companion.bond_level ?? null,
+            bond_score: nextStats.bond_score ?? companion.bond_score ?? null
           };
         });
         return nextList;
@@ -163,4 +194,7 @@ const createCompanionsStore = () => {
 
 export const companionsStore = createCompanionsStore();
 export const activeCompanionStore = derived(companionsStore, (list) => deriveActiveSnapshot(list));
+export const activeCompanionBonus = derived(activeCompanionStore, (snapshot) =>
+  getBondBonusForLevel(snapshot?.bondLevel ?? 0)
+);
 export const getActiveCompanionSnapshot = () => latestActiveSnapshot;

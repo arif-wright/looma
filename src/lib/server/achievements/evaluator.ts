@@ -45,12 +45,18 @@ export type WeeklyTopRankRule = BaseRule & {
   rank_lte: number;
 };
 
+export type BondLevelRule = BaseRule & {
+  kind: 'bond_level';
+  gte: number;
+};
+
 export type AchievementRule =
   | FirstClearRule
   | ScoreThresholdRule
   | SessionsCompletedRule
   | StreakDaysRule
-  | WeeklyTopRankRule;
+  | WeeklyTopRankRule
+  | BondLevelRule;
 
 export type AchievementDefinition = {
   id: string;
@@ -141,6 +147,11 @@ const parseRule = (raw: unknown): InternalRule => {
       const rank = toNumber(raw.rank_lte);
       if (rank === null) return null;
       return { ...(base as BaseRule), kind: 'weekly_top_rank', rank_lte: Math.max(1, Math.floor(rank)) } as WeeklyTopRankRule;
+    }
+    case 'bond_level': {
+      const gte = toNumber(raw.gte);
+      if (gte === null) return null;
+      return { ...(base as BaseRule), kind: 'bond_level', gte: Math.max(0, Math.floor(gte)) } as BondLevelRule;
     }
     default:
       return null;
@@ -417,6 +428,8 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
         return evalStreakDays(achievement.rule, facts);
       case 'weekly_top_rank':
         return evalWeeklyTopRank(achievement.rule, facts, supabase);
+      case 'bond_level':
+        return null;
       default:
         return null;
     }

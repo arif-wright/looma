@@ -6,6 +6,8 @@ type Numberish = number | null;
 export type RewardEntry = {
   id: string;
   xpDelta: number;
+  baseXpDelta?: number | null;
+  xpMultiplier?: number | null;
   currencyDelta: number;
   insertedAt: string | null;
   game: string | null;
@@ -89,6 +91,8 @@ const normalizeRewards = (rows: unknown): RewardEntry[] => {
       return {
         id,
         xpDelta: normalizeNumber(payload.xpDelta ?? payload.xp_delta) ?? 0,
+        baseXpDelta: normalizeNumber(payload.baseXpDelta ?? payload.base_xp_delta),
+        xpMultiplier: normalizeNumber(payload.xpMultiplier ?? payload.xp_multiplier),
         currencyDelta: normalizeNumber(payload.currencyDelta ?? payload.currency_delta) ?? 0,
         insertedAt,
         game: gameSlug,
@@ -168,6 +172,8 @@ export const getPlayerProgressSnapshot = (): PlayerProgressState => {
 
 type RecordRewardArgs = {
   xpDelta: number;
+  baseXpDelta?: number | null;
+  xpMultiplier?: number | null;
   currencyDelta: number;
   baseCurrencyDelta?: number | null;
   currencyMultiplier?: number | null;
@@ -178,6 +184,8 @@ type RecordRewardArgs = {
 
 export const recordRewardResult = ({
   xpDelta,
+  baseXpDelta = null,
+  xpMultiplier = null,
   currencyDelta,
   baseCurrencyDelta = null,
   currencyMultiplier = null,
@@ -203,6 +211,8 @@ export const recordRewardResult = ({
     const rewardEntry: RewardEntry = {
       id: `${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
       xpDelta: safeXp,
+      baseXpDelta: Number.isFinite(baseXpDelta as number) ? Math.round(baseXpDelta as number) : null,
+      xpMultiplier: Number.isFinite(xpMultiplier as number) ? Number(xpMultiplier) : null,
       currencyDelta: safeCurrency,
       insertedAt: timestamp,
       game,

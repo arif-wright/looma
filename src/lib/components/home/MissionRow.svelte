@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { activeCompanionBonus } from '$lib/stores/companions';
 
   export type MissionItem = {
     id: string;
@@ -16,6 +17,10 @@
 
   const readableDifficulty = (value: string | null | undefined) =>
     value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : 'Flexible';
+
+  $: companionBonus = $activeCompanionBonus;
+  $: xpBoost = Math.round(((companionBonus?.xpMultiplier ?? 1) - 1) * 100);
+  $: missionEnergyBonus = companionBonus?.missionEnergyBonus ?? 0;
 </script>
 
 {#if items.length === 0}
@@ -24,6 +29,17 @@
     <a href="/app/missions" class="cta">Browse missions</a>
   </div>
 {:else}
+  {#if xpBoost > 0 || missionEnergyBonus > 0}
+    <p class="bonus-banner">
+      Companion bonus active:
+      {#if xpBoost > 0}
+        <span>+{xpBoost}% XP</span>
+      {/if}
+      {#if missionEnergyBonus > 0}
+        <span>+{missionEnergyBonus} mission energy cap</span>
+      {/if}
+    </p>
+  {/if}
   <ul class="mission-row">
     {#each items as mission (mission.id)}
       <li>
@@ -32,6 +48,9 @@
             <h3>{mission.title ?? 'Mission'}</h3>
             <span class="pill">{readableDifficulty(mission.difficulty)}</span>
           </header>
+          {#if xpBoost > 0}
+            <p class="companion-badge">+{xpBoost}% XP from bond</p>
+          {/if}
           {#if mission.summary}
             <p class="summary">{mission.summary}</p>
           {/if}
@@ -49,6 +68,9 @@
               </div>
             {/if}
           </dl>
+          {#if missionEnergyBonus > 0}
+            <p class="mission-note">Companion raises your mission energy cap by {missionEnergyBonus}.</p>
+          {/if}
           <button
             type="button"
             class="mission-action btn-ripple hover-glow"
@@ -70,6 +92,19 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 16px;
+  }
+
+  .bonus-banner {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: rgba(148, 163, 184, 0.9);
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .bonus-banner span {
+    color: rgba(94, 234, 212, 0.95);
   }
 
   .mission-card {
@@ -108,6 +143,14 @@
     color: rgba(226, 232, 255, 0.82);
   }
 
+  .companion-badge {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(125, 211, 252, 0.9);
+  }
+
   .rewards {
     display: flex;
     gap: 16px;
@@ -138,6 +181,12 @@
     font-size: 0.9rem;
     cursor: pointer;
     transition: background 160ms ease, color 160ms ease, box-shadow 200ms ease;
+  }
+
+  .mission-note {
+    margin: 0;
+    font-size: 0.78rem;
+    color: rgba(190, 227, 248, 0.95);
   }
 
   .mission-action:focus-visible {

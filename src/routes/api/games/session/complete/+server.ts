@@ -21,12 +21,15 @@ import { applyStreakMultiplier, getStreakMultiplier, walletGrant } from '$lib/se
 import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
 import { inspectSessionComplete } from '$lib/server/anti/inspect';
+import { getCompanionXpMultiplier } from '$lib/server/companions/bonds';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 type SessionRewardResponse = {
   xpDelta: number;
+  baseXpDelta?: number;
+  xpMultiplier?: number;
   currencyDelta: number;
   baseCurrencyDelta: number;
   currencyMultiplier: number;
@@ -56,6 +59,8 @@ export const POST: RequestHandler = async (event) => {
 
   let rewards: SessionRewardResponse = {
     xpDelta: 0,
+    baseXpDelta: 0,
+    xpMultiplier: 1,
     currencyDelta: 0,
     baseCurrencyDelta: 0,
     currencyMultiplier: 1
@@ -371,13 +376,17 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const baseRewards = calculateRewards(score);
-  const xpDelta = clamp(baseRewards.xpDelta, 0, 100);
+  const baseXpDelta = clamp(baseRewards.xpDelta, 0, 100);
+  const xpMultiplier = await getCompanionXpMultiplier(user.id, admin);
+  const xpDelta = Math.max(0, Math.round(baseXpDelta * xpMultiplier));
   const baseCurrencyDelta = clamp(baseRewards.currencyDelta, 0, 200);
   const streakMultiplier = getStreakMultiplier(currentStreakDays);
   const currencyDelta = applyStreakMultiplier(baseCurrencyDelta, currentStreakDays);
 
   rewards = {
     xpDelta,
+    baseXpDelta,
+    xpMultiplier,
     currencyDelta,
     baseCurrencyDelta,
     currencyMultiplier: streakMultiplier
@@ -391,7 +400,9 @@ export const POST: RequestHandler = async (event) => {
       currencyDelta: rewards.currencyDelta,
       meta: {
         multiplier: rewards.currencyMultiplier,
-        base_currency: rewards.baseCurrencyDelta
+        base_currency: rewards.baseCurrencyDelta,
+        xp_multiplier: rewards.xpMultiplier,
+        base_xp: rewards.baseXpDelta
       }
     });
   } catch (err) {
