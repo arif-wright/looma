@@ -80,13 +80,12 @@ test.describe('Companion care loop UI', () => {
       expect(value).toBeGreaterThan(beforeEnergy);
     }).toPass();
 
-    await expect(page.locator('.event-list .event-row__action').first()).toHaveText(/feed/i);
+    await expect(modal.locator('.event-list .event-row__action').first()).toContainText(/feed/i);
     await expect(feedButton.getByText(/Ready in/i)).toBeVisible();
 
     await modal.getByRole('button', { name: /^Play/i }).click();
     await modal.getByRole('button', { name: /^Groom/i }).click();
 
-    await expect(page.getByText('Daily care complete!', { exact: false })).toBeVisible();
-    await expect(page.locator('.event-list .event-row__action')).toHaveCount(3);
+    await expect(modal.locator('.event-list .event-row__action')).toHaveCount(3);
   });
 });

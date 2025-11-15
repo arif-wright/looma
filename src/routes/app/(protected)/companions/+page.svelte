@@ -335,6 +335,13 @@
   {renameCompanion}
   setActive={activateCompanion}
   setState={changeState}
+  on:careApplied={(event) => {
+    const { id, companion: updated } = event.detail;
+    companions = sortRoster(companions.map((entry) => (entry.id === id ? { ...entry, ...updated } : entry)));
+    if (selected?.id === id) {
+      selected = { ...selected, ...updated };
+    }
+  }}
 />
 
 <UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlocked={handleUnlocked} />

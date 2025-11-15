@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher, onMount } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
@@ -20,6 +21,26 @@
     created_at: string;
   };
 
+  const dispatch = createEventDispatcher<{ careApplied: { id: string; companion: Companion } }>();
+
+  type CareAction = 'feed' | 'play' | 'groom';
+
+  const CARE_ACTIONS: Array<{ key: CareAction; label: string; emoji: string; description: string }> = [
+    { key: 'feed', label: 'Feed', emoji: '🍓', description: 'Boost energy & affection.' },
+    { key: 'play', label: 'Play', emoji: '🪁', description: 'Build trust through fun.' },
+    { key: 'groom', label: 'Groom', emoji: '✨', description: 'Keep them calm and relaxed.' }
+  ];
+
+  const MOOD_META: Record<string, { label: string; emoji: string }> = {
+    happy: { label: 'Happy', emoji: '😊' },
+    neutral: { label: 'Neutral', emoji: '😌' },
+    tired: { label: 'Tired', emoji: '😴' },
+    low_energy: { label: 'Low energy', emoji: '🥱' },
+    stressed: { label: 'Stressed', emoji: '😣' }
+  };
+
+  const CLIENT_COOLDOWN_MS = 4000;
+
   let events: CareEvent[] = [];
   let loadingEvents = false;
   let eventsError: string | null = null;
@@ -27,7 +48,25 @@
   let renameValue = '';
   let busy: 'rename' | 'active' | 'state' | null = null;
   let actionMessage: string | null = null;
+  let careBusy: CareAction | null = null;
+  let careError: string | null = null;
+  let cooldownUntil: Record<CareAction, number> = { feed: 0, play: 0, groom: 0 };
+  let nowTick = Date.now();
+  let cooldownTimer: ReturnType<typeof setInterval> | null = null;
   let lastFetchedId: string | null = null;
+
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    cooldownTimer = window.setInterval(() => {
+      nowTick = Date.now();
+    }, 500);
+    return () => {
+      if (cooldownTimer) {
+        window.clearInterval(cooldownTimer);
+        cooldownTimer = null;
+      }
+    };
+  });
 
   const startRename = () => {
     if (!companion) return;
@@ -116,6 +155,8 @@
   $: if (!open) {
     renameMode = false;
     actionMessage = null;
+    careError = null;
+    resetCareState();
   }
 
   let currentCompanionId: string | null = null;
@@ -127,9 +168,65 @@
     renameMode = false;
     renameValue = '';
     actionMessage = null;
+    careError = null;
+    resetCareState();
   }
 
   const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  $: moodKey = (companion?.mood ?? 'neutral').toLowerCase();
+  $: moodInfo = MOOD_META[moodKey] ?? { label: 'Neutral', emoji: '😌' };
+
+  const resetCareState = () => {
+    careBusy = null;
+    careError = null;
+    cooldownUntil = { feed: 0, play: 0, groom: 0 };
+  };
+
+  const startCooldown = (action: CareAction) => {
+    cooldownUntil = { ...cooldownUntil, [action]: Date.now() + CLIENT_COOLDOWN_MS };
+  };
+
+  $: actionCooldowns = {
+    feed: Math.max(0, Math.ceil((cooldownUntil.feed - nowTick) / 1000)),
+    play: Math.max(0, Math.ceil((cooldownUntil.play - nowTick) / 1000)),
+    groom: Math.max(0, Math.ceil((cooldownUntil.groom - nowTick) / 1000))
+  };
+
+  const handleCareAction = async (action: CareAction) => {
+    if (!companion || careBusy || actionCooldowns[action] > 0) return;
+    careBusy = action;
+    careError = null;
+    try {
+      const res = await fetch('/api/companions/care', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: companion.id, action })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.companion) {
+        const message =
+          payload?.message ??
+          (payload?.error === 'low_energy'
+            ? `${companion.name} is too tired to ${action}.`
+            : payload?.error ?? 'Care failed');
+        careError = message;
+        careBusy = null;
+        return;
+      }
+
+      companion = { ...companion, ...payload.companion };
+      if (payload.event) {
+        events = [payload.event as CareEvent, ...events].slice(0, 20);
+      }
+      startCooldown(action);
+      dispatch('careApplied', { id: companion.id, companion });
+      actionMessage = null;
+    } catch (err) {
+      careError = err instanceof Error ? err.message : 'Unable to care right now.';
+    } finally {
+      careBusy = null;
+    }
+  };
 </script>
 
 <Modal {open} title={companion ? `${companion.name} dossier` : 'Companion dossier'} onClose={onClose}>
@@ -143,6 +240,10 @@
           <span>{companion.rarity}</span>
           <span>Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
           <span>{companion.state ?? 'idle'}</span>
+        </div>
+        <div class="mood-pill" aria-label={`Mood: ${moodInfo.label}`}>
+          <span class="mood-pill__icon" aria-hidden="true">{moodInfo.emoji}</span>
+          <span>{moodInfo.label}</span>
         </div>
       </div>
     </header>
@@ -205,6 +306,43 @@
       </article>
     </section>
 
+    <section class="care-section" aria-label="Care actions">
+      <div class="care-section__head">
+        <div>
+          <p class="label">Care actions</p>
+          <h3>Bond with {companion.name}</h3>
+        </div>
+      </div>
+      {#if careError}
+        <p class="care-error" role="alert">{careError}</p>
+      {/if}
+      <div class="care-buttons">
+        {#each CARE_ACTIONS as action}
+          <button
+            type="button"
+            class={`care-button ${careBusy === action.key ? 'busy' : ''}`}
+            disabled={!!careBusy || actionCooldowns[action.key] > 0}
+            on:click={() => handleCareAction(action.key)}
+          >
+            <span class="care-icon" aria-hidden="true">{action.emoji}</span>
+            <div class="care-copy">
+              <span class="care-title">{action.label}</span>
+              <p>{action.description}</p>
+              <span class="care-cooldown">
+                {#if careBusy === action.key}
+                  Working…
+                {:else if actionCooldowns[action.key] > 0}
+                  Ready in {actionCooldowns[action.key]}s
+                {:else}
+                  Ready
+                {/if}
+              </span>
+            </div>
+          </button>
+        {/each}
+      </div>
+    </section>
+
     <section class="events-panel">
       <h3>Recent care</h3>
       {#if loadingEvents}
@@ -212,7 +350,7 @@
       {:else if events.length === 0}
         <p>{eventsError ?? 'No recent care events yet.'}</p>
       {:else}
-        <ul>
+        <ul class="event-list">
           {#each events.slice(0, 6) as event (event.id)}
             <EventRow {event} />
           {/each}
@@ -262,6 +400,20 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .mood-pill {
+    margin-top: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .modal-actions {
@@ -355,6 +507,103 @@
   }
 
   .events-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .care-section {
+    margin: 1.5rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 18px;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .care-section__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .care-section .label {
+    margin: 0;
+    letter-spacing: 0.18em;
+  }
+
+  .care-buttons {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .care-button {
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 10, 20, 0.9);
+    padding: 0.85rem 1rem;
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+    text-align: left;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+
+  .care-button:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(10, 13, 24, 0.95);
+  }
+
+  .care-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .care-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    display: grid;
+    place-items: center;
+    font-size: 1.5rem;
+  }
+
+  .care-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .care-title {
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+  }
+
+  .care-copy p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .care-cooldown {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .care-error {
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.2);
+    font-size: 0.9rem;
+  }
+
+  .event-list {
     list-style: none;
     padding: 0;
     margin: 0;

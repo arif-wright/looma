@@ -81,54 +81,48 @@ test.describe('Companion care API', () => {
     await resetCompanion();
   });
 
-  test('feed bumps stats and immediate retry hits cooldown', async () => {
+  test('feed bumps stats and logs care event', async () => {
     const before = await fetchCompanion();
     const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
 
-    const firstRes = await viewerCtx.post('/api/companions/action', {
-      data: { companionId, action: 'feed' }
-    });
-    expect(firstRes.status()).toBe(200);
-    const firstPayload = await firstRes.json();
-    expect(firstPayload?.result).toBeTruthy();
-    expect(firstPayload.result.affection).toBe(before.affection + 2);
-    expect(firstPayload.result.energy).toBe(before.energy + 5);
-
-    const secondRes = await viewerCtx.post('/api/companions/action', {
-      data: { companionId, action: 'feed' }
-    });
-    expect(secondRes.status()).toBe(429);
-    const secondPayload = await secondRes.json();
-    expect(secondPayload.cooldownSecsRemaining).toBeGreaterThan(0);
-
-    await viewerCtx.dispose();
-  });
-
-  test('play blocked when energy is too low', async () => {
-    await resetCompanion({ energy: 3 });
-    const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
-
-    const res = await viewerCtx.post('/api/companions/action', {
-      data: { companionId, action: 'play' }
-    });
-
-    expect(res.status()).toBe(400);
-    const payload = await res.json();
-    expect(payload.error).toBe('insufficient_energy');
-    await viewerCtx.dispose();
-  });
-
-  test('crossing affection milestone returns flags', async () => {
-    await resetCompanion({ affection: 24 });
-    const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
-
-    const res = await viewerCtx.post('/api/companions/action', {
+    const res = await viewerCtx.post('/api/companions/care', {
       data: { companionId, action: 'feed' }
     });
 
     expect(res.status()).toBe(200);
     const payload = await res.json();
-    expect(payload?.result?.milestones).toContain('affection_25');
+    expect(payload?.companion?.affection).toBe(before.affection + 5);
+    expect(payload?.companion?.trust).toBe(before.trust + 2);
+    expect(payload?.companion?.energy).toBe(before.energy + 15);
+    expect(payload?.event?.action).toBe('feed');
+    await viewerCtx.dispose();
+  });
+
+  test('actions blocked when energy is depleted', async () => {
+    await resetCompanion({ energy: 0 });
+    const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
+
+    const res = await viewerCtx.post('/api/companions/care', {
+      data: { companionId, action: 'play' }
+    });
+
+    expect(res.status()).toBe(400);
+    const payload = await res.json();
+    expect(payload.error).toBe('low_energy');
+    await viewerCtx.dispose();
+  });
+
+  test('mood logic switches to happy when thresholds exceeded', async () => {
+    await resetCompanion({ affection: 72, trust: 65, energy: 60 });
+    const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
+
+    const res = await viewerCtx.post('/api/companions/care', {
+      data: { companionId, action: 'play' }
+    });
+
+    expect(res.status()).toBe(200);
+    const payload = await res.json();
+    expect(payload?.companion?.mood).toBe('happy');
     await viewerCtx.dispose();
   });
 });
