@@ -2,6 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { serviceClient } from '$lib/server/admin';
 import { getAdminFlags } from '$lib/server/admin-guard';
+import { getCompanionHealthSummary } from '$lib/server/admin/companions';
 
 const FEATURE_FLAG_KEYS = ['messenger', 'games_hub', 'wallet_topups', 'creator_tools', 'events_feed'] as const;
 
@@ -216,6 +217,8 @@ export const load: PageServerLoad = async ({ locals }) => {
     .limit(1)
     .maybeSingle();
 
+  const companionHealth = flags.isSuper ? await getCompanionHealthSummary(admin) : null;
+
   return {
     flags,
     userId,
@@ -249,6 +252,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       pendingMigrations: 0,
       errorLogCount: null
     },
+    companionHealth,
     recentOrders: recentOrders ?? [],
     recentReports: recentReports ?? []
   };

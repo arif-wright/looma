@@ -1,13 +1,19 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
+import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
   export let title = 'Your Companion Today';
 
   const DEFAULT_AVATAR = '/avatar.svg';
+  let previousBondLevel: number | null = null;
+  let bondLevelTag: number | null = null;
+  let bondTagTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: moodMeta = companion ? getCompanionMoodMeta(companion.mood) : null;
   $: affectionPct = companion ? Math.min(100, Math.max(0, companion.affection)) : 0;
@@ -17,6 +23,39 @@ import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
   $: bondLevel = companion?.bondLevel ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
   $: bonusSummary = formatBonusSummary(bondBonus);
+
+  const clearBondTagTimer = () => {
+    if (bondTagTimer) {
+      clearTimeout(bondTagTimer);
+      bondTagTimer = null;
+    }
+  };
+
+  const showBondTag = (level: number) => {
+    bondLevelTag = level;
+    clearBondTagTimer();
+    bondTagTimer = setTimeout(() => {
+      bondLevelTag = null;
+      bondTagTimer = null;
+    }, 3600);
+  };
+
+  $: {
+    if (!companion) {
+      previousBondLevel = null;
+      bondLevelTag = null;
+      clearBondTagTimer();
+    } else {
+      if (previousBondLevel !== null && bondLevel > previousBondLevel) {
+        showBondTag(bondLevel);
+      }
+      previousBondLevel = bondLevel;
+    }
+  }
+
+  onDestroy(() => {
+    clearBondTagTimer();
+  });
 </script>
 
 <article
@@ -28,15 +67,30 @@ import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
     <div>
       <p class="card-label">{title}</p>
       <h3>{companion ? companion.name : 'No companion yet'}</h3>
-      <p class="card-subtitle">{companion ? speciesLabel : 'Find your first bond to bring Looma to life.'}</p>
+      <p class="card-subtitle">
+        {companion ? speciesLabel : 'Choose a companion to travel beside you across Looma.'}
+      </p>
     </div>
-    {#if moodMeta && companion}
-      <span class={`mood-pill mood-pill--${moodMeta.key}`}>{moodMeta.label}</span>
+    {#if (moodMeta && companion) || companion}
+      <div class="card-head__meta">
+        {#if moodMeta && companion}
+          <div class="pill-with-hint">
+            <span class={`mood-pill mood-pill--${moodMeta.key}`}>{moodMeta.label}</span>
+            <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" />
+          </div>
+        {/if}
+        {#if companion}
+          <div class="pill-with-hint">
+            <span class="bond-pill" aria-label={`Bond level ${bondLevel}`}>
+              Bond Lv {bondLevel}
+            </span>
+            <InfoTooltip text={BOND_LEVEL_TOOLTIP} label="Bond level explainer" />
+          </div>
+        {/if}
+      </div>
     {/if}
-    {#if companion}
-      <span class="bond-pill" aria-label={`Bond level ${bondLevel}`}>
-        Bond Lv {bondLevel}
-      </span>
+    {#if bondLevelTag}
+      <span class="bond-level-tag" role="status">Bond level up! Lv {bondLevelTag}</span>
     {/if}
   </header>
 
@@ -67,9 +121,10 @@ import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
     </div>
     <a class="btn-check" href="/app/companions">Check in</a>
   {:else}
-    <div class="empty-copy">
-      <p>When you bond with your first companion, they’ll greet you here every time you land.</p>
-      <a class="btn-check" href="/app/companions">Find your first bond</a>
+    <div class="empty-copy" role="status">
+      <p class="empty-title">No active companion yet</p>
+      <p class="empty-body">Choose a companion to travel with you through Looma and earn bonus XP.</p>
+      <a class="btn-check empty-cta" href="/app/companions">Choose a companion</a>
     </div>
   {/if}
 </article>
@@ -90,6 +145,34 @@ import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
     justify-content: space-between;
     gap: 1rem;
     align-items: flex-start;
+  }
+
+  .card-head__meta {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .pill-with-hint {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  .bond-level-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.12);
+    color: rgba(251, 191, 36, 0.95);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.85rem;
+    margin-top: 0.4rem;
+    animation: bondTagPop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .card-label {
@@ -260,6 +343,40 @@ import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
     flex-direction: column;
     gap: 0.65rem;
     color: rgba(255, 255, 255, 0.72);
+  }
+
+  .empty-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.92);
+  }
+
+  .empty-body {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .empty-cta {
+    align-self: flex-start;
+  }
+
+  @keyframes bondTagPop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bond-level-tag {
+      animation: none;
+    }
   }
 
   @media (max-width: 720px) {

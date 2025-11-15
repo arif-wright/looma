@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
+  import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+  import { BOND_LEVEL_TOOLTIP } from '$lib/companions/companionCopy';
 
   export type Companion = {
     id: string;
@@ -59,7 +61,10 @@ const fallbackAvatar = '/avatar.svg';
           {/if}
         </div>
         <div class="bond">
-          <p class="label">Bond level</p>
+          <div class="label-with-hint">
+            <p class="label">Bond level</p>
+            <InfoTooltip text={BOND_LEVEL_TOOLTIP} label="Bond level explainer" />
+          </div>
           <div class="bond-row">
             <span class="level-pill">Lv {companion.bond_level}</span>
             <span class="bond-meta">{companion.bond_xp}/{companion.bond_next} XP</span>
@@ -155,6 +160,12 @@ const fallbackAvatar = '/avatar.svg';
   .bond {
     display: grid;
     gap: 0.35rem;
+  }
+
+  .label-with-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .bond-row {

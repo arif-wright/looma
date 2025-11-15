@@ -1,8 +1,63 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
   import type { CompanionRitual } from '$lib/companions/rituals';
 
   export let rituals: CompanionRitual[] = [];
-  export let emptyCopy = 'Choose a companion to unlock daily rituals.';
+  export let emptyCopy = 'Pick an active companion to start daily rituals.';
+
+  let reduceMotion = false;
+  let highlightKeys = new Set<string>();
+  const highlightTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  let previousStatuses = new Map<string, CompanionRitual['status']>();
+
+  const setReduceMotion = (next: boolean) => {
+    reduceMotion = next;
+  };
+
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(media.matches);
+    const listener = (event: MediaQueryListEvent) => setReduceMotion(event.matches);
+    media.addEventListener?.('change', listener);
+    return () => {
+      media.removeEventListener?.('change', listener);
+    };
+  });
+
+  const triggerHighlight = (key: string) => {
+    if (highlightTimers.has(key)) {
+      const existing = highlightTimers.get(key);
+      if (existing) clearTimeout(existing);
+    }
+    highlightKeys = new Set(highlightKeys).add(key);
+    const timeout = setTimeout(() => {
+      highlightTimers.delete(key);
+      const next = new Set(highlightKeys);
+      next.delete(key);
+      highlightKeys = next;
+    }, reduceMotion ? 2600 : 900);
+    highlightTimers.set(key, timeout);
+  };
+
+  onDestroy(() => {
+    highlightTimers.forEach((timer) => clearTimeout(timer));
+    highlightTimers.clear();
+  });
+
+  $: {
+    const nextStatuses = new Map<string, CompanionRitual['status']>();
+    const newlyCompleted: string[] = [];
+    for (const ritual of rituals) {
+      nextStatuses.set(ritual.key, ritual.status);
+      const prevStatus = previousStatuses.get(ritual.key);
+      if (prevStatus && prevStatus !== 'completed' && ritual.status === 'completed') {
+        newlyCompleted.push(ritual.key);
+      }
+    }
+    previousStatuses = nextStatuses;
+    newlyCompleted.forEach((key) => triggerHighlight(key));
+  }
 </script>
 
 {#if rituals.length === 0}
@@ -10,7 +65,7 @@
 {:else}
   <ul class="rituals">
     {#each rituals as ritual}
-      <li class={`ritual ${ritual.status}`}>
+      <li class={`ritual ${ritual.status} ${highlightKeys.has(ritual.key) ? 'ritual--flash' : ''}`.trim()}>
         <div class="ritual__meta">
           <div>
             <p class="ritual__title">{ritual.title}</p>
@@ -47,6 +102,11 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 0.75rem 0.85rem;
     background: rgba(255, 255, 255, 0.02);
+  }
+
+  .ritual--flash {
+    animation: ritualGlow 0.5s ease;
+    box-shadow: 0 0 0 rgba(147, 197, 253, 0.35);
   }
 
   .ritual.completed {
@@ -115,5 +175,27 @@
     margin: 0;
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.65);
+  }
+
+  @keyframes ritualGlow {
+    0% {
+      box-shadow: 0 0 0 rgba(147, 197, 253, 0.25);
+      background: rgba(147, 197, 253, 0.08);
+    }
+    50% {
+      box-shadow: 0 0 25px rgba(147, 197, 253, 0.25);
+      background: rgba(147, 197, 253, 0.16);
+    }
+    100% {
+      box-shadow: 0 0 0 rgba(147, 197, 253, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ritual--flash {
+      animation: none;
+      background: rgba(147, 197, 253, 0.12);
+      border-color: rgba(147, 197, 253, 0.5);
+    }
   }
 </style>

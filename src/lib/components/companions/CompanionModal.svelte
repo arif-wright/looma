@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
@@ -7,6 +7,8 @@
   import { applyRitualUpdate } from '$lib/stores/companionRituals';
   import { describeRitualCompletion } from '$lib/companions/rituals';
   import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
+  import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+  import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP, describeBondLevelUpToast } from '$lib/companions/companionCopy';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -31,6 +33,7 @@
   const dispatch = createEventDispatcher<{
     careApplied: { id: string; companion: Companion };
     milestone: { id: string; action: string; note?: string | null; message?: string };
+    toast: { message: string; kind?: 'success' | 'error' };
   }>();
 
   type CareAction = 'feed' | 'play' | 'groom';
@@ -50,6 +53,14 @@
   };
 
   const CLIENT_COOLDOWN_MS = 4000;
+  const CARE_ERROR_GENERIC = 'Something went wrong while caring for your companion. Please try again.';
+  let previousBondLevel: number | null = null;
+  let bondLevelCelebration: { level: number } | null = null;
+  let bondLevelTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitCareErrorToast = () => {
+    dispatch('toast', { message: CARE_ERROR_GENERIC, kind: 'error' });
+  };
 
   let events: CareEvent[] = [];
   let loadingEvents = false;
@@ -128,6 +139,10 @@
         cooldownTimer = null;
       }
     };
+  });
+
+  onDestroy(() => {
+    clearBondTimer();
   });
 
   const startRename = () => {
@@ -260,9 +275,47 @@
     cooldownUntil = { feed: 0, play: 0, groom: 0 };
   };
 
+  const formatCareError = (message: string | null | undefined) => {
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message.trim();
+    }
+    return CARE_ERROR_GENERIC;
+  };
+
+  const clearBondTimer = () => {
+    if (bondLevelTimer) {
+      clearTimeout(bondLevelTimer);
+      bondLevelTimer = null;
+    }
+  };
+
+  const triggerBondCelebration = () => {
+    clearBondTimer();
+    bondLevelCelebration = { level: bondLevel };
+    bondLevelTimer = setTimeout(() => {
+      bondLevelCelebration = null;
+      bondLevelTimer = null;
+    }, 3600);
+  };
+
   const startCooldown = (action: CareAction) => {
     cooldownUntil = { ...cooldownUntil, [action]: Date.now() + CLIENT_COOLDOWN_MS };
   };
+
+  $: {
+    if (!companion) {
+      previousBondLevel = null;
+      bondLevelCelebration = null;
+      clearBondTimer();
+    } else {
+      if (previousBondLevel !== null && bondLevel > previousBondLevel) {
+        triggerBondCelebration();
+        const toastMessage = describeBondLevelUpToast(companion.name, bondLevel);
+        dispatch('toast', { message: toastMessage, kind: 'success' });
+      }
+      previousBondLevel = bondLevel;
+    }
+  }
 
   $: actionCooldowns = {
     feed: Math.max(0, Math.ceil((cooldownUntil.feed - nowTick) / 1000)),
@@ -286,8 +339,9 @@
           payload?.message ??
           (payload?.error === 'low_energy'
             ? `${companion.name} is too tired to ${action}.`
-            : payload?.error ?? 'Care failed');
-        careError = message;
+            : payload?.error ?? null);
+        careError = formatCareError(message);
+        emitCareErrorToast();
         careBusy = null;
         return;
       }
@@ -321,11 +375,14 @@
           });
         }
       }
+      careError = null;
       startCooldown(action);
       dispatch('careApplied', { id: companion.id, companion });
       actionMessage = null;
     } catch (err) {
-      careError = err instanceof Error ? err.message : 'Unable to care right now.';
+      const message = err instanceof Error ? err.message : null;
+      careError = formatCareError(message);
+      emitCareErrorToast();
     } finally {
       careBusy = null;
     }
@@ -344,9 +401,12 @@
           <span>Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
           <span>{companion.state ?? 'idle'}</span>
         </div>
-        <div class="mood-pill" aria-label={`Mood: ${moodInfo.label}`}>
-          <span class="mood-pill__icon" aria-hidden="true">{moodInfo.emoji}</span>
-          <span>{moodInfo.label}</span>
+        <div class="mood-pill-row">
+          <div class="mood-pill" aria-label={`Mood: ${moodInfo.label}`}>
+            <span class="mood-pill__icon" aria-hidden="true">{moodInfo.emoji}</span>
+            <span>{moodInfo.label}</span>
+          </div>
+          <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" className="mood-hint" />
         </div>
       </div>
     </header>
@@ -365,13 +425,19 @@
 
     <section class="bond-overview" aria-label="Bond bonuses">
       <div class="bond-overview__meter" aria-live="polite">
-        <div class={`bond-glyph bond-glyph--${bondBonus.strong ? 'strong' : 'normal'}`}>
-          <span class="bond-glyph__level">{bondLevel}</span>
-          <span class="bond-glyph__label">Bond</span>
+        <div class="bond-glyph-wrap">
+          <div class={`bond-glyph bond-glyph--${bondBonus.strong ? 'strong' : 'normal'}`}>
+            <span class="bond-glyph__level">{bondLevel}</span>
+            <span class="bond-glyph__label">Bond</span>
+          </div>
+          <InfoTooltip text={BOND_LEVEL_TOOLTIP} label="Bond level explainer" className="bond-hint" />
         </div>
         <p class="bond-score">Score {bondScore}</p>
       </div>
       <div class="bond-overview__copy">
+        {#if bondLevelCelebration}
+          <span class="bond-level-tag" role="status">Bond level up! Lv {bondLevelCelebration.level}</span>
+        {/if}
         <p class="bond-kicker">{bondBonus.label}</p>
         <p class="bond-summary">{bondBonusSummary}</p>
         <p class="bond-note">Active companion bonuses apply to XP & missions.</p>
@@ -524,8 +590,15 @@
     letter-spacing: 0.05em;
   }
 
+  .mood-pill-row {
+    margin-top: 1rem;
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
   .mood-pill {
-    margin-top: 0.75rem;
+    margin-top: 0;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -699,6 +772,16 @@
 
   .bond-overview__meter {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .bond-glyph-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .bond-glyph {
@@ -745,6 +828,21 @@
     gap: 0.3rem;
   }
 
+  .bond-level-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.15);
+    color: rgba(251, 191, 36, 0.95);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.85rem;
+    animation: bondTagPop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   .bond-kicker {
     margin: 0;
     font-size: 0.95rem;
@@ -762,6 +860,23 @@
   .bond-note {
     font-size: 0.85rem;
     color: rgba(148, 163, 184, 0.85);
+  }
+
+  @keyframes bondTagPop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bond-level-tag {
+      animation: none;
+    }
   }
 
   .care-button {

@@ -9,7 +9,7 @@
 
   export let data: PageData;
 
-  const { flags, metrics, analytics, finance, featureFlags, maintenance, health, recentOrders, recentReports } = data;
+  const { flags, metrics, analytics, finance, featureFlags, maintenance, health, recentOrders, recentReports, companionHealth } = data;
 
   const numberFormatter = new Intl.NumberFormat();
   const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -36,6 +36,14 @@
     r: '/app/admin/reports',
     a: '/app/admin/roles'
   };
+
+  $: avgBondDisplay = companionHealth ? Math.round((companionHealth.avgBondLevel ?? 0) * 10) / 10 : 0;
+  $: avgRitualsDisplay = companionHealth ? Math.round((companionHealth.avgRitualsToday ?? 0) * 10) / 10 : 0;
+  $: lastPassiveLabel = companionHealth?.lastPassiveTick ? formatDate(companionHealth.lastPassiveTick) : '—';
+  $: avgBondText =
+    companionHealth && companionHealth.totalCompanions > 0 ? avgBondDisplay.toFixed(1) : '—';
+  $: avgRitualsText =
+    companionHealth && avgRitualsDisplay > 0 ? avgRitualsDisplay.toFixed(1) : '0.0';
 
   let shortcutPrimed = false;
   let shortcutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -120,6 +128,37 @@
         <p class="value">{numberFormatter.format(metrics.reportOpenCount)}</p>
         <p class="hint">Need attention</p>
       </AdminCard>
+
+      {#if flags.isSuper}
+        <AdminCard className="span-4 companion-health-card">
+          <div class="card-head">
+            <p class="label">Companion Health</p>
+            <p class="hint">System pulse</p>
+          </div>
+          {#if companionHealth}
+            <dl class="companion-health">
+              <div>
+                <dt>Total companions</dt>
+                <dd>{numberFormatter.format(companionHealth.totalCompanions)}</dd>
+              </div>
+              <div>
+                <dt>Avg bond level</dt>
+                <dd>{avgBondText}</dd>
+              </div>
+              <div>
+                <dt>Avg rituals/player</dt>
+                <dd>{avgRitualsText}</dd>
+              </div>
+              <div>
+                <dt>Last passive tick</dt>
+                <dd>{lastPassiveLabel}</dd>
+              </div>
+            </dl>
+          {:else}
+            <p class="hint">No companion data available.</p>
+          {/if}
+        </AdminCard>
+      {/if}
 
       {#if flags.isSuper}
         <AdminCard className="span-4">
@@ -403,6 +442,32 @@
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: clamp(1rem, 2vw, 1.5rem);
+  }
+
+  .companion-health {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  .companion-health div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .companion-health dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .companion-health dd {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
 
   :global(.span-4) { grid-column: span 4; }

@@ -13,6 +13,8 @@
   import type { BondAchievementStatus } from '$lib/companions/bond';
   import { applyRitualUpdate, companionRitualsStore } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
+  import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+  import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
 
   export let data: PageData;
 
@@ -347,8 +349,11 @@
   </header>
 
   <section class="bond-milestones-panel">
-    <h2 class="panel-title">Daily rituals</h2>
-    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Choose a companion to unlock rituals." />
+    <div class="panel-title-row">
+      <h2 class="panel-title">Daily rituals</h2>
+      <InfoTooltip text={RITUALS_TOOLTIP} label="How rituals work" />
+    </div>
+    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Pick an active companion to start daily rituals." />
   </section>
   {#if bondMilestones.length}
     <section class="bond-milestones-panel">
@@ -360,29 +365,55 @@
     <div class="roster-error">{rosterError}</div>
   {/if}
 
-  <section class="roster-shell">
-    <RosterFilterBar
-      {filters}
-      archetypes={archetypeOptions}
-      moods={moodOptions}
-      on:change={(event) => {
-        filters = event.detail;
-      }}
-    />
-    <RosterGrid
-      companions={visibleCompanions}
-      {maxSlots}
-      activeId={activeCompanionId}
-      disableDrag={reorderBusy || loading}
-      on:select={(event) => {
-        handleSelectCompanion(event.detail.companion);
-      }}
-      on:reorder={(event) => {
-        void handleReorder(event.detail);
-      }}
-      on:blocked={handleSlotBlocked}
-    />
-  </section>
+  {#if companions.length === 0}
+    <section class="roster-empty" role="status">
+      <p class="roster-empty__eyebrow">Companions</p>
+      <h3>You don’t have a companion yet.</h3>
+      <p class="roster-empty__copy">
+        As we open Looma further, you’ll be able to unlock your first ally here.
+      </p>
+      <a class="roster-empty__cta" href="/app/home">Return home</a>
+    </section>
+  {:else}
+    {#if !activeCompanion}
+      <div class="roster-nudge" role="status">
+        <div>
+          <p class="roster-nudge__title">No active companion selected</p>
+          <p class="roster-nudge__copy">Choose one to unlock rituals and bonus XP.</p>
+        </div>
+        <button
+          type="button"
+          class="roster-nudge__cta"
+          on:click={() => companions[0] && handleSelectCompanion(companions[0])}
+        >
+          Choose now
+        </button>
+      </div>
+    {/if}
+    <section class="roster-shell">
+      <RosterFilterBar
+        {filters}
+        archetypes={archetypeOptions}
+        moods={moodOptions}
+        on:change={(event) => {
+          filters = event.detail;
+        }}
+      />
+      <RosterGrid
+        companions={visibleCompanions}
+        {maxSlots}
+        activeId={activeCompanionId}
+        disableDrag={reorderBusy || loading}
+        on:select={(event) => {
+          handleSelectCompanion(event.detail.companion);
+        }}
+        on:reorder={(event) => {
+          void handleReorder(event.detail);
+        }}
+        on:blocked={handleSlotBlocked}
+      />
+    </section>
+  {/if}
 </main>
 
 <CompanionModal
@@ -406,6 +437,9 @@
   on:milestone={(event) => {
     const message = event.detail?.message ?? 'Bond milestone reached!';
     showToast(message);
+  }}
+  on:toast={(event) => {
+    showToast(event.detail?.message ?? 'Update saved', event.detail?.kind ?? 'success');
   }}
 />
 
@@ -435,6 +469,13 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1rem;
     background: rgba(8, 10, 18, 0.85);
+  }
+
+  .panel-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
   }
 
   .eyebrow {
@@ -477,6 +518,78 @@
   .roster-shell {
     display: grid;
     gap: 1.5rem;
+  }
+
+  .roster-empty {
+    border-radius: 1.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 2rem;
+    background: rgba(9, 12, 25, 0.75);
+    text-align: left;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .roster-empty__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.75rem;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .roster-empty h3 {
+    margin: 0;
+    font-size: 1.45rem;
+  }
+
+  .roster-empty__copy {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .roster-empty__cta {
+    justify-self: flex-start;
+    padding: 0.5rem 1.4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+  }
+
+  .roster-nudge {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 1.2rem;
+    border-radius: 1rem;
+    border: 1px dashed rgba(94, 234, 212, 0.4);
+    background: rgba(6, 10, 18, 0.7);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .roster-nudge__title {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .roster-nudge__copy {
+    margin: 0.1rem 0 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .roster-nudge__cta {
+    border-radius: 999px;
+    border: 1px solid rgba(94, 234, 212, 0.6);
+    background: rgba(94, 234, 212, 0.15);
+    color: rgba(94, 234, 212, 0.95);
+    padding: 0.4rem 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 
   .roster-error {

@@ -24,6 +24,8 @@
   import { PenSquare, MessageCircleHeart, Rss, Target, PawPrint, Compass } from 'lucide-svelte';
   import { logEvent } from '$lib/analytics';
   import { getBondBonusForLevel } from '$lib/companions/bond';
+import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -316,13 +318,16 @@
 
         <article id="rituals" class="panel fade-up" data-delay="4.5" aria-label="Companion rituals">
           <div class="panel__header">
-            <h2 class="panel__title">Daily rituals</h2>
+            <div class="panel__title-row">
+              <h2 class="panel__title">Daily rituals</h2>
+              <InfoTooltip text={RITUALS_TOOLTIP} label="How rituals work" />
+            </div>
             <p class="panel__subtitle">Little loops that keep your bond humming.</p>
           </div>
           {#if activeCompanion}
             <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Complete a ritual together." />
           {:else}
-            <p class="text-sm text-white/60">Set an active companion to unlock today’s rituals.</p>
+            <p class="text-sm text-white/60">Pick an active companion to start daily rituals.</p>
           {/if}
         </article>
 
@@ -432,6 +437,12 @@
   .panel__header {
     display: grid;
     gap: 0.35rem;
+  }
+
+  .panel__title-row {
+    display: inline-flex;
+    gap: 0.45rem;
+    align-items: center;
   }
 
   .panel__title {

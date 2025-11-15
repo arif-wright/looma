@@ -14,5 +14,9 @@ export const companionRitualsStore = {
 };
 
 export const applyRitualUpdate = (list: CompanionRitual[] | null | undefined) => {
-  companionRitualsStore.set(list ?? []);
+  try {
+    companionRitualsStore.set(list ?? []);
+  } catch (error) {
+    console.warn('companion rituals: skipping update', error);
+  }
 };
