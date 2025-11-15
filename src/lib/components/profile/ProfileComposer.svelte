@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { PostRow } from '$lib/social/types';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
 
   export let maxLength = 420;
 
@@ -32,6 +34,9 @@
       if (item) {
         dispatch('posted', item);
         body = '';
+      }
+      if (payload?.rituals?.list) {
+        applyRitualUpdate(payload.rituals.list as CompanionRitual[]);
       }
     } catch (err) {
       console.error('profile composer error', err);

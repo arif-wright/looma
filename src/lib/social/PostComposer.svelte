@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
 
   const dispatch = createEventDispatcher<{ posted: void }>();
 
@@ -31,8 +33,12 @@
         errorMsg = data?.error ?? 'Failed to publish post.';
         return;
       }
+      const payload = await res.json().catch(() => ({}));
       reset();
       dispatch('posted');
+      if (payload?.rituals?.list) {
+        applyRitualUpdate(payload.rituals.list as CompanionRitual[]);
+      }
     } catch (err) {
       console.error('post composer error', err);
       errorMsg = err instanceof Error ? err.message : 'Unexpected error';

@@ -4,6 +4,8 @@
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
   import { describeMilestoneToast } from '$lib/companions/bond';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
+  import { describeRitualCompletion } from '$lib/companions/rituals';
   import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 
   export let open = false;
@@ -305,6 +307,19 @@
             message: toastMessage
           });
         });
+      }
+      if (payload?.rituals?.list) {
+        applyRitualUpdate(payload.rituals.list);
+        if (Array.isArray(payload.rituals.completed) && payload.rituals.completed.length) {
+          payload.rituals.completed.forEach((ritual: any) => {
+            const toastMessage = describeRitualCompletion(ritual, companion?.name ?? null);
+            dispatch('milestone', {
+              id: companion?.id ?? '',
+              action: ritual.key,
+              message: toastMessage
+            });
+          });
+        }
       }
       startCooldown(action);
       dispatch('careApplied', { id: companion.id, companion });

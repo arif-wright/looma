@@ -2,6 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import { tick } from 'svelte';
   import type { PostRow } from '$lib/social/types';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
 
   export let avatarUrl: string | null = null;
   export let maxLength = 420;
@@ -47,6 +49,9 @@
       const item = payload?.item as PostRow | undefined;
       if (item) {
         dispatch('posted', item);
+      }
+      if (payload?.rituals?.list) {
+        applyRitualUpdate(payload.rituals.list as CompanionRitual[]);
       }
       text = '';
       expanded = false;

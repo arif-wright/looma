@@ -9,7 +9,10 @@
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
   import { logEvent } from '$lib/analytics';
   import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
+  import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
   import type { BondAchievementStatus } from '$lib/companions/bond';
+  import { applyRitualUpdate, companionRitualsStore } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
 
   export let data: PageData;
 
@@ -36,6 +39,8 @@
 
   let companions: Companion[] = sortRoster(((data.companions ?? []) as Companion[]) ?? []);
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
+  const rituals: CompanionRitual[] = (data.rituals ?? []) as CompanionRitual[];
+  applyRitualUpdate(rituals);
   let maxSlots = data.maxSlots ?? 3;
   let activeCompanionId: string | null = data.activeCompanionId ?? null;
   let selected: Companion | null = null;
@@ -341,6 +346,10 @@
     </div>
   </header>
 
+  <section class="bond-milestones-panel">
+    <h2 class="panel-title">Daily rituals</h2>
+    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Choose a companion to unlock rituals." />
+  </section>
   {#if bondMilestones.length}
     <section class="bond-milestones-panel">
       <BondMilestonesPanel milestones={bondMilestones} />

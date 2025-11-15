@@ -14,6 +14,10 @@
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
   import CompanionPresenceCard from '$lib/components/home/CompanionPresenceCard.svelte';
+  import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
+  import { companionRitualsStore, applyRitualUpdate } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
+  import { describeRitualCompletion } from '$lib/companions/rituals';
   import type { MissionRow as MissionRowType } from '$lib/data/missions';
   import type { FeedItem as FeedItemType } from '$lib/social/types';
   import type { QuickLink } from '$lib/components/home/types';
@@ -66,6 +70,8 @@
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let missionModalOpen = false;
   let missionModalData: MissionRowType | null = null;
+  const rituals: CompanionRitual[] = data.rituals ?? [];
+  applyRitualUpdate(rituals);
 
   const showToast = (message: string) => {
     toast = { message };
@@ -144,6 +150,14 @@
       feedPrepend = normalized;
     }
     showToast('Whisper delivered to your circle.');
+  };
+
+  const handleRitualEvent = (event: CustomEvent<{ completed: CompanionRitual[] }>) => {
+    const completed = event.detail?.completed ?? [];
+    if (completed.length) {
+      const copy = describeRitualCompletion(completed[0], activeCompanion?.name ?? null);
+      showToast(copy);
+    }
   };
 
   const handleStartMission = (event: CustomEvent<{ missionId: string | null; mode: 'resume' | 'quick' | 'retry' }>) => {
@@ -246,7 +260,11 @@
             <h2 class="panel__title">Whisper something kind…</h2>
             <p class="panel__subtitle">Tiny sparks keep the resonance alive.</p>
           </div>
-          <QuickPostPanel placeholder="Whisper something kind…" on:posted={handleQuickPost} />
+          <QuickPostPanel
+            placeholder="Whisper something kind…"
+            on:posted={handleQuickPost}
+            on:rituals={handleRitualEvent}
+          />
         </article>
 
         <article id="feed" class="panel fade-up" data-delay="2" aria-label="Signals from your circle">
@@ -294,6 +312,18 @@
             <p class="panel__subtitle">Attune to each mood and keep the bond glowing.</p>
           </div>
           <CreatureMoments items={creatures} />
+        </article>
+
+        <article id="rituals" class="panel fade-up" data-delay="4.5" aria-label="Companion rituals">
+          <div class="panel__header">
+            <h2 class="panel__title">Daily rituals</h2>
+            <p class="panel__subtitle">Little loops that keep your bond humming.</p>
+          </div>
+          {#if activeCompanion}
+            <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Complete a ritual together." />
+          {:else}
+            <p class="text-sm text-white/60">Set an active companion to unlock today’s rituals.</p>
+          {/if}
         </article>
 
         <article id="path" class="panel fade-up" data-delay="5" aria-label="Path forward">

@@ -26,6 +26,8 @@ import type { AchievementShareMeta, RunShareMeta } from '$lib/social/types';
 import type { RunShareInput, AchievementShareInput } from '$lib/social/share';
 import type { LeaderboardDisplayRow } from '$lib/server/games/leaderboard';
 import Portal from '$lib/ui/Portal.svelte';
+import { applyRitualUpdate } from '$lib/stores/companionRituals';
+import type { CompanionRitual } from '$lib/companions/rituals';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -64,6 +66,7 @@ $: companionBonusDescription = reward
       companionBonus: reward.companionBonus
     })
   : null;
+let ritualCompletions: CompanionRitual[] = [];
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -499,6 +502,12 @@ const handleAchievementShareCancel = () => {
         currencyMultiplier: result.currencyMultiplier ?? null,
         achievements: Array.isArray(result.achievements) ? result.achievements : []
       };
+      if (result.rituals?.list) {
+        applyRitualUpdate(result.rituals.list as CompanionRitual[]);
+        ritualCompletions = (result.rituals.completed as CompanionRitual[]) ?? [];
+      } else {
+        ritualCompletions = [];
+      }
 
       maybePromptRunShare(
         {
@@ -682,6 +691,9 @@ const handleAchievementShareCancel = () => {
           {/if}
           {#if companionBonusDescription?.detail}
             <p class="reward-toast__detail">{companionBonusDescription.detail}</p>
+          {/if}
+          {#if ritualCompletions.length}
+            <p class="reward-toast__detail">Ritual complete: {ritualCompletions[0].title}</p>
           {/if}
           <div class="toast-actions">
             <button class="toast-button" type="button" on:click={replaySession}>

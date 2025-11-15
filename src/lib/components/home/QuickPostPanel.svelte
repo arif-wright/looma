@@ -1,9 +1,14 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { SendHorizontal } from 'lucide-svelte';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
+  import type { CompanionRitual } from '$lib/companions/rituals';
 
   const MAX_LENGTH = 280;
-  const dispatch = createEventDispatcher<{ posted: { item: Record<string, unknown> | null } }>();
+  const dispatch = createEventDispatcher<{
+    posted: { item: Record<string, unknown> | null };
+    rituals: { completed: CompanionRitual[] };
+  }>();
 
   export let placeholder = 'Share a quick win…';
 
@@ -47,6 +52,10 @@
       const payload = await res.json().catch(() => ({ item: null }));
       reset();
       dispatch('posted', { item: payload?.item ?? null });
+      if (payload?.rituals?.list) {
+        applyRitualUpdate(payload.rituals.list as CompanionRitual[]);
+        dispatch('rituals', { completed: (payload.rituals.completed as CompanionRitual[]) ?? [] });
+      }
     } catch (err) {
       console.error('quick post error', err);
       error = err instanceof Error ? err.message : 'Unexpected error';

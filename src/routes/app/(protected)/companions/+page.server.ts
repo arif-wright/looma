@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { getCompanionRituals } from '$lib/server/companions/rituals';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 const COMPANION_COLUMNS =
@@ -116,8 +117,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const maxSlots = typeof maxSlotsRaw === 'number' && Number.isFinite(maxSlotsRaw) ? maxSlotsRaw : 3;
 
   const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
-
   const bondMilestones = await fetchBondAchievementsForUser(supabase, userId);
+  const rituals = await getCompanionRituals(supabase, userId);
 
   return {
     companions,
@@ -125,6 +126,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     activeCompanionId,
     tickEvents,
     error: companionsResult.error?.message ?? slotsResult.error?.message ?? null,
-    bondMilestones
+    bondMilestones,
+    rituals
   };
 };

@@ -22,6 +22,7 @@ import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
 import { inspectSessionComplete } from '$lib/server/anti/inspect';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
+import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -396,6 +397,11 @@ export const POST: RequestHandler = async (event) => {
         xpMultiplier: companionSnapshot.bonus.xpMultiplier
       }
     : null;
+  const ritualUpdate = companionDisplay
+    ? await incrementCompanionRitual(admin, user.id, 'play_game_with_companion', {
+        companionName: companionDisplay.name ?? null
+      })
+    : null;
 
   const baseRewards = calculateRewards(score);
   const baseXpDelta = clamp(baseRewards.xpDelta, 0, 100);
@@ -559,6 +565,7 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ...rewards,
+    rituals: ritualUpdate,
     achievements: achievementsUnlocked.map((entry) => ({
       key: entry.key,
       name: entry.name,

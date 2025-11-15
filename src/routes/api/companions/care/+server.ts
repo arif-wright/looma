@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
+import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 
 type CareAction = 'feed' | 'play' | 'groom';
 
@@ -131,6 +132,7 @@ export const POST: RequestHandler = async (event) => {
   let bondLevel = statsBase.bond_level ?? 0;
   let bondScore = statsBase.bond_score ?? 0;
   let milestoneEvents: { action: string; note?: string | null }[] = [];
+  let ritualUpdate = null;
   try {
     const { rows, milestones } = await syncPlayerBondState(supabase, session.user.id);
     const bondRow = rows.find((row) => row.companion_id === companion.id);
@@ -141,6 +143,9 @@ export const POST: RequestHandler = async (event) => {
     milestoneEvents = milestones
       ?.filter((row) => row.companion_id === companion.id)
       .map((row) => ({ action: row.action, note: row.note })) ?? [];
+    ritualUpdate = await incrementCompanionRitual(supabase, session.user.id, 'care_once', {
+      companionName: companion.name
+    });
   } catch (err) {
     console.error('[companion care] bond sync failed', err);
   }
@@ -155,6 +160,7 @@ export const POST: RequestHandler = async (event) => {
     ok: true,
     companion: { ...updated, bond_level: bondLevel, bond_score: bondScore, stats: statsWithBond },
     event: eventRow ?? null,
-    milestones: milestoneEvents
+    milestones: milestoneEvents,
+    rituals: ritualUpdate
   });
 };

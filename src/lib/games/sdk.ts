@@ -77,6 +77,8 @@ export const init = ({ targetWindow, origin = '*' }: InitOptions): Bridge => {
   };
 };
 
+import type { CompanionRitual } from '$lib/companions/rituals';
+
 type StartResponse = {
   sessionId: string;
   nonce: string;
@@ -140,6 +142,10 @@ type CompleteResponse = {
   currencyDelta: number;
   baseCurrencyDelta?: number;
   currencyMultiplier?: number;
+  rituals?: {
+    list: CompanionRitual[];
+    completed: CompanionRitual[];
+  } | null;
   achievements?: SessionAchievement[];
 };
 

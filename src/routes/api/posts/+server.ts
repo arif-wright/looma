@@ -4,6 +4,7 @@ import { supabaseServer } from '$lib/supabaseClient';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
+import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 
 const parseLimit = (value: string | null, fallback = 20) => {
   if (!value) return fallback;
@@ -128,5 +129,22 @@ export const POST: RequestHandler = async (event) => {
     payload: { postId: inserted?.id ?? null }
   });
 
-  return json({ item: response });
+  let ritualUpdate = null;
+  try {
+    const { data: activeCompanion } = await supabase
+      .from('companions')
+      .select('id, name')
+      .eq('owner_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (activeCompanion?.id) {
+      ritualUpdate = await incrementCompanionRitual(supabase, user.id, 'post_with_companion', {
+        companionName: activeCompanion.name ?? null
+      });
+    }
+  } catch (err) {
+    console.error('[posts] ritual increment failed', err);
+  }
+
+  return json({ item: response, rituals: ritualUpdate });
 };

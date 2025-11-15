@@ -8,6 +8,8 @@ import type { FeedItem } from '$lib/social/types';
 import { getWalletWithTransactions } from '$lib/server/econ/index';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+import { getCompanionRituals } from '$lib/server/companions/rituals';
+import type { CompanionRitual } from '$lib/companions/rituals';
 
 type MissionSummary = {
   id: string;
@@ -59,6 +61,7 @@ export const load: PageServerLoad = async (event) => {
     walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions'],
     flags: { bond_genesis: false },
     companionCount: 0,
+    rituals: [] as CompanionRitual[],
     activeCompanion: parentActiveCompanion
   };
 
@@ -172,6 +175,7 @@ export const load: PageServerLoad = async (event) => {
     let walletTx = safe.walletTx;
     let flags = { ...safe.flags };
     let companionCount = safe.companionCount;
+    let rituals: CompanionRitual[] = safe.rituals;
 
     if (session?.user?.id) {
       try {
@@ -217,6 +221,12 @@ export const load: PageServerLoad = async (event) => {
       reportHomeLoadIssue('flags_query_failed', {
         error: err instanceof Error ? err.message : String(err)
       });
+    }
+
+    try {
+      rituals = await getCompanionRituals(supabase, userId);
+    } catch (err) {
+      console.error('[home] failed to fetch rituals', err);
     }
 
     const endcap =
@@ -277,6 +287,7 @@ export const load: PageServerLoad = async (event) => {
       walletTx,
       flags,
       companionCount,
+      rituals,
       activeCompanion
     };
   } catch (err) {
