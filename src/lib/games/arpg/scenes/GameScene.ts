@@ -8,6 +8,8 @@ const TILEMAP_KEY = 'shardfront-iso-map';
 const HERO_KEY = 'hero-iso';
 const AMBIENT_KEY = 'ambient-overlay';
 const VIGNETTE_KEY = 'vignette-overlay';
+const GLOW_PARTICLE_KEY = 'arpg-glow';
+const BACKDROP_KEY = 'shardfront-backdrop';
 
 export class GameScene extends Phaser.Scene {
   private static onGameOver: ((score: number) => void) | null = null;
@@ -29,36 +31,52 @@ export class GameScene extends Phaser.Scene {
   private lastDirection: Vec2 = { x: 1, y: 0 };
   private elapsedMs = 0;
   private ended = false;
+  private backdrop!: Phaser.GameObjects.Image;
   private scoreText!: Phaser.GameObjects.Text;
   private instructionText!: Phaser.GameObjects.Text;
   private shadow!: Phaser.GameObjects.Ellipse;
   private ambientImage!: Phaser.GameObjects.Image;
   private vignetteImage!: Phaser.GameObjects.Image;
+  private particleManager: Phaser.GameObjects.Particles.ParticleEmitterManager | null = null;
+  private glowEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
   preload() {
-    this.load.image(TILESET_KEY, '/games/arpg/tileset_iso.png');
+    this.load.image(TILESET_KEY, '/games/arpg/tileset_iso_v2.png');
     this.load.tilemapTiledJSON(TILEMAP_KEY, '/games/arpg/shardfront_iso.json');
-    this.load.spritesheet(HERO_KEY, '/games/arpg/hero_iso.png', {
-      frameWidth: 64,
-      frameHeight: 64
+    this.load.spritesheet(HERO_KEY, '/games/arpg/hero_iso_v2.png', {
+      frameWidth: 80,
+      frameHeight: 80
     });
-    this.load.image(AMBIENT_KEY, '/games/arpg/ambient.png');
-    this.load.image(VIGNETTE_KEY, '/games/arpg/vignette.png');
+    this.load.image(AMBIENT_KEY, '/games/arpg/ambient_core.png');
+    this.load.image(VIGNETTE_KEY, '/games/arpg/vignette_soft.png');
+    this.load.image(BACKDROP_KEY, '/games/arpg/backdrop.png');
   }
 
   create() {
-    this.cameras.main.setBackgroundColor('#05060a');
+    this.cameras.main.setBackgroundColor('#05050a');
     this.elapsedMs = 0;
     this.ended = false;
     this.world = new World();
 
     this.map = this.make.tilemap({ key: TILEMAP_KEY });
-    const tileset = this.map.addTilesetImage('ShardfrontIso', TILESET_KEY);
+    const tileset = this.map.addTilesetImage('ShardfrontIsoV2', TILESET_KEY);
     if (!tileset) {
       throw new Error('Tileset missing for Shardfront Approach');
     }
 
-    this.map.createLayer('floor', tileset, 0, 0)?.setDepth(0);
+    this.backdrop = this.add
+      .image(this.map.widthInPixels / 2, this.map.heightInPixels / 2, BACKDROP_KEY)
+      .setDepth(-10)
+      .setAlpha(0.9);
+    this.backdrop.setScale(
+      Math.max(
+        this.map.widthInPixels / this.backdrop.width,
+        this.map.heightInPixels / this.backdrop.height
+      ) * 1.1
+    );
+    this.backdrop.setScrollFactor(0.08);
+
+    this.map.createLayer('floor', tileset, 0, 0)?.setDepth(0.5);
     this.wallLayer = this.map.createLayer('walls', tileset, 0, 0).setDepth(2);
     if (!this.wallLayer) {
       throw new Error('Wall layer missing from map');
@@ -70,8 +88,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.wallLayer.setAlpha(1);
 
-    const spawnX = this.map.widthInPixels * 0.5;
-    const spawnY = this.map.heightInPixels * 0.65;
+    const spawnX = this.map.widthInPixels * 0.52;
+    const spawnY = this.map.heightInPixels * 0.58;
 
     this.playerId = this.world.createEntity();
     this.world.setTransform(this.playerId, { x: spawnX, y: spawnY, rotation: 0 });
@@ -88,15 +106,15 @@ export class GameScene extends Phaser.Scene {
       });
 
     this.playerSprite = this.physics.add.sprite(spawnX, spawnY, HERO_KEY, 0);
-    this.playerSprite.setOrigin(0.5, 0.85);
+    this.playerSprite.setOrigin(0.5, 0.92);
     this.playerSprite.setCollideWorldBounds(true);
     this.playerSprite.setDepth(7);
-    this.playerSprite.body.setSize(28, 24);
-    this.playerSprite.body.setOffset(18, 30);
-    this.shadow = this.add.ellipse(spawnX, spawnY, 50, 18, 0x000000, 0.4);
+    this.playerSprite.body.setSize(32, 28);
+    this.playerSprite.body.setOffset(20, 36);
+    this.shadow = this.add.ellipse(spawnX, spawnY, 64, 22, 0x000000, 0.45);
     this.shadow.setDepth(6);
-    this.shadow.setAlpha(0.45);
     this.shadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.initGlowEmitter();
 
     this.createAnimations();
     this.playerSprite.play('hero-idle');
@@ -104,7 +122,9 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.cameras.main.startFollow(this.playerSprite, true, 0.18, 0.18);
+    this.cameras.main.setZoom(0.92);
+    this.cameras.main.startFollow(this.playerSprite, true, 0.16, 0.16);
+    this.cameras.main.roundPixels = true;
 
     this.ambientImage = this.add
       .image(0, 0, AMBIENT_KEY)
@@ -121,26 +141,24 @@ export class GameScene extends Phaser.Scene {
     this.positionOverlays();
 
     this.scoreText = this.add
-      .text(32, 72, 'Score 0', {
+      .text(36, 74, 'Score 0', {
         fontFamily: 'Inter, system-ui, sans-serif',
-        fontSize: '24px',
-        color: '#f4fbff',
-        stroke: '#020205',
-        strokeThickness: 3
+        fontSize: '26px',
+        color: '#f4fbff'
       })
       .setScrollFactor(0)
       .setDepth(30);
+    this.scoreText.setShadow(0, 2, '#010208', 6, true, true);
 
     this.instructionText = this.add
-      .text(32, 36, 'WASD or arrows to move — Shift/Space to dash', {
+      .text(36, 40, 'WASD or arrows to move — Shift/Space to dash', {
         fontFamily: 'Inter, system-ui, sans-serif',
-        fontSize: '15px',
-        color: '#a0b8ff',
-        stroke: '#020205',
-        strokeThickness: 2
+        fontSize: '16px',
+        color: '#c7d6ff'
       })
       .setScrollFactor(0)
       .setDepth(30);
+    this.instructionText.setShadow(0, 2, '#02030a', 4, true, true);
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys({
@@ -160,6 +178,9 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.dashKeys.forEach((key) => key.destroy());
       this.escKey.destroy();
+      this.particleManager?.destroy();
+      this.particleManager = null;
+      this.glowEmitter = null;
     });
   }
 
@@ -268,11 +289,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private syncSpriteWithTransform() {
-    if (!this.playerId) return;
+    if (!this.playerId || !this.playerSprite) return;
     const transform = this.world.getTransform(this.playerId);
     if (!transform) return;
-    this.playerSprite.setPosition(transform.x, transform.y);
-    this.shadow?.setPosition(transform.x, transform.y + 6);
+    const smoothX = Phaser.Math.Linear(this.playerSprite.x, transform.x, 0.35);
+    const smoothY = Phaser.Math.Linear(this.playerSprite.y, transform.y, 0.35);
+    this.playerSprite.setPosition(smoothX, smoothY);
+    if (this.shadow) {
+      this.shadow.setPosition(smoothX, smoothY + 8);
+    }
   }
 
   private updateAnimation(isMoving: boolean) {
@@ -282,6 +307,10 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.lastDirection.x !== 0) {
       this.playerSprite.setFlipX(this.lastDirection.x < 0);
+    }
+    if (this.shadow) {
+      const squish = Phaser.Math.Linear(this.shadow.scaleX, isMoving ? 0.92 : 1.05, 0.2);
+      this.shadow.setScale(squish, 1);
     }
   }
 
@@ -304,20 +333,46 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private initGlowEmitter() {
+    if (!this.playerSprite) return;
+    if (!this.textures.exists(GLOW_PARTICLE_KEY)) {
+      const brush = this.make.graphics({ x: 0, y: 0, add: false });
+      brush.fillStyle(0xffffff, 0.9);
+      brush.fillCircle(12, 12, 12);
+      brush.generateTexture(GLOW_PARTICLE_KEY, 24, 24);
+      brush.destroy();
+    }
+    this.particleManager = this.add.particles(GLOW_PARTICLE_KEY).setDepth(6.5);
+    this.glowEmitter = this.particleManager.createEmitter({
+      follow: this.playerSprite,
+      followOffset: { x: 0, y: -16 },
+      frequency: 90,
+      lifespan: 1400,
+      speed: { min: 8, max: 32 },
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.35, end: 0 },
+      angle: { min: 160, max: 340 },
+      blendMode: Phaser.BlendModes.ADD,
+      gravityY: 0
+    });
+  }
+
   private positionOverlays() {
     if (!this.ambientImage || !this.vignetteImage) return;
     const cam = this.cameras.main;
-    const cx = cam.width / 2;
-    const cy = cam.height / 2;
+    const viewportWidth = cam.width / cam.zoom;
+    const viewportHeight = cam.height / cam.zoom;
+    const cx = viewportWidth / 2;
+    const cy = viewportHeight / 2;
     this.ambientImage.setPosition(cx, cy);
     this.vignetteImage.setPosition(cx, cy);
     const ambientScale = Math.max(
-      (cam.width / this.ambientImage.width) * 1.2,
-      (cam.height / this.ambientImage.height) * 1.2
+      (viewportWidth / this.ambientImage.width) * 1.2,
+      (viewportHeight / this.ambientImage.height) * 1.2
     );
     const vignetteScale = Math.max(
-      (cam.width / this.vignetteImage.width) * 1.15,
-      (cam.height / this.vignetteImage.height) * 1.15
+      (viewportWidth / this.vignetteImage.width) * 1.15,
+      (viewportHeight / this.vignetteImage.height) * 1.15
     );
     this.ambientImage.setScale(ambientScale);
     this.vignetteImage.setScale(vignetteScale);
