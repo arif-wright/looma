@@ -193,6 +193,8 @@ export class GameScene extends Phaser.Scene {
   private skeletons: EnemyActor[] = [];
   private roomBounds = { minX: -800, maxX: 800, minY: -800, maxY: 800 };
   private runState: 'idle' | 'running' | 'paused' = 'idle';
+  private readonly hudMargin = { x: 36, y: 32 };
+  private readonly controlOffset = { x: 36, y: 210 };
 
   constructor() {
     super({ key: 'GameScene' });
@@ -226,6 +228,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnSkeletons();
     this.createProps();
     this.createOverlays();
+    this.updateFixedUITransforms();
   }
 
   update(_time: number, delta: number) {
@@ -267,6 +270,7 @@ export class GameScene extends Phaser.Scene {
       this.spawnDashAfterimage();
     }
     this.updateUIState();
+    this.updateFixedUITransforms();
   }
 
   private resetState() {
@@ -459,7 +463,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupUI() {
-    this.uiContainer = this.add.container(40, 32);
+    this.uiContainer = this.add.container(this.hudMargin.x, this.hudMargin.y);
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 360, 140, 0x050c18, 0.65).setOrigin(0);
@@ -505,11 +509,14 @@ export class GameScene extends Phaser.Scene {
       .setDepth(2500)
       .setAlpha(0.65);
     this.resizeVignette();
-    this.scale.on('resize', () => this.resizeVignette());
+    this.scale.on('resize', () => {
+      this.resizeVignette();
+      this.updateFixedUITransforms();
+    });
   }
 
   private createControlButtons() {
-    this.controlContainer = this.add.container(40, 210);
+    this.controlContainer = this.add.container(this.controlOffset.x, this.controlOffset.y);
     this.controlContainer.setScrollFactor(0);
     this.controlContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 360, 72, 0x040912, 0.55).setOrigin(0);
@@ -540,6 +547,16 @@ export class GameScene extends Phaser.Scene {
     button.setAlpha(0.85);
     this.controlContainer.add(button);
     return button;
+  }
+
+  private updateFixedUITransforms() {
+    if (!this.uiContainer || !this.controlContainer) return;
+    const zoom = this.cameras.main.zoom;
+    const scale = 1 / zoom;
+    this.uiContainer.setScale(scale).setPosition(this.hudMargin.x * scale, this.hudMargin.y * scale);
+    this.controlContainer
+      .setScale(scale)
+      .setPosition(this.controlOffset.x * scale, this.controlOffset.y * scale);
   }
 
   private handlePrimaryControl() {
