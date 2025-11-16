@@ -75,13 +75,21 @@ const SKELETON_ANIM_KEYS = {
   death: 'skeleton_special_death'
 } as const;
 
-const FLOOR_VARIANTS = [
-  '/games/arpg/tiles/ground_stone1.png',
-  '/games/arpg/tiles/ground_variation1.png',
-  '/games/arpg/tiles/ground_variation2.png'
-];
+type EightDirection = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
 
-const WALL_VARIANT = '/games/arpg/tiles/wall1/N/wall1_N_90.0_0.png';
+const DIRECTION_FRAMES: Record<EightDirection, string> = {
+  N: '90.0',
+  NE: '45.0',
+  E: '0.0',
+  SE: '315.0',
+  S: '270.0',
+  SW: '225.0',
+  W: '180.0',
+  NW: '135.0'
+};
+
+const FLOOR_SETS = [{ folder: 'floor_tiles', prefix: 'tiles' }];
+const WALL_VARIANTS = ['wall1', 'wall2', 'wall3'] as const;
 
 const PROP_TEXTURES = {
   barrel: '/games/arpg/props/barrel/N/barrel_N_90.0_0.png',
@@ -203,11 +211,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    FLOOR_VARIANTS.forEach((path, index) => {
-      this.load.image(`floor_${index}`, path);
-    });
-    this.load.image('wall_tile', WALL_VARIANT);
+    FLOOR_SETS.forEach((set) => this.loadDirectionalSet(`floor_${set.folder}`, `/games/arpg/tiles/${set.folder}`, set.prefix));
+    WALL_VARIANTS.forEach((variant) => this.loadDirectionalSet(`wall_${variant}`, `/games/arpg/tiles/${variant}`, variant));
     this.preloadPropTextures();
+    this.loadDirectionalSet('prop_barrel', '/games/arpg/props/barrel', 'barrel');
+    this.loadDirectionalSet('prop_crate', '/games/arpg/props/crate', 'crate');
     this.preloadCharacterManifest(HERO_MANIFEST);
     this.preloadCharacterManifest(SKELETON_MANIFEST);
     Object.entries(UI_TEXTURES).forEach(([key, path]) => this.load.image(key, path));
@@ -307,6 +315,17 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private loadDirectionalSet(group: string, basePath: string, prefix: string) {
+    (Object.keys(DIRECTION_FRAMES) as EightDirection[]).forEach((dir) => {
+      const angleLabel = DIRECTION_FRAMES[dir];
+      const path = `${basePath}/${dir}/${prefix}_${dir}_${angleLabel}_0.png`;
+      const key = `${group}_${dir}`;
+      if (!this.textures.exists(key)) {
+        this.load.image(key, path);
+      }
+    });
+  }
+
   private preloadCharacterManifest(manifest: CharacterManifest) {
     Object.values(manifest).forEach((framesByDir) => {
       Object.values(framesByDir).forEach((frames) => {
@@ -348,11 +367,12 @@ export class GameScene extends Phaser.Scene {
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
-    const floorKeys = FLOOR_VARIANTS.map((_, idx) => `floor_${idx}`);
     for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
       for (let tx = 0; tx < ROOM_WIDTH; tx++) {
         const pos = this.isoToWorld(tx, ty);
-        const key = floorKeys[(tx + (ty % floorKeys.length)) % floorKeys.length];
+        const dir = this.directionFromCenter(tx, ty);
+        const floorSet = Phaser.Utils.Array.GetRandom(FLOOR_SETS);
+        const key = `floor_${floorSet.folder}_${dir}`;
         const tile = this.add.image(pos.x, pos.y, key);
         tile.setScale(TILE_SCALE);
         tile.setDepth(pos.y);
@@ -365,7 +385,10 @@ export class GameScene extends Phaser.Scene {
     }
     const placeWall = (tx: number, ty: number) => {
       const pos = this.isoToWorld(tx, ty);
-      const wall = this.add.image(pos.x, pos.y - 42, 'wall_tile');
+      const dir = this.getWallDirection(tx, ty);
+      const variant = Phaser.Utils.Array.GetRandom(WALL_VARIANTS);
+      const key = `wall_${variant}_${dir}`;
+      const wall = this.add.image(pos.x, pos.y - 42, key);
       wall.setScale(TILE_SCALE);
       wall.setDepth(pos.y + 160);
       this.addToWorld(wall);
@@ -469,6 +492,7 @@ export class GameScene extends Phaser.Scene {
         this.pointerAttack = false;
       }
     });
+    this.input.setDefaultCursor('url(/games/arpg/ui/cursor/cursor_gauntlet_blue.png) 8 2, pointer');
   }
 
   private setupUI() {
@@ -694,7 +718,7 @@ export class GameScene extends Phaser.Scene {
 
   private createProp(type: 'barrel' | 'crate', tx: number, ty: number, loot: 'gold' | null) {
     const pos = this.isoToWorld(tx, ty);
-    const textureKey = type === 'barrel' ? 'barrel' : 'crate';
+    const textureKey = this.getDirectionalPropTexture(type);
     const sprite = this.add.sprite(pos.x, pos.y, textureKey);
     sprite.setScale(0.6);
     sprite.setDepth(pos.y + 20);
@@ -1177,6 +1201,46 @@ export class GameScene extends Phaser.Scene {
   private addToWorld<T extends Phaser.GameObjects.GameObject>(object: T): T {
     this.worldLayer.add(object);
     return object;
+  }
+
+  private directionFromAngles(dx: number, dy: number): EightDirection {
+    const dirs: EightDirection[] = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
+    const angle = Math.atan2(dy, dx);
+    const normalized = (angle + Math.PI * 2) % (Math.PI * 2);
+    const index = Math.round(normalized / (Math.PI / 4)) % dirs.length;
+    return dirs[index];
+  }
+
+  private randomEightDirection(): EightDirection {
+    const dirs = Object.keys(DIRECTION_FRAMES) as EightDirection[];
+    return Phaser.Utils.Array.GetRandom(dirs);
+  }
+
+  private directionFromCenter(tx: number, ty: number): EightDirection {
+    const centerX = ROOM_WIDTH / 2;
+    const centerY = ROOM_HEIGHT / 2;
+    return this.directionFromAngles(tx - centerX, ty - centerY);
+  }
+
+  private getWallDirection(tx: number, ty: number): EightDirection {
+    if (ty === 0) {
+      if (tx === 0) return 'NW';
+      if (tx === ROOM_WIDTH - 1) return 'NE';
+      return 'N';
+    }
+    if (ty === ROOM_HEIGHT - 1) {
+      if (tx === 0) return 'SW';
+      if (tx === ROOM_WIDTH - 1) return 'SE';
+      return 'S';
+    }
+    if (tx === 0) return 'W';
+    if (tx === ROOM_WIDTH - 1) return 'E';
+    return this.directionFromCenter(tx, ty);
+  }
+
+  private getDirectionalPropTexture(type: 'barrel' | 'crate') {
+    const dir = this.randomEightDirection();
+    return `prop_${type}_${dir}`;
   }
 
   private isKeyDown(key: 'w' | 'a' | 's' | 'd') {
