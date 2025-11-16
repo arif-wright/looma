@@ -1,3 +1,4 @@
+import type { Dash, EntityId, Vec2 } from './components';
 import { World } from './components';
 
 export const movementSystem = (world: World, deltaMs: number) => {
@@ -5,43 +6,89 @@ export const movementSystem = (world: World, deltaMs: number) => {
   if (!Number.isFinite(dt) || dt <= 0) return;
 
   world.forEachMovement((_entity, transform, velocity) => {
-    const speed = Math.hypot(velocity.x, velocity.y);
-    if (speed > velocity.maxSpeed && speed > 0) {
-      const scale = velocity.maxSpeed / speed;
-      velocity.x *= scale;
-      velocity.y *= scale;
+    const mag = Math.hypot(velocity.vx, velocity.vy);
+    if (mag > velocity.speed && mag > 0) {
+      const scale = velocity.speed / Math.max(1, mag);
+      velocity.vx *= scale;
+      velocity.vy *= scale;
     }
 
-    transform.x += velocity.x * dt;
-    transform.y += velocity.y * dt;
+    transform.x += velocity.vx * dt;
+    transform.y += velocity.vy * dt;
 
-    const damping = Math.min(0.999, Math.max(0, velocity.damping));
-    velocity.x *= damping;
-    velocity.y *= damping;
+    const friction = 0.88;
+    velocity.vx *= friction;
+    velocity.vy *= friction;
   });
 };
 
-export const dashSystem = (world: World, deltaMs: number) => {
-  world.forEachDash((_entity, dash, velocity) => {
-    dash.remainingCooldown = Math.max(0, dash.remainingCooldown - deltaMs);
+export type DashInput = {
+  entity: EntityId;
+  dash: boolean;
+  direction: Vec2;
+};
 
-    if (dash.isDashing) {
-      dash.remainingDuration = Math.max(0, dash.remainingDuration - deltaMs);
-      if (dash.remainingDuration === 0) {
-        dash.isDashing = false;
-      }
+export type DashResult =
+  | {
+      activated: true;
+      entity: EntityId;
+      direction: Vec2;
+    }
+  | { activated: false };
+
+const normalize = (vec: Vec2): Vec2 => {
+  const mag = Math.hypot(vec.x, vec.y);
+  if (!Number.isFinite(mag) || mag === 0) {
+    return { x: 0, y: 0 };
+  }
+  return { x: vec.x / mag, y: vec.y / mag };
+};
+
+export const dashSystem = (
+  world: World,
+  deltaMs: number,
+  input?: DashInput
+): DashResult | undefined => {
+  let result: DashResult | undefined;
+
+  world.forEachDash((entity, dash, velocity) => {
+    dash.cd = Math.max(0, dash.cd - deltaMs);
+    dash.timer = Math.max(0, dash.timer - deltaMs);
+
+    if (!input || input.entity !== entity) {
       return;
     }
 
-    if (!dash.queuedDirection || dash.remainingCooldown > 0 || !velocity) {
+    if (!input.dash || dash.cd > 0) {
+      result = { activated: false };
       return;
     }
 
-    velocity.x = dash.queuedDirection.x * dash.speed;
-    velocity.y = dash.queuedDirection.y * dash.speed;
-    dash.isDashing = true;
-    dash.remainingDuration = dash.durationMs;
-    dash.remainingCooldown = dash.cooldownMs;
-    dash.queuedDirection = null;
+    const intent = normalize(input.direction);
+    const dir = intent.x === 0 && intent.y === 0 ? dash.lastDir : intent;
+    if (dir.x === 0 && dir.y === 0) {
+      result = { activated: false };
+      return;
+    }
+
+    const transform = world.getTransform(entity);
+    if (!transform) {
+      result = { activated: false };
+      return;
+    }
+
+    transform.x += dir.x * dash.power;
+    transform.y += dir.y * dash.power;
+    dash.cd = dash.cdMax;
+    dash.timer = dash.duration;
+    dash.lastDir = { ...dir };
+    if (velocity) {
+      velocity.vx = dir.x * dash.power * 2.2;
+      velocity.vy = dir.y * dash.power * 2.2;
+    }
+
+    result = { activated: true, entity, direction: dir };
   });
+
+  return result;
 };

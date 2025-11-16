@@ -10,14 +10,26 @@ export const ZERO_VEC: Vec2 = { x: 0, y: 0 };
 export type Transform = {
   x: number;
   y: number;
-  rotation: number;
+  rot: number;
 };
 
 export type Velocity = {
-  x: number;
-  y: number;
-  maxSpeed: number;
-  damping: number;
+  vx: number;
+  vy: number;
+  speed: number;
+};
+
+export type Player = {
+  score: number;
+};
+
+export type Enemy = {
+  speed: number;
+  chaseRadius: number;
+  attackRange: number;
+  attackDelay: number;
+  damage: number;
+  timer: number;
 };
 
 export type Health = {
@@ -26,13 +38,12 @@ export type Health = {
 };
 
 export type Dash = {
-  speed: number;
-  durationMs: number;
-  cooldownMs: number;
-  remainingCooldown: number;
-  remainingDuration: number;
-  isDashing: boolean;
-  queuedDirection: Vec2 | null;
+  cd: number;
+  cdMax: number;
+  power: number;
+  duration: number;
+  timer: number;
+  lastDir: Vec2;
 };
 
 export class World {
@@ -41,6 +52,8 @@ export class World {
   private velocities = new Map<EntityId, Velocity>();
   private health = new Map<EntityId, Health>();
   private dashes = new Map<EntityId, Dash>();
+  private players = new Set<EntityId>();
+  private enemies = new Set<EntityId>();
 
   createEntity(): EntityId {
     return this.nextEntityId++;
@@ -51,6 +64,9 @@ export class World {
     this.velocities.delete(entity);
     this.health.delete(entity);
     this.dashes.delete(entity);
+    this.players.delete(entity);
+    this.enemies.delete(entity);
+    this.metadata.delete(entity);
   }
 
   setTransform(entity: EntityId, transform: Transform) {
@@ -69,28 +85,52 @@ export class World {
     this.dashes.set(entity, { ...dash });
   }
 
-  getTransform(entity: EntityId): Transform | undefined {
+  tagPlayer(entity: EntityId, player: Player) {
+    this.players.add(entity);
+    this.setMetadata(entity, player);
+  }
+
+  tagEnemy(entity: EntityId, enemy: Enemy) {
+    this.enemies.add(entity);
+    this.setMetadata(entity, enemy);
+  }
+
+  private metadata = new Map<EntityId, unknown>();
+
+  private setMetadata(entity: EntityId, payload: unknown) {
+    this.metadata.set(entity, payload);
+  }
+
+  getPlayer(entity: EntityId): Player | undefined {
+    return this.players.has(entity) ? (this.metadata.get(entity) as Player) : undefined;
+  }
+
+  getEnemy(entity: EntityId): Enemy | undefined {
+    return this.enemies.has(entity) ? (this.metadata.get(entity) as Enemy) : undefined;
+  }
+
+  getPlayers() {
+    return Array.from(this.players);
+  }
+
+  getEnemies() {
+    return Array.from(this.enemies);
+  }
+
+  getTransform(entity: EntityId) {
     return this.transforms.get(entity);
   }
 
-  getVelocity(entity: EntityId): Velocity | undefined {
+  getVelocity(entity: EntityId) {
     return this.velocities.get(entity);
   }
 
-  getHealth(entity: EntityId): Health | undefined {
+  getHealth(entity: EntityId) {
     return this.health.get(entity);
   }
 
-  getDash(entity: EntityId): Dash | undefined {
+  getDash(entity: EntityId) {
     return this.dashes.get(entity);
-  }
-
-  queueDash(entity: EntityId, direction: Vec2) {
-    const dash = this.dashes.get(entity);
-    if (!dash) return;
-    const magnitude = Math.hypot(direction.x, direction.y);
-    if (magnitude === 0) return;
-    dash.queuedDirection = { x: direction.x / magnitude, y: direction.y / magnitude };
   }
 
   forEachMovement(handler: (entity: EntityId, transform: Transform, velocity: Velocity) => void) {
@@ -101,11 +141,11 @@ export class World {
     });
   }
 
-  forEachDash(
-    handler: (entity: EntityId, dash: Dash, velocity: Velocity | undefined) => void
-  ) {
-    this.dashes.forEach((dash, entity) => {
-      handler(entity, dash, this.velocities.get(entity));
-    });
+  forEachTransform(handler: (entity: EntityId, transform: Transform) => void) {
+    this.transforms.forEach((transform, entity) => handler(entity, transform));
+  }
+
+  forEachDash(handler: (entity: EntityId, dash: Dash, velocity: Velocity | undefined) => void) {
+    this.dashes.forEach((dash, entity) => handler(entity, dash, this.velocities.get(entity)));
   }
 }
