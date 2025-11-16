@@ -405,14 +405,15 @@ export class GameScene extends Phaser.Scene {
     this.playerSprite.setDepth(spawn.y + 20);
     this.playerSprite.play(`hero-${HERO_ANIM_KEYS.idle}-S`);
 
-    this.playerShadow = this.add.ellipse(spawn.x, spawn.y + 18, 80, 30, 0x000000, 0.4);
+    this.playerShadow = this.add.ellipse(spawn.x, spawn.y + 14, 84, 28, 0x000000, 0.55);
     this.playerShadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.playerShadow.setDepth(spawn.y - 5);
 
-    this.heroRing = this.add.image(spawn.x, spawn.y + 15, 'ringBlue');
-    this.heroRing.setScale(0.35);
-    this.heroRing.setAlpha(0.7);
-    this.heroRing.setBlendMode(Phaser.BlendModes.ADD);
+    this.heroRing = this.add.image(spawn.x, spawn.y + 12, 'ringBlue');
+    this.heroRing.setScale(0.26);
+    this.heroRing.setAlpha(0.35);
+    this.heroRing.setTint(0x1a1f2b);
+    this.heroRing.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.heroRing.setDepth(spawn.y - 10);
 
     this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
@@ -447,7 +448,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupUI() {
-    this.uiContainer = this.add.container(40, 32);
+    const zoom = this.cameras.main.zoom;
+    this.uiContainer = this.add.container(40 / zoom, 32 / zoom);
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 360, 140, 0x050c18, 0.65).setOrigin(0);
@@ -481,6 +483,7 @@ export class GameScene extends Phaser.Scene {
     this.hpBarBg.setPosition(16, 120);
     this.hpBarFill.setPosition(16, 120);
     this.drawHpBar(1);
+    this.uiContainer.setScale(1 / zoom);
     this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
   }
 
@@ -636,7 +639,8 @@ export class GameScene extends Phaser.Scene {
     this.loot.push({ sprite, indicator, glint, collected: false });
   }
 
-  private createSwooshEffect(center: Vec2) {
+  private createSwooshEffect(center: Vec2, direction?: Phaser.Math.Vector2) {
+    const dir = direction ? direction.clone().normalize() : new Phaser.Math.Vector2(0, -1);
     if (!this.anims.exists('vfx-swoosh')) {
       this.anims.create({
         key: 'vfx-swoosh',
@@ -645,7 +649,10 @@ export class GameScene extends Phaser.Scene {
         repeat: 0
       });
     }
-    const swoosh = this.add.sprite(center.x, center.y, 'vfx_swoosh_0');
+    const swoosh = this.add.sprite(center.x, center.y - 10, 'vfx_swoosh_0');
+    swoosh.setOrigin(0.5, 0.85);
+    const angle = Phaser.Math.RadToDeg(Math.atan2(dir.y, dir.x));
+    swoosh.setAngle(angle + 90);
     swoosh.setBlendMode(Phaser.BlendModes.ADD);
     swoosh.setDepth(center.y + 30);
     swoosh.play('vfx-swoosh');
@@ -752,8 +759,8 @@ export class GameScene extends Phaser.Scene {
     if (transform && velocity) {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
-      this.playerShadow.setPosition(transform.x, transform.y + 18);
-      this.heroRing.setPosition(transform.x, transform.y + 15);
+      this.playerShadow.setPosition(transform.x, transform.y + 14);
+      this.heroRing.setPosition(transform.x, transform.y + 12);
       const squish = velocity.vx !== 0 || velocity.vy !== 0 ? 0.9 : 1.05;
       this.playerShadow.setScale(Phaser.Math.Linear(this.playerShadow.scaleX, squish, 0.12), 1);
     }
@@ -858,7 +865,7 @@ export class GameScene extends Phaser.Scene {
         if (player) {
           player.score += 200;
         }
-        this.createSwooshEffect({ x: loot.sprite.x, y: loot.sprite.y - 20 });
+        this.createSwooshEffect({ x: loot.sprite.x, y: loot.sprite.y - 20 }, new Phaser.Math.Vector2(0, -1));
         return false;
       }
       return true;
@@ -891,7 +898,7 @@ export class GameScene extends Phaser.Scene {
       y: origin.y + direction.y * ATTACK_RANGE_OFFSET
     };
     const hitCircle = new Phaser.Geom.Circle(center.x, center.y, ATTACK_RADIUS);
-    this.createSwooshEffect(center);
+    this.createSwooshEffect(center, direction);
 
     this.skeletons.forEach((enemy) => {
       if (!enemy.alive) return;
