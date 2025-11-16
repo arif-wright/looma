@@ -3,8 +3,8 @@ import { World, type Vec2 } from '../ecs/components';
 import { dashSystem, movementSystem } from '../ecs/systems';
 
 const RUN_LIMIT_MS = 60000;
-const TILESET_KEY = 'shardfront-iso-tiles';
-const TILEMAP_KEY = 'shardfront-iso-map';
+const TILESET_KEY = 'shardfront-tiles';
+const TILEMAP_KEY = 'shardfront-map';
 const HERO_KEY = 'hero-iso';
 const AMBIENT_KEY = 'ambient-overlay';
 const VIGNETTE_KEY = 'vignette-overlay';
@@ -41,8 +41,8 @@ export class GameScene extends Phaser.Scene {
   private glowEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
   preload() {
-    this.load.image(TILESET_KEY, '/games/arpg/tileset_iso_v2.png');
-    this.load.tilemapTiledJSON(TILEMAP_KEY, '/games/arpg/shardfront_iso.json');
+    this.load.image(TILESET_KEY, '/games/arpg/tileset_diablo.png');
+    this.load.tilemapTiledJSON(TILEMAP_KEY, '/games/arpg/shardfront_diablo.json');
     this.load.spritesheet(HERO_KEY, '/games/arpg/hero_iso_v2.png', {
       frameWidth: 80,
       frameHeight: 80
@@ -59,7 +59,7 @@ export class GameScene extends Phaser.Scene {
     this.world = new World();
 
     this.map = this.make.tilemap({ key: TILEMAP_KEY });
-    const tileset = this.map.addTilesetImage('ShardfrontIsoV2', TILESET_KEY);
+    const tileset = this.map.addTilesetImage('ShardfrontARPG', TILESET_KEY);
     if (!tileset) {
       throw new Error('Tileset missing for Shardfront Approach');
     }
@@ -81,15 +81,15 @@ export class GameScene extends Phaser.Scene {
     if (!this.wallLayer) {
       throw new Error('Wall layer missing from map');
     }
+    this.wallLayer.setCollision([3, 4], true);
     this.collisionLayer = this.map.createLayer('collision', tileset, 0, 0);
     if (this.collisionLayer) {
       this.collisionLayer.setVisible(false);
-      this.collisionLayer.setCollision([1, 2, 3, 4], true);
+      this.collisionLayer.setCollision([1], true);
     }
-    this.wallLayer.setAlpha(1);
 
-    const spawnX = this.map.widthInPixels * 0.52;
-    const spawnY = this.map.heightInPixels * 0.58;
+    const spawnX = this.map.widthInPixels * 0.5;
+    const spawnY = this.map.heightInPixels * 0.55;
 
     this.playerId = this.world.createEntity();
     this.world.setTransform(this.playerId, { x: spawnX, y: spawnY, rotation: 0 });
@@ -122,8 +122,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.cameras.main.setZoom(0.92);
-    this.cameras.main.startFollow(this.playerSprite, true, 0.16, 0.16);
+    this.cameras.main.setZoom(1);
+    this.cameras.main.startFollow(this.playerSprite, true, 0.2, 0.2);
     this.cameras.main.roundPixels = true;
 
     this.ambientImage = this.add
@@ -257,10 +257,11 @@ export class GameScene extends Phaser.Scene {
     const body = this.playerSprite.body as Phaser.Physics.Arcade.Body;
     const halfW = (body?.width ?? 20) * 0.5;
     const halfH = (body?.height ?? 20) * 0.5;
-    const minX = halfW;
-    const minY = halfH;
-    const maxX = this.map.widthInPixels - halfW;
-    const maxY = this.map.heightInPixels - halfH;
+    const padding = 8;
+    const minX = halfW + padding;
+    const minY = halfH + padding;
+    const maxX = this.map.widthInPixels - halfW - padding;
+    const maxY = this.map.heightInPixels - halfH - padding;
 
     transform.x = Phaser.Math.Clamp(transform.x, minX, maxX);
     transform.y = Phaser.Math.Clamp(transform.y, minY, maxY);
@@ -292,11 +293,9 @@ export class GameScene extends Phaser.Scene {
     if (!this.playerId || !this.playerSprite) return;
     const transform = this.world.getTransform(this.playerId);
     if (!transform) return;
-    const smoothX = Phaser.Math.Linear(this.playerSprite.x, transform.x, 0.35);
-    const smoothY = Phaser.Math.Linear(this.playerSprite.y, transform.y, 0.35);
-    this.playerSprite.setPosition(smoothX, smoothY);
+    this.playerSprite.setPosition(transform.x, transform.y);
     if (this.shadow) {
-      this.shadow.setPosition(smoothX, smoothY + 8);
+      this.shadow.setPosition(transform.x, transform.y + 10);
     }
   }
 
@@ -360,19 +359,17 @@ export class GameScene extends Phaser.Scene {
   private positionOverlays() {
     if (!this.ambientImage || !this.vignetteImage) return;
     const cam = this.cameras.main;
-    const viewportWidth = cam.width / cam.zoom;
-    const viewportHeight = cam.height / cam.zoom;
-    const cx = viewportWidth / 2;
-    const cy = viewportHeight / 2;
+    const cx = cam.width / 2;
+    const cy = cam.height / 2;
     this.ambientImage.setPosition(cx, cy);
     this.vignetteImage.setPosition(cx, cy);
     const ambientScale = Math.max(
-      (viewportWidth / this.ambientImage.width) * 1.2,
-      (viewportHeight / this.ambientImage.height) * 1.2
+      (cam.width / this.ambientImage.width) * 1.2,
+      (cam.height / this.ambientImage.height) * 1.2
     );
     const vignetteScale = Math.max(
-      (viewportWidth / this.vignetteImage.width) * 1.15,
-      (viewportHeight / this.vignetteImage.height) * 1.15
+      (cam.width / this.vignetteImage.width) * 1.15,
+      (cam.height / this.vignetteImage.height) * 1.15
     );
     this.ambientImage.setScale(ambientScale);
     this.vignetteImage.setScale(vignetteScale);
