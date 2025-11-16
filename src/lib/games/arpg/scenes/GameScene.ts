@@ -181,6 +181,10 @@ export class GameScene extends Phaser.Scene {
   private hpBarFill!: Phaser.GameObjects.Graphics;
   private hpBarBg!: Phaser.GameObjects.Graphics;
   private uiContainer!: Phaser.GameObjects.Container;
+  private controlContainer!: Phaser.GameObjects.Container;
+  private primaryControl!: Phaser.GameObjects.Text;
+  private secondaryControl!: Phaser.GameObjects.Text;
+  private controlStatus!: Phaser.GameObjects.Text;
   private vignetteSprite?: Phaser.GameObjects.Image;
 
   private wallTiles = new Set<string>();
@@ -188,6 +192,7 @@ export class GameScene extends Phaser.Scene {
   private loot: LootActor[] = [];
   private skeletons: EnemyActor[] = [];
   private roomBounds = { minX: -800, maxX: 800, minY: -800, maxY: 800 };
+  private runState: 'idle' | 'running' | 'paused' = 'idle';
 
   constructor() {
     super({ key: 'GameScene' });
@@ -228,6 +233,11 @@ export class GameScene extends Phaser.Scene {
     this.elapsed += delta;
     if (this.elapsed >= MAX_RUN_MS) {
       this.endRun();
+      return;
+    }
+
+    if (this.runState !== 'running') {
+      this.updateUIState();
       return;
     }
 
@@ -273,6 +283,7 @@ export class GameScene extends Phaser.Scene {
     this.skeletons = [];
     this.ended = false;
     this.elapsed = 0;
+    this.runState = 'idle';
   }
 
   private preloadPropTextures() {
@@ -485,6 +496,7 @@ export class GameScene extends Phaser.Scene {
     this.drawHpBar(1);
     this.uiContainer.setScale(1 / zoom);
     this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
+    this.createControlButtons();
   }
 
   private createOverlays() {
@@ -496,6 +508,90 @@ export class GameScene extends Phaser.Scene {
       .setAlpha(0.65);
     this.resizeVignette();
     this.scale.on('resize', () => this.resizeVignette());
+  }
+
+  private createControlButtons() {
+    const zoom = this.cameras.main.zoom;
+    this.controlContainer = this.add.container(40 / zoom, 210 / zoom);
+    this.controlContainer.setScrollFactor(0);
+    this.controlContainer.setDepth(2000);
+    this.controlContainer.setScale(1 / zoom);
+    const panel = this.add.rectangle(0, 0, 360, 72, 0x040912, 0.55).setOrigin(0);
+    this.controlStatus = this.add.text(16, 10, 'Status: Waiting', {
+      fontFamily: 'Space Grotesk, sans-serif',
+      fontSize: '14px',
+      color: '#b8d4ff'
+    });
+    this.primaryControl = this.createUIButton(16, 34, 'Begin Run', () => this.handlePrimaryControl());
+    this.secondaryControl = this.createUIButton(190, 34, 'Play Again', () => this.restartGameplay());
+    this.secondaryControl.setAlpha(0.7);
+    this.controlContainer.add([panel, this.controlStatus, this.primaryControl, this.secondaryControl]);
+    this.updateControlButtons();
+  }
+
+  private createUIButton(x: number, y: number, label: string, handler: () => void) {
+    const button = this.add.text(x, y, label, {
+      fontFamily: 'Space Grotesk, sans-serif',
+      fontSize: '16px',
+      color: '#f0f4ff',
+      backgroundColor: '#1c2750',
+      padding: { left: 10, right: 10, top: 4, bottom: 4 }
+    });
+    button.setInteractive({ useHandCursor: true });
+    button.on('pointerup', handler);
+    button.on('pointerover', () => button.setAlpha(1));
+    button.on('pointerout', () => button.setAlpha(0.85));
+    button.setAlpha(0.85);
+    this.controlContainer.add(button);
+    return button;
+  }
+
+  private handlePrimaryControl() {
+    if (this.runState === 'idle') {
+      this.startGameplay();
+    } else if (this.runState === 'running') {
+      this.pauseGameplay();
+    } else {
+      this.resumeGameplay();
+    }
+  }
+
+  private startGameplay() {
+    this.runState = 'running';
+    this.updateControlButtons();
+  }
+
+  private pauseGameplay() {
+    this.runState = 'paused';
+    this.pointerAttack = false;
+    this.playerSprite.anims.pause();
+    this.skeletons.forEach((enemy) => enemy.sprite.anims.pause());
+    this.updateControlButtons();
+  }
+
+  private resumeGameplay() {
+    this.runState = 'running';
+    this.playerSprite.anims.resume();
+    this.skeletons.forEach((enemy) => enemy.sprite.anims.resume());
+    this.updateControlButtons();
+  }
+
+  private restartGameplay() {
+    this.scene.restart();
+  }
+
+  private updateControlButtons() {
+    if (!this.primaryControl || !this.controlStatus) return;
+    const label =
+      this.runState === 'idle' ? 'Begin Run' : this.runState === 'running' ? 'Pause Run' : 'Resume Run';
+    this.primaryControl.setText(label);
+    const status =
+      this.runState === 'idle'
+        ? 'Status: Waiting to begin'
+        : this.runState === 'running'
+          ? 'Status: Live'
+          : 'Status: Paused';
+    this.controlStatus.setText(status);
   }
 
   private spawnSkeletons() {
