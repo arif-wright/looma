@@ -10,20 +10,25 @@ const HALF_TILE_WIDTH = TILE_WIDTH / 2;
 const HALF_TILE_HEIGHT = TILE_HEIGHT / 2;
 const TILE_IMAGE_SIZE = 256;
 const TILE_SCALE = TILE_WIDTH / TILE_IMAGE_SIZE;
-const ROOM_WIDTH = 22;
-const ROOM_HEIGHT = 14;
+const ROOM_WIDTH = 30;
+const ROOM_HEIGHT = 20;
 const ROOM_ORIGIN_X = ROOM_HEIGHT * HALF_TILE_WIDTH;
-const ROOM_ORIGIN_Y = -250;
+const ROOM_ORIGIN_Y = -200;
+const CAMERA_ZOOM = 1.35;
+const CAMERA_PADDING = 180;
 const HERO_SPEED = 220;
-const ENEMY_SPEED = 150;
+const ENEMY_SPEED = 135;
 const HERO_MAX_HP = 140;
 const ENEMY_HP = 45;
-const HERO_ATTACK_COOLDOWN = 340;
-const ENEMY_ATTACK_COOLDOWN = 1_000;
-const HERO_ATTACK_DAMAGE = 25;
-const ENEMY_ATTACK_DAMAGE = 16;
+const HERO_ATTACK_COOLDOWN = 320;
+const ENEMY_ATTACK_COOLDOWN = 1_050;
+const ENEMY_ATTACK_RANGE = 85;
+const HERO_ATTACK_DAMAGE = 32;
+const ENEMY_ATTACK_DAMAGE = 12;
 const DASH_COOLDOWN = 700;
-const DASH_POWER = 220;
+const DASH_POWER = 230;
+const ATTACK_RANGE_OFFSET = 110;
+const ATTACK_RADIUS = 85;
 
 type GameHandlers = { onGameOver: (score: number) => void };
 
@@ -71,9 +76,9 @@ const SKELETON_ANIM_KEYS = {
 } as const;
 
 const FLOOR_VARIANTS = [
-  '/games/arpg/tiles/floor_tiles/N/tiles_N_90.0_0.png',
-  '/games/arpg/tiles/floor_tiles/E/tiles_E_0.0_0.png',
-  '/games/arpg/tiles/floor_tiles/S/tiles_S_270.0_0.png'
+  '/games/arpg/tiles/ground_stone1.png',
+  '/games/arpg/tiles/ground_variation1.png',
+  '/games/arpg/tiles/ground_variation2.png'
 ];
 
 const WALL_VARIANT = '/games/arpg/tiles/wall1/N/wall1_N_90.0_0.png';
@@ -103,6 +108,15 @@ const PROP_TEXTURES = {
   ],
   gold: '/games/arpg/props/gold_drop/S/gold_drop_S_270.0_0.png'
 } as const;
+
+const SCENERY_TEXTURES = [
+  '/games/arpg/props/bones1/S/bones1_S_270.0_0.png',
+  '/games/arpg/props/bones2/S/bones2_S_270.0_0.png',
+  '/games/arpg/props/bones3/S/bones3_S_270.0_0.png',
+  '/games/arpg/props/rocks/S/rocks_S_270.0_0.png',
+  '/games/arpg/props/mushrooms/S/mushrooms_S_270.0_0.png',
+  '/games/arpg/props/torch/N/torch_N_90.0_0.png'
+] as const;
 
 const UI_TEXTURES = {
   ringBlue: '/games/arpg/ui/highlight/highlight_blue.png',
@@ -150,6 +164,7 @@ export class GameScene extends Phaser.Scene {
   private movementInput = new Phaser.Math.Vector2(0, 0);
   private lastMoveDir = new Phaser.Math.Vector2(0, 0);
   private heroFacing: DirectionKey = 'S';
+  private heroFacingVec = new Phaser.Math.Vector2(0, 1);
   private heroAttacking = false;
   private pointerAttack = false;
   private attackCooldown = 0;
@@ -172,6 +187,7 @@ export class GameScene extends Phaser.Scene {
   private props: PropActor[] = [];
   private loot: LootActor[] = [];
   private skeletons: EnemyActor[] = [];
+  private roomBounds = { minX: -800, maxX: 800, minY: -800, maxY: 800 };
 
   constructor() {
     super({ key: 'GameScene' });
@@ -250,6 +266,7 @@ export class GameScene extends Phaser.Scene {
     this.pendingDash = false;
     this.heroAttacking = false;
     this.heroFacing = 'S';
+    this.heroFacingVec.set(0, 1);
     this.wallTiles.clear();
     this.props = [];
     this.loot = [];
@@ -265,6 +282,9 @@ export class GameScene extends Phaser.Scene {
       } else {
         this.load.image(key, value);
       }
+    });
+    SCENERY_TEXTURES.forEach((path, idx) => {
+      this.load.image(`scenery_${idx}`, path);
     });
   }
 
@@ -305,21 +325,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildDungeonRoom() {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    const floorKeys = FLOOR_VARIANTS.map((_, idx) => `floor_${idx}`);
     for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
       for (let tx = 0; tx < ROOM_WIDTH; tx++) {
         const pos = this.isoToWorld(tx, ty);
-        const key = Phaser.Utils.Array.GetRandom(['floor_0', 'floor_1', 'floor_2']);
+        const key = floorKeys[(tx + (ty % floorKeys.length)) % floorKeys.length];
         const tile = this.add.image(pos.x, pos.y, key);
         tile.setScale(TILE_SCALE);
         tile.setDepth(pos.y);
+        minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
+        maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
+        minY = Math.min(minY, pos.y - HALF_TILE_HEIGHT);
+        maxY = Math.max(maxY, pos.y + HALF_TILE_HEIGHT);
       }
     }
     const placeWall = (tx: number, ty: number) => {
       const pos = this.isoToWorld(tx, ty);
-      const wall = this.add.image(pos.x, pos.y - 40, 'wall_tile');
+      const wall = this.add.image(pos.x, pos.y - 42, 'wall_tile');
       wall.setScale(TILE_SCALE);
-      wall.setDepth(pos.y + 150);
+      wall.setDepth(pos.y + 160);
       this.wallTiles.add(`${tx},${ty}`);
+      minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
+      maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
+      minY = Math.min(minY, pos.y - HALF_TILE_HEIGHT - 80);
+      maxY = Math.max(maxY, pos.y + HALF_TILE_HEIGHT + 60);
     };
     for (let tx = 0; tx < ROOM_WIDTH; tx++) {
       placeWall(tx, 0);
@@ -336,6 +369,16 @@ export class GameScene extends Phaser.Scene {
       [ROOM_WIDTH - 6, ROOM_HEIGHT - 6]
     ];
     pillars.forEach(([x, y]) => placeWall(x, y));
+
+    this.roomBounds = { minX, maxX, minY, maxY };
+    const cam = this.cameras.main;
+    cam.setZoom(CAMERA_ZOOM);
+    cam.setBounds(
+      this.roomBounds.minX - CAMERA_PADDING,
+      this.roomBounds.minY - CAMERA_PADDING,
+      this.roomBounds.maxX - this.roomBounds.minX + CAMERA_PADDING * 2,
+      this.roomBounds.maxY - this.roomBounds.minY + CAMERA_PADDING * 2
+    );
   }
 
   private setupPlayer() {
@@ -372,7 +415,6 @@ export class GameScene extends Phaser.Scene {
     this.heroRing.setBlendMode(Phaser.BlendModes.ADD);
     this.heroRing.setDepth(spawn.y - 10);
 
-    this.cameras.main.setBounds(-500, -800, 3000, 2000);
     this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
 
     this.dashAfterimages = this.add.group();
@@ -472,7 +514,7 @@ export class GameScene extends Phaser.Scene {
     this.world.tagEnemy(id, {
       speed: ENEMY_SPEED,
       chaseRadius: 420,
-      attackRange: 80,
+      attackRange: ENEMY_ATTACK_RANGE,
       attackDelay: ENEMY_ATTACK_COOLDOWN,
       damage: ENEMY_ATTACK_DAMAGE,
       timer: 0
@@ -513,6 +555,7 @@ export class GameScene extends Phaser.Scene {
       { type: 'crate', tile: [ROOM_WIDTH - 7, ROOM_HEIGHT - 5], loot: 'gold' }
     ];
     placements.forEach((placement) => this.createProp(placement.type, placement.tile[0], placement.tile[1], placement.loot ?? null));
+    this.createScenery();
   }
 
   private createProp(type: 'barrel' | 'crate', tx: number, ty: number, loot: 'gold' | null) {
@@ -536,6 +579,25 @@ export class GameScene extends Phaser.Scene {
       loot
     };
     this.props.push(actor);
+  }
+
+  private createScenery() {
+    const slots: Array<[number, number]> = [];
+    for (let ty = 2; ty < ROOM_HEIGHT - 2; ty += 3) {
+      for (let tx = 2; tx < ROOM_WIDTH - 2; tx += 4) {
+        slots.push([tx + Phaser.Math.Between(-1, 1), ty + Phaser.Math.Between(-1, 1)]);
+      }
+    }
+    const shuffled = Phaser.Utils.Array.Shuffle(slots).slice(0, SCENERY_TEXTURES.length * 2);
+    shuffled.forEach((slot, index) => {
+      const texIndex = index % SCENERY_TEXTURES.length;
+      const textureKey = `scenery_${texIndex}`;
+      const sourcePath = SCENERY_TEXTURES[texIndex];
+      const world = this.isoToWorld(Phaser.Math.Clamp(slot[0], 1, ROOM_WIDTH - 2), Phaser.Math.Clamp(slot[1], 1, ROOM_HEIGHT - 2));
+      const sprite = this.add.image(world.x, world.y, textureKey);
+      sprite.setScale(0.45 + Math.random() * 0.2);
+      sprite.setDepth(world.y + (sourcePath.includes('torch') ? 140 : 12));
+    });
   }
 
   private registerPropBreakAnimation(type: 'barrel' | 'crate') {
@@ -601,6 +663,7 @@ export class GameScene extends Phaser.Scene {
     if (this.movementInput.lengthSq() > 0) {
       this.movementInput.normalize();
       this.lastMoveDir.copy(this.movementInput);
+      this.heroFacingVec.copy(this.movementInput);
       this.heroFacing = this.directionFromVector(this.lastMoveDir);
     }
 
@@ -617,13 +680,14 @@ export class GameScene extends Phaser.Scene {
 
   private handleDash(delta: number) {
     if (!this.playerId) return undefined;
+    const intent =
+      this.lastMoveDir.lengthSq() > 0
+        ? { x: this.lastMoveDir.x, y: this.lastMoveDir.y }
+        : { x: this.heroFacingVec.x, y: this.heroFacingVec.y };
     const dashInput: DashInput = {
       entity: this.playerId,
       dash: this.pendingDash,
-      direction:
-        this.lastMoveDir.lengthSq() > 0
-          ? { x: this.lastMoveDir.x, y: this.lastMoveDir.y }
-          : { x: this.heroFacing === 'E' ? 1 : this.heroFacing === 'W' ? -1 : 0, y: this.heroFacing === 'S' ? 1 : this.heroFacing === 'N' ? -1 : 0 }
+      direction: intent
     };
     this.pendingDash = false;
     return dashSystem(this.world, delta, dashInput);
@@ -756,14 +820,14 @@ export class GameScene extends Phaser.Scene {
         velocity.vx = dirX * ENEMY_SPEED;
         velocity.vy = dirY * ENEMY_SPEED;
         enemy.facing = this.directionFromVector(new Phaser.Math.Vector2(dirX, dirY));
-        if (distance < 90 && enemy.attackTimer === 0) {
+        if (distance < ENEMY_ATTACK_RANGE && enemy.attackTimer === 0) {
           enemy.attackTimer = ENEMY_ATTACK_COOLDOWN;
           velocity.vx = 0;
           velocity.vy = 0;
           const animKey = `skeleton-${SKELETON_ANIM_KEYS.attack}-${enemy.facing}`;
           enemy.sprite.play(animKey);
           enemy.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-            if (Phaser.Math.Distance.Between(playerTransform.x, playerTransform.y, transform.x, transform.y) < 120) {
+            if (Phaser.Math.Distance.Between(playerTransform.x, playerTransform.y, transform.x, transform.y) < ENEMY_ATTACK_RANGE + 20) {
               playerHealth.current = Math.max(0, playerHealth.current - ENEMY_ATTACK_DAMAGE);
               playerVelocity.vx -= dirX * 60;
               playerVelocity.vy -= dirY * 60;
@@ -813,20 +877,20 @@ export class GameScene extends Phaser.Scene {
       this.heroAttacking = false;
     });
 
-    const pointer = this.input.activePointer;
-    const aim = new Phaser.Math.Vector2(pointer.worldX - transform.x, pointer.worldY - transform.y);
-    if (aim.lengthSq() === 0 && this.lastMoveDir.lengthSq() > 0) {
-      aim.copy(this.lastMoveDir);
-    }
-    if (aim.lengthSq() === 0) {
-      aim.set(this.heroFacing === 'E' ? 1 : this.heroFacing === 'W' ? -1 : 0, this.heroFacing === 'S' ? 1 : -1);
-    }
-    aim.normalize();
+    const attackDir = this.heroFacingVec.lengthSq() > 0 ? this.heroFacingVec.clone() : new Phaser.Math.Vector2(0, 1);
+    attackDir.normalize();
+    const origin = { x: transform.x, y: transform.y };
+    this.time.delayedCall(140, () => this.applyAttackHit(origin, attackDir.clone()));
+    this.attackCooldown = HERO_ATTACK_COOLDOWN;
+  }
 
-    const reach = 120;
-    const radius = 70;
-    const center = new Phaser.Math.Vector2(transform.x + aim.x * reach, transform.y + aim.y * reach);
-    const hitCircle = new Phaser.Geom.Circle(center.x, center.y, radius);
+  private applyAttackHit(origin: Vec2, direction: Phaser.Math.Vector2) {
+    if (!this.playerId) return;
+    const center = {
+      x: origin.x + direction.x * ATTACK_RANGE_OFFSET,
+      y: origin.y + direction.y * ATTACK_RANGE_OFFSET
+    };
+    const hitCircle = new Phaser.Geom.Circle(center.x, center.y, ATTACK_RADIUS);
     this.createSwooshEffect(center);
 
     this.skeletons.forEach((enemy) => {
@@ -840,8 +904,8 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(120, () => enemy.sprite.clearTint());
         const velocity = this.world.getVelocity(enemy.id);
         if (velocity) {
-          velocity.vx += aim.x * 160;
-          velocity.vy += aim.y * 160;
+          velocity.vx += direction.x * 160;
+          velocity.vy += direction.y * 160;
         }
       }
     });
@@ -855,8 +919,6 @@ export class GameScene extends Phaser.Scene {
         }
       }
     });
-
-    this.attackCooldown = HERO_ATTACK_COOLDOWN;
   }
 
   private breakProp(prop: PropActor) {
