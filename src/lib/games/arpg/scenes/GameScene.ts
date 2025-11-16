@@ -459,8 +459,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupUI() {
-    const zoom = this.cameras.main.zoom;
-    this.uiContainer = this.add.container(40 / zoom, 32 / zoom);
+    this.uiContainer = this.add.container(40, 32);
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 360, 140, 0x050c18, 0.65).setOrigin(0);
@@ -494,7 +493,6 @@ export class GameScene extends Phaser.Scene {
     this.hpBarBg.setPosition(16, 120);
     this.hpBarFill.setPosition(16, 120);
     this.drawHpBar(1);
-    this.uiContainer.setScale(1 / zoom);
     this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
     this.createControlButtons();
   }
@@ -511,11 +509,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createControlButtons() {
-    const zoom = this.cameras.main.zoom;
-    this.controlContainer = this.add.container(40 / zoom, 210 / zoom);
+    this.controlContainer = this.add.container(40, 210);
     this.controlContainer.setScrollFactor(0);
     this.controlContainer.setDepth(2000);
-    this.controlContainer.setScale(1 / zoom);
     const panel = this.add.rectangle(0, 0, 360, 72, 0x040912, 0.55).setOrigin(0);
     this.controlStatus = this.add.text(16, 10, 'Status: Waiting', {
       fontFamily: 'Space Grotesk, sans-serif',
