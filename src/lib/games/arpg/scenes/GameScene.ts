@@ -81,11 +81,11 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0;
 
     this.setupMap();
+    this.createAnimations();
     this.setupPlayer();
     this.setupInput();
     this.setupUI();
     this.spawnEnemies();
-    this.createAnimations();
     this.createOverlays();
   }
 
@@ -613,9 +613,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tileToWorld(tx: number, ty: number): Vec2 {
-    const x = this.map.tileToWorldX(tx, ty) + this.map.tileWidth * 0.5;
-    const y = this.map.tileToWorldY(tx, ty) + this.map.tileHeight * 0.5;
-    return { x, y };
+    const point = this.map.tileToWorldXY(tx, ty);
+    if (!point) {
+      return { x: tx * this.map.tileWidth, y: ty * this.map.tileHeight };
+    }
+    return {
+      x: point.x + this.map.tileWidth * 0.5,
+      y: point.y + this.map.tileHeight * 0.5
+    };
   }
 
   private isKeyDown(key: 'w' | 'a' | 's' | 'd') {
