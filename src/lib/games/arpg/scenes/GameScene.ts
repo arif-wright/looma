@@ -578,7 +578,6 @@ export class GameScene extends Phaser.Scene {
     this.uiCamera.setZoom(1);
     this.uiCamera.ignore(this.worldLayer);
   }
-  }
 
   private handlePrimaryControl() {
     if (this.runState === 'idle') {
