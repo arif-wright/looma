@@ -10,12 +10,12 @@ const HALF_TILE_WIDTH = TILE_WIDTH / 2;
 const HALF_TILE_HEIGHT = TILE_HEIGHT / 2;
 const TILE_IMAGE_SIZE = 256;
 const TILE_SCALE = TILE_WIDTH / TILE_IMAGE_SIZE;
-const ROOM_WIDTH = 30;
-const ROOM_HEIGHT = 20;
+const ROOM_WIDTH = 28;
+const ROOM_HEIGHT = 18;
 const ROOM_ORIGIN_X = ROOM_HEIGHT * HALF_TILE_WIDTH;
 const ROOM_ORIGIN_Y = -200;
 const CAMERA_ZOOM = 1.35;
-const CAMERA_PADDING = 180;
+const CAMERA_PADDING = 140;
 const HERO_SPEED = 220;
 const ENEMY_SPEED = 135;
 const HERO_MAX_HP = 140;
@@ -75,21 +75,17 @@ const SKELETON_ANIM_KEYS = {
   death: 'skeleton_special_death'
 } as const;
 
-type EightDirection = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+const FLOOR_TEXTURES = [
+  '/games/arpg/tiles/ground_stone1.png',
+  '/games/arpg/tiles/ground_variation1.png',
+  '/games/arpg/tiles/ground_variation2.png'
+];
 
-const DIRECTION_FRAMES: Record<EightDirection, string> = {
-  N: '90.0',
-  NE: '45.0',
-  E: '0.0',
-  SE: '315.0',
-  S: '270.0',
-  SW: '225.0',
-  W: '180.0',
-  NW: '135.0'
-};
-
-const FLOOR_SETS = [{ folder: 'floor_tiles', prefix: 'tiles' }];
-const WALL_VARIANTS = ['wall1', 'wall2', 'wall3'] as const;
+const WALL_TEXTURES = [
+  '/games/arpg/tiles/wall1/N/wall1_N_90.0_0.png',
+  '/games/arpg/tiles/wall2/N/wall2_N_90.0_0.png',
+  '/games/arpg/tiles/wall3/N/wall3_N_90.0_0.png'
+];
 
 const PROP_TEXTURES = {
   barrel: '/games/arpg/props/barrel/N/barrel_N_90.0_0.png',
@@ -211,11 +207,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    FLOOR_SETS.forEach((set) => this.loadDirectionalSet(`floor_${set.folder}`, `/games/arpg/tiles/${set.folder}`, set.prefix));
-    WALL_VARIANTS.forEach((variant) => this.loadDirectionalSet(`wall_${variant}`, `/games/arpg/tiles/${variant}`, variant));
+    FLOOR_TEXTURES.forEach((path, idx) => this.load.image(`floor_${idx}`, path));
+    WALL_TEXTURES.forEach((path, idx) => this.load.image(`wall_${idx}`, path));
     this.preloadPropTextures();
-    this.loadDirectionalSet('prop_barrel', '/games/arpg/props/barrel', 'barrel');
-    this.loadDirectionalSet('prop_crate', '/games/arpg/props/crate', 'crate');
     this.preloadCharacterManifest(HERO_MANIFEST);
     this.preloadCharacterManifest(SKELETON_MANIFEST);
     Object.entries(UI_TEXTURES).forEach(([key, path]) => this.load.image(key, path));
@@ -315,17 +309,6 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private loadDirectionalSet(group: string, basePath: string, prefix: string) {
-    (Object.keys(DIRECTION_FRAMES) as EightDirection[]).forEach((dir) => {
-      const angleLabel = DIRECTION_FRAMES[dir];
-      const path = `${basePath}/${dir}/${prefix}_${dir}_${angleLabel}_0.png`;
-      const key = `${group}_${dir}`;
-      if (!this.textures.exists(key)) {
-        this.load.image(key, path);
-      }
-    });
-  }
-
   private preloadCharacterManifest(manifest: CharacterManifest) {
     Object.values(manifest).forEach((framesByDir) => {
       Object.values(framesByDir).forEach((frames) => {
@@ -367,52 +350,37 @@ export class GameScene extends Phaser.Scene {
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
+
+    const recordBounds = (world: Vec2, heightOffset = 0) => {
+      minX = Math.min(minX, world.x - HALF_TILE_WIDTH);
+      maxX = Math.max(maxX, world.x + HALF_TILE_WIDTH);
+      minY = Math.min(minY, world.y - HALF_TILE_HEIGHT + heightOffset);
+      maxY = Math.max(maxY, world.y + HALF_TILE_HEIGHT + heightOffset);
+    };
+
     for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
       for (let tx = 0; tx < ROOM_WIDTH; tx++) {
         const pos = this.isoToWorld(tx, ty);
-        const dir = this.directionFromCenter(tx, ty);
-        const floorSet = Phaser.Utils.Array.GetRandom(FLOOR_SETS);
-        const key = `floor_${floorSet.folder}_${dir}`;
-        const tile = this.add.image(pos.x, pos.y, key);
-        tile.setScale(TILE_SCALE);
-        tile.setDepth(pos.y);
-        this.addToWorld(tile);
-        minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
-        maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
-        minY = Math.min(minY, pos.y - HALF_TILE_HEIGHT);
-        maxY = Math.max(maxY, pos.y + HALF_TILE_HEIGHT);
+        const isBorder =
+          tx === 0 || ty === 0 || tx === ROOM_WIDTH - 1 || ty === ROOM_HEIGHT - 1;
+        if (isBorder) {
+          const texture = Phaser.Utils.Array.GetRandom(WALL_TEXTURES);
+          const wall = this.add.image(pos.x, pos.y - 42, texture);
+          wall.setScale(TILE_SCALE);
+          wall.setDepth(pos.y + 160);
+          this.addToWorld(wall);
+          this.wallTiles.add(`${tx},${ty}`);
+          recordBounds(pos, 70);
+        } else {
+          const texture = Phaser.Utils.Array.GetRandom(FLOOR_TEXTURES);
+          const tile = this.add.image(pos.x, pos.y, texture);
+          tile.setScale(TILE_SCALE);
+          tile.setDepth(pos.y);
+          this.addToWorld(tile);
+          recordBounds(pos);
+        }
       }
     }
-    const placeWall = (tx: number, ty: number) => {
-      const pos = this.isoToWorld(tx, ty);
-      const dir = this.getWallDirection(tx, ty);
-      const variant = Phaser.Utils.Array.GetRandom(WALL_VARIANTS);
-      const key = `wall_${variant}_${dir}`;
-      const wall = this.add.image(pos.x, pos.y - 42, key);
-      wall.setScale(TILE_SCALE);
-      wall.setDepth(pos.y + 160);
-      this.addToWorld(wall);
-      this.wallTiles.add(`${tx},${ty}`);
-      minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
-      maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
-      minY = Math.min(minY, pos.y - HALF_TILE_HEIGHT - 80);
-      maxY = Math.max(maxY, pos.y + HALF_TILE_HEIGHT + 60);
-    };
-    for (let tx = 0; tx < ROOM_WIDTH; tx++) {
-      placeWall(tx, 0);
-      placeWall(tx, ROOM_HEIGHT - 1);
-    }
-    for (let ty = 1; ty < ROOM_HEIGHT - 1; ty++) {
-      placeWall(0, ty);
-      placeWall(ROOM_WIDTH - 1, ty);
-    }
-    const pillars: Array<[number, number]> = [
-      [5, 5],
-      [ROOM_WIDTH - 6, 5],
-      [5, ROOM_HEIGHT - 6],
-      [ROOM_WIDTH - 6, ROOM_HEIGHT - 6]
-    ];
-    pillars.forEach(([x, y]) => placeWall(x, y));
 
     this.roomBounds = { minX, maxX, minY, maxY };
     const cam = this.cameras.main;
@@ -718,7 +686,7 @@ export class GameScene extends Phaser.Scene {
 
   private createProp(type: 'barrel' | 'crate', tx: number, ty: number, loot: 'gold' | null) {
     const pos = this.isoToWorld(tx, ty);
-    const textureKey = this.getDirectionalPropTexture(type);
+    const textureKey = type === 'barrel' ? 'barrel' : 'crate';
     const sprite = this.add.sprite(pos.x, pos.y, textureKey);
     sprite.setScale(0.6);
     sprite.setDepth(pos.y + 20);
@@ -1203,45 +1171,6 @@ export class GameScene extends Phaser.Scene {
     return object;
   }
 
-  private directionFromAngles(dx: number, dy: number): EightDirection {
-    const dirs: EightDirection[] = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
-    const angle = Math.atan2(dy, dx);
-    const normalized = (angle + Math.PI * 2) % (Math.PI * 2);
-    const index = Math.round(normalized / (Math.PI / 4)) % dirs.length;
-    return dirs[index];
-  }
-
-  private randomEightDirection(): EightDirection {
-    const dirs = Object.keys(DIRECTION_FRAMES) as EightDirection[];
-    return Phaser.Utils.Array.GetRandom(dirs);
-  }
-
-  private directionFromCenter(tx: number, ty: number): EightDirection {
-    const centerX = ROOM_WIDTH / 2;
-    const centerY = ROOM_HEIGHT / 2;
-    return this.directionFromAngles(tx - centerX, ty - centerY);
-  }
-
-  private getWallDirection(tx: number, ty: number): EightDirection {
-    if (ty === 0) {
-      if (tx === 0) return 'NW';
-      if (tx === ROOM_WIDTH - 1) return 'NE';
-      return 'N';
-    }
-    if (ty === ROOM_HEIGHT - 1) {
-      if (tx === 0) return 'SW';
-      if (tx === ROOM_WIDTH - 1) return 'SE';
-      return 'S';
-    }
-    if (tx === 0) return 'W';
-    if (tx === ROOM_WIDTH - 1) return 'E';
-    return this.directionFromCenter(tx, ty);
-  }
-
-  private getDirectionalPropTexture(type: 'barrel' | 'crate') {
-    const dir = this.randomEightDirection();
-    return `prop_${type}_${dir}`;
-  }
 
   private isKeyDown(key: 'w' | 'a' | 's' | 'd') {
     return this.wasd[key].isDown;
