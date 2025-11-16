@@ -130,30 +130,30 @@ export class GameScene extends Phaser.Scene {
 
     const floor = this.map.createLayer('floor', tileset, 0, 0);
     const walls = this.map.createLayer('walls', tileset, 0, 0);
-    this.decorLayer = this.map.createLayer('decor', tileset, 0, 0);
+    this.decorLayer = this.map.createLayer('props', tileset, 0, 0);
     if (!floor || !walls) {
       throw new Error('Dungeon map layers missing');
     }
     this.floorLayer = floor;
     this.wallLayer = walls;
-    this.floorLayer.setDepth(0);
-    this.wallLayer.setDepth(5);
-    this.decorLayer?.setDepth(6);
+    this.floorLayer.setDepth(0.5);
+    this.wallLayer.setDepth(8);
     this.wallLayer.setCollision([3, 4]);
+    this.decorLayer?.setDepth(9);
 
     this.overlay = this.add
-      .rectangle(0, 0, this.map.widthInPixels, this.map.heightInPixels, 0x05050a, 0.25)
+      .rectangle(0, 0, this.map.widthInPixels, this.map.heightInPixels, 0x03040a, 0.18)
       .setOrigin(0)
       .setDepth(-5);
     this.overlay.setBlendMode(Phaser.BlendModes.MULTIPLY);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    cam.setZoom(1);
+    cam.setZoom(0.82);
   }
 
   private setupPlayer() {
-    const spawn = this.tileToWorld(8, 8);
+    const spawn = this.tileToWorld(30, 20);
     this.playerId = this.world.createEntity();
     this.world.setTransform(this.playerId, { x: spawn.x, y: spawn.y, rot: 0 });
     this.world.setVelocity(this.playerId, { vx: 0, vy: 0, speed: 210 });
@@ -177,7 +177,7 @@ export class GameScene extends Phaser.Scene {
     this.playerShadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.playerShadow.setDepth(spawn.y + 5);
 
-    this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
+    this.cameras.main.startFollow(this.playerSprite, true, 0.1, 0.1);
 
     this.dashAfterimages = this.add.group();
   }
@@ -209,13 +209,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupUI() {
-    this.uiContainer = this.add.container(24, 24);
+    this.uiContainer = this.add.container(40, 32);
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(1000);
+    const panel = this.add.rectangle(0, 0, 360, 140, 0x050c18, 0.65).setOrigin(0);
+    panel.setStrokeStyle(1, 0x0e2244, 0.4);
     this.instructionsText = this.add
       .text(
-        0,
-        0,
+        16,
+        12,
         'WASD move  •  Space/Shift dash\nLeft click attack  •  Kite for breathing room',
         {
           fontFamily: 'Space Grotesk, sans-serif',
@@ -225,13 +227,13 @@ export class GameScene extends Phaser.Scene {
       )
       .setShadow(0, 0, '#000', 6, true, true);
     this.scoreText = this.add
-      .text(0, 44, 'Kills 0  •  Score 0', {
+      .text(16, 58, 'Kills 0  •  Score 0', {
         fontFamily: 'Space Grotesk, sans-serif',
         fontSize: '20px',
         color: '#f8fafc'
       })
       .setShadow(0, 0, '#000', 4, true, true);
-    this.hpText = this.add.text(0, 80, 'HP 120', {
+    this.hpText = this.add.text(16, 98, 'HP 120', {
       fontFamily: 'Space Grotesk, sans-serif',
       fontSize: '16px',
       color: '#c8f7ff'
@@ -239,7 +241,9 @@ export class GameScene extends Phaser.Scene {
     this.hpBarBg = this.add.graphics();
     this.hpBarFill = this.add.graphics();
     this.drawHpBar(1);
-    this.uiContainer.add([this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
+    this.hpBarBg.setPosition(16, 120);
+    this.hpBarFill.setPosition(16, 120);
+    this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
   }
 
   private createOverlays() {
@@ -248,7 +252,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(1200)
-      .setAlpha(0.9);
+      .setAlpha(0.6);
     this.resizeVignette();
     this.scale.on('resize', () => this.resizeVignette());
   }
@@ -274,11 +278,12 @@ export class GameScene extends Phaser.Scene {
 
   private spawnEnemies() {
     const spots: Vec2[] = [
-      this.tileToWorld(5, 5),
-      this.tileToWorld(11, 4),
-      this.tileToWorld(4, 11),
-      this.tileToWorld(11, 11),
-      this.tileToWorld(8, 3)
+      this.tileToWorld(26, 18),
+      this.tileToWorld(34, 22),
+      this.tileToWorld(30, 15),
+      this.tileToWorld(30, 25),
+      this.tileToWorld(22, 20),
+      this.tileToWorld(38, 20)
     ];
     spots.forEach((spot) => this.spawnEnemy(spot.x, spot.y));
   }
@@ -591,7 +596,7 @@ export class GameScene extends Phaser.Scene {
     const height = 16;
     this.hpBarBg.clear();
     this.hpBarBg.fillStyle(0x0c1b27, 0.8);
-    this.hpBarBg.fillRoundedRect(0, 110, width, height, 8);
+    this.hpBarBg.fillRoundedRect(0, 0, width, height, 8);
     this.hpBarFill.clear();
     const color = Phaser.Display.Color.Interpolate.ColorWithColor(
       Phaser.Display.Color.ValueToColor(0xff6363),
@@ -601,14 +606,14 @@ export class GameScene extends Phaser.Scene {
     );
     const fillColor = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
     this.hpBarFill.fillStyle(fillColor, 1);
-    this.hpBarFill.fillRoundedRect(0, 110, width * Phaser.Math.Clamp(ratio, 0, 1), height, 8);
+    this.hpBarFill.fillRoundedRect(0, 0, width * Phaser.Math.Clamp(ratio, 0, 1), height, 8);
   }
 
   private resizeVignette() {
     if (!this.vignetteSprite) return;
     const { width, height } = this.scale.gameSize;
     this.vignetteSprite.setPosition(width / 2, height / 2);
-    const scale = Math.max(width / this.vignetteSprite.width, height / this.vignetteSprite.height) * 1.2;
+    const scale = Math.max(width / this.vignetteSprite.width, height / this.vignetteSprite.height) * 1.35;
     this.vignetteSprite.setScale(scale);
   }
 
