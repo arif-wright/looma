@@ -154,6 +154,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private world!: World;
+  private worldLayer!: Phaser.GameObjects.Layer;
+  private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private playerId: EntityId | null = null;
   private playerSprite!: Phaser.GameObjects.Sprite;
   private heroRing!: Phaser.GameObjects.Image;
@@ -218,6 +220,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(0x05060a);
     this.world = new World();
+    this.worldLayer = this.add.layer();
     this.resetState();
     this.buildDungeonRoom();
     this.registerCharacterAnimations('hero', HERO_MANIFEST);
@@ -228,6 +231,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnSkeletons();
     this.createProps();
     this.createOverlays();
+    this.setupUICamera();
     this.updateFixedUITransforms();
   }
 
@@ -352,6 +356,7 @@ export class GameScene extends Phaser.Scene {
         const tile = this.add.image(pos.x, pos.y, key);
         tile.setScale(TILE_SCALE);
         tile.setDepth(pos.y);
+        this.addToWorld(tile);
         minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
         maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
         minY = Math.min(minY, pos.y - HALF_TILE_HEIGHT);
@@ -363,6 +368,7 @@ export class GameScene extends Phaser.Scene {
       const wall = this.add.image(pos.x, pos.y - 42, 'wall_tile');
       wall.setScale(TILE_SCALE);
       wall.setDepth(pos.y + 160);
+      this.addToWorld(wall);
       this.wallTiles.add(`${tx},${ty}`);
       minX = Math.min(minX, pos.x - HALF_TILE_WIDTH);
       maxX = Math.max(maxX, pos.x + HALF_TILE_WIDTH);
@@ -419,10 +425,12 @@ export class GameScene extends Phaser.Scene {
     this.playerSprite.setOrigin(0.5, 0.8);
     this.playerSprite.setDepth(spawn.y + 20);
     this.playerSprite.play(`hero-${HERO_ANIM_KEYS.idle}-S`);
+    this.addToWorld(this.playerSprite);
 
     this.playerShadow = this.add.ellipse(spawn.x, spawn.y + 14, 84, 28, 0x000000, 0.55);
     this.playerShadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.playerShadow.setDepth(spawn.y - 5);
+    this.addToWorld(this.playerShadow);
 
     this.heroRing = this.add.image(spawn.x, spawn.y + 12, 'ringBlue');
     this.heroRing.setScale(0.26);
@@ -430,6 +438,7 @@ export class GameScene extends Phaser.Scene {
     this.heroRing.setTint(0x1a1f2b);
     this.heroRing.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.heroRing.setDepth(spawn.y - 10);
+    this.addToWorld(this.heroRing);
 
     this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
 
@@ -508,6 +517,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(2500)
       .setAlpha(0.65);
+    this.addToWorld(this.vignetteSprite);
     this.resizeVignette();
     this.scale.on('resize', () => {
       this.resizeVignette();
@@ -551,12 +561,23 @@ export class GameScene extends Phaser.Scene {
 
   private updateFixedUITransforms() {
     if (!this.uiContainer || !this.controlContainer) return;
-    const zoom = this.cameras.main.zoom;
-    const scale = 1 / zoom;
-    this.uiContainer.setScale(scale).setPosition(this.hudMargin.x * scale, this.hudMargin.y * scale);
-    this.controlContainer
-      .setScale(scale)
-      .setPosition(this.controlOffset.x * scale, this.controlOffset.y * scale);
+    this.uiContainer.setScale(1).setPosition(this.hudMargin.x, this.hudMargin.y);
+    this.controlContainer.setScale(1).setPosition(this.controlOffset.x, this.controlOffset.y);
+    this.uiCamera?.setSize(this.scale.width, this.scale.height);
+  }
+
+  private setupUICamera() {
+    if (!this.uiContainer || !this.controlContainer) return;
+    this.uiCamera?.destroy();
+    const main = this.cameras.main;
+    main.ignore([this.uiContainer, this.controlContainer]);
+    const width = this.scale.width;
+    const height = this.scale.height;
+    this.uiCamera = this.cameras.add(0, 0, width, height);
+    this.uiCamera.setScroll(0, 0);
+    this.uiCamera.setZoom(1);
+    this.uiCamera.ignore(this.worldLayer);
+  }
   }
 
   private handlePrimaryControl() {
@@ -641,11 +662,13 @@ export class GameScene extends Phaser.Scene {
     sprite.setOrigin(0.5, 0.85);
     sprite.setDepth(spawn.y + 10);
     sprite.play(`skeleton-${SKELETON_ANIM_KEYS.idle}-S`);
+    this.addToWorld(sprite);
 
     const ring = this.add.image(spawn.x, spawn.y + 10, 'ringRed');
     ring.setScale(0.27);
     ring.setAlpha(0.4);
     ring.setDepth(spawn.y - 5);
+    this.addToWorld(ring);
 
     this.skeletons.push({
       id,
@@ -676,10 +699,12 @@ export class GameScene extends Phaser.Scene {
     const sprite = this.add.sprite(pos.x, pos.y, textureKey);
     sprite.setScale(0.6);
     sprite.setDepth(pos.y + 20);
+    this.addToWorld(sprite);
     const ring = this.add.image(pos.x, pos.y + 10, 'ringBlue');
     ring.setScale(0.2);
     ring.setAlpha(0.2);
     ring.setDepth(pos.y - 10);
+    this.addToWorld(ring);
     const actor: PropActor = {
       sprite,
       ring,
@@ -709,6 +734,7 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.add.image(world.x, world.y, textureKey);
       sprite.setScale(0.45 + Math.random() * 0.2);
       sprite.setDepth(world.y + (sourcePath.includes('torch') ? 140 : 12));
+      this.addToWorld(sprite);
     });
   }
 
@@ -730,9 +756,11 @@ export class GameScene extends Phaser.Scene {
     const sprite = this.add.sprite(pos.x, pos.y, 'gold');
     sprite.setScale(0.5);
     sprite.setDepth(pos.y + 10);
+    this.addToWorld(sprite);
     const indicator = this.add.image(pos.x, pos.y - 40, 'lootIndicator');
     indicator.setScale(0.5);
     indicator.setDepth(pos.y + 50);
+    this.addToWorld(indicator);
     const glint = this.add.sprite(pos.x, pos.y, 'vfx_glint_0');
     if (!this.anims.exists('vfx-glint')) {
       this.anims.create({
@@ -745,6 +773,7 @@ export class GameScene extends Phaser.Scene {
     glint.play('vfx-glint');
     glint.setBlendMode(Phaser.BlendModes.ADD);
     glint.setDepth(pos.y + 20);
+    this.addToWorld(glint);
     this.loot.push({ sprite, indicator, glint, collected: false });
   }
 
@@ -764,6 +793,7 @@ export class GameScene extends Phaser.Scene {
     swoosh.setAngle(angle + 90);
     swoosh.setBlendMode(Phaser.BlendModes.ADD);
     swoosh.setDepth(center.y + 30);
+    this.addToWorld(swoosh);
     swoosh.play('vfx-swoosh');
     swoosh.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => swoosh.destroy());
   }
@@ -1060,6 +1090,7 @@ export class GameScene extends Phaser.Scene {
     image.setDepth(this.playerSprite.depth - 1);
     image.setScale(this.playerSprite.scale);
     image.setBlendMode(Phaser.BlendModes.ADD);
+    this.addToWorld(image);
     this.dashAfterimages.add(image);
     this.tweens.add({
       targets: image,
@@ -1142,6 +1173,11 @@ export class GameScene extends Phaser.Scene {
       return vec.x >= 0 ? 'E' : 'W';
     }
     return vec.y >= 0 ? 'S' : 'N';
+  }
+
+  private addToWorld<T extends Phaser.GameObjects.GameObject>(object: T): T {
+    this.worldLayer.add(object);
+    return object;
   }
 
   private isKeyDown(key: 'w' | 'a' | 's' | 'd') {
