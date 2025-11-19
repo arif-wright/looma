@@ -33,6 +33,22 @@ export const games: GameMeta[] = [
     }
   },
   {
+    id: 'runner',
+    slug: 'runner',
+    name: 'Neon Run',
+    tagline: 'Endless runner prototype',
+    cover: {
+      alt: 'Neon character sprinting through glitch shards',
+      sources: {
+        '1280': '/games/runner/cover-1280.svg',
+        '960': '/games/runner/cover-960.svg',
+        '640': '/games/runner/cover-640.svg',
+        '512': '/games/runner/cover-512.svg'
+      },
+      square: '/games/runner/cover-512.svg'
+    }
+  },
+  {
     id: 'arpg',
     slug: 'arpg',
     name: 'Looma ARPG',
@@ -46,6 +62,22 @@ export const games: GameMeta[] = [
         '512': '/games/arpg/cover-512.webp'
       },
       square: '/games/arpg/cover-512.webp'
+    }
+  },
+  {
+    id: 'dodge',
+    slug: 'dodge',
+    name: 'Orbfield',
+    tagline: 'Dodge-and-survive canvas sim',
+    cover: {
+      alt: 'Soft glowing orb protecting a pilot amid shards',
+      sources: {
+        '1280': '/games/dodge/cover-1280.svg',
+        '960': '/games/dodge/cover-960.svg',
+        '640': '/games/dodge/cover-640.svg',
+        '512': '/games/dodge/cover-512.svg'
+      },
+      square: '/games/dodge/cover-512.svg'
     }
   }
 ];

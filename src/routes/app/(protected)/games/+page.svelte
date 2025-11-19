@@ -196,6 +196,13 @@
               Swap shards for boosters
             </a>
           </div>
+          <div class="hero-mini-links">
+            <span class="hero-mini-links__label">New canvas labs:</span>
+            <div class="hero-mini-links__chips">
+              <a class="hero-mini-links__chip" href="/app/games/runner">Neon Run</a>
+              <a class="hero-mini-links__chip" href="/app/games/dodge">Orbfield</a>
+            </div>
+          </div>
         {/if}
       </div>
 
@@ -437,6 +444,47 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-top: 0.5rem;
+  }
+
+  .hero-mini-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+  }
+
+  .hero-mini-links__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  .hero-mini-links__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .hero-mini-links__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(15, 23, 42, 0.45);
+    color: rgba(248, 250, 255, 0.86);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .hero-mini-links__chip:hover,
+  .hero-mini-links__chip:focus-visible {
+    border-color: rgba(94, 234, 212, 0.8);
+    color: rgba(255, 255, 255, 0.98);
+    outline: none;
   }
 
   .hero-primary,

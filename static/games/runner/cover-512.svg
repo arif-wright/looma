@@ -1,0 +1,25 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'>
+  <defs>
+    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#07091a'/>
+      <stop offset='100%' stop-color='#0f172a'/>
+    </linearGradient>
+    <linearGradient id='trail' x1='0%' y1='0%' x2='100%' y2='0%'>
+      <stop offset='0%' stop-color='#22d3ee'/>
+      <stop offset='100%' stop-color='#a855f7'/>
+    </linearGradient>
+  </defs>
+  <rect width='1280' height='720' fill='url(#bg)'/>
+  <g opacity='0.35'>
+    <path d='M0 600 L1280 500' stroke='#14b8a6' stroke-width='4' stroke-dasharray='24 18'/>
+    <path d='M0 500 L1280 420' stroke='#f472b6' stroke-width='4' stroke-dasharray='32 22'/>
+  </g>
+  <g>
+    <rect x='280' y='420' width='680' height='18' rx='9' fill='#0f172a' opacity='0.6'/>
+    <rect x='280' y='420' width='520' height='18' rx='9' fill='url(#trail)'/>
+    <circle cx='820' cy='429' r='26' fill='#22d3ee' opacity='0.75'/>
+    <circle cx='820' cy='429' r='10' fill='#67e8f9'/>
+  </g>
+  <text x='50%' y='50%' fill='#f1f5f9' font-family='"Space Grotesk", system-ui, sans-serif' font-size='96' font-weight='600' text-anchor='middle'>NEON RUN</text>
+  <text x='50%' y='58%' fill='#bae6fd' font-family='system-ui, sans-serif' font-size='28' text-anchor='middle'>Canvas prototype endless runner</text>
+</svg>
