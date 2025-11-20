@@ -13,6 +13,7 @@
   let game: LoomaGameInstance | null = null;
   let session: Awaited<ReturnType<typeof startSession>> | null = null;
   let sessionStartTime = 0;
+  let sessionVersion = clientVersion;
   let isLoading = true;
   let isSubmitting = false;
   let error: string | null = null;
@@ -65,7 +66,7 @@
         score: safeScore,
         durationMs,
         nonce: activeSession.nonce,
-        clientVersion
+        clientVersion: sessionVersion ?? clientVersion
       });
 
       await completeSession({
@@ -74,7 +75,7 @@
         durationMs,
         nonce: activeSession.nonce,
         signature,
-        clientVersion
+        clientVersion: sessionVersion ?? clientVersion
       });
 
       lastResult = { score: safeScore, durationMs, meta: rawResult.meta };
@@ -97,9 +98,11 @@
     isLoading = true;
     error = null;
     lastResult = null;
+    sessionVersion = clientVersion;
 
     try {
       session = await startSession(gameId, clientVersion);
+      sessionVersion = clientVersion || session.caps?.minClientVer || '1.0.0';
       sessionStartTime = performance.now();
 
       resizeCanvas();
