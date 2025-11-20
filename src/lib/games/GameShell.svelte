@@ -19,6 +19,8 @@
   let error: string | null = null;
   let lastResult: LoomaGameResult | null = null;
   let resizeAttached = false;
+  let difficulty: 'normal' | 'hard' = 'normal';
+  let muted = false;
 
   const detachResize = () => {
     if (resizeAttached && typeof window !== 'undefined') {
@@ -116,6 +118,10 @@
         onGameOver: async (result) => {
           destroyGame();
           await submitResult(result);
+        },
+        config: {
+          difficulty,
+          muted
         }
       });
 
@@ -159,21 +165,42 @@
       {/if}
     </div>
 
-    <div class="flex items-center justify-between text-sm text-slate-200">
-      {#if isLoading}
-        <span>Starting session…</span>
-      {:else if lastResult}
-        <span>Last score: <strong>{lastResult.score}</strong></span>
-      {:else}
-        <span>Good luck.</span>
-      {/if}
+    <div class="flex items-center justify-between gap-3 text-sm text-slate-200">
+      <div class="flex flex-col gap-1">
+        {#if isLoading}
+          <span>Starting session…</span>
+        {:else if lastResult}
+          <span>Last score: <strong>{lastResult.score}</strong></span>
+        {:else}
+          <span>Good luck.</span>
+        {/if}
+        <span class="text-xs text-slate-400">
+          Difficulty: {difficulty === 'normal' ? 'Normal' : 'Hard'} · Audio: {muted ? 'Muted' : 'On'}
+        </span>
+      </div>
 
-      <button
-        class="px-3 py-1 rounded-md bg-cyan-500/80 hover:bg-cyan-400 text-xs font-semibold"
-        on:click={restart}
-      >
-        Restart
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          class="px-2 py-1 rounded-md border border-white/10 text-xs hover:border-cyan-400/80"
+          on:click={() => ((muted = !muted), restart())}
+        >
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+
+        <button
+          class="px-2 py-1 rounded-md border border-white/10 text-xs hover:border-cyan-400/80"
+          on:click={() => ((difficulty = difficulty === 'normal' ? 'hard' : 'normal'), restart())}
+        >
+          Toggle difficulty
+        </button>
+
+        <button
+          class="px-3 py-1 rounded-md bg-cyan-500/80 hover:bg-cyan-400 text-xs font-semibold"
+          on:click={restart}
+        >
+          Restart
+        </button>
+      </div>
     </div>
   </div>
 </div>

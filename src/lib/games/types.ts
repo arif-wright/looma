@@ -10,6 +10,8 @@ export type LoomaGameInitOptions = {
   canvas: HTMLCanvasElement;
   /** Called once when the game ends */
   onGameOver: (result: LoomaGameResult) => void;
+  /** Optional per-game config (difficulty, audio, etc.) */
+  config?: Record<string, unknown>;
 };
 
 export type LoomaGameInstance = {
