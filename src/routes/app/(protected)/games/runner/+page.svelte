@@ -14,4 +14,5 @@
   description="Jump over glitch shards while your companion shields you. Short, sharp runs that feed your Looma streaks."
   gameId="runner"
   {createGame}
+  fullScreen={true}
 />

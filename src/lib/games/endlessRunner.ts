@@ -63,6 +63,7 @@ export const createEndlessRunner: LoomaGameFactory = (
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2D context');
   canvas.style.touchAction = 'none';
+  (canvas.style as any).webkitTapHighlightColor = 'transparent';
 
   const difficultyFactor =
     difficulty === 'easy' ? 0.85 : difficulty === 'hard' ? 1.25 : 1.0;

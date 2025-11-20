@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { startSession, completeSession, signCompletion } from '$lib/games/sdk';
   import type { LoomaGameFactory, LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
 
@@ -8,6 +9,7 @@
   export let gameId: string;
   export let createGame: LoomaGameFactory;
   export let clientVersion: string = '1.0.0';
+  export let fullScreen = false;
 
   let canvasEl: HTMLCanvasElement | null = null;
   let game: LoomaGameInstance | null = null;
@@ -19,7 +21,7 @@
   let error: string | null = null;
   let lastResult: LoomaGameResult | null = null;
   let resizeAttached = false;
-  let difficulty: 'easy' | 'normal' | 'hard' = 'normal';
+  let difficulty: 'normal' | 'hard' = 'normal';
   let audioOn = true;
   let bestScore: number | null = null;
 
@@ -191,38 +193,29 @@
   });
 </script>
 
-<div class="flex flex-col gap-4 h-full">
+<div
+  class={
+    fullScreen
+      ? 'fixed inset-0 z-50 bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3'
+      : 'relative flex flex-col gap-4 h-full'
+  }
+>
+  {#if fullScreen}
+    <button
+      type="button"
+      class="self-start mb-1 inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-200 border border-white/10"
+      on:click={() => goto('/app/games')}
+    >
+      ← Back
+    </button>
+  {/if}
+
   <header class="flex flex-col gap-1">
     <h1 class="text-xl font-semibold text-white">{title}</h1>
     <p class="text-sm text-slate-300">{description}</p>
   </header>
 
   <section class="flex flex-col gap-3 flex-1">
-    <div class="flex items-center justify-between text-xs sm:text-sm text-slate-200">
-      <div class="flex gap-4">
-        <span>Score: <strong>{lastResult ? lastResult.score : 0}</strong></span>
-        {#if bestScore !== null}
-          <span class="hidden sm:inline">Best: <strong>{bestScore}</strong></span>
-        {/if}
-      </div>
-      <div class="flex gap-2">
-        <button
-          class="px-2 py-1 rounded-full border border-white/20 text-[11px] sm:text-xs hover:border-cyan-400/80"
-          type="button"
-          on:click={toggleDifficulty}
-        >
-          Diff: {difficulty === 'hard' ? 'Hard' : 'Normal'}
-        </button>
-        <button
-          class="px-2 py-1 rounded-full border border-white/20 text-[11px] sm:text-xs hover:border-cyan-400/80"
-          type="button"
-          on:click={toggleAudio}
-        >
-          Audio: {audioOn ? 'On' : 'Off'}
-        </button>
-      </div>
-    </div>
-
     <div class="relative w-full max-w-4xl mx-auto grow flex items-center justify-center">
       <div class="relative w-full" style="aspect-ratio: 16 / 9;">
         {#if error}
@@ -234,26 +227,57 @@
             bind:this={canvasEl}
             class="absolute inset-0 w-full h-full rounded-xl bg-black touch-none"
           />
+          <div class="pointer-events-none absolute inset-0 flex flex-col">
+            <div class="flex items-start justify-between px-3 pt-2 text-[11px] sm:text-xs text-slate-100">
+              <div class="flex flex-col gap-0.5">
+                <span class="opacity-80">
+                  Score:
+                  <span class="font-semibold">{lastResult ? lastResult.score : 0}</span>
+                </span>
+                {#if bestScore !== null}
+                  <span class="opacity-70 hidden sm:block">
+                    Best: <span class="font-semibold">{bestScore}</span>
+                  </span>
+                {/if}
+              </div>
+              <div class="flex gap-1 pointer-events-auto">
+                <button
+                  type="button"
+                  class="rounded-full border border-white/20 bg-slate-900/70 px-2 py-1 text-[10px] sm:text-xs"
+                  on:click={toggleDifficulty}
+                >
+                  Diff: {difficulty === 'hard' ? 'Hard' : 'Normal'}
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border border-white/20 bg-slate-900/70 px-2 py-1 text-[10px] sm:text-xs"
+                  on:click={toggleAudio}
+                >
+                  Audio: {audioOn ? 'On' : 'Off'}
+                </button>
+              </div>
+            </div>
+            <div class="mt-auto flex items-end justify-between px-3 pb-2 text-[10px] sm:text-xs text-slate-200">
+              <span class="opacity-70">
+                {#if isLoading}
+                  Starting…
+                {:else if lastResult}
+                  Last: {lastResult.score}
+                {:else}
+                  Tap or press Space to jump.
+                {/if}
+              </span>
+              <button
+                type="button"
+                class="pointer-events-auto rounded-full bg-cyan-500/80 px-3 py-1 text-[10px] sm:text-xs font-semibold hover:bg-cyan-400"
+                on:click={restart}
+              >
+                Restart
+              </button>
+            </div>
+          </div>
         {/if}
       </div>
-    </div>
-
-    <div class="flex items-center justify-between text-xs sm:text-sm text-slate-200">
-      {#if isLoading}
-        <span>Starting session…</span>
-      {:else if lastResult}
-        <span>Last run: <strong>{lastResult.score}</strong></span>
-      {:else}
-        <span>Tap or press Space to jump.</span>
-      {/if}
-
-      <button
-        class="px-3 py-1 rounded-md bg-cyan-500/80 hover:bg-cyan-400 text-xs font-semibold"
-        type="button"
-        on:click={restart}
-      >
-        Restart
-      </button>
     </div>
   </section>
 </div>
