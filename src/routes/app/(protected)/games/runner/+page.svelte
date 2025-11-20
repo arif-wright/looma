@@ -11,7 +11,7 @@
 
 <GameShell
   title="Neon Run"
-  description="Jump over glitch shards, let your companion shield you once per run, and push for a high score."
+  description="Jump over glitch shards while your companion shields you. Short, sharp runs that feed your Looma streaks."
   gameId="runner"
   {createGame}
 />

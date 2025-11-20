@@ -19,8 +19,9 @@
   let error: string | null = null;
   let lastResult: LoomaGameResult | null = null;
   let resizeAttached = false;
-  let difficulty: 'normal' | 'hard' = 'normal';
-  let muted = false;
+  let difficulty: 'easy' | 'normal' | 'hard' = 'normal';
+  let audioOn = true;
+  let bestScore: number | null = null;
 
   const detachResize = () => {
     if (resizeAttached && typeof window !== 'undefined') {
@@ -40,10 +41,37 @@
     if (!parent) return;
 
     const rect = parent.getBoundingClientRect();
-    const size = Math.min(rect.width, rect.height || 480);
+    const width = rect.width;
+    const height = rect.height;
+    if (!width || !height) return;
+    canvasEl.width = Math.round(width);
+    canvasEl.height = Math.round(height);
+  }
 
-    canvasEl.width = size;
-    canvasEl.height = size;
+  const getBestScoreKey = () => `looma-best-${gameId}`;
+
+  function loadBestScore() {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(getBestScoreKey());
+      if (stored) {
+        const parsed = Number(stored);
+        if (!Number.isNaN(parsed)) {
+          bestScore = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function persistBestScore(value: number) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getBestScoreKey(), String(value));
+    } catch {
+      // ignore
+    }
   }
 
   async function submitResult(rawResult: LoomaGameResult) {
@@ -81,6 +109,10 @@
       });
 
       lastResult = { score: safeScore, durationMs, meta: rawResult.meta };
+      if (bestScore === null || safeScore > bestScore) {
+        bestScore = safeScore;
+        persistBestScore(safeScore);
+      }
     } catch (err) {
       console.error(err);
       error = 'Failed to submit score, but your run finished.';
@@ -115,13 +147,11 @@
 
       game = createGame({
         canvas: canvasEl,
+        difficulty,
+        audioEnabled: audioOn,
         onGameOver: async (result) => {
           destroyGame();
           await submitResult(result);
-        },
-        config: {
-          difficulty,
-          muted
         }
       });
 
@@ -140,7 +170,18 @@
     initGame();
   }
 
+  function toggleDifficulty() {
+    difficulty = difficulty === 'normal' ? 'hard' : 'normal';
+    restart();
+  }
+
+  function toggleAudio() {
+    audioOn = !audioOn;
+    restart();
+  }
+
   onMount(() => {
+    loadBestScore();
     initGame();
 
     return () => {
@@ -156,51 +197,63 @@
     <p class="text-sm text-slate-300">{description}</p>
   </header>
 
-  <div class="flex-1 flex flex-col gap-3">
-    <div class="flex-1 flex items-center justify-center bg-black/40 rounded-xl border border-white/10">
-      {#if error}
-        <div class="text-red-300 text-sm">{error}</div>
-      {:else}
-        <canvas bind:this={canvasEl} class="max-w-full max-h-full rounded-lg bg-black" />
-      {/if}
-    </div>
-
-    <div class="flex items-center justify-between gap-3 text-sm text-slate-200">
-      <div class="flex flex-col gap-1">
-        {#if isLoading}
-          <span>Starting session…</span>
-        {:else if lastResult}
-          <span>Last score: <strong>{lastResult.score}</strong></span>
-        {:else}
-          <span>Good luck.</span>
+  <section class="flex flex-col gap-3 flex-1">
+    <div class="flex items-center justify-between text-xs sm:text-sm text-slate-200">
+      <div class="flex gap-4">
+        <span>Score: <strong>{lastResult ? lastResult.score : 0}</strong></span>
+        {#if bestScore !== null}
+          <span class="hidden sm:inline">Best: <strong>{bestScore}</strong></span>
         {/if}
-        <span class="text-xs text-slate-400">
-          Difficulty: {difficulty === 'normal' ? 'Normal' : 'Hard'} · Audio: {muted ? 'Muted' : 'On'}
-        </span>
       </div>
-
-      <div class="flex items-center gap-2">
+      <div class="flex gap-2">
         <button
-          class="px-2 py-1 rounded-md border border-white/10 text-xs hover:border-cyan-400/80"
-          on:click={() => ((muted = !muted), restart())}
+          class="px-2 py-1 rounded-full border border-white/20 text-[11px] sm:text-xs hover:border-cyan-400/80"
+          type="button"
+          on:click={toggleDifficulty}
         >
-          {muted ? 'Unmute' : 'Mute'}
+          Diff: {difficulty === 'hard' ? 'Hard' : 'Normal'}
         </button>
-
         <button
-          class="px-2 py-1 rounded-md border border-white/10 text-xs hover:border-cyan-400/80"
-          on:click={() => ((difficulty = difficulty === 'normal' ? 'hard' : 'normal'), restart())}
+          class="px-2 py-1 rounded-full border border-white/20 text-[11px] sm:text-xs hover:border-cyan-400/80"
+          type="button"
+          on:click={toggleAudio}
         >
-          Toggle difficulty
-        </button>
-
-        <button
-          class="px-3 py-1 rounded-md bg-cyan-500/80 hover:bg-cyan-400 text-xs font-semibold"
-          on:click={restart}
-        >
-          Restart
+          Audio: {audioOn ? 'On' : 'Off'}
         </button>
       </div>
     </div>
-  </div>
+
+    <div class="relative w-full max-w-4xl mx-auto grow flex items-center justify-center">
+      <div class="relative w-full" style="aspect-ratio: 16 / 9;">
+        {#if error}
+          <div class="absolute inset-0 flex items-center justify-center text-red-300 text-sm">
+            {error}
+          </div>
+        {:else}
+          <canvas
+            bind:this={canvasEl}
+            class="absolute inset-0 w-full h-full rounded-xl bg-black touch-none"
+          />
+        {/if}
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between text-xs sm:text-sm text-slate-200">
+      {#if isLoading}
+        <span>Starting session…</span>
+      {:else if lastResult}
+        <span>Last run: <strong>{lastResult.score}</strong></span>
+      {:else}
+        <span>Tap or press Space to jump.</span>
+      {/if}
+
+      <button
+        class="px-3 py-1 rounded-md bg-cyan-500/80 hover:bg-cyan-400 text-xs font-semibold"
+        type="button"
+        on:click={restart}
+      >
+        Restart
+      </button>
+    </div>
+  </section>
 </div>
