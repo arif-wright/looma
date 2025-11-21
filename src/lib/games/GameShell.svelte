@@ -196,9 +196,10 @@
 <div
   class={
     fullScreen
-      ? 'fixed inset-0 z-50 bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3'
+      ? 'fixed inset-0 z-[80] bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3 overflow-y-auto'
       : 'relative flex flex-col gap-4 h-full'
   }
+  style={fullScreen ? 'min-height:100dvh;' : undefined}
 >
   {#if fullScreen}
     <button
@@ -216,7 +217,9 @@
   </header>
 
   <section class="flex flex-col gap-3 flex-1">
-    <div class="relative w-full max-w-4xl mx-auto grow flex items-center justify-center">
+    <div
+      class={`relative w-full ${fullScreen ? '' : 'max-w-4xl mx-auto'} grow flex items-center justify-center`}
+    >
       <div class="relative w-full" style="aspect-ratio: 16 / 9;">
         {#if error}
           <div class="absolute inset-0 flex items-center justify-center text-red-300 text-sm">
