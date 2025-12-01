@@ -1,146 +1,202 @@
-import { writable, type Readable } from 'svelte/store';
+const isBrowser = typeof document !== 'undefined';
 
-type FullscreenMode = 'native' | 'fallback' | null;
+const isIOS = () =>
+  typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-type FullscreenOptions = {
-  autoEnter?: boolean;
+const isAndroid = () =>
+  typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+
+type InlineSnapshot = Partial<
+  Pick<CSSStyleDeclaration, 'position' | 'inset' | 'width' | 'height' | 'touchAction'>
+>;
+
+let fallbackActive = false;
+let fallbackTarget: HTMLElement | null = null;
+let previousBodyOverflow: string | null = null;
+let previousStyles: InlineSnapshot = {};
+
+const applyFallbackLayout = () => {
+  if (!isBrowser || !fallbackTarget) return;
+  const el = fallbackTarget;
+  el.style.position = 'fixed';
+  el.style.inset = '0';
+  el.style.width = '100vw';
+  el.style.height = '100vh';
+  if (!el.style.touchAction || el.style.touchAction === 'auto') {
+    el.style.touchAction = 'none';
+  }
+  if (document.body) {
+    document.body.style.overflow = 'hidden';
+  }
 };
 
-export type FullscreenController = {
-  enter(): Promise<void>;
-  exit(): Promise<void>;
-  destroy(): void;
-  isActive: Readable<boolean>;
+const activateFallback = (el: HTMLElement) => {
+  if (!isBrowser) return;
+  fallbackActive = true;
+  fallbackTarget = el;
+  previousStyles = {
+    position: el.style.position,
+    inset: el.style.inset,
+    width: el.style.width,
+    height: el.style.height,
+    touchAction: el.style.touchAction
+  };
+  previousBodyOverflow = document.body?.style?.overflow ?? null;
+  applyFallbackLayout();
 };
 
-const getRequestFn = (element: HTMLElement) => {
+const releaseFallback = () => {
+  if (!fallbackTarget) return;
+  const el = fallbackTarget;
+  el.style.position = previousStyles.position ?? '';
+  el.style.inset = previousStyles.inset ?? '';
+  el.style.width = previousStyles.width ?? '';
+  el.style.height = previousStyles.height ?? '';
+  el.style.touchAction = previousStyles.touchAction ?? '';
+  if (document.body && previousBodyOverflow !== null) {
+    document.body.style.overflow = previousBodyOverflow;
+  }
+  fallbackActive = false;
+  fallbackTarget = null;
+  previousStyles = {};
+  previousBodyOverflow = null;
+};
+
+const getRequestFn = (el: HTMLElement) => {
+  const anyEl = el as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>;
+    mozRequestFullScreen?: () => Promise<void>;
+    msRequestFullscreen?: () => Promise<void>;
+  };
+
   return (
-    element.requestFullscreen ||
-    (element as any).webkitRequestFullscreen ||
-    (element as any).webkitEnterFullscreen ||
-    (element as any).mozRequestFullScreen ||
-    (element as any).msRequestFullscreen ||
+    el.requestFullscreen?.bind(el) ??
+    anyEl.webkitRequestFullscreen?.bind(el) ??
+    anyEl.mozRequestFullScreen?.bind(el) ??
+    anyEl.msRequestFullscreen?.bind(el) ??
     null
   );
 };
 
-export const createFullscreenController = (
-  target: HTMLElement,
-  options: FullscreenOptions = {}
-): FullscreenController => {
-  const { autoEnter = true } = options;
-  const isBrowser = typeof window !== 'undefined';
-  const isActive = writable(false);
-  let mode: FullscreenMode = null;
-  let destroyed = false;
-  let locked = false;
-  let scrollY = 0;
-  const savedBody: Record<string, string> = {
-    overflow: '',
-    position: '',
-    width: '',
-    top: ''
-  };
-  let savedDocOverflow = '';
-
-  const updateViewportUnit = () => {
-    if (!isBrowser) return;
-    document.documentElement.style.setProperty('--looma-game-vh', `${window.innerHeight * 0.01}px`);
+const getExitFn = () => {
+  if (!isBrowser) return null;
+  const anyDoc = document as Document & {
+    webkitExitFullscreen?: () => Promise<void>;
+    mozCancelFullScreen?: () => Promise<void>;
+    msExitFullscreen?: () => Promise<void>;
   };
 
-  const lockBody = () => {
-    if (!isBrowser || locked) return;
-    locked = true;
-    scrollY = window.scrollY || window.pageYOffset;
-    savedBody.overflow = document.body.style.overflow;
-    savedBody.position = document.body.style.position;
-    savedBody.width = document.body.style.width;
-    savedBody.top = document.body.style.top;
-    savedDocOverflow = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.classList.add('looma-game-fullscreen');
-    updateViewportUnit();
-    window.addEventListener('resize', updateViewportUnit);
-    window.addEventListener('orientationchange', updateViewportUnit);
-    requestAnimationFrame(() => window.scrollTo(0, 1));
-  };
+  return (
+    document.exitFullscreen?.bind(document) ??
+    anyDoc.webkitExitFullscreen?.bind(document) ??
+    anyDoc.mozCancelFullScreen?.bind(document) ??
+    anyDoc.msExitFullscreen?.bind(document) ??
+    null
+  );
+};
 
-  const unlockBody = () => {
-    if (!isBrowser || !locked) return;
-    locked = false;
-    document.documentElement.style.overflow = savedDocOverflow;
-    document.body.style.overflow = savedBody.overflow;
-    document.body.style.position = savedBody.position;
-    document.body.style.width = savedBody.width;
-    document.body.style.top = savedBody.top;
-    document.documentElement.style.removeProperty('--looma-game-vh');
-    document.body.classList.remove('looma-game-fullscreen');
-    window.removeEventListener('resize', updateViewportUnit);
-    window.removeEventListener('orientationchange', updateViewportUnit);
-    window.scrollTo(0, scrollY);
-  };
+export const enterFullscreen = async (el: HTMLElement): Promise<void> => {
+  if (!isBrowser || !el) return;
 
-  const handleNativeChange = () => {
-    if (!document.fullscreenElement && mode === 'native') {
-      mode = null;
-      isActive.set(false);
-      unlockBody();
-      document.removeEventListener('fullscreenchange', handleNativeChange);
-    }
-  };
+  const request = getRequestFn(el);
+  const shouldFallback = isIOS() || !request;
 
-  const enter = async () => {
-    if (!target || mode || destroyed || !isBrowser) return;
-    lockBody();
-    const request = getRequestFn(target);
-    if (request) {
-      try {
-        await request.call(target, { navigationUI: 'hide' });
-        mode = 'native';
-        isActive.set(true);
-        document.addEventListener('fullscreenchange', handleNativeChange);
-        return;
-      } catch (err) {
-        console.warn('[fullscreen] native request failed, falling back', err);
-      }
-    }
-    mode = 'fallback';
-    isActive.set(true);
-  };
-
-  const exit = async () => {
-    if (!mode || !isBrowser) return;
-    if (mode === 'native' && document.fullscreenElement) {
-      try {
-        await document.exitFullscreen?.();
-      } catch (err) {
-        console.warn('[fullscreen] exit failed', err);
-      }
-      document.removeEventListener('fullscreenchange', handleNativeChange);
-    }
-    mode = null;
-    isActive.set(false);
-    unlockBody();
-  };
-
-  if (autoEnter && isBrowser) {
-    requestAnimationFrame(() => {
-      void enter();
-    });
+  if (shouldFallback) {
+    activateFallback(el);
+    return;
   }
 
+  try {
+    await request();
+  } catch (err) {
+    console.warn('[fullscreen] requestFullscreen failed, falling back', err);
+    activateFallback(el);
+  }
+};
+
+export const exitFullscreen = async (): Promise<void> => {
+  if (!isBrowser) return;
+
+  if (fallbackActive) {
+    releaseFallback();
+    return;
+  }
+
+  const exit = getExitFn();
+  if (exit) {
+    try {
+      await exit();
+    } catch (err) {
+      console.warn('[fullscreen] exitFullscreen failed', err);
+    }
+  }
+};
+
+export const isFullscreen = (): boolean => {
+  if (!isBrowser) return false;
+  const anyDoc = document as Document & {
+    webkitFullscreenElement?: Element | null;
+    mozFullScreenElement?: Element | null;
+    msFullscreenElement?: Element | null;
+  };
+  return Boolean(
+    document.fullscreenElement ||
+      anyDoc.webkitFullscreenElement ||
+      anyDoc.mozFullScreenElement ||
+      anyDoc.msFullscreenElement ||
+      fallbackActive
+  );
+};
+
+export const ensureFallbackLayout = () => {
+  if (fallbackActive) {
+    applyFallbackLayout();
+  }
+};
+
+export const requestLandscape = async (): Promise<void> => {
+  if (!isBrowser || isIOS() || !isAndroid()) return;
+  const orientation = window.screen?.orientation;
+  if (!orientation?.lock) return;
+  try {
+    await orientation.lock('landscape');
+  } catch (err) {
+    console.info('[fullscreen] orientation lock unavailable', err);
+  }
+};
+
+export type FullscreenController = {
+  exit: () => Promise<void>;
+  destroy: () => void;
+};
+
+const setViewportVar = () => {
+  if (!isBrowser) return;
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--looma-game-vh', `${vh}px`);
+};
+
+export const createFullscreenController = (target: HTMLElement): FullscreenController => {
+  if (!isBrowser || !target) {
+    return {
+      exit: async () => {},
+      destroy: () => {}
+    };
+  }
+
+  setViewportVar();
+  const onResize = () => setViewportVar();
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  document.body?.classList.add('looma-game-fullscreen');
+
   return {
-    enter,
-    exit,
-    destroy() {
-      destroyed = true;
-      document.removeEventListener('fullscreenchange', handleNativeChange);
-      void exit();
-    },
-    isActive
+    exit: () => exitFullscreen(),
+    destroy: () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      document.body?.classList.remove('looma-game-fullscreen');
+      document.documentElement.style.removeProperty('--looma-game-vh');
+    }
   };
 };
