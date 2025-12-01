@@ -43,12 +43,8 @@
 
 <style>
   .companion-overlay {
-    position: absolute;
-    inset: auto 1.5rem 1.5rem auto;
     width: 72px;
     height: 72px;
-    pointer-events: none;
-    z-index: 5;
     display: grid;
     place-items: center;
   }

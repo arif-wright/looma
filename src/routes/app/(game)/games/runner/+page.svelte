@@ -1,18 +1,23 @@
 <script lang="ts">
-  import GameShell from '$lib/games/GameShell.svelte';
-  import { createEndlessRunner } from '$lib/games/endlessRunner';
+  import GameWrapper from '$lib/components/games/GameWrapper.svelte';
+  import NeonRun from '$lib/components/games/NeonRun.svelte';
+  import type { LoomaGameResult } from '$lib/games/types';
 
-  const createGame = createEndlessRunner;
+  let wrapper: InstanceType<typeof GameWrapper> | null = null;
+  let neonRun: InstanceType<typeof NeonRun> | null = null;
+
+  const GAME_ID = 'runner';
+
+  const handleGameOver = (event: CustomEvent<LoomaGameResult>) => {
+    if (!event.detail) return;
+    wrapper?.reportSessionResult({ ...event.detail, success: true });
+  };
+
+  const handleRestart = () => {
+    neonRun?.restart();
+  };
 </script>
 
-<svelte:head>
-  <title>Neon Run — Looma</title>
-</svelte:head>
-
-<GameShell
-  title="Neon Run"
-  description="Jump over glitch shards while your companion shields you. Short, sharp runs that feed your Looma streaks."
-  gameId="runner"
-  {createGame}
-  fullScreen={true}
-/>
+<GameWrapper bind:this={wrapper} gameId={GAME_ID} on:restart={handleRestart}>
+  <NeonRun bind:this={neonRun} on:gameOver={handleGameOver} />
+</GameWrapper>

@@ -53,7 +53,7 @@
 
   let lastResult: GameSessionResult | null = null;
   let lastServerResult: GameSessionServerResult | null = null;
-  let companionOverlayRef: InstanceType<typeof CompanionOverlay> | null = null;
+  let overlayRef: InstanceType<typeof CompanionOverlay> | null = null;
 
   const updateFullscreenState = () => {
     fullscreenActive = isFullscreen();
@@ -165,7 +165,7 @@
 
   const companionReact = (type: string) => {
     if (!type) return;
-    companionOverlayRef?.triggerCompanionReact(type);
+    overlayRef?.triggerCompanionReact(type);
   };
 
   export function pause() {
@@ -311,9 +311,7 @@
 >
   <slot />
 
-  {#if sessionActive && !showResults}
-    <CompanionOverlay bind:this={companionOverlayRef} {mood} visible={true} />
-  {/if}
+  <CompanionOverlay bind:this={overlayRef} {mood} visible={sessionActive && !showResults} />
 
   {#if sessionActive && !overlayVisible && !showResults}
     <button class="pause-toggle" type="button" on:click={pause}>
@@ -395,12 +393,14 @@
 
 <style>
   #game-container {
-    position: relative;
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
     background: #000;
     transition: box-shadow 240ms ease, filter 240ms ease;
+    z-index: 1;
   }
 
   #game-container.mood-excited {
@@ -561,5 +561,13 @@
 
   .result-stats strong {
     font-size: 1.1rem;
+  }
+
+  :global(.companion-overlay) {
+    position: absolute;
+    z-index: 9999;
+    bottom: 2rem;
+    left: 2rem;
+    pointer-events: none;
   }
 </style>
