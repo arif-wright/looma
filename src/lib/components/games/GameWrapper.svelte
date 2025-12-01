@@ -22,6 +22,7 @@
   export let gameId: string;
   export let onLoaded: (() => void | Promise<void>) | null = null;
   export let ready = false;
+  export let gameInstance: { pause?: () => void; resume?: () => void; reset?: () => void } | null = null;
 
   type SessionStartDetail = {
     sessionId: string;
@@ -176,12 +177,14 @@
   export function pause() {
     if (!sessionActive) return;
     isPaused = true;
+    gameInstance?.pause?.();
     dispatch('pause', undefined);
   }
 
   export function resume() {
     if (!sessionActive) return;
     isPaused = false;
+    gameInstance?.resume?.();
     dispatch('resume', undefined);
   }
 
@@ -251,6 +254,7 @@
     overlayError = null;
     overlayVisible = true;
     ready = false;
+    gameInstance?.reset?.();
     dispatch('restart', undefined);
   };
 

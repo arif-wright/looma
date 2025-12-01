@@ -17,6 +17,9 @@ export type LoomaGameInitOptions = {
 export type LoomaGameInstance = {
   start(): void;
   destroy(): void;
+  pause?(): void;
+  resume?(): void;
+  reset?(): void;
 };
 
 export type LoomaGameFactory = (opts: LoomaGameInitOptions) => LoomaGameInstance;

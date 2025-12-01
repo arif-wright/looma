@@ -94,6 +94,7 @@ export const createEndlessRunner: LoomaGameFactory = (
 
   let rafId = 0;
   let running = false;
+  let paused = false;
 
   const jumpSound = createSound('/sounds/runner-jump.mp3', audioEnabled);
   const hitSound = createSound('/sounds/runner-hit.mp3', audioEnabled);
@@ -309,6 +310,10 @@ export const createEndlessRunner: LoomaGameFactory = (
     const now = performance.now();
     const dt = now - lastTime;
     lastTime = now;
+    if (paused) {
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
     update(dt);
     draw();
     rafId = requestAnimationFrame(loop);
@@ -317,6 +322,7 @@ export const createEndlessRunner: LoomaGameFactory = (
   const start = () => {
     if (running) return;
     running = true;
+    paused = false;
     resetRun();
     lastTime = performance.now();
     loop();
@@ -324,8 +330,25 @@ export const createEndlessRunner: LoomaGameFactory = (
     canvas.addEventListener('pointerdown', pointerHandler);
   };
 
+  const pause = () => {
+    if (!running) return;
+    paused = true;
+  };
+
+  const resume = () => {
+    if (!running) return;
+    paused = false;
+    lastTime = performance.now();
+  };
+
+  const reset = () => {
+    resetRun();
+    draw();
+  };
+
   const destroy = () => {
     running = false;
+    paused = false;
     cancelAnimationFrame(rafId);
     window.removeEventListener('keydown', keyHandler);
     canvas.removeEventListener('pointerdown', pointerHandler);
@@ -333,6 +356,9 @@ export const createEndlessRunner: LoomaGameFactory = (
 
   return {
     start,
+    pause,
+    resume,
+    reset,
     destroy
   };
 };

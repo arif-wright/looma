@@ -12,6 +12,7 @@
   let stageEl: HTMLDivElement | null = null;
   let game: LoomaGameInstance | null = null;
   let resizeAttached = false;
+  let paused = false;
 
   const resizeCanvas = () => {
     if (!canvasEl) return;
@@ -25,8 +26,9 @@
   };
 
   const destroyGame = () => {
-    game?.destroy();
+    game?.destroy?.();
     game = null;
+    paused = false;
   };
 
   const ensureGame = () => {
@@ -43,6 +45,7 @@
     const xpReward = Math.max(5, Math.floor(rawScore / 250));
     const shardReward = Math.max(0, Math.floor(rawScore / 800));
 
+    paused = true;
     dispatch('gameOver', {
       score: rawScore,
       durationMs: result.durationMs,
@@ -57,12 +60,24 @@
 
   $: if (ready) {
     ensureGame();
+    paused = false;
     game?.start();
   } else {
     destroyGame();
   }
 
+  export function pause() {
+    paused = true;
+    game?.pause?.();
+  }
+
+  export function resume() {
+    paused = false;
+    game?.resume?.();
+  }
+
   export function reset() {
+    paused = false;
     destroyGame();
   }
 

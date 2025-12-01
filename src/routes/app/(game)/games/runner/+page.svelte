@@ -19,6 +19,12 @@
   };
 </script>
 
-<GameWrapper bind:this={wrapper} bind:ready={ready} gameId={GAME_ID} on:restart={handleRestart}>
+<GameWrapper
+  bind:this={wrapper}
+  bind:ready={ready}
+  gameId={GAME_ID}
+  gameInstance={neonRun}
+  on:restart={handleRestart}
+>
   <NeonRun bind:this={neonRun} {ready} on:gameOver={handleGameOver} />
 </GameWrapper>
