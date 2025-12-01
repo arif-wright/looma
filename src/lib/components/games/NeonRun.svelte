@@ -2,8 +2,11 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { createEndlessRunner } from '$lib/games/endlessRunner';
   import type { LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
+  import type { GameSessionResult } from '$lib/games/sdk';
 
-  const dispatch = createEventDispatcher<{ gameOver: LoomaGameResult }>();
+  export let ready = false;
+
+  const dispatch = createEventDispatcher<{ gameOver: GameSessionResult }>();
 
   let canvasEl: HTMLCanvasElement | null = null;
   let stageEl: HTMLDivElement | null = null;
@@ -26,26 +29,47 @@
     game = null;
   };
 
-  const startGame = () => {
-    if (!canvasEl) return;
-    destroyGame();
+  const ensureGame = () => {
+    if (game || !canvasEl) return;
     resizeCanvas();
     game = createEndlessRunner({
       canvas: canvasEl,
-      onGameOver: (result) => dispatch('gameOver', result)
+      onGameOver: handleGameOver
     });
-    game.start();
   };
 
-  export function restart() {
-    startGame();
+  const handleGameOver = (result: LoomaGameResult) => {
+    const rawScore = Math.max(0, Math.floor(result.score ?? 0));
+    const xpReward = Math.max(5, Math.floor(rawScore / 250));
+    const shardReward = Math.max(0, Math.floor(rawScore / 800));
+
+    dispatch('gameOver', {
+      score: rawScore,
+      durationMs: result.durationMs,
+      success: rawScore > 0,
+      rewards: {
+        xp: xpReward,
+        shards: shardReward
+      },
+      extra: result.meta ?? undefined
+    });
+  };
+
+  $: if (ready) {
+    ensureGame();
+    game?.start();
+  } else {
+    destroyGame();
+  }
+
+  export function reset() {
+    destroyGame();
   }
 
   onMount(() => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     resizeAttached = true;
-    startGame();
 
     return () => {
       if (resizeAttached) {

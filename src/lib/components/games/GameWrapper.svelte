@@ -21,6 +21,7 @@
 
   export let gameId: string;
   export let onLoaded: (() => void | Promise<void>) | null = null;
+  export let ready = false;
 
   type SessionStartDetail = {
     sessionId: string;
@@ -89,6 +90,7 @@
     sessionActive = false;
     stopMoodUpdates();
     mood = null;
+    ready = false;
   };
 
   const startNewSession = async () => {
@@ -100,6 +102,7 @@
     if (!containerEl || activating) return;
     activating = true;
     overlayError = null;
+    ready = false;
     try {
       await enterFullscreen(containerEl);
       await requestLandscape();
@@ -109,10 +112,12 @@
         await onLoaded();
       }
       hasLoaded = true;
+      ready = true;
     } catch (err) {
       console.error('[GameWrapper] activation failed', err);
       overlayVisible = true;
       overlayError = err instanceof Error ? err.message : 'Unable to start session';
+      ready = false;
     } finally {
       syncContainerSize();
       updateFullscreenState();
@@ -190,6 +195,7 @@
       return;
     }
 
+    ready = false;
     const durationMs = computeDuration(result?.durationMs);
     const payload: GameSessionResult = {
       ...result,
@@ -237,27 +243,19 @@
     goto('/app/games');
   };
 
-  const handlePlayAgain = async () => {
+  const handlePlayAgain = () => {
+    resetSessionContext();
     showResults = false;
     lastResult = null;
     lastServerResult = null;
     overlayError = null;
-    try {
-      await startNewSession();
-      dispatch('restart', undefined);
-    } catch (err) {
-      overlayVisible = true;
-      overlayError = err instanceof Error ? err.message : 'Unable to start session';
-      console.error('[GameWrapper] replay failed', err);
-    }
+    overlayVisible = true;
+    ready = false;
+    dispatch('restart', undefined);
   };
 
   export function restart() {
-    if (showResults) {
-      void handlePlayAgain();
-    } else if (!sessionActive) {
-      void activateGame();
-    }
+    handlePlayAgain();
   }
 
   const handleBackToHub = () => {
