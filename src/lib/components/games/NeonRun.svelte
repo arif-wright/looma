@@ -13,6 +13,7 @@
   let game: LoomaGameInstance | null = null;
   let resizeAttached = false;
   let paused = false;
+  let running = false;
 
   const resizeCanvas = () => {
     if (!canvasEl) return;
@@ -29,6 +30,7 @@
     game?.destroy?.();
     game = null;
     paused = false;
+    running = false;
   };
 
   const ensureGame = () => {
@@ -41,11 +43,13 @@
   };
 
   const handleGameOver = (result: LoomaGameResult) => {
-    const rawScore = Math.max(0, Math.floor(result.score ?? 0));
-    const xpReward = Math.max(5, Math.floor(rawScore / 250));
-    const shardReward = Math.max(0, Math.floor(rawScore / 800));
-
+    if (!running) return;
+    running = false;
     paused = true;
+    const rawScore = Math.max(0, Math.floor(result.score ?? 0));
+    const xpReward = rawScore;
+    const shardReward = Math.floor(rawScore / 10);
+
     dispatch('gameOver', {
       score: rawScore,
       durationMs: result.durationMs,
@@ -61,6 +65,7 @@
   $: if (ready) {
     ensureGame();
     paused = false;
+    running = true;
     game?.start();
   } else {
     destroyGame();
@@ -78,6 +83,7 @@
 
   export function reset() {
     paused = false;
+    running = false;
     destroyGame();
   }
 
