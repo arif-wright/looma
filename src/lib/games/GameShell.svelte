@@ -24,6 +24,24 @@
   let difficulty: 'normal' | 'hard' = 'normal';
   let audioOn = true;
   let bestScore: number | null = null;
+  const isBrowser = typeof window !== 'undefined';
+
+  const portal = (node: HTMLElement, enabled: boolean) => {
+    if (!enabled || !isBrowser) {
+      return {};
+    }
+    const placeholder = document.createComment('portal-anchor');
+    const parent = node.parentNode;
+    if (!parent) return {};
+    parent.insertBefore(placeholder, node);
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+        placeholder.remove();
+      }
+    };
+  };
 
   const detachResize = () => {
     if (resizeAttached && typeof window !== 'undefined') {
@@ -194,6 +212,7 @@
 </script>
 
 <div
+  use:portal={fullScreen}
   class={
     fullScreen
       ? 'fixed inset-0 z-[80] bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3 overflow-y-auto'
