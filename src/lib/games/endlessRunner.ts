@@ -96,9 +96,9 @@ export const createEndlessRunner: LoomaGameFactory = (
   let running = false;
   let paused = false;
 
-  const jumpSound = createSound('/sounds/runner-jump.mp3', audioEnabled);
-  const hitSound = createSound('/sounds/runner-hit.mp3', audioEnabled);
-  const shieldSound = createSound('/sounds/runner-shield.mp3', audioEnabled);
+  const jumpSound = createSound('/sounds/runner-jump.wav', audioEnabled);
+  const hitSound = createSound('/sounds/runner-hit.wav', audioEnabled);
+  const shieldSound = createSound('/sounds/runner-shield.wav', audioEnabled);
 
   const resetRun = () => {
     playerX = canvas.width * 0.2;

@@ -217,11 +217,12 @@
       dispatch('sessioncomplete', { sessionId: currentSessionId, result: enrichedResult });
       lastResult = enrichedResult;
       lastServerResult = serverResponse ?? null;
-      showResults = true;
     } catch (err) {
       console.error('[GameWrapper] failed to complete session', err);
-      throw err;
+      lastResult = payload;
+      lastServerResult = null;
     } finally {
+      showResults = true;
       resetSessionContext();
       isPaused = false;
     }

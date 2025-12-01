@@ -211,6 +211,7 @@
 
       const { signature } = await signCompletion({
         sessionId: session.sessionId,
+        slug,
         score: sanitizedScore,
         durationMs,
         nonce: session.nonce,

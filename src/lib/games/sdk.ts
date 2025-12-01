@@ -82,6 +82,8 @@ import { applyPlayerState, getPlayerProgressSnapshot } from '$lib/games/state';
 import { getActiveCompanionSnapshot } from '$lib/stores/companions';
 import { sendAnalytics } from '$lib/utils/analytics';
 
+export const CLIENT_VERSION = '1.0.0';
+
 type StartResponse = {
   sessionId: string;
   nonce: string;
@@ -121,8 +123,8 @@ export const startSession = async (
     typeof metadataOrVersion === 'string'
       ? metadataOrVersion
       : typeof metadata?.clientVersion === 'string'
-      ? metadata.clientVersion
-      : undefined;
+        ? metadata.clientVersion
+        : CLIENT_VERSION;
   const response = await fetch('/api/games/session/start', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -144,7 +146,7 @@ export const startSession = async (
     slug,
     metadata: metadata ?? null,
     startedAt: Date.now(),
-    clientVersion
+    clientVersion: clientVersion ?? CLIENT_VERSION
   };
   activeSessions.set(context.sessionId, context);
   currentSessionId = context.sessionId;
@@ -215,10 +217,11 @@ export type GameSessionResult = {
 };
 
 const postSessionCompletion = async (args: CompleteArgs) => {
+  const payload = { ...args, clientVersion: args.clientVersion ?? CLIENT_VERSION };
   const response = await fetch('/api/games/session/complete', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(args)
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
@@ -262,10 +265,11 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
 
   const { signature } = await signCompletion({
     sessionId,
+    slug: context.slug,
     score,
     durationMs,
     nonce: context.nonce,
-    clientVersion: context.clientVersion
+    clientVersion: context.clientVersion ?? CLIENT_VERSION
   });
 
   const completion = await postSessionCompletion({
@@ -274,7 +278,7 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     durationMs,
     nonce: context.nonce,
     signature,
-    clientVersion: context.clientVersion
+    clientVersion: context.clientVersion ?? CLIENT_VERSION
   });
 
   activeSessions.delete(sessionId);
@@ -312,6 +316,7 @@ export async function completeSession(
 
 type SignArgs = {
   sessionId: string;
+  slug: string;
   score: number;
   durationMs: number;
   nonce: string;
@@ -319,10 +324,14 @@ type SignArgs = {
 };
 
 export const signCompletion = async (args: SignArgs) => {
+  const payload = {
+    ...args,
+    clientVersion: args.clientVersion ?? CLIENT_VERSION
+  };
   const response = await fetch('/api/games/sign', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(args)
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {

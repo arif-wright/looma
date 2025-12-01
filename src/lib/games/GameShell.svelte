@@ -99,6 +99,7 @@
     try {
       const { signature } = await signCompletion({
         sessionId: activeSession.sessionId,
+        slug: gameId,
         score: safeScore,
         durationMs,
         nonce: activeSession.nonce,
