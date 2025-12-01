@@ -7,10 +7,12 @@
     isFullscreen,
     requestLandscape
   } from '$lib/games/fullscreen';
+  import CompanionOverlay from './CompanionOverlay.svelte';
   import {
     awardShards,
     awardXP,
     completeSession,
+    getMood,
     startSession,
     type GameSessionResult,
     type GameSessionServerResult,
@@ -41,6 +43,8 @@
   let overlayError: string | null = null;
   let isPaused = false;
   let showResults = false;
+  let mood: { state: string; intensity: number } | null = null;
+  let moodInterval: ReturnType<typeof setInterval> | null = null;
 
   let currentSessionId: string | null = null;
   let sessionContext: GameSessionStart | null = null;
@@ -49,6 +53,7 @@
 
   let lastResult: GameSessionResult | null = null;
   let lastServerResult: GameSessionServerResult | null = null;
+  let companionOverlayRef: InstanceType<typeof CompanionOverlay> | null = null;
 
   const updateFullscreenState = () => {
     fullscreenActive = isFullscreen();
@@ -74,6 +79,7 @@
     sessionStartClock = typeof window !== 'undefined' ? performance.now() : Date.now();
     sessionActive = true;
     dispatch('sessionstart', { sessionId: context.sessionId, context });
+    startMoodUpdates();
   };
 
   const resetSessionContext = () => {
@@ -81,6 +87,8 @@
     sessionContext = null;
     sessionStartClock = 0;
     sessionActive = false;
+    stopMoodUpdates();
+    mood = null;
   };
 
   const startNewSession = async () => {
@@ -132,6 +140,34 @@
     return Math.max(0, Math.floor(now - sessionStartClock));
   };
 
+  const stopMoodUpdates = () => {
+    if (moodInterval) {
+      clearInterval(moodInterval);
+      moodInterval = null;
+    }
+  };
+
+  const refreshMood = async () => {
+    try {
+      mood = await getMood();
+    } catch (err) {
+      console.warn('[GameWrapper] failed to fetch companion mood', err);
+    }
+  };
+
+  const startMoodUpdates = () => {
+    stopMoodUpdates();
+    void refreshMood();
+    moodInterval = setInterval(() => {
+      void refreshMood();
+    }, 15000);
+  };
+
+  const companionReact = (type: string) => {
+    if (!type) return;
+    companionOverlayRef?.triggerCompanionReact(type);
+  };
+
   export function pause() {
     if (!sessionActive) return;
     isPaused = true;
@@ -142,6 +178,10 @@
     if (!sessionActive) return;
     isPaused = false;
     dispatch('resume', undefined);
+  }
+
+  export function react(type: string) {
+    companionReact(type);
   }
 
   export async function reportSessionResult(result: GameSessionResult) {
@@ -234,6 +274,8 @@
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
+  $: moodClass = mood?.state ? `mood-${mood.state}` : '';
+
   onMount(() => {
     syncContainerSize();
     updateFullscreenState();
@@ -255,6 +297,7 @@
       window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
+      stopMoodUpdates();
     };
   });
 </script>
@@ -264,8 +307,13 @@
   data-game-id={gameId}
   bind:this={containerEl}
   data-fullscreen={fullscreenActive}
+  class={moodClass}
 >
   <slot />
+
+  {#if sessionActive && !showResults}
+    <CompanionOverlay bind:this={companionOverlayRef} {mood} visible={true} />
+  {/if}
 
   {#if sessionActive && !overlayVisible && !showResults}
     <button class="pause-toggle" type="button" on:click={pause}>
@@ -352,6 +400,23 @@
     height: 100%;
     overflow: hidden;
     background: #000;
+    transition: box-shadow 240ms ease, filter 240ms ease;
+  }
+
+  #game-container.mood-excited {
+    box-shadow: 0 0 32px rgba(236, 72, 153, 0.25);
+  }
+
+  #game-container.mood-calm {
+    box-shadow: 0 0 26px rgba(56, 189, 248, 0.2);
+  }
+
+  #game-container.mood-focused {
+    filter: contrast(1.04) saturate(1.05);
+  }
+
+  #game-container.mood-tired {
+    filter: brightness(0.95);
   }
 
   .pause-toggle {
