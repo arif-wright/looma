@@ -197,6 +197,15 @@
       fullscreenCtrl = null;
     };
   });
+
+  $: if (fullScreen && isBrowser && wrapperEl && !fullscreenCtrl) {
+    fullscreenCtrl = createFullscreenController(wrapperEl);
+  }
+
+  const handleBack = async () => {
+    await fullscreenCtrl?.exit();
+    goto('/app/games');
+  };
 </script>
 
 <div
@@ -291,11 +300,3 @@
     </div>
   </section>
 </div>
-  $: if (fullScreen && isBrowser && wrapperEl && !fullscreenCtrl) {
-    fullscreenCtrl = createFullscreenController(wrapperEl);
-  }
-
-  const handleBack = async () => {
-    await fullscreenCtrl?.exit();
-    goto('/app/games');
-  };
