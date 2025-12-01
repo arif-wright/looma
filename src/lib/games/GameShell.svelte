@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { startSession, completeSession, signCompletion } from '$lib/games/sdk';
   import type { LoomaGameFactory, LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
@@ -25,6 +25,7 @@
   let audioOn = true;
   let bestScore: number | null = null;
   const isBrowser = typeof window !== 'undefined';
+  const bodyFullscreenClass = 'looma-game-fullscreen';
 
   const portal = (node: HTMLElement, enabled: boolean) => {
     if (!enabled || !isBrowser) {
@@ -207,8 +208,25 @@
     return () => {
       destroyGame();
       detachResize();
+      if (isBrowser) {
+        document.body.classList.remove(bodyFullscreenClass);
+      }
     };
   });
+
+  onDestroy(() => {
+    if (isBrowser) {
+      document.body.classList.remove(bodyFullscreenClass);
+    }
+  });
+
+  $: if (isBrowser) {
+    if (fullScreen) {
+      document.body.classList.add(bodyFullscreenClass);
+    } else {
+      document.body.classList.remove(bodyFullscreenClass);
+    }
+  }
 </script>
 
 <div

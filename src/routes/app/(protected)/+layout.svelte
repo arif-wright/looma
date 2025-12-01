@@ -160,4 +160,20 @@
       grid-template-rows: auto 1fr;
     }
   }
+
+  :global(body.looma-game-fullscreen) .app-surface {
+    grid-template-rows: 0 1fr;
+  }
+
+  :global(body.looma-game-fullscreen) .app-surface > :first-child {
+    display: none;
+  }
+
+  :global(body.looma-game-fullscreen) .app-main {
+    padding: 0;
+  }
+
+  :global(body.looma-game-fullscreen) nav[aria-label='Primary navigation'] {
+    display: none !important;
+  }
 </style>
