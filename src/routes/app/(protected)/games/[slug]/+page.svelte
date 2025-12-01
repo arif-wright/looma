@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { goto } from '$app/navigation';
+import { goto } from '$app/navigation';
+import { createFullscreenController, type FullscreenController } from '$lib/games/fullscreen';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
 import {
@@ -134,6 +135,9 @@ let achievementPromptQueue: AchievementPrompt[] = [];
 let activeAchievementPrompt: AchievementPrompt | null = null;
 let shareToast: { message: string; kind: 'success' | 'error' } | null = null;
 let shareToastTimer: ReturnType<typeof setTimeout> | null = null;
+let fullscreenCtrl: FullscreenController | null = null;
+let gameSurfaceEl: HTMLDivElement | null = null;
+const isBrowser = typeof window !== 'undefined';
 
 const readSharePreferences = () => {
   if (typeof window === 'undefined') return;
@@ -619,23 +623,37 @@ const handleAchievementShareCancel = () => {
     };
   });
 
-  onDestroy(() => {
-    resetListeners();
-    releaseAchievements();
-    if (shareToastTimer) {
-      clearTimeout(shareToastTimer);
-      shareToastTimer = null;
-    }
-  });
+onDestroy(() => {
+  resetListeners();
+  releaseAchievements();
+  if (shareToastTimer) {
+    clearTimeout(shareToastTimer);
+    shareToastTimer = null;
+  }
+  fullscreenCtrl?.destroy();
+  fullscreenCtrl = null;
+});
 
-  const goBack = () => goto('/app/games');
+const goBack = async () => {
+  await fullscreenCtrl?.exit();
+  goto('/app/games');
+};
+
+$: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
+  fullscreenCtrl = createFullscreenController(gameSurfaceEl);
+}
 </script>
 
 <svelte:head>
   <title>Looma — {game.name}</title>
 </svelte:head>
 
-<div class="bg-neuro min-h-screen" data-testid="game-embed">
+<div
+  bind:this={gameSurfaceEl}
+  class="bg-neuro"
+  data-testid="game-embed"
+  style="min-height:calc(var(--looma-game-vh, 1vh) * 100); width:100vw;"
+>
   <BackgroundStack />
   <main class="relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pb-24 pt-20">
     <button class="back-link" type="button" on:click={goBack}>

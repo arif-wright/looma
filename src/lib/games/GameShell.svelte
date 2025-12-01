@@ -3,13 +3,14 @@
   import { goto } from '$app/navigation';
   import { startSession, completeSession, signCompletion } from '$lib/games/sdk';
   import type { LoomaGameFactory, LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
+  import { createFullscreenController, type FullscreenController } from '$lib/games/fullscreen';
 
   export let title: string;
   export let description: string;
   export let gameId: string;
   export let createGame: LoomaGameFactory;
   export let clientVersion: string = '1.0.0';
-  export let fullScreen = false;
+  export let fullScreen = true;
 
   let canvasEl: HTMLCanvasElement | null = null;
   let game: LoomaGameInstance | null = null;
@@ -25,24 +26,8 @@
   let audioOn = true;
   let bestScore: number | null = null;
   const isBrowser = typeof window !== 'undefined';
-  const bodyFullscreenClass = 'looma-game-fullscreen';
-
-  const portal = (node: HTMLElement, enabled: boolean) => {
-    if (!enabled || !isBrowser) {
-      return {};
-    }
-    const placeholder = document.createComment('portal-anchor');
-    const parent = node.parentNode;
-    if (!parent) return {};
-    parent.insertBefore(placeholder, node);
-    document.body.appendChild(node);
-    return {
-      destroy() {
-        node.remove();
-        placeholder.remove();
-      }
-    };
-  };
+  let wrapperEl: HTMLDivElement | null = null;
+  let fullscreenCtrl: FullscreenController | null = null;
 
   const detachResize = () => {
     if (resizeAttached && typeof window !== 'undefined') {
@@ -208,47 +193,32 @@
     return () => {
       destroyGame();
       detachResize();
-      if (isBrowser) {
-        document.body.classList.remove(bodyFullscreenClass);
-      }
+      fullscreenCtrl?.destroy();
+      fullscreenCtrl = null;
     };
   });
-
-  onDestroy(() => {
-    if (isBrowser) {
-      document.body.classList.remove(bodyFullscreenClass);
-    }
-  });
-
-  $: if (isBrowser) {
-    if (fullScreen) {
-      document.body.classList.add(bodyFullscreenClass);
-    } else {
-      document.body.classList.remove(bodyFullscreenClass);
-    }
-  }
 </script>
 
 <div
-  use:portal={fullScreen}
+  bind:this={wrapperEl}
   class={
     fullScreen
-      ? 'fixed inset-0 z-[80] bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3 overflow-y-auto'
+      ? 'fixed inset-0 z-[80] bg-slate-950/95 flex flex-col gap-4 px-3 pt-4 pb-3 overflow-hidden'
       : 'relative flex flex-col gap-4 h-full'
   }
-  style={fullScreen ? 'min-height:100dvh;' : undefined}
+  style={fullScreen ? 'width:100vw; height:calc(var(--looma-game-vh, 1vh) * 100);' : undefined}
 >
   {#if fullScreen}
     <button
       type="button"
       class="self-start mb-1 inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-200 border border-white/10"
-      on:click={() => goto('/app/games')}
+      on:click={handleBack}
     >
       ← Back
     </button>
   {/if}
 
-  <header class="flex flex-col gap-1">
+  <header class={fullScreen ? 'hidden md:flex flex-col gap-1' : 'flex flex-col gap-1'}>
     <h1 class="text-xl font-semibold text-white">{title}</h1>
     <p class="text-sm text-slate-300">{description}</p>
   </header>
@@ -321,3 +291,11 @@
     </div>
   </section>
 </div>
+  $: if (fullScreen && isBrowser && wrapperEl && !fullscreenCtrl) {
+    fullscreenCtrl = createFullscreenController(wrapperEl);
+  }
+
+  const handleBack = async () => {
+    await fullscreenCtrl?.exit();
+    goto('/app/games');
+  };
