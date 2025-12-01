@@ -5,14 +5,13 @@ import { createFullscreenController, type FullscreenController } from '$lib/game
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import GameWrapper from '$lib/components/games/GameWrapper.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
-import {
-  completeSession,
-  fetchPlayerState,
-  init,
-  signCompletion,
-  startSession
+import { fetchPlayerState, init } from '$lib/games/sdk';
+import type {
+  SessionAchievement,
+  GameSessionResult,
+  GameSessionStart,
+  GameSessionServerResult
 } from '$lib/games/sdk';
-import type { SessionAchievement } from '$lib/games/sdk';
 import { applyPlayerState, recordRewardResult } from '$lib/games/state';
 import { describeCompanionBonus } from '$lib/games/rewardBonus';
 import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
@@ -69,22 +68,13 @@ $: companionBonusDescription = reward
     })
   : null;
 let ritualCompletions: CompanionRitual[] = [];
+let wrapper: InstanceType<typeof GameWrapper> | null = null;
   let iframeEl: HTMLIFrameElement | null = null;
   let bridge: ReturnType<typeof init> | null = null;
   let unsubscribers: Array<() => void> = [];
-  let session: {
-    sessionId: string;
-    nonce: string;
-    caps?: {
-      maxDurationMs: number;
-      minDurationMs: number;
-      maxScorePerMin: number;
-      minClientVer: string;
-      maxScore: number;
-    };
-  } | null = null;
+  let session: GameSessionStart | null = null;
+  let pendingSessionContext: GameSessionStart | null = null;
   let sessionStartTime = 0;
-  let sessionInFlight: Promise<void> | null = null;
 let iframeKey = 0;
 
 let achievementsPanelOpen = false;
@@ -404,48 +394,166 @@ const handleAchievementShareCancel = () => {
     unsubscribers = [];
     bridge?.destroy();
     bridge = null;
-    sessionInFlight = null;
+    pendingSessionContext = null;
     if (typeof window !== 'undefined') {
       delete (window as any).__loomaSession;
       delete (window as any).__loomaComplete;
     }
   };
 
-  const beginSession = () => {
-    if (!isTilesRun || !bridge) return;
-    if (sessionInFlight) return;
+  const handleWrapperSessionStart = (event: CustomEvent<{ sessionId: string; context: GameSessionStart }>) => {
+    session = event.detail.context;
+    pendingSessionContext = event.detail.context;
+    sessionStartTime = typeof window !== 'undefined' ? performance.now() : Date.now();
+    status = 'Session handshake complete';
+    errorMessage = null;
+    if (typeof window !== 'undefined') {
+      (window as any).__loomaSession = session;
+    }
+    if (bridge) {
+      bridge.post('SESSION_STARTED', { ...event.detail.context, slug });
+      pendingSessionContext = null;
+    } else {
+      status = 'Waiting for game bridge…';
+    }
+  };
 
-    sessionInFlight = (async () => {
-      try {
-        status = 'Starting session…';
-        errorMessage = null;
-        session = await startSession(slug, game.min_version ?? '1.0.0');
-        if (typeof window !== 'undefined') {
-          (window as any).__loomaSession = session;
+  const hydrateRewardFromResponse = (server: GameSessionServerResult) => {
+    const fallbackBaseXp =
+      typeof server.baseXp === 'number'
+        ? server.baseXp
+        : typeof (server as any).baseXpDelta === 'number'
+          ? (server as any).baseXpDelta
+          : server.xpDelta;
+    const fallbackFinalXp = typeof server.finalXp === 'number' ? server.finalXp : server.xpDelta;
+    const inferredCompanionXp = Math.max(0, fallbackFinalXp - fallbackBaseXp);
+
+    const companionBonus = server.companionBonus
+      ? {
+          companionId: server.companionBonus.companionId ?? null,
+          name: server.companionBonus.name ?? null,
+          bondLevel: server.companionBonus.bondLevel ?? 0,
+          xpMultiplier: server.companionBonus.xpMultiplier ?? 1
         }
-        bridge?.post('SESSION_STARTED', { ...session, slug });
-        sessionStartTime = typeof window !== 'undefined' ? performance.now() : Date.now();
-        status = 'Session handshake complete';
-      } catch (err) {
-        session = null;
-        const message = (err as Error).message ?? 'Unable to start session';
-        errorMessage = message;
-        status = 'Handshake failed';
-      } finally {
-        sessionInFlight = null;
-      }
-    })();
+      : null;
+
+    reward = {
+      xpDelta: server.xpDelta,
+      baseXp: fallbackBaseXp,
+      finalXp: fallbackFinalXp,
+      xpFromCompanion: server.xpFromCompanion ?? inferredCompanionXp,
+      xpFromStreak: server.xpFromStreak ?? null,
+      xpMultiplier: server.xpMultiplier ?? null,
+      companionBonus,
+      currencyDelta: server.currencyDelta,
+      baseCurrencyDelta: server.baseCurrencyDelta ?? null,
+      currencyMultiplier: server.currencyMultiplier ?? null,
+      achievements: Array.isArray(server.achievements) ? server.achievements : []
+    };
+
+    if (server.rituals?.list) {
+      applyRitualUpdate(server.rituals.list as CompanionRitual[]);
+      ritualCompletions = (server.rituals.completed as CompanionRitual[]) ?? [];
+    } else {
+      ritualCompletions = [];
+    }
+  };
+
+  const handleWrapperSessionComplete = async (
+    event: CustomEvent<{ sessionId: string; result: GameSessionResult }>
+  ) => {
+    const { result } = event.detail;
+    const server = result.server ?? null;
+    session = null;
+    sessionStartTime = 0;
+    pendingSessionContext = null;
+    status = 'Session complete';
+
+    const safeScore = Math.max(0, Math.floor(result.score ?? 0));
+    const safeDuration = Math.max(0, Math.floor(result.durationMs ?? 0));
+
+    if (server) {
+      hydrateRewardFromResponse(server);
+      recordRewardResult({
+        xpDelta: server.xpDelta,
+        xpMultiplier: server.xpMultiplier ?? null,
+        baseXp: server.baseXp ?? null,
+        finalXp: server.finalXp ?? null,
+        xpFromCompanion: server.xpFromCompanion ?? null,
+        xpFromStreak: server.xpFromStreak ?? null,
+        companionBonus: server.companionBonus
+          ? {
+              companionId: server.companionBonus.companionId ?? null,
+              name: server.companionBonus.name ?? null,
+              bondLevel: server.companionBonus.bondLevel ?? 0,
+              xpMultiplier: server.companionBonus.xpMultiplier ?? 1
+            }
+          : null,
+        currencyDelta: server.currencyDelta,
+        baseCurrencyDelta: server.baseCurrencyDelta ?? null,
+        currencyMultiplier: server.currencyMultiplier ?? null,
+        game: slug,
+        gameName: game.name
+      });
+    } else {
+      reward = null;
+      ritualCompletions = [];
+    }
+
+    maybePromptRunShare(
+      {
+        sessionId: event.detail.sessionId,
+        score: safeScore,
+        durationMs: safeDuration,
+        slug
+      },
+      game.name
+    );
+
+    if (reward?.achievements?.length) {
+      reward.achievements.forEach((achievement) => enqueueAchievementShare(achievement));
+    }
+
+    if (typeof window !== 'undefined') {
+      (window as any).__loomaComplete = null;
+    }
+
+    try {
+      const latest = await fetchPlayerState();
+      applyPlayerState(latest);
+    } catch (refreshErr) {
+      console.warn('[games] failed to refresh player state', refreshErr);
+    }
+
+    refreshActiveLeaderboard();
+  };
+
+  const handleWrapperRestart = () => {
+    reward = null;
+    errorMessage = null;
+    session = null;
+    pendingSessionContext = null;
+    bridge?.post('SESSION_RESET');
+    status = 'Waiting for game bridge…';
   };
 
   const finalizeSession = async (payload: any) => {
     if (!isTilesRun) return;
+    if (!wrapper) {
+      console.warn('[games] no wrapper ref to report session');
+      return;
+    }
+    if (!session) {
+      console.warn('[games] received completion without active session');
+      return;
+    }
+
     try {
-      if (!session) throw new Error('Session missing');
       const score = Math.max(0, Math.floor(Number(payload?.score ?? 0)));
       let durationMs = Math.max(0, Math.floor(Number(payload?.durationMs ?? 0)));
-      const reportedNonce = typeof payload?.nonce === 'string' ? payload.nonce : session.nonce;
 
-      const elapsed = typeof window !== 'undefined' ? performance.now() - sessionStartTime : durationMs;
+      const elapsed =
+        typeof window !== 'undefined' ? performance.now() - sessionStartTime : durationMs;
       durationMs = Math.max(durationMs, Math.floor(elapsed));
 
       const minDuration = Number(session.caps?.minDurationMs ?? 0);
@@ -453,111 +561,24 @@ const handleAchievementShareCancel = () => {
         const waitMs = minDuration - durationMs;
         status = `Finalizing… ${Math.ceil(waitMs / 1000)}s minimum session time`;
         await new Promise((resolve) => setTimeout(resolve, waitMs));
-        const postWaitElapsed = typeof window !== 'undefined' ? performance.now() - sessionStartTime : durationMs + waitMs;
+        const postWaitElapsed =
+          typeof window !== 'undefined'
+            ? performance.now() - sessionStartTime
+            : durationMs + waitMs;
         durationMs = Math.max(minDuration, Math.floor(postWaitElapsed));
       }
 
-      status = 'Requesting validation…';
-      const { signature } = await signCompletion({
-        sessionId: session.sessionId,
+      status = 'Submitting result…';
+      await wrapper.reportSessionResult({
         score,
         durationMs,
-        nonce: reportedNonce,
-        clientVersion: game.min_version ?? '1.0.0'
+        success: true
       });
+      status = 'Awaiting rewards…';
 
-      status = 'Reporting results…';
-      const result = await completeSession({
-        sessionId: session.sessionId,
-        score,
-        durationMs,
-        nonce: reportedNonce,
-        signature,
-        clientVersion: game.min_version ?? '1.0.0'
-      });
-
-      const fallbackBaseXp =
-        typeof result.baseXp === 'number'
-          ? result.baseXp
-          : typeof result.baseXpDelta === 'number'
-            ? result.baseXpDelta
-            : result.xpDelta;
-      const fallbackFinalXp = typeof result.finalXp === 'number' ? result.finalXp : result.xpDelta;
-      const inferredCompanionXp = Math.max(0, fallbackFinalXp - fallbackBaseXp);
-
-      const companionBonus = result.companionBonus
-        ? {
-            companionId: result.companionBonus.companionId ?? null,
-            name: result.companionBonus.name ?? null,
-            bondLevel: result.companionBonus.bondLevel ?? 0,
-            xpMultiplier: result.companionBonus.xpMultiplier ?? 1
-          }
-        : null;
-
-      reward = {
-        xpDelta: result.xpDelta,
-        baseXp: fallbackBaseXp,
-        finalXp: fallbackFinalXp,
-        xpFromCompanion: result.xpFromCompanion ?? inferredCompanionXp,
-        xpFromStreak: result.xpFromStreak ?? null,
-        xpMultiplier: result.xpMultiplier ?? null,
-        companionBonus,
-        currencyDelta: result.currencyDelta,
-        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
-        currencyMultiplier: result.currencyMultiplier ?? null,
-        achievements: Array.isArray(result.achievements) ? result.achievements : []
-      };
-      if (result.rituals?.list) {
-        applyRitualUpdate(result.rituals.list as CompanionRitual[]);
-        ritualCompletions = (result.rituals.completed as CompanionRitual[]) ?? [];
-      } else {
-        ritualCompletions = [];
-      }
-
-      maybePromptRunShare(
-        {
-          sessionId: session.sessionId,
-          score,
-          durationMs,
-          slug
-        },
-        game.name
-      );
-
-      if (reward.achievements.length > 0) {
-        reward.achievements.forEach((achievement) => enqueueAchievementShare(achievement));
-      }
-
-      status = 'Session complete';
-      session = null;
       if (typeof window !== 'undefined') {
-        (window as any).__loomaComplete = null;
+        (window as any).__loomaComplete = { sessionId: session.sessionId, score, durationMs };
       }
-
-      recordRewardResult({
-        xpDelta: result.xpDelta,
-        baseXpDelta: result.baseXpDelta ?? null,
-        xpMultiplier: result.xpMultiplier ?? null,
-        baseXp: fallbackBaseXp,
-        finalXp: fallbackFinalXp,
-        xpFromCompanion: reward.xpFromCompanion ?? inferredCompanionXp,
-        xpFromStreak: result.xpFromStreak ?? null,
-        companionBonus,
-        currencyDelta: result.currencyDelta,
-        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
-        currencyMultiplier: result.currencyMultiplier ?? null,
-        game: slug,
-        gameName: game.name
-      });
-
-      try {
-        const latest = await fetchPlayerState();
-        applyPlayerState(latest);
-      } catch (refreshErr) {
-        console.warn('[games] failed to refresh player state', refreshErr);
-      }
-
-      refreshActiveLeaderboard();
     } catch (err) {
       const message = (err as Error).message ?? 'Unable to complete session';
       errorMessage = message;
@@ -578,8 +599,9 @@ const handleAchievementShareCancel = () => {
     unsubscribers.push(
       bridge.subscribe('GAME_READY', () => {
         status = 'Game signaled ready';
-        if (isTilesRun) {
-          beginSession();
+        if (pendingSessionContext) {
+          bridge.post('SESSION_STARTED', { ...pendingSessionContext, slug });
+          pendingSessionContext = null;
         }
       })
     );
@@ -595,6 +617,7 @@ const handleAchievementShareCancel = () => {
     reward = null;
     errorMessage = null;
     session = null;
+    pendingSessionContext = null;
     iframeKey += 1;
     status = 'Waiting for game bridge…';
   };
@@ -603,13 +626,14 @@ const handleAchievementShareCancel = () => {
     reward = null;
     errorMessage = null;
     session = null;
-    if (bridge) {
-      bridge.post('SESSION_RESET');
-      beginSession();
-      status = 'Waiting for game bridge…';
-    } else {
-      reloadIframe();
+    pendingSessionContext = null;
+    bridge?.post('SESSION_RESET');
+    if (wrapper) {
+      wrapper.restart();
+      status = 'Preparing next run…';
+      return;
     }
+    reloadIframe();
   };
 
   onMount(() => {
@@ -651,7 +675,14 @@ $: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
   <title>Looma — {game.name}</title>
 </svelte:head>
 
-<GameWrapper gameId={slug} onLoaded={handleGameLoaded}>
+<GameWrapper
+  bind:this={wrapper}
+  gameId={slug}
+  onLoaded={handleGameLoaded}
+  on:sessionstart={handleWrapperSessionStart}
+  on:sessioncomplete={handleWrapperSessionComplete}
+  on:restart={handleWrapperRestart}
+>
   <div
   bind:this={gameSurfaceEl}
   class="bg-neuro"
