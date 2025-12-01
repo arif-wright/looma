@@ -3,6 +3,7 @@
 import { goto } from '$app/navigation';
 import { createFullscreenController, type FullscreenController } from '$lib/games/fullscreen';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import GameWrapper from '$lib/components/games/GameWrapper.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
 import {
   completeSession,
@@ -634,6 +635,8 @@ onDestroy(() => {
   fullscreenCtrl = null;
 });
 
+const handleGameLoaded = () => {};
+
 const goBack = async () => {
   await fullscreenCtrl?.exit();
   goto('/app/games');
@@ -648,7 +651,8 @@ $: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
   <title>Looma — {game.name}</title>
 </svelte:head>
 
-<div
+<GameWrapper gameId={slug} onLoaded={handleGameLoaded}>
+  <div
   bind:this={gameSurfaceEl}
   class="bg-neuro"
   data-testid="game-embed"
@@ -834,7 +838,9 @@ $: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
       </div>
     </Portal>
   {/if}
-</div>
+  </div>
+
+</GameWrapper>
 
 <style>
   .back-link {
