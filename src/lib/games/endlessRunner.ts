@@ -68,8 +68,9 @@ export const createEndlessRunner: LoomaGameFactory = (
   const difficultyFactor =
     difficulty === 'easy' ? 0.85 : difficulty === 'hard' ? 1.25 : 1.0;
 
-  const gravity = 0.0016;
-  const jumpVelocity = -0.78 * (difficulty === 'hard' ? 1.05 : 1);
+  // Slightly lighter gravity + stronger jump for better mobile feel
+  const gravity = 0.0014;
+  const jumpVelocity = -0.85 * (difficulty === 'hard' ? 1.08 : 1);
   const baseSpeed = 0.24 * difficultyFactor;
 
   let spawnInterval = 1200 / difficultyFactor;
@@ -359,6 +360,7 @@ export const createEndlessRunner: LoomaGameFactory = (
     pause,
     resume,
     reset,
-    destroy
+    destroy,
+    playerJump: handleJump
   };
 };

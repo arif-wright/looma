@@ -20,6 +20,7 @@ export type LoomaGameInstance = {
   pause?(): void;
   resume?(): void;
   reset?(): void;
+  playerJump?(): void;
 };
 
 export type LoomaGameFactory = (opts: LoomaGameInitOptions) => LoomaGameInstance;

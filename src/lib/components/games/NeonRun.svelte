@@ -14,6 +14,7 @@
   let resizeAttached = false;
   let paused = false;
   let running = false;
+  let running = false;
 
   const resizeCanvas = () => {
     if (!canvasEl) return;
@@ -62,6 +63,26 @@
     });
   };
 
+  const handleJump = (event?: Event) => {
+    event?.preventDefault?.();
+    if (!ready || paused || !running) return;
+    game?.playerJump?.();
+  };
+
+  const handlePointerJump = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleJump(event);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.code === 'Space' || event.code === 'ArrowUp') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handleJump(event);
+    }
+  };
+
   $: if (ready) {
     ensureGame();
     paused = false;
@@ -90,6 +111,7 @@
   onMount(() => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('keydown', handleKeyDown);
     resizeAttached = true;
 
     return () => {
@@ -97,6 +119,7 @@
         window.removeEventListener('resize', resizeCanvas);
         resizeAttached = false;
       }
+      window.removeEventListener('keydown', handleKeyDown);
       destroyGame();
     };
   });
@@ -104,6 +127,13 @@
 
 <div class="runner-stage" bind:this={stageEl}>
   <canvas bind:this={canvasEl} class="runner-surface" aria-label="Neon Run canvas"></canvas>
+  <div
+    class="runner-input-layer"
+    role="presentation"
+    on:click|preventDefault={handlePointerJump}
+    on:touchstart|preventDefault={handlePointerJump}
+    on:pointerdown|preventDefault={handlePointerJump}
+  ></div>
 </div>
 
 <style>
@@ -112,6 +142,9 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .runner-surface {
@@ -122,5 +155,14 @@
     touch-action: none;
     background: transparent;
     display: block;
+  }
+
+  .runner-input-layer {
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    z-index: 2;
   }
 </style>

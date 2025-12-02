@@ -312,7 +312,9 @@
   data-fullscreen={fullscreenActive}
   class={moodClass}
 >
-  <slot />
+  <div class="game-surface">
+    <slot />
+  </div>
 
   <CompanionOverlay bind:this={overlayRef} {mood} visible={sessionActive && !showResults} />
 
@@ -398,12 +400,28 @@
   #game-container {
     position: absolute;
     inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
     overflow: hidden;
     background: #000;
     transition: box-shadow 240ms ease, filter 240ms ease;
     z-index: 1;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+
+  .game-surface {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   #game-container.mood-excited {
@@ -494,6 +512,10 @@
     justify-content: center;
     background: rgba(0, 0, 0, 0.7);
     z-index: 6;
+    padding: calc(env(safe-area-inset-top, 0px) + 16px)
+      calc(env(safe-area-inset-right, 0px) + 16px)
+      calc(env(safe-area-inset-bottom, 0px) + 16px)
+      calc(env(safe-area-inset-left, 0px) + 16px);
   }
 
   .overlay-card {
@@ -525,6 +547,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
+    min-height: 44px;
   }
 
   .overlay-actions button:not(.secondary) {
