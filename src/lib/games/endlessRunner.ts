@@ -71,10 +71,14 @@ export const createEndlessRunner: LoomaGameFactory = (
   // Slightly lighter gravity + stronger jump for better mobile feel
   const gravity = 0.0014;
   const jumpVelocity = -0.85 * (difficulty === 'hard' ? 1.08 : 1);
-  const baseSpeed = 0.24 * difficultyFactor;
+  const baseSpeed = 0.24 * difficultyFactor * 0.9;
 
-  let spawnInterval = 1200 / difficultyFactor;
-  const minSpawnInterval = 620 / difficultyFactor;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
+
+  const baseSpawnInterval = 1650 / difficultyFactor;
+  const minSpawnInterval = 820 / difficultyFactor;
+  let spawnInterval = baseSpawnInterval;
 
   const groundY = () => canvas.height * 0.75;
 
@@ -175,7 +179,9 @@ export const createEndlessRunner: LoomaGameFactory = (
     if (spawnTimer >= spawnInterval) {
       spawnTimer = 0;
       spawnObstacle();
-      spawnInterval = Math.max(minSpawnInterval, spawnInterval - 6 * difficultyFactor);
+      const difficultyProgress = Math.min(score / 5000, 1);
+      const targetInterval = lerp(baseSpawnInterval, minSpawnInterval, difficultyProgress);
+      spawnInterval = randomBetween(targetInterval * 0.85, targetInterval * 1.15);
     }
 
     obstacles.forEach((obstacle) => {
