@@ -14,6 +14,13 @@
   let resizeAttached = false;
   let paused = false;
   let running = false;
+  let hudFrame: number | null = null;
+  let hudStartTime = 0;
+  let hudAccumulated = 0;
+  let scoreDisplay = 0;
+  let distanceDisplay = 0;
+  let shardsDisplay: number | null = null;
+  let hudVisible = false;
 
   const resizeCanvas = () => {
     if (!canvasEl) return;
@@ -42,13 +49,44 @@
     });
   };
 
+  const stopHudLoop = () => {
+    if (hudFrame !== null) {
+      cancelAnimationFrame(hudFrame);
+      hudFrame = null;
+    }
+  };
+
+  const startHudLoop = () => {
+    hudAccumulated = 0;
+    hudStartTime = performance.now();
+    hudVisible = true;
+    const loop = () => {
+      if (!running) {
+        return;
+      }
+      if (!paused) {
+        const elapsed = performance.now() - hudStartTime;
+        const total = hudAccumulated + elapsed;
+        scoreDisplay = Math.floor(total * 0.012);
+        distanceDisplay = Math.floor(total * 0.18);
+      }
+      hudFrame = requestAnimationFrame(loop);
+    };
+    hudFrame = requestAnimationFrame(loop);
+  };
+
   const handleGameOver = (result: LoomaGameResult) => {
     if (!running) return;
     running = false;
     paused = true;
+    hudAccumulated += performance.now() - hudStartTime;
     const rawScore = Math.max(0, Math.floor(result.score ?? 0));
     const xpReward = rawScore;
     const shardReward = Math.floor(rawScore / 10);
+    scoreDisplay = rawScore;
+    distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
+    shardsDisplay = shardReward;
+    stopHudLoop();
 
     dispatch('gameOver', {
       score: rawScore,
@@ -86,24 +124,37 @@
     ensureGame();
     paused = false;
     running = true;
+    shardsDisplay = null;
+    scoreDisplay = 0;
+    distanceDisplay = 0;
     game?.start();
+    startHudLoop();
   } else {
+    hudVisible = false;
+    stopHudLoop();
     destroyGame();
   }
 
   export function pause() {
     paused = true;
+    hudAccumulated += Math.max(0, performance.now() - hudStartTime);
     game?.pause?.();
   }
 
   export function resume() {
     paused = false;
+    hudStartTime = performance.now();
     game?.resume?.();
   }
 
   export function reset() {
     paused = false;
     running = false;
+    hudAccumulated = 0;
+    hudVisible = false;
+    scoreDisplay = 0;
+    distanceDisplay = 0;
+    stopHudLoop();
     destroyGame();
   }
 
@@ -119,6 +170,7 @@
         resizeAttached = false;
       }
       window.removeEventListener('keydown', handleKeyDown);
+      stopHudLoop();
       destroyGame();
     };
   });
@@ -133,6 +185,24 @@
     on:touchstart|preventDefault={handlePointerJump}
     on:pointerdown|preventDefault={handlePointerJump}
   ></div>
+  {#if hudVisible}
+    <div class="nr-hud">
+      <div class="nr-hud-item">
+        <span class="nr-label">Score</span>
+        <span class="nr-value">{scoreDisplay.toLocaleString()}</span>
+      </div>
+      <div class="nr-hud-item">
+        <span class="nr-label">Distance</span>
+        <span class="nr-value">{distanceDisplay} m</span>
+      </div>
+      {#if typeof shardsDisplay === 'number'}
+        <div class="nr-hud-item">
+          <span class="nr-label">Shards</span>
+          <span class="nr-value">{shardsDisplay}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -163,5 +233,61 @@
     -webkit-user-select: none;
     user-select: none;
     z-index: 2;
+  }
+
+  .nr-hud {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1rem;
+    padding: 0.4rem 0.9rem;
+    background: rgba(3, 12, 24, 0.55);
+    border-radius: 1rem;
+    box-shadow: 0 0 22px rgba(60, 250, 255, 0.25);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: fadeIn 280ms ease-out;
+    font-family: 'Inter', system-ui, sans-serif;
+    z-index: 3;
+  }
+
+  @media (max-width: 640px) {
+    .nr-hud {
+      font-size: 0.9rem;
+      gap: 0.6rem;
+    }
+  }
+
+  .nr-hud-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 70px;
+  }
+
+  .nr-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .nr-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #7cfbff;
+    text-shadow: 0 0 8px rgba(124, 251, 255, 0.6);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -6px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
   }
 </style>

@@ -325,22 +325,11 @@
   {/if}
 
   {#if overlayVisible}
-    <button
-      class="activation-overlay"
-      type="button"
-      on:click={activateGame}
-      disabled={activating}
-      aria-live="polite"
-    >
-      <span class="activation-label">
-        {#if activating}
-          Starting…
-        {:else if overlayError}
-          Tap to Retry
-        {:else}
-          Tap to Start
-        {/if}
-      </span>
+    <button class="start-overlay" type="button" on:click={activateGame} disabled={activating} aria-live="polite">
+      <div class="pulse-circle"></div>
+      <div class="start-orb"></div>
+      <h2 class="start-title">{activating ? 'Preparing…' : overlayError ? 'Tap to Retry' : 'Tap to Begin'}</h2>
+      <p class="start-subtitle">Enter fullscreen to play</p>
       {#if overlayError}
         <span class="activation-hint">{overlayError}</span>
       {/if}
@@ -348,48 +337,42 @@
   {/if}
 
   {#if isPaused}
-    <div class="overlay-scrim">
-      <div class="overlay-card">
-        <h2>Game Paused</h2>
-        <div class="overlay-actions">
-          <button type="button" on:click={resume}>Resume</button>
-          <button type="button" class="secondary" on:click={handleQuit}>
-            Quit to Hub
-          </button>
-        </div>
+    <div class="pause-overlay">
+      <div class="pause-card">
+        <h2>Paused</h2>
+        <button type="button" class="primary" on:click={resume}>Resume</button>
+        <button type="button" class="secondary" on:click={handleQuit}>
+          Exit to Hub
+        </button>
       </div>
     </div>
   {/if}
 
   {#if showResults && lastResult}
-    <div class="overlay-scrim">
-      <div class="overlay-card results">
+    <div class="results-overlay">
+      <div class="results-card">
         <h2>Run Complete</h2>
-        <ul class="result-stats">
-          <li>
-            <span>Score</span>
-            <strong>{formatNumber(lastResult.score ?? null)}</strong>
-          </li>
-          <li>
-            <span>Duration</span>
-            <strong>{formatDurationSeconds(lastResult.durationMs ?? null)}</strong>
-          </li>
-          <li>
-            <span>XP</span>
-            <strong>{formatNumber(lastResult.rewards?.xp ?? lastServerResult?.xpDelta ?? 0)}</strong>
-          </li>
-          <li>
-            <span>Shards</span>
-            <strong>{formatNumber(lastResult.rewards?.shards ?? lastServerResult?.currencyDelta ?? 0)}</strong>
-          </li>
-        </ul>
-        <div class="overlay-actions">
-          <button type="button" on:click={handlePlayAgain}>
-            Play Again
-          </button>
-          <button type="button" class="secondary" on:click={handleBackToHub}>
-            Back to Hub
-          </button>
+        <div class="results-stats">
+          <div class="stat">
+            <span class="label">Score</span>
+            <span class="value">{formatNumber(lastResult.score ?? null)}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Duration</span>
+            <span class="value">{formatDurationSeconds(lastResult.durationMs ?? null)}</span>
+          </div>
+          <div class="stat">
+            <span class="label">XP</span>
+            <span class="value">+{formatNumber(lastResult.rewards?.xp ?? lastServerResult?.xpDelta ?? 0)}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Shards</span>
+            <span class="value">+{formatNumber(lastResult.rewards?.shards ?? lastServerResult?.currencyDelta ?? 0)}</span>
+          </div>
+        </div>
+        <div class="results-actions">
+          <button type="button" class="primary" on:click={handlePlayAgain}>Play Again</button>
+          <button type="button" class="secondary" on:click={handleBackToHub}>Exit</button>
         </div>
       </div>
     </div>
@@ -460,133 +443,174 @@
     outline: none;
   }
 
-  .activation-overlay {
+  .start-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.8rem;
     border: none;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(3, 6, 20, 0.92);
     color: #fff;
-    font-size: 1.1rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-weight: 600;
     cursor: pointer;
     z-index: 5;
-    transition: opacity 160ms ease;
     text-align: center;
-    padding: 1rem;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
-  .activation-label {
+  .start-overlay:disabled {
+    cursor: progress;
+  }
+
+  .pulse-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 2px solid rgba(60, 250, 255, 0.7);
+    animation: pulse 1.8s ease-in-out infinite;
+    box-shadow: 0 0 26px rgba(60, 250, 255, 0.3);
+  }
+
+  .start-orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 251, 255, 0.9), rgba(124, 251, 255, 0));
+    filter: blur(1px);
+  }
+
+  .start-title {
+    margin: 0;
+    font-size: 1.6rem;
     letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .start-subtitle,
+  .activation-hint {
+    font-size: 0.9rem;
+    opacity: 0.75;
   }
 
   .activation-hint {
-    margin-top: 0.75rem;
-    display: block;
-    font-size: 0.85rem;
-    letter-spacing: normal;
-    opacity: 0.8;
-    text-transform: none;
+    margin-top: 0.5rem;
   }
 
-  .activation-overlay:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.8);
-    outline-offset: 4px;
-  }
-
-  .activation-overlay:disabled {
-    cursor: progress;
-    opacity: 0.7;
-  }
-
-  .overlay-scrim {
+  .pause-overlay,
+  .results-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    background: rgba(2, 6, 19, 0.65);
     z-index: 6;
+    animation: fadeIn 300ms ease-out;
     padding: calc(env(safe-area-inset-top, 0px) + 16px)
       calc(env(safe-area-inset-right, 0px) + 16px)
       calc(env(safe-area-inset-bottom, 0px) + 16px)
       calc(env(safe-area-inset-left, 0px) + 16px);
   }
 
-  .overlay-card {
+  .pause-card,
+  .results-card {
     width: min(420px, 90vw);
-    border-radius: 1.25rem;
-    padding: 1.5rem;
-    background: rgba(8, 12, 28, 0.95);
-    color: #fff;
+    background: rgba(10, 16, 35, 0.8);
+    border-radius: 20px;
+    border: 2px solid rgba(124, 251, 255, 0.25);
+    box-shadow: 0 20px 55px rgba(3, 201, 255, 0.25);
+    padding: 1.75rem;
     text-align: center;
-    box-shadow: 0 25px 60px rgba(5, 8, 19, 0.6);
+    color: #f8fbff;
   }
 
-  .overlay-card h2 {
-    margin: 0 0 0.75rem;
-    font-size: 1.4rem;
+  .pause-card h2,
+  .results-card h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
   }
 
-  .overlay-actions {
-    margin-top: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .overlay-actions button {
-    border: none;
+  .pause-card button,
+  .results-actions button {
+    width: 100%;
     border-radius: 999px;
-    padding: 0.65rem 1rem;
-    font-size: 0.95rem;
+    padding: 0.85rem 1rem;
+    border: none;
     font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
-    min-height: 44px;
+    margin-top: 0.6rem;
   }
 
-  .overlay-actions button:not(.secondary) {
-    background: linear-gradient(90deg, #00e0ff, #ff00d4);
-    color: #050611;
+  .primary {
+    background: linear-gradient(90deg, #00eaff, #ff4df5);
+    color: #04060f;
   }
 
-  .overlay-actions button.secondary {
+  .secondary {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
   }
 
-  .result-stats {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .results-stats {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .stat {
+    padding: 0.85rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
     text-align: left;
   }
 
-  .result-stats li {
-    display: flex;
-    flex-direction: column;
-    padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.8rem;
-  }
-
-  .result-stats span {
-    font-size: 0.75rem;
+  .stat .label {
     text-transform: uppercase;
+    font-size: 0.7rem;
     letter-spacing: 0.2em;
     opacity: 0.7;
   }
 
-  .result-stats strong {
-    font-size: 1.1rem;
+  .stat .value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fefefe;
+  }
+
+  .results-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.6;
+      transform: scale(0.9);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 0.6;
+      transform: scale(0.9);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   :global(.companion-overlay) {
