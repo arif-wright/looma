@@ -10,13 +10,16 @@ import { playSound as playGameSound } from './audio';
 type Obstacle = { x: number; width: number; height: number };
 type Shard = { x: number; y: number; collected?: boolean };
 type ShardPopup = { x: number; y: number; t: number; value: number };
-type PowerupType = 'shield' | 'magnet' | 'doubleShards';
+type PowerupType = 'shield' | 'magnet' | 'doubleShards' | 'slowMo' | 'dash' | 'dreamSurge';
 type Powerup = { type: PowerupType; x: number; y: number; collected?: boolean };
 
 type PowerupUsage = {
   shield: number;
   magnet: number;
   doubleShards: number;
+  slowMo: number;
+  dash: number;
+  dreamSurge: number;
 };
 
 const SHARD_POPUP_DURATION = 500;
@@ -27,6 +30,23 @@ const POWERUP_RESPAWN_MIN = 6000;
 const POWERUP_RESPAWN_MAX = 12000;
 const MAGNET_DURATION = 5000;
 const DOUBLE_SHARDS_DURATION = 6000;
+const SLOW_MO_DURATION = 3500;
+const DASH_DURATION = 600;
+const DREAM_SURGE_DURATION = 6000;
+const DASH_COLLISION_OFFSET = 25;
+const DREAM_SURGE_SPEED_FACTOR = 1.15;
+const DREAM_SURGE_SCORE_MULTIPLIER = 1.5;
+const DREAM_SURGE_SHARD_BONUS = 1;
+const SLOW_MO_TIME_SCALE = 0.4;
+
+const POWERUP_POOL: Array<{ type: PowerupType; weight: number }> = [
+  { type: 'shield', weight: 3 },
+  { type: 'magnet', weight: 3 },
+  { type: 'doubleShards', weight: 3 },
+  { type: 'slowMo', weight: 2 },
+  { type: 'dash', weight: 1.5 },
+  { type: 'dreamSurge', weight: 1.5 }
+];
 
 const roundRect = (
   context: CanvasRenderingContext2D,
@@ -100,7 +120,10 @@ export const createEndlessRunner: LoomaGameFactory = (
   let powerupSpawnTimer = 0;
   let magnetTimer = 0;
   let doubleShardsTimer = 0;
-  let powerupUsage: PowerupUsage = { shield: 0, magnet: 0, doubleShards: 0 };
+  let slowMoTimer = 0;
+  let dashTimer = 0;
+  let dreamSurgeTimer = 0;
+  let powerupUsage: PowerupUsage = { shield: 0, magnet: 0, doubleShards: 0, slowMo: 0, dash: 0, dreamSurge: 0 };
   let lastPowerupState: LoomaPowerupState | null = null;
 
   let lastTime = performance.now();
@@ -125,13 +148,19 @@ export const createEndlessRunner: LoomaGameFactory = (
     const payload: LoomaPowerupState = {
       shield: hasShield,
       magnet: quantizeTimer(magnetTimer),
-      doubleShards: quantizeTimer(doubleShardsTimer)
+      doubleShards: quantizeTimer(doubleShardsTimer),
+      slowMo: quantizeTimer(slowMoTimer),
+      dash: quantizeTimer(dashTimer),
+      dreamSurge: quantizeTimer(dreamSurgeTimer)
     };
     const changed =
       !lastPowerupState ||
       lastPowerupState.shield !== payload.shield ||
       lastPowerupState.magnet !== payload.magnet ||
-      lastPowerupState.doubleShards !== payload.doubleShards;
+      lastPowerupState.doubleShards !== payload.doubleShards ||
+      lastPowerupState.slowMo !== payload.slowMo ||
+      lastPowerupState.dash !== payload.dash ||
+      lastPowerupState.dreamSurge !== payload.dreamSurge;
     if (changed) {
       lastPowerupState = payload;
       onPowerupState({ ...payload });
@@ -158,7 +187,10 @@ export const createEndlessRunner: LoomaGameFactory = (
     powerupSpawnTimer = randomBetween(POWERUP_RESPAWN_MIN, POWERUP_RESPAWN_MAX);
     magnetTimer = 0;
     doubleShardsTimer = 0;
-    powerupUsage = { shield: 0, magnet: 0, doubleShards: 0 };
+    slowMoTimer = 0;
+    dashTimer = 0;
+    dreamSurgeTimer = 0;
+    powerupUsage = { shield: 0, magnet: 0, doubleShards: 0, slowMo: 0, dash: 0, dreamSurge: 0 };
     lastPowerupState = null;
     notifyShardCount();
     emitPowerupState();
@@ -183,21 +215,34 @@ export const createEndlessRunner: LoomaGameFactory = (
     });
   };
 
-  const spawnPowerup = () => {
-    const gY = groundY();
-    const types: PowerupType[] = ['shield', 'magnet', 'doubleShards'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    powerups.push({
-      type,
-      x: canvas.width + 40,
-      y: randomBetween(gY - 90, gY - 30)
-    });
-  };
+const spawnPowerup = () => {
+  const gY = groundY();
+  const type = choosePowerupType();
+  if (!type) return;
+  powerups.push({
+    type,
+    x: canvas.width + 40,
+    y: randomBetween(gY - 90, gY - 30)
+  });
+};
+
+const choosePowerupType = (): PowerupType => {
+  const totalWeight = POWERUP_POOL.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const entry of POWERUP_POOL) {
+    if (roll < entry.weight) {
+      return entry.type;
+    }
+    roll -= entry.weight;
+  }
+  return POWERUP_POOL[0]?.type ?? 'shield';
+};
 
   const collectShard = (shard: Shard) => {
     if (shard.collected) return;
     shard.collected = true;
-    const amount = doubleShardsTimer > 0 ? 2 : 1;
+    let amount = doubleShardsTimer > 0 ? 2 : 1;
+    if (dreamSurgeTimer > 0) amount += DREAM_SURGE_SHARD_BONUS;
     shardsCollected += amount;
     playGameSound('shard');
     shardPopups.push({ x: shard.x, y: shard.y, t: 0, value: amount });
@@ -231,6 +276,18 @@ export const createEndlessRunner: LoomaGameFactory = (
       case 'doubleShards':
         doubleShardsTimer = DOUBLE_SHARDS_DURATION;
         powerupUsage.doubleShards += 1;
+        break;
+      case 'slowMo':
+        slowMoTimer = SLOW_MO_DURATION;
+        powerupUsage.slowMo += 1;
+        break;
+      case 'dash':
+        dashTimer = DASH_DURATION;
+        powerupUsage.dash += 1;
+        break;
+      case 'dreamSurge':
+        dreamSurgeTimer = DREAM_SURGE_DURATION;
+        powerupUsage.dreamSurge += 1;
         break;
     }
     emitPowerupState();
@@ -325,6 +382,36 @@ export const createEndlessRunner: LoomaGameFactory = (
           context.closePath();
           context.fill();
           break;
+        case 'slowMo':
+          context.strokeStyle = '#7dd3fc';
+          context.lineWidth = 4;
+          context.globalAlpha = 0.85;
+          context.beginPath();
+          context.arc(0, 0, 14, 0, Math.PI * 2);
+          context.stroke();
+          context.beginPath();
+          context.moveTo(-8, 0);
+          context.lineTo(8, 0);
+          context.stroke();
+          break;
+        case 'dash':
+          context.fillStyle = '#facc15';
+          context.beginPath();
+          context.moveTo(-12, -4);
+          context.lineTo(12, 0);
+          context.lineTo(-12, 4);
+          context.closePath();
+          context.fill();
+          break;
+        case 'dreamSurge':
+          const surgeGradient = context.createRadialGradient(0, 0, 2, 0, 0, 16);
+          surgeGradient.addColorStop(0, '#fb7185');
+          surgeGradient.addColorStop(1, 'rgba(249, 115, 22, 0.1)');
+          context.fillStyle = surgeGradient;
+          context.beginPath();
+          context.arc(0, 0, 16, 0, Math.PI * 2);
+          context.fill();
+          break;
       }
       context.restore();
     });
@@ -342,7 +429,10 @@ export const createEndlessRunner: LoomaGameFactory = (
         shards: shardsCollected,
         shield_powerups: powerupUsage.shield,
         magnet_powerups: powerupUsage.magnet,
-        double_powerups: powerupUsage.doubleShards
+        double_powerups: powerupUsage.doubleShards,
+        slowmo_powerups: powerupUsage.slowMo,
+        dash_powerups: powerupUsage.dash,
+        dream_powerups: powerupUsage.dreamSurge
       }
     };
     onGameOver(result);
@@ -369,12 +459,16 @@ export const createEndlessRunner: LoomaGameFactory = (
   };
 
   const update = (dt: number) => {
-    const speed = baseSpeed * (1 + elapsedMs / 60000 * difficultyFactor);
-    elapsedMs += dt;
-    score += dt * 0.012 * difficultyFactor;
+    const timeScale = slowMoTimer > 0 ? SLOW_MO_TIME_SCALE : 1;
+    const scaledDt = dt * timeScale;
+    elapsedMs += scaledDt;
+    const surgeSpeedFactor = dreamSurgeTimer > 0 ? DREAM_SURGE_SPEED_FACTOR : 1;
+    const speed = baseSpeed * (1 + (elapsedMs / 60000) * difficultyFactor) * surgeSpeedFactor;
+    const scoreMultiplier = dreamSurgeTimer > 0 ? DREAM_SURGE_SCORE_MULTIPLIER : 1;
+    score += scaledDt * 0.012 * difficultyFactor * scoreMultiplier;
 
-    playerVy += gravity * dt;
-    playerY += playerVy * dt;
+    playerVy += gravity * scaledDt;
+    playerY += playerVy * scaledDt;
     const gY = groundY();
     if (playerY >= gY) {
       playerY = gY;
@@ -382,7 +476,7 @@ export const createEndlessRunner: LoomaGameFactory = (
       isOnGround = true;
     }
 
-    spawnTimer += dt;
+    spawnTimer += scaledDt;
     if (spawnTimer >= spawnInterval) {
       spawnTimer = 0;
       spawnObstacle();
@@ -392,30 +486,30 @@ export const createEndlessRunner: LoomaGameFactory = (
     }
 
     obstacles.forEach((obstacle) => {
-      obstacle.x -= speed * dt;
+      obstacle.x -= speed * scaledDt;
     });
     obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > -40);
 
-    powerupSpawnTimer -= dt;
+    powerupSpawnTimer -= scaledDt;
     if (powerupSpawnTimer <= 0) {
       spawnPowerup();
       powerupSpawnTimer = randomBetween(POWERUP_RESPAWN_MIN, POWERUP_RESPAWN_MAX);
     }
 
     powerups.forEach((powerup) => {
-      powerup.x -= speed * dt;
+      powerup.x -= speed * scaledDt;
     });
     checkPowerupCollisions();
     powerups = powerups.filter((powerup) => !powerup.collected && powerup.x > -40);
 
-    shardSpawnTimer -= dt;
+    shardSpawnTimer -= scaledDt;
     if (shardSpawnTimer <= 0) {
       spawnShard();
       shardSpawnTimer = randomBetween(SHARD_RESPAWN_MIN, SHARD_RESPAWN_MAX);
     }
 
     shards.forEach((shard) => {
-      shard.x -= speed * dt;
+      shard.x -= speed * scaledDt;
     });
     if (magnetTimer > 0) {
       const playerHeight = 42;
@@ -430,23 +524,16 @@ export const createEndlessRunner: LoomaGameFactory = (
     shards = shards.filter((shard) => shard.x > -40 && !shard.collected);
 
     shardPopups.forEach((popup) => {
-      popup.t += dt;
+      popup.t += scaledDt;
     });
     shardPopups = shardPopups.filter((popup) => popup.t < SHARD_POPUP_DURATION);
-    if (magnetTimer > 0) {
-      magnetTimer -= dt;
-      if (magnetTimer < 0) magnetTimer = 0;
-    }
-
-    if (doubleShardsTimer > 0) {
-      doubleShardsTimer -= dt;
-      if (doubleShardsTimer < 0) doubleShardsTimer = 0;
-    }
 
     const playerWidth = 34;
     const playerHeight = 42;
-    const px1 = playerX - playerWidth / 2;
-    const px2 = playerX + playerWidth / 2;
+    const dashOffset = dashTimer > 0 ? DASH_COLLISION_OFFSET : 0;
+    const collisionX = playerX + dashOffset;
+    const px1 = collisionX - playerWidth / 2;
+    const px2 = collisionX + playerWidth / 2;
     const py1 = playerY - playerHeight;
     const py2 = playerY;
 
@@ -466,19 +553,26 @@ export const createEndlessRunner: LoomaGameFactory = (
       if (hasShield) {
         hasShield = false;
         shieldPulse = 1;
-        obstacles = obstacles.filter((obstacle) => obstacle.x > playerX + 80);
+        obstacles = obstacles.filter((obstacle) => obstacle.x > collisionX + 80);
         playGameSound('shield');
-        emitPowerupState();
       } else {
         playGameSound('hit');
         endRun();
+        return;
       }
     }
 
     if (shieldPulse > 0) {
-      shieldPulse -= dt / 320;
+      shieldPulse -= scaledDt / 320;
       if (shieldPulse < 0) shieldPulse = 0;
     }
+
+    magnetTimer = Math.max(0, magnetTimer - dt);
+    doubleShardsTimer = Math.max(0, doubleShardsTimer - dt);
+    slowMoTimer = Math.max(0, slowMoTimer - dt);
+    dashTimer = Math.max(0, dashTimer - dt);
+    dreamSurgeTimer = Math.max(0, dreamSurgeTimer - dt);
+
     emitPowerupState();
   };
 
@@ -498,6 +592,25 @@ export const createEndlessRunner: LoomaGameFactory = (
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.35)';
     ctx.fillRect(0, 0, w, h);
+
+    if (slowMoTimer > 0) {
+      ctx.save();
+      const alpha = 0.12 + 0.08 * Math.sin(elapsedMs * 0.01);
+      ctx.fillStyle = `rgba(56, 189, 248, ${Math.min(0.3, Math.max(0.1, alpha))})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+
+    if (dreamSurgeTimer > 0) {
+      ctx.save();
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      gradient.addColorStop(0, 'rgba(236, 72, 153, 0.25)');
+      gradient.addColorStop(1, 'rgba(14, 165, 233, 0.15)');
+      ctx.fillStyle = gradient;
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
 
     ctx.strokeStyle = '#091226';
     ctx.lineWidth = 1;
@@ -536,6 +649,18 @@ export const createEndlessRunner: LoomaGameFactory = (
 
     const playerWidth = 34;
     const playerHeight = 42;
+    if (dashTimer > 0) {
+      ctx.save();
+      const intensity = Math.max(0, Math.min(1, dashTimer / DASH_DURATION));
+      const trailGradient = ctx.createLinearGradient(playerX - 90, playerY, playerX, playerY);
+      trailGradient.addColorStop(0, 'rgba(59, 130, 246, 0)');
+      trailGradient.addColorStop(1, `rgba(59, 130, 246, ${0.5 * intensity})`);
+      ctx.fillStyle = trailGradient;
+      ctx.beginPath();
+      ctx.ellipse(playerX - 45, playerY - playerHeight / 2, 55, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.save();
     ctx.translate(playerX, playerY - playerHeight / 2);
     const tilt = Math.max(-0.35, Math.min(0.35, playerVy * 0.003));

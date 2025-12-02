@@ -309,7 +309,10 @@ import {
   const powerupLabels: Record<string, string> = {
     shield: 'Shield',
     magnet: 'Magnet',
-    doubleShards: 'Double Shards'
+    doubleShards: 'Double Shards',
+    slowMo: 'Slow-Mo',
+    dash: 'Dash',
+    dreamSurge: 'Dream Surge'
   };
 
   const formatPowerupLabel = (key: string) => powerupLabels[key] ?? key;

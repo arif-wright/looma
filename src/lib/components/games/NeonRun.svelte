@@ -21,8 +21,24 @@
   let distanceDisplay = 0;
   let shardsDisplay: number | null = null;
   let shardsCollected = 0;
-  const defaultPowerupState: LoomaPowerupState = { shield: false, magnet: 0, doubleShards: 0 };
+  const defaultPowerupState: LoomaPowerupState = {
+    shield: false,
+    magnet: 0,
+    doubleShards: 0,
+    slowMo: 0,
+    dash: 0,
+    dreamSurge: 0
+  };
+  const defaultPowerupUsage = {
+    shield: 0,
+    magnet: 0,
+    doubleShards: 0,
+    slowMo: 0,
+    dash: 0,
+    dreamSurge: 0
+  };
   let activePowerups: LoomaPowerupState = { ...defaultPowerupState };
+  let powerupsUsed = { ...defaultPowerupUsage };
   let hudVisible = false;
 
   const resizeCanvas = () => {
@@ -42,6 +58,7 @@
     paused = false;
     running = false;
     activePowerups = { ...defaultPowerupState };
+    powerupsUsed = { ...defaultPowerupUsage };
   };
 
   const handleShardCollected = (count: number) => {
@@ -49,7 +66,7 @@
   };
 
   const handlePowerupState = (state: LoomaPowerupState) => {
-    activePowerups = state;
+    activePowerups = { ...defaultPowerupState, ...state };
   };
 
   const ensureGame = () => {
@@ -97,10 +114,13 @@
     const rawScore = Math.max(0, Math.floor(result.score ?? 0));
     const xpReward = rawScore;
     const shardReward = shardsCollected;
-    const powerupsUsed = {
+    powerupsUsed = {
       shield: result.meta?.shield_powerups ?? 0,
       magnet: result.meta?.magnet_powerups ?? 0,
-      doubleShards: result.meta?.double_powerups ?? 0
+      doubleShards: result.meta?.double_powerups ?? 0,
+      slowMo: result.meta?.slowmo_powerups ?? 0,
+      dash: result.meta?.dash_powerups ?? 0,
+      dreamSurge: result.meta?.dream_powerups ?? 0
     };
     scoreDisplay = rawScore;
     distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
@@ -148,6 +168,7 @@
     shardsDisplay = null;
     shardsCollected = 0;
     activePowerups = { ...defaultPowerupState };
+    powerupsUsed = { ...defaultPowerupUsage };
     scoreDisplay = 0;
     distanceDisplay = 0;
     game?.start();
@@ -226,17 +247,28 @@
         <span class="nr-label">Shards</span>
         <span class="nr-value">{(shardsDisplay ?? shardsCollected).toLocaleString()}</span>
       </div>
-      <div class="nr-hud-badges">
-        {#if activePowerups.shield}
-          <span class="nr-hud-badge shield">Shield</span>
-        {/if}
-        {#if activePowerups.magnet > 0}
-          <span class="nr-hud-badge magnet">Magnet</span>
-        {/if}
-        {#if activePowerups.doubleShards > 0}
-          <span class="nr-hud-badge x2">x2 Shards</span>
-        {/if}
-      </div>
+      {#if activePowerups.shield || activePowerups.magnet > 0 || activePowerups.doubleShards > 0 || activePowerups.slowMo > 0 || activePowerups.dash > 0 || activePowerups.dreamSurge > 0}
+        <div class="nr-hud-badges">
+          {#if activePowerups.shield}
+            <span class="nr-hud-badge shield">Shield</span>
+          {/if}
+          {#if activePowerups.magnet > 0}
+            <span class="nr-hud-badge magnet">Magnet</span>
+          {/if}
+          {#if activePowerups.doubleShards > 0}
+            <span class="nr-hud-badge x2">x2 Shards</span>
+          {/if}
+          {#if activePowerups.slowMo > 0}
+            <span class="nr-hud-badge slowmo">Slow-Mo</span>
+          {/if}
+          {#if activePowerups.dash > 0}
+            <span class="nr-hud-badge dash">Dash</span>
+          {/if}
+          {#if activePowerups.dreamSurge > 0}
+            <span class="nr-hud-badge dream">Dream Surge</span>
+          {/if}
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -331,6 +363,21 @@
 
   .nr-hud-badge.x2 {
     background: linear-gradient(90deg, #fde047, #f97316);
+  }
+
+  .nr-hud-badge.slowmo {
+    background: linear-gradient(90deg, #38bdf8, #1d4ed8);
+    color: #e0f2fe;
+  }
+
+  .nr-hud-badge.dash {
+    background: linear-gradient(90deg, #fef08a, #facc15);
+    color: #78350f;
+  }
+
+  .nr-hud-badge.dream {
+    background: linear-gradient(90deg, #f472b6, #a855f7);
+    color: #fff;
   }
 
   .nr-label {

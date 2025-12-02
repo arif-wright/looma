@@ -10,6 +10,9 @@ export type LoomaPowerupState = {
   shield: boolean;
   magnet: number;
   doubleShards: number;
+  slowMo: number;
+  dash: number;
+  dreamSurge: number;
 };
 
 export type LoomaGameInitOptions = {
