@@ -7,6 +7,13 @@ import type {
 import { playSound as playGameSound } from './audio';
 
 type Obstacle = { x: number; width: number; height: number };
+type Shard = { x: number; y: number; collected?: boolean };
+type ShardPopup = { x: number; y: number; t: number };
+
+const SHARD_POPUP_DURATION = 500;
+const SHARD_RESPAWN_MIN = 1200;
+const SHARD_RESPAWN_MAX = 2600;
+const SHARD_HITBOX = 30;
 
 const roundRect = (
   context: CanvasRenderingContext2D,
@@ -36,7 +43,8 @@ export const createEndlessRunner: LoomaGameFactory = (
   const {
     canvas,
     onGameOver,
-    difficulty = 'normal'
+    difficulty = 'normal',
+    onShardCollected
   } = opts;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2D context');
@@ -70,6 +78,10 @@ export const createEndlessRunner: LoomaGameFactory = (
 
   let obstacles: Obstacle[] = [];
   let spawnTimer = 0;
+  let shards: Shard[] = [];
+  let shardPopups: ShardPopup[] = [];
+  let shardSpawnTimer = 0;
+  let shardsCollected = 0;
 
   let lastTime = performance.now();
   let elapsedMs = 0;
@@ -78,6 +90,10 @@ export const createEndlessRunner: LoomaGameFactory = (
   let rafId = 0;
   let running = false;
   let paused = false;
+
+  const notifyShardCount = () => {
+    onShardCollected?.(shardsCollected);
+  };
 
   const resetRun = () => {
     playerX = canvas.width * 0.2;
@@ -91,6 +107,11 @@ export const createEndlessRunner: LoomaGameFactory = (
     spawnInterval = 1200 / difficultyFactor;
     elapsedMs = 0;
     score = 0;
+    shards = [];
+    shardPopups = [];
+    shardSpawnTimer = randomBetween(SHARD_RESPAWN_MIN, SHARD_RESPAWN_MAX);
+    shardsCollected = 0;
+    notifyShardCount();
   };
 
   const spawnObstacle = () => {
@@ -103,6 +124,67 @@ export const createEndlessRunner: LoomaGameFactory = (
     });
   };
 
+  const spawnShard = () => {
+    const gY = groundY();
+    const y = randomBetween(gY - 90, gY - 30);
+    shards.push({
+      x: canvas.width + 40,
+      y
+    });
+  };
+
+  const collectShard = (shard: Shard) => {
+    if (shard.collected) return;
+    shard.collected = true;
+    shardsCollected += 1;
+    playGameSound('shard');
+    shardPopups.push({ x: shard.x, y: shard.y, t: 0 });
+    notifyShardCount();
+  };
+
+  const checkShardCollisions = () => {
+    const playerHeight = 42;
+    const playerCenterY = playerY - playerHeight / 2;
+    for (const shard of shards) {
+      if (shard.collected) continue;
+      const dx = Math.abs(playerX - shard.x);
+      const dy = Math.abs(playerCenterY - shard.y);
+      if (dx < SHARD_HITBOX && dy < SHARD_HITBOX) {
+        collectShard(shard);
+      }
+    }
+  };
+
+  const drawShards = (context: CanvasRenderingContext2D) => {
+    context.save();
+    context.fillStyle = '#4fffff';
+    shards.forEach((shard) => {
+      if (shard.collected) return;
+      context.beginPath();
+      context.moveTo(shard.x, shard.y - 10);
+      context.lineTo(shard.x + 8, shard.y);
+      context.lineTo(shard.x, shard.y + 10);
+      context.lineTo(shard.x - 8, shard.y);
+      context.closePath();
+      context.fill();
+    });
+    context.restore();
+  };
+
+  const drawShardPopups = (context: CanvasRenderingContext2D) => {
+    context.save();
+    context.font = '600 16px "Inter", system-ui, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    shardPopups.forEach((popup) => {
+      const alpha = 1 - popup.t / SHARD_POPUP_DURATION;
+      context.globalAlpha = Math.max(0, alpha);
+      context.fillStyle = '#4fffff';
+      context.fillText('+1', popup.x, popup.y - popup.t / 20);
+    });
+    context.restore();
+  };
+
   const endRun = () => {
     if (!running) return;
     running = false;
@@ -110,7 +192,7 @@ export const createEndlessRunner: LoomaGameFactory = (
     const result: LoomaGameResult = {
       score: Math.floor(score),
       durationMs: elapsedMs,
-      meta: { difficulty: difficultyFactor }
+      meta: { difficulty: difficultyFactor, shards: shardsCollected }
     };
     onGameOver(result);
   };
@@ -162,6 +244,23 @@ export const createEndlessRunner: LoomaGameFactory = (
       obstacle.x -= speed * dt;
     });
     obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > -40);
+
+    shardSpawnTimer -= dt;
+    if (shardSpawnTimer <= 0) {
+      spawnShard();
+      shardSpawnTimer = randomBetween(SHARD_RESPAWN_MIN, SHARD_RESPAWN_MAX);
+    }
+
+    shards.forEach((shard) => {
+      shard.x -= speed * dt;
+    });
+    checkShardCollisions();
+    shards = shards.filter((shard) => shard.x > -40 && !shard.collected);
+
+    shardPopups.forEach((popup) => {
+      popup.t += dt;
+    });
+    shardPopups = shardPopups.filter((popup) => popup.t < SHARD_POPUP_DURATION);
 
     const playerWidth = 34;
     const playerHeight = 42;
@@ -249,6 +348,8 @@ export const createEndlessRunner: LoomaGameFactory = (
     });
     ctx.restore();
 
+    drawShards(ctx);
+
     const playerWidth = 34;
     const playerHeight = 42;
     ctx.save();
@@ -284,6 +385,8 @@ export const createEndlessRunner: LoomaGameFactory = (
     ctx.beginPath();
     ctx.ellipse(playerX, gY + 6, 45, 12, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    drawShardPopups(ctx);
   };
 
   const loop = () => {

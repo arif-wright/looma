@@ -3,7 +3,6 @@
   import { createEndlessRunner } from '$lib/games/endlessRunner';
   import type { LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
   import type { GameSessionResult } from '$lib/games/sdk';
-  import { playSound } from '$lib/games/audio';
 
   export let ready = false;
 
@@ -21,6 +20,7 @@
   let scoreDisplay = 0;
   let distanceDisplay = 0;
   let shardsDisplay: number | null = null;
+  let shardsCollected = 0;
   let hudVisible = false;
 
   const resizeCanvas = () => {
@@ -41,12 +41,17 @@
     running = false;
   };
 
+  const handleShardCollected = (count: number) => {
+    shardsCollected = count;
+  };
+
   const ensureGame = () => {
     if (game || !canvasEl) return;
     resizeCanvas();
     game = createEndlessRunner({
       canvas: canvasEl,
-      onGameOver: handleGameOver
+      onGameOver: handleGameOver,
+      onShardCollected: handleShardCollected
     });
   };
 
@@ -83,14 +88,11 @@
     hudAccumulated += performance.now() - hudStartTime;
     const rawScore = Math.max(0, Math.floor(result.score ?? 0));
     const xpReward = rawScore;
-    const shardReward = Math.floor(rawScore / 10);
+    const shardReward = shardsCollected;
     scoreDisplay = rawScore;
     distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
     shardsDisplay = shardReward;
     stopHudLoop();
-    if (shardReward > 0) {
-      playSound('shard');
-    }
 
     dispatch('gameOver', {
       score: rawScore,
@@ -129,6 +131,7 @@
     paused = false;
     running = true;
     shardsDisplay = null;
+    shardsCollected = 0;
     scoreDisplay = 0;
     distanceDisplay = 0;
     game?.start();
@@ -137,6 +140,7 @@
     hudVisible = false;
     stopHudLoop();
     destroyGame();
+    shardsCollected = 0;
   }
 
   export function pause() {
@@ -158,6 +162,8 @@
     hudVisible = false;
     scoreDisplay = 0;
     distanceDisplay = 0;
+    shardsCollected = 0;
+    shardsDisplay = null;
     stopHudLoop();
     destroyGame();
   }
@@ -199,12 +205,10 @@
         <span class="nr-label">Distance</span>
         <span class="nr-value">{distanceDisplay} m</span>
       </div>
-      {#if typeof shardsDisplay === 'number'}
-        <div class="nr-hud-item">
-          <span class="nr-label">Shards</span>
-          <span class="nr-value">{shardsDisplay}</span>
-        </div>
-      {/if}
+      <div class="nr-hud-item">
+        <span class="nr-label">Shards</span>
+        <span class="nr-value">{(shardsDisplay ?? shardsCollected).toLocaleString()}</span>
+      </div>
     </div>
   {/if}
 </div>

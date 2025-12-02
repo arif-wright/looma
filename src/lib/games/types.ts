@@ -12,6 +12,7 @@ export type LoomaGameInitOptions = {
   onGameOver: (result: LoomaGameResult) => void;
   difficulty?: 'easy' | 'normal' | 'hard';
   audioEnabled?: boolean;
+  onShardCollected?: (count: number) => void;
 };
 
 export type LoomaGameInstance = {
