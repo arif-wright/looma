@@ -14,7 +14,6 @@
   let resizeAttached = false;
   let paused = false;
   let running = false;
-  let running = false;
 
   const resizeCanvas = () => {
     if (!canvasEl) return;
