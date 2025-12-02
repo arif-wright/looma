@@ -26,6 +26,8 @@ import {
     type GameSessionServerResult,
     type GameSessionStart
   } from '$lib/games/sdk';
+  import { emitGameEvent } from '$lib/gameEvents';
+  import '$lib/progression/listeners';
 
   export let gameId: string;
   export let onLoaded: (() => void | Promise<void>) | null = null;
@@ -246,6 +248,9 @@ import {
       dispatch('sessioncomplete', { sessionId: currentSessionId, result: enrichedResult });
       lastResult = enrichedResult;
       lastServerResult = serverResponse ?? null;
+      if (gameId === 'runner') {
+        emitGameEvent('neonrun.completed', enrichedResult);
+      }
     } catch (err) {
       console.error('[GameWrapper] failed to complete session', err);
       lastResult = payload;
