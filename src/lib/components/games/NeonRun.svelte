@@ -3,6 +3,7 @@
   import { createEndlessRunner } from '$lib/games/endlessRunner';
   import type { LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
   import type { GameSessionResult } from '$lib/games/sdk';
+  import { playSound } from '$lib/games/audio';
 
   export let ready = false;
 
@@ -87,6 +88,9 @@
     distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
     shardsDisplay = shardReward;
     stopHudLoop();
+    if (shardReward > 0) {
+      playSound('shard');
+    }
 
     dispatch('gameOver', {
       score: rawScore,

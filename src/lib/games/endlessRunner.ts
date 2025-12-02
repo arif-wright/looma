@@ -4,10 +4,9 @@ import type {
   LoomaGameInitOptions,
   LoomaGameResult
 } from './types';
+import { playSound as playGameSound } from './audio';
 
 type Obstacle = { x: number; width: number; height: number };
-
-type SoundHandle = HTMLAudioElement | null;
 
 const roundRect = (
   context: CanvasRenderingContext2D,
@@ -31,34 +30,13 @@ const roundRect = (
   context.closePath();
 };
 
-const createSound = (path: string, audioEnabled: boolean): SoundHandle => {
-  if (!audioEnabled || typeof Audio === 'undefined') return null;
-  try {
-    const audio = new Audio(path);
-    audio.preload = 'auto';
-    audio.volume = 0.4;
-    return audio;
-  } catch {
-    return null;
-  }
-};
-
-const playSound = (sound: SoundHandle) => {
-  if (!sound) return;
-  sound.currentTime = 0;
-  sound.play().catch(() => {
-    /* ignore autoplay issues */
-  });
-};
-
 export const createEndlessRunner: LoomaGameFactory = (
   opts: LoomaGameInitOptions
 ): LoomaGameInstance => {
   const {
     canvas,
     onGameOver,
-    difficulty = 'normal',
-    audioEnabled = true
+    difficulty = 'normal'
   } = opts;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2D context');
@@ -101,10 +79,6 @@ export const createEndlessRunner: LoomaGameFactory = (
   let running = false;
   let paused = false;
 
-  const jumpSound = createSound('/sounds/runner-jump.wav', audioEnabled);
-  const hitSound = createSound('/sounds/runner-hit.wav', audioEnabled);
-  const shieldSound = createSound('/sounds/runner-shield.wav', audioEnabled);
-
   const resetRun = () => {
     playerX = canvas.width * 0.2;
     playerY = groundY();
@@ -146,7 +120,7 @@ export const createEndlessRunner: LoomaGameFactory = (
     if (!isOnGround) return;
     isOnGround = false;
     playerVy = jumpVelocity;
-    playSound(jumpSound);
+    playGameSound('jump');
   };
 
   const keyHandler = (event: KeyboardEvent) => {
@@ -213,9 +187,9 @@ export const createEndlessRunner: LoomaGameFactory = (
         hasShield = false;
         shieldPulse = 1;
         obstacles = obstacles.filter((obstacle) => obstacle.x > playerX + 80);
-        playSound(shieldSound);
+        playGameSound('shield');
       } else {
-        playSound(hitSound);
+        playGameSound('hit');
         endRun();
       }
     }

@@ -7,7 +7,15 @@
     isFullscreen,
     requestLandscape
   } from '$lib/games/fullscreen';
-  import CompanionOverlay from './CompanionOverlay.svelte';
+import CompanionOverlay from './CompanionOverlay.svelte';
+import {
+  isAudioEnabled,
+  playSound,
+  setAudioEnabled,
+  setMasterVolume,
+  stopSound,
+  toggleAudioEnabled
+} from '$lib/games/audio';
   import {
     awardShards,
     awardXP,
@@ -56,6 +64,11 @@
   let lastResult: GameSessionResult | null = null;
   let lastServerResult: GameSessionServerResult | null = null;
   let overlayRef: InstanceType<typeof CompanionOverlay> | null = null;
+  let audioOn = isAudioEnabled();
+  let volume = 0.7;
+
+  setAudioEnabled(audioOn);
+  setMasterVolume(volume);
 
   const updateFullscreenState = () => {
     fullscreenActive = isFullscreen();
@@ -92,6 +105,7 @@
     stopMoodUpdates();
     mood = null;
     ready = false;
+    stopSound('bgm');
   };
 
   const startNewSession = async () => {
@@ -106,6 +120,7 @@
     ready = false;
     try {
       await enterFullscreen(containerEl);
+      playSound('bgm', { loop: true });
       await requestLandscape();
       await startNewSession();
       overlayVisible = false;
@@ -115,6 +130,7 @@
       hasLoaded = true;
       ready = true;
     } catch (err) {
+      stopSound('bgm');
       console.error('[GameWrapper] activation failed', err);
       overlayVisible = true;
       overlayError = err instanceof Error ? err.message : 'Unable to start session';
@@ -172,6 +188,19 @@
   const companionReact = (type: string) => {
     if (!type) return;
     overlayRef?.triggerCompanionReact(type);
+  };
+
+  const handleToggleAudio = () => {
+    audioOn = toggleAudioEnabled();
+  };
+
+  const handleVolumeInput = (event: Event) => {
+    const target = event.target as HTMLInputElement | null;
+    if (!target) return;
+    const nextValue = Number(target.value);
+    if (!Number.isFinite(nextValue)) return;
+    volume = Math.min(1, Math.max(0, nextValue));
+    setMasterVolume(volume);
   };
 
   export function pause() {
@@ -301,6 +330,7 @@
       window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       stopMoodUpdates();
+      stopSound('bgm');
     };
   });
 </script>
@@ -318,11 +348,39 @@
 
   <CompanionOverlay bind:this={overlayRef} {mood} visible={sessionActive && !showResults} />
 
-  {#if sessionActive && !overlayVisible && !showResults}
-    <button class="pause-toggle" type="button" on:click={pause}>
-      Pause
-    </button>
-  {/if}
+  <div class="game-controls">
+    {#if sessionActive && !overlayVisible && !showResults}
+      <button class="pause-toggle" type="button" on:click={pause}>
+        Pause
+      </button>
+    {/if}
+    <div class="audio-controls">
+      <button
+        class="audio-toggle"
+        type="button"
+        aria-pressed={audioOn}
+        aria-label={audioOn ? 'Mute audio' : 'Unmute audio'}
+        on:click={handleToggleAudio}
+      >
+        {#if audioOn}
+          🔊
+        {:else}
+          🔇
+        {/if}
+      </button>
+      <input
+        class="audio-slider"
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={volume}
+        aria-label="Master volume"
+        title="Master volume"
+        on:input={handleVolumeInput}
+      />
+    </div>
+  </div>
 
   {#if overlayVisible}
     <button class="start-overlay" type="button" on:click={activateGame} disabled={activating} aria-live="polite">
@@ -423,10 +481,61 @@
     filter: brightness(0.95);
   }
 
-  .pause-toggle {
+  .game-controls {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    z-index: 7;
+  }
+
+  .audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 8px 26px rgba(2, 6, 23, 0.35);
+    backdrop-filter: blur(8px);
+  }
+
+  .audio-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(124, 251, 255, 0.15);
+    color: #f8fafc;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .audio-toggle:hover,
+  .audio-toggle:focus-visible {
+    background: rgba(124, 251, 255, 0.25);
+    outline: none;
+  }
+
+  .audio-slider {
+    width: 110px;
+    accent-color: #22d3ee;
+    cursor: pointer;
+  }
+
+  @media (max-width: 640px) {
+    .audio-slider {
+      width: 80px;
+    }
+  }
+
+  .pause-toggle {
     padding: 0.35rem 0.9rem;
     font-size: 0.85rem;
     border-radius: 999px;
