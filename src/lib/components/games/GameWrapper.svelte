@@ -306,6 +306,19 @@ import {
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
+  const powerupLabels: Record<string, string> = {
+    shield: 'Shield',
+    magnet: 'Magnet',
+    doubleShards: 'Double Shards'
+  };
+
+  const formatPowerupLabel = (key: string) => powerupLabels[key] ?? key;
+
+  const hasPowerupUsage = (input: Record<string, number> | undefined) => {
+    if (!input) return false;
+    return Object.values(input).some((value) => typeof value === 'number' && value > 0);
+  };
+
   $: moodClass = mood?.state ? `mood-${mood.state}` : '';
 
   onMount(() => {
@@ -428,6 +441,21 @@ import {
             <span class="value">+{formatNumber(lastResult.rewards?.shards ?? lastServerResult?.currencyDelta ?? 0)}</span>
           </div>
         </div>
+        {#if hasPowerupUsage(lastResult.rewards?.powerupsUsed)}
+          <div class="results-powerups">
+            <h3>Power-ups</h3>
+            <div class="powerups-grid">
+              {#each Object.entries(lastResult.rewards.powerupsUsed) as [key, value]}
+                {#if typeof value === 'number' && value > 0}
+                  <div class="powerup-stat">
+                    <span class="label">{formatPowerupLabel(key)}</span>
+                    <span class="value">×{value}</span>
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
         <div class="results-actions">
           <button type="button" class="primary" on:click={handlePlayAgain}>Play Again</button>
           <button type="button" class="secondary" on:click={handleBackToHub}>Exit</button>
@@ -670,6 +698,47 @@ import {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     margin-bottom: 1.25rem;
+  }
+
+  .results-powerups {
+    margin-bottom: 1.25rem;
+    text-align: left;
+  }
+
+  .results-powerups h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .powerups-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .powerup-stat {
+    padding: 0.5rem 0.8rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    min-width: 100px;
+  }
+
+  .powerup-stat .label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.7;
+  }
+
+  .powerup-stat .value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f8fafc;
   }
 
   .stat {

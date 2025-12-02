@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { createEndlessRunner } from '$lib/games/endlessRunner';
-  import type { LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
+  import type { LoomaGameInstance, LoomaGameResult, LoomaPowerupState } from '$lib/games/types';
   import type { GameSessionResult } from '$lib/games/sdk';
 
   export let ready = false;
@@ -21,6 +21,8 @@
   let distanceDisplay = 0;
   let shardsDisplay: number | null = null;
   let shardsCollected = 0;
+  const defaultPowerupState: LoomaPowerupState = { shield: false, magnet: 0, doubleShards: 0 };
+  let activePowerups: LoomaPowerupState = { ...defaultPowerupState };
   let hudVisible = false;
 
   const resizeCanvas = () => {
@@ -39,10 +41,15 @@
     game = null;
     paused = false;
     running = false;
+    activePowerups = { ...defaultPowerupState };
   };
 
   const handleShardCollected = (count: number) => {
     shardsCollected = count;
+  };
+
+  const handlePowerupState = (state: LoomaPowerupState) => {
+    activePowerups = state;
   };
 
   const ensureGame = () => {
@@ -51,7 +58,8 @@
     game = createEndlessRunner({
       canvas: canvasEl,
       onGameOver: handleGameOver,
-      onShardCollected: handleShardCollected
+      onShardCollected: handleShardCollected,
+      onPowerupState: handlePowerupState
     });
   };
 
@@ -89,10 +97,16 @@
     const rawScore = Math.max(0, Math.floor(result.score ?? 0));
     const xpReward = rawScore;
     const shardReward = shardsCollected;
+    const powerupsUsed = {
+      shield: result.meta?.shield_powerups ?? 0,
+      magnet: result.meta?.magnet_powerups ?? 0,
+      doubleShards: result.meta?.double_powerups ?? 0
+    };
     scoreDisplay = rawScore;
     distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
     shardsDisplay = shardReward;
     stopHudLoop();
+    activePowerups = { ...defaultPowerupState };
 
     dispatch('gameOver', {
       score: rawScore,
@@ -100,7 +114,8 @@
       success: rawScore > 0,
       rewards: {
         xp: xpReward,
-        shards: shardReward
+        shards: shardReward,
+        powerupsUsed
       },
       extra: result.meta ?? undefined
     });
@@ -132,6 +147,7 @@
     running = true;
     shardsDisplay = null;
     shardsCollected = 0;
+    activePowerups = { ...defaultPowerupState };
     scoreDisplay = 0;
     distanceDisplay = 0;
     game?.start();
@@ -164,6 +180,7 @@
     distanceDisplay = 0;
     shardsCollected = 0;
     shardsDisplay = null;
+    activePowerups = { ...defaultPowerupState };
     stopHudLoop();
     destroyGame();
   }
@@ -209,6 +226,17 @@
         <span class="nr-label">Shards</span>
         <span class="nr-value">{(shardsDisplay ?? shardsCollected).toLocaleString()}</span>
       </div>
+      <div class="nr-hud-badges">
+        {#if activePowerups.shield}
+          <span class="nr-hud-badge shield">Shield</span>
+        {/if}
+        {#if activePowerups.magnet > 0}
+          <span class="nr-hud-badge magnet">Magnet</span>
+        {/if}
+        {#if activePowerups.doubleShards > 0}
+          <span class="nr-hud-badge x2">x2 Shards</span>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -249,6 +277,7 @@
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     padding: 0.4rem 0.9rem;
     background: rgba(3, 12, 24, 0.55);
@@ -272,6 +301,36 @@
     display: flex;
     flex-direction: column;
     min-width: 70px;
+  }
+
+  .nr-hud-badges {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .nr-hud-badge {
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #04060f;
+    font-weight: 600;
+  }
+
+  .nr-hud-badge.shield {
+    background: linear-gradient(90deg, #38bdf8, #22d3ee);
+  }
+
+  .nr-hud-badge.magnet {
+    background: linear-gradient(90deg, #c084fc, #a855f7);
+    color: #fdf4ff;
+  }
+
+  .nr-hud-badge.x2 {
+    background: linear-gradient(90deg, #fde047, #f97316);
   }
 
   .nr-label {

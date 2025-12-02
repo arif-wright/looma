@@ -6,6 +6,12 @@ export type LoomaGameResult = {
   meta?: Record<string, number>;
 };
 
+export type LoomaPowerupState = {
+  shield: boolean;
+  magnet: number;
+  doubleShards: number;
+};
+
 export type LoomaGameInitOptions = {
   canvas: HTMLCanvasElement;
   /** Called once when the game ends */
@@ -13,6 +19,7 @@ export type LoomaGameInitOptions = {
   difficulty?: 'easy' | 'normal' | 'hard';
   audioEnabled?: boolean;
   onShardCollected?: (count: number) => void;
+  onPowerupState?: (state: LoomaPowerupState) => void;
 };
 
 export type LoomaGameInstance = {
