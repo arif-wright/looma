@@ -140,8 +140,12 @@
     updatePlayback();
   }
 
-  $: if (viewer) {
-    updatePlayback();
+  $: {
+    // Ensure playback reacts to autoplay/visibility/reduced-motion changes.
+    const _playbackDeps = [autoplay, isVisible, reducedMotion];
+    if (_playbackDeps && viewer) {
+      updatePlayback();
+    }
   }
 
   $: if (!respectReducedMotion) {
@@ -179,8 +183,8 @@
       loading="lazy"
       reveal="auto"
       poster={poster}
-      autoplay={autoplay && !reducedMotion}
-      camera-controls={cameraControls}
+      autoplay={autoplay && !reducedMotion ? true : undefined}
+      camera-controls={cameraControls ? true : undefined}
       orientation={orientation}
       camera-orbit={cameraOrbit}
       camera-target={cameraTarget}
