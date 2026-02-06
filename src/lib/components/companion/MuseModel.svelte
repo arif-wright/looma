@@ -118,6 +118,7 @@
 
   $: if (viewer && animationName !== undefined) {
     viewer.animationName = animationName || null;
+    updatePlayback();
   }
 
   $: if (viewer) {
@@ -157,6 +158,10 @@
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;
+        const desired = animationName ?? viewer?.availableAnimations?.[0] ?? null;
+        if (viewer) {
+          viewer.animationName = desired;
+        }
         updatePlayback();
       }}
       on:error={() => {
