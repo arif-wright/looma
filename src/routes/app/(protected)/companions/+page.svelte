@@ -362,7 +362,7 @@
       animationName="Idle"
       respectReducedMotion={false}
       orientation="180deg 180deg 0deg"
-      cameraOrbit="225deg 80deg 105%"
+      cameraOrbit="205deg 80deg 105%"
     />
   </section>
 
