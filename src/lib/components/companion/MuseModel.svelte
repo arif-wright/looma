@@ -8,17 +8,28 @@
     pause?: () => void;
   };
 
-  export let size: string | number = '280px';
   export let className = '';
   export { className as class };
   export let autoplay = true;
-  export let cameraControls = true;
-  export let exposure = 1;
-  export let animationName: string | undefined = 'Idle';
+  export let cameraControls = false;
+  export let poster: string | undefined;
+  export let transparent = true;
+
+  // Deprecated: use `class` and `transparent` instead.
   export let background = 'transparent';
+  // Deprecated: use container styles instead of `size`.
+  export let size: string | number = '280px';
+  // Deprecated: keep for backwards compatibility.
+  export let exposure = 1;
+  // Deprecated: will be controlled by app-level animation logic.
+  export let animationName: string | undefined = 'Idle';
+  // Deprecated: use global motion settings.
   export let respectReducedMotion = true;
+  // Deprecated: keep for compatibility with existing layout.
   export let orientation = '0deg 0deg 0deg';
+  // Deprecated: keep for compatibility with existing layout.
   export let cameraOrbit: string | undefined;
+  // Deprecated: keep for compatibility with existing layout.
   export let cameraTarget: string | undefined;
 
   let container: HTMLDivElement | null = null;
@@ -140,7 +151,7 @@
 
 <div
   class={`muse-shell ${className}`}
-  style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${background};`}
+  style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${transparent ? 'transparent' : background};`}
   bind:this={container}
 >
   {#if !supportsWebGL}
@@ -166,6 +177,7 @@
       alt="Muse companion"
       loading="lazy"
       reveal="auto"
+      poster={poster}
       autoplay={autoplay && !reducedMotion}
       camera-controls={cameraControls}
       orientation={orientation}
