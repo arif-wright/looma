@@ -27,7 +27,7 @@
   // Deprecated: use global motion settings.
   export let respectReducedMotion = true;
   // Deprecated: keep for compatibility with existing layout.
-  export let orientation = '0deg 180deg 180deg';
+  export let orientation = '0deg 0deg 0deg';
   // Deprecated: keep for compatibility with existing layout.
   export let cameraOrbit: string | undefined = '205deg 80deg 105%';
   // Deprecated: keep for compatibility with existing layout.
