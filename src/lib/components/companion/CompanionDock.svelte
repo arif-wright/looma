@@ -81,7 +81,7 @@ $: effectiveMotion = motionEnabled && localMotion;
           size={expanded ? '220px' : '140px'}
           autoplay={effectiveMotion && expanded}
           cameraControls={expanded}
-          respectReducedMotion={false}
+          respectReducedMotion={true}
           animationName="Idle"
           transparent={transparent}
         />
@@ -240,12 +240,14 @@ $: effectiveMotion = motionEnabled && localMotion;
 
   @media (max-width: 720px) {
     .companion-dock {
-      right: 1rem;
+      right: auto;
+      left: 50%;
+      transform: translateX(-50%);
       bottom: 6.5rem;
     }
 
     .companion-dock__panel {
-      width: 230px;
+      width: min(230px, calc(100vw - 1.5rem));
     }
   }
 </style>
