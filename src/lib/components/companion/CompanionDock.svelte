@@ -75,8 +75,6 @@
         class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
         role="group"
         aria-label="Muse companion dock"
-        on:mouseenter={() => (expanded = true)}
-        on:mouseleave={() => (expanded = false)}
       >
       <div class="companion-dock__header">
         <div>
@@ -91,9 +89,9 @@
       <div class="companion-dock__viewer">
         <MuseModel
           size={expanded ? '220px' : '140px'}
-          autoplay={effectiveMotion && expanded}
+          autoplay={effectiveMotion}
           cameraControls={false}
-          respectReducedMotion={true}
+          respectReducedMotion={false}
           animationName="Idle"
           transparent={transparent}
         />
@@ -125,7 +123,7 @@
         {/if}
       </div>
 
-        <p class="companion-dock__hint">Hover to expand. Motion plays only when expanded.</p>
+        <p class="companion-dock__hint">Muse is with you. More companion behaviors coming soon.</p>
       </div>
     {:else}
       <button class="companion-dock__restore" type="button" on:click={toggleVisible} aria-label="Show Muse dock">
