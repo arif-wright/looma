@@ -361,8 +361,8 @@
       background="transparent"
       animationName="Idle"
       respectReducedMotion={false}
-      orientation="0deg 180deg 180deg"
-      cameraOrbit="225deg 70deg 105%"
+      orientation="180deg 180deg 0deg"
+      cameraOrbit="225deg 80deg 105%"
     />
   </section>
 
