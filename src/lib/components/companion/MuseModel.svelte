@@ -10,7 +10,7 @@
 
   export let size: string | number = '280px';
   export let autoplay = true;
-  export let animationName: string | undefined;
+  export let animationName: string | undefined = 'Idle';
   export let background = 'transparent';
 
   let container: HTMLDivElement | null = null;
