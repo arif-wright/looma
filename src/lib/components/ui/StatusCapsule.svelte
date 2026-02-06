@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { currentProfile } from '$lib/stores/profile';
@@ -93,8 +94,41 @@ const capsuleBaseClass =
       ? `${activeCompanion.name} is ${capsuleMood.indicatorTitle}`
       : '';
 
+  let menuOpen = false;
+  let menuRef: HTMLDivElement | null = null;
+  let menuButtonRef: HTMLButtonElement | null = null;
+
+  const closeMenu = () => {
+    menuOpen = false;
+  };
+
+  const handleOutsideClick = (event: MouseEvent) => {
+    if (!menuOpen) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (menuRef?.contains(target) || menuButtonRef?.contains(target)) return;
+    closeMenu();
+  };
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (!menuOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
+
+  onMount(() => {
+    if (!browser) return;
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeydown);
+  });
+
   onDestroy(() => {
     if (pulseTimer) clearTimeout(pulseTimer);
+    if (!browser) return;
+    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('keydown', handleKeydown);
   });
 </script>
 
@@ -167,26 +201,47 @@ const capsuleBaseClass =
 
   <span aria-hidden="true" class="divider">•</span>
 
-  <button
-    type="button"
-    class="account-pill pill"
-    on:click={onLogout}
-    aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
-  >
-    {#if profileAvatar}
-      <img src={profileAvatar} alt="" class="avatar-thumb" />
-    {:else}
-      <span
-        class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
-        aria-hidden="true"
-      >
-        {initials}
-      </span>
+  <div class="account-menu" bind:this={menuRef}>
+    <button
+      type="button"
+      class="account-pill pill"
+      on:click={() => (menuOpen = !menuOpen)}
+      bind:this={menuButtonRef}
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
+    >
+      {#if profileAvatar}
+        <img src={profileAvatar} alt="" class="avatar-thumb" />
+      {:else}
+        <span
+          class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
+          aria-hidden="true"
+        >
+          {initials}
+        </span>
+      {/if}
+      {#if userEmail}
+        <span class="max-w-[140px] truncate text-xs text-white/75">{userEmail}</span>
+      {/if}
+    </button>
+
+    {#if menuOpen}
+      <div class="account-menu__dropdown" role="menu">
+        <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+        <button
+          type="button"
+          role="menuitem"
+          on:click={() => {
+            closeMenu();
+            onLogout();
+          }}
+        >
+          Logout
+        </button>
+      </div>
     {/if}
-    {#if userEmail}
-      <span class="max-w-[140px] truncate text-xs text-white/75">{userEmail}</span>
-    {/if}
-  </button>
+  </div>
 </div>
 
 <style>
@@ -455,6 +510,50 @@ const capsuleBaseClass =
   .account-pill:hover {
     background: #161c29;
     border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .account-menu {
+    position: relative;
+  }
+
+  .account-menu__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    display: grid;
+    gap: 0.35rem;
+    min-width: 180px;
+    padding: 0.5rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 12, 20, 0.92);
+    box-shadow: 0 16px 40px rgba(5, 7, 18, 0.5);
+    z-index: 20;
+  }
+
+  .account-menu__dropdown a,
+  .account-menu__dropdown button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: rgba(248, 250, 255, 0.85);
+    font-size: 0.85rem;
+    text-align: left;
+  }
+
+  .account-menu__dropdown a:hover,
+  .account-menu__dropdown a:focus-visible,
+  .account-menu__dropdown button:hover,
+  .account-menu__dropdown button:focus-visible {
+    border-color: rgba(94, 242, 255, 0.4);
+    background: rgba(94, 242, 255, 0.08);
+    outline: none;
   }
 
   .account-pill span:first-child {

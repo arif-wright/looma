@@ -8,9 +8,14 @@
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
 
+  export let visible = true;
+  export let motionEnabled = true;
+  export let transparent = true;
+  export let reactionsEnabled = true;
+
   let expanded = false;
-  let visible = true;
-  let motionEnabled = false;
+  let localVisible = true;
+  let localMotion = false;
 
   const readBool = (value: string | null, fallback: boolean) => {
     if (value === null) return fallback;
@@ -19,14 +24,14 @@
 
   const persist = () => {
     if (!browser) return;
-    window.localStorage.setItem(STORAGE_VISIBLE, String(visible));
-    window.localStorage.setItem(STORAGE_MOTION, String(motionEnabled));
+    window.localStorage.setItem(STORAGE_VISIBLE, String(localVisible));
+    window.localStorage.setItem(STORAGE_MOTION, String(localMotion));
   };
 
   onMount(() => {
     if (!browser) return;
-    visible = readBool(window.localStorage.getItem(STORAGE_VISIBLE), true);
-    motionEnabled = readBool(window.localStorage.getItem(STORAGE_MOTION), false);
+    localVisible = readBool(window.localStorage.getItem(STORAGE_VISIBLE), true);
+    localMotion = readBool(window.localStorage.getItem(STORAGE_MOTION), false);
   });
 
   $: if (browser) {
@@ -38,19 +43,22 @@
   };
 
   const toggleVisible = () => {
-    visible = !visible;
-    if (!visible) {
+    localVisible = !localVisible;
+    if (!localVisible) {
       expanded = false;
     }
   };
 
   const toggleMotion = () => {
-    motionEnabled = !motionEnabled;
+    localMotion = !localMotion;
   };
+
+  $: effectiveVisible = visible && localVisible;
+  $: effectiveMotion = motionEnabled && localMotion;
 </script>
 
-<div class={`companion-dock ${visible ? '' : 'companion-dock--hidden'}`} aria-live="polite">
-  {#if visible}
+{#if effectiveVisible}
+  <div class={`companion-dock ${effectiveVisible ? '' : 'companion-dock--hidden'}`} aria-live="polite">
     <div
       class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
       role="group"
@@ -71,21 +79,24 @@
       <div class="companion-dock__viewer">
         <MuseModel
           size={expanded ? '220px' : '140px'}
-          autoplay={motionEnabled && expanded}
+          autoplay={effectiveMotion && expanded}
           cameraControls={expanded}
           respectReducedMotion={false}
           orientation="180deg 180deg 0deg"
           cameraOrbit={expanded ? '205deg 80deg 105%' : '205deg 75deg 115%'}
           animationName="Idle"
+          transparent={transparent}
         />
-        <div class="companion-dock__reaction">
-          <ReactionToast />
-        </div>
+        {#if reactionsEnabled}
+          <div class="companion-dock__reaction">
+            <ReactionToast />
+          </div>
+        {/if}
       </div>
 
       <div class="companion-dock__controls">
-        <button type="button" class="companion-dock__toggle" on:click={toggleMotion}>
-          {#if motionEnabled}
+        <button type="button" class="companion-dock__toggle" on:click={toggleMotion} disabled={!motionEnabled}>
+          {#if effectiveMotion}
             <Sparkles size={14} />
             Motion on
           {:else}
@@ -106,8 +117,8 @@
       <Eye size={16} />
       Muse
     </button>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style>
   .companion-dock {
@@ -202,6 +213,11 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.75);
+  }
+
+  .companion-dock__toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .companion-dock__hint {

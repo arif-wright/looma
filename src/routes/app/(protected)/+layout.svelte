@@ -15,6 +15,7 @@
   import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
+  import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
 
   export let data;
 
@@ -66,6 +67,7 @@
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ];
 
+
   if (browser) {
     onMount(async () => {
       const month = new Date().getMonth();
@@ -84,6 +86,16 @@
           const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
           pushCompanionReaction(reaction);
         }
+      }
+
+      try {
+        const res = await fetch('/api/context/portable');
+        const payload = await res.json().catch(() => null);
+        if (res.ok && payload) {
+          hydrateCompanionPrefs(payload);
+        }
+      } catch {
+        // keep defaults
       }
     });
 
@@ -147,7 +159,12 @@
 </div>
 
 <MobileDock items={iconNavItems} />
-<CompanionDock />
+<CompanionDock
+  visible={$companionPrefs.visible}
+  motionEnabled={$companionPrefs.motion}
+  transparent={$companionPrefs.transparent}
+  reactionsEnabled={$companionPrefs.reactionsEnabled}
+/>
 
 <style>
   .app-shell {

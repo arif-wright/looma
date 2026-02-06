@@ -52,9 +52,6 @@
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let loading = false;
   let reorderBusy = false;
-  let museAutoplay = true;
-  let museCameraControls = false;
-  let museTransparent = true;
   let rosterError: string | null = data.error ?? null;
   let showUnlock = false;
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
@@ -353,30 +350,9 @@
   </header>
 
   <section class="muse-preview">
-    <div class="muse-preview__copy">
-      <p class="eyebrow">Companion View</p>
-      <h2>Meet Muse</h2>
-      <p class="lede">Default companion visual for app surfaces and games.</p>
-      <div class="muse-preview__controls">
-        <label>
-          <input type="checkbox" bind:checked={museAutoplay} />
-          Autoplay
-        </label>
-        <label>
-          <input type="checkbox" bind:checked={museCameraControls} />
-          Camera controls
-        </label>
-        <label>
-          <input type="checkbox" bind:checked={museTransparent} />
-          Transparent
-        </label>
-      </div>
-    </div>
     <MuseModel
       size="240px"
-      autoplay={museAutoplay}
-      cameraControls={museCameraControls}
-      transparent={museTransparent}
+      autoplay
       animationName="Idle"
       orientation="180deg 180deg 0deg"
       cameraOrbit="205deg 80deg 105%"
@@ -511,34 +487,8 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1.25rem 1.5rem;
     background: rgba(8, 10, 18, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-  }
-
-  .muse-preview__copy h2 {
-    margin: 0.35rem 0 0.25rem;
-    font-size: 1.4rem;
-  }
-
-  .muse-preview__controls {
-    margin-top: 0.85rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.2rem;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .muse-preview__controls label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .muse-preview__copy .lede {
-    margin: 0;
+    display: grid;
+    place-items: center;
   }
 
   .panel-title-row {
@@ -687,11 +637,6 @@
   @media (max-width: 640px) {
     .roster-page {
       padding: 1.25rem;
-    }
-
-    .muse-preview {
-      flex-direction: column;
-      align-items: flex-start;
     }
   }
 </style>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
@@ -62,6 +64,42 @@
     headerCompanion && headerMood
       ? `${headerCompanion.name} is ${headerMood.indicatorTitle}`
       : '';
+
+  let menuOpen = false;
+  let menuRef: HTMLDivElement | null = null;
+  let menuButtonRef: HTMLButtonElement | null = null;
+
+  const closeMenu = () => {
+    menuOpen = false;
+  };
+
+  const handleOutsideClick = (event: MouseEvent) => {
+    if (!menuOpen) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (menuRef?.contains(target) || menuButtonRef?.contains(target)) return;
+    closeMenu();
+  };
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (!menuOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
+
+  onMount(() => {
+    if (!browser) return;
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeydown);
+  });
+
+  onDestroy(() => {
+    if (!browser) return;
+    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('keydown', handleKeydown);
+  });
 </script>
 
 <header class="lean-header" data-testid="lean-header">
@@ -117,16 +155,42 @@
 
       <NotificationBell notifications={notifications} unreadCount={unreadCount} />
 
-      <button type="button" class="lean-account pill" on:click={onLogout} aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}>
-        {#if profileAvatar}
-          <img src={profileAvatar} alt="" class="lean-account__avatar" aria-hidden="true" />
-        {:else}
-          <span class="lean-account__initial" aria-hidden="true">{initials}</span>
+      <div class="lean-account-menu" bind:this={menuRef}>
+        <button
+          type="button"
+          class="lean-account pill"
+          on:click={() => (menuOpen = !menuOpen)}
+          bind:this={menuButtonRef}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}
+        >
+          {#if profileAvatar}
+            <img src={profileAvatar} alt="" class="lean-account__avatar" aria-hidden="true" />
+          {:else}
+            <span class="lean-account__initial" aria-hidden="true">{initials}</span>
+          {/if}
+          {#if userEmail}
+            <span class="lean-account__email">{userEmail}</span>
+          {/if}
+        </button>
+
+        {#if menuOpen}
+          <div class="lean-account-menu__dropdown" role="menu">
+            <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+            <button
+              type="button"
+              role="menuitem"
+              on:click={() => {
+                closeMenu();
+                onLogout();
+              }}
+            >
+              Logout
+            </button>
+          </div>
         {/if}
-        {#if userEmail}
-          <span class="lean-account__email">{userEmail}</span>
-        {/if}
-      </button>
+      </div>
     </div>
   </div>
 </header>
@@ -504,6 +568,50 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .lean-account-menu {
+    position: relative;
+  }
+
+  .lean-account-menu__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    display: grid;
+    gap: 0.35rem;
+    min-width: 180px;
+    padding: 0.5rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 12, 20, 0.92);
+    box-shadow: 0 16px 40px rgba(5, 7, 18, 0.5);
+    z-index: 20;
+  }
+
+  .lean-account-menu__dropdown a,
+  .lean-account-menu__dropdown button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: rgba(248, 250, 255, 0.85);
+    font-size: 0.85rem;
+    text-align: left;
+  }
+
+  .lean-account-menu__dropdown a:hover,
+  .lean-account-menu__dropdown a:focus-visible,
+  .lean-account-menu__dropdown button:hover,
+  .lean-account-menu__dropdown button:focus-visible {
+    border-color: rgba(94, 242, 255, 0.4);
+    background: rgba(94, 242, 255, 0.08);
+    outline: none;
   }
 
   @media (min-width: 768px) {

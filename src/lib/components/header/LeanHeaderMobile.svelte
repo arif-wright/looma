@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { walletBalance } from '$lib/stores/economy';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
@@ -10,12 +11,36 @@
   export let userEmail: string | null = null;
   export let profile: CurrentProfile = null;
   export let activeCompanion: ActiveCompanionSnapshot | null = null;
+  export let onLogout: () => void = () => {};
 
   let search = '';
   let showExpanded = false;
   let lastBalance = 0;
   let pulse = false;
   let pulseTimeout: ReturnType<typeof setTimeout> | null = null;
+  let menuOpen = false;
+  let menuRef: HTMLDivElement | null = null;
+  let menuButtonRef: HTMLButtonElement | null = null;
+
+  const closeMenu = () => {
+    menuOpen = false;
+  };
+
+  const handleOutsideClick = (event: MouseEvent) => {
+    if (!menuOpen) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (menuRef?.contains(target) || menuButtonRef?.contains(target)) return;
+    closeMenu();
+  };
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (!menuOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
 
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.max(0, Math.floor(n ?? 0)));
@@ -51,6 +76,15 @@
 
   onDestroy(() => {
     if (pulseTimeout) clearTimeout(pulseTimeout);
+    if (!browser) return;
+    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('keydown', handleKeydown);
+  });
+
+  onMount(() => {
+    if (!browser) return;
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeydown);
   });
 </script>
 
@@ -89,13 +123,38 @@
       class="icon-btn notification-compact"
     />
 
-    <a href="/app/profile" aria-label="Account" class="icon-btn account-btn">
-      {#if profileAvatar}
-        <img src={profileAvatar} alt="" class="avatar-img" aria-hidden="true" />
-      {:else}
-        <span class="avatar-text" aria-hidden="true">{initials}</span>
+    <div class="account-menu" bind:this={menuRef}>
+      <button
+        type="button"
+        class="icon-btn account-btn"
+        on:click={() => (menuOpen = !menuOpen)}
+        bind:this={menuButtonRef}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-label="Account menu"
+      >
+        {#if profileAvatar}
+          <img src={profileAvatar} alt="" class="avatar-img" aria-hidden="true" />
+        {:else}
+          <span class="avatar-text" aria-hidden="true">{initials}</span>
+        {/if}
+      </button>
+      {#if menuOpen}
+        <div class="account-menu__dropdown" role="menu">
+          <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+          <button
+            type="button"
+            role="menuitem"
+            on:click={() => {
+              closeMenu();
+              onLogout();
+            }}
+          >
+            Logout
+          </button>
+        </div>
       {/if}
-    </a>
+    </div>
   </div>
 </nav>
 
@@ -196,6 +255,50 @@
     border-radius: 999px;
     background: rgba(94, 242, 255, 0.9);
     box-shadow: 0 0 12px rgba(94, 242, 255, 0.8);
+  }
+
+  .account-menu {
+    position: relative;
+  }
+
+  .account-menu__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    display: grid;
+    gap: 0.35rem;
+    min-width: 180px;
+    padding: 0.5rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 12, 20, 0.92);
+    box-shadow: 0 16px 40px rgba(5, 7, 18, 0.5);
+    z-index: 20;
+  }
+
+  .account-menu__dropdown a,
+  .account-menu__dropdown button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: rgba(248, 250, 255, 0.85);
+    font-size: 0.85rem;
+    text-align: left;
+  }
+
+  .account-menu__dropdown a:hover,
+  .account-menu__dropdown a:focus-visible,
+  .account-menu__dropdown button:hover,
+  .account-menu__dropdown button:focus-visible {
+    border-color: rgba(94, 242, 255, 0.4);
+    background: rgba(94, 242, 255, 0.08);
+    outline: none;
   }
 
   .notification-compact :global(.bell) {
