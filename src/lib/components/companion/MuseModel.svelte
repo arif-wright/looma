@@ -9,10 +9,13 @@
   };
 
   export let size: string | number = '280px';
+  export let className = '';
+  export { className as class };
   export let autoplay = true;
+  export let cameraControls = true;
+  export let exposure = 1;
   export let animationName: string | undefined = 'Idle';
   export let background = 'transparent';
-  export let interactive = true;
   export let respectReducedMotion = true;
   export let orientation = '0deg 0deg 0deg';
   export let cameraOrbit: string | undefined;
@@ -136,7 +139,7 @@
 </script>
 
 <div
-  class="muse-shell"
+  class={`muse-shell ${className}`}
   style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${background};`}
   bind:this={container}
 >
@@ -158,15 +161,17 @@
   {:else}
     <model-viewer
       class="muse-viewer"
+      class:muse-viewer--interactive={cameraControls}
       src="/models/muse.glb"
       alt="Muse companion"
       loading="lazy"
       reveal="auto"
       autoplay={autoplay && !reducedMotion}
-      camera-controls={interactive}
+      camera-controls={cameraControls}
       orientation={orientation}
       camera-orbit={cameraOrbit}
       camera-target={cameraTarget}
+      exposure={exposure}
       interaction-prompt="none"
       animation-name={animationName}
       on:load={() => {
@@ -210,10 +215,13 @@
     width: 100%;
     height: 100%;
     background: var(--muse-background);
+  }
+
+  .muse-viewer--interactive {
     cursor: grab;
   }
 
-  .muse-viewer:active {
+  .muse-viewer--interactive:active {
     cursor: grabbing;
   }
 
