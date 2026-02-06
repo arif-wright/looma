@@ -13,6 +13,7 @@
   import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
   import LeanHeader from '$lib/components/layout/LeanHeader.svelte';
   import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
 
   export let data;
 
@@ -133,6 +134,7 @@
 </div>
 
 <MobileDock items={iconNavItems} />
+<CompanionDock />
 
 <style>
   .app-shell {
