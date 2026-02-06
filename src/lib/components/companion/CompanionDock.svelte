@@ -53,19 +53,19 @@
     localMotion = !localMotion;
   };
 
-  $: effectiveVisible = visible && localVisible;
-  $: effectiveMotion = motionEnabled && localMotion;
+$: effectiveMotion = motionEnabled && localMotion;
 </script>
 
-{#if effectiveVisible}
-  <div class={`companion-dock ${effectiveVisible ? '' : 'companion-dock--hidden'}`} aria-live="polite">
-    <div
-      class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
-      role="group"
-      aria-label="Muse companion dock"
-      on:mouseenter={() => (expanded = true)}
-      on:mouseleave={() => (expanded = false)}
-    >
+{#if visible}
+  <div class="companion-dock" aria-live="polite">
+    {#if localVisible}
+      <div
+        class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
+        role="group"
+        aria-label="Muse companion dock"
+        on:mouseenter={() => (expanded = true)}
+        on:mouseleave={() => (expanded = false)}
+      >
       <div class="companion-dock__header">
         <div>
           <p class="companion-dock__eyebrow">Companion</p>
@@ -110,13 +110,14 @@
         </button>
       </div>
 
-      <p class="companion-dock__hint">Hover to expand. Motion plays only when expanded.</p>
-    </div>
-  {:else}
-    <button class="companion-dock__restore" type="button" on:click={toggleVisible} aria-label="Show Muse dock">
-      <Eye size={16} />
-      Muse
-    </button>
+        <p class="companion-dock__hint">Hover to expand. Motion plays only when expanded.</p>
+      </div>
+    {:else}
+      <button class="companion-dock__restore" type="button" on:click={toggleVisible} aria-label="Show Muse dock">
+        <Eye size={16} />
+        Muse
+      </button>
+    {/if}
   </div>
 {/if}
 
