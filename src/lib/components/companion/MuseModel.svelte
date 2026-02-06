@@ -155,7 +155,7 @@
     </div>
   {:else if !shouldLoad}
     <div class="muse-placeholder" aria-hidden="true">
-      <div class="muse-placeholder__orb" />
+      <div class="muse-placeholder__orb"></div>
       <p>Loading Muse…</p>
     </div>
   {:else}
@@ -186,10 +186,10 @@
         loadError = 'Unable to load the Muse model.';
       }}
       bind:this={viewer}
-    />
+    ></model-viewer>
     {#if !isLoaded}
       <div class="muse-overlay" aria-hidden="true">
-        <div class="muse-placeholder__orb" />
+        <div class="muse-placeholder__orb"></div>
         <p>Loading Muse…</p>
       </div>
     {/if}

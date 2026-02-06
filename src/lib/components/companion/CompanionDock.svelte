@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
-  import { Eye, EyeOff, Sparkles, SparkleOff, PanelRightOpen } from 'lucide-svelte';
+  import { Eye, EyeOff, Sparkles, Sparkle, PanelRightOpen } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
@@ -52,6 +52,8 @@
   {#if visible}
     <div
       class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
+      role="group"
+      aria-label="Muse companion dock"
       on:mouseenter={() => (expanded = true)}
       on:mouseleave={() => (expanded = false)}
     >
@@ -83,7 +85,7 @@
             <Sparkles size={14} />
             Motion on
           {:else}
-            <SparkleOff size={14} />
+            <Sparkle size={14} />
             Motion off
           {/if}
         </button>
