@@ -15,6 +15,8 @@
   export let interactive = true;
   export let respectReducedMotion = true;
   export let orientation = '0deg 0deg 0deg';
+  export let cameraOrbit: string | undefined;
+  export let cameraTarget: string | undefined;
 
   let container: HTMLDivElement | null = null;
   let viewer: ModelViewerElement | null = null;
@@ -163,6 +165,8 @@
       autoplay={autoplay && !reducedMotion}
       camera-controls={interactive}
       orientation={orientation}
+      camera-orbit={cameraOrbit}
+      camera-target={cameraTarget}
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;
