@@ -83,7 +83,8 @@
       if (stored !== today) {
         window.localStorage.setItem('looma_session_start_day', today);
         const response = await sendEvent('session.start', { path: window.location.pathname });
-        const reaction = response?.output?.reaction ?? null;
+        const output = response?.output ?? null;
+        const reaction = output?.suppressed === true ? null : output?.reaction ?? null;
         if (reaction) {
           const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
           pushCompanionReaction(reaction);

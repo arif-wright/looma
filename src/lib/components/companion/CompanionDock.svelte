@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
+  import { browser, dev } from '$app/environment';
   import { onMount } from 'svelte';
   import { Eye, EyeOff, Sparkles, Sparkle, PanelRightOpen } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
-  import ReactionToast from '$lib/components/companion/ReactionToast.svelte';
+  import ReactionBubble from '$lib/components/companion/ReactionBubble.svelte';
+  import { sendEvent } from '$lib/client/events/sendEvent';
+  import { pushCompanionReaction } from '$lib/stores/companionReactions';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -53,7 +55,17 @@
     localMotion = !localMotion;
   };
 
-$: effectiveMotion = motionEnabled && localMotion;
+  const triggerTestReaction = async () => {
+    const response = await sendEvent('session.return', { source: 'dock_test' });
+    const output = response?.output ?? null;
+    if (!reactionsEnabled || output?.suppressed === true) return;
+    const reaction = output?.reaction ?? null;
+    if (reaction) {
+      pushCompanionReaction(reaction);
+    }
+  };
+
+  $: effectiveMotion = motionEnabled && localMotion;
 </script>
 
 {#if visible}
@@ -87,7 +99,7 @@ $: effectiveMotion = motionEnabled && localMotion;
         />
         {#if reactionsEnabled}
           <div class="companion-dock__reaction">
-            <ReactionToast />
+            <ReactionBubble />
           </div>
         {/if}
       </div>
@@ -106,6 +118,11 @@ $: effectiveMotion = motionEnabled && localMotion;
           <EyeOff size={14} />
           Hide
         </button>
+        {#if dev}
+          <button type="button" class="companion-dock__toggle" on:click={triggerTestReaction} disabled={!reactionsEnabled}>
+            Test reaction
+          </button>
+        {/if}
       </div>
 
         <p class="companion-dock__hint">Hover to expand. Motion plays only when expanded.</p>
