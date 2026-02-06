@@ -167,6 +167,7 @@
       orientation={orientation}
       camera-orbit={cameraOrbit}
       camera-target={cameraTarget}
+      interaction-prompt="none"
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;
