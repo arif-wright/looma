@@ -81,6 +81,7 @@ import type { CompanionRitual } from '$lib/companions/rituals';
 import { applyPlayerState, getPlayerProgressSnapshot } from '$lib/games/state';
 import { getActiveCompanionSnapshot } from '$lib/stores/companions';
 import { sendAnalytics } from '$lib/utils/analytics';
+import { sendEvent } from '$lib/client/events/sendEvent';
 
 export const CLIENT_VERSION = '1.0.0';
 
@@ -294,6 +295,16 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     score,
     rewards: result.rewards ?? null,
     extra: result.extra ?? null
+  });
+
+  void sendEvent('game.complete', {
+    sessionId,
+    slug: context.slug,
+    success: result.success ?? null,
+    durationMs,
+    score
+  }, {
+    sessionId
   });
 
   return completion;

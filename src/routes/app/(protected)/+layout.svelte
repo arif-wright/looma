@@ -14,6 +14,7 @@
   import LeanHeader from '$lib/components/layout/LeanHeader.svelte';
   import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
   import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
+  import { sendEvent } from '$lib/client/events/sendEvent';
 
   export let data;
 
@@ -72,6 +73,13 @@
         month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
       document.documentElement.dataset.themeAccent = accent;
       previousPath = window.location.pathname;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const stored = window.localStorage.getItem('looma_session_start_day');
+      if (stored !== today) {
+        window.localStorage.setItem('looma_session_start_day', today);
+        void sendEvent('session.start', { path: window.location.pathname });
+      }
     });
 
     afterNavigate((nav) => {
