@@ -13,6 +13,7 @@
   export let animationName: string | undefined = 'Idle';
   export let background = 'transparent';
   export let interactive = true;
+  export let respectReducedMotion = true;
 
   let container: HTMLDivElement | null = null;
   let viewer: ModelViewerElement | null = null;
@@ -69,10 +70,10 @@
     if (!supportsWebGL) return;
 
     mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    reducedMotion = mediaQuery.matches;
+    reducedMotion = respectReducedMotion && mediaQuery.matches;
 
     const handleMotionChange = (event: MediaQueryListEvent) => {
-      reducedMotion = event.matches;
+      reducedMotion = respectReducedMotion && event.matches;
       updatePlayback();
     };
 
@@ -122,6 +123,11 @@
   }
 
   $: if (viewer) {
+    updatePlayback();
+  }
+
+  $: if (!respectReducedMotion) {
+    reducedMotion = false;
     updatePlayback();
   }
 </script>
