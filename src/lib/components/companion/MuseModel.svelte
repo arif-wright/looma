@@ -14,6 +14,7 @@
   export let background = 'transparent';
   export let interactive = true;
   export let respectReducedMotion = true;
+  export let orientation = '0deg 0deg 0deg';
 
   let container: HTMLDivElement | null = null;
   let viewer: ModelViewerElement | null = null;
@@ -161,6 +162,7 @@
       reveal="auto"
       autoplay={autoplay && !reducedMotion}
       camera-controls={interactive}
+      orientation={orientation}
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;

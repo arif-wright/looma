@@ -355,7 +355,14 @@
       <h2>Meet Muse</h2>
       <p class="lede">Default companion visual for app surfaces and games.</p>
     </div>
-    <MuseModel size="240px" autoplay background="transparent" animationName="Idle" respectReducedMotion={false} />
+    <MuseModel
+      size="240px"
+      autoplay
+      background="transparent"
+      animationName="Idle"
+      respectReducedMotion={false}
+      orientation="0deg 180deg 0deg"
+    />
   </section>
 
   <section class="bond-milestones-panel">
