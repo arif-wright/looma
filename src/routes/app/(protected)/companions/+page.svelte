@@ -15,6 +15,7 @@
   import type { CompanionRitual } from '$lib/companions/rituals';
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
+  import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
   export let data: PageData;
 
@@ -348,6 +349,15 @@
     </div>
   </header>
 
+  <section class="muse-preview">
+    <div class="muse-preview__copy">
+      <p class="eyebrow">Companion View</p>
+      <h2>Meet Muse</h2>
+      <p class="lede">Default companion visual for app surfaces and games.</p>
+    </div>
+    <MuseModel size="240px" autoplay background="transparent" />
+  </section>
+
   <section class="bond-milestones-panel">
     <div class="panel-title-row">
       <h2 class="panel-title">Daily rituals</h2>
@@ -469,6 +479,26 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1rem;
     background: rgba(8, 10, 18, 0.85);
+  }
+
+  .muse-preview {
+    border-radius: 1.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1.25rem 1.5rem;
+    background: rgba(8, 10, 18, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .muse-preview__copy h2 {
+    margin: 0.35rem 0 0.25rem;
+    font-size: 1.4rem;
+  }
+
+  .muse-preview__copy .lede {
+    margin: 0;
   }
 
   .panel-title-row {
@@ -617,6 +647,11 @@
   @media (max-width: 640px) {
     .roster-page {
       padding: 1.25rem;
+    }
+
+    .muse-preview {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>
