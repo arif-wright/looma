@@ -17,7 +17,7 @@
 
   let expanded = false;
   let localVisible = true;
-  let localMotion = false;
+  let localMotion = true;
 
   const readBool = (value: string | null, fallback: boolean) => {
     if (value === null) return fallback;
@@ -33,7 +33,7 @@
   onMount(() => {
     if (!browser) return;
     localVisible = readBool(window.localStorage.getItem(STORAGE_VISIBLE), true);
-    localMotion = readBool(window.localStorage.getItem(STORAGE_MOTION), false);
+    localMotion = readBool(window.localStorage.getItem(STORAGE_MOTION), true);
   });
 
   $: if (browser) {
@@ -92,7 +92,7 @@
         <MuseModel
           size={expanded ? '220px' : '140px'}
           autoplay={effectiveMotion && expanded}
-          cameraControls={expanded}
+          cameraControls={false}
           respectReducedMotion={true}
           animationName="Idle"
           transparent={transparent}
