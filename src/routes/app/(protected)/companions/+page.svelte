@@ -357,7 +357,7 @@
       <p class="lede">Muse reacts to milestones and stays subtle across your day.</p>
     </div>
     <div class="muse-preview__frame">
-      <MuseModel size="240px" autoplay animationName="Idle" />
+      <MuseModel size="240px" autoplay respectReducedMotion={false} />
     </div>
   </section>
 

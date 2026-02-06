@@ -27,7 +27,7 @@
   // Deprecated: use global motion settings.
   export let respectReducedMotion = true;
   // Deprecated: keep for compatibility with existing layout.
-  export let orientation = '180deg 180deg 0deg';
+  export let orientation = '0deg 180deg 0deg';
   // Deprecated: keep for compatibility with existing layout.
   export let cameraOrbit: string | undefined = '205deg 80deg 105%';
   // Deprecated: keep for compatibility with existing layout.
@@ -39,7 +39,7 @@
   let shouldLoad = false;
   let loadError: string | null = null;
   let isLoaded = false;
-  let isVisible = false;
+  let isVisible = true;
   let reducedMotion = false;
   let mediaQuery: MediaQueryList | null = null;
   let observer: IntersectionObserver | null = null;
@@ -189,7 +189,11 @@
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;
-        const desired = animationName ?? viewer?.availableAnimations?.[0] ?? null;
+        const available = viewer?.availableAnimations ?? [];
+        const desired =
+          animationName && available.includes(animationName)
+            ? animationName
+            : available[0] ?? animationName ?? null;
         if (viewer) {
           viewer.animationName = desired;
           const shouldPlay = autoplay && !reducedMotion;
@@ -200,7 +204,8 @@
             console.debug('[MuseModel] motion', {
               reducedMotion,
               autoplay,
-              availableAnimations: viewer.availableAnimations ?? []
+              availableAnimationCount: available.length,
+              availableAnimations: available
             });
           }
         }
