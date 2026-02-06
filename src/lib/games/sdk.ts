@@ -297,7 +297,7 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     extra: result.extra ?? null
   });
 
-  void sendEvent('game.complete', {
+  const response = await sendEvent('game.complete', {
     sessionId,
     slug: context.slug,
     success: result.success ?? null,
@@ -306,6 +306,12 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
   }, {
     sessionId
   });
+
+  const reaction = response?.output?.reaction ?? null;
+  if (reaction) {
+    const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
+    pushCompanionReaction(reaction);
+  }
 
   return completion;
 };

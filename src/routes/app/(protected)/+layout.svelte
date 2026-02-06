@@ -67,7 +67,7 @@
   ];
 
   if (browser) {
-    onMount(() => {
+    onMount(async () => {
       const month = new Date().getMonth();
       const accent =
         month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
@@ -78,7 +78,12 @@
       const stored = window.localStorage.getItem('looma_session_start_day');
       if (stored !== today) {
         window.localStorage.setItem('looma_session_start_day', today);
-        void sendEvent('session.start', { path: window.location.pathname });
+        const response = await sendEvent('session.start', { path: window.location.pathname });
+        const reaction = response?.output?.reaction ?? null;
+        if (reaction) {
+          const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
+          pushCompanionReaction(reaction);
+        }
       }
     });
 

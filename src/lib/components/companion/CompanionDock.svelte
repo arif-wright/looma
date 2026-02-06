@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { Eye, EyeOff, Sparkles, Sparkle, PanelRightOpen } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import ReactionToast from '$lib/components/companion/ReactionToast.svelte';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -77,6 +78,9 @@
           cameraOrbit={expanded ? '205deg 80deg 105%' : '205deg 75deg 115%'}
           animationName="Idle"
         />
+        <div class="companion-dock__reaction">
+          <ReactionToast />
+        </div>
       </div>
 
       <div class="companion-dock__controls">
@@ -170,6 +174,15 @@
   .companion-dock__viewer {
     display: grid;
     place-items: center;
+    position: relative;
+  }
+
+  .companion-dock__reaction {
+    position: absolute;
+    bottom: -0.4rem;
+    left: 50%;
+    transform: translate(-50%, 100%);
+    pointer-events: auto;
   }
 
   .companion-dock__controls {

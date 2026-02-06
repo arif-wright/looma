@@ -8,7 +8,6 @@ import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
 
 const ALLOWED_TYPES = new Set(['session.start', 'session.return', 'game.complete']);
-const PUBLIC_TYPES = new Set(['session.start']);
 const WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const buckets = new Map<string, number[]>();
@@ -51,8 +50,7 @@ export const POST: RequestHandler = async (event) => {
     : {}) as Record<string, unknown>;
 
   const { session } = await createSupabaseServerClient(event);
-  const isPublic = PUBLIC_TYPES.has(type);
-  if (!session && !isPublic) {
+  if (!session) {
     return json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -70,22 +68,27 @@ export const POST: RequestHandler = async (event) => {
       ? (payload.payload as Record<string, unknown>)
       : null;
 
+  const stitchedPayload = {
+    ...(eventPayload ?? {}),
+    context
+  };
+
   const agentEvent: AgentEvent = {
     id: crypto.randomUUID(),
     type,
     scope: resolveScope(type),
     timestamp: typeof meta.ts === 'string' ? meta.ts : new Date().toISOString(),
     payload: {
-      event: eventPayload,
+      ...stitchedPayload,
       meta: {
         sessionId,
         userId: userId ?? undefined
       },
-      context
     }
   };
 
   const trace = await dispatchEvent(agentEvent, { registry: agentRegistry });
+  const output = trace.results.find((result) => result.output)?.output ?? null;
   if (dev) {
     addTrace(trace);
   }
@@ -93,6 +96,7 @@ export const POST: RequestHandler = async (event) => {
   return json({
     ok: true,
     vetoed: trace.vetoed,
+    output,
     actions: [],
     traceId: trace.event.id
   });
