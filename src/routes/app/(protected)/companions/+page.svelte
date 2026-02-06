@@ -350,13 +350,15 @@
   </header>
 
   <section class="muse-preview">
-    <MuseModel
-      size="240px"
-      autoplay
-      animationName="Idle"
-      orientation="180deg 180deg 0deg"
-      cameraOrbit="205deg 80deg 105%"
-    />
+    <div class="muse-preview__copy">
+      <p class="eyebrow">Companion View</p>
+      <h2>Meet Muse</h2>
+      <p class="lede">Default companion visual for app surfaces and games.</p>
+      <p class="lede">Muse reacts to milestones and stays subtle across your day.</p>
+    </div>
+    <div class="muse-preview__frame">
+      <MuseModel size="240px" autoplay animationName="Idle" />
+    </div>
   </section>
 
   <section class="bond-milestones-panel">
@@ -487,6 +489,22 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1.25rem 1.5rem;
     background: rgba(8, 10, 18, 0.8);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .muse-preview__copy h2 {
+    margin: 0.35rem 0 0.25rem;
+    font-size: 1.4rem;
+  }
+
+  .muse-preview__copy .lede {
+    margin: 0.25rem 0 0;
+  }
+
+  .muse-preview__frame {
     display: grid;
     place-items: center;
   }
@@ -637,6 +655,10 @@
   @media (max-width: 640px) {
     .roster-page {
       padding: 1.25rem;
+    }
+
+    .muse-preview {
+      grid-template-columns: 1fr;
     }
   }
 </style>

@@ -82,8 +82,6 @@ $: effectiveMotion = motionEnabled && localMotion;
           autoplay={effectiveMotion && expanded}
           cameraControls={expanded}
           respectReducedMotion={false}
-          orientation="180deg 180deg 0deg"
-          cameraOrbit={expanded ? '205deg 80deg 105%' : '205deg 75deg 115%'}
           animationName="Idle"
           transparent={transparent}
         />

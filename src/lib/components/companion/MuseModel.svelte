@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { dev } from '$app/environment';
 
   type ModelViewerElement = HTMLElement & {
     animationName?: string | null;
@@ -26,9 +27,9 @@
   // Deprecated: use global motion settings.
   export let respectReducedMotion = true;
   // Deprecated: keep for compatibility with existing layout.
-  export let orientation = '0deg 0deg 0deg';
+  export let orientation = '180deg 180deg 0deg';
   // Deprecated: keep for compatibility with existing layout.
-  export let cameraOrbit: string | undefined;
+  export let cameraOrbit: string | undefined = '205deg 80deg 105%';
   // Deprecated: keep for compatibility with existing layout.
   export let cameraTarget: string | undefined;
 
@@ -191,6 +192,17 @@
         const desired = animationName ?? viewer?.availableAnimations?.[0] ?? null;
         if (viewer) {
           viewer.animationName = desired;
+          const shouldPlay = autoplay && !reducedMotion;
+          if (shouldPlay) {
+            viewer.play?.();
+          }
+          if (dev) {
+            console.debug('[MuseModel] motion', {
+              reducedMotion,
+              autoplay,
+              availableAnimations: viewer.availableAnimations ?? []
+            });
+          }
         }
         updatePlayback();
       }}

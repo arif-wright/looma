@@ -43,6 +43,7 @@
   let isGames = false;
   let isShop = false;
   let isProfileSurface = false;
+  let hideCompanionDock = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
 
@@ -52,6 +53,7 @@
   $: isShop = currentPath.startsWith('/app/shop');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
+  $: hideCompanionDock = currentPath.startsWith('/app/companions');
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
@@ -159,12 +161,14 @@
 </div>
 
 <MobileDock items={iconNavItems} />
-<CompanionDock
-  visible={$companionPrefs.visible}
-  motionEnabled={$companionPrefs.motion}
-  transparent={$companionPrefs.transparent}
-  reactionsEnabled={$companionPrefs.reactionsEnabled}
-/>
+{#if !hideCompanionDock}
+  <CompanionDock
+    visible={$companionPrefs.visible}
+    motionEnabled={$companionPrefs.motion}
+    transparent={$companionPrefs.transparent}
+    reactionsEnabled={$companionPrefs.reactionsEnabled}
+  />
+{/if}
 
 <style>
   .app-shell {
