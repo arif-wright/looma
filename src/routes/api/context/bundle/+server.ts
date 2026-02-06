@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
+import { getConsentFlags } from '$lib/server/consent';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
@@ -50,7 +51,7 @@ export const GET: RequestHandler = async (event) => {
   const now = new Date();
   const month = now.getMonth();
 
-  const [stats, walletRes, companionBond, prefsRes, companionRes] = await Promise.all([
+  const [stats, walletRes, companionBond, prefsRes, companionRes, consentFlags] = await Promise.all([
     getPlayerStats(event, supabase),
     supabase
       .from('user_wallets')
@@ -70,7 +71,8 @@ export const GET: RequestHandler = async (event) => {
       .order('is_active', { ascending: false })
       .order('state', { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(),
+    getConsentFlags(event, supabase)
   ]);
 
   if (walletRes.error && walletRes.error.code !== 'PGRST116') {
@@ -119,10 +121,16 @@ export const GET: RequestHandler = async (event) => {
     },
     portableState: {
       lastContext: {
-        context: typeof lastContext?.context === 'string' ? (lastContext.context as string) : null,
-        trigger: typeof lastContext?.trigger === 'string' ? (lastContext.trigger as string) : null
+        context:
+          consentFlags.adaptation && typeof lastContext?.context === 'string'
+            ? (lastContext.context as string)
+            : null,
+        trigger:
+          consentFlags.adaptation && typeof lastContext?.trigger === 'string'
+            ? (lastContext.trigger as string)
+            : null
       },
-      lastContextPayload: sanitizePortablePayload(prefsRes.data?.last_context_payload)
+      lastContextPayload: consentFlags.memory ? sanitizePortablePayload(prefsRes.data?.last_context_payload) : {}
     }
   };
 

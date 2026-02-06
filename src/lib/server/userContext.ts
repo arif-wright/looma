@@ -1,6 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { createSupabaseServerClient } from '$lib/supabase/server';
 import { recordAnalyticsEvent } from './analytics';
+import { getConsentFlags } from '$lib/server/consent';
 
 export type UserContext = 'feed' | 'mission' | 'creature' | 'dashboard';
 export type ContextTrigger =
@@ -33,6 +34,7 @@ export async function updateUserContext(
   trigger: ContextTrigger | string | null = null
 ): Promise<void> {
   const supabase = event.locals.supabase ?? createSupabaseServerClient(event);
+  const consent = await getConsentFlags(event, supabase);
 
   let userId = event.locals.user?.id ?? null;
   if (!userId) {
@@ -46,11 +48,13 @@ export async function updateUserContext(
 
   const upsertPayload: Record<string, unknown> = {
     user_id: userId,
-    last_context: {
-      context,
-      trigger: trigger ?? null
-    },
-    last_context_payload: payload ?? null
+    last_context: consent.adaptation
+      ? {
+          context,
+          trigger: trigger ?? null
+        }
+      : null,
+    last_context_payload: consent.memory ? payload ?? null : null
   };
 
   const { error } = await supabase
