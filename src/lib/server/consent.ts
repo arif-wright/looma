@@ -5,11 +5,13 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 export type ConsentFlags = {
   memory: boolean;
   adaptation: boolean;
+  reactions: boolean;
 };
 
 const DEFAULT_CONSENT: ConsentFlags = {
   memory: true,
-  adaptation: true
+  adaptation: true,
+  reactions: true
 };
 
 export const getConsentFlags = async (
@@ -22,7 +24,7 @@ export const getConsentFlags = async (
 
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('consent_memory, consent_adaptation')
+    .select('consent_memory, consent_adaptation, consent_reactions')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -33,6 +35,8 @@ export const getConsentFlags = async (
   return {
     memory: typeof data?.consent_memory === 'boolean' ? data.consent_memory : DEFAULT_CONSENT.memory,
     adaptation:
-      typeof data?.consent_adaptation === 'boolean' ? data.consent_adaptation : DEFAULT_CONSENT.adaptation
+      typeof data?.consent_adaptation === 'boolean' ? data.consent_adaptation : DEFAULT_CONSENT.adaptation,
+    reactions:
+      typeof data?.consent_reactions === 'boolean' ? data.consent_reactions : DEFAULT_CONSENT.reactions
   };
 };

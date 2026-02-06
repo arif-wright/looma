@@ -37,7 +37,7 @@ const companionAgent: Agent = {
     }
 
     const payload = (event.payload ?? {}) as Record<string, any>;
-    const suppress = Boolean(payload?.suppressReactions === true || payload?.meta?.suppressReactions === true);
+    const suppress = Boolean(payload?.suppressReactions === true || event.meta?.suppressReactions === true);
 
     if (suppress) {
       return {
@@ -47,7 +47,7 @@ const companionAgent: Agent = {
       };
     }
 
-    const tone = String(payload?.context?.portableState?.lastContextPayload?.tone ?? 'warm');
+    const tone = String((event.context as any)?.portableState?.tone ?? 'warm');
     const isDirect = tone === 'direct';
 
     let text = '';

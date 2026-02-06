@@ -30,6 +30,8 @@ export type WorldStateBundle = {
 };
 
 export type PortableStateBundle = {
+  tone?: string | null;
+  reactionsEnabled?: boolean | null;
   lastContext: {
     context: string | null;
     trigger: string | null;

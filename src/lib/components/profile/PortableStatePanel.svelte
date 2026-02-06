@@ -4,10 +4,10 @@
   import type { PortableState } from '$lib/types/portableState';
   import { Eye, RefreshCcw, ShieldCheck, ShieldOff } from 'lucide-svelte';
 
-  type ConsentFlags = { memory: boolean; adaptation: boolean };
+  type ConsentFlags = { memory: boolean; adaptation: boolean; reactions: boolean };
 
   let portableState: PortableState | null = null;
-  let consent: ConsentFlags = { memory: true, adaptation: true };
+  let consent: ConsentFlags = { memory: true, adaptation: true, reactions: true };
   let loading = true;
   let saving = false;
   let error: string | null = null;
@@ -41,7 +41,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           consentMemory: typeof next.memory === 'boolean' ? next.memory : undefined,
-          consentAdaptation: typeof next.adaptation === 'boolean' ? next.adaptation : undefined
+          consentAdaptation: typeof next.adaptation === 'boolean' ? next.adaptation : undefined,
+          consentReactions: typeof next.reactions === 'boolean' ? next.reactions : undefined
         })
       });
       if (!res.ok) {
@@ -142,6 +143,27 @@
           </span>
           <span class="portable-panel__toggle-copy">
             Allow Looma to personalize experiences from your recent context.
+          </span>
+        </span>
+      </label>
+
+      <label class="portable-panel__toggle">
+        <input
+          type="checkbox"
+          checked={consent.reactions}
+          disabled={saving}
+          on:change={(event) => updateConsent({ reactions: (event.currentTarget as HTMLInputElement).checked })}
+        />
+        <span>
+          <span class="portable-panel__toggle-title">
+            {#if consent.reactions}
+              <ShieldCheck size={14} /> Companion reactions on
+            {:else}
+              <ShieldOff size={14} /> Companion reactions off
+            {/if}
+          </span>
+          <span class="portable-panel__toggle-copy">
+            Allow Muse to show brief reactions after key events.
           </span>
         </span>
       </label>

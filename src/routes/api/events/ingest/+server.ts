@@ -6,6 +6,7 @@ import type { AgentEvent } from '$lib/agents/types';
 import { getContextBundle } from '$lib/server/context/getContextBundle';
 import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
+import { getConsentFlags } from '$lib/server/consent';
 
 const ALLOWED_TYPES = new Set(['session.start', 'session.return', 'game.complete']);
 const WINDOW_MS = 60_000;
@@ -62,28 +63,29 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const context = await getContextBundle({ userId, sessionId });
+  const context = await getContextBundle(event, { userId, sessionId });
   const eventPayload =
     payload.payload && typeof payload.payload === 'object' && !Array.isArray(payload.payload)
       ? (payload.payload as Record<string, unknown>)
       : null;
 
-  const stitchedPayload = {
-    ...(eventPayload ?? {}),
-    context
-  };
+  const consent = await getConsentFlags(event);
+  const reactionsEnabled = (context as any)?.portableState?.reactionsEnabled;
+  const suppressReactions = reactionsEnabled === false;
 
   const agentEvent: AgentEvent = {
     id: crypto.randomUUID(),
     type,
     scope: resolveScope(type),
     timestamp: typeof meta.ts === 'string' ? meta.ts : new Date().toISOString(),
-    payload: {
-      ...stitchedPayload,
-      meta: {
-        sessionId,
-        userId: userId ?? undefined
-      },
+    payload: eventPayload ?? null,
+    context: context as unknown as Record<string, unknown>,
+    meta: {
+      sessionId,
+      userId: userId ?? undefined,
+      suppressReactions,
+      suppressMemory: !consent.memory,
+      suppressAdaptation: !consent.adaptation
     }
   };
 

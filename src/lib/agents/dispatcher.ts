@@ -62,5 +62,31 @@ export const dispatchEvent = async (
     lastRun.set(agent.id, now);
   }
 
+  const blockedActions = new Set<string>();
+  if (event.meta?.suppressMemory) blockedActions.add('memory_write');
+  if (event.meta?.suppressAdaptation) blockedActions.add('adaptation');
+  if (blockedActions.size > 0) {
+    const hasBlocked = results.some((result) => {
+      const actions = (result.output as Record<string, unknown> | null)?.actions;
+      if (!Array.isArray(actions)) return false;
+      return actions.some((action) => action && typeof action === 'object' && blockedActions.has((action as any).type));
+    });
+
+    if (hasBlocked) {
+      const safetyResult: AgentResult = {
+        agentId: 'safety',
+        handled: true,
+        veto: true,
+        reason: 'Blocked actions due to consent flags.'
+      };
+      return {
+        event,
+        results: [safetyResult, ...results],
+        vetoed: true,
+        vetoReason: safetyResult.reason
+      };
+    }
+  }
+
   return { event, results, vetoed: false };
 };

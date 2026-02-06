@@ -6,6 +6,14 @@ export type AgentEvent = {
   scope: string;
   timestamp: string;
   payload?: Record<string, unknown> | null;
+  context?: Record<string, unknown> | null;
+  meta?: {
+    sessionId?: string | null;
+    userId?: string | null;
+    suppressReactions?: boolean;
+    suppressMemory?: boolean;
+    suppressAdaptation?: boolean;
+  } | null;
 };
 
 export type AgentCaps = {

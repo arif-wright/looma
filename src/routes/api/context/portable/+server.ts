@@ -44,7 +44,7 @@ export const GET: RequestHandler = async (event) => {
   const consent = await getConsentFlags(event, supabase);
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('portable_state, consent_memory, consent_adaptation')
+    .select('portable_state, consent_memory, consent_adaptation, consent_reactions')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
@@ -76,6 +76,8 @@ export const PUT: RequestHandler = async (event) => {
   const consentMemory = typeof payload.consentMemory === 'boolean' ? payload.consentMemory : undefined;
   const consentAdaptation =
     typeof payload.consentAdaptation === 'boolean' ? payload.consentAdaptation : undefined;
+  const consentReactions =
+    typeof payload.consentReactions === 'boolean' ? payload.consentReactions : undefined;
   const reset = payload.reset === true;
 
   const nextState = reset ? { version: PORTABLE_STATE_VERSION, updatedAt: new Date().toISOString(), items: [] } : undefined;
@@ -87,6 +89,7 @@ export const PUT: RequestHandler = async (event) => {
 
   if (typeof consentMemory === 'boolean') upsertPayload.consent_memory = consentMemory;
   if (typeof consentAdaptation === 'boolean') upsertPayload.consent_adaptation = consentAdaptation;
+  if (typeof consentReactions === 'boolean') upsertPayload.consent_reactions = consentReactions;
   if (portableState) upsertPayload.portable_state = portableState;
 
   if (typeof consentMemory === 'boolean' && !consentMemory) {
