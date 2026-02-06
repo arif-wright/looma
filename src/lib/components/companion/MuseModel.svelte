@@ -12,6 +12,7 @@
   export let autoplay = true;
   export let animationName: string | undefined = 'Idle';
   export let background = 'transparent';
+  export let interactive = true;
 
   let container: HTMLDivElement | null = null;
   let viewer: ModelViewerElement | null = null;
@@ -152,6 +153,7 @@
       loading="lazy"
       reveal="auto"
       autoplay={autoplay && !reducedMotion}
+      camera-controls={interactive}
       animation-name={animationName}
       on:load={() => {
         isLoaded = true;
@@ -190,6 +192,11 @@
     width: 100%;
     height: 100%;
     background: var(--muse-background);
+    cursor: grab;
+  }
+
+  .muse-viewer:active {
+    cursor: grabbing;
   }
 
   .muse-placeholder,
