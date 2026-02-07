@@ -35,6 +35,23 @@ const coercePortableState = (input: unknown): PortableState => {
   };
 };
 
+const isMissingReactionsColumn = (error: { code?: string | null; message?: string | null } | null | undefined) => {
+  if (!error) return false;
+  if (error.code === '42703' || error.code === 'PGRST204') return true;
+  return typeof error.message === 'string' && error.message.includes('consent_reactions');
+};
+
+const upsertPortableBool = (state: PortableState, key: string, value: boolean, source = 'preferences'): PortableState => {
+  const now = new Date().toISOString();
+  const items = (state.items ?? []).filter((entry) => entry.key !== key);
+  items.push({ key, value, updatedAt: now, source });
+  return {
+    version: state.version || PORTABLE_STATE_VERSION,
+    updatedAt: now,
+    items
+  };
+};
+
 export const GET: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
   if (!session) {
@@ -44,7 +61,7 @@ export const GET: RequestHandler = async (event) => {
   const consent = await getConsentFlags(event, supabase);
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('portable_state, consent_memory, consent_adaptation, consent_reactions')
+    .select('portable_state')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
@@ -81,7 +98,19 @@ export const PUT: RequestHandler = async (event) => {
   const reset = payload.reset === true;
 
   const nextState = reset ? { version: PORTABLE_STATE_VERSION, updatedAt: new Date().toISOString(), items: [] } : undefined;
-  const portableState = payload.portableState ? coercePortableState(payload.portableState) : nextState;
+  let portableState = payload.portableState ? coercePortableState(payload.portableState) : nextState;
+
+  if (typeof consentReactions === 'boolean') {
+    if (!portableState) {
+      const { data } = await supabase
+        .from('user_preferences')
+        .select('portable_state')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      portableState = coercePortableState(data?.portable_state);
+    }
+    portableState = upsertPortableBool(portableState, 'reactions_enabled', consentReactions);
+  }
 
   const upsertPayload: Record<string, unknown> = {
     user_id: session.user.id
@@ -99,6 +128,19 @@ export const PUT: RequestHandler = async (event) => {
   const { error } = await supabase
     .from('user_preferences')
     .upsert(upsertPayload, { onConflict: 'user_id', ignoreDuplicates: false });
+
+  if (isMissingReactionsColumn(error)) {
+    const retryPayload = { ...upsertPayload };
+    delete retryPayload.consent_reactions;
+    const retry = await supabase
+      .from('user_preferences')
+      .upsert(retryPayload, { onConflict: 'user_id', ignoreDuplicates: false });
+    if (retry.error) {
+      console.error('[portable_state] update retry failed', retry.error);
+      return json({ error: 'update_failed' }, { status: 500 });
+    }
+    return json({ ok: true });
+  }
 
   if (error) {
     console.error('[portable_state] update failed', error);
