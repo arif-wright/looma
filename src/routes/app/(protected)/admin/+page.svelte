@@ -22,6 +22,7 @@
     { label: 'Reports', href: '/app/admin/reports' },
     { label: 'Players', href: '/app/admin/players', hidden: !flags.isSuper },
     { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isAdmin },
+    { label: 'Event Traces', href: '/app/dev/traces', hidden: !flags.isSuper },
     { label: 'Feature Toggles', href: '/app/admin#feature-toggles' },
     { label: 'Maintenance', href: '/app/admin#maintenance' }
   ];
@@ -138,6 +139,9 @@
         <a href="/app/admin/reports">Reports</a>
         {#if flags.isAdmin}
           <a href="/app/admin/roles">Roles</a>
+        {/if}
+        {#if flags.isSuper}
+          <a href="/app/dev/traces">Event Traces</a>
         {/if}
       </div>
     </header>
