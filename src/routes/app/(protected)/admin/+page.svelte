@@ -5,6 +5,8 @@
   import AdminCard from '$lib/components/admin/AdminCard.svelte';
   import SubNav, { type NavItem } from '$lib/components/admin/SubNav.svelte';
   import Sparkline from '$lib/components/admin/Sparkline.svelte';
+  import { sendEvent } from '$lib/client/events/sendEvent';
+  import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -47,6 +49,8 @@
 
   let shortcutPrimed = false;
   let shortcutTimer: ReturnType<typeof setTimeout> | null = null;
+  let reactionLoading = false;
+  let reactionStatus = '';
 
   const resetShortcut = () => {
     shortcutPrimed = false;
@@ -78,6 +82,31 @@
     if (targetHref) {
       event.preventDefault();
       void goto(targetHref);
+    }
+  };
+
+  const triggerMuseReaction = async () => {
+    if (reactionLoading) return;
+    reactionLoading = true;
+    reactionStatus = '';
+    try {
+      const response = await sendEvent('session.return', { source: 'admin_manual_trigger' });
+      const output = response?.output ?? null;
+      if (output?.suppressed === true) {
+        reactionStatus = 'Reaction suppressed by user preferences.';
+        return;
+      }
+      const reaction = output?.reaction ?? null;
+      if (!reaction?.text) {
+        reactionStatus = 'No reaction returned.';
+        return;
+      }
+      pushCompanionReaction(reaction);
+      reactionStatus = 'Muse reaction sent.';
+    } catch {
+      reactionStatus = 'Failed to trigger reaction.';
+    } finally {
+      reactionLoading = false;
     }
   };
 
@@ -181,6 +210,26 @@
           </div>
           <p class="hint">Orders: {numberFormatter.format(metrics.orders30d)}</p>
         </div>
+      </AdminCard>
+
+      <AdminCard className="span-6">
+        <div class="card-head">
+          <div>
+            <p class="label">Companion Reactions</p>
+            <p class="hint">Manual trigger for production verification</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="admin-action-button"
+          on:click={triggerMuseReaction}
+          disabled={reactionLoading}
+        >
+          {reactionLoading ? 'Sending...' : 'Trigger Muse reaction'}
+        </button>
+        {#if reactionStatus}
+          <p class="hint mt-2">{reactionStatus}</p>
+        {/if}
       </AdminCard>
 
       <AdminCard className="span-7 engagement-card">
