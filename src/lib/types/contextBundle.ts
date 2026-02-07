@@ -27,6 +27,11 @@ export type WorldStateBundle = {
   serverTime: string;
   season: 'spring' | 'summer' | 'autumn' | 'winter';
   themeAccent: 'amber' | 'neonMagenta' | 'neonCyan';
+  lastSessionStart: string | null;
+  lastSessionEnd: string | null;
+  streakDays: number | null;
+  companionMood: 'steady' | 'bright' | 'low';
+  companionMoodValue: number;
 };
 
 export type PortableStateBundle = {

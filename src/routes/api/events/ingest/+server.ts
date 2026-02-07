@@ -7,6 +7,7 @@ import { getContextBundle } from '$lib/server/context/getContextBundle';
 import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
 import { getConsentFlags } from '$lib/server/consent';
+import { applyWorldStateBoundary } from '$lib/server/context/worldState';
 
 const ALLOWED_TYPES = new Set(['session.start', 'session.end', 'session.return', 'game.complete']);
 const WINDOW_MS = 60_000;
@@ -50,7 +51,7 @@ export const POST: RequestHandler = async (event) => {
     ? (payload.meta as Record<string, unknown>)
     : {}) as Record<string, unknown>;
 
-  const { session } = await createSupabaseServerClient(event);
+  const { supabase, session } = await createSupabaseServerClient(event);
   if (!session) {
     return json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -63,13 +64,38 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const context = await getContextBundle(event, { userId, sessionId });
+  const consent = await getConsentFlags(event, supabase);
   const eventPayload =
     payload.payload && typeof payload.payload === 'object' && !Array.isArray(payload.payload)
       ? (payload.payload as Record<string, unknown>)
       : null;
 
-  const consent = await getConsentFlags(event);
+  const suppressAdaptationFromMeta = meta.suppressAdaptation === true;
+  if (userId && consent.adaptation && !suppressAdaptationFromMeta && (type === 'session.start' || type === 'session.end')) {
+    try {
+      const endIsoFromPayload =
+        type === 'session.end' && typeof eventPayload?.lastSeenISO === 'string' ? eventPayload.lastSeenISO : null;
+      await applyWorldStateBoundary({
+        supabase,
+        userId,
+        type: type as 'session.start' | 'session.end',
+        endIso: endIsoFromPayload,
+        engagement:
+          type === 'session.end'
+            ? {
+                pagesVisitedCount:
+                  typeof eventPayload?.pagesVisitedCount === 'number' ? eventPayload.pagesVisitedCount : null,
+                gamesPlayedCount:
+                  typeof eventPayload?.gamesPlayedCount === 'number' ? eventPayload.gamesPlayedCount : null
+              }
+            : undefined
+      });
+    } catch (err) {
+      console.error('[events] world state boundary update failed', err);
+    }
+  }
+
+  const context = await getContextBundle(event, { userId, sessionId });
   const reactionsEnabled = (context as any)?.portableState?.reactionsEnabled;
   const suppressReactions = reactionsEnabled === false;
 

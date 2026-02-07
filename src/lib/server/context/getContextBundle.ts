@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { getConsentFlags } from '$lib/server/consent';
+import { extractWorldState } from '$lib/server/context/worldState';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
@@ -47,8 +48,9 @@ const sanitizePortablePayload = (input: unknown): PortableStateBundle['lastConte
 };
 
 const extractPortableState = (portableState: unknown) => {
+  const world = extractWorldState(portableState);
   if (!portableState || typeof portableState !== 'object' || Array.isArray(portableState)) {
-    return { tone: null as string | null, reactionsEnabled: null as boolean | null };
+    return { tone: null as string | null, reactionsEnabled: null as boolean | null, world };
   }
 
   const payload = portableState as Record<string, unknown>;
@@ -68,7 +70,7 @@ const extractPortableState = (portableState: unknown) => {
     }
   }
 
-  return { tone, reactionsEnabled };
+  return { tone, reactionsEnabled, world };
 };
 
 export const getContextBundle = async (event: RequestEvent, args: ContextBundleArgs = {}): Promise<ContextBundle> => {
@@ -103,7 +105,12 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       worldState: {
         serverTime: now.toISOString(),
         season: normalizeSeason(month),
-        themeAccent: normalizeAccent(month)
+        themeAccent: normalizeAccent(month),
+        lastSessionStart: null,
+        lastSessionEnd: null,
+        streakDays: null,
+        companionMood: 'steady',
+        companionMoodValue: 0
       },
       portableState: {
         tone: null,
@@ -181,7 +188,12 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
     worldState: {
       serverTime: now.toISOString(),
       season: normalizeSeason(month),
-      themeAccent: normalizeAccent(month)
+      themeAccent: normalizeAccent(month),
+      lastSessionStart: portableExtracted.world.lastSessionStart,
+      lastSessionEnd: portableExtracted.world.lastSessionEnd,
+      streakDays: portableExtracted.world.streakDays,
+      companionMood: portableExtracted.world.mood,
+      companionMoodValue: portableExtracted.world.moodValue
     },
     portableState: {
       tone: portableExtracted.tone,
