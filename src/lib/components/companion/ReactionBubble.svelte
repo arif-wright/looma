@@ -33,18 +33,18 @@
 
 <style>
   .reaction-bubble {
-    max-width: 240px;
-    padding: 0.5rem 0.65rem;
-    border-radius: 12px;
+    max-width: min(320px, calc(100vw - 2rem));
+    padding: 0.62rem 0.78rem;
+    border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     background: rgba(9, 12, 24, 0.9);
     box-shadow: 0 12px 28px rgba(4, 8, 20, 0.45);
     color: rgba(255, 255, 255, 0.9);
-    font-size: 0.83rem;
-    line-height: 1.3;
+    font-size: 0.9rem;
+    line-height: 1.4;
     display: flex;
     align-items: flex-start;
-    gap: 0.45rem;
+    gap: 0.55rem;
     animation: bubble-in 140ms ease-out;
   }
 
@@ -54,16 +54,24 @@
   }
 
   .reaction-bubble__dismiss {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.35rem;
+    height: 1.35rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     background: rgba(255, 255, 255, 0.06);
     color: rgba(255, 255, 255, 0.8);
     line-height: 1;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     padding: 0;
     flex: 0 0 auto;
+  }
+
+  @media (max-width: 720px) {
+    .reaction-bubble {
+      max-width: min(280px, calc(100vw - 2rem));
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
   }
 
   @keyframes bubble-in {

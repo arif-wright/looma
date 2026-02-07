@@ -204,10 +204,11 @@
 
   .companion-dock__reaction {
     position: absolute;
-    bottom: -0.4rem;
+    top: 0.2rem;
     left: 50%;
-    transform: translate(-50%, 100%);
+    transform: translate(-50%, -100%);
     pointer-events: auto;
+    z-index: 2;
   }
 
   .companion-dock__controls {
@@ -263,6 +264,10 @@
 
     .companion-dock__panel {
       width: min(230px, calc(100vw - 1.5rem));
+    }
+
+    .companion-dock__reaction {
+      top: -0.15rem;
     }
   }
 </style>
