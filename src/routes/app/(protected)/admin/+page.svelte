@@ -228,7 +228,7 @@
           {reactionLoading ? 'Sending...' : 'Trigger Muse reaction'}
         </button>
         {#if reactionStatus}
-          <p class="hint mt-2">{reactionStatus}</p>
+          <p class="hint reaction-status">{reactionStatus}</p>
         {/if}
       </AdminCard>
 
@@ -728,6 +728,14 @@
     border-radius: 999px;
     padding: 0.2rem 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .admin-action-button {
+    margin-top: 0.35rem;
+  }
+
+  .reaction-status {
+    margin-top: 0.5rem;
   }
 
   @media (max-width: 767px) {
