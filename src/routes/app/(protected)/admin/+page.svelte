@@ -21,7 +21,7 @@
     { label: 'Shop Admin', href: '/app/admin/shop' },
     { label: 'Reports', href: '/app/admin/reports' },
     { label: 'Players', href: '/app/admin/players', hidden: !flags.isSuper },
-    { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isSuper },
+    { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isAdmin },
     { label: 'Feature Toggles', href: '/app/admin#feature-toggles' },
     { label: 'Maintenance', href: '/app/admin#maintenance' }
   ];
@@ -77,7 +77,7 @@
     }
 
     resetShortcut();
-    if (key === 'a' && !flags.isSuper) return;
+    if (key === 'a' && !flags.isAdmin) return;
     const targetHref = shortcutMap[key];
     if (targetHref) {
       event.preventDefault();
@@ -136,6 +136,9 @@
       <div class="header-actions">
         <a href="/app/admin/shop">Shop Admin</a>
         <a href="/app/admin/reports">Reports</a>
+        {#if flags.isAdmin}
+          <a href="/app/admin/roles">Roles</a>
+        {/if}
       </div>
     </header>
 
@@ -198,6 +201,18 @@
           <p class="hint">Grant licenses, QA tools</p>
           <a class="inline-flex text-sm font-medium text-emerald-300 hover:text-emerald-200" href="/app/admin/players">
             Open Players
+          </a>
+        </AdminCard>
+      {/if}
+
+      {#if flags.isAdmin}
+        <AdminCard className="span-4">
+          <div class="card-head">
+            <p class="label">Access Control</p>
+            <p class="hint">Manage admin and finance roles</p>
+          </div>
+          <a class="inline-flex text-sm font-medium text-emerald-300 hover:text-emerald-200" href="/app/admin/roles">
+            Open Role Manager
           </a>
         </AdminCard>
       {/if}

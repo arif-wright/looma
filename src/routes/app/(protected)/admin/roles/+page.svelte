@@ -53,10 +53,12 @@
           <button type="submit" formaction="?/revoke" name="role" value="finance" on:click={handleBulkSubmit}>Revoke Finance</button>
           <button type="button" on:click={clearSelection}>Clear</button>
         </div>
-        <div class="bulk-actions">
-          <button type="submit" formaction="?/assign" name="role" value="super" class="super" on:click={handleBulkSubmit}>Grant Super</button>
-          <button type="submit" formaction="?/revoke" name="role" value="super" class="super" on:click={handleBulkSubmit}>Revoke Super</button>
-        </div>
+        {#if data.canManageSuper}
+          <div class="bulk-actions">
+            <button type="submit" formaction="?/assign" name="role" value="super" class="super" on:click={handleBulkSubmit}>Grant Super</button>
+            <button type="submit" formaction="?/revoke" name="role" value="super" class="super" on:click={handleBulkSubmit}>Revoke Super</button>
+          </div>
+        {/if}
       </form>
     </div>
 
@@ -69,14 +71,16 @@
             <th>Email</th>
             <th>Admin</th>
             <th>Finance</th>
-            <th>Super</th>
+            {#if data.canManageSuper}
+              <th>Super</th>
+            {/if}
             <th>Updated</th>
           </tr>
         </thead>
         <tbody>
           {#if data.users.length === 0}
             <tr>
-              <td colspan="7" class="empty">No users found.</td>
+              <td colspan={data.canManageSuper ? 7 : 6} class="empty">No users found.</td>
             </tr>
           {:else}
             {#each data.users as user}
@@ -116,16 +120,18 @@
                     </label>
                   </form>
                 </td>
-                <td>
-                  <form method="POST" action={`?/${user.roles.is_super ? 'revoke' : 'assign'}`}>
-                    <input type="hidden" name="role" value="super">
-                    <input type="hidden" name="ids" value={user.id}>
-                    <label class="toggle">
-                      <input type="checkbox" checked={user.roles.is_super} on:change={(event) => event.currentTarget.form?.submit()}>
-                      <span>{user.roles.is_super ? 'On' : 'Off'}</span>
-                    </label>
-                  </form>
-                </td>
+                {#if data.canManageSuper}
+                  <td>
+                    <form method="POST" action={`?/${user.roles.is_super ? 'revoke' : 'assign'}`}>
+                      <input type="hidden" name="role" value="super">
+                      <input type="hidden" name="ids" value={user.id}>
+                      <label class="toggle">
+                        <input type="checkbox" checked={user.roles.is_super} on:change={(event) => event.currentTarget.form?.submit()}>
+                        <span>{user.roles.is_super ? 'On' : 'Off'}</span>
+                      </label>
+                    </form>
+                  </td>
+                {/if}
                 <td>{user.updated_at ? new Date(user.updated_at).toLocaleDateString() : '—'}</td>
               </tr>
             {/each}

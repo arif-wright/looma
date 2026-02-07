@@ -1,22 +1,22 @@
 import type { Actions, PageServerLoad } from './$types';
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { serviceClient } from '$lib/server/admin';
 import { getAdminFlags } from '$lib/server/admin-guard';
 
 const PAGE_SIZE = 25;
 
-const requireSuper = async (locals: App.Locals) => {
+const requireAdmin = async (locals: App.Locals) => {
   const email = locals.session?.user?.email ?? locals.user?.email ?? null;
   const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
   const flags = await getAdminFlags(email, userId);
-  if (!flags.isSuper) {
+  if (!flags.isAdmin) {
     throw redirect(302, '/app/admin');
   }
   return { flags, userId };
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  await requireSuper(locals);
+  const { flags } = await requireAdmin(locals);
   const admin = serviceClient();
 
   const pageParam = Number(url.searchParams.get('page') ?? '1');
@@ -36,10 +36,31 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     query = query.or(`handle.ilike.${term},display_name.ilike.${term},email.ilike.${term}`);
   }
 
-  const { data: profiles, count, error } = await query;
-  if (error) {
-    console.error('[roles] failed to query profiles', error);
-    throw fail(500, { message: 'Unable to load profiles' });
+  let { data: profiles, count, error: queryError } = await query;
+  if (queryError && queryError.code === '42703' && String(queryError.message || '').includes('email')) {
+    const fallbackQuery = admin
+      .from('profiles')
+      .select('id, handle, display_name, avatar_url, updated_at', { count: 'exact' })
+      .order('updated_at', { ascending: false })
+      .range(from, to);
+    if (search) {
+      const term = `%${search}%`;
+      const { data, count: fallbackCount, error } = await fallbackQuery.or(
+        `handle.ilike.${term},display_name.ilike.${term}`
+      );
+      profiles = (data ?? []).map((row) => ({ ...row, email: null }));
+      count = fallbackCount;
+      queryError = error;
+    } else {
+      const { data, count: fallbackCount, error } = await fallbackQuery;
+      profiles = (data ?? []).map((row) => ({ ...row, email: null }));
+      count = fallbackCount;
+      queryError = error;
+    }
+  }
+  if (queryError) {
+    console.error('[roles] failed to query profiles', queryError);
+    throw error(500, 'Unable to load profiles');
   }
 
   const ids = (profiles ?? []).map((profile) => profile.id).filter(Boolean);
@@ -61,6 +82,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const totalPages = count ? Math.max(1, Math.ceil(count / PAGE_SIZE)) : 1;
 
   return {
+    canManageSuper: flags.isSuper,
     search,
     page,
     totalPages,
@@ -104,11 +126,14 @@ const handleRoleAction = async (
   request: Request,
   enable: boolean
 ) => {
-  await requireSuper(locals);
+  const { flags } = await requireAdmin(locals);
   const form = await request.formData();
   const roleValue = String(form.get('role') ?? '').trim();
   if (!['admin', 'finance', 'super'].includes(roleValue)) {
     return fail(400, { message: 'Invalid role' });
+  }
+  if (roleValue === 'super' && !flags.isSuper) {
+    return fail(403, { message: 'Only super admins can manage super admin role' });
   }
 
   const ids = readIds(form);

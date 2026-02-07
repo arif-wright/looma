@@ -29,13 +29,27 @@ export const getCompanionHealthSummary = async (client: SupabaseClient): Promise
   try {
     const { data, error } = await client
       .from('companion_stats')
-      .select('avg_level:avg(bond_level), max_tick:max(last_passive_tick)')
-      .maybeSingle();
+      .select('bond_level, last_passive_tick')
+      .limit(5000);
     if (error) {
       console.error('[admin] companion stats aggregate failed', error);
-    } else if (data) {
-      avgBondLevel = typeof data.avg_level === 'number' ? data.avg_level : Number(data.avg_level ?? 0);
-      lastPassiveTick = (data.max_tick as string | null) ?? null;
+    } else if (Array.isArray(data) && data.length > 0) {
+      let levelTotal = 0;
+      let levelCount = 0;
+      let latestTick: string | null = null;
+      for (const row of data) {
+        const level = typeof row?.bond_level === 'number' ? row.bond_level : Number(row?.bond_level ?? NaN);
+        if (Number.isFinite(level)) {
+          levelTotal += level;
+          levelCount += 1;
+        }
+        const tick = typeof row?.last_passive_tick === 'string' ? row.last_passive_tick : null;
+        if (tick && (!latestTick || tick > latestTick)) {
+          latestTick = tick;
+        }
+      }
+      avgBondLevel = levelCount > 0 ? levelTotal / levelCount : 0;
+      lastPassiveTick = latestTick;
     }
   } catch (err) {
     console.error('[admin] companion stats aggregate threw', err);
