@@ -46,6 +46,14 @@
   let hideCompanionDock = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
+  let ambientHue = 224;
+  let ambientSecondaryHue = 192;
+  let ambientIntensity = 0.1;
+  let ambientDrift = 14;
+  let prefersReducedMotion = false;
+  let motionQuery: MediaQueryList | null = null;
+  let currentMood: 'steady' | 'bright' | 'low' = 'steady';
+  let currentMoodValue = 0;
 
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
@@ -68,6 +76,52 @@
     { href: '/app/dashboard', label: 'Achievements', icon: Trophy, analyticsKey: 'achievements' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ];
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const computeAmbientFromMood = (mood: string | null | undefined, moodValue: number | null | undefined) => {
+    const normalizedMood = mood === 'bright' || mood === 'low' ? mood : 'steady';
+    const value = Number.isFinite(moodValue as number) ? clamp(Number(moodValue), -1, 1) : 0;
+    currentMood = normalizedMood;
+    currentMoodValue = value;
+    const base = 0.075 + Math.abs(value) * 0.07;
+
+    let nextHue = 224;
+    let nextSecondaryHue = 192;
+    let nextDrift = 14;
+    if (normalizedMood === 'bright') {
+      nextHue = 190;
+      nextSecondaryHue = 160;
+      nextDrift = 20;
+    } else if (normalizedMood === 'low') {
+      nextHue = 255;
+      nextSecondaryHue = 228;
+      nextDrift = 9;
+    }
+
+    let intensity = base;
+    if (prefersReducedMotion) intensity *= 0.35;
+    if (!$companionPrefs.motion) intensity *= 0.55;
+    if (!$companionPrefs.visible) intensity *= 0.75;
+
+    ambientHue = nextHue;
+    ambientSecondaryHue = nextSecondaryHue;
+    ambientDrift = nextDrift;
+    ambientIntensity = Number(clamp(intensity, 0.03, 0.18).toFixed(3));
+  };
+
+  const refreshAmbientContext = async () => {
+    if (!browser) return;
+    try {
+      const res = await fetch('/api/context/bundle');
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload) return;
+      const world = payload?.worldState ?? null;
+      computeAmbientFromMood(world?.companionMood, world?.companionMoodValue);
+    } catch {
+      // keep existing ambient values
+    }
+  };
 
   const SESSION_START_DAY_KEY = 'looma_session_start_day';
   const SESSION_DAY_KEY = 'looma_session_day';
@@ -204,6 +258,11 @@
     window.removeEventListener('focus', handleActivity);
   };
 
+  const handleMotionChange = () => {
+    prefersReducedMotion = motionQuery?.matches ?? false;
+    computeAmbientFromMood(currentMood, currentMoodValue);
+  };
+
   if (browser) {
     onMount(async () => {
       const month = new Date().getMonth();
@@ -211,6 +270,9 @@
         month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
       document.documentElement.dataset.themeAccent = accent;
       previousPath = window.location.pathname;
+      motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      prefersReducedMotion = motionQuery.matches;
+      motionQuery.addEventListener('change', handleMotionChange);
       ensureSessionState();
       visitedPaths = new Set([window.location.pathname]);
       bindSessionListeners();
@@ -232,6 +294,8 @@
           pushCompanionReaction(reaction);
         }
       }
+
+      await refreshAmbientContext();
 
       try {
         const res = await fetch('/api/context/portable');
@@ -261,6 +325,13 @@
     });
   }
 
+  $: if (browser) {
+    // Recalculate intensity when user preferences change.
+    $companionPrefs.visible;
+    $companionPrefs.motion;
+    computeAmbientFromMood(currentMood, currentMoodValue);
+  }
+
   onDestroy(() => {
     if (!browser) return;
     unbindSessionListeners();
@@ -268,12 +339,19 @@
       clearTimeout(inactivityTimer);
       inactivityTimer = null;
     }
+    if (motionQuery) {
+      motionQuery.removeEventListener('change', handleMotionChange);
+      motionQuery = null;
+    }
     void postSessionEnd('layout_destroy');
   });
 </script>
 
 <div class="app-shell">
-  <div class="app-surface">
+  <div
+    class="app-surface"
+    style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;`}
+  >
     {#if FLAGS.NEW_BRAND_HEADER}
       <BrandHeader
         iconNavItems={iconNavItems}
@@ -333,12 +411,28 @@
   }
 
   .app-surface {
+    --ambient-hue: 224;
+    --ambient-secondary-hue: 192;
+    --ambient-intensity: 0.1;
+    --ambient-drift: 14px;
     display: grid;
     grid-template-rows: auto 1fr;
     min-height: 100vh;
-    background: radial-gradient(circle at top, rgba(155, 92, 255, 0.15), transparent 55%),
-      radial-gradient(circle at bottom, rgba(94, 242, 255, 0.08), transparent 45%),
+    background: radial-gradient(
+        circle at 24% 12%,
+        hsl(var(--ambient-hue) 92% 66% / var(--ambient-intensity)),
+        transparent 56%
+      ),
+      radial-gradient(
+        circle at 76% 88%,
+        hsl(var(--ambient-secondary-hue) 88% 62% / calc(var(--ambient-intensity) * 0.72)),
+        transparent 48%
+      ),
+      radial-gradient(circle at top, rgba(155, 92, 255, calc(var(--ambient-intensity) * 0.8)), transparent 55%),
+      radial-gradient(circle at bottom, rgba(94, 242, 255, calc(var(--ambient-intensity) * 0.45)), transparent 45%),
       var(--brand-navy, #050712);
+    transition: background 360ms ease;
+    background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
   }
 
   .app-main {
@@ -349,6 +443,12 @@
   @media (max-width: 960px) {
     .app-surface {
       grid-template-rows: auto 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-surface {
+      transition: none;
     }
   }
 
