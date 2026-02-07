@@ -8,7 +8,7 @@ import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
 import { getConsentFlags } from '$lib/server/consent';
 
-const ALLOWED_TYPES = new Set(['session.start', 'session.return', 'game.complete']);
+const ALLOWED_TYPES = new Set(['session.start', 'session.end', 'session.return', 'game.complete']);
 const WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const buckets = new Map<string, number[]>();

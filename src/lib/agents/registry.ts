@@ -32,7 +32,7 @@ const companionAgent: Agent = {
     allowedScopes: ['companion', 'app']
   },
   handle: (event) => {
-    if (!['session.start', 'session.return', 'game.complete'].includes(event.type)) {
+    if (!['session.start', 'session.end', 'session.return', 'game.complete'].includes(event.type)) {
       return { agentId: 'companion', handled: false };
     }
 
@@ -53,6 +53,12 @@ const companionAgent: Agent = {
     let text = '';
     if (event.type === 'session.start') {
       text = isDirect ? 'You are back. Ready when you are.' : 'Welcome back. I am here if you need me.';
+    } else if (event.type === 'session.end') {
+      return {
+        agentId: 'companion',
+        handled: true,
+        output: { mood: 'steady', note: 'Muse logged session end.' }
+      };
     } else if (event.type === 'session.return') {
       text = isDirect ? 'Welcome back.' : 'Welcome back. Want to pick up where we left off?';
     } else if (event.type === 'game.complete') {

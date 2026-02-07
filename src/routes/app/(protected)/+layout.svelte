@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { afterNavigate } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
   import { sendAnalytics } from '$lib/utils/analytics';
   import { logout } from '$lib/auth/logout';
@@ -69,6 +69,140 @@
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ];
 
+  const SESSION_START_DAY_KEY = 'looma_session_start_day';
+  const SESSION_DAY_KEY = 'looma_session_day';
+  const SESSION_ID_KEY = 'looma_session_id';
+  const SESSION_STARTED_AT_KEY = 'looma_session_started_at';
+  const SESSION_END_SENT_FOR_KEY = 'looma_session_end_sent_for';
+  const SESSION_GAMES_PLAYED_KEY = 'looma_session_games_played';
+  const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
+
+  let sessionId: string | null = null;
+  let sessionStartedAt = 0;
+  let sessionEndSent = false;
+  let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+  let visitedPaths = new Set<string>();
+
+  const dayKey = () => new Date().toISOString().slice(0, 10);
+
+  const getGamesPlayedCount = () => {
+    if (!browser) return 0;
+    const raw = window.sessionStorage.getItem(SESSION_GAMES_PLAYED_KEY);
+    const parsed = Number(raw ?? '0');
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+  };
+
+  const ensureSessionState = () => {
+    if (!browser) return;
+    const now = Date.now();
+    const today = dayKey();
+    const storedDay = window.localStorage.getItem(SESSION_DAY_KEY);
+    const storedId = window.localStorage.getItem(SESSION_ID_KEY);
+    const startedRaw = Number(window.localStorage.getItem(SESSION_STARTED_AT_KEY) ?? '0');
+    const endedFor = window.localStorage.getItem(SESSION_END_SENT_FOR_KEY);
+
+    const shouldCreateNew =
+      !storedId || storedDay !== today || endedFor === storedId || !Number.isFinite(startedRaw) || startedRaw <= 0;
+
+    if (shouldCreateNew) {
+      sessionId = crypto.randomUUID();
+      sessionStartedAt = now;
+      sessionEndSent = false;
+      window.localStorage.setItem(SESSION_DAY_KEY, today);
+      window.localStorage.setItem(SESSION_ID_KEY, sessionId);
+      window.localStorage.setItem(SESSION_STARTED_AT_KEY, String(sessionStartedAt));
+      window.localStorage.removeItem(SESSION_END_SENT_FOR_KEY);
+      window.sessionStorage.setItem(SESSION_GAMES_PLAYED_KEY, '0');
+      return;
+    }
+
+    sessionId = storedId;
+    sessionStartedAt = startedRaw;
+    sessionEndSent = endedFor === storedId;
+  };
+
+  const sessionSummary = (reason: string) => {
+    const now = Date.now();
+    const durationMs = sessionStartedAt > 0 ? Math.max(0, now - sessionStartedAt) : 0;
+    return {
+      reason,
+      durationMs,
+      pagesVisitedCount: visitedPaths.size,
+      gamesPlayedCount: getGamesPlayedCount(),
+      lastSeenISO: new Date(now).toISOString()
+    };
+  };
+
+  const markSessionEnded = () => {
+    if (!browser || !sessionId) return;
+    sessionEndSent = true;
+    window.localStorage.setItem(SESSION_END_SENT_FOR_KEY, sessionId);
+  };
+
+  const postSessionEnd = async (reason: string, preferBeacon = false) => {
+    if (!browser || !sessionId || sessionEndSent) return;
+    const payload = sessionSummary(reason);
+    const ts = new Date().toISOString();
+
+    if (preferBeacon && typeof navigator.sendBeacon === 'function') {
+      const body = JSON.stringify({
+        type: 'session.end',
+        payload,
+        meta: { sessionId, ts }
+      });
+      const blob = new Blob([body], { type: 'application/json' });
+      if (navigator.sendBeacon('/api/events/ingest', blob)) {
+        markSessionEnded();
+        return;
+      }
+    }
+
+    await sendEvent('session.end', payload, { sessionId, ts });
+    markSessionEnded();
+  };
+
+  const resetInactivityTimer = () => {
+    if (!browser || sessionEndSent) return;
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+    }
+    inactivityTimer = setTimeout(() => {
+      void postSessionEnd('idle_timeout');
+    }, INACTIVITY_TIMEOUT_MS);
+  };
+
+  const handleActivity = () => {
+    resetInactivityTimer();
+  };
+
+  const handlePageHide = () => {
+    void postSessionEnd('pagehide', true);
+  };
+
+  const handleBeforeUnload = () => {
+    void postSessionEnd('beforeunload', true);
+  };
+
+  const bindSessionListeners = () => {
+    if (!browser) return;
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pointerdown', handleActivity, { passive: true });
+    window.addEventListener('keydown', handleActivity, { passive: true });
+    window.addEventListener('touchstart', handleActivity, { passive: true });
+    window.addEventListener('focus', handleActivity, { passive: true });
+  };
+
+  const unbindSessionListeners = () => {
+    if (!browser) return;
+    window.removeEventListener('pagehide', handlePageHide);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('pointerdown', handleActivity);
+    window.removeEventListener('keydown', handleActivity);
+    window.removeEventListener('touchstart', handleActivity);
+    window.removeEventListener('focus', handleActivity);
+  };
 
   if (browser) {
     onMount(async () => {
@@ -77,12 +211,20 @@
         month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
       document.documentElement.dataset.themeAccent = accent;
       previousPath = window.location.pathname;
+      ensureSessionState();
+      visitedPaths = new Set([window.location.pathname]);
+      bindSessionListeners();
+      resetInactivityTimer();
 
       const today = new Date().toISOString().slice(0, 10);
-      const stored = window.localStorage.getItem('looma_session_start_day');
+      const stored = window.localStorage.getItem(SESSION_START_DAY_KEY);
       if (stored !== today) {
-        window.localStorage.setItem('looma_session_start_day', today);
-        const response = await sendEvent('session.start', { path: window.location.pathname });
+        window.localStorage.setItem(SESSION_START_DAY_KEY, today);
+        const response = await sendEvent(
+          'session.start',
+          { path: window.location.pathname },
+          { sessionId: sessionId ?? undefined }
+        );
         const output = response?.output ?? null;
         const reaction = output?.suppressed === true ? null : output?.reaction ?? null;
         if (reaction) {
@@ -105,6 +247,8 @@
     afterNavigate((nav) => {
       const nextUrl = nav.to?.url ?? new URL(window.location.href);
       const nextPath = nextUrl.pathname;
+      visitedPaths.add(nextPath);
+      resetInactivityTimer();
       if (previousPath && previousPath !== nextPath) {
         sendAnalytics('nav_switch', {
           payload: {
@@ -116,6 +260,16 @@
       previousPath = nextPath;
     });
   }
+
+  onDestroy(() => {
+    if (!browser) return;
+    unbindSessionListeners();
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+    }
+    void postSessionEnd('layout_destroy');
+  });
 </script>
 
 <div class="app-shell">

@@ -84,6 +84,7 @@ import { sendAnalytics } from '$lib/utils/analytics';
 import { sendEvent } from '$lib/client/events/sendEvent';
 
 export const CLIENT_VERSION = '1.0.0';
+const SESSION_GAMES_PLAYED_KEY = 'looma_session_games_played';
 
 type StartResponse = {
   sessionId: string;
@@ -296,6 +297,12 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     rewards: result.rewards ?? null,
     extra: result.extra ?? null
   });
+
+  if (typeof window !== 'undefined') {
+    const current = Number(window.sessionStorage.getItem(SESSION_GAMES_PLAYED_KEY) ?? '0');
+    const next = Number.isFinite(current) && current > 0 ? Math.floor(current) + 1 : 1;
+    window.sessionStorage.setItem(SESSION_GAMES_PLAYED_KEY, String(next));
+  }
 
   const response = await sendEvent('game.complete', {
     sessionId,
