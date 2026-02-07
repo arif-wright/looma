@@ -7,7 +7,7 @@ import { getContextBundle } from '$lib/server/context/getContextBundle';
 import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
 import { getConsentFlags } from '$lib/server/consent';
-import { applyWorldStateBoundary } from '$lib/server/context/worldState';
+import { applyWorldStateBoundary, markWorldWhisperShown } from '$lib/server/context/worldState';
 
 const ALLOWED_TYPES = new Set(['session.start', 'session.end', 'session.return', 'game.complete']);
 const WINDOW_MS = 60_000;
@@ -116,7 +116,44 @@ export const POST: RequestHandler = async (event) => {
   };
 
   const trace = await dispatchEvent(agentEvent, { registry: agentRegistry });
-  const output = trace.results.find((result) => result.output)?.output ?? null;
+  let output: Record<string, unknown> | null = null;
+  for (const result of trace.results) {
+    const candidate = result.output as Record<string, unknown> | null;
+    if (!candidate) continue;
+    output = { ...(output ?? {}), ...candidate };
+    if (!output.reaction && candidate.reaction) {
+      output.reaction = candidate.reaction;
+    }
+    if (!output.whisper && candidate.whisper) {
+      output.whisper = candidate.whisper;
+    }
+  }
+
+  const whisper = (output?.whisper ?? null) as Record<string, unknown> | null;
+  if (userId && whisper && typeof whisper.text === 'string') {
+    if (!output?.reaction) {
+      output = {
+        ...(output ?? {}),
+        reaction: {
+          text: whisper.text,
+          kind: 'whisper',
+          ttlMs: typeof whisper.ttlMs === 'number' ? whisper.ttlMs : 4800
+        }
+      };
+    }
+    try {
+      const whisperMeta = (output?.whisperMeta ?? null) as Record<string, unknown> | null;
+      const whisperAt = typeof whisperMeta?.at === 'string' ? whisperMeta.at : new Date().toISOString();
+      const whisperStreak =
+        typeof whisperMeta?.streakDays === 'number' && Number.isFinite(whisperMeta.streakDays)
+          ? Math.max(0, Math.floor(whisperMeta.streakDays))
+          : 0;
+      await markWorldWhisperShown({ supabase, userId, whisperAt, whisperStreak });
+    } catch (err) {
+      console.error('[events] failed to persist whisper metadata', err);
+    }
+  }
+
   if (dev) {
     addTrace(trace);
   }

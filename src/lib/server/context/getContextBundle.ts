@@ -109,6 +109,9 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
         lastSessionStart: null,
         lastSessionEnd: null,
         streakDays: null,
+        previousStreakDays: null,
+        lastWhisperAt: null,
+        lastWhisperStreak: null,
         companionMood: 'steady',
         companionMoodValue: 0
       },
@@ -192,6 +195,9 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       lastSessionStart: portableExtracted.world.lastSessionStart,
       lastSessionEnd: portableExtracted.world.lastSessionEnd,
       streakDays: portableExtracted.world.streakDays,
+      previousStreakDays: portableExtracted.world.previousStreakDays,
+      lastWhisperAt: portableExtracted.world.lastWhisperAt,
+      lastWhisperStreak: portableExtracted.world.lastWhisperStreak,
       companionMood: portableExtracted.world.mood,
       companionMoodValue: portableExtracted.world.moodValue
     },

@@ -30,6 +30,9 @@ export type WorldStateBundle = {
   lastSessionStart: string | null;
   lastSessionEnd: string | null;
   streakDays: number | null;
+  previousStreakDays: number | null;
+  lastWhisperAt: string | null;
+  lastWhisperStreak: number | null;
   companionMood: 'steady' | 'bright' | 'low';
   companionMoodValue: number;
 };

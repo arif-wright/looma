@@ -7,10 +7,13 @@ export type StoredWorldState = {
   lastSessionStart: string | null;
   lastSessionEnd: string | null;
   streakDays: number;
+  previousStreakDays: number;
   moodValue: number;
   mood: WorldMood;
   lastPagesVisited: number;
   lastGamesPlayed: number;
+  lastWhisperAt: string | null;
+  lastWhisperStreak: number;
 };
 
 const KEY_LAST_START = 'world_last_session_start';
@@ -20,6 +23,9 @@ const KEY_MOOD_VALUE = 'world_mood_value';
 const KEY_MOOD_LABEL = 'world_mood_label';
 const KEY_LAST_PAGES = 'world_last_pages_visited';
 const KEY_LAST_GAMES = 'world_last_games_played';
+const KEY_PREV_STREAK_DAYS = 'world_prev_streak_days';
+const KEY_LAST_WHISPER_AT = 'world_last_whisper_at';
+const KEY_LAST_WHISPER_STREAK = 'world_last_whisper_streak';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -92,11 +98,15 @@ export const extractWorldState = (portableState: unknown): StoredWorldState => {
   const moodLabel = moodLabelRaw === 'bright' || moodLabelRaw === 'low' || moodLabelRaw === 'steady' ? moodLabelRaw : null;
   const streakRaw = Number(readItem(items, KEY_STREAK_DAYS) ?? 0);
   const streakDays = Number.isFinite(streakRaw) && streakRaw > 0 ? Math.floor(streakRaw) : 0;
+  const previousStreakRaw = Number(readItem(items, KEY_PREV_STREAK_DAYS) ?? 0);
+  const previousStreakDays =
+    Number.isFinite(previousStreakRaw) && previousStreakRaw >= 0 ? Math.floor(previousStreakRaw) : 0;
 
   return {
     lastSessionStart: typeof readItem(items, KEY_LAST_START) === 'string' ? (readItem(items, KEY_LAST_START) as string) : null,
     lastSessionEnd: typeof readItem(items, KEY_LAST_END) === 'string' ? (readItem(items, KEY_LAST_END) as string) : null,
     streakDays,
+    previousStreakDays,
     moodValue,
     mood: moodLabel ?? moodFromValue(moodValue),
     lastPagesVisited: Number.isFinite(Number(readItem(items, KEY_LAST_PAGES) ?? 0))
@@ -104,6 +114,11 @@ export const extractWorldState = (portableState: unknown): StoredWorldState => {
       : 0,
     lastGamesPlayed: Number.isFinite(Number(readItem(items, KEY_LAST_GAMES) ?? 0))
       ? Math.max(0, Math.floor(Number(readItem(items, KEY_LAST_GAMES) ?? 0)))
+      : 0,
+    lastWhisperAt:
+      typeof readItem(items, KEY_LAST_WHISPER_AT) === 'string' ? (readItem(items, KEY_LAST_WHISPER_AT) as string) : null,
+    lastWhisperStreak: Number.isFinite(Number(readItem(items, KEY_LAST_WHISPER_STREAK) ?? 0))
+      ? Math.max(0, Math.floor(Number(readItem(items, KEY_LAST_WHISPER_STREAK) ?? 0)))
       : 0
   };
 };
@@ -139,10 +154,13 @@ const applyStartDrift = (previous: StoredWorldState, nowIso: string): StoredWorl
     lastSessionStart: nowIso,
     lastSessionEnd: previous.lastSessionEnd,
     streakDays,
+    previousStreakDays: previous.streakDays,
     moodValue,
     mood: moodFromValue(moodValue),
     lastPagesVisited: previous.lastPagesVisited,
-    lastGamesPlayed: previous.lastGamesPlayed
+    lastGamesPlayed: previous.lastGamesPlayed,
+    lastWhisperAt: previous.lastWhisperAt,
+    lastWhisperStreak: previous.lastWhisperStreak
   };
 };
 
@@ -177,10 +195,13 @@ const writeWorldState = async (
   nextItems = upsertItem(nextItems, KEY_LAST_START, worldState.lastSessionStart);
   nextItems = upsertItem(nextItems, KEY_LAST_END, worldState.lastSessionEnd);
   nextItems = upsertItem(nextItems, KEY_STREAK_DAYS, worldState.streakDays);
+  nextItems = upsertItem(nextItems, KEY_PREV_STREAK_DAYS, worldState.previousStreakDays);
   nextItems = upsertItem(nextItems, KEY_MOOD_VALUE, worldState.moodValue);
   nextItems = upsertItem(nextItems, KEY_MOOD_LABEL, worldState.mood);
   nextItems = upsertItem(nextItems, KEY_LAST_PAGES, worldState.lastPagesVisited);
   nextItems = upsertItem(nextItems, KEY_LAST_GAMES, worldState.lastGamesPlayed);
+  nextItems = upsertItem(nextItems, KEY_LAST_WHISPER_AT, worldState.lastWhisperAt);
+  nextItems = upsertItem(nextItems, KEY_LAST_WHISPER_STREAK, worldState.lastWhisperStreak);
 
   const nextPortable: PortableState = {
     version: PORTABLE_STATE_VERSION,
@@ -229,5 +250,32 @@ export const applyWorldStateBoundary = async (args: {
       ? applyStartDrift(current, nowIso)
       : applyEndBoundary(current, args.endIso ?? nowIso, args.engagement);
 
+  return writeWorldState(supabase, userId, portableState, next);
+};
+
+export const markWorldWhisperShown = async (args: {
+  supabase: SupabaseClient;
+  userId: string;
+  whisperAt: string;
+  whisperStreak: number;
+}) => {
+  const { supabase, userId, whisperAt, whisperStreak } = args;
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('portable_state')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw error;
+  }
+
+  const portableState = toPortable(data?.portable_state);
+  const current = extractWorldState(portableState);
+  const next: StoredWorldState = {
+    ...current,
+    lastWhisperAt: whisperAt,
+    lastWhisperStreak: whisperStreak
+  };
   return writeWorldState(supabase, userId, portableState, next);
 };
