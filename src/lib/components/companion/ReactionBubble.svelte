@@ -26,14 +26,16 @@
 
 {#if $companionReaction}
   <div class="reaction-bubble" role="status" aria-live="polite">
-    <p>{$companionReaction.text}</p>
+    <p title={$companionReaction.text}>{$companionReaction.text}</p>
     <button type="button" class="reaction-bubble__dismiss" on:click={dismiss} aria-label="Dismiss reaction">x</button>
   </div>
 {/if}
 
 <style>
   .reaction-bubble {
-    max-width: min(320px, calc(100vw - 2rem));
+    width: clamp(200px, 85%, 280px);
+    min-width: 200px;
+    max-width: min(280px, calc(100vw - 2rem));
     padding: 0.62rem 0.78rem;
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -51,6 +53,14 @@
   .reaction-bubble p {
     margin: 0;
     flex: 1;
+    min-width: 0;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .reaction-bubble__dismiss {
@@ -68,7 +78,9 @@
 
   @media (max-width: 720px) {
     .reaction-bubble {
-      max-width: min(280px, calc(100vw - 2rem));
+      width: clamp(190px, 88vw, 260px);
+      min-width: 190px;
+      max-width: min(260px, calc(100vw - 2rem));
       font-size: 0.86rem;
       line-height: 1.35;
     }

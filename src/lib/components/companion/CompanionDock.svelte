@@ -197,18 +197,17 @@
   }
 
   .companion-dock__viewer {
-    display: grid;
-    place-items: center;
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
   }
 
   .companion-dock__reaction {
-    position: absolute;
-    top: 0.2rem;
-    left: 50%;
-    transform: translate(-50%, -100%);
+    width: 100%;
+    display: flex;
+    justify-content: center;
     pointer-events: auto;
-    z-index: 2;
   }
 
   .companion-dock__controls {
@@ -266,8 +265,5 @@
       width: min(230px, calc(100vw - 1.5rem));
     }
 
-    .companion-dock__reaction {
-      top: -0.15rem;
-    }
   }
 </style>
