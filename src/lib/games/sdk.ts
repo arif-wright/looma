@@ -307,7 +307,8 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     sessionId
   });
 
-  const reaction = response?.output?.reaction ?? null;
+  const output = response?.output ?? null;
+  const reaction = output?.suppressed === true ? null : output?.reaction ?? null;
   if (reaction) {
     const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
     pushCompanionReaction(reaction);
