@@ -35,6 +35,7 @@
     preload="auto"
     poster="/og/looma_world_og.png"
   >
+    <source src="/videos/looma_hero_bg.webm" type="video/webm" />
     <source src="/videos/looma_hero_bg.mp4" type="video/mp4" />
   </video>
   <div class="bg-color"></div>

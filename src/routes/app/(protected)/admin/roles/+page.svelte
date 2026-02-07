@@ -166,6 +166,7 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
+    align-items: flex-end;
     gap: 1rem;
     position: sticky;
     top: 1rem;
@@ -187,23 +188,32 @@
 
   .search-form {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
   }
 
   .search-form input {
+    height: 3rem;
+    min-width: 15.5rem;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     padding: 0.55rem 1rem;
     background: rgba(255, 255, 255, 0.08);
     color: inherit;
+    font-size: 0.95rem;
+    line-height: 1.2;
   }
 
   .search-form button {
+    height: 3rem;
+    flex: 0 0 auto;
     border-radius: 999px;
     padding: 0.55rem 1.2rem;
     background: linear-gradient(120deg, #38bdf8, #a855f7);
     border: none;
     font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1;
   }
 
   .roles-panel {
@@ -316,6 +326,21 @@
   .empty {
     text-align: center;
     padding: 1.5rem 0;
+  }
+
+  @media (max-width: 900px) {
+    .roles-header {
+      align-items: stretch;
+    }
+
+    .search-form {
+      width: 100%;
+    }
+
+    .search-form input {
+      min-width: 0;
+      flex: 1;
+    }
   }
 
   .sr-only {
