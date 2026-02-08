@@ -23,6 +23,7 @@ import { logEvent } from '$lib/server/analytics/log';
 import { inspectSessionComplete } from '$lib/server/anti/inspect';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
+import { ingestServerEvent } from '$lib/server/events/ingest';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -91,8 +92,11 @@ export const POST: RequestHandler = async (event) => {
 
   let body: {
     sessionId?: unknown;
+    results?: unknown;
     score?: unknown;
     durationMs?: unknown;
+    success?: unknown;
+    stats?: unknown;
     nonce?: unknown;
     signature?: unknown;
     clientVersion?: unknown;
@@ -104,9 +108,25 @@ export const POST: RequestHandler = async (event) => {
     throw error(400, { code: 'bad_request', message: 'Invalid JSON body.' });
   }
 
+  const results =
+    body.results && typeof body.results === 'object' && !Array.isArray(body.results)
+      ? (body.results as Record<string, unknown>)
+      : null;
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
-  const scoreRaw = Number(body.score);
-  const durationMsRaw = Number(body.durationMs);
+  const scoreRaw = Number(results?.score ?? body.score);
+  const durationMsRaw = Number(results?.durationMs ?? body.durationMs);
+  const success =
+    typeof results?.success === 'boolean'
+      ? results.success
+      : typeof body.success === 'boolean'
+        ? body.success
+        : null;
+  const stats =
+    results?.stats && typeof results.stats === 'object' && !Array.isArray(results.stats)
+      ? (results.stats as Record<string, unknown>)
+      : body.stats && typeof body.stats === 'object' && !Array.isArray(body.stats)
+        ? (body.stats as Record<string, unknown>)
+        : null;
   const nonce = typeof body.nonce === 'string' ? body.nonce : '';
   const signature = typeof body.signature === 'string' ? body.signature : '';
   const clientVersion = typeof body.clientVersion === 'string' ? body.clientVersion : null;
@@ -489,12 +509,35 @@ export const POST: RequestHandler = async (event) => {
     durationMs,
     meta: {
       slug: game.slug,
+      success,
+      stats,
       multiplier: rewards.currencyMultiplier,
       baseCurrency: rewards.baseCurrencyDelta,
       deviceHash,
       caps
     }
   });
+
+  await ingestServerEvent(
+    event,
+    'game.complete',
+    {
+      gameId: session.game_id,
+      gameSlug: game.slug,
+      sessionId,
+      score,
+      durationMs,
+      success,
+      stats,
+      rewardsGranted: {
+        xpGained: rewards.xpDelta,
+        shardsGained: rewards.currencyDelta,
+        xpMultiplier: rewards.xpMultiplier ?? 1,
+        currencyMultiplier: rewards.currencyMultiplier ?? 1
+      }
+    },
+    { sessionId }
+  );
 
   if (rewards.currencyDelta > 0) {
     await logEvent(event, 'wallet_grant', {
@@ -565,6 +608,12 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ...rewards,
+    rewardsGranted: {
+      xpGained: rewards.xpDelta,
+      shardsGained: rewards.currencyDelta,
+      xpMultiplier: rewards.xpMultiplier ?? 1,
+      currencyMultiplier: rewards.currencyMultiplier ?? 1
+    },
     rituals: ritualUpdate,
     achievements: achievementsUnlocked.map((entry) => ({
       key: entry.key,

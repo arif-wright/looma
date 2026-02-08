@@ -6,6 +6,8 @@ import { limit } from '$lib/server/games/rate';
 import { logGameAudit } from '$lib/server/games/audit';
 import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
+import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
+import { ingestServerEvent } from '$lib/server/events/ingest';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 
@@ -18,7 +20,13 @@ const buildCaps = (config: any, fallback: { max_score: number | null }) => ({
 });
 
 export const POST: RequestHandler = async (event) => {
-  let body: { slug?: unknown; clientVersion?: unknown };
+  let body: {
+    slug?: unknown;
+    gameId?: unknown;
+    mode?: unknown;
+    clientMeta?: unknown;
+    clientVersion?: unknown;
+  };
 
   try {
     body = await event.request.json();
@@ -38,7 +46,14 @@ export const POST: RequestHandler = async (event) => {
     throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
   }
 
-  const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
+  const gameIdRaw = typeof body.gameId === 'string' ? body.gameId.trim() : '';
+  const slugRaw = typeof body.slug === 'string' ? body.slug.trim() : '';
+  const slug = gameIdRaw || slugRaw;
+  const mode = typeof body.mode === 'string' ? body.mode.trim() : null;
+  const clientMeta =
+    body.clientMeta && typeof body.clientMeta === 'object' && !Array.isArray(body.clientMeta)
+      ? (body.clientMeta as Record<string, unknown>)
+      : null;
   const clientVersion = typeof body.clientVersion === 'string' ? body.clientVersion.trim() : null;
 
   if (!slug) {
@@ -72,6 +87,8 @@ export const POST: RequestHandler = async (event) => {
 
   const session = data[0];
   const caps = buildCaps(config, game);
+  const startedAt = typeof session.started_at === 'string' ? session.started_at : new Date().toISOString();
+  const serverNonce = typeof session.nonce === 'string' ? session.nonce : null;
 
   await logGameAudit({
     userId: user.id,
@@ -80,6 +97,7 @@ export const POST: RequestHandler = async (event) => {
     ip: clientIp,
     details: {
       slug,
+      mode,
       clientVersion
     }
   });
@@ -92,16 +110,48 @@ export const POST: RequestHandler = async (event) => {
     gameId: game.id,
     meta: {
       slug,
+      mode,
       clientVersion,
+      clientMeta,
       deviceHash,
       caps
     }
   });
 
+  const [stats, walletRes] = await Promise.all([
+    getPlayerStats(event, supabase),
+    supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle()
+  ]);
+
+  const playerStateSnapshot = {
+    xp: stats?.xp ?? 0,
+    level: stats?.level ?? 1,
+    xpNext: stats?.xp_next ?? null,
+    energy: stats?.energy ?? null,
+    energyMax: stats?.energy_max ?? null,
+    currency: Number(walletRes.data?.shards ?? 0)
+  };
+
+  await ingestServerEvent(
+    event,
+    'game.session.start',
+    {
+      gameId: game.id,
+      gameSlug: game.slug,
+      sessionId: session.session_id,
+      mode,
+      clientMeta
+    },
+    { sessionId: session.session_id }
+  );
+
   return json({
     sessionId: session.session_id,
     nonce: session.nonce,
+    serverNonce,
+    startedAt,
     serverTime: Date.now(),
-    caps
+    caps,
+    playerStateSnapshot
   });
 };
