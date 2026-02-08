@@ -1,20 +1,20 @@
-import { createBrowserClient, type SupabaseClient } from '@supabase/ssr';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { createBrowserClient } from '@supabase/ssr';
+import { env as publicEnv } from '$env/dynamic/public';
 
-let browserClient: SupabaseClient | null = null;
+let browserClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export const createSupabaseBrowserClient = () => {
   if (!browserClient) {
-    if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
+    const supabaseUrl = publicEnv.PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase browser client is not configured');
     }
 
-    browserClient = createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
-        autoRefreshToken: true,
-        multiTab: false,
-        lock: false
+        autoRefreshToken: true
       }
     });
   }

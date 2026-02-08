@@ -13,6 +13,7 @@
 		"preview:e2e": "dotenv -e .env.local -- vite preview --port 4173 --host 0.0.0.0",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:core": "svelte-kit sync && tsc -p ./tsconfig.core.json --noEmit",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest",
 		"test:e2e": "playwright test --reporter=list",

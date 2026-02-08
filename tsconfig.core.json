@@ -1,0 +1,36 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "checkJs": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "$lib/server/achievements/evaluator": ["src/types/core-stubs/achievements-evaluator.ts"],
+      "$lib/server/companions/rituals": ["src/types/core-stubs/companions-rituals.ts"],
+      "$lib/*": ["src/lib/*"]
+    }
+  },
+  "include": [
+    ".svelte-kit/ambient.d.ts",
+    "src/app.d.ts",
+    "src/types/core-check-shims.d.ts",
+    "src/lib/server/agents/**/*.ts",
+    "src/routes/api/events/**/*.ts",
+    "src/routes/api/games/**/*.ts",
+    "src/lib/games/**/*.ts",
+    "src/lib/server/context/**/*.ts",
+    "src/lib/server/supabase.ts",
+    "src/lib/supabase/server.ts",
+    "src/lib/supabase/client.ts"
+  ],
+  "exclude": [
+    "src/lib/games/arpg/**",
+    "src/lib/games/fullscreen.ts",
+    "src/routes/api/games/player/state/+server.ts"
+  ]
+}

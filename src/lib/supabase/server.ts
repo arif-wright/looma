@@ -1,10 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const resolveSupabaseConfig = () => {
-  const supabaseUrl = PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = publicEnv.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase URL or anon key is not configured');
