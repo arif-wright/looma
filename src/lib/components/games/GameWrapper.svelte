@@ -144,15 +144,15 @@ import {
     }
   };
 
-  const awardFromResponse = async (response: GameSessionServerResult | null, payload: GameSessionResult) => {
-    const xpReward = payload.rewards?.xp ?? response?.xpDelta ?? null;
+  const awardFromResponse = async (response: GameSessionServerResult | null) => {
+    const xpReward = response?.xpDelta ?? null;
     if (typeof xpReward === 'number' && xpReward !== 0) {
-      await awardXP(xpReward, payload.extra?.xpReason ?? 'session_result');
+      await awardXP(xpReward, 'session_result');
     }
 
-    const shardReward = payload.rewards?.shards ?? response?.currencyDelta ?? null;
+    const shardReward = response?.currencyDelta ?? null;
     if (typeof shardReward === 'number' && shardReward !== 0) {
-      await awardShards(shardReward, payload.extra?.shardsReason ?? 'session_result');
+      await awardShards(shardReward, 'session_result');
     }
   };
 
@@ -233,12 +233,13 @@ import {
     const durationMs = computeDuration(result?.durationMs);
     const payload: GameSessionResult = {
       ...result,
-      durationMs
+      durationMs,
+      stats: result.stats ?? (result.extra ? { ...result.extra } : undefined)
     };
 
     try {
       const serverResponse = await completeSession(currentSessionId, payload);
-      await awardFromResponse(serverResponse, payload);
+      await awardFromResponse(serverResponse);
 
       const enrichedResult: GameSessionResult = {
         ...payload,
@@ -442,18 +443,18 @@ import {
           </div>
           <div class="stat">
             <span class="label">XP</span>
-            <span class="value">+{formatNumber(lastResult.rewards?.xp ?? lastServerResult?.xpDelta ?? 0)}</span>
+            <span class="value">+{formatNumber(lastServerResult?.xpDelta ?? 0)}</span>
           </div>
           <div class="stat">
             <span class="label">Shards</span>
-            <span class="value">+{formatNumber(lastResult.rewards?.shards ?? lastServerResult?.currencyDelta ?? 0)}</span>
+            <span class="value">+{formatNumber(lastServerResult?.currencyDelta ?? 0)}</span>
           </div>
         </div>
         {#if hasPowerupUsage(lastResult.rewards?.powerupsUsed)}
           <div class="results-powerups">
             <h3>Power-ups</h3>
             <div class="powerups-grid">
-              {#each Object.entries(lastResult.rewards.powerupsUsed) as [key, value]}
+              {#each Object.entries(lastResult.rewards?.powerupsUsed ?? {}) as [key, value]}
                 {#if typeof value === 'number' && value > 0}
                   <div class="powerup-stat">
                     <span class="label">{formatPowerupLabel(key)}</span>

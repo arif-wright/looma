@@ -112,8 +112,6 @@
     paused = true;
     hudAccumulated += performance.now() - hudStartTime;
     const rawScore = Math.max(0, Math.floor(result.score ?? 0));
-    const xpReward = rawScore;
-    const shardReward = shardsCollected;
     powerupsUsed = {
       shield: result.meta?.shield_powerups ?? 0,
       magnet: result.meta?.magnet_powerups ?? 0,
@@ -124,7 +122,7 @@
     };
     scoreDisplay = rawScore;
     distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
-    shardsDisplay = shardReward;
+    shardsDisplay = shardsCollected;
     stopHudLoop();
     activePowerups = { ...defaultPowerupState };
 
@@ -132,9 +130,10 @@
       score: rawScore,
       durationMs: result.durationMs,
       success: rawScore > 0,
-      rewards: {
-        xp: xpReward,
-        shards: shardReward,
+      stats: {
+        shardsCollected,
+        distanceMeters: distanceDisplay,
+        difficulty: 'normal',
         powerupsUsed
       },
       extra: result.meta ?? undefined
