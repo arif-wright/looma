@@ -12,6 +12,7 @@ import {
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getAdminFlags } from '$lib/server/admin-guard';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -243,6 +244,7 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   let activeCompanion: ActiveCompanionSnapshot | null = null;
+  let portableActiveCompanion: { id: string; name: string; archetype: string } | null = null;
 
   try {
     const { data: notificationRows, error: notificationError } = await supabase
@@ -296,6 +298,33 @@ export const load: LayoutServerLoad = async (event) => {
     }
   } catch (err) {
     console.error('[resolver] active companion lookup threw', err);
+  }
+
+  try {
+    const { data: prefRow, error: prefError } = await supabase
+      .from('user_preferences')
+      .select('portable_state')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (prefError && prefError.code !== 'PGRST116') {
+      console.error('[resolver] portable companions lookup failed', prefError);
+    } else {
+      const companions = normalizePortableCompanions(
+        (prefRow?.portable_state as Record<string, unknown> | null)?.companions
+      );
+      const active =
+        companions.roster.find((entry) => entry.id === companions.activeId) ?? companions.roster[0] ?? null;
+      portableActiveCompanion = active
+        ? {
+            id: active.id,
+            name: active.name,
+            archetype: active.archetype
+          }
+        : null;
+    }
+  } catch (err) {
+    console.error('[resolver] portable companions lookup threw', err);
   }
 
   let decision: LandingDecision | null = null;
@@ -356,6 +385,7 @@ export const load: LayoutServerLoad = async (event) => {
       shards: walletRow?.shards ?? null
     },
     activeCompanion,
+    portableActiveCompanion,
     isAdmin: adminFlags.isAdmin,
     adminFlags
   };

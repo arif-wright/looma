@@ -14,6 +14,8 @@
   export let motionEnabled = true;
   export let transparent = true;
   export let reactionsEnabled = true;
+  export let companionId = 'muse';
+  export let companionName = 'Muse';
 
   let expanded = false;
   let localVisible = true;
@@ -65,6 +67,10 @@
     }
   };
 
+  const normalizeCompanionId = (value: string) => value.trim().toLowerCase();
+
+  $: activeCompanionId = normalizeCompanionId(companionId || 'muse');
+  $: activeCompanionName = companionName?.trim() || 'Muse';
   $: effectiveMotion = motionEnabled && localMotion;
 </script>
 
@@ -74,14 +80,19 @@
       <div
         class={`companion-dock__panel ${expanded ? 'is-expanded' : ''}`}
         role="group"
-        aria-label="Muse companion dock"
+        aria-label={`${activeCompanionName} companion dock`}
       >
       <div class="companion-dock__header">
         <div>
           <p class="companion-dock__eyebrow">Companion</p>
-          <p class="companion-dock__title">Muse</p>
+          <p class="companion-dock__title">{activeCompanionName}</p>
         </div>
-        <button class="companion-dock__icon" type="button" on:click={toggleExpanded} aria-label="Toggle Muse dock">
+        <button
+          class="companion-dock__icon"
+          type="button"
+          on:click={toggleExpanded}
+          aria-label={`Toggle ${activeCompanionName} dock`}
+        >
           <PanelRightOpen size={16} />
         </button>
       </div>
@@ -92,8 +103,10 @@
           autoplay={effectiveMotion}
           cameraControls={false}
           respectReducedMotion={false}
-          animationName="Idle"
+          animationName={activeCompanionId === 'muse' ? 'Idle' : 'Idle'}
           transparent={transparent}
+          poster={undefined}
+          cameraTarget={undefined}
         />
         {#if reactionsEnabled}
           <div class="companion-dock__reaction">
@@ -123,12 +136,17 @@
         {/if}
       </div>
 
-        <p class="companion-dock__hint">Muse is with you. More companion behaviors coming soon.</p>
+        <p class="companion-dock__hint">{activeCompanionName} is with you. More companion behaviors coming soon.</p>
       </div>
     {:else}
-      <button class="companion-dock__restore" type="button" on:click={toggleVisible} aria-label="Show Muse dock">
+      <button
+        class="companion-dock__restore"
+        type="button"
+        on:click={toggleVisible}
+        aria-label={`Show ${activeCompanionName} dock`}
+      >
         <Eye size={16} />
-        Muse
+        {activeCompanionName}
       </button>
     {/if}
   </div>

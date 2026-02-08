@@ -16,6 +16,7 @@
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import type { PortableCompanionEntry } from '$lib/types/portableState';
 
   export let data: PageData;
 
@@ -47,6 +48,9 @@
   let maxSlots = data.maxSlots ?? 3;
   let activeCompanionId: string | null = data.activeCompanionId ?? null;
   let selected: Companion | null = null;
+  let portableRoster: PortableCompanionEntry[] = (data.portableRoster ?? []) as PortableCompanionEntry[];
+  let portableActiveId: string | null = data.portableActiveId ?? null;
+  let setActiveBusyId: string | null = null;
   let filters: RosterFilterState = { search: '', archetype: 'all', mood: 'all', sort: 'bond_desc' };
   let toast: { message: string; kind: 'success' | 'error' } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -303,6 +307,31 @@
     await refreshRoster();
   };
 
+  const setPortableActive = async (id: string) => {
+    if (!id || setActiveBusyId || portableActiveId === id) return;
+    const previousActiveId = portableActiveId;
+    setActiveBusyId = id;
+    portableActiveId = id;
+    try {
+      const res = await fetch('/api/companions/set-active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.details ?? payload?.error ?? 'Unable to set active companion');
+      }
+      portableActiveId = payload?.activeId ?? id;
+      showToast('Active companion updated');
+    } catch (err) {
+      portableActiveId = previousActiveId;
+      showToast(err instanceof Error ? err.message : 'Unable to set active companion', 'error');
+    } finally {
+      setActiveBusyId = null;
+    }
+  };
+
   $: visibleCompanions = filteredCompanions();
   $: activeCompanion = companions.find((entry) => entry.is_active) ?? null;
   $: slotsUsed = Math.min(companions.length, maxSlots);
@@ -357,7 +386,39 @@
       <p class="lede">Muse reacts to milestones and stays subtle across your day.</p>
     </div>
     <div class="muse-preview__frame">
-      <MuseModel size="240px" autoplay respectReducedMotion={false} />
+      <MuseModel size="240px" autoplay respectReducedMotion={false} poster={undefined} cameraTarget={undefined} />
+    </div>
+  </section>
+
+  <section class="portable-roster-panel" aria-label="Companion roster">
+    <div class="panel-title-row">
+      <h2 class="panel-title">Companion roster</h2>
+    </div>
+    <p class="portable-roster-copy">Choose your active companion for dock presence and game context.</p>
+    <div class="portable-roster-grid">
+      {#each portableRoster as rosterCompanion (rosterCompanion.id)}
+        <article class={`portable-card ${portableActiveId === rosterCompanion.id ? 'is-active' : ''}`}>
+          <p class="portable-card__eyebrow">{rosterCompanion.archetype}</p>
+          <h3>{rosterCompanion.name}</h3>
+          <p class="portable-card__meta">Bond {rosterCompanion.stats.bond} · Level {rosterCompanion.stats.level}</p>
+          <button
+            type="button"
+            class="portable-card__button"
+            disabled={setActiveBusyId !== null || portableActiveId === rosterCompanion.id || !rosterCompanion.unlocked}
+            on:click={() => {
+              void setPortableActive(rosterCompanion.id);
+            }}
+          >
+            {#if portableActiveId === rosterCompanion.id}
+              Active
+            {:else if setActiveBusyId === rosterCompanion.id}
+              Setting…
+            {:else}
+              Set active
+            {/if}
+          </button>
+        </article>
+      {/each}
     </div>
   </section>
 
@@ -514,6 +575,78 @@
     align-items: center;
     gap: 0.45rem;
     margin-bottom: 0.75rem;
+  }
+
+  .portable-roster-panel {
+    border-radius: 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem;
+    background: rgba(8, 10, 18, 0.85);
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .portable-roster-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.95rem;
+  }
+
+  .portable-roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .portable-card {
+    border-radius: 0.95rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.85rem;
+    background: rgba(9, 12, 20, 0.88);
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .portable-card.is-active {
+    border-color: rgba(94, 242, 255, 0.7);
+    box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.35) inset;
+  }
+
+  .portable-card h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .portable-card__eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .portable-card__meta {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.66);
+    font-size: 0.84rem;
+  }
+
+  .portable-card__button {
+    justify-self: start;
+    margin-top: 0.2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(9, 12, 24, 0.85);
+    color: rgba(255, 255, 255, 0.86);
+    padding: 0.33rem 0.75rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .portable-card__button:disabled {
+    opacity: 0.65;
+    cursor: default;
   }
 
   .eyebrow {

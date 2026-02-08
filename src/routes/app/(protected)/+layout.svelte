@@ -400,6 +400,8 @@
     motionEnabled={$companionPrefs.motion}
     transparent={$companionPrefs.transparent}
     reactionsEnabled={$companionPrefs.reactionsEnabled}
+    companionId={data?.portableActiveCompanion?.id ?? 'muse'}
+    companionName={data?.portableActiveCompanion?.name ?? 'Muse'}
   />
 {/if}
 
