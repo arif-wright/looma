@@ -1,15 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import PortableStatePanel from '$lib/components/profile/PortableStatePanel.svelte';
   import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
   import { hydrateCompanionPrefs, updateCompanionPrefs } from '$lib/stores/companionPrefs';
-
-  type ConsentFlags = { memory: boolean; adaptation: boolean; reactions: boolean };
 
   let loading = true;
   let saving = false;
   let error: string | null = null;
   let portableState: PortableState | null = null;
-  let consent: ConsentFlags = { memory: true, adaptation: true, reactions: true };
 
   let companionVisible = true;
   let companionMotion = true;
@@ -22,7 +20,6 @@
       const res = await fetch('/api/context/portable');
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? 'Unable to load preferences.');
-      consent = payload?.consent ?? consent;
       portableState = payload?.portableState ?? null;
       hydrateCompanionPrefs(payload ?? {});
       const items = portableState?.items ?? [];
@@ -96,33 +93,6 @@
     }
   };
 
-  const saveConsent = async (patch: Partial<ConsentFlags>) => {
-    if (saving) return;
-    saving = true;
-    error = null;
-    try {
-      const res = await fetch('/api/context/portable', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          consentReactions: typeof patch.reactions === 'boolean' ? patch.reactions : undefined
-        })
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Unable to update consent.');
-      }
-      consent = { ...consent, ...patch };
-      if (typeof patch.reactions === 'boolean') {
-        updateCompanionPrefs({ reactionsEnabled: patch.reactions });
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to update consent.';
-    } finally {
-      saving = false;
-    }
-  };
-
   onMount(() => {
     void fetchPrefs();
   });
@@ -137,13 +107,13 @@
     <div>
       <p class="eyebrow">Preferences</p>
       <h1>User Preferences</h1>
-      <p class="lede">Manage how Muse appears and reacts across Looma.</p>
+      <p class="lede">Manage companion display, transparency, and memory controls.</p>
     </div>
   </header>
 
   <section class="panel preferences-panel" aria-labelledby="companion-heading">
     <div class="panel-title-row">
-      <h2 id="companion-heading" class="panel-title">Companion</h2>
+      <h2 id="companion-heading" class="panel-title">Companion Display</h2>
     </div>
 
     {#if loading}
@@ -162,19 +132,6 @@
           <span>
             <strong>Companion visibility</strong>
             <span>Show Muse in the companion dock and surfaces.</span>
-          </span>
-        </label>
-
-        <label class="toggle-card">
-          <input
-            type="checkbox"
-            bind:checked={consent.reactions}
-            disabled={saving}
-            on:change={() => saveConsent({ reactions: consent.reactions })}
-          />
-          <span>
-            <strong>Companion reactions</strong>
-            <span>Allow Muse to show brief reactions after key events.</span>
           </span>
         </label>
 
@@ -205,6 +162,13 @@
         </label>
       </div>
     {/if}
+  </section>
+
+  <section class="preferences-group" aria-labelledby="transparency-heading">
+    <div class="panel-title-row">
+      <h2 id="transparency-heading" class="panel-title">Transparency &amp; Memory</h2>
+    </div>
+    <PortableStatePanel />
   </section>
 </main>
 
@@ -289,5 +253,10 @@
 
   .status-text--error {
     color: rgba(248, 113, 113, 0.9);
+  }
+
+  .preferences-group {
+    display: grid;
+    gap: 0.75rem;
   }
 </style>

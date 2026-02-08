@@ -10,7 +10,6 @@
   import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
   import FollowRequestsPanel from '$lib/components/profile/FollowRequestsPanel.svelte';
-  import PortableStatePanel from '$lib/components/profile/PortableStatePanel.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { currentProfile } from '$lib/stores/profile';
@@ -126,10 +125,6 @@ let editOpen = false;
         <section class="panel" id="overview">
           <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
         </section>
-
-        {#if data.isOwner}
-          <PortableStatePanel />
-        {/if}
 
         <section class="panel companion-panel" id="companions">
           <ProfileHighlights
