@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import { dev } from '$app/environment';
   import { goto } from '$app/navigation';
   import {
     enterFullscreen,
@@ -205,6 +206,19 @@ import {
     setMasterVolume(volume);
   };
 
+  const handleDevSimulateCompletion = async () => {
+    if (!dev || !sessionActive) return;
+    await reportSessionResult({
+      score: 1200,
+      durationMs: Math.max(15000, computeDuration(undefined)),
+      success: true,
+      stats: {
+        source: 'dev_simulate_completion',
+        simulated: true
+      }
+    });
+  };
+
   export function pause() {
     if (!sessionActive) return;
     isPaused = true;
@@ -376,6 +390,17 @@ import {
         Pause
       </button>
     {/if}
+    {#if dev}
+      <button
+        class="dev-simulate"
+        type="button"
+        on:click={handleDevSimulateCompletion}
+        disabled={!sessionActive || showResults}
+        title="Dev-only: complete session with mock result"
+      >
+        Simulate Complete
+      </button>
+    {/if}
     <div class="audio-controls">
       <button
         class="audio-toggle"
@@ -538,6 +563,22 @@ import {
     background: rgba(0, 0, 0, 0.55);
     box-shadow: 0 8px 26px rgba(2, 6, 23, 0.35);
     backdrop-filter: blur(8px);
+  }
+
+  .dev-simulate {
+    border: 1px dashed rgba(148, 163, 184, 0.75);
+    background: rgba(15, 23, 42, 0.66);
+    color: #f8fafc;
+    border-radius: 999px;
+    padding: 0.32rem 0.72rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .dev-simulate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .audio-toggle {
