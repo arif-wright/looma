@@ -2,6 +2,9 @@ import type { Agent, AgentRegistry } from './types';
 import { dev } from '$app/environment';
 
 const WHISPER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const PRE_RUN_COOLDOWN_MS = 60 * 60 * 1000;
+const MAX_PRE_RUN_BUCKETS = 5000;
+const preRunReactionTimestamps = new Map<string, number>();
 const WHISPER_LIBRARY = {
   bright: {
     streak: [
@@ -45,6 +48,47 @@ const parseTime = (value: string | null | undefined) => {
   if (!value) return null;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? null : parsed;
+};
+
+const clampInteger = (value: unknown, fallback = 0) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.floor(value));
+};
+
+const simpleHash = (input: string) => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const preRunThrottleKey = (event: Parameters<Agent['handle']>[0]) =>
+  String(event.meta?.userId ?? event.meta?.sessionId ?? 'anonymous');
+
+const shouldEmitPreRunLine = (event: Parameters<Agent['handle']>[0]) => {
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+  const gameId = String(payload.gameId ?? payload.gameSlug ?? payload.slug ?? '');
+  const seed = `${event.timestamp}|${event.meta?.sessionId ?? ''}|${gameId}`;
+  return simpleHash(seed) % 100 < 55;
+};
+
+const canEmitPreRunReaction = (event: Parameters<Agent['handle']>[0]) => {
+  const nowMs = parseTime(event.timestamp) ?? Date.now();
+  const key = preRunThrottleKey(event);
+  const lastMs = preRunReactionTimestamps.get(key) ?? null;
+  if (lastMs && nowMs - lastMs < PRE_RUN_COOLDOWN_MS) {
+    return false;
+  }
+  preRunReactionTimestamps.set(key, nowMs);
+  if (preRunReactionTimestamps.size > MAX_PRE_RUN_BUCKETS) {
+    const entries = [...preRunReactionTimestamps.entries()].sort((a, b) => a[1] - b[1]);
+    const pruneCount = Math.max(1, Math.floor(entries.length / 3));
+    for (let i = 0; i < pruneCount; i += 1) {
+      preRunReactionTimestamps.delete(entries[i][0]);
+    }
+  }
+  return true;
 };
 
 const daysSince = (laterIso: string, earlierIso: string | null | undefined) => {
@@ -103,7 +147,7 @@ const companionAgent: Agent = {
     allowedScopes: ['companion', 'app']
   },
   handle: (event) => {
-    if (!['session.start', 'session.end', 'session.return', 'game.complete'].includes(event.type)) {
+    if (!['session.start', 'session.end', 'session.return', 'game.session.start', 'game.complete'].includes(event.type)) {
       return { agentId: 'companion', handled: false };
     }
 
@@ -132,13 +176,63 @@ const companionAgent: Agent = {
       };
     } else if (event.type === 'session.return') {
       text = isDirect ? 'Welcome back.' : 'Welcome back. Want to pick up where we left off?';
+    } else if (event.type === 'game.session.start') {
+      if (!canEmitPreRunReaction(event)) {
+        return {
+          agentId: 'companion',
+          handled: true,
+          output: { mood: 'steady', note: 'Pre-run reaction cooldown active.' }
+        };
+      }
+      if (!shouldEmitPreRunLine(event)) {
+        return {
+          agentId: 'companion',
+          handled: true,
+          output: { mood: 'steady', note: 'Pre-run reaction skipped by optional gate.' }
+        };
+      }
+      text = isDirect ? 'Focus up. Make this run clean.' : 'I am with you. Have a strong run.';
     } else if (event.type === 'game.complete') {
-      const score = typeof payload?.score === 'number' ? payload.score : null;
-      text = isDirect
-        ? 'Nice work. Session logged.'
-        : score !== null
-          ? `Nice work. Score: ${score}.`
-          : 'Nice work. I saw that run.';
+      const rewards = payload?.rewardsGranted as Record<string, unknown> | undefined;
+      if (!rewards || typeof rewards !== 'object') {
+        return {
+          agentId: 'companion',
+          handled: true,
+          output: { mood: 'steady', note: 'Skipping non-canonical game.complete payload.' }
+        };
+      }
+
+      const xpGained = clampInteger(rewards.xpGained, 0);
+      const shardsGained = clampInteger(rewards.shardsGained, 0);
+      const rewardSummary =
+        xpGained > 0 && shardsGained > 0
+          ? `+${xpGained} XP, +${shardsGained} shards`
+          : xpGained > 0
+            ? `+${xpGained} XP`
+            : shardsGained > 0
+              ? `+${shardsGained} shards`
+              : 'no bonus rewards';
+
+      const score = typeof payload?.score === 'number' ? Math.max(0, Math.floor(payload.score)) : null;
+      if (isDirect) {
+        const directOptions = [
+          `Nice work. ${rewardSummary}.`,
+          `Run complete. ${rewardSummary}.`,
+          score !== null ? `Score ${score}. ${rewardSummary}.` : `Session logged. ${rewardSummary}.`
+        ];
+        const pick = simpleHash(`${event.timestamp}|direct|${score ?? 0}|${xpGained}|${shardsGained}`) % directOptions.length;
+        text = directOptions[pick];
+      } else {
+        const warmOptions = [
+          `Nice work. You earned ${rewardSummary}.`,
+          score !== null
+            ? `Great run at ${score} score. You earned ${rewardSummary}.`
+            : `Great run. You earned ${rewardSummary}.`,
+          `Strong finish. ${rewardSummary}.`
+        ];
+        const pick = simpleHash(`${event.timestamp}|warm|${score ?? 0}|${xpGained}|${shardsGained}`) % warmOptions.length;
+        text = warmOptions[pick];
+      }
     }
 
     const reaction = {
@@ -229,4 +323,8 @@ export const agentRegistry: AgentRegistry = {
   safety: safetyAgent,
   companion: companionAgent,
   world: worldAgent
+};
+
+export const __resetCompanionAgentRateLimits = () => {
+  preRunReactionTimestamps.clear();
 };

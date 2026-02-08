@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const usingVitest = Boolean(process.env.VITEST);
 const alias = {
-  $lib: fileURLToPath(new URL('./src/lib', import.meta.url))
+  $lib: fileURLToPath(new URL('./src/lib', import.meta.url)),
+  ...(usingVitest
+    ? {
+        '$app/environment': fileURLToPath(new URL('./tests/mocks/app-environment.ts', import.meta.url))
+      }
+    : {})
 };
 
 export default defineConfig({
