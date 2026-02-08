@@ -79,6 +79,11 @@ export const init = ({ targetWindow, origin = '*' }: InitOptions): Bridge => {
 
 import type { CompanionRitual } from '$lib/companions/rituals';
 import { applyPlayerState, getPlayerProgressSnapshot } from '$lib/games/state';
+import type {
+  GameSessionCompleteRequest,
+  GameSessionResults,
+  GameSessionStartRequest
+} from '$lib/games/types';
 import { getActiveCompanionSnapshot } from '$lib/stores/companions';
 import { sendAnalytics } from '$lib/utils/analytics';
 import { sendEvent } from '$lib/client/events/sendEvent';
@@ -102,8 +107,9 @@ type StartResponse = {
 export type GameSessionStart = StartResponse;
 
 type SessionContext = StartResponse & {
-  slug: string;
-  metadata?: Record<string, any> | null;
+  gameId: string;
+  mode?: string;
+  clientMeta?: Record<string, any> | null;
   startedAt: number;
   clientVersion?: string;
 };
@@ -116,24 +122,62 @@ const isRecord = (value: unknown): value is Record<string, any> =>
 
 type StartSessionMeta = Record<string, any>;
 
-export const startSession = async (
-  slug: string,
+const semverLikePattern = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const isSemverLike = (value: string) => semverLikePattern.test(value.trim());
+
+export async function startSession(
+  gameId: string,
+  mode?: string,
+  clientMeta?: Record<string, unknown>
+): Promise<StartResponse>;
+export async function startSession(
+  gameId: string,
   metadataOrVersion?: StartSessionMeta | string
-): Promise<StartResponse> => {
-  const metadata = isRecord(metadataOrVersion) ? metadataOrVersion : undefined;
+): Promise<StartResponse>;
+export async function startSession(
+  gameId: string,
+  second?: StartSessionMeta | string,
+  third?: Record<string, unknown>
+): Promise<StartResponse> {
+  let mode: string | undefined;
+  let clientMeta: Record<string, any> | undefined;
+
+  if (typeof second === 'string' && isRecord(third)) {
+    mode = second.trim() || undefined;
+    clientMeta = third;
+  } else if (isRecord(second)) {
+    clientMeta = second;
+  } else if (typeof second === 'string' && !isSemverLike(second)) {
+    mode = second.trim() || undefined;
+  }
+
   const clientVersion =
-    typeof metadataOrVersion === 'string'
-      ? metadataOrVersion
-      : typeof metadata?.clientVersion === 'string'
-        ? metadata.clientVersion
+    typeof second === 'string' && isSemverLike(second)
+      ? second
+      : typeof clientMeta?.clientVersion === 'string'
+        ? clientMeta.clientVersion
         : CLIENT_VERSION;
+
+  const startRequest: GameSessionStartRequest = {
+    gameId,
+    mode,
+    clientMeta
+  };
+
   const response = await fetch('/api/games/session/start', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      slug,
+      slug: gameId,
       clientVersion,
-      metadata
+      metadata: {
+        ...(clientMeta ?? {}),
+        gameId,
+        mode: mode ?? null
+      },
+      gameId: startRequest.gameId,
+      mode: startRequest.mode,
+      clientMeta: startRequest.clientMeta
     })
   });
 
@@ -145,20 +189,32 @@ export const startSession = async (
   const payload = (await response.json()) as StartResponse;
   const context: SessionContext = {
     ...payload,
-    slug,
-    metadata: metadata ?? null,
+    gameId,
+    mode,
+    clientMeta: clientMeta ?? null,
     startedAt: Date.now(),
     clientVersion: clientVersion ?? CLIENT_VERSION
   };
   activeSessions.set(context.sessionId, context);
   currentSessionId = context.sessionId;
   sendGameEvent('session_started', {
-    slug,
+    gameId,
     sessionId: context.sessionId,
-    metadata: metadata ?? null
+    mode: mode ?? null,
+    clientMeta: clientMeta ?? null
   });
+  await sendEvent(
+    'game.session.start',
+    {
+      sessionId: context.sessionId,
+      gameId,
+      mode: mode ?? null,
+      clientMeta: clientMeta ?? null
+    },
+    { sessionId: context.sessionId }
+  );
   return payload;
-};
+}
 
 type CompleteArgs = {
   sessionId: string;
@@ -180,6 +236,7 @@ export type SessionAchievement = {
 
 export type GameSessionServerResult = {
   xpDelta: number;
+  baseXpDelta?: number;
   baseXp?: number;
   finalXp?: number;
   xpFromCompanion?: number;
@@ -213,10 +270,11 @@ export type GameSessionResult = {
   score?: number;
   success?: boolean;
   durationMs?: number;
+  stats?: Record<string, unknown>;
   rewards?: GameRewardPayload;
   extra?: Record<string, any>;
   server?: GameSessionServerResult;
-};
+} & Record<string, unknown>;
 
 const postSessionCompletion = async (args: CompleteArgs) => {
   const payload = { ...args, clientVersion: args.clientVersion ?? CLIENT_VERSION };
@@ -255,6 +313,21 @@ const resolveDuration = (input: number | undefined, context: SessionContext | nu
   return Math.max(0, Math.floor(Date.now() - context.startedAt));
 };
 
+const normalizeCompletionResults = (
+  result: GameSessionResult,
+  score: number,
+  durationMs: number
+): GameSessionResults => {
+  const normalized: GameSessionResults = {
+    ...result,
+    score,
+    durationMs,
+    success: result.success,
+    stats: result.stats ?? result.extra ?? undefined
+  };
+  return normalized;
+};
+
 const completeWithResult = async (sessionId: string, result: GameSessionResult = {}) => {
   const context = resolveActiveContext(sessionId);
   if (!context) {
@@ -267,7 +340,7 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
 
   const { signature } = await signCompletion({
     sessionId,
-    slug: context.slug,
+    slug: context.gameId,
     score,
     durationMs,
     nonce: context.nonce,
@@ -290,10 +363,11 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
 
   sendGameEvent('session_completed', {
     sessionId,
-    slug: context.slug,
+    gameId: context.gameId,
     success: result.success ?? null,
     durationMs,
     score,
+    stats: result.stats ?? null,
     rewards: result.rewards ?? null,
     extra: result.extra ?? null
   });
@@ -304,12 +378,16 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     window.sessionStorage.setItem(SESSION_GAMES_PLAYED_KEY, String(next));
   }
 
+  const completionRequest: GameSessionCompleteRequest = {
+    sessionId,
+    results: normalizeCompletionResults(result, score, durationMs)
+  };
+
   const response = await sendEvent('game.complete', {
     sessionId,
-    slug: context.slug,
-    success: result.success ?? null,
-    durationMs,
-    score
+    gameId: context.gameId,
+    mode: context.mode ?? null,
+    results: completionRequest.results
   }, {
     sessionId
   });
@@ -385,6 +463,8 @@ export const fetchPlayerState = async () => {
   }
   return response.json();
 };
+
+export const getPlayerState = fetchPlayerState;
 
 const clampRewardValue = (value: number): number => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value === 0) return 0;

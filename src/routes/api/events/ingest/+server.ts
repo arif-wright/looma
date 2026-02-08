@@ -9,7 +9,13 @@ import { dev } from '$app/environment';
 import { getConsentFlags } from '$lib/server/consent';
 import { applyWorldStateBoundary, markWorldWhisperShown } from '$lib/server/context/worldState';
 
-const ALLOWED_TYPES = new Set(['session.start', 'session.end', 'session.return', 'game.complete']);
+const ALLOWED_TYPES = new Set([
+  'session.start',
+  'session.end',
+  'session.return',
+  'game.session.start',
+  'game.complete'
+]);
 const WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const buckets = new Map<string, number[]>();

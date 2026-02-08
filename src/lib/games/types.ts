@@ -35,3 +35,21 @@ export type LoomaGameInstance = {
 };
 
 export type LoomaGameFactory = (opts: LoomaGameInitOptions) => LoomaGameInstance;
+
+export type GameSessionStartRequest = {
+  gameId: string;
+  mode?: string;
+  clientMeta?: Record<string, unknown>;
+};
+
+export type GameSessionResults = {
+  score?: number;
+  durationMs?: number;
+  success?: boolean;
+  stats?: Record<string, unknown>;
+} & Record<string, unknown>;
+
+export type GameSessionCompleteRequest = {
+  sessionId: string;
+  results: GameSessionResults;
+};

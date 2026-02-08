@@ -10,7 +10,6 @@
   import {
     completeSession,
     fetchPlayerState,
-    signCompletion,
     startSession,
     type SessionAchievement
   } from '$lib/games/sdk';
@@ -172,7 +171,10 @@
     status = 'Connecting to Looma ARPG…';
 
     try {
-      session = await startSession(slug, minVersion);
+      session = await startSession(slug, 'standard', {
+        clientVersion: minVersion,
+        source: 'arpg_page'
+      });
       sessionStartWall = Date.now();
       sessionStartClock = typeof performance !== 'undefined' ? performance.now() : sessionStartWall;
       await bootGame(containerEl, { onGameOver: finalizeRun });
@@ -209,23 +211,17 @@
         durationMs = Math.max(minDuration, postWaitElapsed);
       }
 
-      const { signature } = await signCompletion({
-        sessionId: session.sessionId,
-        slug,
+      const result = await completeSession(session.sessionId, {
         score: sanitizedScore,
         durationMs,
-        nonce: session.nonce,
-        clientVersion: minVersion
+        success: true,
+        stats: {
+          mode: 'standard'
+        }
       });
-
-      const result = await completeSession({
-        sessionId: session.sessionId,
-        score: sanitizedScore,
-        durationMs,
-        nonce: session.nonce,
-        signature,
-        clientVersion: minVersion
-      });
+      if (!result) {
+        throw new Error('Unable to complete session');
+      }
 
       const fallbackBaseXp =
         typeof result.baseXp === 'number'
