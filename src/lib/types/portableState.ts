@@ -9,10 +9,30 @@ export type PortableStateItem = {
   source?: string | null;
 };
 
+export type PortableCompanionStats = {
+  bond: number;
+  level: number;
+};
+
+export type PortableCompanionEntry = {
+  id: string;
+  name: string;
+  archetype: string;
+  unlocked: boolean;
+  cosmetics: Record<string, string | number | boolean | null>;
+  stats: PortableCompanionStats;
+};
+
+export type PortableCompanions = {
+  activeId: string;
+  roster: PortableCompanionEntry[];
+};
+
 export type PortableState = {
   version: PortableStateVersion;
   updatedAt: string;
   items: PortableStateItem[];
+  companions?: PortableCompanions;
 };
 
 export const PORTABLE_STATE_SCHEMA = {
@@ -38,6 +58,44 @@ export const PORTABLE_STATE_SCHEMA = {
         },
         additionalProperties: false
       }
+    },
+    companions: {
+      type: 'object',
+      required: ['activeId', 'roster'],
+      properties: {
+        activeId: { type: 'string', minLength: 1, maxLength: 80 },
+        roster: {
+          type: 'array',
+          maxItems: 24,
+          items: {
+            type: 'object',
+            required: ['id', 'name', 'archetype', 'unlocked', 'cosmetics', 'stats'],
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 80 },
+              name: { type: 'string', minLength: 1, maxLength: 80 },
+              archetype: { type: 'string', minLength: 1, maxLength: 80 },
+              unlocked: { type: 'boolean' },
+              cosmetics: {
+                type: 'object',
+                additionalProperties: {
+                  type: ['string', 'number', 'boolean', 'null']
+                }
+              },
+              stats: {
+                type: 'object',
+                required: ['bond', 'level'],
+                properties: {
+                  bond: { type: 'number' },
+                  level: { type: 'number' }
+                },
+                additionalProperties: false
+              }
+            },
+            additionalProperties: false
+          }
+        }
+      },
+      additionalProperties: false
     }
   },
   additionalProperties: false

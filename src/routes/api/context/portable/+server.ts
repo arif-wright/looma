@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { getConsentFlags } from '$lib/server/consent';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
+import { normalizePortableCompanions, withNormalizedCompanions } from '$lib/server/context/portableCompanions';
 
 const coercePortableState = (input: unknown): PortableState => {
   const now = new Date().toISOString();
@@ -31,7 +32,8 @@ const coercePortableState = (input: unknown): PortableState => {
   return {
     version: PORTABLE_STATE_VERSION,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
-    items
+    items,
+    companions: normalizePortableCompanions(payload.companions)
   };
 };
 
@@ -69,7 +71,7 @@ export const GET: RequestHandler = async (event) => {
     console.error('[portable_state] fetch failed', error);
   }
 
-  const portableState = consent.memory ? coercePortableState(data?.portable_state) : null;
+  const portableState = consent.memory ? withNormalizedCompanions(coercePortableState(data?.portable_state)) : null;
 
   return json({
     consent,
@@ -112,6 +114,10 @@ export const PUT: RequestHandler = async (event) => {
     portableState = upsertPortableBool(portableState, 'reactions_enabled', consentReactions);
   }
 
+  if (portableState) {
+    portableState = withNormalizedCompanions(portableState);
+  }
+
   const upsertPayload: Record<string, unknown> = {
     user_id: session.user.id
   };
@@ -122,7 +128,11 @@ export const PUT: RequestHandler = async (event) => {
   if (portableState) upsertPayload.portable_state = portableState;
 
   if (typeof consentMemory === 'boolean' && !consentMemory) {
-    upsertPayload.portable_state = { version: PORTABLE_STATE_VERSION, updatedAt: new Date().toISOString(), items: [] };
+    upsertPayload.portable_state = withNormalizedCompanions({
+      version: PORTABLE_STATE_VERSION,
+      updatedAt: new Date().toISOString(),
+      items: []
+    });
   }
 
   const { error } = await supabase

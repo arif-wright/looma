@@ -23,6 +23,23 @@ export type CompanionStateBundle = {
   mood: string | null;
 };
 
+export type CompanionActiveBundle = {
+  id: string;
+  name: string;
+  archetype: string;
+  unlocked: boolean;
+  cosmetics: Record<string, string | number | boolean | null>;
+  stats: {
+    bond: number;
+    level: number;
+  };
+};
+
+export type CompanionBundle = {
+  active: CompanionActiveBundle | null;
+  roster: CompanionActiveBundle[];
+};
+
 export type WorldStateBundle = {
   serverTime: string;
   season: 'spring' | 'summer' | 'autumn' | 'winter';
@@ -52,6 +69,7 @@ export type ContextBundle = {
   generatedAt: string;
   playerState: PlayerStateBundle;
   companionState: CompanionStateBundle;
+  companion: CompanionBundle;
   worldState: WorldStateBundle;
   portableState: PortableStateBundle;
 };

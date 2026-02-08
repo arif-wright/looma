@@ -4,6 +4,7 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { getConsentFlags } from '$lib/server/consent';
 import { extractWorldState } from '$lib/server/context/worldState';
+import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
@@ -50,7 +51,12 @@ const sanitizePortablePayload = (input: unknown): PortableStateBundle['lastConte
 const extractPortableState = (portableState: unknown) => {
   const world = extractWorldState(portableState);
   if (!portableState || typeof portableState !== 'object' || Array.isArray(portableState)) {
-    return { tone: null as string | null, reactionsEnabled: null as boolean | null, world };
+    return {
+      tone: null as string | null,
+      reactionsEnabled: null as boolean | null,
+      companions: normalizePortableCompanions(null),
+      world
+    };
   }
 
   const payload = portableState as Record<string, unknown>;
@@ -70,7 +76,12 @@ const extractPortableState = (portableState: unknown) => {
     }
   }
 
-  return { tone, reactionsEnabled, world };
+  return {
+    tone,
+    reactionsEnabled,
+    companions: normalizePortableCompanions(payload.companions),
+    world
+  };
 };
 
 export const getContextBundle = async (event: RequestEvent, args: ContextBundleArgs = {}): Promise<ContextBundle> => {
@@ -101,6 +112,10 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
         xpMultiplier: null,
         state: null,
         mood: null
+      },
+      companion: {
+        active: normalizePortableCompanions(null).roster[0] ?? null,
+        roster: normalizePortableCompanions(null).roster
       },
       worldState: {
         serverTime: now.toISOString(),
@@ -165,6 +180,9 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       ? (prefsRes.data.last_context as Record<string, unknown>)
       : null;
   const portableExtracted = extractPortableState(prefsRes.data?.portable_state);
+  const companionRoster = portableExtracted.companions.roster;
+  const activeCompanionFromPortable =
+    companionRoster.find((entry) => entry.id === portableExtracted.companions.activeId) ?? companionRoster[0] ?? null;
 
   return {
     version: CONTEXT_BUNDLE_VERSION,
@@ -187,6 +205,10 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       xpMultiplier: companionBond?.bonus?.xpMultiplier ?? null,
       state: typeof companionRes.data?.state === 'string' ? companionRes.data.state : null,
       mood: typeof companionRes.data?.mood === 'string' ? companionRes.data.mood : null
+    },
+    companion: {
+      active: activeCompanionFromPortable,
+      roster: companionRoster
     },
     worldState: {
       serverTime: now.toISOString(),

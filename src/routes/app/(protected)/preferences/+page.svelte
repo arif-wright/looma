@@ -67,7 +67,8 @@
       const nextState: PortableState = {
         version: PORTABLE_STATE_VERSION,
         updatedAt: new Date().toISOString(),
-        items: nextItems
+        items: nextItems,
+        companions: portableState?.companions
       };
 
       const res = await fetch('/api/context/portable', {
