@@ -441,10 +441,10 @@
 
   <section class="muse-preview">
     <div class="muse-preview__copy">
-      <p class="eyebrow">Companion View</p>
-      <h2>Meet Muse</h2>
-      <p class="lede">Default companion visual for app surfaces and games.</p>
-      <p class="lede">Muse reacts to milestones and stays subtle across your day.</p>
+      <p class="eyebrow">Dock Preview</p>
+      <h2>Muse visual style</h2>
+      <p class="lede">This is the shared visual style used in app surfaces and games.</p>
+      <p class="lede">Active companion: {activeCompanion ? activeCompanion.name : 'None selected'}.</p>
     </div>
     <div class="muse-preview__frame">
       <MuseModel
@@ -495,6 +495,61 @@
     {/if}
   </section>
 
+  {#if rosterError}
+    <div class="roster-error">{rosterError}</div>
+  {/if}
+
+  {#if companions.length === 0}
+    <section class="roster-empty" role="status">
+      <p class="roster-empty__eyebrow">Companions</p>
+      <h3>You don’t have a companion yet.</h3>
+      <p class="roster-empty__copy">
+        Your first companion will appear here when it is available.
+      </p>
+      <a class="roster-empty__cta" href="/app/home">Return home</a>
+    </section>
+  {:else}
+    <section class="roster-shell" aria-label="Companion search and stats">
+      <RosterFilterBar
+        {filters}
+        archetypes={archetypeOptions}
+        moods={moodOptions}
+        on:change={(event) => {
+          filters = event.detail;
+        }}
+      />
+      <RosterGrid
+        companions={visibleCompanions}
+        {maxSlots}
+        activeId={activeCompanionId}
+        disableDrag={reorderBusy || loading}
+        on:select={(event) => {
+          handleSelectCompanion(event.detail.companion);
+        }}
+        on:reorder={(event) => {
+          void handleReorder(event.detail);
+        }}
+        on:blocked={handleSlotBlocked}
+      />
+    </section>
+
+    {#if !activeCompanion}
+      <div class="roster-nudge" role="status">
+        <div>
+          <p class="roster-nudge__title">No active companion selected</p>
+          <p class="roster-nudge__copy">Choose one to unlock rituals and bonus XP.</p>
+        </div>
+        <button
+          type="button"
+          class="roster-nudge__cta"
+          on:click={() => companions[0] && handleSelectCompanion(companions[0])}
+        >
+          Choose now
+        </button>
+      </div>
+    {/if}
+  {/if}
+
   <section class="customize-panel" aria-label="Customize companion cosmetics">
     <div class="panel-title-row">
       <h2 class="panel-title">Customize</h2>
@@ -538,60 +593,6 @@
   {#if bondMilestones.length}
     <section class="bond-milestones-panel">
       <BondMilestonesPanel milestones={bondMilestones} />
-    </section>
-  {/if}
-
-  {#if rosterError}
-    <div class="roster-error">{rosterError}</div>
-  {/if}
-
-  {#if companions.length === 0}
-    <section class="roster-empty" role="status">
-      <p class="roster-empty__eyebrow">Companions</p>
-      <h3>You don’t have a companion yet.</h3>
-      <p class="roster-empty__copy">
-        Your first companion will appear here when it is available.
-      </p>
-      <a class="roster-empty__cta" href="/app/home">Return home</a>
-    </section>
-  {:else}
-    {#if !activeCompanion}
-      <div class="roster-nudge" role="status">
-        <div>
-          <p class="roster-nudge__title">No active companion selected</p>
-          <p class="roster-nudge__copy">Choose one to unlock rituals and bonus XP.</p>
-        </div>
-        <button
-          type="button"
-          class="roster-nudge__cta"
-          on:click={() => companions[0] && handleSelectCompanion(companions[0])}
-        >
-          Choose now
-        </button>
-      </div>
-    {/if}
-    <section class="roster-shell">
-      <RosterFilterBar
-        {filters}
-        archetypes={archetypeOptions}
-        moods={moodOptions}
-        on:change={(event) => {
-          filters = event.detail;
-        }}
-      />
-      <RosterGrid
-        companions={visibleCompanions}
-        {maxSlots}
-        activeId={activeCompanionId}
-        disableDrag={reorderBusy || loading}
-        on:select={(event) => {
-          handleSelectCompanion(event.detail.companion);
-        }}
-        on:reorder={(event) => {
-          void handleReorder(event.detail);
-        }}
-        on:blocked={handleSlotBlocked}
-      />
     </section>
   {/if}
 </main>
