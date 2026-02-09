@@ -139,7 +139,7 @@ const restoreOrder = () => {
 <style>
   .roster-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
   }
 
@@ -177,6 +177,13 @@ const restoreOrder = () => {
 
   .roster-dragging {
     cursor: grabbing;
+  }
+
+  @media (max-width: 900px) {
+    .roster-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
   }
 
   @media (max-width: 600px) {

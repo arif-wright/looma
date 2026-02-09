@@ -26,6 +26,7 @@
   } from '$lib/companions/cosmetics';
 
   export let data: PageData;
+  const SAFE_LOAD_ERROR = 'Something didn’t load. Try again.';
 
   type PrefetchedEvent = {
     id: string;
@@ -69,7 +70,7 @@
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let loading = false;
   let reorderBusy = false;
-  let rosterError: string | null = data.error ?? null;
+  let rosterError: string | null = data.error ? SAFE_LOAD_ERROR : null;
   let showUnlock = false;
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
@@ -157,8 +158,8 @@
       maxSlots = payload.maxSlots ?? maxSlots;
       activeCompanionId = companions.find((entry) => entry.is_active)?.id ?? null;
       rosterError = null;
-    } catch (err) {
-      rosterError = err instanceof Error ? err.message : 'Unable to load companions';
+    } catch {
+      rosterError = SAFE_LOAD_ERROR;
       showToast(rosterError, 'error');
     } finally {
       loading = false;
@@ -633,6 +634,8 @@
     padding: clamp(1.25rem, 3vw, 2rem);
     display: grid;
     gap: 2rem;
+    width: min(100%, 1440px);
+    margin: 0 auto;
   }
 
   .roster-header {
@@ -640,7 +643,7 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 1.5rem;
-    align-items: flex-end;
+    align-items: flex-start;
   }
 
   .bond-milestones-panel {
@@ -656,7 +659,7 @@
     padding: 1.25rem 1.5rem;
     background: rgba(8, 10, 18, 0.8);
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
     align-items: center;
     gap: 1.5rem;
   }
@@ -673,6 +676,15 @@
   .muse-preview__frame {
     display: grid;
     place-items: center;
+    justify-self: end;
+  }
+
+  .muse-preview__frame :global(.muse-shell) {
+    --muse-size: clamp(180px, 22vw, 240px);
+    width: var(--muse-size);
+    height: var(--muse-size);
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .panel-title-row {
@@ -699,7 +711,7 @@
 
   .portable-roster-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 0.75rem;
   }
 
@@ -812,6 +824,7 @@
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .pill {
@@ -819,6 +832,7 @@
     padding: 0.45rem 1rem;
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(9, 12, 25, 0.8);
+    white-space: nowrap;
   }
 
   .pill-action {
@@ -938,6 +952,42 @@
 
     .muse-preview {
       grid-template-columns: 1fr;
+    }
+
+    .muse-preview__frame {
+      justify-self: center;
+    }
+  }
+
+  @media (max-width: 1200px) {
+    .roster-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+
+    .header-pills {
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .roster-page {
+      gap: 1.5rem;
+    }
+
+    .muse-preview {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .muse-preview__frame {
+      justify-self: start;
+    }
+
+    .roster-nudge {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>
