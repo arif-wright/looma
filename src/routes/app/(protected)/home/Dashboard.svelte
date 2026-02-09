@@ -239,6 +239,7 @@
 
   .dashboard__shell {
     max-width: 1760px;
+    box-sizing: border-box;
     margin: 0 auto;
     padding: clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 3vw, 2.75rem) 5rem;
   }

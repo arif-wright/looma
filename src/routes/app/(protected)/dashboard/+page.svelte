@@ -371,6 +371,7 @@
     flex-direction: column;
     gap: 2.5rem;
     width: min(100%, 1700px);
+    box-sizing: border-box;
     margin-inline: auto;
   }
 

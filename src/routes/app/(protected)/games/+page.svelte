@@ -317,6 +317,7 @@
     position: relative;
     z-index: 1;
     max-width: 1760px;
+    box-sizing: border-box;
     margin: 0 auto;
     padding: clamp(1.5rem, 3vw, 2.4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
     display: flex;

@@ -635,6 +635,7 @@
     display: grid;
     gap: 2rem;
     width: min(100%, 1760px);
+    box-sizing: border-box;
     margin: 0 auto;
   }
 

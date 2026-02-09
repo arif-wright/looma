@@ -310,6 +310,7 @@
     display: grid;
     gap: 1.75rem;
     width: min(100%, 1760px);
+    box-sizing: border-box;
     margin: 0 auto;
   }
 

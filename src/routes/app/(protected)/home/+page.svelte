@@ -394,6 +394,7 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     min-height: 100vh;
     width: 100%;
     max-width: 1760px;
+    box-sizing: border-box;
     padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
     margin: 0 auto;
   }

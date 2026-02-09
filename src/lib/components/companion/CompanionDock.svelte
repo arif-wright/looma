@@ -160,7 +160,7 @@
 <style>
   .companion-dock {
     position: fixed;
-    right: 0.85rem;
+    right: 0.6rem;
     bottom: 5.5rem;
     z-index: 40;
     pointer-events: none;
@@ -176,7 +176,7 @@
   }
 
   .companion-dock__panel {
-    width: 232px;
+    width: 220px;
     border-radius: 1.25rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(6, 10, 20, 0.85);
@@ -285,7 +285,7 @@
     }
 
     .companion-dock__panel {
-      width: min(216px, calc(100vw - 1.25rem));
+      width: min(208px, calc(100vw - 1rem));
     }
 
   }
