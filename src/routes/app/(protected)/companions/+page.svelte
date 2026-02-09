@@ -358,6 +358,9 @@
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
+  $: effectiveById = new Map(
+    ownedInstances.map((instance) => [instance.id, computeCompanionEffectiveState(instance, new Date(nowTick))] as const)
+  );
   $: relationshipState = relationshipCopy(activeCompanion);
 
   $: ownedArchetypeTokens = new Set(
@@ -589,7 +592,7 @@
               <span class={`status-chip status-chip--${statusLabel(instance, activeCompanion?.id === instance.id).toLowerCase().replace(/\s+/g, '-')}`}>
                 {statusLabel(instance, activeCompanion?.id === instance.id)}
               </span>
-              <span class="mood-chip">{getCompanionMoodMeta(instance.mood).label}</span>
+              <span class="mood-chip">{effectiveById.get(instance.id)?.moodLabel ?? getCompanionMoodMeta(instance.mood).label}</span>
             </div>
           </button>
         {/each}
