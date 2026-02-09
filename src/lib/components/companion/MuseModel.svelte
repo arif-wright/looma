@@ -132,8 +132,18 @@
         });
       }
 
+      // Ensure at least one painted frame after load.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
       // model-viewer provides a `toDataURL()` helper in modern versions.
       const asAny = viewer as any;
+      if (asAny && typeof asAny.updateComplete?.then === 'function') {
+        try {
+          await asAny.updateComplete;
+        } catch {
+          // Ignore.
+        }
+      }
       if (typeof asAny.toDataURL === 'function') {
         const dataUrl = await asAny.toDataURL('image/png');
         return typeof dataUrl === 'string' ? dataUrl : null;

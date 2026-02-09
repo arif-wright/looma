@@ -20,6 +20,24 @@ export const setCachedCompanionPortrait = (instanceId: string, dataUrl: string) 
   }
 };
 
+export const clearCachedCompanionPortrait = (instanceId: string) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(safeKey(instanceId));
+  } catch {
+    // Ignore.
+  }
+};
+
+// Reject obviously bad captures (tiny/blank frames) so we don't cache an empty square forever.
+export const isProbablyValidPortrait = (dataUrl: string | null | undefined) => {
+  if (typeof dataUrl !== 'string') return false;
+  if (!dataUrl.startsWith('data:image/')) return false;
+  // 1x1 or "almost empty" base64 strings are typically < ~2KB.
+  if (dataUrl.length < 2500) return false;
+  return true;
+};
+
 // Deliverable: captureCompanionPortrait(instanceId): Promise<string | null>
 // Implementation supports an optional capture function for cases where the portrait
 // is sourced from a component ref (preferred) instead of DOM querying.
@@ -30,11 +48,12 @@ export const captureCompanionPortrait = async (
   if (typeof window === 'undefined') return null;
 
   const cached = getCachedCompanionPortrait(instanceId);
-  if (cached) return cached;
+  if (cached && isProbablyValidPortrait(cached)) return cached;
+  if (cached && !isProbablyValidPortrait(cached)) clearCachedCompanionPortrait(instanceId);
 
   try {
     const dataUrl = capture ? await capture() : null;
-    if (dataUrl && typeof dataUrl === 'string') {
+    if (isProbablyValidPortrait(dataUrl) && typeof dataUrl === 'string') {
       setCachedCompanionPortrait(instanceId, dataUrl);
       return dataUrl;
     }
@@ -44,4 +63,3 @@ export const captureCompanionPortrait = async (
 
   return null;
 };
-

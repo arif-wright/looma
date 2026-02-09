@@ -11,7 +11,12 @@
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP, describeBondLevelUpToast } from '$lib/companions/companionCopy';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
-  import { captureCompanionPortrait, getCachedCompanionPortrait } from '$lib/companions/portrait';
+  import {
+    captureCompanionPortrait,
+    clearCachedCompanionPortrait,
+    getCachedCompanionPortrait,
+    isProbablyValidPortrait
+  } from '$lib/companions/portrait';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
 
   export let open = false;
@@ -252,7 +257,8 @@
     actionMessage = null;
     careError = null;
     resetCareState();
-    portraitSrc = currentCompanionId ? getCachedCompanionPortrait(currentCompanionId) : null;
+    const cached = currentCompanionId ? getCachedCompanionPortrait(currentCompanionId) : null;
+    portraitSrc = isProbablyValidPortrait(cached) ? cached : null;
   }
 
   $: if (prefetched && prefetched.version !== lastPrefetchVersion) {
@@ -288,9 +294,13 @@
     if (!browser) return;
     if (!open || !companion) return;
     const cached = getCachedCompanionPortrait(companion.id);
-    if (cached) {
+    if (cached && isProbablyValidPortrait(cached)) {
       portraitSrc = cached;
       return;
+    }
+    if (cached && !isProbablyValidPortrait(cached)) {
+      clearCachedCompanionPortrait(companion.id);
+      portraitSrc = null;
     }
     if (portraitBusy) return;
     portraitBusy = true;
