@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { invalidateAll } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
@@ -17,6 +18,12 @@
   import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import type { PortableCompanionEntry } from '$lib/types/portableState';
+  import {
+    AURA_COLOR_OPTIONS,
+    DEFAULT_COMPANION_COSMETICS,
+    normalizeCompanionCosmetics,
+    type AuraColor
+  } from '$lib/companions/cosmetics';
 
   export let data: PageData;
 
@@ -51,6 +58,12 @@
   let portableRoster: PortableCompanionEntry[] = (data.portableRoster ?? []) as PortableCompanionEntry[];
   let portableActiveId: string | null = data.portableActiveId ?? null;
   let setActiveBusyId: string | null = null;
+  let customizeBusy = false;
+  let selectedAuraColor: AuraColor = DEFAULT_COMPANION_COSMETICS.auraColor;
+  let selectedGlowIntensity = DEFAULT_COMPANION_COSMETICS.glowIntensity;
+  let lastCustomizeSyncKey = '';
+  let portableActiveCompanion: PortableCompanionEntry | null = null;
+  let portableActiveCosmetics = normalizeCompanionCosmetics(null);
   let filters: RosterFilterState = { search: '', archetype: 'all', mood: 'all', sort: 'bond_desc' };
   let toast: { message: string; kind: 'success' | 'error' } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -324,11 +337,44 @@
       }
       portableActiveId = payload?.activeId ?? id;
       showToast('Active companion updated');
+      await invalidateAll();
     } catch (err) {
       portableActiveId = previousActiveId;
       showToast(err instanceof Error ? err.message : 'Unable to set active companion', 'error');
     } finally {
       setActiveBusyId = null;
+    }
+  };
+
+  const savePortableCosmetics = async () => {
+    if (!portableActiveCompanion || customizeBusy) return;
+    customizeBusy = true;
+    try {
+      const res = await fetch('/api/companions/customize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: portableActiveCompanion.id,
+          cosmetics: {
+            auraColor: selectedAuraColor,
+            glowIntensity: selectedGlowIntensity
+          }
+        })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.details ?? payload?.error ?? 'Unable to save cosmetics');
+      }
+      const nextCosmetics = normalizeCompanionCosmetics(payload?.cosmetics);
+      portableRoster = portableRoster.map((entry) =>
+        entry.id === portableActiveCompanion.id ? { ...entry, cosmetics: nextCosmetics } : entry
+      );
+      showToast('Companion cosmetics updated');
+      await invalidateAll();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Unable to save cosmetics', 'error');
+    } finally {
+      customizeBusy = false;
     }
   };
 
@@ -354,6 +400,18 @@
     }
   } else if (prefetchedForModal.events.length) {
     prefetchedForModal = { ...prefetchedForModal, events: [] };
+  }
+
+  $: portableActiveCompanion =
+    portableRoster.find((entry) => entry.id === portableActiveId) ?? portableRoster[0] ?? null;
+  $: portableActiveCosmetics = normalizeCompanionCosmetics(portableActiveCompanion?.cosmetics);
+  $: {
+    const syncKey = `${portableActiveCompanion?.id ?? 'none'}|${portableActiveCosmetics.auraColor}|${portableActiveCosmetics.glowIntensity}`;
+    if (syncKey !== lastCustomizeSyncKey) {
+      selectedAuraColor = portableActiveCosmetics.auraColor;
+      selectedGlowIntensity = portableActiveCosmetics.glowIntensity;
+      lastCustomizeSyncKey = syncKey;
+    }
   }
 </script>
 
@@ -386,7 +444,15 @@
       <p class="lede">Muse reacts to milestones and stays subtle across your day.</p>
     </div>
     <div class="muse-preview__frame">
-      <MuseModel size="240px" autoplay respectReducedMotion={false} poster={undefined} cameraTarget={undefined} />
+      <MuseModel
+        size="240px"
+        autoplay
+        respectReducedMotion={false}
+        poster={undefined}
+        cameraTarget={undefined}
+        auraColor={portableActiveCosmetics.auraColor}
+        glowIntensity={portableActiveCosmetics.glowIntensity}
+      />
     </div>
   </section>
 
@@ -420,6 +486,36 @@
         </article>
       {/each}
     </div>
+  </section>
+
+  <section class="customize-panel" aria-label="Customize companion cosmetics">
+    <div class="panel-title-row">
+      <h2 class="panel-title">Customize</h2>
+    </div>
+    <p class="portable-roster-copy">Set cosmetic slots for the active companion.</p>
+    {#if portableActiveCompanion}
+      <div class="customize-grid">
+        <label class="customize-field">
+          <span>Aura color</span>
+          <select bind:value={selectedAuraColor}>
+            {#each AURA_COLOR_OPTIONS as colorOption}
+              <option value={colorOption}>{colorOption}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="customize-field">
+          <span>Glow intensity: {selectedGlowIntensity}</span>
+          <input type="range" min="0" max="100" step="1" bind:value={selectedGlowIntensity} />
+        </label>
+        <div class="customize-actions">
+          <button type="button" class="portable-card__button" disabled={customizeBusy} on:click={savePortableCosmetics}>
+            {customizeBusy ? 'Saving…' : 'Save cosmetics'}
+          </button>
+        </div>
+      </div>
+    {:else}
+      <p class="portable-roster-copy">No active companion available.</p>
+    {/if}
   </section>
 
   <section class="bond-milestones-panel">
@@ -647,6 +743,47 @@
   .portable-card__button:disabled {
     opacity: 0.65;
     cursor: default;
+  }
+
+  .customize-panel {
+    border-radius: 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem;
+    background: rgba(8, 10, 18, 0.85);
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .customize-grid {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    align-items: end;
+  }
+
+  .customize-field {
+    display: grid;
+    gap: 0.45rem;
+    font-size: 0.84rem;
+    color: rgba(255, 255, 255, 0.78);
+  }
+
+  .customize-field select,
+  .customize-field input[type='range'] {
+    width: 100%;
+  }
+
+  .customize-field select {
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(9, 12, 24, 0.86);
+    color: rgba(255, 255, 255, 0.92);
+    padding: 0.42rem 0.52rem;
+  }
+
+  .customize-actions {
+    display: flex;
+    align-items: center;
   }
 
   .eyebrow {

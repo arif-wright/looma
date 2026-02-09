@@ -1,4 +1,5 @@
 import type { PortableCompanionEntry, PortableCompanions, PortableState } from '$lib/types/portableState';
+import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 
 const DEFAULT_COMPANION_ID = 'muse';
 
@@ -8,7 +9,8 @@ const defaultRoster = (): PortableCompanionEntry[] => [
     name: 'Muse',
     archetype: 'Harmonizer',
     unlocked: true,
-    cosmetics: {},
+    cosmetics: normalizeCompanionCosmetics(null),
+    cosmeticsUnlocked: [],
     stats: {
       bond: 0,
       level: 1
@@ -24,21 +26,25 @@ const safeString = (value: unknown, fallback: string, max = 80) => {
 };
 
 const normalizeCosmetics = (input: unknown): PortableCompanionEntry['cosmetics'] => {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
-  const out: Record<string, string | number | boolean | null> = {};
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      out[key] = value;
-    } else if (value === null) {
-      out[key] = null;
-    }
-  }
-  return out;
+  return normalizeCompanionCosmetics(input);
 };
 
 const toNonNegativeInt = (value: unknown, fallback: number) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.floor(value));
+};
+
+const normalizeCosmeticsUnlocked = (input: unknown): string[] => {
+  if (!Array.isArray(input)) return [];
+  const unique = new Set<string>();
+  for (const raw of input) {
+    if (typeof raw !== 'string') continue;
+    const token = raw.trim().slice(0, 80);
+    if (!token) continue;
+    unique.add(token);
+    if (unique.size >= 64) break;
+  }
+  return [...unique];
 };
 
 const normalizeRosterEntry = (raw: unknown): PortableCompanionEntry | null => {
@@ -52,6 +58,7 @@ const normalizeRosterEntry = (raw: unknown): PortableCompanionEntry | null => {
     archetype: safeString(entry.archetype, 'Unknown'),
     unlocked: entry.unlocked !== false,
     cosmetics: normalizeCosmetics(entry.cosmetics),
+    cosmeticsUnlocked: normalizeCosmeticsUnlocked(entry.cosmeticsUnlocked),
     stats: {
       bond: toNonNegativeInt((entry.stats as Record<string, unknown> | undefined)?.bond, 0),
       level: Math.max(1, toNonNegativeInt((entry.stats as Record<string, unknown> | undefined)?.level, 1))

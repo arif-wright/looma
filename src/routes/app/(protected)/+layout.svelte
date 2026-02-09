@@ -402,6 +402,7 @@
     reactionsEnabled={$companionPrefs.reactionsEnabled}
     companionId={data?.portableActiveCompanion?.id ?? 'muse'}
     companionName={data?.portableActiveCompanion?.name ?? 'Muse'}
+    companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
   />
 {/if}
 

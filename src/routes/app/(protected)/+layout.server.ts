@@ -13,6 +13,7 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getAdminFlags } from '$lib/server/admin-guard';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
+import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -244,7 +245,9 @@ export const load: LayoutServerLoad = async (event) => {
   }
 
   let activeCompanion: ActiveCompanionSnapshot | null = null;
-  let portableActiveCompanion: { id: string; name: string; archetype: string } | null = null;
+  let portableActiveCompanion:
+    | { id: string; name: string; archetype: string; cosmetics: Record<string, string | number | boolean | null> }
+    | null = null;
 
   try {
     const { data: notificationRows, error: notificationError } = await supabase
@@ -319,7 +322,8 @@ export const load: LayoutServerLoad = async (event) => {
         ? {
             id: active.id,
             name: active.name,
-            archetype: active.archetype
+            archetype: active.archetype,
+            cosmetics: normalizeCompanionCosmetics(active.cosmetics)
           }
         : null;
     }

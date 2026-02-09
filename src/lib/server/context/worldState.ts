@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PORTABLE_STATE_VERSION, type PortableState, type PortableStateItem } from '$lib/types/portableState';
+import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 
 export type WorldMood = 'steady' | 'bright' | 'low';
 
@@ -78,7 +79,8 @@ const toPortable = (input: unknown): PortableState => {
   return {
     version: PORTABLE_STATE_VERSION,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
-    items
+    items,
+    companions: normalizePortableCompanions(payload.companions)
   };
 };
 
@@ -206,7 +208,8 @@ const writeWorldState = async (
   const nextPortable: PortableState = {
     version: PORTABLE_STATE_VERSION,
     updatedAt: new Date().toISOString(),
-    items: nextItems.slice(-20)
+    items: nextItems.slice(-20),
+    companions: portableState.companions
   };
 
   const { error } = await supabase.from('user_preferences').upsert(

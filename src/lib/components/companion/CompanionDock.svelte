@@ -6,6 +6,7 @@
   import ReactionBubble from '$lib/components/companion/ReactionBubble.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
+  import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -16,6 +17,7 @@
   export let reactionsEnabled = true;
   export let companionId = 'muse';
   export let companionName = 'Muse';
+  export let companionCosmetics: Record<string, string | number | boolean | null> | null = null;
 
   let expanded = false;
   let localVisible = true;
@@ -71,6 +73,7 @@
 
   $: activeCompanionId = normalizeCompanionId(companionId || 'muse');
   $: activeCompanionName = companionName?.trim() || 'Muse';
+  $: activeCosmetics = normalizeCompanionCosmetics(companionCosmetics);
   $: effectiveMotion = motionEnabled && localMotion;
 </script>
 
@@ -107,6 +110,8 @@
           transparent={transparent}
           poster={undefined}
           cameraTarget={undefined}
+          auraColor={activeCosmetics.auraColor}
+          glowIntensity={activeCosmetics.glowIntensity}
         />
         {#if reactionsEnabled}
           <div class="companion-dock__reaction">

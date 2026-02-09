@@ -20,6 +20,7 @@ export type PortableCompanionEntry = {
   archetype: string;
   unlocked: boolean;
   cosmetics: Record<string, string | number | boolean | null>;
+  cosmeticsUnlocked: string[];
   stats: PortableCompanionStats;
 };
 
@@ -69,7 +70,7 @@ export const PORTABLE_STATE_SCHEMA = {
           maxItems: 24,
           items: {
             type: 'object',
-            required: ['id', 'name', 'archetype', 'unlocked', 'cosmetics', 'stats'],
+            required: ['id', 'name', 'archetype', 'unlocked', 'cosmetics', 'cosmeticsUnlocked', 'stats'],
             properties: {
               id: { type: 'string', minLength: 1, maxLength: 80 },
               name: { type: 'string', minLength: 1, maxLength: 80 },
@@ -79,6 +80,15 @@ export const PORTABLE_STATE_SCHEMA = {
                 type: 'object',
                 additionalProperties: {
                   type: ['string', 'number', 'boolean', 'null']
+                }
+              },
+              cosmeticsUnlocked: {
+                type: 'array',
+                maxItems: 64,
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  maxLength: 80
                 }
               },
               stats: {

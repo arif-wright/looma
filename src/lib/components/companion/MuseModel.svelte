@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { dev } from '$app/environment';
+  import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 
   type ModelViewerElement = HTMLElement & {
     animationName?: string | null;
@@ -15,6 +16,8 @@
   export let cameraControls = false;
   export let poster: string | undefined;
   export let transparent = true;
+  export let auraColor: string = 'cyan';
+  export let glowIntensity = 55;
 
   // Deprecated: use `class` and `transparent` instead.
   export let background = 'transparent';
@@ -45,6 +48,12 @@
   let observer: IntersectionObserver | null = null;
 
   const normalizeSize = (value: string | number) => (typeof value === 'number' ? `${value}px` : value);
+  const auraColorMap: Record<string, string> = {
+    cyan: '88 243 255',
+    amber: '255 182 92',
+    mint: '126 255 201',
+    rose: '255 129 180'
+  };
 
   const checkWebGL = () => {
     try {
@@ -152,13 +161,19 @@
     reducedMotion = false;
     updatePlayback();
   }
+
+  $: normalizedCosmetics = normalizeCompanionCosmetics({ auraColor, glowIntensity });
+  $: auraRgb = auraColorMap[normalizedCosmetics.auraColor] ?? auraColorMap.cyan;
+  $: auraOpacity = 0.18 + normalizedCosmetics.glowIntensity / 340;
+  $: auraBlurPx = 24 + normalizedCosmetics.glowIntensity * 0.42;
 </script>
 
 <div
   class={`muse-shell ${className}`}
-  style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${transparent ? 'transparent' : background};`}
+  style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px;`}
   bind:this={container}
 >
+  <div class="muse-aura" aria-hidden="true"></div>
   {#if !supportsWebGL}
     <div class="muse-fallback" role="status">
       <p class="muse-fallback__title">Muse preview unavailable</p>
@@ -244,10 +259,25 @@
     place-items: center;
   }
 
+  .muse-aura {
+    position: absolute;
+    inset: 16%;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(var(--muse-aura-rgb) / 0.56), transparent 66%),
+      radial-gradient(circle at 50% 55%, rgba(var(--muse-aura-rgb) / 0.34), transparent 76%);
+    opacity: var(--muse-aura-opacity);
+    filter: blur(var(--muse-aura-blur));
+    z-index: 0;
+    pointer-events: none;
+  }
+
   .muse-viewer {
     width: 100%;
     height: 100%;
     background: var(--muse-background);
+    position: relative;
+    z-index: 1;
   }
 
   .muse-viewer--interactive {
