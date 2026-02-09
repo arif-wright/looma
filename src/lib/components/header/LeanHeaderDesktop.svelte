@@ -35,9 +35,8 @@
   $: energyLabel = typeof energy === 'number' && typeof energyMax === 'number'
     ? `${energy}/${energyMax}`
     : '—';
-  $: shardLabel = typeof walletBalance === 'number'
-    ? `${walletBalance.toLocaleString()} ${walletCurrency.toUpperCase()}`
-    : `0 ${walletCurrency.toUpperCase()}`;
+  $: shardValue = typeof walletBalance === 'number' ? walletBalance.toLocaleString() : '0';
+  $: shardCurrency = walletCurrency.toUpperCase();
   const profileStore = currentProfile;
   $: mergedProfile = $profileStore ?? profile;
   $: profileAvatar = mergedProfile?.avatar_url ?? null;
@@ -149,7 +148,8 @@
           on:click={navWallet}
         >
           <span aria-hidden="true">💎</span>
-          <span>{shardLabel}</span>
+          <span class="lean-status__wallet-value">{shardValue}</span>
+          <span class="lean-status__wallet-currency">{shardCurrency}</span>
         </a>
       </div>
 
@@ -212,7 +212,7 @@
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     min-height: 56px;
-    padding: 0 2.5rem;
+    padding: 0 clamp(0.75rem, 1.6vw, 1.5rem);
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
@@ -281,7 +281,7 @@
     background: transparent;
     color: inherit;
     font-size: 0.85rem;
-    width: 11.5rem;
+    width: clamp(7.5rem, 12vw, 11rem);
   }
 
   .lean-search input::placeholder {
@@ -411,7 +411,7 @@
     background: rgba(255, 255, 255, 0.05);
     color: rgba(248, 250, 255, 0.85);
     min-width: 0;
-    max-width: min(44vw, 620px);
+    max-width: min(38vw, 520px);
     white-space: nowrap;
     flex-wrap: nowrap;
     overflow: hidden;
@@ -516,6 +516,13 @@
     text-decoration: none;
     position: relative;
     z-index: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lean-status__wallet-value,
+  .lean-status__wallet-currency {
     white-space: nowrap;
   }
 
@@ -661,7 +668,11 @@
     }
 
     .lean-status {
-      max-width: min(36vw, 460px);
+      max-width: min(30vw, 360px);
+    }
+
+    .lean-account__email {
+      display: none;
     }
   }
 
@@ -673,6 +684,12 @@
     .lean-status {
       max-width: min(32vw, 360px);
       gap: 0.3rem;
+    }
+  }
+
+  @media (max-width: 1700px) {
+    .lean-status__wallet-currency {
+      display: none;
     }
   }
 
