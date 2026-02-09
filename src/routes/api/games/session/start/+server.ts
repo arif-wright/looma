@@ -8,6 +8,7 @@ import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { ingestServerEvent } from '$lib/server/events/ingest';
+import { safeGameApiError } from '$lib/server/games/safeApiError';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 
@@ -20,6 +21,7 @@ const buildCaps = (config: any, fallback: { max_score: number | null }) => ({
 });
 
 export const POST: RequestHandler = async (event) => {
+  try {
   let body: {
     slug?: unknown;
     gameId?: unknown;
@@ -31,7 +33,7 @@ export const POST: RequestHandler = async (event) => {
   try {
     body = await event.request.json();
   } catch {
-    return json({ error: 'bad_request', details: 'Invalid JSON body' }, { status: 400 });
+    throw error(400, { code: 'bad_request', message: 'Invalid JSON body.' });
   }
 
   const { user, supabase } = await ensureAuth(event);
@@ -154,4 +156,7 @@ export const POST: RequestHandler = async (event) => {
     caps,
     playerStateSnapshot
   });
+  } catch (err) {
+    return safeGameApiError('start', err);
+  }
 };

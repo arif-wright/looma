@@ -12,6 +12,7 @@ import type {
   GameSessionStart,
   GameSessionServerResult
 } from '$lib/games/sdk';
+import { getGameErrorMessage } from '$lib/games/sdk';
 import { applyPlayerState, recordRewardResult } from '$lib/games/state';
 import { describeCompanionBonus } from '$lib/games/rewardBonus';
 import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
@@ -580,8 +581,7 @@ const handleAchievementShareCancel = () => {
         (window as any).__loomaComplete = { sessionId: session.sessionId, score, durationMs };
       }
     } catch (err) {
-      const message = (err as Error).message ?? 'Unable to complete session';
-      errorMessage = message;
+      errorMessage = getGameErrorMessage(err, 'complete');
       status = 'Result submission failed';
     }
   };
@@ -589,7 +589,7 @@ const handleAchievementShareCancel = () => {
   const handleFrameLoad = (iframe: HTMLIFrameElement) => {
     const target = iframe.contentWindow;
     if (!target) {
-      errorMessage = 'Unable to load game frame';
+      errorMessage = 'Something didn’t load. Try again.';
       return;
     }
 
@@ -600,7 +600,7 @@ const handleAchievementShareCancel = () => {
       bridge.subscribe('GAME_READY', () => {
         status = 'Game signaled ready';
         if (pendingSessionContext) {
-          bridge.post('SESSION_STARTED', { ...pendingSessionContext, slug });
+          bridge?.post('SESSION_STARTED', { ...pendingSessionContext, slug });
           pendingSessionContext = null;
         }
       })
@@ -681,6 +681,9 @@ $: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
   onLoaded={handleGameLoaded}
   on:sessionstart={handleWrapperSessionStart}
   on:sessioncomplete={handleWrapperSessionComplete}
+  on:sessionerror={(event) => {
+    errorMessage = event.detail?.message ?? 'Something didn’t load. Try again.';
+  }}
   on:restart={handleWrapperRestart}
 >
   <div

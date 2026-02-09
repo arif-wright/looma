@@ -4,6 +4,7 @@
   import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
   import { hydrateCompanionPrefs, updateCompanionPrefs } from '$lib/stores/companionPrefs';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+  const SAFE_LOAD_ERROR = 'Something didn’t load. Try again.';
 
   let loading = true;
   let saving = false;
@@ -30,8 +31,8 @@
       companionVisible = resolveItem(items, 'companion_visibility', true);
       companionMotion = resolveItem(items, 'companion_motion', true);
       companionTransparent = resolveItem(items, 'companion_transparency', true);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to load preferences.';
+    } catch {
+      error = SAFE_LOAD_ERROR;
     } finally {
       loading = false;
     }
@@ -110,8 +111,8 @@
         motion: typeof patch.motion === 'boolean' ? patch.motion : undefined,
         transparent: typeof patch.transparency === 'boolean' ? patch.transparency : undefined
       });
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to save preferences.';
+    } catch {
+      error = SAFE_LOAD_ERROR;
     } finally {
       saving = false;
     }

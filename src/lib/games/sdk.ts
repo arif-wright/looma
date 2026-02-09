@@ -125,6 +125,97 @@ type StartSessionMeta = Record<string, any>;
 const semverLikePattern = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const isSemverLike = (value: string) => semverLikePattern.test(value.trim());
 
+export type GameErrorKind = 'network' | 'unauthorized' | 'completion_failed' | 'generic';
+type GameErrorContext = 'start' | 'complete' | 'sign' | 'load';
+
+const SAFE_LOAD_MESSAGE = 'Something didn’t load. Try again.';
+const SAFE_NETWORK_MESSAGE = 'Network issue. Check your connection and try again.';
+const SAFE_UNAUTHORIZED_MESSAGE = 'Your session expired. Please sign in again.';
+const SAFE_COMPLETION_MESSAGE = 'We could not save that run. Try again.';
+
+export class GameClientError extends Error {
+  kind: GameErrorKind;
+  status: number | null;
+  code: string | null;
+  details: Record<string, unknown> | null;
+
+  constructor(input: {
+    message: string;
+    kind: GameErrorKind;
+    status?: number | null;
+    code?: string | null;
+    details?: Record<string, unknown> | null;
+  }) {
+    super(input.message);
+    this.name = 'GameClientError';
+    this.kind = input.kind;
+    this.status = input.status ?? null;
+    this.code = input.code ?? null;
+    this.details = input.details ?? null;
+  }
+}
+
+const resolveSafeMessage = (context: GameErrorContext, kind: GameErrorKind) => {
+  if (kind === 'network') return SAFE_NETWORK_MESSAGE;
+  if (kind === 'unauthorized') return SAFE_UNAUTHORIZED_MESSAGE;
+  if (context === 'complete') return SAFE_COMPLETION_MESSAGE;
+  return SAFE_LOAD_MESSAGE;
+};
+
+const toGameClientError = (
+  err: unknown,
+  context: GameErrorContext,
+  fallbackStatus: number | null = null,
+  fallbackCode: string | null = null,
+  details: Record<string, unknown> | null = null
+): GameClientError => {
+  if (err instanceof GameClientError) return err;
+
+  const source = err && typeof err === 'object' ? (err as Record<string, unknown>) : {};
+  const status =
+    typeof source.status === 'number'
+      ? source.status
+      : typeof fallbackStatus === 'number'
+        ? fallbackStatus
+        : null;
+  const code =
+    typeof source.code === 'string'
+      ? source.code
+      : typeof fallbackCode === 'string'
+        ? fallbackCode
+        : null;
+
+  let kind: GameErrorKind = 'generic';
+  if (err instanceof TypeError || code === 'network_error') {
+    kind = 'network';
+  } else if (status === 401 || code === 'unauthorized') {
+    kind = 'unauthorized';
+  } else if (context === 'complete') {
+    kind = 'completion_failed';
+  }
+
+  return new GameClientError({
+    message: resolveSafeMessage(context, kind),
+    kind,
+    status,
+    code,
+    details
+  });
+};
+
+const parseApiErrorPayload = async (response: Response) => {
+  const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  const code = typeof payload?.code === 'string' ? payload.code : null;
+  const message = typeof payload?.message === 'string' ? payload.message : null;
+  return { payload, code, message };
+};
+
+export const getGameErrorMessage = (err: unknown, context: GameErrorContext = 'load') =>
+  toGameClientError(err, context).message;
+
+export const getGameErrorKind = (err: unknown, context: GameErrorContext = 'load') =>
+  toGameClientError(err, context).kind;
+
 export async function startSession(
   gameId: string,
   mode?: string,
@@ -164,56 +255,66 @@ export async function startSession(
     clientMeta
   };
 
-  const response = await fetch('/api/games/session/start', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      slug: gameId,
-      clientVersion,
-      metadata: {
-        ...(clientMeta ?? {}),
-        gameId,
-        mode: mode ?? null
-      },
-      gameId: startRequest.gameId,
-      mode: startRequest.mode,
-      clientMeta: startRequest.clientMeta
-    })
-  });
+  try {
+    const response = await fetch('/api/games/session/start', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        slug: gameId,
+        clientVersion,
+        metadata: {
+          ...(clientMeta ?? {}),
+          gameId,
+          mode: mode ?? null
+        },
+        gameId: startRequest.gameId,
+        mode: startRequest.mode,
+        clientMeta: startRequest.clientMeta
+      })
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error?.error ?? 'Unable to start session');
-  }
+    if (!response.ok) {
+      const { payload, code } = await parseApiErrorPayload(response);
+      throw toGameClientError(
+        { status: response.status, code },
+        'start',
+        response.status,
+        code,
+        payload
+      );
+    }
 
-  const payload = (await response.json()) as StartResponse;
-  const context: SessionContext = {
-    ...payload,
-    gameId,
-    mode,
-    clientMeta: clientMeta ?? null,
-    startedAt: Date.now(),
-    clientVersion: clientVersion ?? CLIENT_VERSION
-  };
-  activeSessions.set(context.sessionId, context);
-  currentSessionId = context.sessionId;
-  sendGameEvent('session_started', {
-    gameId,
-    sessionId: context.sessionId,
-    mode: mode ?? null,
-    clientMeta: clientMeta ?? null
-  });
-  await sendEvent(
-    'game.session.start',
-    {
-      sessionId: context.sessionId,
+    const payload = (await response.json()) as StartResponse;
+    const context: SessionContext = {
+      ...payload,
       gameId,
+      mode,
+      clientMeta: clientMeta ?? null,
+      startedAt: Date.now(),
+      clientVersion: clientVersion ?? CLIENT_VERSION
+    };
+    activeSessions.set(context.sessionId, context);
+    currentSessionId = context.sessionId;
+    sendGameEvent('session_started', {
+      gameId,
+      sessionId: context.sessionId,
       mode: mode ?? null,
       clientMeta: clientMeta ?? null
-    },
-    { sessionId: context.sessionId }
-  );
-  return payload;
+    });
+    await sendEvent(
+      'game.session.start',
+      {
+        sessionId: context.sessionId,
+        gameId,
+        mode: mode ?? null,
+        clientMeta: clientMeta ?? null
+      },
+      { sessionId: context.sessionId }
+    );
+    return payload;
+  } catch (err) {
+    throw toGameClientError(err, 'start');
+  }
 }
 
 type CompleteArgs = {
@@ -278,20 +379,27 @@ export type GameSessionResult = {
 
 const postSessionCompletion = async (args: CompleteArgs) => {
   const payload = { ...args, clientVersion: args.clientVersion ?? CLIENT_VERSION };
-  const response = await fetch('/api/games/session/complete', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch('/api/games/session/complete', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const message = error?.error ?? 'Unable to complete session';
-    const err = new Error(message);
-    (err as any).details = error;
-    throw err;
+    if (!response.ok) {
+      const { payload: errorPayload, code } = await parseApiErrorPayload(response);
+      throw toGameClientError(
+        { status: response.status, code },
+        'complete',
+        response.status,
+        code,
+        errorPayload
+      );
+    }
+    return (await response.json()) as GameSessionServerResult;
+  } catch (err) {
+    throw toGameClientError(err, 'complete');
   }
-  return (await response.json()) as GameSessionServerResult;
 };
 
 const resolveActiveContext = (sessionId: string): SessionContext | null => {
@@ -431,37 +539,66 @@ export const signCompletion = async (args: SignArgs) => {
     ...args,
     clientVersion: args.clientVersion ?? CLIENT_VERSION
   };
-  const response = await fetch('/api/games/sign', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch('/api/games/sign', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const message = error?.message ?? 'Unable to sign result';
-    const err = new Error(message);
-    (err as any).details = error;
-    throw err;
+    if (!response.ok) {
+      const { payload: errorPayload, code } = await parseApiErrorPayload(response);
+      throw toGameClientError(
+        { status: response.status, code },
+        'sign',
+        response.status,
+        code,
+        errorPayload
+      );
+    }
+
+    return (await response.json()) as { signature: string };
+  } catch (err) {
+    throw toGameClientError(err, 'sign');
   }
-
-  return (await response.json()) as { signature: string };
 };
 
 export const fetchConfig = async () => {
-  const response = await fetch('/api/games/config');
-  if (!response.ok) {
-    throw new Error('Unable to fetch game configuration');
+  try {
+    const response = await fetch('/api/games/config');
+    if (!response.ok) {
+      const { payload, code } = await parseApiErrorPayload(response);
+      throw toGameClientError(
+        { status: response.status, code },
+        'load',
+        response.status,
+        code,
+        payload
+      );
+    }
+    return response.json();
+  } catch (err) {
+    throw toGameClientError(err, 'load');
   }
-  return response.json();
 };
 
 export const fetchPlayerState = async () => {
-  const response = await fetch('/api/games/player/state', { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Unable to fetch game player state');
+  try {
+    const response = await fetch('/api/games/player/state', { cache: 'no-store' });
+    if (!response.ok) {
+      const { payload, code } = await parseApiErrorPayload(response);
+      throw toGameClientError(
+        { status: response.status, code },
+        'load',
+        response.status,
+        code,
+        payload
+      );
+    }
+    return response.json();
+  } catch (err) {
+    throw toGameClientError(err, 'load');
   }
-  return response.json();
 };
 
 export const getPlayerState = fetchPlayerState;

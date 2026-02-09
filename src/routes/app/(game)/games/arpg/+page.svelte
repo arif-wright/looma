@@ -10,6 +10,7 @@
   import {
     completeSession,
     fetchPlayerState,
+    getGameErrorMessage,
     startSession,
     type SessionAchievement
   } from '$lib/games/sdk';
@@ -180,8 +181,7 @@
       await bootGame(containerEl, { onGameOver: finalizeRun });
       status = 'Session live — survive and dash!';
     } catch (err) {
-      const message = (err as Error).message ?? 'Unable to start session';
-      errorMessage = message;
+      errorMessage = getGameErrorMessage(err, 'start');
       status = 'Session failed to start';
     } finally {
       sessionLoading = false;
@@ -289,8 +289,7 @@
 
       session = null;
     } catch (err) {
-      const message = (err as Error).message ?? 'Unable to complete session';
-      errorMessage = message;
+      errorMessage = getGameErrorMessage(err, 'complete');
       status = 'Result submission failed';
     } finally {
       if (session) {

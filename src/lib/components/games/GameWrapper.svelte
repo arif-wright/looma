@@ -22,6 +22,8 @@ import {
     awardXP,
     completeSession,
     getMood,
+    getGameErrorKind,
+    getGameErrorMessage,
     startSession,
     type GameSessionResult,
     type GameSessionServerResult,
@@ -43,6 +45,7 @@ import {
   const dispatch = createEventDispatcher<{
     sessionstart: SessionStartDetail;
     sessioncomplete: { sessionId: string; result: GameSessionResult };
+    sessionerror: { stage: 'start' | 'complete'; kind: string; message: string };
     pause: void;
     resume: void;
     restart: void;
@@ -136,7 +139,12 @@ import {
       stopSound('bgm');
       console.error('[GameWrapper] activation failed', err);
       overlayVisible = true;
-      overlayError = err instanceof Error ? err.message : 'Unable to start session';
+      overlayError = getGameErrorMessage(err, 'start');
+      dispatch('sessionerror', {
+        stage: 'start',
+        kind: getGameErrorKind(err, 'start'),
+        message: overlayError
+      });
       ready = false;
     } finally {
       syncContainerSize();
@@ -251,6 +259,7 @@ import {
       stats: result.stats ?? (result.extra ? { ...result.extra } : undefined)
     };
 
+    let completionFailed = false;
     try {
       const serverResponse = await completeSession(currentSessionId, payload);
       await awardFromResponse(serverResponse);
@@ -268,10 +277,18 @@ import {
       }
     } catch (err) {
       console.error('[GameWrapper] failed to complete session', err);
+      completionFailed = true;
+      overlayVisible = true;
+      overlayError = getGameErrorMessage(err, 'complete');
       lastResult = payload;
       lastServerResult = null;
+      dispatch('sessionerror', {
+        stage: 'complete',
+        kind: getGameErrorKind(err, 'complete'),
+        message: overlayError
+      });
     } finally {
-      showResults = true;
+      showResults = !completionFailed;
       resetSessionContext();
       isPaused = false;
     }

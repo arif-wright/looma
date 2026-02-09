@@ -4,9 +4,11 @@ import { requireUser } from '$lib/server/games/guard';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { memoryStore } from '$lib/server/games/store';
+import { safeGameApiError } from '$lib/server/games/safeApiError';
 
 export const GET: RequestHandler = async (event) => {
-  const auth = await requireUser(event);
+  try {
+    const auth = await requireUser(event);
 
   const [stats, walletRes, rewardsRes] = await Promise.all([
     getPlayerStats(event, auth.supabase),
@@ -41,26 +43,24 @@ export const GET: RequestHandler = async (event) => {
   const walletMissing = walletRes.error && (walletRes.error.code === 'PGRST205' || walletRes.error.code === 'PGRST202');
   const rewardsMissing = rewardsRes.error && (rewardsRes.error.code === 'PGRST205' || rewardsRes.error.code === 'PGRST202');
 
-  if (walletMissing || rewardsMissing) {
-    walletBalance = memoryStore.totalCurrency(auth.user.id);
-    rewards = memoryStore.listRewards(auth.user.id).map((row) => ({
-      id: row.sessionId,
-      xpDelta: row.xpDelta,
-      currencyDelta: row.currencyDelta,
-      insertedAt: new Date(row.insertedAt).toISOString(),
-      game: null,
-      gameName: null
-    }));
-  } else {
-    if (walletRes.error) {
-      console.error('[games] wallet query failed', walletRes.error);
-      return json({ error: 'server_error' }, { status: 500 });
-    }
+    if (walletMissing || rewardsMissing) {
+      walletBalance = memoryStore.totalCurrency(auth.user.id);
+      rewards = memoryStore.listRewards(auth.user.id).map((row) => ({
+        id: row.sessionId,
+        xpDelta: row.xpDelta,
+        currencyDelta: row.currencyDelta,
+        insertedAt: new Date(row.insertedAt).toISOString(),
+        game: null,
+        gameName: null
+      }));
+    } else {
+      if (walletRes.error) {
+        throw walletRes.error;
+      }
 
-    if (rewardsRes.error) {
-      console.error('[games] rewards query failed', rewardsRes.error);
-      return json({ error: 'server_error' }, { status: 500 });
-    }
+      if (rewardsRes.error) {
+        throw rewardsRes.error;
+      }
 
     walletBalance = Number(walletRes.data?.shards ?? 0);
     walletCurrency = 'shards';
@@ -83,19 +83,22 @@ export const GET: RequestHandler = async (event) => {
     }));
   }
 
-  return json({
-    xp: stats?.xp ?? 0,
-    level: stats?.level ?? 1,
-    xpNext: stats?.xp_next ?? null,
-    energy: stats?.energy ?? null,
-    energyMax: stats?.energy_max ?? null,
-    currency: walletBalance,
-    wallet: {
-      balance: walletBalance,
-      currency: walletCurrency,
-      updatedAt:
-        walletRes.data?.updated_at ?? (walletMissing ? new Date().toISOString() : new Date(0).toISOString())
-  },
-    rewards
-  });
+    return json({
+      xp: stats?.xp ?? 0,
+      level: stats?.level ?? 1,
+      xpNext: stats?.xp_next ?? null,
+      energy: stats?.energy ?? null,
+      energyMax: stats?.energy_max ?? null,
+      currency: walletBalance,
+      wallet: {
+        balance: walletBalance,
+        currency: walletCurrency,
+        updatedAt:
+          walletRes.data?.updated_at ?? (walletMissing ? new Date().toISOString() : new Date(0).toISOString())
+      },
+      rewards
+    });
+  } catch (err) {
+    return safeGameApiError('default', err);
+  }
 };

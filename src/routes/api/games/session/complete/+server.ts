@@ -24,6 +24,7 @@ import { inspectSessionComplete } from '$lib/server/anti/inspect';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { ingestServerEvent } from '$lib/server/events/ingest';
+import { safeGameApiError } from '$lib/server/games/safeApiError';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -66,6 +67,7 @@ const compareVersions = (current: string | null, minimum: string) => {
 };
 
 export const POST: RequestHandler = async (event) => {
+  try {
   const { user, supabase } = await ensureAuth(event);
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
   const admin = getAdminClient();
@@ -561,7 +563,7 @@ export const POST: RequestHandler = async (event) => {
         await logEvent(event, 'achievement_unlock', {
           userId: user.id,
           sessionId,
-          gameId: session.game_id,
+          gameId: session.game_id ?? undefined,
           meta: {
             key: entry.key,
             points: entry.points,
@@ -575,7 +577,7 @@ export const POST: RequestHandler = async (event) => {
             amount: entry.shards,
             currency: 'shards',
             sessionId,
-            gameId: session.game_id,
+            gameId: session.game_id ?? undefined,
             meta: {
               source: 'achievement',
               key: entry.key,
@@ -624,4 +626,7 @@ export const POST: RequestHandler = async (event) => {
       shards: entry.shards
     }))
   });
+  } catch (err) {
+    return safeGameApiError('complete', err);
+  }
 };

@@ -49,6 +49,7 @@ export let requestId: number | null = null;
   let contentEl: HTMLElement | null = null;
   let loading = false;
   let error: string | null = null;
+  const SAFE_ERROR_MESSAGE = 'Something didn’t load. Try again.';
   let loaded = false;
   let points = 0;
   let catalog: CatalogRow[] = [];
@@ -109,7 +110,7 @@ export let requestId: number | null = null;
       loaded = true;
     } catch (err) {
       console.error('[achievements-panel] load failed', err);
-      error = (err as Error).message ?? 'Unable to load achievements';
+      error = SAFE_ERROR_MESSAGE;
     } finally {
       loading = false;
     }
@@ -198,13 +199,14 @@ export let requestId: number | null = null;
 
   const focusHighlight = () => {
     if (!highlightKey || !contentEl) return;
+    const root = contentEl;
     if (highlightTimer) {
       clearTimeout(highlightTimer);
       highlightTimer = null;
     }
 
     highlightTimer = setTimeout(() => {
-      const target = contentEl.querySelector<HTMLElement>(`[data-achievement-key="${highlightKey}"]`);
+      const target = root.querySelector<HTMLElement>(`[data-achievement-key="${highlightKey}"]`);
       if (target) {
         target.focus({ preventScroll: false });
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
