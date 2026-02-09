@@ -16,6 +16,7 @@
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS } from '$lib/companions/cosmetics';
+  import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { logEvent } from '$lib/analytics';
 
   export let data: PageData;
@@ -51,6 +52,8 @@
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
   const LOW_ENERGY_THRESHOLD = 25;
+  let nowTick = Date.now();
+  let nowTimer: number | null = null;
 
   const toStamp = (value: string | null | undefined) => {
     if (!value) return null;
@@ -122,7 +125,8 @@
     }
 
     const name = companion.name || 'Your companion';
-    const energyLow = (companion.energy ?? 0) <= LOW_ENERGY_THRESHOLD;
+    const effectiveEnergy = computeCompanionEffectiveState(companion, new Date(nowTick)).energy;
+    const energyLow = (effectiveEnergy ?? companion.energy ?? 0) <= LOW_ENERGY_THRESHOLD;
     const resting = (companion.state ?? '').toLowerCase() === 'resting';
     const lastStamp = toStamp(lastInteractionAt(companion));
 
@@ -350,6 +354,7 @@
 
   $: ownedInstances = rosterState.instances;
   $: activeCompanion = findActiveFromState(rosterState);
+  $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
   $: relationshipState = relationshipCopy(activeCompanion);
 
@@ -427,12 +432,17 @@
     if (!browser) return;
     hydrated = true;
     logEvent('companions_page_view');
+
+    nowTimer = window.setInterval(() => {
+      nowTick = Date.now();
+    }, 30000);
   });
 
   onDestroy(() => {
     unsubscribeRoster?.();
     if (toastTimer) clearTimeout(toastTimer);
     if (switchTimer) clearTimeout(switchTimer);
+    if (nowTimer) window.clearInterval(nowTimer);
   });
 
   const unsubscribeRoster = companionState.subscribe((next) => {
@@ -475,11 +485,13 @@
             <div class="view-chips">
               <span class="chip">Active</span>
               <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
-              <span class="chip">{getCompanionMoodMeta(activeCompanion.mood).label}</span>
+              <span class="chip">{activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label}</span>
             </div>
           </div>
         {/key}
-        <p class="time-context">Last check-in: {formatElapsed(lastInteractionAt(activeCompanion))}</p>
+        <p class="time-context">
+          Last check-in: {activeEffective?.msSinceCheckIn == null ? formatElapsed(lastInteractionAt(activeCompanion)) : formatLastCareLabel(activeEffective.msSinceCheckIn)}
+        </p>
         <div class="relationship-copy">
           <p class="relationship-copy__title">{relationshipState.title}</p>
           <p>{relationshipState.body}</p>
@@ -491,16 +503,31 @@
 
         <div class="meter-stack" aria-label="Companion instance stats">
           <div class="meter-row">
-            <div class="meter-row__label"><span>Affection</span><span>{activeCompanion.affection}</span></div>
-            <div class="meter-track meter-track--affection"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.affection ?? 0))}%`}></span></div>
+            <div class="meter-row__label"><span>Affection</span><span>{activeEffective?.affection ?? activeCompanion.affection}</span></div>
+            <div class="meter-track meter-track--affection">
+              <span
+                class="meter-fill"
+                style={`width:${Math.max(0, Math.min(100, activeEffective?.affection ?? activeCompanion.affection ?? 0))}%`}
+              ></span>
+            </div>
           </div>
           <div class="meter-row">
-            <div class="meter-row__label"><span>Trust</span><span>{activeCompanion.trust}</span></div>
-            <div class="meter-track meter-track--trust"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.trust ?? 0))}%`}></span></div>
+            <div class="meter-row__label"><span>Trust</span><span>{activeEffective?.trust ?? activeCompanion.trust}</span></div>
+            <div class="meter-track meter-track--trust">
+              <span
+                class="meter-fill"
+                style={`width:${Math.max(0, Math.min(100, activeEffective?.trust ?? activeCompanion.trust ?? 0))}%`}
+              ></span>
+            </div>
           </div>
           <div class="meter-row">
-            <div class="meter-row__label"><span>Energy</span><span>{activeCompanion.energy}</span></div>
-            <div class="meter-track meter-track--energy"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.energy ?? 0))}%`}></span></div>
+            <div class="meter-row__label"><span>Energy</span><span>{activeEffective?.energy ?? activeCompanion.energy}</span></div>
+            <div class="meter-track meter-track--energy">
+              <span
+                class="meter-fill"
+                style={`width:${Math.max(0, Math.min(100, activeEffective?.energy ?? activeCompanion.energy ?? 0))}%`}
+              ></span>
+            </div>
           </div>
         </div>
       {:else}
