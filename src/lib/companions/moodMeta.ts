@@ -46,9 +46,11 @@ const BASE_MOOD: Record<CompanionMoodKey, CompanionMoodMeta> = {
 
 export const normalizeMoodKey = (mood: string | null | undefined): CompanionMoodKey => {
   const lowered = (mood ?? '').toLowerCase();
+  if (lowered === 'happy' || lowered === 'joyful' || lowered === 'energized') return 'radiant';
   if (lowered === 'radiant') return 'radiant';
   if (lowered === 'curious') return 'curious';
-  if (lowered === 'tired' || lowered === 'low_energy') return 'tired';
+  if (lowered === 'tired' || lowered === 'low_energy' || lowered === 'resting') return 'tired';
+  if (lowered === 'neutral' || lowered === 'content' || lowered === 'idle' || lowered === 'calm') return 'steady';
   return 'steady';
 };
 

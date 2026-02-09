@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CareAction, Companion } from '$lib/stores/companions';
+  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 
   export let companion: Companion;
   export let busyAction: CareAction | null = null;
@@ -24,18 +25,8 @@
   const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   $: rosterState = (stateLabel ?? companion.state ?? companion.mood ?? 'idle') as string;
 
-  const moodMap: Record<string, { icon: string; label: string }> = {
-    happy: { icon: '🙂', label: 'Happy' },
-    tired: { icon: '😴', label: 'Tired' },
-    curious: { icon: '🤔', label: 'Curious' },
-    lonely: { icon: '😕', label: 'Lonely' },
-    radiant: { icon: '🙂', label: 'Radiant' },
-    resting: { icon: '😴', label: 'Resting' },
-    idle: { icon: '😶', label: 'Idle' }
-  };
-
-  $: moodKey = (companion.state ?? companion.mood ?? 'neutral').toLowerCase();
-  $: moodMeta = moodMap[moodKey] ?? { icon: '😶', label: 'Neutral' };
+  $: moodSource = companion.mood ?? companion.state ?? 'steady';
+  $: moodMeta = getCompanionMoodMeta(moodSource);
 
   const handleCare = (action: CareAction, event: MouseEvent) => {
     event.stopPropagation();
@@ -77,7 +68,7 @@
       title={`Mood: ${moodMeta.label}`}
       aria-label={`Companion mood: ${moodMeta.label}`}
     >
-      <span aria-hidden="true">{moodMeta.icon}</span>
+      <span aria-hidden="true">{moodMeta.emoji}</span>
       <span class="sr-only">{moodMeta.label}</span>
     </div>
   </div>
@@ -87,7 +78,7 @@
       <p class="eyebrow">{companion.species}</p>
       <h3>{companion.name}</h3>
     </div>
-    <div class="mood-chip">{companion.mood}</div>
+    <div class="mood-chip">{moodMeta.label}</div>
   </div>
   {#if context === 'roster'}
     <div class="roster-meta">
