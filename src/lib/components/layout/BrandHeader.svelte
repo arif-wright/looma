@@ -64,6 +64,7 @@
     z-index: 40;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
+    overflow: hidden;
   }
 
   .app-header::before {
@@ -79,6 +80,7 @@
     width: 100%;
     max-width: none;
     margin: 0;
+    box-sizing: border-box;
     padding: 0 clamp(1.25rem, 3vw, 3rem);
     display: flex;
     align-items: center;

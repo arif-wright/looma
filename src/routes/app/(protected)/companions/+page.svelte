@@ -645,6 +645,11 @@
     justify-content: space-between;
     gap: 1.5rem;
     align-items: flex-start;
+    min-width: 0;
+  }
+
+  .roster-header > * {
+    min-width: 0;
   }
 
   .bond-milestones-panel {
@@ -826,6 +831,8 @@
     gap: 0.75rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .pill {
