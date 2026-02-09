@@ -107,6 +107,31 @@
     if (!viewer) return null;
 
     try {
+      // If the model isn't loaded yet, wait briefly for a paintable frame.
+      if (!isLoaded) {
+        await new Promise<void>((resolve) => {
+          let settled = false;
+          const done = () => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          };
+          const timeout = window.setTimeout(done, 1800);
+          try {
+            viewer.addEventListener?.(
+              'load',
+              () => {
+                window.clearTimeout(timeout);
+                done();
+              },
+              { once: true }
+            );
+          } catch {
+            // If the event listener fails, just rely on the timeout.
+          }
+        });
+      }
+
       // model-viewer provides a `toDataURL()` helper in modern versions.
       const asAny = viewer as any;
       if (typeof asAny.toDataURL === 'function') {
