@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { startSession, completeSession, signCompletion } from '$lib/games/sdk';
+  import { startSession, completeSession } from '$lib/games/sdk';
   import type { LoomaGameFactory, LoomaGameInstance, LoomaGameResult } from '$lib/games/types';
   import { createFullscreenController, type FullscreenController } from '$lib/games/fullscreen';
 
@@ -16,7 +16,6 @@
   let game: LoomaGameInstance | null = null;
   let session: Awaited<ReturnType<typeof startSession>> | null = null;
   let sessionStartTime = 0;
-  let sessionVersion = clientVersion;
   let isLoading = true;
   let isSubmitting = false;
   let error: string | null = null;
@@ -97,22 +96,11 @@
     }
 
     try {
-      const { signature } = await signCompletion({
-        sessionId: activeSession.sessionId,
-        slug: gameId,
+      await completeSession(activeSession.sessionId, {
         score: safeScore,
         durationMs,
-        nonce: activeSession.nonce,
-        clientVersion: sessionVersion ?? clientVersion
-      });
-
-      await completeSession({
-        sessionId: activeSession.sessionId,
-        score: safeScore,
-        durationMs,
-        nonce: activeSession.nonce,
-        signature,
-        clientVersion: sessionVersion ?? clientVersion
+        success: rawResult.success,
+        stats: rawResult.meta ?? {}
       });
 
       lastResult = { score: safeScore, durationMs, meta: rawResult.meta };
@@ -139,11 +127,9 @@
     isLoading = true;
     error = null;
     lastResult = null;
-    sessionVersion = clientVersion;
 
     try {
       session = await startSession(gameId, clientVersion);
-      sessionVersion = clientVersion || session.caps?.minClientVer || '1.0.0';
       sessionStartTime = performance.now();
 
       resizeCanvas();
