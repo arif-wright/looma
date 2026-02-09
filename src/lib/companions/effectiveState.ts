@@ -66,7 +66,9 @@ export const computeCompanionEffectiveState = (instance: Companion, now: Date = 
   const stats: CompanionStats | null = instance.stats ?? null;
 
   const lastCareAt = pickLatestIso([stats?.fed_at, stats?.played_at, stats?.groomed_at]);
-  const lastCheckInAt = pickLatestIso([stats?.last_passive_tick, lastCareAt]);
+  // "Check-in" is any passive tick or care event. We also fall back to `updated_at`
+  // so brand new / minimally seeded companions still feel time-consistent across surfaces.
+  const lastCheckInAt = pickLatestIso([stats?.last_passive_tick, lastCareAt, instance.updated_at]);
 
   const nowTs = now.getTime();
   const careTs = parseIso(lastCareAt);
@@ -79,9 +81,11 @@ export const computeCompanionEffectiveState = (instance: Companion, now: Date = 
   const baseTrust = typeof instance.trust === 'number' ? instance.trust : 0;
   const baseEnergy = typeof instance.energy === 'number' ? instance.energy : 0;
 
-  // If we've never cared, don't invent decay; just treat the current values as-is.
-  const elapsedDays = msSinceCare === null ? 0 : msSinceCare / 86_400_000;
-  const decay = msSinceCare === null ? { energy: 0, affection: 0, trust: 0 } : computeDecay(elapsedDays);
+  // Gentle decay should reflect time away. If there's no explicit "care" yet, fall back to check-ins
+  // (passive ticks / last updated) so we don't show "Radiant" after weeks of inactivity.
+  const referenceMs = msSinceCare ?? msSinceCheckIn;
+  const elapsedDays = referenceMs === null ? 0 : referenceMs / 86_400_000;
+  const decay = referenceMs === null ? { energy: 0, affection: 0, trust: 0 } : computeDecay(elapsedDays);
 
   const affection = clamp(Math.round(baseAffection - decay.affection));
   const trust = clamp(Math.round(baseTrust - decay.trust));
@@ -117,4 +121,3 @@ export const formatLastCareLabel = (msSinceCare: number | null) => {
   if (months <= 1) return 'Over a month ago';
   return `Over ${months} months ago`;
 };
-

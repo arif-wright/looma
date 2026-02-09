@@ -17,6 +17,7 @@
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS } from '$lib/companions/cosmetics';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
+  import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
 
   export let data: PageData;
@@ -355,6 +356,7 @@
   $: ownedInstances = rosterState.instances;
   $: activeCompanion = findActiveFromState(rosterState);
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
+  $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
   $: relationshipState = relationshipCopy(activeCompanion);
 
@@ -548,6 +550,7 @@
             size="240px"
             autoplay
             respectReducedMotion={false}
+            animationName={museAnimation}
             poster={undefined}
             cameraTarget={undefined}
             auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}

@@ -19,6 +19,7 @@
     isProbablyValidPortrait
   } from '$lib/companions/portrait';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
+  import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -278,6 +279,7 @@
   $: effective = companion ? computeCompanionEffectiveState(companion, new Date(nowTick)) : null;
   $: lastCareLabel = effective ? formatLastCareLabel(effective.msSinceCare) : 'No care yet';
   $: lastCheckInLabel = effective?.msSinceCheckIn == null ? 'No check-in yet' : formatLastCareLabel(effective.msSinceCheckIn);
+  $: portraitAnimation = pickMuseAnimationForMood(effective?.moodKey, { nowMs: nowTick, seed: companion?.id ?? '' });
   $: bondLevel = statsRecord?.bond_level ?? companion?.bond_level ?? 0;
   $: bondScore = statsRecord?.bond_score ?? companion?.bond_score ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
@@ -467,6 +469,7 @@
               eager={true}
               autoplay={false}
               respectReducedMotion={false}
+              animationName={portraitAnimation}
               preserveDrawingBuffer
             />
           {:else}
