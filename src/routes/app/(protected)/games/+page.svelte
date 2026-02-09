@@ -91,6 +91,7 @@
   let rewardList: RewardEntry[] = playerSummary?.rewards ? playerSummary.rewards.slice() : [];
 
   $: rewardList = (playerSummary?.rewards ?? []).slice();
+  $: hasPlayedGames = rewardList.length > 0;
 
   const recentGamesFromRewards = () => {
     const unique = new Map<string, { slug: string; name: string }>();
@@ -176,11 +177,16 @@
       aria-label="Featured games"
     >
       <div class="hero-copy">
-        <p class="hero-kicker">Pick up where you left off</p>
-        <h1>{featuredGame ? `Jump back into ${featuredGame.name}` : 'Choose your next flow'}</h1>
+        <p class="hero-kicker">{hasPlayedGames ? 'Pick up where you left off' : 'Ready when you are'}</p>
+        <h1>
+          {hasPlayedGames
+            ? (featuredGame ? `Jump back into ${featuredGame.name}` : 'Choose your next flow')
+            : 'Start your first game'}
+        </h1>
         <p class="hero-lead">
-          Continue your streak, explore new worlds, and keep the shard economy humming. Your recent
-          sessions are ready when you are.
+          {hasPlayedGames
+            ? 'Continue your streak, explore new worlds, and keep the shard economy humming.'
+            : 'No games played yet. Pick any game below to start your first session.'}
         </p>
         {#if featuredGame}
           <div class="hero-actions">
@@ -197,7 +203,7 @@
             </a>
           </div>
           <div class="hero-mini-links">
-            <span class="hero-mini-links__label">New canvas labs:</span>
+            <span class="hero-mini-links__label">Quick picks:</span>
             <div class="hero-mini-links__chips">
               <a class="hero-mini-links__chip" href="/app/games/runner">Neon Run</a>
               <a class="hero-mini-links__chip" href="/app/games/dodge">Orbfield</a>
@@ -280,7 +286,7 @@
           {/each}
         </ul>
       {:else}
-        <p class="rewards-empty">Complete a run to see rewards light up here.</p>
+        <p class="rewards-empty">No games played yet. Your latest rewards will appear here.</p>
       {/if}
     </section>
 
@@ -312,7 +318,7 @@
     z-index: 1;
     max-width: 1680px;
     margin: 0 auto;
-    padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
+    padding: clamp(1.5rem, 3vw, 2.4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
     display: flex;
     flex-direction: column;
     gap: 2.75rem;

@@ -405,6 +405,9 @@
   $: portableActiveCompanion =
     portableRoster.find((entry) => entry.id === portableActiveId) ?? portableRoster[0] ?? null;
   $: portableActiveCosmetics = normalizeCompanionCosmetics(portableActiveCompanion?.cosmetics);
+  $: unlockedCosmeticsCount = Array.isArray(portableActiveCompanion?.cosmeticsUnlocked)
+    ? portableActiveCompanion.cosmeticsUnlocked.length
+    : 0;
   $: {
     const syncKey = `${portableActiveCompanion?.id ?? 'none'}|${portableActiveCosmetics.auraColor}|${portableActiveCosmetics.glowIntensity}`;
     if (syncKey !== lastCustomizeSyncKey) {
@@ -422,7 +425,6 @@
 <main class="roster-page">
   <header class="roster-header">
     <div>
-      <p class="eyebrow">Phase 13.3</p>
       <h1>Your Companions</h1>
       <p class="lede">Arrange your squad, mark an active partner, and keep everyone rested.</p>
     </div>
@@ -461,31 +463,35 @@
       <h2 class="panel-title">Companion roster</h2>
     </div>
     <p class="portable-roster-copy">Choose your active companion for dock presence and game context.</p>
-    <div class="portable-roster-grid">
-      {#each portableRoster as rosterCompanion (rosterCompanion.id)}
-        <article class={`portable-card ${portableActiveId === rosterCompanion.id ? 'is-active' : ''}`}>
-          <p class="portable-card__eyebrow">{rosterCompanion.archetype}</p>
-          <h3>{rosterCompanion.name}</h3>
-          <p class="portable-card__meta">Bond {rosterCompanion.stats.bond} · Level {rosterCompanion.stats.level}</p>
-          <button
-            type="button"
-            class="portable-card__button"
-            disabled={setActiveBusyId !== null || portableActiveId === rosterCompanion.id || !rosterCompanion.unlocked}
-            on:click={() => {
-              void setPortableActive(rosterCompanion.id);
-            }}
-          >
-            {#if portableActiveId === rosterCompanion.id}
-              Active
-            {:else if setActiveBusyId === rosterCompanion.id}
-              Setting…
-            {:else}
-              Set active
-            {/if}
-          </button>
-        </article>
-      {/each}
-    </div>
+    {#if portableRoster.length === 0}
+      <p class="portable-roster-copy">First-time companion view. Your roster will appear here once your first companion is ready.</p>
+    {:else}
+      <div class="portable-roster-grid">
+        {#each portableRoster as rosterCompanion (rosterCompanion.id)}
+          <article class={`portable-card ${portableActiveId === rosterCompanion.id ? 'is-active' : ''}`}>
+            <p class="portable-card__eyebrow">{rosterCompanion.archetype}</p>
+            <h3>{rosterCompanion.name}</h3>
+            <p class="portable-card__meta">Bond {rosterCompanion.stats.bond} · Level {rosterCompanion.stats.level}</p>
+            <button
+              type="button"
+              class="portable-card__button"
+              disabled={setActiveBusyId !== null || portableActiveId === rosterCompanion.id || !rosterCompanion.unlocked}
+              on:click={() => {
+                void setPortableActive(rosterCompanion.id);
+              }}
+            >
+              {#if portableActiveId === rosterCompanion.id}
+                Active
+              {:else if setActiveBusyId === rosterCompanion.id}
+                Setting…
+              {:else}
+                Set active
+              {/if}
+            </button>
+          </article>
+        {/each}
+      </div>
+    {/if}
   </section>
 
   <section class="customize-panel" aria-label="Customize companion cosmetics">
@@ -513,6 +519,9 @@
           </button>
         </div>
       </div>
+      {#if unlockedCosmeticsCount === 0}
+        <p class="portable-roster-copy">No cosmetics unlocked yet.</p>
+      {/if}
     {:else}
       <p class="portable-roster-copy">No active companion available.</p>
     {/if}
@@ -540,7 +549,7 @@
       <p class="roster-empty__eyebrow">Companions</p>
       <h3>You don’t have a companion yet.</h3>
       <p class="roster-empty__copy">
-        As we open Looma further, you’ll be able to unlock your first ally here.
+        Your first companion will appear here when it is available.
       </p>
       <a class="roster-empty__cta" href="/app/home">Return home</a>
     </section>
@@ -621,7 +630,7 @@
 
 <style>
   .roster-page {
-    padding: clamp(2rem, 4vw, 3rem);
+    padding: clamp(1.25rem, 3vw, 2rem);
     display: grid;
     gap: 2rem;
   }

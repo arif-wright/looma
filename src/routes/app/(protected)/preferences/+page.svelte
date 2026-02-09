@@ -171,8 +171,7 @@
 <main class="preferences-page">
   <header class="preferences-header">
     <div>
-      <p class="eyebrow">Preferences</p>
-      <h1>User Preferences</h1>
+      <h1>Preferences</h1>
       <p class="lede">Manage companion display, transparency, and memory controls.</p>
     </div>
   </header>
@@ -265,7 +264,13 @@
           <ul>
             <li>Active companion: {portabilitySummary.companions.activeId ?? 'none'}</li>
             <li>Roster size: {portabilitySummary.companions.roster.length}</li>
-            <li>Milestones: {portabilitySummary.milestones.length}</li>
+            <li>
+              {#if portabilitySummary.milestones.length === 0}
+                No cosmetics unlocked yet.
+              {:else}
+                Milestones: {portabilitySummary.milestones.length}
+              {/if}
+            </li>
           </ul>
         </article>
       </div>
@@ -300,7 +305,7 @@
 
 <style>
   .preferences-page {
-    padding: clamp(1.5rem, 4vw, 3rem);
+    padding: clamp(1.25rem, 3vw, 2.25rem);
     display: grid;
     gap: 1.75rem;
   }
@@ -310,14 +315,6 @@
     justify-content: space-between;
     align-items: flex-end;
     gap: 1.5rem;
-  }
-
-  .eyebrow {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
   }
 
   .lede {
