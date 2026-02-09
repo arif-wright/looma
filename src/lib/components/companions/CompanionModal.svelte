@@ -15,6 +15,7 @@
     captureCompanionPortrait,
     clearCachedCompanionPortrait,
     getCachedCompanionPortrait,
+    isProbablyNonBlankPortrait,
     isProbablyValidPortrait
   } from '$lib/companions/portrait';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
@@ -295,8 +296,12 @@
     if (!open || !companion) return;
     const cached = getCachedCompanionPortrait(companion.id);
     if (cached && isProbablyValidPortrait(cached)) {
-      portraitSrc = cached;
-      return;
+      if (await isProbablyNonBlankPortrait(cached)) {
+        portraitSrc = cached;
+        return;
+      }
+      clearCachedCompanionPortrait(companion.id);
+      portraitSrc = null;
     }
     if (cached && !isProbablyValidPortrait(cached)) {
       clearCachedCompanionPortrait(companion.id);
