@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('Looma World homepage renders key sections and CTA navigates to auth', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('link', { name: 'Looma' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Looma hero' })).toBeVisible();

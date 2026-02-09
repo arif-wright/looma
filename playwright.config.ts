@@ -28,10 +28,15 @@ const config: PlaywrightTestConfig = {
     ],
   use: {
     baseURL: BASE_URL,
-    storageState: hasSupabaseSeedEnv ? '.auth/viewer.json' : undefined
+    storageState: hasSupabaseSeedEnv ? '.auth/viewer.json' : undefined,
+    navigationTimeout: 45_000
   },
   webServer: {
-    command: `npm run dev -- --host 0.0.0.0 --port ${WEB_SERVER_PORT}`,
+    // `vite dev` can be flaky under CI load (watchers/HMR + parallel workers).
+    // Use a built preview server in CI for stability.
+    command: process.env.CI
+      ? `npm run preview -- --host 0.0.0.0 --port ${WEB_SERVER_PORT}`
+      : `npm run dev -- --host 0.0.0.0 --port ${WEB_SERVER_PORT}`,
     port: WEB_SERVER_PORT,
     timeout: 120_000,
     reuseExistingServer: !process.env.CI
