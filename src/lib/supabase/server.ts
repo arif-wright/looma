@@ -7,14 +7,31 @@ const resolveSupabaseConfig = () => {
   const supabaseAnonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase URL or anon key is not configured');
+    return null;
   }
 
   return { supabaseUrl, supabaseAnonKey };
 };
 
+const SUPABASE_UNCONFIGURED_ERROR = 'Supabase URL or anon key is not configured';
+
+// We want the app (and basic Playwright smoke tests) to still run without Supabase
+// wired. Calls that actually need Supabase will throw at the point of use.
+const unconfiguredSupabase = new Proxy(
+  {},
+  {
+    get() {
+      throw new Error(SUPABASE_UNCONFIGURED_ERROR);
+    }
+  }
+);
+
 export const createSupabaseServerClient = (event: RequestEvent) => {
-  const { supabaseUrl, supabaseAnonKey } = resolveSupabaseConfig();
+  const config = resolveSupabaseConfig();
+  if (!config) {
+    return unconfiguredSupabase as any;
+  }
+  const { supabaseUrl, supabaseAnonKey } = config;
   const isSecure = event.url.protocol === 'https:';
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {

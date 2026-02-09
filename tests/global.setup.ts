@@ -4,6 +4,11 @@ import { BASE_URL, runSeed, TEST_USERS } from './fixtures/env';
 import { loginAs } from './fixtures/auth';
 
 export default async function globalSetup(_config: FullConfig) {
+  if (!process.env.PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('[playwright] Supabase env missing; skipping seed + auth storageState');
+    return;
+  }
+
   const seedResult = await runSeed();
   TEST_USERS.author = seedResult.author;
   TEST_USERS.viewer = seedResult.viewer;

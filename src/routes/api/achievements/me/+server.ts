@@ -12,6 +12,12 @@ type AchievementRow = {
   points: number | null;
 };
 
+type UnlockRow = {
+  unlocked_at: string;
+  meta: Record<string, unknown> | null;
+  achievements: unknown;
+};
+
 export const GET: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
   const {
@@ -50,8 +56,10 @@ export const GET: RequestHandler = async (event) => {
 
   const points = typeof pointsRow?.points === 'number' ? pointsRow?.points ?? 0 : 0;
 
-  const unlocks = (unlockRows ?? [])
-    .map((row) => {
+  const unlockRowsTyped = (unlockRows ?? []) as UnlockRow[];
+
+  const unlocks = unlockRowsTyped
+    .map((row: UnlockRow) => {
       const rawAchievement = row.achievements as AchievementRow | AchievementRow[] | null;
       const achievement = Array.isArray(rawAchievement) ? rawAchievement[0] ?? null : rawAchievement;
       if (!achievement || typeof achievement.key !== 'string') return null;

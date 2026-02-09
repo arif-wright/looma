@@ -18,7 +18,7 @@ test('Looma World homepage renders key sections and CTA navigates to auth', asyn
   await expect(page.getByRole('heading', { level: 2, name: 'The Bond System' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Threads that connect us all' })).toBeVisible();
 
-  await expect(page.getByRole('contentinfo')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
 
   const navigationPromise = page.waitForURL('**/app/auth');
   await page.getByRole('link', { name: 'Begin your bond' }).click();

@@ -4,21 +4,21 @@ test.describe('Marketing homepage', () => {
   test('shows hero and CTA', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Looma keeps every creature at your command' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Start with your Kinforge account' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Looma remembers you.' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Begin your bond' })).toBeVisible();
   });
 
   test('CTA navigates to login', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Start with your Kinforge account' }).click();
-    await expect(page).toHaveURL(/\/app\/login$/);
+    await page.getByRole('link', { name: 'Begin your bond' }).click();
+    await expect(page).toHaveURL(/\/app\/auth$/);
   });
 
   test('sections render for features, how it works, and footer', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Built to tame every bestiary' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'How Looma supports your session flow' })).toBeVisible();
-    await expect(page.getByRole('contentinfo')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'A world that learns you back' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'The Bond System' })).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
   });
 });

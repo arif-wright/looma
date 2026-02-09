@@ -42,13 +42,19 @@ export const getUserServer = async (event: RequestEvent): Promise<UserResult> =>
     }
   }
 
-  const {
-    data: { user: cookieUser },
-    error
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user: cookieUser },
+      error
+    } = await supabase.auth.getUser();
 
-  if (!error && cookieUser) {
-    user = cookieUser;
+    if (!error && cookieUser) {
+      user = cookieUser;
+    }
+  } catch (err) {
+    // If Supabase isn't configured (local smoke tests, CI without secrets),
+    // we treat the request as unauthenticated instead of returning a 500.
+    console.warn('[auth] supabase unavailable; continuing as guest');
   }
 
   return { supabase, user };

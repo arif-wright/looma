@@ -16,6 +16,8 @@ test.describe('Routing – unauthenticated', () => {
 });
 
 test.describe('Routing – authenticated', () => {
+  test.skip(!process.env.PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY, 'requires seeded auth state');
+
   test('marketing enter button points to app home', async ({ page }) => {
     await page.goto('/');
     const enterLink = page.getByRole('link', { name: 'Enter' });
