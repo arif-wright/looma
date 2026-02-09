@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
-import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 
 const COMPANION_COLUMNS =
   'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
@@ -29,12 +28,20 @@ type PassiveTickEvent = {
   energyDelta: number;
 };
 
+type CompanionArchetypeRow = {
+  key: string;
+  name: string;
+  description: string;
+  color: string;
+  seed: string;
+};
+
 export const load: PageServerLoad = async ({ locals, fetch }) => {
   const supabase = locals.supabase as App.Locals['supabase'];
   const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
 
   if (!supabase || !userId) {
-    return { companions: [], maxSlots: 3, activeCompanionId: null, tickEvents: [] };
+    return { companions: [], maxSlots: 3, activeCompanionId: null, tickEvents: [], discoverCatalog: [] };
   }
 
   let tickedCompanions = new Map<string, TickSnapshot>();
@@ -69,7 +76,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     console.error('[companions:load] failed to tick companions', err);
   }
 
-  const [companionsResult, slotsResult, portablePrefsResult] = await Promise.all([
+  const [companionsResult, slotsResult, archetypesResult] = await Promise.all([
     supabase
       .from('companions')
       .select(COMPANION_COLUMNS)
@@ -77,7 +84,10 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       .order('slot_index', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true }),
     supabase.rpc('ensure_slots'),
-    supabase.from('user_preferences').select('portable_state').eq('user_id', userId).maybeSingle()
+    supabase
+      .from('companion_archetypes')
+      .select('key, name, description, color, seed')
+      .order('name', { ascending: true })
   ]);
 
   const companions = (companionsResult.data ?? []).map((companion) => {
@@ -121,18 +131,15 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
   const bondMilestones = await fetchBondAchievementsForUser(supabase, userId);
   const rituals = await getCompanionRituals(supabase, userId);
-  const portableCompanions = normalizePortableCompanions(
-    (portablePrefsResult.data?.portable_state as Record<string, unknown> | null)?.companions
-  );
+  const discoverCatalog = (archetypesResult.data ?? []) as CompanionArchetypeRow[];
 
   return {
     companions,
     maxSlots,
     activeCompanionId,
-    portableRoster: portableCompanions.roster,
-    portableActiveId: portableCompanions.activeId,
+    discoverCatalog,
     tickEvents,
-    error: companionsResult.error?.message ?? slotsResult.error?.message ?? portablePrefsResult.error?.message ?? null,
+    error: companionsResult.error?.message ?? slotsResult.error?.message ?? archetypesResult.error?.message ?? null,
     bondMilestones,
     rituals
   };

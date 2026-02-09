@@ -58,8 +58,19 @@ export const loginAs = async (page: Page, user: Credentials): Promise<Session> =
   const cookieUrl = base.origin;
   const secure = base.protocol === 'https:';
   const expiresAt = session.expires_at ?? Math.floor(Date.now() / 1000) + 3600;
+  const authTokenCookieName = `sb-${projectRef}-auth-token`;
+  const authTokenCookieValue = JSON.stringify(session);
 
   await page.context().addCookies([
+    {
+      name: authTokenCookieName,
+      value: authTokenCookieValue,
+      url: cookieUrl,
+      httpOnly: true,
+      secure,
+      sameSite: 'Lax',
+      expires: expiresAt
+    },
     {
       name: `sb-${projectRef}-access-token`,
       value: session.access_token,

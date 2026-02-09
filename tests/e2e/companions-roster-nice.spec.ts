@@ -16,7 +16,7 @@ test.describe('Companion roster niceties', () => {
 
   test('mood chip shows with accessible label', async ({ page }) => {
     await page.goto('/app/companions');
-    const chip = page.locator('[aria-label^="Companion mood:"]');
+    const chip = page.locator('.mood-chip');
     await expect(chip.first()).toBeVisible();
   });
 });

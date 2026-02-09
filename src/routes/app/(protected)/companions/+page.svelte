@@ -1,39 +1,46 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { invalidateAll } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
-  import RosterFilterBar from '$lib/components/companions/RosterFilterBar.svelte';
-  import RosterGrid from '$lib/components/companions/RosterGrid.svelte';
+  import { createCompanionRosterState } from '$lib/stores/companionRosterState';
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
-  import { logEvent } from '$lib/analytics';
-  import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
   import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
-  import type { BondAchievementStatus } from '$lib/companions/bond';
-  import { applyRitualUpdate, companionRitualsStore } from '$lib/stores/companionRituals';
+  import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
   import type { CompanionRitual } from '$lib/companions/rituals';
-  import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
-  import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
+  import { applyRitualUpdate, companionRitualsStore } from '$lib/stores/companionRituals';
+  import type { BondAchievementStatus } from '$lib/companions/bond';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
-  import type { PortableCompanionEntry } from '$lib/types/portableState';
-  import {
-    AURA_COLOR_OPTIONS,
-    DEFAULT_COMPANION_COSMETICS,
-    normalizeCompanionCosmetics,
-    type AuraColor
-  } from '$lib/companions/cosmetics';
+  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+  import { DEFAULT_COMPANION_COSMETICS } from '$lib/companions/cosmetics';
+  import { logEvent } from '$lib/analytics';
 
   export let data: PageData;
-  const SAFE_LOAD_ERROR = 'Something didn’t load. Try again.';
-  const CARE_STALE_HOURS = 18;
-  const LOW_ENERGY_THRESHOLD = 25;
+
+  type DiscoverCompanionDefinition = {
+    key: string;
+    name: string;
+    description: string;
+    color: string;
+    seed: string;
+  };
+
+  type TabKey = 'owned' | 'discover';
+  type SortKey = 'bond_desc' | 'recent_interaction' | 'energy_desc' | 'name_asc';
+
+  type FilterState = {
+    search: string;
+    archetype: string;
+    mood: string;
+    sort: SortKey;
+  };
 
   type PrefetchedEvent = {
     id: string;
     action: string;
-    kind?: string;
     affection_delta: number;
     trust_delta: number;
     energy_delta: number;
@@ -41,55 +48,148 @@
     note?: string | null;
   };
 
-  type RosterFilterState = {
-    search: string;
-    archetype: string;
-    mood: string;
-    sort: 'bond_desc' | 'newest' | 'energy';
-  };
+  const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
+  const CARE_STALE_HOURS = 18;
+  const LOW_ENERGY_THRESHOLD = 25;
 
-  type RosterReorderDetail = { ids: string[]; via: 'pointer' | 'keyboard' };
-
-  const sortRoster = (list: Companion[]) =>
-    list
-      .slice()
-      .sort((a, b) => {
-        const slotA = typeof a.slot_index === 'number' ? a.slot_index : Number.MAX_SAFE_INTEGER;
-        const slotB = typeof b.slot_index === 'number' ? b.slot_index : Number.MAX_SAFE_INTEGER;
-        if (slotA !== slotB) return slotA - slotB;
-        return Date.parse(a.created_at) - Date.parse(b.created_at);
-      });
-
-  const parseTimestamp = (value: string | null | undefined): number | null => {
+  const toStamp = (value: string | null | undefined) => {
     if (!value) return null;
     const stamp = Date.parse(value);
     return Number.isNaN(stamp) ? null : stamp;
   };
 
-  let companions: Companion[] = sortRoster(((data.companions ?? []) as Companion[]) ?? []);
-  const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
+  const formatElapsed = (value: string | null | undefined) => {
+    const stamp = toStamp(value);
+    if (!stamp) return 'Not yet';
+    const diffMs = Math.max(0, Date.now() - stamp);
+    const totalMinutes = Math.floor(diffMs / 60000);
+    if (totalMinutes < 1) return 'Just now';
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const mins = totalMinutes % 60;
+    if (days > 0) return `${days}d ${hours}h ago`;
+    if (hours > 0) return `${hours}h ${mins}m ago`;
+    return `${mins}m ago`;
+  };
+
+  const cleanArchetype = (value: string | null | undefined) => {
+    const raw = (value ?? '').trim();
+    if (!raw) return 'Muse';
+    if (raw.toLowerCase() === 'looma') return 'Muse';
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  };
+
+  const normalizeToken = (value: string | null | undefined) =>
+    (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+  const getBondLevel = (companion: Companion) => companion.stats?.bond_level ?? companion.bond_level ?? 0;
+
+  const lastInteractionAt = (companion: Companion) => {
+    const stats = companion.stats;
+    const stamps = [
+      stats?.fed_at,
+      stats?.played_at,
+      stats?.groomed_at,
+      stats?.last_passive_tick,
+      companion.updated_at
+    ]
+      .map((entry) => toStamp(entry))
+      .filter((entry): entry is number => typeof entry === 'number');
+    if (!stamps.length) return null;
+    return new Date(Math.max(...stamps)).toISOString();
+  };
+
+  const needsAttention = (companion: Companion) => {
+    const lowEnergy = (companion.energy ?? 0) <= LOW_ENERGY_THRESHOLD;
+    const lastStamp = toStamp(lastInteractionAt(companion));
+    const stale = !lastStamp || lastStamp < Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000;
+    return lowEnergy || stale;
+  };
+
+  const statusLabel = (companion: Companion, isActive: boolean) => {
+    if (isActive) return 'Active';
+    if ((companion.state ?? '').toLowerCase() === 'resting') return 'Resting';
+    if (needsAttention(companion)) return 'Needs attention';
+    return 'Ready';
+  };
+
+  const relationshipCopy = (companion: Companion | null) => {
+    if (!companion) {
+      return {
+        title: 'First-time companion view',
+        body: 'When your first companion arrives, this view becomes your daily check-in space.'
+      };
+    }
+
+    const name = companion.name || 'Your companion';
+    const energyLow = (companion.energy ?? 0) <= LOW_ENERGY_THRESHOLD;
+    const resting = (companion.state ?? '').toLowerCase() === 'resting';
+    const lastStamp = toStamp(lastInteractionAt(companion));
+
+    if (energyLow || resting) {
+      return {
+        title: `${name} is resting.`,
+        body: 'A quiet check-in will help.'
+      };
+    }
+
+    if (!lastStamp || lastStamp < Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000) {
+      return {
+        title: `${name} has been waiting for you.`,
+        body: 'A short moment together steadies your bond.'
+      };
+    }
+
+    if (lastStamp >= Date.now() - 2 * 60 * 60 * 1000) {
+      return {
+        title: `${name} is still glowing from your last check-in.`,
+        body: 'Come back when you want another small moment together.'
+      };
+    }
+
+    return {
+      title: `${name} is with you now.`,
+      body: 'A quick check-in keeps your connection warm.'
+    };
+  };
+
+  const sortBySlot = (list: Companion[]) =>
+    list.slice().sort((a, b) => {
+      const slotA = typeof a.slot_index === 'number' ? a.slot_index : Number.MAX_SAFE_INTEGER;
+      const slotB = typeof b.slot_index === 'number' ? b.slot_index : Number.MAX_SAFE_INTEGER;
+      if (slotA !== slotB) return slotA - slotB;
+      return Date.parse(a.created_at ?? '') - Date.parse(b.created_at ?? '');
+    });
+
   const rituals: CompanionRitual[] = (data.rituals ?? []) as CompanionRitual[];
   applyRitualUpdate(rituals);
+
+  const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
   let maxSlots = data.maxSlots ?? 3;
-  let activeCompanionId: string | null = data.activeCompanionId ?? null;
-  let selected: Companion | null = null;
-  let portableRoster: PortableCompanionEntry[] = (data.portableRoster ?? []) as PortableCompanionEntry[];
-  let portableActiveId: string | null = data.portableActiveId ?? null;
+  const companionState = createCompanionRosterState(sortBySlot((data.companions ?? []) as Companion[]), data.activeCompanionId ?? null);
+  let rosterState = get(companionState);
+
+  let selectedForCare: Companion | null = null;
+  let activeTab: TabKey = 'owned';
+  let filters: FilterState = {
+    search: '',
+    archetype: 'all',
+    mood: 'all',
+    sort: 'bond_desc'
+  };
+
   let setActiveBusyId: string | null = null;
-  let customizeBusy = false;
-  let selectedAuraColor: AuraColor = DEFAULT_COMPANION_COSMETICS.auraColor;
-  let selectedGlowIntensity = DEFAULT_COMPANION_COSMETICS.glowIntensity;
-  let lastCustomizeSyncKey = '';
-  let portableActiveCompanion: PortableCompanionEntry | null = null;
-  let portableActiveCosmetics = normalizeCompanionCosmetics(null);
-  let activeCarePrompt: { reason: 'low_energy' | 'care_due'; title: string; body: string } | null = null;
-  let filters: RosterFilterState = { search: '', archetype: 'all', mood: 'all', sort: 'bond_desc' };
-  let toast: { message: string; kind: 'success' | 'error' } | null = null;
-  let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let loading = false;
-  let reorderBusy = false;
   let rosterError: string | null = data.error ? SAFE_LOAD_ERROR : null;
   let showUnlock = false;
+  let hydrated = false;
+  let toast: { message: string; kind: 'success' | 'error' } | null = null;
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  let switchMessage: string | null = null;
+  let switchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  let discoverModal: DiscoverCompanionDefinition | null = null;
+
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
       if (!event?.companionId) return acc;
@@ -97,7 +197,6 @@
       const mapped: PrefetchedEvent = {
         id: event.id,
         action: event.kind,
-        kind: event.kind,
         affection_delta: event.affectionDelta ?? 0,
         trust_delta: event.trustDelta ?? 0,
         energy_delta: event.energyDelta ?? 0,
@@ -118,52 +217,16 @@
     toastTimer = setTimeout(() => {
       toast = null;
       toastTimer = null;
-    }, 3200);
+    }, 2800);
   };
 
-  onDestroy(() => {
-    if (toastTimer) clearTimeout(toastTimer);
-  });
-
-  onMount(() => {
-    if (!browser) return;
-    logEvent('roster_view');
-    const url = new URL(window.location.href);
-    const focusId = url.searchParams.get('focus');
-    if (focusId) {
-      const target = companions.find((entry) => entry.id === focusId);
-      if (target) {
-        selected = target;
-      }
-      url.searchParams.delete('focus');
-      const search = url.searchParams.toString();
-      const next = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`;
-      window.history.replaceState({}, document.title, next);
-    }
-  });
-
-  const snapshot = () => companions.map((entry) => ({ ...entry }));
-
-  const applyFilters = (list: Companion[]) => {
-    let next = list.slice();
-    if (filters.search.trim()) {
-      const term = filters.search.trim().toLowerCase();
-      next = next.filter((companion) => companion.name.toLowerCase().includes(term));
-    }
-    if (filters.archetype !== 'all') {
-      next = next.filter((companion) => companion.species === filters.archetype);
-    }
-    if (filters.mood !== 'all') {
-      next = next.filter((companion) => (companion.state ?? companion.mood) === filters.mood);
-    }
-    if (filters.sort === 'bond_desc') {
-      next = next.sort((a, b) => b.affection + b.trust - (a.affection + a.trust));
-    } else if (filters.sort === 'newest') {
-      next = next.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-    } else if (filters.sort === 'energy') {
-      next = next.sort((a, b) => b.energy - a.energy);
-    }
-    return next;
+  const showSwitchMessage = (message: string) => {
+    switchMessage = message;
+    if (switchTimer) clearTimeout(switchTimer);
+    switchTimer = setTimeout(() => {
+      switchMessage = null;
+      switchTimer = null;
+    }, 2600);
   };
 
   const refreshRoster = async () => {
@@ -174,171 +237,74 @@
       if (!res.ok) {
         throw new Error(payload?.error ?? 'Unable to load companions');
       }
-      companions = sortRoster((payload.items as Companion[]) ?? []);
+      const items = sortBySlot((payload.items as Companion[]) ?? []);
+      companionState.replaceInstances(items, activeCompanion?.id ?? null);
+      rosterState = get(companionState);
       maxSlots = payload.maxSlots ?? maxSlots;
-      activeCompanionId = companions.find((entry) => entry.is_active)?.id ?? null;
       rosterError = null;
-    } catch {
+    } catch (err) {
+      console.error('[companions] failed to refresh roster', err);
       rosterError = SAFE_LOAD_ERROR;
-      showToast(rosterError, 'error');
+      showToast(SAFE_LOAD_ERROR, 'error');
     } finally {
       loading = false;
     }
   };
 
-  const handleReorder = async ({ ids, via }: RosterReorderDetail) => {
-    if (!ids.length) return;
-    const previous = snapshot();
-    reorderBusy = true;
-    companions = sortRoster(
-      companions.map((companion) => {
-        const nextIndex = ids.indexOf(companion.id);
-        if (nextIndex >= 0) {
-          return { ...companion, slot_index: nextIndex };
-        }
-        return companion;
-      })
-    );
-    try {
-      const res = await fetch('/api/companions/reorder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order: ids })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.error ?? 'Reorder failed');
-      }
-      showToast('Roster updated');
-      logEvent('roster_reorder_success', { via, count: ids.length });
-    } catch (err) {
-      companions = previous;
-      showToast(err instanceof Error ? err.message : 'Reorder failed', 'error');
-    } finally {
-      reorderBusy = false;
+  const persistSetActive = async (id: string) => {
+    const res = await fetch('/api/companions/active', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companionId: id })
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(payload?.error ?? 'Failed to set active companion');
     }
   };
 
-  const renameCompanion = async (id: string, name: string) => {
-    const previous = snapshot();
-    companions = sortRoster(companions.map((companion) => (companion.id === id ? { ...companion, name } : companion)));
-    try {
-      const res = await fetch('/api/companions/rename', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: id, name })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.error ?? 'Rename failed');
-      }
-      showToast('Name updated');
-      logEvent('companion_rename', { id, name });
-    } catch (err) {
-      companions = previous;
-      throw err instanceof Error ? err : new Error('Rename failed');
-    }
+  const setRosterActiveLocally = (targetId: string) => {
+    rosterState = {
+      ...rosterState,
+      activeInstanceId: targetId,
+      instances: rosterState.instances.map((instance) => {
+        const isActive = instance.id === targetId;
+        const nextState = isActive ? 'active' : instance.state === 'active' ? 'idle' : (instance.state ?? 'idle');
+        return { ...instance, is_active: isActive, state: nextState };
+      })
+    };
   };
 
   const activateCompanion = async (id: string) => {
-    const previous = snapshot();
-    const previousActive = activeCompanionId;
-    companions = sortRoster(
-      companions.map((companion) => {
-        if (companion.id === id) {
-          return { ...companion, is_active: true, state: 'active' };
-        }
-        if (companion.is_active) {
-          return {
-            ...companion,
-            is_active: false,
-            state: companion.state === 'active' ? 'idle' : (companion.state ?? 'idle')
-          };
-        }
-        return companion;
-      })
-    );
-    activeCompanionId = id;
+    const targetId = typeof id === 'string' ? id.trim() : '';
+    if (!targetId || setActiveBusyId || activeCompanion?.id === targetId) return;
+    if (!ownedInstances.some((entry) => entry.id === targetId)) return;
+    const previousActiveId = activeCompanion?.id ?? null;
+    const localLabel = ownedInstances.find((entry) => entry.id === targetId)?.name ?? 'Your companion';
+
+    companionState.setActiveCompanion(targetId);
+    setRosterActiveLocally(targetId);
+
+    setActiveBusyId = targetId;
     try {
-      const res = await fetch('/api/companions/active', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: id })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.error ?? 'Failed to set active');
-      }
+      await persistSetActive(targetId);
       showToast('Active companion updated');
-      logEvent('companion_set_active', { id });
+      showSwitchMessage(`${localLabel} is with you now.`);
+      logEvent('companion_set_active', { id: targetId, source: activeTab });
     } catch (err) {
-      companions = previous;
-      activeCompanionId = previousActive;
-      throw err instanceof Error ? err : new Error('Failed to set active');
+      console.error('[companions] set active failed', err);
+      // Prefer re-syncing from the API rather than leaving the UI in a contradictory state.
+      await refreshRoster();
+      if (previousActiveId) companionState.setActiveCompanion(previousActiveId);
+      showToast(SAFE_LOAD_ERROR, 'error');
+    } finally {
+      setActiveBusyId = null;
     }
-  };
-
-  const changeState = async (id: string, state: 'idle' | 'resting' | 'active') => {
-    const previous = snapshot();
-    const previousActive = activeCompanionId;
-    companions = sortRoster(
-      companions.map((companion) => {
-        if (companion.id === id) {
-          return { ...companion, state, is_active: state === 'active' };
-        }
-        if (state === 'active') {
-          return {
-            ...companion,
-            is_active: false,
-            state: companion.state === 'active' ? 'idle' : (companion.state ?? 'idle')
-          };
-        }
-        return companion;
-      })
-    );
-    activeCompanionId = state === 'active' ? id : state === 'resting' ? (activeCompanionId === id ? null : activeCompanionId) : activeCompanionId === id ? null : activeCompanionId;
-    try {
-      const res = await fetch('/api/companions/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: id, state })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.error ?? 'Failed to update state');
-      }
-      if (state === 'resting') {
-        showToast('Companion is now resting');
-      } else if (state === 'idle') {
-        showToast('Companion returned to idle');
-      }
-      logEvent('companion_state_change', { id, state });
-    } catch (err) {
-      companions = previous;
-      activeCompanionId = previousActive;
-      throw err instanceof Error ? err : new Error('Failed to update state');
-    }
-  };
-
-  const filteredCompanions = () => applyFilters(companions);
-
-  const handleSlotBlocked = () => {
-    showUnlock = true;
-    logEvent('roster_unlock_prompt_shown', { reason: 'drag_blocked' });
-  };
-
-  const handleSelectCompanion = (companion: Companion) => {
-    selected = companion;
-    logEvent('roster_card_open', { id: companion.id });
-  };
-
-  const closeUnlockModal = () => {
-    showUnlock = false;
   };
 
   const handleUnlockCta = () => {
     showUnlock = true;
-    logEvent('roster_unlock_cta_clicked');
+    logEvent('roster_unlock_prompt_shown', { reason: 'manual_open' });
   };
 
   const handleUnlocked = async (nextSlots: number) => {
@@ -349,107 +315,106 @@
     await refreshRoster();
   };
 
-  const setPortableActive = async (id: string) => {
-    if (!id || setActiveBusyId || portableActiveId === id) return;
-    const previousActiveId = portableActiveId;
-    setActiveBusyId = id;
-    portableActiveId = id;
-    try {
-      const res = await fetch('/api/companions/set-active', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.details ?? payload?.error ?? 'Unable to set active companion');
-      }
-      portableActiveId = payload?.activeId ?? id;
-      showToast('Active companion updated');
-      await invalidateAll();
-    } catch (err) {
-      portableActiveId = previousActiveId;
-      showToast(err instanceof Error ? err.message : 'Unable to set active companion', 'error');
-    } finally {
-      setActiveBusyId = null;
-    }
+  const openCareModal = (companion: Companion | null) => {
+    if (!companion) return;
+    selectedForCare = companion;
+    logEvent('companion_checkin_open', { id: companion.id });
   };
 
-  const savePortableCosmetics = async () => {
-    if (!portableActiveCompanion || customizeBusy) return;
-    const activePortableId = portableActiveCompanion.id;
-    customizeBusy = true;
-    try {
-      const res = await fetch('/api/companions/customize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: portableActiveCompanion.id,
-          cosmetics: {
-            auraColor: selectedAuraColor,
-            glowIntensity: selectedGlowIntensity
-          }
-        })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(payload?.details ?? payload?.error ?? 'Unable to save cosmetics');
-      }
-      const nextCosmetics = normalizeCompanionCosmetics(payload?.cosmetics);
-      portableRoster = portableRoster.map((entry) =>
-        entry.id === activePortableId ? { ...entry, cosmetics: nextCosmetics } : entry
-      );
-      showToast('Companion cosmetics updated');
-      await invalidateAll();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Unable to save cosmetics', 'error');
-    } finally {
-      customizeBusy = false;
-    }
+  const closeCareModal = () => {
+    selectedForCare = null;
   };
 
-  $: visibleCompanions = filteredCompanions();
-  $: activeCompanion = companions.find((entry) => entry.is_active) ?? null;
-  $: activeCarePrompt = (() => {
-    if (!activeCompanion) return null;
-    const energy = typeof activeCompanion.energy === 'number' ? activeCompanion.energy : 0;
-    if (energy <= LOW_ENERGY_THRESHOLD) {
-      return {
-        reason: 'low_energy' as const,
-        title: `${activeCompanion.name} is low on energy`,
-        body: 'Give a quick care action to help them recover.'
-      };
-    }
+  const applyCareUpdate = (id: string, updated: Companion) => {
+    const nextState = typeof updated.state === 'string' ? updated.state : undefined;
+    companionState.updateCompanionStats(id, {
+      affection: updated.affection,
+      trust: updated.trust,
+      energy: updated.energy,
+      mood: updated.mood,
+      ...(nextState ? { state: nextState } : {}),
+      updated_at: updated.updated_at,
+      bond_level: updated.bond_level ?? updated.stats?.bond_level ?? 0,
+      bond_score: updated.bond_score ?? updated.stats?.bond_score ?? 0,
+      stats: updated.stats ?? null
+    });
+    rosterState = get(companionState);
+    companionState.recordInteraction(id, 'check_in', new Date().toISOString());
+  };
 
-    const fedAt = parseTimestamp(activeCompanion.stats?.fed_at ?? null);
-    const playedAt = parseTimestamp(activeCompanion.stats?.played_at ?? null);
-    const groomedAt = parseTimestamp(activeCompanion.stats?.groomed_at ?? null);
-    const latestCare = [fedAt, playedAt, groomedAt].filter((stamp): stamp is number => typeof stamp === 'number');
-    if (latestCare.length === 0 || Math.max(...latestCare) < Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000) {
-      return {
-        reason: 'care_due' as const,
-        title: `${activeCompanion.name} is ready for care`,
-        body: 'A short feed, play, or groom keeps your bond steady.'
-      };
-    }
+  const discoverDefinitions = (data.discoverCatalog ?? []) as DiscoverCompanionDefinition[];
 
-    return null;
-  })();
-  $: slotsUsed = Math.min(companions.length, maxSlots);
-  $: archetypeOptions = Array.from(new Set(companions.map((companion) => companion.species))).filter(Boolean).sort();
-  $: moodOptions = Array.from(new Set(companions.map((companion) => companion.state ?? companion.mood))).filter(Boolean).sort();
-  $: if (selected) {
-    const refreshed = companions.find((entry) => entry.id === selected?.id);
-    if (refreshed) {
-      selected = refreshed;
-    }
+  const findActiveFromState = (state: { instances: Companion[]; activeInstanceId: string | null }) =>
+    state.instances.find((instance) => instance.id === state.activeInstanceId) ?? null;
+
+  $: ownedInstances = rosterState.instances;
+  $: activeCompanion = findActiveFromState(rosterState);
+  $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
+  $: relationshipState = relationshipCopy(activeCompanion);
+
+  $: ownedArchetypeTokens = new Set(
+    ownedInstances.flatMap((instance) => [normalizeToken(instance.species), normalizeToken(cleanArchetype(instance.species))])
+  );
+  $: discoverEntries = discoverDefinitions.filter((definition) => {
+    const byKey = normalizeToken(definition.key);
+    const byName = normalizeToken(definition.name);
+    return !ownedArchetypeTokens.has(byKey) && !ownedArchetypeTokens.has(byName);
+  });
+
+  $: archetypeOptions = Array.from(
+    new Set([
+      ...ownedInstances.map((instance) => cleanArchetype(instance.species)),
+      ...discoverEntries.map((definition) => definition.name)
+    ])
+  )
+    .filter(Boolean)
+    .sort();
+
+  $: moodOptions = Array.from(new Set(ownedInstances.map((instance) => getCompanionMoodMeta(instance.mood).label))).sort();
+
+  $: filteredOwned = ownedInstances
+    .filter((instance) => {
+      const term = filters.search.trim().toLowerCase();
+      if (term) {
+        const composite = `${instance.name} ${instance.species}`.toLowerCase();
+        if (!composite.includes(term)) return false;
+      }
+      if (filters.archetype !== 'all' && cleanArchetype(instance.species) !== filters.archetype) return false;
+      if (filters.mood !== 'all' && getCompanionMoodMeta(instance.mood).label !== filters.mood) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (filters.sort === 'name_asc') return a.name.localeCompare(b.name);
+      if (filters.sort === 'energy_desc') return (b.energy ?? 0) - (a.energy ?? 0);
+      if (filters.sort === 'recent_interaction') {
+        return (toStamp(lastInteractionAt(b)) ?? 0) - (toStamp(lastInteractionAt(a)) ?? 0);
+      }
+      if (filters.sort === 'bond_desc') return getBondLevel(b) - getBondLevel(a);
+      return 0;
+    });
+
+  $: filteredDiscover = discoverEntries
+    .filter((entry) => {
+      const term = filters.search.trim().toLowerCase();
+      if (term) {
+        const composite = `${entry.name} ${entry.description} ${entry.seed}`.toLowerCase();
+        if (!composite.includes(term)) return false;
+      }
+      if (filters.archetype !== 'all' && entry.name !== filters.archetype) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  $: if (selectedForCare) {
+    const refreshed = ownedInstances.find((entry) => entry.id === selectedForCare?.id);
+    if (refreshed) selectedForCare = refreshed;
   }
 
-  $: if (selected?.id) {
-    const seeds = pendingPrefetches[selected.id] ?? [];
+  $: if (selectedForCare?.id) {
+    const seeds = pendingPrefetches[selectedForCare.id] ?? [];
     if (seeds.length) {
       prefetchedForModal = { version: prefetchedForModal.version + 1, events: seeds };
-      pendingPrefetches = { ...pendingPrefetches, [selected.id]: [] };
+      pendingPrefetches = { ...pendingPrefetches, [selectedForCare.id]: [] };
     } else if (prefetchedForModal.events.length) {
       prefetchedForModal = { ...prefetchedForModal, events: [] };
     }
@@ -457,253 +422,269 @@
     prefetchedForModal = { ...prefetchedForModal, events: [] };
   }
 
-  $: portableActiveCompanion =
-    portableRoster.find((entry) => entry.id === portableActiveId) ?? portableRoster[0] ?? null;
-  $: portableActiveCosmetics = normalizeCompanionCosmetics(portableActiveCompanion?.cosmetics);
-  $: unlockedCosmeticsCount = Array.isArray(portableActiveCompanion?.cosmeticsUnlocked)
-    ? portableActiveCompanion.cosmeticsUnlocked.length
-    : 0;
-  $: {
-    const syncKey = `${portableActiveCompanion?.id ?? 'none'}|${portableActiveCosmetics.auraColor}|${portableActiveCosmetics.glowIntensity}`;
-    if (syncKey !== lastCustomizeSyncKey) {
-      selectedAuraColor = portableActiveCosmetics.auraColor;
-      selectedGlowIntensity = portableActiveCosmetics.glowIntensity;
-      lastCustomizeSyncKey = syncKey;
-    }
-  }
+  onMount(() => {
+    if (!browser) return;
+    hydrated = true;
+    logEvent('companions_page_view');
+  });
+
+  onDestroy(() => {
+    unsubscribeRoster?.();
+    if (toastTimer) clearTimeout(toastTimer);
+    if (switchTimer) clearTimeout(switchTimer);
+  });
+
+  const unsubscribeRoster = companionState.subscribe((next) => {
+    rosterState = next;
+  });
 </script>
 
 <svelte:head>
-  <title>Looma — Companion Roster</title>
+  <title>Looma - Companions</title>
 </svelte:head>
 
-<main class="roster-page">
-  <header class="roster-header">
+<main class="companions-page">
+  <div class="hydration-flag" data-hydrated={hydrated ? 'true' : 'false'} aria-hidden="true"></div>
+  <header class="companions-header">
     <div>
       <h1>Your Companions</h1>
-      <p class="lede">Arrange your squad, mark an active partner, and keep everyone rested.</p>
+      <p class="lede">One place to check in, care, and switch who stays by your side.</p>
     </div>
     <div class="header-pills">
       <span class="pill">Active: {activeCompanion ? activeCompanion.name : 'None'}</span>
       <span class="pill">Slots: {slotsUsed}/{maxSlots}</span>
       <button type="button" class="pill pill-action" on:click={handleUnlockCta}>Unlock slot</button>
       <button type="button" class="pill pill-action" on:click={refreshRoster} disabled={loading}>
-        {loading ? 'Refreshing…' : 'Refresh'}
+        {loading ? 'Refreshing...' : 'Refresh'}
       </button>
     </div>
   </header>
 
-  <section class="muse-preview">
-    <div class="muse-preview__copy">
+  {#if switchMessage}
+    <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
+  {/if}
+
+  <section class="companion-view" aria-labelledby="companion-view-heading">
+    <div class="companion-view__content">
       <p class="eyebrow">Companion View</p>
-      <h2>{activeCompanion ? activeCompanion.name : 'No active companion'}</h2>
-      <p class="lede">
-        Species: {activeCompanion?.species ?? 'Muse'}.
-      </p>
       {#if activeCompanion}
-        <div class="muse-preview__stats">
-          <span class="muse-chip">Active</span>
-          {#if typeof activeCompanion.slot_index === 'number'}
-            <span class="muse-chip">Slot {activeCompanion.slot_index + 1}</span>
-          {/if}
-          <span class="muse-chip">{activeCompanion.state ?? activeCompanion.mood ?? 'steady'}</span>
-          {#if activeCompanion.stats?.bond_level !== undefined}
-            <span class="muse-chip">Bond Lv {activeCompanion.stats.bond_level}</span>
-          {/if}
+        {#key activeCompanion.id}
+          <div class="view-title-block">
+            <h2 id="companion-view-heading">{activeCompanion.name} · {cleanArchetype(activeCompanion.species)}</h2>
+            <div class="view-chips">
+              <span class="chip">Active</span>
+              <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
+              <span class="chip">{getCompanionMoodMeta(activeCompanion.mood).label}</span>
+            </div>
+          </div>
+        {/key}
+        <p class="time-context">Last check-in: {formatElapsed(lastInteractionAt(activeCompanion))}</p>
+        <div class="relationship-copy">
+          <p class="relationship-copy__title">{relationshipState.title}</p>
+          <p>{relationshipState.body}</p>
         </div>
-        <div class="muse-preview__meters" aria-label="Companion stats preview">
-          <div class="muse-meter">
-            <div class="muse-meter__label">
-              <span>Affection</span>
-              <span>{activeCompanion.affection}</span>
-            </div>
-            <div class="muse-meter__track muse-meter__track--affection">
-              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.affection ?? 0))}%`}></span>
-            </div>
+
+        <button type="button" class="care-primary" on:click={() => openCareModal(activeCompanion)}>
+          Check in with {activeCompanion.name}
+        </button>
+
+        <div class="meter-stack" aria-label="Companion instance stats">
+          <div class="meter-row">
+            <div class="meter-row__label"><span>Affection</span><span>{activeCompanion.affection}</span></div>
+            <div class="meter-track meter-track--affection"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.affection ?? 0))}%`}></span></div>
           </div>
-          <div class="muse-meter">
-            <div class="muse-meter__label">
-              <span>Trust</span>
-              <span>{activeCompanion.trust}</span>
-            </div>
-            <div class="muse-meter__track muse-meter__track--trust">
-              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.trust ?? 0))}%`}></span>
-            </div>
+          <div class="meter-row">
+            <div class="meter-row__label"><span>Trust</span><span>{activeCompanion.trust}</span></div>
+            <div class="meter-track meter-track--trust"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.trust ?? 0))}%`}></span></div>
           </div>
-          <div class="muse-meter">
-            <div class="muse-meter__label">
-              <span>Energy</span>
-              <span>{activeCompanion.energy}</span>
-            </div>
-            <div class="muse-meter__track muse-meter__track--energy">
-              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.energy ?? 0))}%`}></span>
-            </div>
+          <div class="meter-row">
+            <div class="meter-row__label"><span>Energy</span><span>{activeCompanion.energy}</span></div>
+            <div class="meter-track meter-track--energy"><span class="meter-fill" style={`width:${Math.max(0, Math.min(100, activeCompanion.energy ?? 0))}%`}></span></div>
           </div>
         </div>
       {:else}
-        <p class="lede">Choose an active companion below to preview it here.</p>
+        <h2 id="companion-view-heading">Companion View</h2>
+        <p class="time-context">Last check-in: Not yet</p>
+        <div class="relationship-copy">
+          <p class="relationship-copy__title">First-time companion view</p>
+          <p>Your active companion will appear here when one is assigned.</p>
+        </div>
       {/if}
     </div>
-    <div class="muse-preview__frame">
-      <MuseModel
-        size="240px"
-        autoplay
-        respectReducedMotion={false}
-        poster={undefined}
-        cameraTarget={undefined}
-        auraColor={portableActiveCosmetics.auraColor}
-        glowIntensity={portableActiveCosmetics.glowIntensity}
-      />
+
+    <div class="companion-view__model" aria-hidden="true">
+      {#key activeCompanion?.id ?? 'none'}
+        <MuseModel
+          size="240px"
+          autoplay
+          respectReducedMotion={false}
+          poster={undefined}
+          cameraTarget={undefined}
+          auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
+          glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
+        />
+      {/key}
     </div>
   </section>
 
-  {#if activeCarePrompt && activeCompanion}
-    <section class="care-prompt" role="status" aria-live="polite">
-      <div>
-        <p class="care-prompt__title">{activeCarePrompt.title}</p>
-        <p class="care-prompt__copy">{activeCarePrompt.body}</p>
-      </div>
-      <button
-        type="button"
-        class="care-prompt__cta"
-        on:click={() => handleSelectCompanion(activeCompanion)}
-      >
-        Open care actions
-      </button>
-    </section>
-  {/if}
-
-  <section class="portable-roster-panel" aria-label="Companion roster">
+  <section class="switcher" aria-label="Companion switcher">
     <div class="panel-title-row">
-      <h2 class="panel-title">Companion roster</h2>
+      <h2>Switcher</h2>
+      <p>Quickly choose who is with you right now.</p>
     </div>
-    <p class="portable-roster-copy">Choose your active companion for dock presence and game context.</p>
-    {#if portableRoster.length === 0}
-      <p class="portable-roster-copy">First-time companion view. Your roster will appear here once your first companion is ready.</p>
+
+    {#if ownedInstances.length === 0}
+      <p class="empty-copy">First-time companion view. Your switcher appears after your first companion joins you.</p>
     {:else}
-      <div class="portable-roster-grid">
-        {#each portableRoster as rosterCompanion (rosterCompanion.id)}
-          <article class={`portable-card ${portableActiveId === rosterCompanion.id ? 'is-active' : ''}`}>
-            <p class="portable-card__eyebrow">{rosterCompanion.archetype}</p>
-            <h3>{rosterCompanion.name}</h3>
-            <p class="portable-card__meta">Bond {rosterCompanion.stats.bond} · Level {rosterCompanion.stats.level}</p>
-            <button
-              type="button"
-              class="portable-card__button"
-              disabled={setActiveBusyId !== null || portableActiveId === rosterCompanion.id || !rosterCompanion.unlocked}
-              on:click={() => {
-                void setPortableActive(rosterCompanion.id);
-              }}
-            >
-              {#if portableActiveId === rosterCompanion.id}
-                Active
-              {:else if setActiveBusyId === rosterCompanion.id}
-                Setting…
-              {:else}
-                Set active
-              {/if}
-            </button>
-          </article>
+      <div class="switcher-grid">
+        {#each ownedInstances as instance (instance.id)}
+          <button
+            type="button"
+            class={`switcher-item ${activeCompanion?.id === instance.id ? 'is-active' : ''}`}
+            data-switcher-item="true"
+            disabled={setActiveBusyId !== null}
+            on:click={() => {
+              void activateCompanion(instance.id);
+            }}
+          >
+            <div>
+              <p class="switcher-item__name">{instance.name} · {cleanArchetype(instance.species)}</p>
+              <p class="switcher-item__meta">Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
+            </div>
+            <div class="switcher-item__right">
+              <span class={`status-chip status-chip--${statusLabel(instance, activeCompanion?.id === instance.id).toLowerCase().replace(/\s+/g, '-')}`}>
+                {statusLabel(instance, activeCompanion?.id === instance.id)}
+              </span>
+              <span class="mood-chip">{getCompanionMoodMeta(instance.mood).label}</span>
+            </div>
+          </button>
         {/each}
       </div>
     {/if}
   </section>
 
-  {#if rosterError}
-    <div class="roster-error">{rosterError}</div>
-  {/if}
-
-  {#if companions.length === 0}
-    <section class="roster-empty" role="status">
-      <p class="roster-empty__eyebrow">Companions</p>
-      <h3>You don’t have a companion yet.</h3>
-      <p class="roster-empty__copy">
-        Your first companion will appear here when it is available.
-      </p>
-      <a class="roster-empty__cta" href="/app/home">Return home</a>
-    </section>
-  {:else}
-    <section class="roster-shell" aria-label="Companion search and stats">
-      <RosterFilterBar
-        {filters}
-        archetypes={archetypeOptions}
-        moods={moodOptions}
-        on:change={(event) => {
-          filters = event.detail;
-        }}
-      />
-      <RosterGrid
-        companions={visibleCompanions}
-        {maxSlots}
-        activeId={activeCompanionId}
-        disableDrag={reorderBusy || loading}
-        on:select={(event) => {
-          handleSelectCompanion(event.detail.companion);
-        }}
-        on:reorder={(event) => {
-          void handleReorder(event.detail);
-        }}
-        on:blocked={handleSlotBlocked}
-      />
-    </section>
-
-    {#if !activeCompanion}
-      <div class="roster-nudge" role="status">
-        <div>
-          <p class="roster-nudge__title">No active companion selected</p>
-          <p class="roster-nudge__copy">Choose one to unlock rituals and bonus XP.</p>
-        </div>
-        <button
-          type="button"
-          class="roster-nudge__cta"
-          on:click={() => companions[0] && handleSelectCompanion(companions[0])}
-        >
-          Choose now
-        </button>
-      </div>
-    {/if}
-  {/if}
-
-  <section class="customize-panel" aria-label="Customize companion cosmetics">
-    <div class="panel-title-row">
-      <h2 class="panel-title">Customize</h2>
+  <section class="tabbed-list" aria-label="Companion lists">
+    <div class="tabs-row" role="tablist" aria-label="Companion tabs">
+      <button
+        class={`tab ${activeTab === 'owned' ? 'is-active' : ''}`}
+        role="tab"
+        aria-selected={activeTab === 'owned'}
+        on:click={() => (activeTab = 'owned')}
+      >
+        Your Companions
+      </button>
+      <button
+        class={`tab ${activeTab === 'discover' ? 'is-active' : ''}`}
+        role="tab"
+        aria-selected={activeTab === 'discover'}
+        on:click={() => (activeTab = 'discover')}
+      >
+        Discover
+      </button>
     </div>
-    <p class="portable-roster-copy">Set cosmetic slots for the active companion.</p>
-    {#if portableActiveCompanion}
-      <div class="customize-grid">
-        <label class="customize-field">
-          <span>Aura color</span>
-          <select bind:value={selectedAuraColor}>
-            {#each AURA_COLOR_OPTIONS as colorOption}
-              <option value={colorOption}>{colorOption}</option>
-            {/each}
-          </select>
-        </label>
-        <label class="customize-field">
-          <span>Glow intensity: {selectedGlowIntensity}</span>
-          <input type="range" min="0" max="100" step="1" bind:value={selectedGlowIntensity} />
-        </label>
-        <div class="customize-actions">
-          <button type="button" class="portable-card__button" disabled={customizeBusy} on:click={savePortableCosmetics}>
-            {customizeBusy ? 'Saving…' : 'Save cosmetics'}
-          </button>
+
+    <div class="filters-grid" aria-label="Companion filters">
+      <label class="filter-field">
+        <span>Search</span>
+        <input
+          type="search"
+          placeholder={activeTab === 'owned' ? 'Search by name or archetype' : 'Search archetypes'}
+          bind:value={filters.search}
+        />
+      </label>
+      <label class="filter-field">
+        <span>Archetype</span>
+        <select bind:value={filters.archetype}>
+          <option value="all">All</option>
+          {#each archetypeOptions as archetype}
+            <option value={archetype}>{archetype}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Mood</span>
+        <select bind:value={filters.mood} disabled={activeTab === 'discover'}>
+          <option value="all">All</option>
+          {#each moodOptions as mood}
+            <option value={mood}>{mood}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Sort</span>
+        <select bind:value={filters.sort}>
+          <option value="bond_desc">Bond level</option>
+          <option value="recent_interaction">Recently interacted</option>
+          <option value="energy_desc">Energy</option>
+          <option value="name_asc">Name</option>
+        </select>
+      </label>
+    </div>
+
+    {#if activeTab === 'owned'}
+      {#if filteredOwned.length === 0}
+        <p class="empty-copy">No companions match this filter yet.</p>
+      {:else}
+        <div class="list-grid">
+          {#each filteredOwned as instance (instance.id)}
+            <article class={`list-card ${activeCompanion?.id === instance.id ? 'is-active' : ''}`} data-owned-row="true">
+              <div>
+                <h3>{instance.name} · {cleanArchetype(instance.species)}</h3>
+                <p>Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
+                <p>Bond level {getBondLevel(instance)}</p>
+              </div>
+              <div class="list-card__actions">
+                <span class="status-chip">{statusLabel(instance, activeCompanion?.id === instance.id)}</span>
+                <button
+                  type="button"
+                  class="inline-action"
+                  disabled={setActiveBusyId !== null || activeCompanion?.id === instance.id}
+                  on:click={() => {
+                    void activateCompanion(instance.id);
+                  }}
+                >
+                  {activeCompanion?.id === instance.id ? 'Active' : setActiveBusyId === instance.id ? 'Setting...' : 'Set active'}
+                </button>
+              </div>
+            </article>
+          {/each}
         </div>
-      </div>
-      {#if unlockedCosmeticsCount === 0}
-        <p class="portable-roster-copy">No cosmetics unlocked yet.</p>
       {/if}
     {:else}
-      <p class="portable-roster-copy">No active companion available.</p>
+      {#if filteredDiscover.length === 0}
+        <p class="empty-copy">No discoveries match this filter yet.</p>
+      {:else}
+        <div class="list-grid discover-grid">
+          {#each filteredDiscover as entry (entry.key)}
+            <button
+              type="button"
+              class="list-card discover-card"
+              data-discover-row="true"
+              on:click={() => {
+                discoverModal = entry;
+              }}
+            >
+              <div>
+                <h3>{entry.name}</h3>
+                <p>{entry.description}</p>
+              </div>
+              <span class="inline-action">View details</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </section>
 
+  {#if rosterError}
+    <p class="error-banner" role="alert">{rosterError}</p>
+  {/if}
+
   <section class="bond-milestones-panel">
-    <div class="panel-title-row">
-      <h2 class="panel-title">Daily rituals</h2>
-      <InfoTooltip text={RITUALS_TOOLTIP} label="How rituals work" />
-    </div>
-    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Pick an active companion to start daily rituals." />
+    <h2>Daily rituals</h2>
+    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Pick an active companion to begin daily rituals." />
   </section>
+
   {#if bondMilestones.length}
     <section class="bond-milestones-panel">
       <BondMilestonesPanel milestones={bondMilestones} />
@@ -712,510 +693,546 @@
 </main>
 
 <CompanionModal
-  open={Boolean(selected)}
-  companion={selected}
+  open={Boolean(selectedForCare)}
+  companion={selectedForCare}
   {maxSlots}
   prefetched={prefetchedForModal}
-  onClose={() => {
-    selected = null;
+  onClose={closeCareModal}
+  renameCompanion={async (id, name) => {
+    const res = await fetch('/api/companions/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companionId: id, name })
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      console.error('[companions] rename failed', payload);
+      throw new Error(payload?.error ?? SAFE_LOAD_ERROR);
+    }
+    companionState.replaceInstances(
+      ownedInstances.map((entry) => (entry.id === id ? { ...entry, name } : entry)),
+      activeCompanion?.id ?? null
+    );
   }}
-  {renameCompanion}
-  setActive={activateCompanion}
-  setState={changeState}
-  on:careApplied={(event) => {
-    const { id, companion: updated } = event.detail;
-    companions = sortRoster(companions.map((entry) => (entry.id === id ? { ...entry, ...updated } : entry)));
-    if (selected?.id === id) {
-      selected = { ...selected, ...updated };
+  setActive={async (id) => {
+    await activateCompanion(id);
+  }}
+  setState={async (id, state) => {
+    const previous = ownedInstances.find((entry) => entry.id === id);
+    if (!previous) return;
+    companionState.updateCompanionStats(id, { state });
+    try {
+      const res = await fetch('/api/companions/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: id, state })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? 'state_update_failed');
+    } catch (err) {
+      console.error('[companions] state update failed', err);
+      companionState.updateCompanionStats(id, { state: previous.state ?? 'idle' });
+      throw new Error(SAFE_LOAD_ERROR);
     }
   }}
+  on:careApplied={(event) => {
+    const { id, companion: updated } = event.detail;
+    applyCareUpdate(id, updated);
+  }}
   on:milestone={(event) => {
-    const message = event.detail?.message ?? 'Bond milestone reached!';
-    showToast(message);
+    showToast(event.detail?.message ?? 'Bond milestone reached!');
   }}
   on:toast={(event) => {
     showToast(event.detail?.message ?? 'Update saved', event.detail?.kind ?? 'success');
   }}
 />
 
-<UnlockSlotModal open={showUnlock} onClose={closeUnlockModal} onUnlocked={handleUnlocked} />
+<UnlockSlotModal open={showUnlock} onClose={() => (showUnlock = false)} onUnlocked={handleUnlocked} />
+
+<Modal
+  open={Boolean(discoverModal)}
+  title={discoverModal ? `${discoverModal.name} archetype` : 'Companion archetype'}
+  onClose={() => {
+    discoverModal = null;
+  }}
+>
+  {#if discoverModal}
+    <section class="discover-modal">
+      <p class="discover-modal__eyebrow">Discover</p>
+      <h3>{discoverModal.name}</h3>
+      <p>{discoverModal.description}</p>
+      <p>Who bonds well: people who enjoy {discoverModal.seed.replace(/-/g, ' ')} rhythms.</p>
+      <p class="discover-modal__hint">Unlock hint: keep checking in and expanding your slots to meet new companions.</p>
+      <button type="button" class="inline-action" on:click={() => (discoverModal = null)}>Close</button>
+    </section>
+  {/if}
+</Modal>
 
 {#if toast}
-  <div class={`roster-toast roster-toast--${toast.kind}`} role="status" aria-live="polite">{toast.message}</div>
+  <div class={`toast toast--${toast.kind}`} role="status" aria-live="polite">{toast.message}</div>
 {/if}
 
 <style>
-  .roster-page {
-    padding: clamp(1.25rem, 3vw, 2rem);
-    display: grid;
-    gap: 2rem;
-    width: min(100%, 1760px);
-    box-sizing: border-box;
+  .companions-page {
+    width: min(100%, 1500px);
     margin: 0 auto;
+    padding: clamp(1rem, 2.2vw, 2rem);
+    display: grid;
+    gap: 1.4rem;
   }
 
-  .roster-header {
+  .companions-header {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 1.5rem;
-    align-items: flex-start;
-    min-width: 0;
-  }
-
-  .roster-header > * {
-    min-width: 0;
-  }
-
-  .bond-milestones-panel {
-    border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1rem;
-    background: rgba(8, 10, 18, 0.85);
-  }
-
-  .muse-preview {
-    border-radius: 1.4rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1.25rem 1.5rem;
-    background: rgba(8, 10, 18, 0.8);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .muse-preview__copy h2 {
-    margin: 0.35rem 0 0.25rem;
-    font-size: 1.4rem;
-  }
-
-  .muse-preview__copy .lede {
-    margin: 0.25rem 0 0;
-  }
-
-  .muse-preview__stats {
-    margin-top: 0.65rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-  }
-
-  .muse-preview__meters {
-    margin-top: 0.75rem;
-    display: grid;
-    gap: 0.7rem;
-    max-width: 680px;
-  }
-
-  .muse-meter {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .muse-meter__label {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.74rem;
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .muse-meter__track {
-    height: 0.68rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    overflow: hidden;
-  }
-
-  .muse-meter__track span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-  }
-
-  .muse-meter__track--affection span {
-    background: linear-gradient(90deg, #63d8f1, #9a73ff);
-  }
-
-  .muse-meter__track--trust span {
-    background: linear-gradient(90deg, #69e6b2, #34c77b);
-  }
-
-  .muse-meter__track--energy span {
-    background: linear-gradient(90deg, #f1cf66, #f08e62);
-  }
-
-  .muse-chip {
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(9, 12, 22, 0.82);
-    color: rgba(255, 255, 255, 0.84);
-    padding: 0.26rem 0.62rem;
-    font-size: 0.78rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .muse-preview__frame {
-    display: grid;
-    place-items: center;
-    justify-self: end;
-  }
-
-  .muse-preview__frame :global(.muse-shell) {
-    --muse-size: clamp(180px, 22vw, 240px);
-    width: var(--muse-size);
-    height: var(--muse-size);
-    max-width: 100%;
-    max-height: 100%;
-  }
-
-  .panel-title-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .portable-roster-panel {
-    border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1rem;
-    background: rgba(8, 10, 18, 0.85);
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .care-prompt {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     gap: 1rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(108, 205, 255, 0.45);
-    background: rgba(9, 14, 28, 0.82);
-    padding: 0.85rem 1rem;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
-  .care-prompt__title {
+  h1 {
     margin: 0;
-    font-weight: 600;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
   }
 
-  .care-prompt__copy {
-    margin: 0.2rem 0 0;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.9rem;
+  .lede {
+    margin: 0.7rem 0 0;
+    color: rgba(221, 228, 255, 0.82);
+    max-width: 66ch;
   }
 
-  .care-prompt__cta {
-    border-radius: 999px;
-    border: 1px solid rgba(108, 205, 255, 0.65);
-    background: rgba(56, 149, 255, 0.14);
-    color: rgba(185, 231, 255, 0.95);
-    padding: 0.4rem 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-
-  .portable-roster-copy {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.95rem;
-  }
-
-  .portable-roster-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
-  }
-
-  .portable-card {
-    border-radius: 0.95rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 0.85rem;
-    background: rgba(9, 12, 20, 0.88);
-    display: grid;
-    gap: 0.4rem;
-  }
-
-  .portable-card.is-active {
-    border-color: rgba(94, 242, 255, 0.7);
-    box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.35) inset;
-  }
-
-  .portable-card h3 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  .portable-card__eyebrow {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .portable-card__meta {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.66);
-    font-size: 0.84rem;
-  }
-
-  .portable-card__button {
-    justify-self: start;
-    margin-top: 0.2rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(9, 12, 24, 0.85);
-    color: rgba(255, 255, 255, 0.86);
-    padding: 0.33rem 0.75rem;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .portable-card__button:disabled {
-    opacity: 0.65;
-    cursor: default;
-  }
-
-  .customize-panel {
-    border-radius: 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1rem;
-    background: rgba(8, 10, 18, 0.85);
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .customize-grid {
-    display: grid;
-    gap: 0.9rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    align-items: end;
-  }
-
-  .customize-field {
-    display: grid;
-    gap: 0.45rem;
-    font-size: 0.84rem;
-    color: rgba(255, 255, 255, 0.78);
-  }
-
-  .customize-field select,
-  .customize-field input[type='range'] {
-    width: 100%;
-  }
-
-  .customize-field select {
-    border-radius: 0.7rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(9, 12, 24, 0.86);
-    color: rgba(255, 255, 255, 0.92);
-    padding: 0.42rem 0.52rem;
-  }
-
-  .customize-actions {
+  .header-pills {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    justify-content: flex-end;
+  }
+
+  .pill {
+    border: 1px solid rgba(175, 217, 255, 0.32);
+    border-radius: 999px;
+    padding: 0.5rem 0.92rem;
+    font-size: 0.98rem;
+    background: rgba(8, 13, 34, 0.68);
+    color: rgba(244, 248, 255, 0.92);
+  }
+
+  .pill-action {
+    cursor: pointer;
+  }
+
+  .switch-message {
+    margin: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(91, 206, 255, 0.35);
+    background: rgba(15, 29, 58, 0.68);
+    padding: 0.72rem 0.95rem;
+    color: rgba(229, 245, 255, 0.92);
+  }
+
+  .companion-view,
+  .switcher,
+  .tabbed-list,
+  .bond-milestones-panel {
+    border-radius: 24px;
+    border: 1px solid rgba(175, 217, 255, 0.2);
+    background: rgba(7, 11, 28, 0.78);
+    box-shadow: 0 22px 40px rgba(5, 7, 17, 0.32);
+    padding: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .companion-view {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    gap: 1rem;
+    align-items: stretch;
   }
 
   .eyebrow {
     margin: 0;
     text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 0.16em;
+    color: rgba(205, 216, 255, 0.74);
+    font-size: 0.82rem;
   }
 
-  .lede {
-    margin: 0.35rem 0 0;
-    color: rgba(255, 255, 255, 0.7);
+  .view-title-block h2 {
+    margin: 0.55rem 0 0;
+    font-size: clamp(1.7rem, 3vw, 2.2rem);
   }
 
-  .header-pills {
+  .view-chips {
+    margin-top: 0.7rem;
     display: flex;
-    gap: 0.75rem;
     flex-wrap: wrap;
-    justify-content: flex-end;
-    min-width: 0;
-    max-width: 100%;
+    gap: 0.55rem;
   }
 
-  .pill {
+  .chip {
     border-radius: 999px;
-    padding: 0.45rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(9, 12, 25, 0.8);
-    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    padding: 0.26rem 0.72rem;
+    font-size: 0.86rem;
+    background: rgba(17, 24, 46, 0.7);
   }
 
-  .pill-action {
+  .time-context {
+    margin: 0.7rem 0 0;
+    color: rgba(204, 216, 255, 0.78);
+  }
+
+  .relationship-copy {
+    margin-top: 0.7rem;
+  }
+
+  .relationship-copy__title {
+    margin: 0;
+    font-weight: 600;
+    color: rgba(241, 247, 255, 0.96);
+  }
+
+  .relationship-copy p {
+    margin: 0.25rem 0 0;
+    color: rgba(210, 221, 255, 0.84);
+  }
+
+  .care-primary {
+    margin-top: 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgba(89, 204, 255, 0.5);
+    background: linear-gradient(120deg, rgba(36, 96, 165, 0.62), rgba(61, 45, 127, 0.7));
+    color: rgba(247, 251, 255, 0.95);
+    padding: 0.62rem 1rem;
+    font-weight: 600;
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
   }
 
-  .pill-action:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .roster-shell {
+  .meter-stack {
+    margin-top: 0.95rem;
     display: grid;
-    gap: 1.5rem;
+    gap: 0.7rem;
   }
 
-  .roster-empty {
-    border-radius: 1.3rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 2rem;
-    background: rgba(9, 12, 25, 0.75);
-    text-align: left;
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .roster-empty__eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    margin: 0;
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .roster-empty h3 {
-    margin: 0;
-    font-size: 1.45rem;
-  }
-
-  .roster-empty__copy {
-    margin: 0;
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .roster-empty__cta {
-    justify-self: flex-start;
-    padding: 0.5rem 1.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.75rem;
-  }
-
-  .roster-nudge {
+  .meter-row__label {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
-    padding: 0.85rem 1.2rem;
-    border-radius: 1rem;
-    border: 1px dashed rgba(94, 234, 212, 0.4);
-    background: rgba(6, 10, 18, 0.7);
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(214, 224, 255, 0.88);
+    font-size: 0.88rem;
+    margin-bottom: 0.22rem;
   }
 
-  .roster-nudge__title {
+  .meter-track {
+    width: 100%;
+    height: 11px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 300ms ease;
+  }
+
+  .meter-track--affection .meter-fill {
+    background: linear-gradient(90deg, rgba(84, 224, 245, 0.95), rgba(151, 127, 255, 0.95));
+  }
+
+  .meter-track--trust .meter-fill {
+    background: linear-gradient(90deg, rgba(120, 232, 168, 0.95), rgba(47, 199, 118, 0.95));
+  }
+
+  .meter-track--energy .meter-fill {
+    background: linear-gradient(90deg, rgba(246, 219, 134, 0.95), rgba(239, 143, 92, 0.95));
+  }
+
+  .companion-view__model {
+    border-radius: 18px;
+    border: 1px solid rgba(180, 223, 255, 0.2);
+    background: radial-gradient(circle at center, rgba(62, 145, 255, 0.18), rgba(5, 8, 22, 0.82) 70%);
+    display: grid;
+    place-items: center;
+    min-height: 260px;
+  }
+
+  .panel-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .panel-title-row h2,
+  .bond-milestones-panel h2 {
+    margin: 0;
+    font-size: 1.18rem;
+  }
+
+  .panel-title-row p {
+    margin: 0;
+    color: rgba(195, 208, 255, 0.72);
+  }
+
+  .switcher-grid {
+    margin-top: 0.8rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.7rem;
+  }
+
+  .switcher-item {
+    border-radius: 14px;
+    border: 1px solid rgba(177, 212, 255, 0.24);
+    background: rgba(13, 18, 40, 0.86);
+    color: rgba(236, 242, 255, 0.95);
+    padding: 0.75rem 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .switcher-item.is-active {
+    border-color: rgba(92, 205, 255, 0.82);
+    box-shadow: 0 0 0 1px rgba(92, 205, 255, 0.35);
+  }
+
+  .switcher-item__name {
     margin: 0;
     font-weight: 600;
   }
 
-  .roster-nudge__copy {
-    margin: 0.1rem 0 0;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
+  .switcher-item__meta {
+    margin: 0.2rem 0 0;
+    font-size: 0.86rem;
+    color: rgba(190, 207, 255, 0.75);
   }
 
-  .roster-nudge__cta {
+  .switcher-item__right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-end;
+  }
+
+  .status-chip,
+  .mood-chip {
     border-radius: 999px;
-    border: 1px solid rgba(94, 234, 212, 0.6);
-    background: rgba(94, 234, 212, 0.15);
-    color: rgba(94, 234, 212, 0.95);
-    padding: 0.4rem 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    padding: 0.2rem 0.64rem;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+  }
+
+  .tabs-row {
+    display: inline-flex;
+    gap: 0.4rem;
+    border-radius: 999px;
+    padding: 0.25rem;
+    background: rgba(8, 12, 31, 0.85);
+    border: 1px solid rgba(179, 213, 255, 0.25);
+  }
+
+  .tab {
+    border: 0;
+    background: transparent;
+    color: rgba(210, 223, 255, 0.9);
+    border-radius: 999px;
+    padding: 0.46rem 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .tab.is-active {
+    background: rgba(91, 206, 255, 0.26);
+    color: rgba(246, 250, 255, 0.96);
+  }
+
+  .filters-grid {
+    margin-top: 0.88rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.7rem;
+  }
+
+  .filter-field {
+    display: grid;
+    gap: 0.34rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
+    color: rgba(197, 210, 255, 0.74);
   }
 
-  .roster-error {
-    padding: 0.85rem 1.2rem;
-    border-radius: 14px;
-    background: rgba(244, 63, 94, 0.12);
-    border: 1px solid rgba(244, 63, 94, 0.35);
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  .roster-toast {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
+  .filter-field input,
+  .filter-field select {
     border-radius: 999px;
-    padding: 0.65rem 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(12, 16, 36, 0.86);
+    color: rgba(240, 245, 255, 0.94);
+    padding: 0.48rem 0.82rem;
+  }
+
+  .list-grid {
+    margin-top: 0.92rem;
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .list-card {
+    border-radius: 14px;
+    border: 1px solid rgba(171, 214, 255, 0.24);
+    background: rgba(11, 16, 38, 0.84);
+    color: rgba(237, 243, 255, 0.95);
+    padding: 0.74rem 0.84rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .list-card.is-active {
+    border-color: rgba(91, 206, 255, 0.84);
+    box-shadow: 0 0 0 1px rgba(91, 206, 255, 0.35);
+  }
+
+  .list-card h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .list-card p {
+    margin: 0.2rem 0 0;
+    color: rgba(196, 209, 255, 0.79);
+    font-size: 0.88rem;
+  }
+
+  .list-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-end;
+  }
+
+  .inline-action {
+    border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(5, 7, 15, 0.85);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(241, 247, 255, 0.94);
+    padding: 0.33rem 0.76rem;
+    cursor: pointer;
+    font-size: 0.82rem;
   }
 
-  .roster-toast--error {
-    border-color: rgba(248, 113, 113, 0.6);
+  .inline-action:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
   }
 
-  @media (max-width: 640px) {
-    .roster-page {
-      padding: 1.25rem;
-    }
+  .discover-card {
+    text-align: left;
+    cursor: pointer;
+  }
 
-    .muse-preview {
+  .empty-copy {
+    margin: 0.8rem 0 0;
+    color: rgba(195, 210, 255, 0.75);
+  }
+
+  .discover-modal__eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(202, 215, 255, 0.76);
+    font-size: 0.78rem;
+  }
+
+  .discover-modal h3 {
+    margin: 0.5rem 0 0;
+  }
+
+  .discover-modal p {
+    color: rgba(219, 229, 255, 0.84);
+  }
+
+  .discover-modal__hint {
+    border-radius: 12px;
+    border: 1px solid rgba(184, 214, 255, 0.28);
+    background: rgba(20, 31, 58, 0.5);
+    padding: 0.66rem 0.76rem;
+  }
+
+  .error-banner {
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(31, 39, 66, 0.72);
+    border-radius: 12px;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.15rem;
+    right: 1rem;
+    border-radius: 999px;
+    padding: 0.48rem 0.84rem;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    background: rgba(11, 16, 36, 0.92);
+    color: rgba(240, 246, 255, 0.95);
+    z-index: 80;
+  }
+
+  .toast--error {
+    border-color: rgba(255, 180, 180, 0.45);
+  }
+
+  @media (max-width: 980px) {
+    .companion-view {
       grid-template-columns: 1fr;
     }
 
-    .muse-preview__frame {
-      justify-self: center;
+    .companion-view__model {
+      min-height: 220px;
     }
   }
 
-  @media (max-width: 1200px) {
-    .roster-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
+  @media (max-width: 700px) {
+    .companions-page {
+      padding-inline: 0.75rem;
     }
 
     .header-pills {
       justify-content: flex-start;
     }
+
+    .switcher-item,
+    .list-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .switcher-item__right,
+    .list-card__actions {
+      align-items: flex-start;
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
   }
 
-  @media (max-width: 1024px) {
-    .roster-page {
-      gap: 1.5rem;
-    }
-
-    .muse-preview {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .muse-preview__frame {
-      justify-self: start;
-    }
-
-    .roster-nudge {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .care-prompt {
-      flex-direction: column;
-      align-items: flex-start;
-    }
+  .hydration-flag {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>
