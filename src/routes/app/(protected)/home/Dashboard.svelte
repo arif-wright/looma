@@ -238,18 +238,18 @@
   }
 
   .dashboard__shell {
-    max-width: 1400px;
+    max-width: 1760px;
     margin: 0 auto;
-    padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 6vw, 4rem) 5rem;
+    padding: clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 3vw, 2.75rem) 5rem;
   }
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: 260px auto 310px;
-    column-gap: 3.5rem;
+    grid-template-columns: minmax(208px, 260px) minmax(0, 1fr) minmax(260px, 310px);
+    column-gap: clamp(1rem, 2.2vw, 2rem);
     row-gap: 2.5rem;
     align-items: start;
-    justify-content: center;
+    justify-content: stretch;
   }
 
   .sidebar {
@@ -292,7 +292,8 @@
   .content {
     display: grid;
     gap: 2rem;
-    width: 520px;
+    width: 100%;
+    min-width: 0;
   }
 
   .panel {
@@ -491,17 +492,18 @@
 
   @media (max-width: 1200px) {
     .dashboard__grid {
-      column-gap: 4rem;
-      grid-template-columns: 240px minmax(0, 1fr);
+      column-gap: 1.25rem;
+      grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
     }
 
     .sidebar--right {
       position: static;
       top: auto;
+      grid-column: 1 / -1;
     }
 
-    .content {
-      width: min(100%, 560px);
+    .sidebar--left {
+      max-width: 220px;
     }
   }
 

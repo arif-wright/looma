@@ -393,18 +393,18 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     z-index: 10;
     min-height: 100vh;
     width: 100%;
-    max-width: 1680px;
+    max-width: 1760px;
     padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
     margin: 0 auto;
   }
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 260px minmax(640px, 720px) 320px;
-    column-gap: clamp(5.5rem, 7vw, 7.5rem);
+    grid-template-columns: minmax(208px, 260px) minmax(0, 1fr) minmax(272px, 320px);
+    column-gap: clamp(1rem, 2.2vw, 2rem);
     row-gap: 1.5rem;
     align-items: start;
-    justify-content: space-between;
+    justify-content: stretch;
   }
 
   .column-left,
@@ -419,17 +419,20 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
 
   .column-left {
     max-width: 260px;
+    width: 100%;
   }
 
   .column-right {
-    justify-self: end;
-    width: 320px;
+    justify-self: stretch;
+    width: 100%;
+    max-width: 320px;
   }
 
   .column-center {
     display: grid;
     gap: 1.5rem;
-    width: clamp(640px, 43vw, 720px);
+    width: 100%;
+    min-width: 0;
   }
 
   .panel {
@@ -543,27 +546,31 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     }
   }
 
+  @media (max-width: 1440px) {
+    .dashboard-grid {
+      grid-template-columns: minmax(190px, 230px) minmax(0, 1fr) minmax(248px, 300px);
+      column-gap: clamp(0.9rem, 1.8vw, 1.4rem);
+    }
+  }
+
   @media (max-width: 1280px) {
     .dashboard-grid {
-      column-gap: 4rem;
-      grid-template-columns: 200px minmax(0, 1fr);
-    }
-
-    .column-center {
-      width: min(100%, 640px);
+      column-gap: 1.25rem;
+      grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
     }
 
     .column-right {
       position: static;
       top: auto;
-      order: -1;
       justify-self: stretch;
+      max-width: none;
       width: 100%;
+      grid-column: 1 / -1;
     }
 
     .column-left {
       justify-self: stretch;
-      max-width: none;
+      max-width: 220px;
     }
   }
 

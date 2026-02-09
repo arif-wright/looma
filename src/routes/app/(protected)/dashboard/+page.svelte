@@ -370,6 +370,8 @@
     display: flex;
     flex-direction: column;
     gap: 2.5rem;
+    width: min(100%, 1700px);
+    margin-inline: auto;
   }
 
   .dashboard-header {
@@ -442,6 +444,13 @@
 
     .panels-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1500px) {
+    .panels-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: start;
     }
   }
 

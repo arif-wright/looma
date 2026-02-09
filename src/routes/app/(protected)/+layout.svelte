@@ -387,7 +387,7 @@
       />
     {/if}
 
-    <main class="app-main">
+    <main class="app-main" class:dock-space={!hideCompanionDock}>
       <slot />
     </main>
   </div>
@@ -450,6 +450,18 @@
 
   .app-main :global(*) {
     min-width: 0;
+  }
+
+  @media (min-width: 1200px) {
+    .app-main.dock-space {
+      padding-right: clamp(14.5rem, 18vw, 17.5rem);
+    }
+  }
+
+  @media (min-width: 1720px) {
+    .app-main.dock-space {
+      padding-right: clamp(11rem, 12vw, 14rem);
+    }
   }
 
   @media (max-width: 960px) {

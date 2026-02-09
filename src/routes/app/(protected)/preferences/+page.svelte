@@ -309,6 +309,8 @@
     padding: clamp(1.25rem, 3vw, 2.25rem);
     display: grid;
     gap: 1.75rem;
+    width: min(100%, 1760px);
+    margin: 0 auto;
   }
 
   .preferences-header {

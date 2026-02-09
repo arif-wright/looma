@@ -236,8 +236,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    max-width: 420px;
     width: 100%;
+    min-width: 0;
   }
 
   .identity {

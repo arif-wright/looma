@@ -634,7 +634,7 @@
     padding: clamp(1.25rem, 3vw, 2rem);
     display: grid;
     gap: 2rem;
-    width: min(100%, 1440px);
+    width: min(100%, 1760px);
     margin: 0 auto;
   }
 
