@@ -189,6 +189,7 @@
   let switchTimer: ReturnType<typeof setTimeout> | null = null;
 
   let discoverModal: DiscoverCompanionDefinition | null = null;
+  let museHostRef: MuseModel | null = null;
 
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
@@ -513,19 +514,18 @@
     </div>
 
     <div class="companion-view__model" aria-hidden="true">
-      {#if !selectedForCare}
-        {#key activeCompanion?.id ?? 'none'}
-          <MuseModel
-            size="240px"
-            autoplay
-            respectReducedMotion={false}
-            poster={undefined}
-            cameraTarget={undefined}
-            auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
-            glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
-          />
-        {/key}
-      {/if}
+      {#key activeCompanion?.id ?? 'none'}
+        <MuseModel
+          bind:this={museHostRef}
+          size="240px"
+          autoplay
+          respectReducedMotion={false}
+          poster={undefined}
+          cameraTarget={undefined}
+          auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
+          glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
+        />
+      {/key}
     </div>
   </section>
 
@@ -698,6 +698,8 @@
   open={Boolean(selectedForCare)}
   companion={selectedForCare}
   {maxSlots}
+  capturePortrait={() => museHostRef?.capturePortrait?.() ?? Promise.resolve(null)}
+  allowLivePortrait={false}
   prefetched={prefetchedForModal}
   onClose={closeCareModal}
   renameCompanion={async (id, name) => {

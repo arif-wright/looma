@@ -22,6 +22,10 @@
   export let setActive: (id: string) => Promise<void> = async () => {};
   export let setState: (id: string, state: 'idle' | 'resting' | 'active') => Promise<void> = async () => {};
   export let prefetched: { version: number; events: CareEvent[] } = { version: 0, events: [] };
+  // Prefer capturing a portrait from an already-rendered model-viewer instance (single WebGL context).
+  export let capturePortrait: (() => Promise<string | null>) | null = null;
+  // If false, the modal will not mount a live MuseModel and will rely on capture/cache.
+  export let allowLivePortrait = true;
 
   type CareEvent = {
     id: string | number;
@@ -293,7 +297,10 @@
     try {
       await tick();
       for (let i = 0; i < 8; i++) {
-        const dataUrl = await captureCompanionPortrait(companion.id, () => museRef?.capturePortrait?.() ?? Promise.resolve(null));
+        const dataUrl = await captureCompanionPortrait(companion.id, () => {
+          if (capturePortrait) return capturePortrait();
+          return museRef?.capturePortrait?.() ?? Promise.resolve(null);
+        });
         if (dataUrl) {
           portraitSrc = dataUrl;
           break;
@@ -437,7 +444,7 @@
         <div class={`dossier-portrait dossier-portrait--${rarityClass}`}>
           {#if portraitSrc}
             <img src={portraitSrc} alt={`${companion.name} portrait`} class="dossier-portrait__img" />
-          {:else}
+          {:else if allowLivePortrait}
             <MuseModel
               bind:this={museRef}
               size="112px"
@@ -447,6 +454,11 @@
               respectReducedMotion={false}
               preserveDrawingBuffer
             />
+          {:else}
+            <div class="dossier-portrait__placeholder" aria-hidden="true">
+              <div class="portrait-orb"></div>
+              <p>Generating portrait…</p>
+            </div>
           {/if}
           {#if effective}
             <span class={`mood-dot mood-dot--${effective.moodKey}`} aria-hidden="true"></span>
@@ -659,6 +671,26 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  .dossier-portrait__placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    gap: 0.4rem;
+    text-align: center;
+    padding: 0.65rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.82rem;
+  }
+
+  .portrait-orb {
+    width: 54px;
+    height: 54px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 30% 30%, rgba(94, 234, 212, 0.85), rgba(59, 130, 246, 0.12));
+    box-shadow: 0 0 22px rgba(94, 234, 212, 0.25);
   }
 
   .dossier-portrait--rare {
