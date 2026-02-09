@@ -339,6 +339,8 @@
     padding: 1.25rem;
     color: rgba(255, 255, 255, 0.7);
     font-size: 0.9rem;
+    /* Must sit above the WebGL surface (which has z-index: 1). */
+    z-index: 2;
   }
 
   .muse-fallback__title {
