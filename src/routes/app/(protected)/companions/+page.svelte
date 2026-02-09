@@ -441,10 +441,24 @@
 
   <section class="muse-preview">
     <div class="muse-preview__copy">
-      <p class="eyebrow">Dock Preview</p>
-      <h2>Muse visual style</h2>
-      <p class="lede">This is the shared visual style used in app surfaces and games.</p>
-      <p class="lede">Active companion: {activeCompanion ? activeCompanion.name : 'None selected'}.</p>
+      <p class="eyebrow">Companion View</p>
+      <h2>{activeCompanion ? activeCompanion.name : 'No active companion'}</h2>
+      <p class="lede">
+        Species: {activeCompanion?.species ?? 'Muse'}.
+      </p>
+      {#if activeCompanion}
+        <div class="muse-preview__stats">
+          <span class="muse-chip">State: {activeCompanion.state ?? activeCompanion.mood ?? 'steady'}</span>
+          <span class="muse-chip">Energy: {activeCompanion.energy}</span>
+          <span class="muse-chip">Affection: {activeCompanion.affection}</span>
+          <span class="muse-chip">Trust: {activeCompanion.trust}</span>
+          {#if activeCompanion.stats?.bond_level !== undefined}
+            <span class="muse-chip">Bond Lv {activeCompanion.stats.bond_level}</span>
+          {/if}
+        </div>
+      {:else}
+        <p class="lede">Choose an active companion below to preview it here.</p>
+      {/if}
     </div>
     <div class="muse-preview__frame">
       <MuseModel
@@ -678,6 +692,25 @@
 
   .muse-preview__copy .lede {
     margin: 0.25rem 0 0;
+  }
+
+  .muse-preview__stats {
+    margin-top: 0.65rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .muse-chip {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(9, 12, 22, 0.82);
+    color: rgba(255, 255, 255, 0.84);
+    padding: 0.26rem 0.62rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .muse-preview__frame {
