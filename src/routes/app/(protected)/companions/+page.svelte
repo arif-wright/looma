@@ -513,17 +513,19 @@
     </div>
 
     <div class="companion-view__model" aria-hidden="true">
-      {#key activeCompanion?.id ?? 'none'}
-        <MuseModel
-          size="240px"
-          autoplay
-          respectReducedMotion={false}
-          poster={undefined}
-          cameraTarget={undefined}
-          auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
-          glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
-        />
-      {/key}
+      {#if !selectedForCare}
+        {#key activeCompanion?.id ?? 'none'}
+          <MuseModel
+            size="240px"
+            autoplay
+            respectReducedMotion={false}
+            poster={undefined}
+            cameraTarget={undefined}
+            auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
+            glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
+          />
+        {/key}
+      {/if}
     </div>
   </section>
 
