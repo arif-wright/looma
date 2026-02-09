@@ -448,13 +448,43 @@
       </p>
       {#if activeCompanion}
         <div class="muse-preview__stats">
-          <span class="muse-chip">State: {activeCompanion.state ?? activeCompanion.mood ?? 'steady'}</span>
-          <span class="muse-chip">Energy: {activeCompanion.energy}</span>
-          <span class="muse-chip">Affection: {activeCompanion.affection}</span>
-          <span class="muse-chip">Trust: {activeCompanion.trust}</span>
+          <span class="muse-chip">Active</span>
+          {#if typeof activeCompanion.slot_index === 'number'}
+            <span class="muse-chip">Slot {activeCompanion.slot_index + 1}</span>
+          {/if}
+          <span class="muse-chip">{activeCompanion.state ?? activeCompanion.mood ?? 'steady'}</span>
           {#if activeCompanion.stats?.bond_level !== undefined}
             <span class="muse-chip">Bond Lv {activeCompanion.stats.bond_level}</span>
           {/if}
+        </div>
+        <div class="muse-preview__meters" aria-label="Companion stats preview">
+          <div class="muse-meter">
+            <div class="muse-meter__label">
+              <span>Affection</span>
+              <span>{activeCompanion.affection}</span>
+            </div>
+            <div class="muse-meter__track muse-meter__track--affection">
+              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.affection ?? 0))}%`}></span>
+            </div>
+          </div>
+          <div class="muse-meter">
+            <div class="muse-meter__label">
+              <span>Trust</span>
+              <span>{activeCompanion.trust}</span>
+            </div>
+            <div class="muse-meter__track muse-meter__track--trust">
+              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.trust ?? 0))}%`}></span>
+            </div>
+          </div>
+          <div class="muse-meter">
+            <div class="muse-meter__label">
+              <span>Energy</span>
+              <span>{activeCompanion.energy}</span>
+            </div>
+            <div class="muse-meter__track muse-meter__track--energy">
+              <span style={`width:${Math.max(0, Math.min(100, activeCompanion.energy ?? 0))}%`}></span>
+            </div>
+          </div>
         </div>
       {:else}
         <p class="lede">Choose an active companion below to preview it here.</p>
@@ -699,6 +729,53 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
+  }
+
+  .muse-preview__meters {
+    margin-top: 0.75rem;
+    display: grid;
+    gap: 0.7rem;
+    max-width: 680px;
+  }
+
+  .muse-meter {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .muse-meter__label {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .muse-meter__track {
+    height: 0.68rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+  }
+
+  .muse-meter__track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .muse-meter__track--affection span {
+    background: linear-gradient(90deg, #63d8f1, #9a73ff);
+  }
+
+  .muse-meter__track--trust span {
+    background: linear-gradient(90deg, #69e6b2, #34c77b);
+  }
+
+  .muse-meter__track--energy span {
+    background: linear-gradient(90deg, #f1cf66, #f08e62);
   }
 
   .muse-chip {
