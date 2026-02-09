@@ -28,11 +28,15 @@
         <span class="logo-text">Looma</span>
       </div>
       <label class="search-omnibox panel-glass" role="search" aria-label="Search Kinforge">
-        <Search class="search-icon" aria-hidden="true" />
+        <span class="search-icon" aria-hidden="true">
+          <Search aria-hidden="true" />
+        </span>
         <input type="search" placeholder="Search Kinforge…" aria-label="Search Kinforge" />
       </label>
     </div>
-    <CenterIconNav className="header-nav hidden md:flex" items={iconNavItems} />
+    <div class="header-nav">
+      <CenterIconNav className="hidden md:flex" items={iconNavItems} />
+    </div>
     <div class="header-right">
       <StatusCapsule
         className="ml-auto shrink-0"
@@ -81,6 +85,7 @@
     justify-content: space-between;
     gap: 1.5rem;
     min-height: 3.5rem;
+    flex-wrap: nowrap;
   }
 
   .header-left {
@@ -152,14 +157,19 @@
   }
 
   .search-icon {
-    width: 1rem;
-    height: 1rem;
+    display: inline-flex;
     color: rgba(244, 247, 255, 0.5);
   }
 
+  .search-icon :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
   .header-nav {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     justify-content: center;
+    min-width: 0;
   }
 
   .header-right {
@@ -167,6 +177,44 @@
     justify-content: flex-end;
     flex: 1 1 auto;
     min-width: 0;
+  }
+
+  @media (max-width: 1360px) {
+    .app-header__inner {
+      gap: 0.85rem;
+    }
+
+    .search-omnibox {
+      width: clamp(11rem, 24vw, 16rem);
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .app-header__inner {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      padding-top: 0.45rem;
+      padding-bottom: 0.45rem;
+      min-height: auto;
+      row-gap: 0.55rem;
+    }
+
+    .header-left {
+      order: 1;
+      flex: 1 1 auto;
+    }
+
+    .header-right {
+      order: 2;
+      flex: 0 1 auto;
+      margin-left: auto;
+    }
+
+    .header-nav {
+      order: 3;
+      flex: 1 1 100%;
+      justify-content: flex-start;
+    }
   }
 
   @media (max-width: 960px) {

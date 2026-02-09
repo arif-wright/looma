@@ -21,10 +21,10 @@
   export let activeCompanion: ActiveCompanionSnapshot | null = null;
 </script>
 
-<div class="md:hidden">
+<div class="lg:hidden">
   <LeanHeaderMobile {notifications} {userEmail} {profile} {activeCompanion} {onLogout} />
 </div>
-<div class="hidden md:block">
+<div class="hidden lg:block">
   <LeanHeaderDesktop
     {iconNavItems}
     {energy}

@@ -411,6 +411,7 @@
     min-height: 100vh;
     min-height: 100vh;
     background: var(--brand-navy, #050712);
+    overflow-x: clip;
   }
 
   .app-surface {
@@ -436,11 +437,19 @@
       var(--brand-navy, #050712);
     transition: background 360ms ease;
     background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
+    overflow-x: clip;
   }
 
   .app-main {
     padding: 0;
     overflow-y: auto;
+    overflow-x: clip;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-main :global(*) {
+    min-width: 0;
   }
 
   @media (max-width: 960px) {

@@ -282,6 +282,25 @@ body {
   height: 100%;
 }
 
+#svelte {
+  min-height: 100%;
+  min-width: 0;
+}
+
+main,
+section,
+article,
+aside {
+  min-width: 0;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
 .modal-open {
   overflow: hidden !important;
 }
@@ -327,6 +346,12 @@ body::before {
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 10;
+}
+
+@media (max-width: 1360px) {
+  :root {
+    --space: clamp(16px, 3vw, 28px);
+  }
 }
 
 .skip-link:focus,
