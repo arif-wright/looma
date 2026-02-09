@@ -77,14 +77,14 @@
 
   .app-header__inner {
     width: 100%;
-    max-width: 1440px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     padding: 0 clamp(1.25rem, 3vw, 3rem);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
-    min-height: 3.5rem;
+    min-height: 56px;
     flex-wrap: nowrap;
   }
 
@@ -177,6 +177,7 @@
     justify-content: flex-end;
     flex: 1 1 auto;
     min-width: 0;
+    flex-wrap: nowrap;
   }
 
   @media (max-width: 1360px) {

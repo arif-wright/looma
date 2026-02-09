@@ -245,11 +245,11 @@
 
   .dashboard__grid {
     display: grid;
-    grid-template-columns: minmax(208px, 260px) minmax(0, 1fr) minmax(260px, 310px);
-    column-gap: clamp(1rem, 2.2vw, 2rem);
+    grid-template-columns: 240px minmax(0, 760px) 300px;
+    column-gap: clamp(0.85rem, 1.8vw, 1.4rem);
     row-gap: 2.5rem;
     align-items: start;
-    justify-content: stretch;
+    justify-content: center;
   }
 
   .sidebar {
@@ -293,7 +293,16 @@
     display: grid;
     gap: 2rem;
     width: 100%;
+    max-width: 760px;
     min-width: 0;
+  }
+
+  .sidebar--left {
+    max-width: 240px;
+  }
+
+  .sidebar--right {
+    max-width: 300px;
   }
 
   .panel {
@@ -494,6 +503,7 @@
     .dashboard__grid {
       column-gap: 1.25rem;
       grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+      justify-content: center;
     }
 
     .sidebar--right {

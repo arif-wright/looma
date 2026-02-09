@@ -102,7 +102,7 @@
 
       <div class="companion-dock__viewer">
         <MuseModel
-          size={expanded ? '220px' : '140px'}
+          size={expanded ? '184px' : '116px'}
           autoplay={effectiveMotion}
           cameraControls={false}
           respectReducedMotion={false}
@@ -160,7 +160,7 @@
 <style>
   .companion-dock {
     position: fixed;
-    right: 1.5rem;
+    right: 0.85rem;
     bottom: 5.5rem;
     z-index: 40;
     pointer-events: none;
@@ -176,14 +176,14 @@
   }
 
   .companion-dock__panel {
-    width: 260px;
-    border-radius: 1.5rem;
+    width: 232px;
+    border-radius: 1.25rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(6, 10, 20, 0.85);
     box-shadow: 0 20px 50px rgba(4, 8, 20, 0.55);
-    padding: 1rem;
+    padding: 0.85rem;
     display: grid;
-    gap: 0.85rem;
+    gap: 0.7rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -208,7 +208,7 @@
 
   .companion-dock__title {
     margin: 0.2rem 0 0;
-    font-size: 1rem;
+    font-size: 0.94rem;
     font-weight: 600;
   }
 
@@ -259,7 +259,7 @@
 
   .companion-dock__hint {
     margin: 0;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: rgba(255, 255, 255, 0.5);
   }
 
@@ -285,7 +285,7 @@
     }
 
     .companion-dock__panel {
-      width: min(230px, calc(100vw - 1.5rem));
+      width: min(216px, calc(100vw - 1.25rem));
     }
 
   }

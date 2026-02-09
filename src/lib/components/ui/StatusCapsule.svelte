@@ -37,7 +37,7 @@ const openWallet = (event: MouseEvent) => {
 
 const profileStore = currentProfile;
 const capsuleBaseClass =
-    'status-pill pill panel-glass ring-neon flex w-full flex-wrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
+    'status-pill pill panel-glass ring-neon flex w-auto max-w-full flex-nowrap items-center gap-3 px-4 py-2 text-[13px] text-white/85 backdrop-blur-xl';
 
   let energyDisplay = '—';
   let levelDisplay: string | number = '—';
@@ -289,6 +289,8 @@ const capsuleBaseClass =
     z-index: 0;
     gap: 0.5rem;
     font-size: 0.8rem;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   .status-pill > * {
@@ -439,6 +441,7 @@ const capsuleBaseClass =
     z-index: 20;
     height: var(--pill-h);
     box-sizing: border-box;
+    white-space: nowrap;
   }
 
   .wallet-pill span:first-child {
@@ -459,6 +462,10 @@ const capsuleBaseClass =
     font-size: 0.68rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .wallet-pill span:nth-child(2) {
+    white-space: nowrap;
   }
 
   .wallet-delta.positive {
@@ -578,17 +585,16 @@ const capsuleBaseClass =
 
   @media (max-width: 768px) {
     .status-pill {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.75rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .status-pill::-webkit-scrollbar {
+      display: none;
     }
 
     .divider {
       display: none;
-    }
-
-    .stat--xp {
-      width: 100%;
     }
   }
 

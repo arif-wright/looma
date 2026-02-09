@@ -400,11 +400,11 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: minmax(208px, 260px) minmax(0, 1fr) minmax(272px, 320px);
-    column-gap: clamp(1rem, 2.2vw, 2rem);
+    grid-template-columns: 240px minmax(0, 760px) 300px;
+    column-gap: clamp(0.85rem, 1.8vw, 1.4rem);
     row-gap: 1.5rem;
     align-items: start;
-    justify-content: stretch;
+    justify-content: center;
   }
 
   .column-left,
@@ -418,20 +418,21 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   }
 
   .column-left {
-    max-width: 260px;
     width: 100%;
+    max-width: 240px;
   }
 
   .column-right {
     justify-self: stretch;
     width: 100%;
-    max-width: 320px;
+    max-width: 300px;
   }
 
   .column-center {
     display: grid;
     gap: 1.5rem;
     width: 100%;
+    max-width: 760px;
     min-width: 0;
   }
 
@@ -546,17 +547,18 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     }
   }
 
-  @media (max-width: 1440px) {
+  @media (max-width: 1480px) {
     .dashboard-grid {
-      grid-template-columns: minmax(190px, 230px) minmax(0, 1fr) minmax(248px, 300px);
-      column-gap: clamp(0.9rem, 1.8vw, 1.4rem);
+      grid-template-columns: 220px minmax(0, 700px) 280px;
+      column-gap: 1rem;
     }
   }
 
   @media (max-width: 1280px) {
     .dashboard-grid {
       column-gap: 1.25rem;
-      grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+      grid-template-columns: 220px minmax(0, 760px);
+      justify-content: center;
     }
 
     .column-right {
