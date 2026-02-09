@@ -8,6 +8,7 @@ import { addTrace } from '$lib/server/agents/traceStore';
 import { dev } from '$app/environment';
 import { getConsentFlags } from '$lib/server/consent';
 import { applyWorldStateBoundary, markWorldWhisperShown } from '$lib/server/context/worldState';
+import { syncPortableState } from '$lib/server/context/portableSync';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
 import {
@@ -143,6 +144,19 @@ export const POST: RequestHandler = async (event) => {
   const reactionsEnabled = (context as any)?.portableState?.reactionsEnabled;
   const suppressReactions = reactionsEnabled === false || meta.suppressReactions === true;
   const nowIso = typeof meta.ts === 'string' ? meta.ts : new Date().toISOString();
+
+  if (userId && consent.memory && (type === 'session.start' || type === 'session.end')) {
+    try {
+      await syncPortableState({
+        userId,
+        sessionId,
+        eventType: type,
+        portableState: context?.portableState ?? null
+      });
+    } catch (err) {
+      console.error('[events] portable sync stub failed', err);
+    }
+  }
 
   let progressionUnlocks: Array<{ id: string; cosmeticId: string; label: string }> = [];
   if (userId && consent.memory && (type === 'session.start' || type === 'session.end')) {
