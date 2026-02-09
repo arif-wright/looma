@@ -11,9 +11,9 @@
     id: string;
     user_id: string;
     actor_id: string | null;
-    kind: 'reaction' | 'comment' | 'share' | 'achievement_unlocked';
+    kind: 'reaction' | 'comment' | 'share' | 'achievement_unlocked' | 'companion_nudge';
     target_id: string;
-    target_kind: 'post' | 'comment' | 'achievement';
+    target_kind: 'post' | 'comment' | 'achievement' | 'companion';
     created_at: string;
     read: boolean;
     metadata: Record<string, unknown> | null;
@@ -81,6 +81,13 @@
         const name = getMetaString(payload, 'name', 'achievementName', 'title');
         return name ? `Achievement unlocked: ${name}` : 'Achievement unlocked';
       }
+      case 'companion_nudge': {
+        const name = getMetaString(payload, 'companionName', 'companion_name') ?? 'Your companion';
+        const reason = getMetaString(payload, 'reason');
+        if (reason === 'low_energy') return `${name} is low on energy`;
+        if (reason === 'care_due') return `${name} is ready for care`;
+        return `${name} has a new update`;
+      }
       default:
         return 'You have an update';
     }
@@ -122,6 +129,10 @@
 
     if (postId) {
       return canonicalPostPath(postHandle, postSlug, postId);
+    }
+
+    if (item.target_kind === 'companion') {
+      return `/app/companions?focus=${item.target_id}`;
     }
 
     return null;

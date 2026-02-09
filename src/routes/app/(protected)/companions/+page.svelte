@@ -27,6 +27,8 @@
 
   export let data: PageData;
   const SAFE_LOAD_ERROR = 'Something didn’t load. Try again.';
+  const CARE_STALE_HOURS = 18;
+  const LOW_ENERGY_THRESHOLD = 25;
 
   type PrefetchedEvent = {
     id: string;
@@ -49,6 +51,12 @@
         return Date.parse(a.created_at) - Date.parse(b.created_at);
       });
 
+  const parseTimestamp = (value: string | null | undefined): number | null => {
+    if (!value) return null;
+    const stamp = Date.parse(value);
+    return Number.isNaN(stamp) ? null : stamp;
+  };
+
   let companions: Companion[] = sortRoster(((data.companions ?? []) as Companion[]) ?? []);
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
   const rituals: CompanionRitual[] = (data.rituals ?? []) as CompanionRitual[];
@@ -65,6 +73,7 @@
   let lastCustomizeSyncKey = '';
   let portableActiveCompanion: PortableCompanionEntry | null = null;
   let portableActiveCosmetics = normalizeCompanionCosmetics(null);
+  let activeCarePrompt: { reason: 'low_energy' | 'care_due'; title: string; body: string } | null = null;
   let filters: RosterFilterState = { search: '', archetype: 'all', mood: 'all', sort: 'bond_desc' };
   let toast: { message: string; kind: 'success' | 'error' } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -381,6 +390,31 @@
 
   $: visibleCompanions = filteredCompanions();
   $: activeCompanion = companions.find((entry) => entry.is_active) ?? null;
+  $: activeCarePrompt = (() => {
+    if (!activeCompanion) return null;
+    const energy = typeof activeCompanion.energy === 'number' ? activeCompanion.energy : 0;
+    if (energy <= LOW_ENERGY_THRESHOLD) {
+      return {
+        reason: 'low_energy' as const,
+        title: `${activeCompanion.name} is low on energy`,
+        body: 'Give a quick care action to help them recover.'
+      };
+    }
+
+    const fedAt = parseTimestamp(activeCompanion.stats?.fed_at ?? null);
+    const playedAt = parseTimestamp(activeCompanion.stats?.played_at ?? null);
+    const groomedAt = parseTimestamp(activeCompanion.stats?.groomed_at ?? null);
+    const latestCare = [fedAt, playedAt, groomedAt].filter((stamp): stamp is number => typeof stamp === 'number');
+    if (latestCare.length === 0 || Math.max(...latestCare) < Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000) {
+      return {
+        reason: 'care_due' as const,
+        title: `${activeCompanion.name} is ready for care`,
+        body: 'A short feed, play, or groom keeps your bond steady.'
+      };
+    }
+
+    return null;
+  })();
   $: slotsUsed = Math.min(companions.length, maxSlots);
   $: archetypeOptions = Array.from(new Set(companions.map((companion) => companion.species))).filter(Boolean).sort();
   $: moodOptions = Array.from(new Set(companions.map((companion) => companion.state ?? companion.mood))).filter(Boolean).sort();
@@ -502,6 +536,22 @@
       />
     </div>
   </section>
+
+  {#if activeCarePrompt && activeCompanion}
+    <section class="care-prompt" role="status" aria-live="polite">
+      <div>
+        <p class="care-prompt__title">{activeCarePrompt.title}</p>
+        <p class="care-prompt__copy">{activeCarePrompt.body}</p>
+      </div>
+      <button
+        type="button"
+        class="care-prompt__cta"
+        on:click={() => handleSelectCompanion(activeCompanion)}
+      >
+        Open care actions
+      </button>
+    </section>
+  {/if}
 
   <section class="portable-roster-panel" aria-label="Companion roster">
     <div class="panel-title-row">
@@ -820,6 +870,40 @@
     gap: 0.75rem;
   }
 
+  .care-prompt {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(108, 205, 255, 0.45);
+    background: rgba(9, 14, 28, 0.82);
+    padding: 0.85rem 1rem;
+  }
+
+  .care-prompt__title {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .care-prompt__copy {
+    margin: 0.2rem 0 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.9rem;
+  }
+
+  .care-prompt__cta {
+    border-radius: 999px;
+    border: 1px solid rgba(108, 205, 255, 0.65);
+    background: rgba(56, 149, 255, 0.14);
+    color: rgba(185, 231, 255, 0.95);
+    padding: 0.4rem 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
   .portable-roster-copy {
     margin: 0;
     color: rgba(255, 255, 255, 0.72);
@@ -1105,6 +1189,11 @@
     }
 
     .roster-nudge {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .care-prompt {
       flex-direction: column;
       align-items: flex-start;
     }

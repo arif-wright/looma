@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
+import { createCompanionNudgeNotification } from '$lib/server/notifications';
 
 type TickRow = {
   companion_id: string;
@@ -20,6 +21,41 @@ type TickRow = {
   energy_delta: number | null;
   bond_score?: number | null;
   bond_level?: number | null;
+};
+
+type NudgeReason = 'low_energy' | 'care_due';
+type CompanionMetaRow = {
+  id: string;
+  name: string;
+  mood: string | null;
+  energy: number | null;
+  stats:
+    | {
+        fed_at: string | null;
+        played_at: string | null;
+        groomed_at: string | null;
+      }[]
+    | {
+        fed_at: string | null;
+        played_at: string | null;
+        groomed_at: string | null;
+      }
+    | null;
+};
+
+const LOW_ENERGY_THRESHOLD = 25;
+const CARE_STALE_HOURS = 18;
+const NUDGE_DEDUP_HOURS = 12;
+
+const toTime = (value: string | null | undefined): number | null => {
+  if (!value) return null;
+  const stamp = Date.parse(value);
+  return Number.isNaN(stamp) ? null : stamp;
+};
+
+const extractStats = (value: CompanionMetaRow['stats']) => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 };
 
 const normalizeRows = (rows: unknown): TickRow[] => {
@@ -132,6 +168,77 @@ export const POST: RequestHandler = async (event) => {
     });
   } catch (err) {
     console.error('[companions/tick] bond sync failed', err);
+  }
+
+  try {
+    const companionIds = Array.from(statsMap.keys());
+    if (companionIds.length > 0) {
+      const [metaResult, recentNudgesResult] = await Promise.all([
+        supabase
+          .from('companions')
+          .select('id,name,mood,energy,stats:companion_stats(fed_at,played_at,groomed_at)')
+          .eq('owner_id', playerId)
+          .in('id', companionIds),
+        supabase
+          .from('notifications')
+          .select('target_id, metadata')
+          .eq('user_id', playerId)
+          .eq('kind', 'companion_nudge')
+          .gte('created_at', new Date(Date.now() - NUDGE_DEDUP_HOURS * 60 * 60 * 1000).toISOString())
+      ]);
+
+      if (metaResult.error) {
+        console.error('[companions/tick] companion meta lookup failed', metaResult.error);
+      }
+      if (recentNudgesResult.error) {
+        console.error('[companions/tick] recent nudge lookup failed', recentNudgesResult.error);
+      }
+
+      const dedupe = new Set<string>();
+      (recentNudgesResult.data ?? []).forEach((row) => {
+        const companionId = typeof row?.target_id === 'string' ? row.target_id : null;
+        const reason =
+          typeof (row?.metadata as Record<string, unknown> | null)?.reason === 'string'
+            ? ((row?.metadata as Record<string, unknown>).reason as NudgeReason)
+            : null;
+        if (companionId && reason) {
+          dedupe.add(`${companionId}:${reason}`);
+        }
+      });
+
+      const dueCutoff = Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000;
+      for (const companion of (metaResult.data ?? []) as CompanionMetaRow[]) {
+        const stats = extractStats(companion.stats);
+        const energy = companion.energy ?? statsMap.get(companion.id)?.energy ?? null;
+        const lowEnergy = typeof energy === 'number' && energy <= LOW_ENERGY_THRESHOLD;
+
+        const fedAt = toTime(stats?.fed_at ?? null);
+        const playedAt = toTime(stats?.played_at ?? null);
+        const groomedAt = toTime(stats?.groomed_at ?? null);
+        const latestCare = [fedAt, playedAt, groomedAt].filter((stamp): stamp is number => typeof stamp === 'number');
+        const isCareDue = latestCare.length === 0 || Math.max(...latestCare) < dueCutoff;
+
+        const reasons: NudgeReason[] = [];
+        if (lowEnergy) reasons.push('low_energy');
+        if (isCareDue) reasons.push('care_due');
+
+        for (const reason of reasons) {
+          const key = `${companion.id}:${reason}`;
+          if (dedupe.has(key)) continue;
+          dedupe.add(key);
+          await createCompanionNudgeNotification(supabase, {
+            userId: playerId,
+            companionId: companion.id,
+            reason,
+            companionName: companion.name,
+            mood: companion.mood,
+            energy
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[companions/tick] companion nudge creation failed', err);
   }
 
   return json({

@@ -2,14 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SocialNotificationKind = 'reaction' | 'comment' | 'share';
 type AchievementNotificationKind = 'achievement_unlocked';
+type CompanionNotificationKind = 'companion_nudge';
 
-type NotificationKind = SocialNotificationKind | AchievementNotificationKind;
-type TargetKind = 'post' | 'comment' | 'achievement';
+type NotificationKind = SocialNotificationKind | AchievementNotificationKind | CompanionNotificationKind;
+type TargetKind = 'post' | 'comment' | 'achievement' | 'companion';
 
 export type NotificationParams = {
-  actorId: string;
+  actorId: string | null;
   userId: string;
-  kind: SocialNotificationKind;
+  kind: SocialNotificationKind | CompanionNotificationKind;
   targetId: string;
   targetKind: TargetKind;
   metadata?: Record<string, unknown>;
@@ -28,6 +29,12 @@ export async function createNotification(
   const allowSelf = options?.allowSelf ?? false;
 
   if (!actorId || !userId || (!allowSelf && actorId === userId)) {
+    if (!(kind === 'companion_nudge' && userId)) {
+      return;
+    }
+  }
+
+  if (kind !== 'companion_nudge' && (!actorId || (!allowSelf && actorId === userId))) {
     return;
   }
 
@@ -73,6 +80,41 @@ export async function createAchievementNotification(
   if (error) {
     console.error('[notifications] failed to insert achievement notification', error, insertPayload);
   }
+}
+
+export type CompanionNudgeNotificationParams = {
+  userId: string;
+  companionId: string;
+  reason: 'low_energy' | 'care_due';
+  companionName?: string | null;
+  mood?: string | null;
+  energy?: number | null;
+};
+
+export async function createCompanionNudgeNotification(
+  supabase: SupabaseClient,
+  params: CompanionNudgeNotificationParams
+): Promise<void> {
+  const { userId, companionId, reason, companionName, mood, energy } = params;
+  if (!userId || !companionId) return;
+
+  await createNotification(
+    supabase,
+    {
+      actorId: userId,
+      userId,
+      kind: 'companion_nudge',
+      targetId: companionId,
+      targetKind: 'companion',
+      metadata: {
+        reason,
+        companionName: companionName ?? null,
+        mood: mood ?? null,
+        energy: typeof energy === 'number' ? Math.max(0, Math.min(100, Math.round(energy))) : null
+      }
+    },
+    { allowSelf: true }
+  );
 }
 
 export async function markNotificationsRead(
