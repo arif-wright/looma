@@ -223,9 +223,12 @@
     align-items: center;
     gap: 0.9rem;
     min-width: 0;
-    flex: 1 1 0;
-    justify-content: flex-end;
+    flex: 1 1 auto;
     flex-wrap: nowrap;
+  }
+
+  .lean-header__left {
+    justify-content: flex-start;
   }
 
   .lean-logo {
@@ -406,10 +409,11 @@
     background: rgba(255, 255, 255, 0.05);
     color: rgba(248, 250, 255, 0.85);
     min-width: 0;
-    max-width: 100%;
+    max-width: min(52vw, 720px);
     white-space: nowrap;
     flex-wrap: nowrap;
     overflow: hidden;
+    flex: 1 1 auto;
   }
 
   .lean-status__companion {
@@ -646,14 +650,14 @@
     .lean-status__meta {
       display: none;
     }
+
+    .lean-status__progress {
+      display: none;
+    }
   }
 
   @media (max-width: 1260px) {
     .lean-search {
-      display: none;
-    }
-
-    .lean-status__progress {
       display: none;
     }
   }
