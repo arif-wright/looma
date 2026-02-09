@@ -22,6 +22,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/lib/__tests__/**/*.spec.ts', 'tests/**/*.spec.ts']
+    // Only run Vitest-native suites here. Playwright suites live under `tests/`
+    // but should be executed via `npm run test:e2e`.
+    include: [
+      'src/lib/__tests__/**/*.spec.ts',
+      'tests/api/companion-bond*.spec.ts',
+      'tests/api/companion-rituals.spec.ts'
+    ]
   }
 });

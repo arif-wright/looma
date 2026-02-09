@@ -14,10 +14,11 @@
   export { className as class };
   export let autoplay = true;
   export let cameraControls = false;
-  export let poster: string | undefined;
+  export let poster: string | undefined = undefined;
   export let transparent = true;
   export let auraColor: string = 'cyan';
   export let glowIntensity = 55;
+  export let preserveDrawingBuffer = false;
 
   // Deprecated: use `class` and `transparent` instead.
   export let background = 'transparent';
@@ -34,7 +35,7 @@
   // Deprecated: keep for compatibility with existing layout.
   export let cameraOrbit: string | undefined = '205deg 80deg 105%';
   // Deprecated: keep for compatibility with existing layout.
-  export let cameraTarget: string | undefined;
+  export let cameraTarget: string | undefined = undefined;
 
   let container: HTMLDivElement | null = null;
   let viewer: any = null;
@@ -90,6 +91,33 @@
       viewer.animationName = name ?? null;
       updatePlayback();
     }
+  }
+
+  export async function capturePortrait(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    if (!supportsWebGL) return null;
+    if (!shouldLoad) {
+      shouldLoad = true;
+      await loadModelViewer();
+    }
+    if (!viewer) return null;
+
+    try {
+      // model-viewer provides a `toDataURL()` helper in modern versions.
+      const asAny = viewer as any;
+      if (typeof asAny.toDataURL === 'function') {
+        const dataUrl = await asAny.toDataURL('image/png');
+        return typeof dataUrl === 'string' ? dataUrl : null;
+      }
+
+      const canvas = (viewer as any)?.shadowRoot?.querySelector?.('canvas') as HTMLCanvasElement | null;
+      if (canvas && typeof canvas.toDataURL === 'function') {
+        return canvas.toDataURL('image/png');
+      }
+    } catch (err) {
+      if (dev) console.debug('[MuseModel] capture failed', err);
+    }
+    return null;
   }
 
   onMount(() => {
@@ -200,6 +228,7 @@
       poster={poster}
       autoplay={autoplay && !reducedMotion ? true : undefined}
       camera-controls={cameraControls ? true : undefined}
+      preserve-drawing-buffer={preserveDrawingBuffer ? true : undefined}
       orientation={orientation}
       camera-orbit={cameraOrbit}
       camera-target={cameraTarget}

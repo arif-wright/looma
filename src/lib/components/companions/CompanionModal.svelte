@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import { createEventDispatcher, onDestroy, onMount, tick } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
@@ -9,6 +10,9 @@
   import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP, describeBondLevelUpToast } from '$lib/companions/companionCopy';
+  import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import { captureCompanionPortrait, getCachedCompanionPortrait } from '$lib/companions/portrait';
+  import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -38,19 +42,11 @@
 
   type CareAction = 'feed' | 'play' | 'groom';
 
-  const CARE_ACTIONS: Array<{ key: CareAction; label: string; emoji: string; description: string }> = [
-    { key: 'feed', label: 'Feed', emoji: '🍓', description: 'Boost energy & affection.' },
-    { key: 'play', label: 'Play', emoji: '🪁', description: 'Build trust through fun.' },
-    { key: 'groom', label: 'Groom', emoji: '✨', description: 'Keep them calm and relaxed.' }
+  const CARE_ACTIONS: Array<{ key: CareAction; label: string; effect: string; description: string }> = [
+    { key: 'feed', label: 'Feed', effect: 'Energy up', description: 'A small refill and a softer bond.' },
+    { key: 'play', label: 'Play', effect: 'Trust up', description: 'Shared motion builds closeness.' },
+    { key: 'groom', label: 'Groom', effect: 'Calm reset', description: 'A quiet routine to settle the day.' }
   ];
-
-  const MOOD_META: Record<string, { label: string; emoji: string }> = {
-    happy: { label: 'Happy', emoji: '😊' },
-    neutral: { label: 'Neutral', emoji: '😌' },
-    tired: { label: 'Tired', emoji: '😴' },
-    low_energy: { label: 'Low energy', emoji: '🥱' },
-    stressed: { label: 'Stressed', emoji: '😣' }
-  };
 
   const CLIENT_COOLDOWN_MS = 4000;
   const CARE_ERROR_GENERIC = 'Something went wrong while caring for your companion. Please try again.';
@@ -76,6 +72,10 @@
   let cooldownTimer: number | null = null;
   let lastFetchedId: string | null = null;
   let lastPrefetchVersion = 0;
+  let museRef: MuseModel | null = null;
+  let portraitSrc: string | null = null;
+  let portraitBusy = false;
+  let careSection: HTMLElement | null = null;
 
   const normalizeEvents = (list: CareEvent[]) => {
     const seen = new Set<string>();
@@ -234,6 +234,7 @@
     actionMessage = null;
     careError = null;
     resetCareState();
+    portraitBusy = false;
   }
 
   let currentCompanionId: string | null = null;
@@ -247,6 +248,7 @@
     actionMessage = null;
     careError = null;
     resetCareState();
+    portraitSrc = currentCompanionId ? getCachedCompanionPortrait(currentCompanionId) : null;
   }
 
   $: if (prefetched && prefetched.version !== lastPrefetchVersion) {
@@ -258,16 +260,50 @@
 
   const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   $: moodKey = (companion?.mood ?? 'neutral').toLowerCase();
-  $: moodInfo = MOOD_META[moodKey] ?? { label: 'Neutral', emoji: '😌' };
   $: statsRecord = companion?.stats ?? null;
   $: lastCareActive = statsRecord ? pickLatest([statsRecord.fed_at, statsRecord.played_at, statsRecord.groomed_at]) : null;
   $: lastPassiveTick = statsRecord?.last_passive_tick ?? null;
   $: lastCareAt = lastCareActive ?? lastPassiveTick ?? null;
-  $: lastCareLabel = lastCareAt ? describeRelativeTime(lastCareAt) : 'No care yet';
+  $: effective = companion ? computeCompanionEffectiveState(companion, new Date(nowTick)) : null;
+  $: lastCareLabel = effective ? formatLastCareLabel(effective.msSinceCare) : 'No care yet';
+  $: lastCheckInLabel = effective?.msSinceCheckIn == null ? 'No check-in yet' : formatLastCareLabel(effective.msSinceCheckIn);
   $: bondLevel = statsRecord?.bond_level ?? companion?.bond_level ?? 0;
   $: bondScore = statsRecord?.bond_score ?? companion?.bond_score ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
   $: bondBonusSummary = formatBonusSummary(bondBonus);
+
+  const normalizeRarity = (rarity: string | null | undefined) => (rarity ?? 'common').trim().toLowerCase();
+  $: rarityClass = normalizeRarity(companion?.rarity);
+
+  const scrollToCare = async () => {
+    await tick();
+    careSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const ensurePortrait = async () => {
+    if (!browser) return;
+    if (!open || !companion) return;
+    const cached = getCachedCompanionPortrait(companion.id);
+    if (cached) {
+      portraitSrc = cached;
+      return;
+    }
+    if (portraitBusy) return;
+    portraitBusy = true;
+    try {
+      await tick();
+      for (let i = 0; i < 8; i++) {
+        const dataUrl = await captureCompanionPortrait(companion.id, () => museRef?.capturePortrait?.() ?? Promise.resolve(null));
+        if (dataUrl) {
+          portraitSrc = dataUrl;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    } finally {
+      portraitBusy = false;
+    }
+  };
 
   const resetCareState = () => {
     careBusy = null;
@@ -388,27 +424,48 @@
       careBusy = null;
     }
   };
+
+  $: if (open && companion) {
+    void ensurePortrait();
+  }
 </script>
 
 <Modal {open} title={companion ? `${companion.name} dossier` : 'Companion dossier'} onClose={onClose}>
   {#if companion}
-    <header class="modal-hero">
-      <img src={companion.avatar_url ?? '/avatar.svg'} alt={companion.name} class="modal-avatar" />
-      <div>
-        <p class="modal-species">{companion.species}</p>
-        <h2>{companion.name}</h2>
-        <div class="modal-tags">
-          <span>{companion.rarity}</span>
-          <span>Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
-          <span>{companion.state ?? 'idle'}</span>
+    <header class="dossier-head">
+      <div class="dossier-head__left">
+        <div class={`dossier-portrait dossier-portrait--${rarityClass}`}>
+          {#if portraitSrc}
+            <img src={portraitSrc} alt={`${companion.name} portrait`} class="dossier-portrait__img" />
+          {:else}
+            <MuseModel bind:this={museRef} size="112px" autoplay={false} respectReducedMotion={false} preserveDrawingBuffer />
+          {/if}
+          {#if effective}
+            <span class={`mood-dot mood-dot--${effective.moodKey}`} aria-hidden="true"></span>
+          {/if}
         </div>
-        <div class="mood-pill-row">
-          <div class="mood-pill" aria-label={`Mood: ${moodInfo.label}`}>
-            <span class="mood-pill__icon" aria-hidden="true">{moodInfo.emoji}</span>
-            <span>{moodInfo.label}</span>
+
+        <div class="dossier-title">
+          <p class="dossier-title__eyebrow">Companion dossier</p>
+          <h2>{companion.name} · {companion.species}</h2>
+          <div class="dossier-chips">
+            {#if companion.is_active}
+              <span class="chip chip--active">Active</span>
+            {/if}
+            <span class="chip">Bond Lv {bondLevel}</span>
+            <span class="chip">{effective?.moodLabel ?? 'Calm'}</span>
+            <span class="chip">Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
           </div>
-          <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" className="mood-hint" />
+          <div class="dossier-state-row">
+            <span class="dossier-state">Last care: {lastCareLabel}</span>
+            <span class="dossier-state">Last check-in: {lastCheckInLabel}</span>
+            <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" className="mood-hint" />
+          </div>
         </div>
+      </div>
+
+      <div class="dossier-head__right">
+        <button type="button" class="btn btn-primary" on:click={scrollToCare}>Check in with {companion.name}</button>
       </div>
     </header>
 
@@ -473,29 +530,29 @@
     <section class="stat-grid" aria-label="Bond stats">
       <div class="stat-grid__meta">
         <h3>Bond stats</h3>
-        <span class="last-care-pill">Last care: {lastCareLabel}</span>
+        <span class="last-care-pill">Mood: {effective?.moodLabel ?? 'Calm'}</span>
       </div>
       <article>
         <header>Affection</header>
-        <div class="meter" role="progressbar" aria-valuenow={pct(companion.affection)} aria-valuemin="0" aria-valuemax="100">
-          <span style={`width:${pct(companion.affection)}%`}></span>
+        <div class="meter" role="progressbar" aria-valuenow={pct(effective?.affection ?? companion.affection)} aria-valuemin="0" aria-valuemax="100">
+          <span style={`width:${pct(effective?.affection ?? companion.affection)}%`}></span>
         </div>
       </article>
       <article>
         <header>Trust</header>
-        <div class="meter" role="progressbar" aria-valuenow={pct(companion.trust)} aria-valuemin="0" aria-valuemax="100">
-          <span style={`width:${pct(companion.trust)}%`}></span>
+        <div class="meter" role="progressbar" aria-valuenow={pct(effective?.trust ?? companion.trust)} aria-valuemin="0" aria-valuemax="100">
+          <span style={`width:${pct(effective?.trust ?? companion.trust)}%`}></span>
         </div>
       </article>
       <article>
         <header>Energy</header>
-        <div class="meter" role="progressbar" aria-valuenow={pct(companion.energy)} aria-valuemin="0" aria-valuemax="100">
-          <span style={`width:${pct(companion.energy)}%`}></span>
+        <div class="meter" role="progressbar" aria-valuenow={pct(effective?.energy ?? companion.energy)} aria-valuemin="0" aria-valuemax="100">
+          <span style={`width:${pct(effective?.energy ?? companion.energy)}%`}></span>
         </div>
       </article>
     </section>
 
-    <section class="care-section" aria-label="Care actions">
+    <section class="care-section" aria-label="Care actions" bind:this={careSection}>
       <div class="care-section__head">
         <div>
           <p class="label">Care actions</p>
@@ -513,9 +570,11 @@
             disabled={!!careBusy || actionCooldowns[action.key] > 0}
             on:click={() => handleCareAction(action.key)}
           >
-            <span class="care-icon" aria-hidden="true">{action.emoji}</span>
             <div class="care-copy">
-              <span class="care-title">{action.label}</span>
+              <div class="care-title-row">
+                <span class="care-title">{action.label}</span>
+                <span class="care-badge">{action.effect}</span>
+              </div>
               <p>{action.description}</p>
               <span class="care-cooldown">
                 {#if careBusy === action.key}
@@ -552,64 +611,140 @@
 </Modal>
 
 <style>
-  .modal-hero {
+  .dossier-head {
     display: flex;
-    gap: 1.25rem;
-    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
     margin-bottom: 1rem;
   }
 
-  .modal-avatar {
-    width: 96px;
-    height: 96px;
-    border-radius: 24px;
-    object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .modal-species {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .modal-tags {
+  .dossier-head__left {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
+    gap: 1rem;
+    min-width: 0;
+    align-items: flex-start;
   }
 
-  .modal-tags span {
-    padding: 0.2rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .dossier-head__right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    flex: 0 0 auto;
   }
 
-  .mood-pill-row {
-    margin-top: 1rem;
-    display: inline-flex;
-    gap: 0.4rem;
-    align-items: center;
+  .dossier-portrait {
+    width: 112px;
+    height: 112px;
+    border-radius: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: linear-gradient(160deg, rgba(12, 16, 32, 0.9), rgba(6, 10, 20, 0.7));
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
   }
 
-  .mood-pill {
-    margin-top: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.85rem;
+  .dossier-portrait__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .dossier-portrait--rare {
+    border-color: rgba(148, 163, 255, 0.35);
+    box-shadow: inset 0 0 22px rgba(148, 163, 255, 0.14);
+  }
+
+  .dossier-portrait--epic {
+    border-color: rgba(217, 70, 239, 0.35);
+    box-shadow: inset 0 0 22px rgba(217, 70, 239, 0.16);
+  }
+
+  .dossier-portrait--legendary {
+    border-color: rgba(251, 191, 36, 0.45);
+    box-shadow: inset 0 0 24px rgba(251, 191, 36, 0.18);
+  }
+
+  .mood-dot {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 10px;
+    height: 10px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 0.8rem;
+    background: rgba(148, 163, 184, 0.85);
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.25);
+  }
+
+  .mood-dot--radiant,
+  .mood-dot--calm {
+    background: rgba(94, 234, 212, 0.9);
+  }
+
+  .mood-dot--quiet,
+  .mood-dot--waiting {
+    background: rgba(148, 163, 255, 0.9);
+  }
+
+  .mood-dot--resting,
+  .mood-dot--distant {
+    background: rgba(251, 191, 36, 0.9);
+  }
+
+  .dossier-title {
+    min-width: 0;
+  }
+
+  .dossier-title__eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .dossier-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .chip {
+    padding: 0.22rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 0.75rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .chip--active {
+    border-color: rgba(94, 234, 212, 0.35);
+    box-shadow: inset 0 0 18px rgba(94, 234, 212, 0.12);
+  }
+
+  .dossier-state-row {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    color: rgba(226, 232, 255, 0.78);
+    font-size: 0.85rem;
+  }
+
+  .dossier-state {
+    padding: 0.22rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(9, 12, 25, 0.55);
   }
 
   .modal-actions {
@@ -633,6 +768,11 @@
 
   .btn-secondary {
     background: transparent;
+  }
+
+  .btn-primary {
+    border-color: rgba(94, 234, 212, 0.35);
+    background: rgba(94, 234, 212, 0.12);
   }
 
   .btn:disabled,
@@ -902,20 +1042,17 @@
     cursor: not-allowed;
   }
 
-  .care-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.08);
-    display: grid;
-    place-items: center;
-    font-size: 1.5rem;
-  }
-
   .care-copy {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+  }
+
+  .care-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
   }
 
   .care-title {
@@ -923,6 +1060,18 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 0.8rem;
+  }
+
+  .care-badge {
+    border-radius: 999px;
+    padding: 0.15rem 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 255, 0.8);
+    flex: 0 0 auto;
   }
 
   .care-copy p {
@@ -960,5 +1109,20 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  @media (max-width: 720px) {
+    .dossier-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .dossier-head__right {
+      justify-content: stretch;
+    }
+
+    .btn-primary {
+      width: 100%;
+    }
   }
 </style>
