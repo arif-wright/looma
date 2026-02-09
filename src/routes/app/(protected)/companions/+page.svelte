@@ -514,19 +514,20 @@
     </div>
 
     <div class="companion-view__model" aria-hidden="true">
-      {#key activeCompanion?.id ?? 'none'}
-        <MuseModel
-          bind:this={museHostRef}
-          size="240px"
-          autoplay
-          respectReducedMotion={false}
-          preserveDrawingBuffer={true}
-          poster={undefined}
-          cameraTarget={undefined}
-          auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
-          glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
-        />
-      {/key}
+      {#if !selectedForCare}
+        {#key activeCompanion?.id ?? 'none'}
+          <MuseModel
+            bind:this={museHostRef}
+            size="240px"
+            autoplay
+            respectReducedMotion={false}
+            poster={undefined}
+            cameraTarget={undefined}
+            auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
+            glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
+          />
+        {/key}
+      {/if}
     </div>
   </section>
 
@@ -700,7 +701,7 @@
   companion={selectedForCare}
   {maxSlots}
   capturePortrait={() => museHostRef?.capturePortrait?.() ?? Promise.resolve(null)}
-  allowLivePortrait={false}
+  allowLivePortrait={true}
   prefetched={prefetchedForModal}
   onClose={closeCareModal}
   renameCompanion={async (id, name) => {
