@@ -24,7 +24,7 @@
   };
 
   const PAGE_SIZE = 5;
-  const supabase = supabaseBrowser();
+  const supabase: any = supabaseBrowser();
 
   let items: FeedRow[] = [];
   let loading = true;

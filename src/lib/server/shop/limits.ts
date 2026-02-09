@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { ShopError } from './errors';
 
-export type Supabase = SupabaseClient<any, 'public', any>;
+type Supabase = SupabaseClient<any, 'public', any>;
 
 type LimitRow = {
   sku: string;
@@ -13,12 +13,43 @@ type LimitRow = {
 
 type OrderItemRow = {
   qty?: number;
-  order: {
-    inserted_at: string;
-    status: string;
-    user_id: string;
-  };
+  order:
+    | {
+        inserted_at: string;
+        status: string;
+        user_id: string;
+      }
+    | {
+        inserted_at: string;
+        status: string;
+        user_id: string;
+      }[];
 };
+
+const normalizeOrder = (value: OrderItemRow['order']) => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+};
+
+type NormalizedOrder = {
+  inserted_at: string;
+  status: string;
+  user_id: string;
+};
+
+type NormalizedOrderItemRow = {
+  qty?: number;
+  order: NormalizedOrder;
+};
+
+const normalizeOrderItemRows = (rows: unknown[]): NormalizedOrderItemRow[] =>
+  rows
+    .map((row) => row as OrderItemRow)
+    .map((row) => {
+      const order = normalizeOrder(row.order);
+      return order ? { qty: row.qty, order } : null;
+    })
+    .filter((row): row is NormalizedOrderItemRow => Boolean(row));
 
 const normalizeClient = (client?: Supabase) => client ?? supabaseAdmin;
 
@@ -87,7 +118,7 @@ export const checkPerUserLimits = async ({ userId, sku, qty, now, client }: Limi
     throw error;
   }
 
-  const rows = (data ?? []) as OrderItemRow[];
+  const rows = normalizeOrderItemRows((data ?? []) as unknown[]);
 
   const { dailyTotal, weeklyTotal } = rows.reduce(
     (acc, row) => {
@@ -168,7 +199,7 @@ export const checkCooldown = async ({ userId, sku, now, client }: CooldownInput)
     throw error;
   }
 
-  const row = Array.isArray(data) && data.length > 0 ? (data[0] as OrderItemRow) : null;
+  const row = Array.isArray(data) ? normalizeOrderItemRows(data as unknown[])[0] ?? null : null;
   if (!row) {
     return { lastPurchaseAt: null, retryAfter: null };
   }

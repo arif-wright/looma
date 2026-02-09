@@ -391,11 +391,17 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
           achievementId: achievement.id
         });
         if (insertedId) {
-          await supabase
+          const rollback = await supabase
             .from('user_achievements')
             .delete()
-            .eq('id', insertedId)
-            .catch(() => undefined);
+            .eq('id', insertedId);
+          if (rollback.error) {
+            console.error('[achievements] failed to rollback unlock after shard grant error', rollback.error, {
+              insertedId,
+              userId,
+              achievementId: achievement.id
+            });
+          }
         }
         throw err;
       }

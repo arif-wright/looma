@@ -4,8 +4,8 @@
   import { onDestroy, onMount } from 'svelte';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
-  import RosterFilterBar, { type RosterFilterState } from '$lib/components/companions/RosterFilterBar.svelte';
-  import RosterGrid, { type RosterReorderDetail } from '$lib/components/companions/RosterGrid.svelte';
+  import RosterFilterBar from '$lib/components/companions/RosterFilterBar.svelte';
+  import RosterGrid from '$lib/components/companions/RosterGrid.svelte';
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
   import { logEvent } from '$lib/analytics';
@@ -40,6 +40,15 @@
     created_at: string;
     note?: string | null;
   };
+
+  type RosterFilterState = {
+    search: string;
+    archetype: string;
+    mood: string;
+    sort: 'bond_desc' | 'newest' | 'energy';
+  };
+
+  type RosterReorderDetail = { ids: string[]; via: 'pointer' | 'keyboard' };
 
   const sortRoster = (list: Companion[]) =>
     list
@@ -358,6 +367,7 @@
 
   const savePortableCosmetics = async () => {
     if (!portableActiveCompanion || customizeBusy) return;
+    const activePortableId = portableActiveCompanion.id;
     customizeBusy = true;
     try {
       const res = await fetch('/api/companions/customize', {
@@ -377,7 +387,7 @@
       }
       const nextCosmetics = normalizeCompanionCosmetics(payload?.cosmetics);
       portableRoster = portableRoster.map((entry) =>
-        entry.id === portableActiveCompanion.id ? { ...entry, cosmetics: nextCosmetics } : entry
+        entry.id === activePortableId ? { ...entry, cosmetics: nextCosmetics } : entry
       );
       showToast('Companion cosmetics updated');
       await invalidateAll();

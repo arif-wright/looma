@@ -14,7 +14,7 @@ import {
   type Supabase as ShopSupabase
 } from './pricing';
 
-export type Supabase = SupabaseClient<any, 'public', any>;
+type Supabase = SupabaseClient<any, 'public', any>;
 
 const normalizeClient = (client?: Supabase) => client ?? supabaseAdmin;
 

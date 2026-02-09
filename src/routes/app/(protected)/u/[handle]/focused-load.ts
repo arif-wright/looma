@@ -27,7 +27,7 @@ type FocusedPostRow = {
   meta: Record<string, unknown> | null;
   created_at: string;
   author_id: string;
-  author: FocusedAuthor | null;
+  author: FocusedAuthor | FocusedAuthor[] | null;
 };
 
 type Lookup =
@@ -42,6 +42,10 @@ type FocusedPostResult = {
 };
 
 const safe = (value: string) => encodeURIComponent(value);
+const normalizeAuthor = (value: FocusedAuthor | FocusedAuthor[] | null | undefined): FocusedAuthor | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
 
 export async function loadFocusedPost(
   event: RequestEvent,
@@ -51,11 +55,11 @@ export async function loadFocusedPost(
   const supabase = supabaseServer(event);
   const blockPeers = await ensureBlockedPeers(event, supabase);
   const viewerId = event.locals.user?.id ?? null;
+  const search = event.url.search;
 
   if (isBlockedPeer(blockPeers, profile.id) && viewerId !== profile.id) {
     throw redirect(302, `/app/u/${safe(profile.handle)}${search}`);
   }
-  const search = event.url.search;
 
   const postQuery = supabase
     .from('posts')
@@ -87,7 +91,7 @@ export async function loadFocusedPost(
   }
 
   const { data: rawPost, error: postError } = await postQuery.maybeSingle();
-  const postRow = (rawPost as FocusedPostRow | null) ?? null;
+  const postRow = (rawPost as unknown as FocusedPostRow | null) ?? null;
 
   if (postError) {
     console.error('[profile focused post] post lookup failed', postError);
@@ -98,7 +102,8 @@ export async function loadFocusedPost(
     throw error(404, 'Post not found');
   }
 
-  const authorHandle = postRow.author?.handle ?? profile.handle;
+  const postAuthor = normalizeAuthor(postRow.author);
+  const authorHandle = postAuthor?.handle ?? profile.handle;
 
   if (authorHandle !== profile.handle) {
     const targetSlug = postRow.slug ? safe(postRow.slug) : `p/${safe(postRow.id)}`;
@@ -139,9 +144,9 @@ export async function loadFocusedPost(
     comment_count: commentCount ?? 0,
     author: {
       id: postRow.author?.id ?? profile.id,
-      display_name: postRow.author?.display_name ?? profile.display_name ?? null,
+      display_name: postAuthor?.display_name ?? profile.display_name ?? null,
       handle: authorHandle ?? null,
-      avatar_url: postRow.author?.avatar_url ?? profile.avatar_url ?? null
+      avatar_url: postAuthor?.avatar_url ?? profile.avatar_url ?? null
     },
     kind: postRow.kind ?? null,
     text: postRow.text ?? null,
@@ -270,7 +275,8 @@ export async function handleReplyAction(event: RequestEvent, postId: string) {
     throw redirect(303, `/app/thread/${postId}${commentHash(newId)}`);
   }
 
-  const handle = postRow.author?.handle ?? null;
+  const author = Array.isArray(postRow.author) ? postRow.author[0] ?? null : postRow.author ?? null;
+  const handle = author?.handle ?? null;
   const slug = postRow.slug ?? null;
   const canonical = canonicalPostPath(handle, slug, postRow.id);
 

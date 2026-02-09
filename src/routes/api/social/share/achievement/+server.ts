@@ -15,6 +15,15 @@ type ShareAchievementPayload = {
   text?: unknown;
 };
 
+type AchievementRow = {
+  id: string;
+  key: string;
+  name: string;
+  points: number | null;
+  icon: string | null;
+  rarity: string | null;
+};
+
 const normalizeRarity = (value: string | null | undefined) => {
   if (!value) return 'Common';
   const lower = value.toLowerCase();
@@ -93,7 +102,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const textResult = sanitizeShareText(payload.text);
-  if (!textResult.ok) {
+  if (textResult.ok === false) {
     return reject(400, 'invalid_text', textResult.message, { text: payload.text });
   }
 
@@ -125,7 +134,11 @@ export const POST: RequestHandler = async (event) => {
     return reject(400, 'achievement_not_found', 'Achievement not found for this user.', { key });
   }
 
-  const achievement = unlockRow.achievement;
+  const achievementValue = unlockRow.achievement as AchievementRow[] | AchievementRow | null;
+  const achievement = Array.isArray(achievementValue) ? achievementValue[0] ?? null : achievementValue;
+  if (!achievement?.key) {
+    return reject(400, 'achievement_not_found', 'Achievement not found for this user.', { key });
+  }
   const displayRarity = normalizeRarity(achievement.rarity ?? 'common');
   const deepLink = `/app/achievements?highlight=${encodeURIComponent(achievement.key)}`;
 

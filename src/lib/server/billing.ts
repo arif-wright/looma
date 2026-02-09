@@ -14,7 +14,7 @@ export const getStripe = () => {
   }
 
   stripeClient = new Stripe(secretKey, {
-    apiVersion: '2024-06-20'
+    apiVersion: '2023-10-16'
   });
 
   return stripeClient;

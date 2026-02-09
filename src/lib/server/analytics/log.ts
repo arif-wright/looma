@@ -35,7 +35,7 @@ const resolveClient = (event: EventLike) => {
 
 const mergeDeviceMeta = (
   meta: Record<string, unknown> | null | undefined,
-  parser: UAParser.Instance
+  parser: any
 ): Record<string, unknown> => {
   const existing = meta && typeof meta === 'object' ? meta : {};
   const browser = parser.getBrowser();

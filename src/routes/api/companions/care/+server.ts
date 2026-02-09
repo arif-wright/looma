@@ -5,6 +5,17 @@ import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 
 type CareAction = 'feed' | 'play' | 'groom';
+type CompanionStatsRow = {
+  companion_id: string;
+  care_streak: number;
+  fed_at: string | null;
+  played_at: string | null;
+  groomed_at: string | null;
+  last_passive_tick: string | null;
+  last_daily_bonus_at: string | null;
+  bond_level: number | null;
+  bond_score: number | null;
+};
 
 const ACTION_DELTAS: Record<CareAction, { affection: number; trust: number; energy: number }> = {
   feed: { affection: 5, trust: 2, energy: 15 },
@@ -94,17 +105,29 @@ export const POST: RequestHandler = async (event) => {
     bond_level: null,
     bond_score: null
   };
+  const normalizedStats = (Array.isArray(statsBase) ? statsBase[0] : statsBase) as CompanionStatsRow | undefined;
+  const stats = normalizedStats ?? {
+    companion_id: companion.id,
+    care_streak: 0,
+    fed_at: null,
+    played_at: null,
+    groomed_at: null,
+    last_passive_tick: null,
+    last_daily_bonus_at: null,
+    bond_level: null,
+    bond_score: null
+  };
   const nowIso = new Date().toISOString();
   const nextStats = {
     companion_id: companion.id,
-    care_streak: (statsBase.care_streak ?? 0) + 1,
-    fed_at: action === 'feed' ? nowIso : statsBase.fed_at,
-    played_at: action === 'play' ? nowIso : statsBase.played_at,
-    groomed_at: action === 'groom' ? nowIso : statsBase.groomed_at,
-    last_passive_tick: statsBase.last_passive_tick ?? null,
-    last_daily_bonus_at: statsBase.last_daily_bonus_at ?? null,
-    bond_level: statsBase.bond_level ?? null,
-    bond_score: statsBase.bond_score ?? null
+    care_streak: (stats.care_streak ?? 0) + 1,
+    fed_at: action === 'feed' ? nowIso : stats.fed_at,
+    played_at: action === 'play' ? nowIso : stats.played_at,
+    groomed_at: action === 'groom' ? nowIso : stats.groomed_at,
+    last_passive_tick: stats.last_passive_tick ?? null,
+    last_daily_bonus_at: stats.last_daily_bonus_at ?? null,
+    bond_level: stats.bond_level ?? null,
+    bond_score: stats.bond_score ?? null
   };
 
   const { error: statsError } = await supabase.from('companion_stats').upsert(nextStats, { onConflict: 'companion_id' });
@@ -129,8 +152,8 @@ export const POST: RequestHandler = async (event) => {
     console.error('[companion care] failed to insert event', eventError);
   }
 
-  let bondLevel = statsBase.bond_level ?? 0;
-  let bondScore = statsBase.bond_score ?? 0;
+  let bondLevel = stats.bond_level ?? 0;
+  let bondScore = stats.bond_score ?? 0;
   let milestoneEvents: { action: string; note?: string | null }[] = [];
   let ritualUpdate = null;
   try {

@@ -102,13 +102,14 @@ export async function togglePostReaction(
 
   if (insertError) throw insertError;
 
-  void supabase
-    .rpc('fn_award_reaction_xp', {
-      target_type: 'post',
-      target_id: postId,
-      actor_id: userId
-    })
-    .catch(() => undefined);
+  const xpPostGrant = await supabase.rpc('fn_award_reaction_xp', {
+    target_type: 'post',
+    target_id: postId,
+    actor_id: userId
+  });
+  if (xpPostGrant.error) {
+    console.error('[engagement] post reaction xp grant failed', xpPostGrant.error, { postId, userId });
+  }
 
   return { toggledOn: true };
 }
@@ -147,13 +148,17 @@ export async function toggleCommentReaction(
 
   if (insertError) throw insertError;
 
-  void supabase
-    .rpc('fn_award_reaction_xp', {
-      target_type: 'comment',
-      target_id: commentId,
-      actor_id: userId
-    })
-    .catch(() => undefined);
+  const xpCommentGrant = await supabase.rpc('fn_award_reaction_xp', {
+    target_type: 'comment',
+    target_id: commentId,
+    actor_id: userId
+  });
+  if (xpCommentGrant.error) {
+    console.error('[engagement] comment reaction xp grant failed', xpCommentGrant.error, {
+      commentId,
+      userId
+    });
+  }
 
   return { toggledOn: true };
 }

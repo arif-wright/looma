@@ -18,7 +18,7 @@ export function computeTodayCardState(input: TodayCardInputs): TodayCardComputed
   const rewardPending = input.rewardPending;
   const failMissionId = input.failMissionId ?? null;
   const mission = input.mission ?? null;
-  const missionName = mission?.name ?? mission?.title ?? null;
+  const missionName = mission?.name ?? null;
   const failName = input.failMissionName ?? 'your last run';
   const creatureName = input.creatureName ?? 'your companion';
 

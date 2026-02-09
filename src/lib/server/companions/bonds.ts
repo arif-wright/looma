@@ -23,6 +23,7 @@ type CompanionRow = {
 };
 
 type BondMilestoneInsert = {
+  id?: string;
   companion_id: string;
   owner_id: string;
   action: string;
@@ -30,6 +31,7 @@ type BondMilestoneInsert = {
   trust_delta: number;
   energy_delta: number;
   note: string;
+  created_at?: string;
 };
 
 const BOND_ACHIEVEMENTS = [

@@ -63,7 +63,7 @@ function pruneEntries(entry: RateEntry, windowMs: number) {
 
 export function enforceRateLimit(bucket: RateBucket, userId: string): { ok: true } | { ok: false } {
   if (!userId) return { ok: false };
-  const map = state[bucketMap[bucket]];
+  const map = state[bucketMap[bucket]] as Map<string, RateEntry>;
   let entry = map.get(userId);
   if (!entry) {
     entry = { stamps: [] };

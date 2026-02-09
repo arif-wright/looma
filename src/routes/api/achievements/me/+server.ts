@@ -3,6 +3,14 @@ import type { RequestHandler } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
+type AchievementRow = {
+  key: string;
+  name: string | null;
+  description: string | null;
+  icon: string | null;
+  rarity: string | null;
+  points: number | null;
+};
 
 export const GET: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -44,7 +52,8 @@ export const GET: RequestHandler = async (event) => {
 
   const unlocks = (unlockRows ?? [])
     .map((row) => {
-      const achievement = row.achievements;
+      const rawAchievement = row.achievements as AchievementRow | AchievementRow[] | null;
+      const achievement = Array.isArray(rawAchievement) ? rawAchievement[0] ?? null : rawAchievement;
       if (!achievement || typeof achievement.key !== 'string') return null;
       return {
         key: achievement.key,

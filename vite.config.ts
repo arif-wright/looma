@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
 const usingVitest = Boolean(process.env.VITEST);

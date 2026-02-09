@@ -122,9 +122,13 @@ export const incrementCompanionRitual = async (
   }
   if (completed && !row.reward_claimed) {
     if (def.xpReward > 0) {
-      await client.rpc('fn_award_game_xp', { p_user: userId, p_xp: def.xpReward }).catch((err) => {
-        console.error('[rituals] xp grant failed', err);
+      const { error: xpGrantError } = await client.rpc('fn_award_game_xp', {
+        p_user: userId,
+        p_xp: def.xpReward
       });
+      if (xpGrantError) {
+        console.error('[rituals] xp grant failed', xpGrantError);
+      }
     }
     if (def.shardReward > 0) {
       await walletGrant({

@@ -25,14 +25,15 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
   }
 
   if (!data) return null;
+  const row = data as Record<string, unknown>;
   return {
-    id: data.id,
-    title: data.title ?? null,
-    summary: data.summary ?? null,
-    difficulty: data.difficulty ?? null,
-    status: data.status ?? null,
-    energy_reward: data.energy_reward ?? null,
-    xp_reward: data.xp_reward ?? null,
-    meta: (data.meta as Record<string, unknown> | null) ?? null
+    id: String(row.id ?? ''),
+    title: typeof row.title === 'string' ? row.title : null,
+    summary: typeof row.summary === 'string' ? row.summary : null,
+    difficulty: typeof row.difficulty === 'string' ? row.difficulty : null,
+    status: typeof row.status === 'string' ? row.status : null,
+    energy_reward: typeof row.energy_reward === 'number' ? row.energy_reward : null,
+    xp_reward: typeof row.xp_reward === 'number' ? row.xp_reward : null,
+    meta: (row.meta as Record<string, unknown> | null) ?? null
   };
 }

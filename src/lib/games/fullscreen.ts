@@ -156,8 +156,8 @@ export const ensureFallbackLayout = () => {
 
 export const requestLandscape = async (): Promise<void> => {
   if (!isBrowser || isIOS() || !isAndroid()) return;
-  const orientation = window.screen?.orientation;
-  if (!orientation?.lock) return;
+  const orientation = window.screen?.orientation as (ScreenOrientation & { lock?: (mode: string) => Promise<void> }) | undefined;
+  if (!orientation || typeof orientation.lock !== 'function') return;
   try {
     await orientation.lock('landscape');
   } catch (err) {

@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import ThreadBackground from '$lib/ui/ThreadBackground.svelte';
   import ParticlesLayer from '$lib/ui/ParticlesLayer.svelte';
+  let className = '';
+  export { className as class };
 
   let reduceMotion = false;
 
@@ -10,7 +12,7 @@
   });
 </script>
 
-<div class={`neuro-stack ${reduceMotion ? 'is-reduced' : ''}`} aria-hidden="true">
+<div class={`neuro-stack ${reduceMotion ? 'is-reduced' : ''} ${className}`.trim()} aria-hidden="true">
   <div class="gradient"></div>
   <ThreadBackground />
   <ParticlesLayer className="layer" />

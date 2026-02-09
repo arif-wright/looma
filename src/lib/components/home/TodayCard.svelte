@@ -7,14 +7,14 @@
 import { computeEffectiveEnergyMax } from '$lib/player/energy';
 import { buildMissionArcs, selectMissionArc } from './missionArcs';
 
-  export type MissionSnippet = {
+  type MissionSnippet = {
     id: string;
     title?: string | null;
     summary?: string | null;
     difficulty?: string | null;
   } | null;
 
-  export type CreatureSnippet = {
+  type CreatureSnippet = {
     id: string;
     name?: string | null;
     species?: string | null;
@@ -246,7 +246,7 @@ import { buildMissionArcs, selectMissionArc } from './missionArcs';
         <h3>{suggestedArc.title}</h3>
         <p class="callout-summary">{suggestedArc.body}</p>
       </div>
-      <a class="mission-arc__cta btn-ripple hover-glow" href={suggestedArc.href} sveltekit:prefetch>
+      <a class="mission-arc__cta btn-ripple hover-glow" href={suggestedArc.href} data-sveltekit-preload-data="hover">
         {suggestedArc.ctaLabel}
       </a>
     </section>
@@ -261,7 +261,7 @@ import { buildMissionArcs, selectMissionArc } from './missionArcs';
       </div>
       <div class="mission-arc__actions">
         {#each caughtUpActions as action}
-          <a class="secondary-cta btn-ripple hover-glow" href={action.href} sveltekit:prefetch>
+          <a class="secondary-cta btn-ripple hover-glow" href={action.href} data-sveltekit-preload-data="hover">
             {action.label}
           </a>
         {/each}
