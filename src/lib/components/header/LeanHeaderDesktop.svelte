@@ -594,6 +594,7 @@
 
   .lean-account-menu {
     position: relative;
+    z-index: 70;
   }
 
   .lean-account-menu__dropdown {
@@ -608,7 +609,7 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(8, 12, 20, 0.92);
     box-shadow: 0 16px 40px rgba(5, 7, 18, 0.5);
-    z-index: 20;
+    z-index: 80;
   }
 
   .lean-account-menu__dropdown a,
@@ -642,7 +643,7 @@
     flex-wrap: nowrap;
     row-gap: 0;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .lean-header__right > * {
