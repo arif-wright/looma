@@ -123,7 +123,10 @@ const cleanMeta = (input: UnlockMeta | null | undefined): UnlockMeta => {
 
 const parseRule = (raw: unknown): InternalRule => {
   if (!isRecord(raw) || typeof raw.kind !== 'string') return null;
-  const base: BaseRule = { kind: raw.kind, slug: typeof raw.slug === 'string' ? raw.slug : undefined };
+  const base: BaseRule = {
+    kind: raw.kind,
+    ...(typeof raw.slug === 'string' ? { slug: raw.slug } : {})
+  };
 
   switch (raw.kind) {
     case 'first_clear':

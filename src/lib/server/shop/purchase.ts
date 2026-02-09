@@ -428,7 +428,19 @@ export const finalizeOrder = async ({
     });
     walletSpent = true;
 
-    const orderMeta = buildOrderMeta({ userId, lines, total, currency, meta, client, event, now }, lines);
+    const orderMeta = buildOrderMeta(
+      {
+        userId,
+        lines,
+        total,
+        currency,
+        ...(meta ? { meta } : {}),
+        ...(client ? { client } : {}),
+        ...(event ? { event } : {}),
+        ...(now ? { now } : {})
+      },
+      lines
+    );
 
     const { error: orderError } = await supabase.from('shop_orders').insert({
       id: orderId,

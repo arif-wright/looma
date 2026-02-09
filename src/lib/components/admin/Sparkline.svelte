@@ -1,5 +1,5 @@
 <script lang="ts">
-  export type SparkPoint = { date: string; count: number };
+  import type { SparkPoint } from './types';
   export let data: SparkPoint[] = [];
   export let stroke = '#34d399';
   export let fill = 'none';

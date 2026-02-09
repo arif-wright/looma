@@ -85,7 +85,9 @@ const canEmitPreRunReaction = (event: Parameters<Agent['handle']>[0]) => {
     const entries = [...preRunReactionTimestamps.entries()].sort((a, b) => a[1] - b[1]);
     const pruneCount = Math.max(1, Math.floor(entries.length / 3));
     for (let i = 0; i < pruneCount; i += 1) {
-      preRunReactionTimestamps.delete(entries[i][0]);
+      const entry = entries[i];
+      if (!entry) continue;
+      preRunReactionTimestamps.delete(entry[0]);
     }
   }
   return true;
@@ -221,7 +223,7 @@ const companionAgent: Agent = {
           score !== null ? `Score ${score}. ${rewardSummary}.` : `Session logged. ${rewardSummary}.`
         ];
         const pick = simpleHash(`${event.timestamp}|direct|${score ?? 0}|${xpGained}|${shardsGained}`) % directOptions.length;
-        text = directOptions[pick];
+        text = directOptions[pick] ?? directOptions[0] ?? `Run complete. ${rewardSummary}.`;
       } else {
         const warmOptions = [
           `Nice work. You earned ${rewardSummary}.`,
@@ -231,7 +233,7 @@ const companionAgent: Agent = {
           `Strong finish. ${rewardSummary}.`
         ];
         const pick = simpleHash(`${event.timestamp}|warm|${score ?? 0}|${xpGained}|${shardsGained}`) % warmOptions.length;
-        text = warmOptions[pick];
+        text = warmOptions[pick] ?? warmOptions[0] ?? `Nice work. You earned ${rewardSummary}.`;
       }
     }
 

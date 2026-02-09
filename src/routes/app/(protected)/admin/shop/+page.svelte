@@ -171,7 +171,7 @@
     const form = new FormData();
     Object.entries(edit).forEach(([key, value]) => {
       if (key === 'tagsText') {
-        form.set('tags', value);
+        form.set('tags', String(value ?? ''));
         return;
       }
       form.set(key, typeof value === 'string' ? value : String(value));
@@ -228,6 +228,10 @@
 
     const reordered = list.slice();
     const [moved] = reordered.splice(sourceIndex, 1);
+    if (!moved) {
+      draggingId = null;
+      return;
+    }
     reordered.splice(targetIndex, 0, moved);
 
     const payload = reordered.map((item, index) => ({
@@ -269,11 +273,11 @@
       const sortable = Sortable.create(grid, {
         animation: 160,
         handle: '.card',
-        onStart: (evt) => {
+        onStart: (evt: any) => {
           const current = filtered?.[evt.oldIndex ?? -1];
           draggingId = current?.id ?? null;
         },
-        onEnd: (evt) => {
+        onEnd: (evt: any) => {
           const target = filtered?.[evt.newIndex ?? -1];
           if (draggingId && target) {
             onDrop(target);

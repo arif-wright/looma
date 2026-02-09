@@ -24,9 +24,9 @@
   async function loadInitial() {
     loading = true;
     try {
-      const { data, error } = await supabase.rpc('get_my_achievements', { p_limit: 12 });
+      const { data, error } = await supabase.rpc('get_my_achievements');
       if (error) throw error;
-      items = (data as AchievementRow[]) ?? [];
+      items = ((data as AchievementRow[]) ?? []).slice(0, 12);
     } catch (err: any) {
       console.error('loadAchievements error', err);
       error = err?.message ?? 'Failed to load achievements';

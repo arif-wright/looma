@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { COMPANION_RITUALS, describeRitualCompletion } from '$lib/companions/rituals';
+import type { CompanionRitual } from '$lib/companions/rituals';
 
 describe('companion rituals helpers', () => {
   it('formats completion copy with companion name', () => {
-    const ritual = {
-      ...COMPANION_RITUALS[0],
+    const ritual: CompanionRitual = {
+      ...COMPANION_RITUALS[0]!,
       progress: 1,
       status: 'completed' as const,
       completedAt: new Date().toISOString()
@@ -16,8 +17,8 @@ describe('companion rituals helpers', () => {
   });
 
   it('falls back to generic companion name', () => {
-    const ritual = {
-      ...COMPANION_RITUALS[1],
+    const ritual: CompanionRitual = {
+      ...COMPANION_RITUALS[1]!,
       progress: 1,
       status: 'completed' as const,
       completedAt: null

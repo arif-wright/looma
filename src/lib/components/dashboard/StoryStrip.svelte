@@ -1,5 +1,5 @@
 <script lang="ts">
-  export type Story = {
+  type Story = {
     id: string;
     name: string;
     image?: string;

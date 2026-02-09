@@ -21,7 +21,9 @@ const touch = (key: string, limit: number) => {
 
   if (recent.length >= limit) {
     const oldest = recent[0];
-    const retryAfter = Math.max(1, Math.ceil((WINDOW_MS - (now - oldest)) / 1000));
+    const retryAfter = oldest
+      ? Math.max(1, Math.ceil((WINDOW_MS - (now - oldest)) / 1000))
+      : 1;
     throw error(429, {
       code: 'rate_limited',
       message: 'Too many shop requests. Please slow down.',

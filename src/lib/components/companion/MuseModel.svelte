@@ -37,7 +37,7 @@
   export let cameraTarget: string | undefined;
 
   let container: HTMLDivElement | null = null;
-  let viewer: ModelViewerElement | null = null;
+  let viewer: any = null;
   let supportsWebGL = true;
   let shouldLoad = false;
   let loadError: string | null = null;

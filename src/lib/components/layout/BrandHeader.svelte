@@ -1,7 +1,7 @@
 <script lang="ts">
   import StatusCapsule from '$lib/components/ui/StatusCapsule.svelte';
-  import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import CenterIconNav from '$lib/components/ui/CenterIconNav.svelte';
+  import type { IconNavItem, NotificationItem } from '$lib/components/ui/types';
   import { Search } from 'lucide-svelte';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 

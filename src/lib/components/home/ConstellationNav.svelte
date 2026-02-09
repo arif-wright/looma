@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  export type NavItem = {
+  type NavItem = {
     id: string;
     label: string;
     description?: string | null;

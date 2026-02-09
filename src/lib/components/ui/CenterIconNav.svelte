@@ -1,15 +1,7 @@
 <script lang="ts">
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/stores';
-
-  export type IconComponent = typeof import('lucide-svelte').Home;
-
-  export type IconNavItem = {
-    href: string;
-    label: string;
-    icon: IconComponent;
-    analyticsKey?: string;
-  };
+  import type { IconNavItem } from './types';
 
   export let items: IconNavItem[] = [];
   export let className = '';

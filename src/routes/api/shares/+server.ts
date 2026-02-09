@@ -91,6 +91,7 @@ export const POST: RequestHandler = async (event) => {
     if (postError) {
       console.error('[api/shares] post author lookup failed', postError);
     } else if (postRow?.author_id) {
+      const postAuthor = Array.isArray(postRow.author) ? (postRow.author[0] ?? null) : postRow.author;
       await createNotification(supabase, {
         actorId: user.id,
         userId: postRow.author_id as string,
@@ -101,7 +102,7 @@ export const POST: RequestHandler = async (event) => {
           quote: Boolean(quote),
           postId,
           postSlug: (postRow.slug ?? null) as string | null,
-          postHandle: (postRow.author?.handle ?? null) as string | null
+          postHandle: (postAuthor?.handle ?? null) as string | null
         }
       });
     }

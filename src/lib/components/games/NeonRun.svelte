@@ -136,7 +136,7 @@
         difficulty: 'normal',
         powerupsUsed
       },
-      extra: result.meta ?? undefined
+      ...(result.meta ? { extra: result.meta } : {})
     });
   };
 

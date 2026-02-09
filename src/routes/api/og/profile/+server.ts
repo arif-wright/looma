@@ -16,7 +16,7 @@ async function loadFont() {
   return interBold;
 }
 
-type OgElement = Parameters<typeof ImageResponse>[0];
+type OgElement = { type: string; props: Record<string, unknown> };
 
 const h = (type: string, props: Record<string, unknown> = {}, children: any = []): OgElement => ({
   type,

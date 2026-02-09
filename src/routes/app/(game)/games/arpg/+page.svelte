@@ -156,6 +156,12 @@
     ? describeCompanionBonus({
         xpFromCompanion: reward.xpFromCompanion ?? 0,
         companionBonus: reward.companionBonus
+          ? {
+              name: reward.companionBonus.name,
+              bondLevel: reward.companionBonus.bondLevel,
+              xpMultiplier: reward.companionBonus.xpMultiplier
+            }
+          : null
       })
     : null;
 
@@ -388,7 +394,7 @@
             <p class="reward-toast__detail">{companionBonusDescription.detail}</p>
           {/if}
           {#if ritualCompletions.length}
-            <p class="reward-toast__detail">Ritual complete: {ritualCompletions[0].title}</p>
+            <p class="reward-toast__detail">Ritual complete: {ritualCompletions[0]?.title ?? 'Complete'}</p>
           {/if}
           <div class="toast-actions">
             <button class="toast-button" type="button" on:click={replay}>

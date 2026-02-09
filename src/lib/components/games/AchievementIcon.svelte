@@ -29,11 +29,20 @@
   export let icon: string = 'trophy';
   export let label = 'Achievement';
   export let size = 28;
+  export let className = '';
+  export { className as class };
+  export let style = '';
 
   $: Component = iconMap[icon] ?? Award;
 </script>
 
-<span class="achievement-icon" role="img" aria-label={label} data-testid="achievement-icon">
+<span
+  class={`achievement-icon ${className}`.trim()}
+  style={style}
+  role="img"
+  aria-label={label}
+  data-testid="achievement-icon"
+>
   <svelte:component this={Component} size={size} stroke-width={2} aria-hidden="true" />
 </span>
 

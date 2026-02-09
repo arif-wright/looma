@@ -4,7 +4,7 @@
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { BOND_LEVEL_TOOLTIP } from '$lib/companions/companionCopy';
 
-  export type Companion = {
+  type Companion = {
     id: string;
     name: string;
     species: string;

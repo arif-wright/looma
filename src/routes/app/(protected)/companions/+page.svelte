@@ -93,6 +93,7 @@
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
       if (!event?.companionId) return acc;
+      const companionId = event.companionId;
       const mapped: PrefetchedEvent = {
         id: event.id,
         action: event.kind,
@@ -103,7 +104,8 @@
         created_at: event.createdAt,
         note: event.message
       };
-      acc[event.companionId] = acc[event.companionId] ? [mapped, ...acc[event.companionId]] : [mapped];
+      const existing = acc[companionId] ?? [];
+      acc[companionId] = [mapped, ...existing];
       return acc;
     },
     {}
@@ -247,7 +249,11 @@
           return { ...companion, is_active: true, state: 'active' };
         }
         if (companion.is_active) {
-          return { ...companion, is_active: false, state: companion.state === 'active' ? 'idle' : companion.state };
+          return {
+            ...companion,
+            is_active: false,
+            state: companion.state === 'active' ? 'idle' : (companion.state ?? 'idle')
+          };
         }
         return companion;
       })
@@ -281,7 +287,11 @@
           return { ...companion, state, is_active: state === 'active' };
         }
         if (state === 'active') {
-          return { ...companion, is_active: false, state: companion.state === 'active' ? 'idle' : companion.state };
+          return {
+            ...companion,
+            is_active: false,
+            state: companion.state === 'active' ? 'idle' : (companion.state ?? 'idle')
+          };
         }
         return companion;
       })

@@ -7,6 +7,11 @@ const makeItem = (overrides: Partial<FeedItem>): FeedItem => ({
   user_id: 'user',
   body: 'post',
   created_at: new Date().toISOString(),
+  author_id: 'user',
+  deep_link_target: null,
+  is_follow: false,
+  engagement: 0,
+  recency: Date.now(),
   score: 0,
   ...overrides
 });

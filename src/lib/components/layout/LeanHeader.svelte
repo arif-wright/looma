@@ -1,9 +1,9 @@
 <script lang="ts">
   import LeanHeaderMobile from '$lib/components/header/LeanHeaderMobile.svelte';
   import LeanHeaderDesktop from '$lib/components/header/LeanHeaderDesktop.svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
-  import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import type { NotificationItem, IconNavItem } from '$lib/components/ui/types';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
+  import type { CurrentProfile } from '$lib/stores/profile';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -17,7 +17,7 @@
   export let unreadCount = 0;
   export let userEmail: string | null = null;
   export let onLogout: () => void = () => {};
-  export let profile: { display_name?: string | null; handle?: string | null; avatar_url?: string | null } | null = null;
+  export let profile: CurrentProfile = null;
   export let activeCompanion: ActiveCompanionSnapshot | null = null;
 </script>
 

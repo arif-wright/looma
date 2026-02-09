@@ -278,7 +278,8 @@ export const POST: RequestHandler = async (event) => {
       const postAuthorId = postRow.author_id as string;
       const isReply = Boolean(replyTo);
       const postSlug = (postRow.slug ?? null) as string | null;
-      const postHandle = (postRow.author?.handle ?? null) as string | null;
+      const postAuthor = Array.isArray(postRow.author) ? (postRow.author[0] ?? null) : postRow.author;
+      const postHandle = (postAuthor?.handle ?? null) as string | null;
 
       await createNotification(supabase, {
         actorId: user.id,

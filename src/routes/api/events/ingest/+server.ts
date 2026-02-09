@@ -120,20 +120,21 @@ export const POST: RequestHandler = async (event) => {
     try {
       const endIsoFromPayload =
         type === 'session.end' && typeof eventPayload?.lastSeenISO === 'string' ? eventPayload.lastSeenISO : null;
+      const engagement =
+        type === 'session.end'
+          ? {
+              pagesVisitedCount:
+                typeof eventPayload?.pagesVisitedCount === 'number' ? eventPayload.pagesVisitedCount : null,
+              gamesPlayedCount:
+                typeof eventPayload?.gamesPlayedCount === 'number' ? eventPayload.gamesPlayedCount : null
+            }
+          : null;
       await applyWorldStateBoundary({
         supabase,
         userId,
         type: type as 'session.start' | 'session.end',
-        endIso: endIsoFromPayload,
-        engagement:
-          type === 'session.end'
-            ? {
-                pagesVisitedCount:
-                  typeof eventPayload?.pagesVisitedCount === 'number' ? eventPayload.pagesVisitedCount : null,
-                gamesPlayedCount:
-                  typeof eventPayload?.gamesPlayedCount === 'number' ? eventPayload.gamesPlayedCount : null
-              }
-            : undefined
+        ...(endIsoFromPayload ? { endIso: endIsoFromPayload } : {}),
+        ...(engagement ? { engagement } : {})
       });
     } catch (err) {
       console.error('[events] world state boundary update failed', err);
@@ -185,6 +186,9 @@ export const POST: RequestHandler = async (event) => {
         const activeCompanionIndex = companions.roster.findIndex((entry) => entry.id === companions.activeId);
         if (activeCompanionIndex >= 0) {
           const activeCompanion = companions.roster[activeCompanionIndex];
+          if (!activeCompanion) {
+            throw new Error('Active companion missing from roster');
+          }
           const firstActiveAtItem = portableState.items.find((entry) => entry.key === FIRST_ACTIVE_AT_ITEM_KEY);
           const firstActiveAtIso =
             typeof firstActiveAtItem?.value === 'string' && firstActiveAtItem.value ? firstActiveAtItem.value : nowIso;
@@ -207,10 +211,11 @@ export const POST: RequestHandler = async (event) => {
             }
 
             const nextRoster = companions.roster.slice();
-            nextRoster[activeCompanionIndex] = {
+            const nextActiveCompanion = {
               ...activeCompanion,
               cosmeticsUnlocked: [...nextUnlocked]
             };
+            nextRoster[activeCompanionIndex] = nextActiveCompanion;
 
             const nextPortable: PortableState = {
               ...portableState,

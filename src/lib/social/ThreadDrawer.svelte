@@ -120,7 +120,8 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
     } else {
       replies = [...ordered, ...replies];
     }
-    cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : cursor;
+    const lastRootReply = normalized.at(-1);
+    cursor = lastRootReply ? keyForCursor(lastRootReply) : cursor;
     const expectedTotal = root?.reply_count ?? rootTotalCount ?? 0;
     rootTotalCount = Math.max(expectedTotal, replies.length);
     hasMore = replies.length < rootTotalCount || normalized.length === pageSize;
@@ -203,7 +204,8 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
     const ordered = normalized.slice().reverse();
 
     state.items = append ? [...ordered, ...state.items] : ordered;
-    state.cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : state.cursor;
+    const lastChildReply = normalized.at(-1);
+    state.cursor = lastChildReply ? keyForCursor(lastChildReply) : state.cursor;
     const expectedTotal = comment.reply_count ?? state.totalCount;
     state.totalCount = Math.max(expectedTotal, state.items.length);
     state.hasMore = state.items.length < state.totalCount || normalized.length === pageSize;

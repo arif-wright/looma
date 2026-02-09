@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
-  import type { NavActivity } from './SideRail.svelte';
+  import type { NavActivity } from './types';
   import { createEventDispatcher } from 'svelte';
 
   export let activity: NavActivity = {};

@@ -256,7 +256,11 @@ import {
     const payload: GameSessionResult = {
       ...result,
       durationMs,
-      stats: result.stats ?? (result.extra ? { ...result.extra } : undefined)
+      ...(result.stats
+        ? { stats: result.stats }
+        : result.extra
+          ? { stats: { ...result.extra } }
+          : {})
     };
 
     let completionFailed = false;
@@ -266,7 +270,7 @@ import {
 
       const enrichedResult: GameSessionResult = {
         ...payload,
-        server: serverResponse ?? undefined
+        ...(serverResponse ? { server: serverResponse } : {})
       };
 
       dispatch('sessioncomplete', { sessionId: currentSessionId, result: enrichedResult });

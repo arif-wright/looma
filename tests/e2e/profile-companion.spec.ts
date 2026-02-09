@@ -29,6 +29,7 @@ test.describe('Profile companion picker', () => {
 
     if (!companionRows || companionRows.length < 2) {
       test.skip();
+      return;
     }
 
     const originalProfile = await admin
@@ -37,13 +38,20 @@ test.describe('Profile companion picker', () => {
       .eq('id', TEST_USERS.viewer.id)
       .maybeSingle();
 
-    const originalId = originalProfile.data?.featured_companion_id ?? companionRows[0]?.id;
-    const next = companionRows.find((row) => row.id !== originalId) ?? companionRows[0];
+    const fallbackCompanion = companionRows[0];
+    if (!fallbackCompanion) {
+      test.skip();
+      return;
+    }
+
+    const originalId = originalProfile.data?.featured_companion_id ?? fallbackCompanion.id;
+    const next = companionRows.find((row) => row.id !== originalId) ?? fallbackCompanion;
+    const nextName = next.name ?? 'Companion';
 
     await page.goto('/app/profile');
     await page.getByRole('button', { name: /Swap/i }).click();
-    await page.getByRole('button', { name: new RegExp(next.name, 'i') }).click();
-    await expect(page.getByText(next.name)).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(nextName, 'i') }).click();
+    await expect(page.getByText(nextName)).toBeVisible();
 
     await admin
       .from('profiles')

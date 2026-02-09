@@ -69,7 +69,7 @@
       'lineHeight'
     ] as const;
     for (const prop of props) {
-      mirrorEl.style[prop as any] = style[prop as any];
+      mirrorEl.style[prop as any] = style.getPropertyValue(prop);
     }
   }
 
@@ -176,9 +176,9 @@
     const cursor = textareaEl.selectionStart ?? 0;
     const content = textareaEl.value;
     for (let i = cursor - 1; i >= 0; i -= 1) {
-      const char = content[i];
+      const char = content.charAt(i);
       if (char === '@') {
-        const prev = i > 0 ? content[i - 1] : ' ';
+        const prev = i > 0 ? content.charAt(i - 1) : ' ';
         if (/[@\w]/.test(prev) && prev !== '@') {
           resetMention();
           return;

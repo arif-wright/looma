@@ -8,14 +8,14 @@
       : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  export type PinnedPreview = {
+  type PinnedPreview = {
     id: string;
     body: string;
     created_at: string;
     slug?: string | null;
   } | null;
 
-  export type CompanionMood = {
+  type CompanionMood = {
     name: string;
     mood: string;
   } | null;

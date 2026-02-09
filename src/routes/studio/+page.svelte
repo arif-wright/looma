@@ -1,8 +1,5 @@
 <script lang="ts">
-  import { PUBLIC_SITE_URL } from '$env/static/public';
-
-  const PUBLIC_SITE_ORIGIN = (PUBLIC_SITE_URL || '').replace(/\/$/, '');
-  const ORIGIN = PUBLIC_SITE_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '');
+  const ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
   const CANONICAL = '/';
   const abs = (path: string) => (ORIGIN ? `${ORIGIN}${path}` : path);
   const SHARE_URL = ORIGIN || CANONICAL;

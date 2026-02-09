@@ -34,11 +34,12 @@ export const GET: RequestHandler = async (event) => {
   let canonical: string;
 
   try {
+    const author = Array.isArray(data.author) ? (data.author[0] ?? null) : data.author;
     canonical = canonicalRedirectTarget(
       {
         id: data.id,
         slug: data.slug,
-        author: data.author ?? null
+        author: author ?? null
       },
       data.id
     );

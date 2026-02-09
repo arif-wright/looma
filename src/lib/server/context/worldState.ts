@@ -209,7 +209,7 @@ const writeWorldState = async (
     version: PORTABLE_STATE_VERSION,
     updatedAt: new Date().toISOString(),
     items: nextItems.slice(-20),
-    companions: portableState.companions
+    ...(portableState.companions ? { companions: portableState.companions } : {})
   };
 
   const { error } = await supabase.from('user_preferences').upsert(

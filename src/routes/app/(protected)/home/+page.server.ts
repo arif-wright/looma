@@ -43,7 +43,7 @@ const DEFAULT_ENDCAP = {
 
 export const load: PageServerLoad = async (event) => {
   const parent = await event.parent();
-  const { session } = parent;
+  const session = event.locals.session ?? null;
   const userId = session?.user?.id ?? null;
   const parentActiveCompanion: ActiveCompanionSnapshot | null = (parent as Record<string, any>).activeCompanion ?? null;
 
@@ -118,7 +118,7 @@ export const load: PageServerLoad = async (event) => {
         throw error;
       }
 
-      feedItems = Array.isArray(data) ? (data as FeedItem[]) : [];
+      feedItems = Array.isArray(data) ? ((data as unknown) as FeedItem[]) : [];
       if (blockPeers.size) {
         feedItems = feedItems.filter((item) => {
           const authorId = (item.author_id ?? item.user_id ?? null) as string | null;
@@ -269,7 +269,9 @@ export const load: PageServerLoad = async (event) => {
       affection: row.affection ?? 0,
       trust: row.trust ?? 0,
       energy: row.energy ?? 0,
-      avatar_url: row.avatar_url ?? null
+      avatar_url: row.avatar_url ?? null,
+      bondLevel: 0,
+      bondScore: 0
     });
 
     const fallbackCompanion = creatureMoments.find((c) => c.is_active) ?? creatureMoments[0] ?? null;

@@ -55,7 +55,10 @@ export const load: PageServerLoad = async (event) => {
   const grouped: Record<string, InventoryEntry> = {};
 
   for (const row of rawItems ?? []) {
-    const item = (row as { item: InventoryEntry['shop_items']; acquired_at: string | null }).item;
+    const rowItem =
+      (row as { item: InventoryEntry['shop_items'] | InventoryEntry['shop_items'][]; acquired_at: string | null })
+        .item;
+    const item = Array.isArray(rowItem) ? (rowItem[0] ?? null) : rowItem;
     const acquiredAt = (row as { acquired_at: string | null }).acquired_at ?? null;
     const key = item?.id ?? `unknown-${acquiredAt ?? Math.random()}`;
 

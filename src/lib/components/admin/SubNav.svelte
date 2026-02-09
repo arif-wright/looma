@@ -2,8 +2,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { derived } from 'svelte/store';
+  import type { NavItem } from './types';
 
-  export type NavItem = { label: string; href: string; hotkey?: string; hidden?: boolean };
   export let items: NavItem[] = [];
 
   const pathname = derived(page, ($page) => $page.url.pathname);

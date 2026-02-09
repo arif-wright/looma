@@ -298,10 +298,10 @@ export class GameScene extends Phaser.Scene {
 
   private preloadPropTextures() {
     Object.entries(PROP_TEXTURES).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        value.forEach((path, idx) => this.load.image(`${key}_${idx}`, path));
-      } else {
+      if (typeof value === 'string') {
         this.load.image(key, value);
+      } else {
+        Array.from(value).forEach((path, idx) => this.load.image(`${key}_${idx}`, path));
       }
     });
     SCENERY_TEXTURES.forEach((path, idx) => {
@@ -437,18 +437,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupInput() {
-    this.cursors = this.input.keyboard.createCursorKeys();
+    const keyboard = this.input.keyboard;
+    if (!keyboard) return;
+    this.cursors = keyboard.createCursorKeys();
     this.wasd = {
-      w: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      a: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      s: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      d: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
+      w: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      a: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      s: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      d: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
     };
     this.dashKeys = [
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+      keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+      keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
     ];
-    this.input.keyboard.addCapture(this.dashKeys.map((key) => key.keyCode));
+    keyboard.addCapture(this.dashKeys.map((key) => key.keyCode));
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.button === 0) {
@@ -720,7 +722,7 @@ export class GameScene extends Phaser.Scene {
     shuffled.forEach((slot, index) => {
       const texIndex = index % SCENERY_TEXTURES.length;
       const textureKey = `scenery_${texIndex}`;
-      const sourcePath = SCENERY_TEXTURES[texIndex];
+      const sourcePath = SCENERY_TEXTURES[texIndex] ?? '';
       const world = this.isoToWorld(Phaser.Math.Clamp(slot[0], 1, ROOM_WIDTH - 2), Phaser.Math.Clamp(slot[1], 1, ROOM_HEIGHT - 2));
       const sprite = this.add.image(world.x, world.y, textureKey);
       sprite.setScale(0.45 + Math.random() * 0.2);

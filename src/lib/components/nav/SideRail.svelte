@@ -1,13 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { derived } from 'svelte/store';
+  import type { NavActivity } from './types';
+  type NavItem = { href: string; label: string; icon: string; disabled?: boolean };
 
-  export type NavActivity = Record<string, number | boolean | undefined>;
+  export let activity: NavActivity = {};
+  export let isAdmin = false;
 
-export let activity: NavActivity = {};
-export let isAdmin = false;
-
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: '/app/home', label: 'Home', icon: '🏠' },
     { href: '/app/creatures', label: 'Creatures', icon: '🐾' },
     { href: '/app/missions', label: 'Missions', icon: '🎯' },

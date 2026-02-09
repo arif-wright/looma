@@ -109,7 +109,8 @@
     });
 
     state.items = append ? [...state.items, ...normalized] : normalized;
-    state.cursor = normalized.length > 0 ? keyForCursor(normalized[normalized.length - 1]) : state.cursor;
+    const lastNormalized = normalized.at(-1);
+    state.cursor = lastNormalized ? keyForCursor(lastNormalized) : state.cursor;
     const expectedTotal = comment.reply_count ?? state.totalCount;
     state.totalCount = Math.max(expectedTotal, state.items.length);
     state.hasMore =
@@ -352,10 +353,13 @@
         .select('display_name, handle, avatar_url')
         .eq('id', authorId)
         .maybeSingle();
-      if (data) {
-        authorDisplayName = data.display_name ?? null;
-        authorHandle = data.handle ?? null;
-        authorAvatar = data.avatar_url ?? null;
+      const profile = (data ?? null) as
+        | { display_name?: string | null; handle?: string | null; avatar_url?: string | null }
+        | null;
+      if (profile) {
+        authorDisplayName = profile.display_name ?? null;
+        authorHandle = profile.handle ?? null;
+        authorAvatar = profile.avatar_url ?? null;
       }
     }
 

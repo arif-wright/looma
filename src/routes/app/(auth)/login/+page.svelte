@@ -4,7 +4,7 @@
   import { get } from 'svelte/store';
   import { z } from 'zod';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
-import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env/static/public';
+  import { env } from '$env/dynamic/public';
 
   export let data: { next?: string | null };
 
@@ -16,7 +16,7 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
   });
 
   const oauthFlags = {
-    google: PUBLIC_OAUTH_GOOGLE === 'true'
+    google: env.PUBLIC_OAUTH_GOOGLE === 'true'
   };
 
   let email = '';
@@ -74,11 +74,11 @@ import { PUBLIC_OAUTH_GOOGLE, PUBLIC_AUTH_CALLBACK, PUBLIC_SITE_URL } from '$env
 
     setNext();
 
-    const configuredBase = PUBLIC_SITE_URL?.replace(/\/$/, '') || null;
+    const configuredBase = env.PUBLIC_SITE_URL?.replace(/\/$/, '') || null;
     const resolvedOrigin =
       configuredBase ??
       (typeof window !== 'undefined' ? window.location.origin : get(page).url.origin);
-    const rawCallback = (PUBLIC_AUTH_CALLBACK || '/auth/callback').trim();
+    const rawCallback = (env.PUBLIC_AUTH_CALLBACK || '/auth/callback').trim();
     const callbackIsAbsolute = /^https?:\/\//.test(rawCallback);
     const normalizedCallback = callbackIsAbsolute
       ? rawCallback

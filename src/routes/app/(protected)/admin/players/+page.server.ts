@@ -47,7 +47,7 @@ export const load: PageServerLoad = async (event) => {
     .from('admin_player_overview')
     .select('id,email,display_name,handle,created_at,max_slots,slot_license_count', { count: 'exact' })
     .range(rangeFrom, rangeTo)
-    .order(column, { ascending, nullsLast: !ascending });
+    .order(column, { ascending, nullsFirst: ascending });
 
   if (q) {
     const escaped = q.replace(/[%_]/g, (char) => `\\${char}`);

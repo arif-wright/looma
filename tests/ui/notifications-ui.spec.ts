@@ -1,4 +1,5 @@
-import { expect, request, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { runSeed, type SeedResult } from '../fixtures/env';
 import { createAuthedRequest, loginAs } from '../fixtures/auth';
@@ -58,7 +59,7 @@ test.describe('Notifications UI', () => {
   test.slow();
 
   let seedData: SeedResult;
-  let viewerRequest: request.APIRequestContext;
+  let viewerRequest: APIRequestContext;
 
   test.beforeAll(async () => {
     seedData = await runSeed();

@@ -94,8 +94,9 @@ export const POST: RequestHandler = async (event) => {
         if (postMetaError) {
           console.error('[api/reactions/comment] post meta lookup failed', postMetaError);
         } else if (postMeta) {
+          const postAuthor = Array.isArray(postMeta.author) ? (postMeta.author[0] ?? null) : postMeta.author;
           postSlug = (postMeta.slug ?? null) as string | null;
-          postHandle = (postMeta.author?.handle ?? null) as string | null;
+          postHandle = (postAuthor?.handle ?? null) as string | null;
         }
       }
 

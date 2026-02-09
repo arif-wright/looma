@@ -1,7 +1,7 @@
 <script lang="ts">
   import Panel from '$lib/components/ui/Panel.svelte';
 
-  export type ProfileLink = {
+  type ProfileLink = {
     label: string;
     url: string;
   };

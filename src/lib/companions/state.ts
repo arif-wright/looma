@@ -19,12 +19,13 @@ export const addCompanionXP = (amount: number) => {
 
 export const addBondEvent = (type: string, payload?: Record<string, any>) => {
   if (!type) return;
+  const event: CompanionBondEvent = {
+    type,
+    timestamp: Date.now(),
+    ...(payload ? { payload } : {})
+  };
   bondEventStore.update((events) => [
     ...events,
-    {
-      type,
-      payload,
-      timestamp: Date.now()
-    }
+    event
   ]);
 };

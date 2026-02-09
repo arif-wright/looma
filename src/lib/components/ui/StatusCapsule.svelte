@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import type { NotificationItem } from '$lib/components/ui/types';
   import { currentProfile } from '$lib/stores/profile';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';

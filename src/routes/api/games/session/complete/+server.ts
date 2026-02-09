@@ -563,7 +563,7 @@ export const POST: RequestHandler = async (event) => {
         await logEvent(event, 'achievement_unlock', {
           userId: user.id,
           sessionId,
-          gameId: session.game_id ?? undefined,
+          ...(session.game_id ? { gameId: session.game_id } : {}),
           meta: {
             key: entry.key,
             points: entry.points,
@@ -577,7 +577,7 @@ export const POST: RequestHandler = async (event) => {
             amount: entry.shards,
             currency: 'shards',
             sessionId,
-            gameId: session.game_id ?? undefined,
+            ...(session.game_id ? { gameId: session.game_id } : {}),
             meta: {
               source: 'achievement',
               key: entry.key,

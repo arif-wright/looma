@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  export type AuthProgressState = 'processing' | 'success' | 'error';
+  type AuthProgressState = 'processing' | 'success' | 'error';
 
   export let state: AuthProgressState = 'processing';
   export let message: string | undefined = 'Signing you in...';

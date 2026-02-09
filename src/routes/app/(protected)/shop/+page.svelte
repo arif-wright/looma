@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import FeaturedSection from '$lib/components/shop/FeaturedSection.svelte';
-  import FilterBar, { type Category, type Rarity, type SortKey } from '$lib/components/shop/FilterBar.svelte';
+  import FilterBar from '$lib/components/shop/FilterBar.svelte';
+  import type { Category, Rarity, SortKey } from '$lib/components/shop/types';
   import Panel from '$lib/components/ui/Panel.svelte';
   import ShopGrid from '$lib/components/shop/ShopGrid.svelte';
   import ShopModal from '$lib/components/shop/ShopModal.svelte';
@@ -17,6 +18,7 @@
   export let data: {
     items: any[];
     featured?: any[];
+    highlightSlug?: string | null;
     wallet?: number;
     shards?: number;
     ownedIds: string[];

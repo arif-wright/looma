@@ -38,18 +38,21 @@ type NormalizedOrder = {
 };
 
 type NormalizedOrderItemRow = {
-  qty?: number;
+  qty: number | null;
   order: NormalizedOrder;
 };
 
 const normalizeOrderItemRows = (rows: unknown[]): NormalizedOrderItemRow[] =>
-  rows
-    .map((row) => row as OrderItemRow)
-    .map((row) => {
-      const order = normalizeOrder(row.order);
-      return order ? { qty: row.qty, order } : null;
-    })
-    .filter((row): row is NormalizedOrderItemRow => Boolean(row));
+  rows.reduce<NormalizedOrderItemRow[]>((acc, raw) => {
+    const row = raw as OrderItemRow;
+    const order = normalizeOrder(row.order);
+    if (!order) return acc;
+    acc.push({
+      qty: typeof row.qty === 'number' && Number.isFinite(row.qty) ? row.qty : null,
+      order
+    });
+    return acc;
+  }, []);
 
 const normalizeClient = (client?: Supabase) => client ?? supabaseAdmin;
 

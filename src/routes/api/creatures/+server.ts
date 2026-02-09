@@ -13,6 +13,12 @@ type CreatureRow = {
   created_at: string;
   species: { name: string; rarity: Rarity } | null;
 };
+const asSpecies = (value: unknown): { name: string; rarity: Rarity } | null => {
+  if (Array.isArray(value)) {
+    return (value[0] as { name: string; rarity: Rarity } | undefined) ?? null;
+  }
+  return (value as { name: string; rarity: Rarity } | null) ?? null;
+};
 
 const jsonError = (status: number, message: string) =>
   json({ ok: false, error: message }, { status });
@@ -34,16 +40,19 @@ export const GET: RequestHandler = async ({ locals }) => {
     return jsonError(500, error.message);
   }
 
-  const creatures: CreatureView[] = ((data ?? []) as CreatureRow[]).map((item) => ({
+  const creatures: CreatureView[] = ((data ?? []) as unknown as CreatureRow[]).map((item) => {
+    const species = asSpecies(item.species);
+    return {
     id: item.id,
     owner_id: item.owner_id,
     species_id: item.species_id,
     nickname: item.nickname,
     bond_level: item.bond_level,
     created_at: item.created_at,
-    species_name: item.species?.name ?? 'Unknown',
-    species_rarity: (item.species?.rarity ?? 'common') as Rarity
-  }));
+    species_name: species?.name ?? 'Unknown',
+    species_rarity: (species?.rarity ?? 'common') as Rarity
+  };
+  });
 
   return json({ ok: true, creatures });
 };
@@ -97,6 +106,7 @@ export const POST: RequestHandler = async (event) => {
     return jsonError(500, insertError?.message ?? 'Failed to create creature');
   }
 
+  const insertedSpecies = asSpecies(data.species);
   const creature: CreatureView = {
     id: data.id,
     owner_id: data.owner_id,
@@ -104,8 +114,8 @@ export const POST: RequestHandler = async (event) => {
     nickname: data.nickname,
     bond_level: data.bond_level,
     created_at: data.created_at,
-    species_name: data.species?.name ?? species.name,
-    species_rarity: (data.species?.rarity ?? species.rarity) as Rarity
+    species_name: insertedSpecies?.name ?? species.name,
+    species_rarity: (insertedSpecies?.rarity ?? species.rarity) as Rarity
   };
 
   await updateUserContext(

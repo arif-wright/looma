@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import ShopCard from './ShopCard.svelte';
-  import type { FilterState, Category, Rarity, SortKey } from './FilterBar.svelte';
+  import type { FilterState, Category, Rarity, SortKey } from './types';
 
   export let items: any[] = [];
   export let filters: FilterState = { category: 'all', rarity: 'all', sortKey: 'newest' };

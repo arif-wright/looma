@@ -42,8 +42,8 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
   let showCreatureReact = false;
   let hideReactionTimer: ReturnType<typeof setTimeout> | null = null;
 
-  let likeChannel: ReturnType<typeof supabase.channel> | null = null;
-  let commentChannel: ReturnType<typeof supabase.channel> | null = null;
+  let likeChannel: any = null;
+  let commentChannel: any = null;
   let menuOpen = false;
   let reportOpen = false;
 
@@ -181,9 +181,9 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
   async function refreshLikeCount() {
     const client = getSupabase();
     if (!client) return;
-    const { data, error } = await client.rpc('get_post_reaction_counts', {
+    const { data, error } = (await (client as any).rpc('get_post_reaction_counts', {
       p_post_id: post.id
-    });
+    })) as { data: Array<{ likes?: number }> | null; error: any };
     if (!error && Array.isArray(data) && data.length > 0) {
       const next = data[0]?.likes;
       if (typeof next === 'number') {

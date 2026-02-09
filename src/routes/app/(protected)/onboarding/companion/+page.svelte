@@ -36,6 +36,10 @@
   ];
 
   const totalQuestions = questions.length;
+  const firstQuestion = questions[0];
+  if (!firstQuestion) {
+    throw new Error('Onboarding questions are not configured.');
+  }
   const hasCompanion = data.hasCompanion ?? false;
 
   let answers: Record<string, AnswerRecord> = {};
@@ -50,9 +54,9 @@
   let celebrate = false;
   let lastLoggedProgress = 0;
   let currentChoice: Choice | null = null;
-  let currentQuestion: Question = questions[0];
+  let currentQuestion: Question = firstQuestion;
 
-  $: currentQuestion = questions[currentIndex] ?? questions[0];
+  $: currentQuestion = questions[currentIndex] ?? firstQuestion;
   $: progressLabel = `${currentIndex + 1} / ${totalQuestions}`;
   $: progressPercent = ((currentIndex + 1) / totalQuestions) * 100;
   $: answersComplete = questions.every((q) => Boolean(answers[q.id]));
@@ -118,9 +122,15 @@
     if (result) return;
     const question = currentQuestion;
     if (!question) return;
+    const nextRecord: AnswerRecord = {
+      id: question.id,
+      choice,
+      ...(question.axis ? { axis: question.axis } : {}),
+      ...(question.facet ? { facet: question.facet } : {})
+    };
     answers = {
       ...answers,
-      [question.id]: { id: question.id, axis: question.axis, facet: question.facet, choice }
+      [question.id]: nextRecord
     };
     persistAnswers();
     errorMsg = '';

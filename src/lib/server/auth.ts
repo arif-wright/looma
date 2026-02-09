@@ -8,6 +8,11 @@ type UserResult = {
   user: User | null;
 };
 
+type AuthenticatedUserResult = {
+  supabase: SupabaseClient;
+  user: User;
+};
+
 const extractBearerToken = (event: RequestEvent) => {
   const header = event.request.headers.get('authorization');
   if (!header) return null;
@@ -44,10 +49,10 @@ export const getUserServer = async (event: RequestEvent): Promise<UserResult> =>
   return { supabase, user };
 };
 
-export const requireUserServer = async (event: RequestEvent): Promise<UserResult> => {
+export const requireUserServer = async (event: RequestEvent): Promise<AuthenticatedUserResult> => {
   const result = await getUserServer(event);
   if (!result.user) {
     throw redirect(302, '/app/auth');
   }
-  return result;
+  return { supabase: result.supabase, user: result.user };
 };

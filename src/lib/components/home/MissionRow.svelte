@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { activeCompanionBonus } from '$lib/stores/companions';
 
-  export type MissionItem = {
+  type MissionItem = {
     id: string;
     title?: string | null;
     summary?: string | null;

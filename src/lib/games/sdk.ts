@@ -251,8 +251,8 @@ export async function startSession(
 
   const startRequest: GameSessionStartRequest = {
     gameId,
-    mode,
-    clientMeta
+    ...(mode ? { mode } : {}),
+    ...(clientMeta ? { clientMeta } : {})
   };
 
   try {
@@ -288,8 +288,8 @@ export async function startSession(
     const context: SessionContext = {
       ...payload,
       gameId,
-      mode,
-      clientMeta: clientMeta ?? null,
+      ...(mode ? { mode } : {}),
+      ...(clientMeta ? { clientMeta } : {}),
       startedAt: Date.now(),
       clientVersion: clientVersion ?? CLIENT_VERSION
     };
@@ -430,8 +430,12 @@ const normalizeCompletionResults = (
     ...result,
     score,
     durationMs,
-    success: result.success,
-    stats: result.stats ?? result.extra ?? undefined
+    ...(typeof result.success === 'boolean' ? { success: result.success } : {}),
+    ...(result.stats
+      ? { stats: result.stats }
+      : result.extra
+        ? { stats: result.extra as Record<string, unknown> }
+        : {})
   };
   return normalized;
 };

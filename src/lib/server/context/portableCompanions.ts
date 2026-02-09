@@ -68,9 +68,13 @@ const normalizeRosterEntry = (raw: unknown): PortableCompanionEntry | null => {
 
 export const normalizePortableCompanions = (input: unknown): PortableCompanions => {
   const fallback = defaultRoster();
+  const fallbackFirst = fallback[0];
+  if (!fallbackFirst) {
+    throw new Error('Portable companions fallback is empty');
+  }
 
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return { activeId: fallback[0].id, roster: fallback };
+    return { activeId: fallbackFirst.id, roster: fallback };
   }
 
   const payload = input as Record<string, unknown>;
@@ -85,13 +89,17 @@ export const normalizePortableCompanions = (input: unknown): PortableCompanions 
 
   const roster = [...dedup.values()];
   if (roster.length === 0) {
-    return { activeId: fallback[0].id, roster: fallback };
+    return { activeId: fallbackFirst.id, roster: fallback };
   }
 
   const activeIdRaw = safeString(payload.activeId, '');
   const activeEntry = roster.find((entry) => entry.id === activeIdRaw);
   const firstUnlocked = roster.find((entry) => entry.unlocked);
-  const activeId = activeEntry?.id ?? firstUnlocked?.id ?? roster[0].id;
+  const rosterFirst = roster[0];
+  if (!rosterFirst) {
+    return { activeId: fallbackFirst.id, roster: fallback };
+  }
+  const activeId = activeEntry?.id ?? firstUnlocked?.id ?? rosterFirst.id;
 
   return { activeId, roster };
 };

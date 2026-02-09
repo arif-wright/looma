@@ -38,14 +38,11 @@
     submitting = true;
     message = '';
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: (() => {
-          const target = getRedirectTarget();
-          return target ? { redirectTo: target } : undefined;
-        })(),
-        flowType: 'pkce'
-      });
+      const target = getRedirectTarget();
+      const payload = target
+        ? { provider, options: { redirectTo: target } }
+        : { provider };
+      const { error } = await supabase.auth.signInWithOAuth(payload);
       if (error) throw error;
       message = 'Redirecting to provider…';
     } catch (err) {
@@ -69,10 +66,10 @@
     message = '';
     try {
       const target = getRedirectTarget();
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: target ? { emailRedirectTo: target } : undefined
-      });
+      const payload = target
+        ? { email, options: { emailRedirectTo: target } }
+        : { email };
+      const { error } = await supabase.auth.signInWithOtp(payload);
       if (error) throw error;
       message = 'Check your email for a magic link.';
     } catch (err) {

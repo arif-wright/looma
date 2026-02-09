@@ -6,9 +6,11 @@ import { getCompanionHealthSummary } from '$lib/server/admin/companions';
 
 const FEATURE_FLAG_KEYS = ['messenger', 'games_hub', 'wallet_topups', 'creator_tools', 'events_feed'] as const;
 
-const countOrZero = async <T>(promise: Promise<{ count: number | null; error: unknown }>): Promise<number> => {
+const countOrZero = async (
+  query: PromiseLike<{ count: number | null; error: unknown }>
+): Promise<number> => {
   try {
-    const { count, error } = await promise;
+    const { count, error } = await query;
     if (error) {
       console.error('[admin hub] count query failed', error);
       return 0;

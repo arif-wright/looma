@@ -13,6 +13,7 @@ export const createDodgeSurvive: LoomaGameFactory = (
   const { canvas, onGameOver } = opts;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No ctx');
+  const context: CanvasRenderingContext2D = ctx;
 
   let running = false;
   let rafId = 0;
@@ -131,12 +132,12 @@ export const createDodgeSurvive: LoomaGameFactory = (
   function draw() {
     const w = canvas.width;
     const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#020617';
-    ctx.fillRect(0, 0, w, h);
+    context.clearRect(0, 0, w, h);
+    context.fillStyle = '#020617';
+    context.fillRect(0, 0, w, h);
 
     // Radial glow
-    const g = ctx.createRadialGradient(
+    const g = context.createRadialGradient(
       playerX,
       playerY,
       10,
@@ -146,40 +147,40 @@ export const createDodgeSurvive: LoomaGameFactory = (
     );
     g.addColorStop(0, '#22c55e33');
     g.addColorStop(1, 'transparent');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
+    context.fillStyle = g;
+    context.fillRect(0, 0, w, h);
 
     // Player
-    ctx.fillStyle = '#e5e7eb';
-    ctx.beginPath();
-    ctx.arc(playerX, playerY, playerR, 0, Math.PI * 2);
-    ctx.fill();
+    context.fillStyle = '#e5e7eb';
+    context.beginPath();
+    context.arc(playerX, playerY, playerR, 0, Math.PI * 2);
+    context.fill();
 
     // Companion orb
     const orbX = playerX + 26;
     const orbY = playerY - 18;
-    ctx.save();
-    ctx.shadowColor = '#22d3ee';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#0ea5e9';
-    ctx.beginPath();
-    ctx.arc(orbX, orbY, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    context.save();
+    context.shadowColor = '#22d3ee';
+    context.shadowBlur = 12;
+    context.fillStyle = '#0ea5e9';
+    context.beginPath();
+    context.arc(orbX, orbY, 8, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
 
     // Enemies
-    ctx.fillStyle = '#f97373';
+    context.fillStyle = '#f97373';
     enemies.forEach((e) => {
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
-      ctx.fill();
+      context.beginPath();
+      context.arc(e.x, e.y, 8, 0, Math.PI * 2);
+      context.fill();
     });
 
-    ctx.fillStyle = '#e5e7eb';
-    ctx.font = '14px system-ui, sans-serif';
-    ctx.fillText(`Score: ${Math.floor(score)}`, 12, 20);
-    ctx.fillText(`Slow-mo: ${slowCharges}`, 12, 38);
-    if (slowMo > 0) ctx.fillText('Time warp!', 12, 56);
+    context.fillStyle = '#e5e7eb';
+    context.font = '14px system-ui, sans-serif';
+    context.fillText(`Score: ${Math.floor(score)}`, 12, 20);
+    context.fillText(`Slow-mo: ${slowCharges}`, 12, 38);
+    if (slowMo > 0) context.fillText('Time warp!', 12, 56);
   }
 
   function loop() {

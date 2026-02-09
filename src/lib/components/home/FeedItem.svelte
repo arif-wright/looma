@@ -38,8 +38,7 @@
 
   const mapStates = (post: FeedItemType): Record<ReactionKind, boolean> => ({
     like: post?.current_user_reaction === 'like',
-    cheer:
-      post?.current_user_reaction === 'cheer' || post?.current_user_reaction === 'support',
+    cheer: post?.current_user_reaction === 'support',
     spark: post?.current_user_reaction === 'spark'
   });
 

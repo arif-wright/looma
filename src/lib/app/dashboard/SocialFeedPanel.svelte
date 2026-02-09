@@ -131,7 +131,12 @@
     if (moreLoading || reachedEnd || items.length === 0) return;
     moreLoading = true;
     errMsg = null;
-    const last = items[items.length - 1];
+    const last = items.at(-1);
+    if (!last) {
+      moreLoading = false;
+      reachedEnd = true;
+      return;
+    }
     try {
       const { data, error } = await supabase.rpc('get_public_feed', {
         p_limit: PAGE_SIZE,

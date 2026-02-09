@@ -39,7 +39,9 @@
       case 'Enter':
       case ' ':
         event.preventDefault();
-        void activate(links[index].href);
+        if (links[index]) {
+          void activate(links[index].href);
+        }
         return;
       default:
         return;

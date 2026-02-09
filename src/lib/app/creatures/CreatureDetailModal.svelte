@@ -16,7 +16,7 @@
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
   let accent = speciesAccent();
-  let Icon: typeof Portal | null = null;
+  let Icon: any = null;
   let label = 'Unknown';
 
   $: accent = speciesAccent(creature?.species?.key, creature?.species?.name);
@@ -30,6 +30,7 @@
     if (!open || focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
     const active = document.activeElement as HTMLElement | null;
 
     if (event.shiftKey && active === first) {
@@ -143,7 +144,7 @@
               {#if Icon}
                 <svelte:component
                   this={Icon}
-                  className={`h-6 w-6 flex-shrink-0 ${accent.text ?? 'text-white/80'}`}
+                  class={`h-6 w-6 flex-shrink-0 ${accent.text ?? 'text-white/80'}`}
                   aria-hidden="true"
                 />
               {/if}
@@ -192,8 +193,8 @@
           <SpeciesProgress
             value={Math.random() * 100}
             label="Bond Progress"
-            speciesKey={creature?.species?.key}
-            speciesName={creature?.species?.name}
+            speciesKey={creature?.species?.key ?? null}
+            speciesName={creature?.species?.name ?? null}
             showPercent
           />
 

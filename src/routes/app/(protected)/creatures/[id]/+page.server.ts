@@ -1,15 +1,13 @@
-import type { PageLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
-import { supabaseServer } from '$lib/supabaseClient';
 
-export const load: PageLoad = async (event) => {
+export const load = async (event: any) => {
   const user = event.locals.user;
   if (!user) {
     const redirectTo = event.url.pathname + event.url.search;
     throw redirect(302, '/app/auth?next=' + encodeURIComponent(redirectTo));
   }
 
-  const supabase = event.locals.supabase ?? supabaseServer(event);
+  const supabase = event.locals.supabase;
   const id = event.params.id;
 
   const { data, error: err } = await supabase

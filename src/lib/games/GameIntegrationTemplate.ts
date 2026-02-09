@@ -43,12 +43,13 @@ export const finishGameSession = async (
     Math.floor(result.durationMs ?? Date.now() - state.startedAtMs)
   );
 
-  const server = await completeSession(state.session.sessionId, {
-    score: result.score,
+  const completionResult: GameSessionResult = {
     durationMs,
-    success: result.success,
-    stats: result.stats
-  });
+    ...(typeof result.score === 'number' ? { score: result.score } : {}),
+    ...(typeof result.success === 'boolean' ? { success: result.success } : {}),
+    ...(result.stats ? { stats: result.stats } : {})
+  };
+  const server = await completeSession(state.session.sessionId, completionResult);
 
   state.lastServerRewards = server ?? null;
   state.session = null;

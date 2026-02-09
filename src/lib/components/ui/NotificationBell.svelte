@@ -6,24 +6,15 @@
   import { relativeTime } from '$lib/social/commentHelpers';
   import { canonicalCommentPath, canonicalPostPath, commentHash } from '$lib/threads/permalink';
   import { achievementsUI } from '$lib/achievements/store';
-
-  export type NotificationItem = {
-    id: string;
-    user_id: string;
-    actor_id: string | null;
-    kind: 'reaction' | 'comment' | 'share' | 'achievement_unlocked' | 'companion_nudge';
-    target_id: string;
-    target_kind: 'post' | 'comment' | 'achievement' | 'companion';
-    created_at: string;
-    read: boolean;
-    metadata: Record<string, unknown> | null;
-  };
+  import type { NotificationItem } from './types';
 
   export let notifications: NotificationItem[] = [];
   export let unreadCount = 0;
   export let compact = false;
   export let open = false;
   export let onToggle: (() => void) | null = null;
+  export let className = '';
+  export { className as class };
 
   type ToastState = { kind: 'success'; message: string } | null;
 
@@ -386,7 +377,10 @@
           },
           async (payload) => {
             if (payload.eventType === 'INSERT' && payload.new) {
-              await handleRealtimeInsert(payload.new as NotificationItem);
+              const inserted = payload.new as unknown as NotificationItem;
+              if (inserted && typeof inserted.id === 'string') {
+                await handleRealtimeInsert(inserted);
+              }
               return;
             }
 
@@ -419,7 +413,7 @@
   }
 </script>
 
-<div class="notification-wrapper">
+<div class={`notification-wrapper ${className}`.trim()} {...$$restProps}>
   <button
     bind:this={anchor}
     type="button"

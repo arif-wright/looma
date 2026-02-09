@@ -3,8 +3,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
-  import CenterIconNav, { type IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import CenterIconNav from '$lib/components/ui/CenterIconNav.svelte';
+  import type { NotificationItem, IconNavItem } from '$lib/components/ui/types';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
   import { activeCompanionStore } from '$lib/stores/companions';

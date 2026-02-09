@@ -65,16 +65,20 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const target = companions.roster[targetIndex];
+  if (!target) {
+    return json({ error: 'not_found', details: 'Companion id not found in roster.' }, { status: 404 });
+  }
   if (!target.unlocked) {
     return json({ error: 'forbidden', details: 'Companion is not unlocked.' }, { status: 403 });
   }
 
   const normalizedCosmetics = normalizeCompanionCosmetics(payload.cosmetics);
   const nextRoster = companions.roster.slice();
-  nextRoster[targetIndex] = {
+  const nextTarget = {
     ...target,
     cosmetics: normalizedCosmetics
   };
+  nextRoster[targetIndex] = nextTarget;
 
   const nextState: PortableState = {
     ...current,
@@ -102,8 +106,7 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ok: true,
-    id: target.id,
+    id: nextTarget.id,
     cosmetics: normalizedCosmetics
   });
 };
-

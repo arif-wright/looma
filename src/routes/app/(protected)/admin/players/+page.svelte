@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import { enhance, type SubmitFunction } from '$app/forms';
+  import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -10,9 +10,10 @@
   export let data: PageData;
 
   type Player = PageData['players'][number];
+  type PlayerSort = 'newest' | 'oldest' | 'slots_desc' | 'slots_asc' | 'licenses_desc' | 'licenses_asc';
 
   let search = data.q ?? '';
-  let sort = data.sort ?? 'newest';
+  let sort: PlayerSort = (data.sort as PlayerSort) ?? 'newest';
   let grantOpen = false;
   let selectedPlayer: Player | null = null;
   let qty = 1;
@@ -58,7 +59,7 @@
 
   const updateQuery = (params: Record<string, string | number | undefined>, replace = false) => {
     const target = buildUrl(params);
-    void goto(target, { keepfocus: true, noScroll: true, replaceState: replace });
+    void goto(target, { keepFocus: true, noScroll: true, replaceState: replace });
   };
 
   const handleSearchInput = (value: string) => {
@@ -69,7 +70,7 @@
     }, 300);
   };
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = (value: PlayerSort) => {
     sort = value;
     updateQuery({ sort: value, page: 1 });
   };
@@ -130,10 +131,10 @@
     }
   };
 
-  const handleGrantEnhance: SubmitFunction = ({ update }) => {
+  const handleGrantEnhance = ({ update }: any) => {
     status = '';
     errorMessage = '';
-    return async ({ result }) => {
+    return async ({ result }: any) => {
       if (result.type === 'success') {
         status = 'Slot license granted';
         errorMessage = '';
@@ -174,7 +175,8 @@
       <select
         class="rounded-xl bg-white/10 px-3 py-2 text-sm ring-1 ring-white/15"
         bind:value={sort}
-        on:change={(event) => handleSortChange((event.currentTarget as HTMLSelectElement).value)}
+        on:change={(event) =>
+          handleSortChange((event.currentTarget as HTMLSelectElement).value as PlayerSort)}
         aria-label="Sort players"
       >
         <option value="newest">Newest</option>

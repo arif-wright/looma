@@ -153,18 +153,19 @@ export const POST: RequestHandler = async (event) => {
       entry.bondScore = row.bond_score ?? entry.bondScore;
     });
     milestones.forEach((event) => {
-      if (!event || seenEventIds.has(event.id as string)) return;
+      const eventId = typeof event?.id === 'string' ? event.id : null;
+      if (!eventId || seenEventIds.has(eventId)) return;
       newEvents.push({
-        id: event.id,
+        id: eventId,
         companionId: event.companion_id,
         kind: event.action as any,
         message: event.note ?? 'Bond milestone reached.',
-        createdAt: event.created_at,
+        createdAt: event.created_at ?? new Date().toISOString(),
         affectionDelta: event.affection_delta ?? 0,
         trustDelta: event.trust_delta ?? 0,
         energyDelta: event.energy_delta ?? 0
       });
-      seenEventIds.add(event.id as string);
+      seenEventIds.add(eventId);
     });
   } catch (err) {
     console.error('[companions/tick] bond sync failed', err);

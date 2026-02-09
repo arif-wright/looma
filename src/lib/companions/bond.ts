@@ -164,7 +164,7 @@ export const getBondBonusForLevel = (level?: number | null): BondBonus => {
     missionEnergyBonus: tier.missionEnergyBonus,
     label: tier.label,
     description: tier.description,
-    strong: tier.strong
+    ...(tier.strong !== undefined ? { strong: tier.strong } : {})
   };
 };
 

@@ -93,6 +93,14 @@ test.describe.serial('Companion roster APIs', () => {
     return data as { is_active: boolean; state: string | null; slot_index: number | null; name: string | null };
   };
 
+  const requireCompanionId = (index: number): string => {
+    const id = companionIds[index];
+    if (!id) {
+      throw new Error(`Missing companion id at index ${index}`);
+    }
+    return id;
+  };
+
   test.beforeAll(async () => {
     seed = await runSeed();
     await ensureRoster();
@@ -116,7 +124,7 @@ test.describe.serial('Companion roster APIs', () => {
 
   test('set active companion flips previous', async () => {
     const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
-    const first = companionIds[0];
+    const first = requireCompanionId(0);
     const second = companionIds[1] ?? first;
 
     await adminClient
@@ -157,7 +165,7 @@ test.describe.serial('Companion roster APIs', () => {
   });
 
   test('rename accepts valid length and rejects invalid', async () => {
-    const target = companionIds[0];
+    const target = requireCompanionId(0);
     const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
 
     const okRes = await viewerCtx.post('/api/companions/rename', {
@@ -176,7 +184,7 @@ test.describe.serial('Companion roster APIs', () => {
   });
 
   test('state endpoint toggles resting', async () => {
-    const target = companionIds[0];
+    const target = requireCompanionId(0);
     const viewerCtx = await createAuthedRequest(VIEWER_CREDENTIALS);
     const restRes = await viewerCtx.post('/api/companions/state', {
       data: { companionId: target, state: 'resting' }

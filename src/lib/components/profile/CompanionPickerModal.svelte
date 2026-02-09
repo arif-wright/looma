@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
 
-  export type CompanionOption = {
+  type CompanionOption = {
     id: string;
     name: string;
     species: string;

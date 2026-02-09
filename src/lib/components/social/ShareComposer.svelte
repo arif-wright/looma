@@ -65,7 +65,8 @@
         if (!run) {
           throw new ShareError('Missing run context.', 400, 'missing_payload');
         }
-        const result = await shareRun({ ...run, text: caption });
+        const runPayload = caption ? { ...run, text: caption } : { ...run };
+        const result = await shareRun(runPayload);
         dispatch('submitted', { postId: result.postId });
         return;
       }
@@ -74,7 +75,8 @@
         throw new ShareError('Missing achievement context.', 400, 'missing_payload');
       }
 
-      const result = await shareAchievement({ ...achievement, text: caption });
+      const achievementPayload = caption ? { ...achievement, text: caption } : { ...achievement };
+      const result = await shareAchievement(achievementPayload);
       dispatch('submitted', { postId: result.postId });
     } catch (err) {
       console.error('[share-composer] submit failed', err);

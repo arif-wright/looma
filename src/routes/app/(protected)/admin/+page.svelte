@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import AdminCard from '$lib/components/admin/AdminCard.svelte';
-  import SubNav, { type NavItem } from '$lib/components/admin/SubNav.svelte';
+  import SubNav from '$lib/components/admin/SubNav.svelte';
+  import type { NavItem } from '$lib/components/admin/types';
   import Sparkline from '$lib/components/admin/Sparkline.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
@@ -311,7 +312,7 @@
         </ul>
       </AdminCard>
 
-      <AdminCard className="span-6" id="finance">
+      <AdminCard className="span-6">
         <div class="card-head">
           <div>
             <p class="label">Finance · Stripe (30d)</p>
@@ -347,7 +348,7 @@
         {/if}
       </AdminCard>
 
-      <AdminCard className="span-6" id="feature-toggles">
+      <AdminCard className="span-6">
         <div class="card-head">
           <p class="label">Feature Toggles</p>
           <p class="hint">Quick switches</p>
@@ -379,7 +380,7 @@
         {/if}
       </AdminCard>
 
-      <AdminCard className="span-12" id="maintenance">
+      <AdminCard className="span-12">
         <div class="card-head">
           <p class="label">Maintenance Mode</p>
           <p class="hint">Restrict access for non-admins</p>

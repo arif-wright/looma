@@ -16,7 +16,7 @@
   let available: boolean | null = null;
   let msg = '';
   let dirty = false;
-  let handleTimer: ReturnType<typeof setTimeout> | null = null;
+  let handleTimer: number | null = null;
   let handleSaving = false;
   let accountPrivate = false;
   let showLevel = true;

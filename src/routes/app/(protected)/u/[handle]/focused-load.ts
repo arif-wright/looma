@@ -134,6 +134,7 @@ export async function loadFocusedPost(
     typeof postRow.text === 'string' && postRow.text.trim().length > 0
       ? postRow.text
       : postRow.body ?? '';
+  const postAuthorRow = Array.isArray(postRow.author) ? (postRow.author[0] ?? null) : postRow.author;
 
   const thread: Thread = {
     id: postRow.id,
@@ -143,7 +144,7 @@ export async function loadFocusedPost(
     created_at: postRow.created_at,
     comment_count: commentCount ?? 0,
     author: {
-      id: postRow.author?.id ?? profile.id,
+      id: postAuthorRow?.id ?? profile.id,
       display_name: postAuthor?.display_name ?? profile.display_name ?? null,
       handle: authorHandle ?? null,
       avatar_url: postAuthor?.avatar_url ?? profile.avatar_url ?? null

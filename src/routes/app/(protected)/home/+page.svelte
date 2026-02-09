@@ -113,9 +113,9 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
       author_name: typeof entry.author_name === 'string' ? entry.author_name : 'You',
       author_handle: typeof entry.author_handle === 'string' ? entry.author_handle : null,
       author_avatar: (entry.author_avatar as string | null) ?? null,
-      display_name: typeof entry.display_name === 'string' ? entry.display_name : undefined,
-      handle: typeof entry.handle === 'string' ? entry.handle : undefined,
-      avatar_url: (entry.avatar_url as string | null) ?? undefined,
+      display_name: typeof entry.display_name === 'string' ? entry.display_name : null,
+      handle: typeof entry.handle === 'string' ? entry.handle : null,
+      avatar_url: (entry.avatar_url as string | null) ?? null,
       comment_count: typeof entry.comment_count === 'number' ? entry.comment_count : 0,
       reaction_like_count: typeof entry.reaction_like_count === 'number' ? entry.reaction_like_count : 0,
       reaction_spark_count: typeof entry.reaction_spark_count === 'number' ? entry.reaction_spark_count : 0,
@@ -131,7 +131,7 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
       engagement: typeof entry.engagement === 'number' ? entry.engagement : 0,
       recency: typeof entry.recency === 'number' ? entry.recency : Date.now(),
       score: typeof entry.score === 'number' ? entry.score : Date.now(),
-      shares_count: typeof entry.shares_count === 'number' ? entry.shares_count : undefined
+      ...(typeof entry.shares_count === 'number' ? { shares_count: entry.shares_count } : {})
     } satisfies FeedItemType;
   };
 
@@ -159,8 +159,9 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
 
   const handleRitualEvent = (event: CustomEvent<{ completed: CompanionRitual[] }>) => {
     const completed = event.detail?.completed ?? [];
-    if (completed.length) {
-      const copy = describeRitualCompletion(completed[0], activeCompanion?.name ?? null);
+    const firstCompleted = completed[0];
+    if (firstCompleted) {
+      const copy = describeRitualCompletion(firstCompleted, activeCompanion?.name ?? null);
       showToast(copy);
     }
   };

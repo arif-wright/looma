@@ -19,7 +19,9 @@ export class ShopError extends Error {
     this.name = 'ShopError';
     this.code = code;
     this.status = status;
-    this.details = details;
+    if (details) {
+      this.details = details;
+    }
   }
 }
 

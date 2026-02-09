@@ -3,7 +3,7 @@
   import AchievementIcon from '$lib/components/games/AchievementIcon.svelte';
   import ConfettiBurst from '$lib/components/games/ConfettiBurst.svelte';
 
-export type AchievementToastItem = {
+type AchievementToastItem = {
   key: string;
   name: string;
   icon: string;

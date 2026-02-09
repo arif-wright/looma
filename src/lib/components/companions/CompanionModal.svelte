@@ -73,7 +73,7 @@
   let careError: string | null = null;
   let cooldownUntil: Record<CareAction, number> = { feed: 0, play: 0, groom: 0 };
   let nowTick = Date.now();
-  let cooldownTimer: ReturnType<typeof setInterval> | null = null;
+  let cooldownTimer: number | null = null;
   let lastFetchedId: string | null = null;
   let lastPrefetchVersion = 0;
 
@@ -346,7 +346,8 @@
         return;
       }
 
-      companion = { ...companion, ...payload.companion };
+      const nextCompanion = { ...companion, ...payload.companion };
+      companion = nextCompanion;
       if (payload.event) {
         events = normalizeEvents([payload.event as CareEvent, ...events]);
       }
@@ -377,7 +378,7 @@
       }
       careError = null;
       startCooldown(action);
-      dispatch('careApplied', { id: companion.id, companion });
+      dispatch('careApplied', { id: nextCompanion.id, companion: nextCompanion });
       actionMessage = null;
     } catch (err) {
       const message = err instanceof Error ? err.message : null;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  export type Endcap = {
+  type Endcap = {
     title: string;
     description?: string;
     href: string;

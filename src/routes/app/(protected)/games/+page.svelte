@@ -16,8 +16,15 @@
 
   export let data: PageData;
 
-  const games = data?.games?.length
-    ? data.games
+  type GameEntry = {
+    slug: string;
+    name: string;
+    min_version: string | null;
+    max_score: number | null;
+  };
+
+  const games: GameEntry[] = data?.games?.length
+    ? (data.games as GameEntry[])
     : [
         { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
         { slug: 'arpg', name: 'Looma ARPG', min_version: '1.0.0', max_score: 150000 },
@@ -110,14 +117,14 @@
     return Array.from(unique.values());
   };
 
-  const fallbackRecent = games.slice(0, 6).map((game) => ({ slug: game.slug, name: game.name }));
+  const fallbackRecent = games.slice(0, 6).map((game: GameEntry) => ({ slug: game.slug, name: game.name }));
   $: recentGames = recentGamesFromRewards();
   $: recentCatalog = recentGames.length > 0 ? recentGames : fallbackRecent;
 
   const metaBySlug = new Map(gameCatalog.map((entry) => [entry.slug, entry]));
   const gamesWithArtwork: GameMeta[] = games
-    .map((game) => metaBySlug.get(game.slug))
-    .filter((entry): entry is GameMeta => Boolean(entry));
+    .map((game: GameEntry) => metaBySlug.get(game.slug))
+    .filter((entry: GameMeta | undefined): entry is GameMeta => Boolean(entry));
   const gridGames: GameMeta[] = gamesWithArtwork.length
     ? [
         ...gamesWithArtwork,
@@ -134,11 +141,12 @@
 
   const findFeatured = () => {
     if (recentCatalog.length > 0) {
-      const preferred = games.find((game) => game.slug === recentCatalog[0].slug);
+      const firstRecent = recentCatalog[0];
+      if (!firstRecent) return games[0] ?? null;
+      const preferred = games.find((game: GameEntry) => game.slug === firstRecent.slug);
       if (preferred) return preferred;
-      const fromRecent = recentCatalog[0];
-      const fallback = games.find((game) => game.slug === fromRecent.slug);
-      return fallback ?? { slug: fromRecent.slug, name: fromRecent.name, min_version: '1.0.0', max_score: null };
+      const fallback = games.find((game: GameEntry) => game.slug === firstRecent.slug);
+      return fallback ?? { slug: firstRecent.slug, name: firstRecent.name, min_version: '1.0.0', max_score: null };
     }
     return games[0] ?? null;
   };

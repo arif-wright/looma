@@ -11,6 +11,11 @@ import type { PageData } from './$types';
   export let data: PageData;
 
   const profile = data.profile;
+  const profileExtras = data.profile as {
+    shards?: number | null;
+    pronouns?: string | null;
+    location?: string | null;
+  };
   const stats = {
     level: profile.level ?? null,
     xp: profile.xp ?? null,
@@ -67,7 +72,7 @@ import type { PageData } from './$types';
       <ProfileSidebar
         profile={profile}
         stats={stats}
-        shards={profile.shards ?? null}
+        shards={profileExtras.shards ?? null}
         featuredCompanion={data.featuredCompanion}
         achievements={profile.achievements ?? []}
         isOwner={false}
@@ -88,7 +93,12 @@ import type { PageData } from './$types';
         {/if}
 
         <section class="panel" id="overview">
-          <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+          <ProfileAbout
+            bio={profile.bio}
+            links={profile.links}
+            pronouns={profileExtras.pronouns ?? null}
+            location={profileExtras.location ?? null}
+          />
         </section>
 
         <section class="panel" id="companions">

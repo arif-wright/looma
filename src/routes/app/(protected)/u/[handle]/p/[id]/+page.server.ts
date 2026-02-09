@@ -21,15 +21,21 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions = {
   reply: async (event) => {
-    const parent = await event.parent();
-    const profile = parent.profile;
+    const profile = await (async () => {
+      const supabase = supabaseServer(event);
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, handle')
+        .eq('handle', event.params.handle)
+        .maybeSingle();
+      return data as { id: string; handle: string } | null;
+    })();
+    if (!profile) {
+      throw error(404, 'Profile not found');
+    }
     const id = event.params.id;
     if (!id) {
       throw error(400, 'Missing post id');
-    }
-
-    if (parent.blocked) {
-      throw redirect(302, `/app/u/${profile.handle}${event.url.search}`);
     }
 
     const supabase = supabaseServer(event);

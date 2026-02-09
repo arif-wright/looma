@@ -417,14 +417,24 @@ export const load: PageServerLoad = async (event) => {
       console.error('[profile] follow request profile lookup failed', peopleError);
     }
 
-    const map = new Map((people ?? []).map((person) => [person.id, person]));
+    const map = new Map<string, { id: string; display_name: string | null; handle: string | null; avatar_url: string | null }>(
+      (people ?? []).map((person) => [
+        person.id as string,
+        {
+          id: person.id as string,
+          display_name: (person.display_name as string | null) ?? null,
+          handle: (person.handle as string | null) ?? null,
+          avatar_url: (person.avatar_url as string | null) ?? null
+        }
+      ])
+    );
     followRequests = ids.map((id) => {
-      const person = map.get(id) ?? {};
+      const person = map.get(id);
       return {
         requester_id: id,
-        display_name: person.display_name ?? 'Explorer',
-        handle: person.handle ?? 'player',
-        avatar_url: person.avatar_url ?? null
+        display_name: person?.display_name ?? 'Explorer',
+        handle: person?.handle ?? 'player',
+        avatar_url: person?.avatar_url ?? null
       };
     });
   }

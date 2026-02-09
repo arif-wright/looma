@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { IconNavItem } from './CenterIconNav.svelte';
+  import type { IconNavItem } from './types';
   import { page } from '$app/stores';
 
   export let items: IconNavItem[] = [];

@@ -270,30 +270,31 @@ export const load: PageServerLoad = async (event) => {
   if (!profileRow) {
     throw error(404, 'Profile not found');
   }
+  const profileWithUserId = profileRow as typeof profileRow & { user_id?: string | null };
 
-  const isOwnProfile = viewerId === profileRow.id;
-  const accountPrivate = Boolean(profileRow.account_private ?? profileRow.is_private ?? false);
+  const isOwnProfile = viewerId === profileWithUserId.id;
+  const accountPrivate = Boolean(profileWithUserId.account_private ?? profileWithUserId.is_private ?? false);
   const blockPeers = await ensureBlockedPeers(event, supabase);
-  const blocked = isBlockedPeer(blockPeers, profileRow.id);
+  const blocked = isBlockedPeer(blockPeers, profileWithUserId.id);
   const blockedView = blocked && !isOwnProfile;
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
-  const shareUrl = `${baseUrl}/u/${profileRow.handle}`;
+  const shareUrl = `${baseUrl}/u/${profileWithUserId.handle}`;
   const defaultDescription =
-    profileRow.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
+    profileWithUserId.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
 
   if (blockedView) {
-    const followCounts = await getFollowCounts(profileRow.id);
+    const followCounts = await getFollowCounts(profileWithUserId.id);
     return {
       profile: {
-        id: profileRow.id,
-        user_id: profileRow.user_id ?? profileRow.id,
-        handle: profileRow.handle,
-        display_name: profileRow.display_name,
-        avatar_url: profileRow.avatar_url,
-        banner_url: profileRow.banner_url,
+        id: profileWithUserId.id,
+        user_id: profileWithUserId.user_id ?? profileWithUserId.id,
+        handle: profileWithUserId.handle,
+        display_name: profileWithUserId.display_name,
+        avatar_url: profileWithUserId.avatar_url,
+        banner_url: profileWithUserId.banner_url,
         bio: null,
         links: [],
-        is_private: Boolean(profileRow.is_private),
+        is_private: Boolean(profileWithUserId.is_private),
         account_private: accountPrivate,
         achievements: []
       },
@@ -326,6 +327,7 @@ export const load: PageServerLoad = async (event) => {
     posts,
     pinned,
     achievements,
+    bondMilestones,
     followCounts,
     privacyStatus,
     personaSummary
@@ -334,15 +336,16 @@ export const load: PageServerLoad = async (event) => {
       supabase
         .from('player_stats')
         .select('level, xp, xp_next, energy, energy_max')
-        .eq('id', profileRow.id)
+        .eq('id', profileWithUserId.id)
         .maybeSingle(),
-      fetchFeaturedCompanion(supabase, profileRow.id),
-      fetchPosts(supabase, profileRow.id, isOwnProfile),
-      fetchPinnedPreview(supabase, profileRow.id, isOwnProfile),
-      fetchRecentAchievements(supabase, profileRow.id),
-      getFollowCounts(profileRow.id),
-      getFollowPrivacyStatus(viewerId, profileRow.id),
-      getPersonaSummary(profileRow.id)
+      fetchFeaturedCompanion(supabase, profileWithUserId.id),
+      fetchPosts(supabase, profileWithUserId.id, isOwnProfile),
+      fetchPinnedPreview(supabase, profileWithUserId.id, isOwnProfile),
+      fetchRecentAchievements(supabase, profileWithUserId.id),
+      fetchBondAchievementsForUser(supabase, profileWithUserId.id),
+      getFollowCounts(profileWithUserId.id),
+      getFollowPrivacyStatus(viewerId, profileWithUserId.id),
+      getPersonaSummary(profileWithUserId.id)
     ]);
 
   if (statsResult.error) {
@@ -354,16 +357,16 @@ export const load: PageServerLoad = async (event) => {
   const isFollowing = blocked ? false : privacyStatus?.isFollowing ?? false;
   const requested = blocked ? false : privacyStatus?.requested ?? false;
   const gated = blockedView || (accountPrivate && !isOwnProfile && !isFollowing);
-  const feedAllowed = !gated && profileRow.show_feed !== false;
-  const achievementsAllowed = !gated && profileRow.show_achievements !== false;
+  const feedAllowed = !gated && profileWithUserId.show_feed !== false;
+  const achievementsAllowed = !gated && profileWithUserId.show_achievements !== false;
   const safeAchievements = achievementsAllowed ? achievements : [];
   const safeFeed = feedAllowed ? posts.items : [];
   const safeNextCursor = feedAllowed ? posts.nextCursor : null;
   const safeBondMilestones = achievementsAllowed ? bondMilestones : [];
 
   const profilePayload = redactProfile({
-    ...profileRow,
-    user_id: profileRow.user_id ?? profileRow.id,
+    ...profileWithUserId,
+    user_id: profileWithUserId.user_id ?? profileWithUserId.id,
     links: parsedLinks,
     is_private: Boolean(profileRow.is_private),
     account_private: accountPrivate,
@@ -374,7 +377,7 @@ export const load: PageServerLoad = async (event) => {
   const metaDescription = isGatedPublic ? 'This profile is private on Looma' : defaultDescription;
   const ogImageUrl = isGatedPublic
     ? `${baseUrl}/og/default-profile.png`
-    : `${baseUrl}/api/og/profile?handle=${profileRow.handle}`;
+    : `${baseUrl}/api/og/profile?handle=${profileWithUserId.handle}`;
 
   const personaPublic = gated ? null : personaSummary ?? null;
 

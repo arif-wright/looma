@@ -3,7 +3,7 @@
   import CompanionCard from './CompanionCard.svelte';
   import type { Companion } from '$lib/stores/companions';
 
-  export type RosterReorderDetail = { ids: string[]; via: 'pointer' | 'keyboard' };
+  type RosterReorderDetail = { ids: string[]; via: 'pointer' | 'keyboard' };
 
   export let companions: Companion[] = [];
   export let maxSlots = 3;
@@ -94,7 +94,9 @@ const restoreOrder = () => {
     event.preventDefault();
     const working = companions.slice(0, maxSlots);
     const temp = working[index];
-    working[index] = working[nextIndex];
+    const target = working[nextIndex];
+    if (!temp || !target) return;
+    working[index] = target;
     working[nextIndex] = temp;
     const ids = working.map((companion) => companion.id);
     dispatch('reorder', { ids, via: 'keyboard' });

@@ -99,11 +99,15 @@
       await completeSession(activeSession.sessionId, {
         score: safeScore,
         durationMs,
-        success: rawResult.success,
-        stats: rawResult.meta ?? {}
+        success: safeScore > 0,
+        ...(rawResult.meta ? { stats: rawResult.meta } : {})
       });
 
-      lastResult = { score: safeScore, durationMs, meta: rawResult.meta };
+      lastResult = {
+        score: safeScore,
+        durationMs,
+        ...(rawResult.meta ? { meta: rawResult.meta } : {})
+      };
       if (bestScore === null || safeScore > bestScore) {
         bestScore = safeScore;
         persistBestScore(safeScore);

@@ -105,9 +105,8 @@ export function createGame(): TilesRunGame {
     const gap = Math.round(
       OBSTACLE_MIN_GAP + Math.random() * (OBSTACLE_MAX_GAP - OBSTACLE_MIN_GAP)
     );
-    const lastX = state.obstacles.length
-      ? state.obstacles[state.obstacles.length - 1].x
-      : state.width + gap;
+    const lastObstacle = state.obstacles.at(-1);
+    const lastX = lastObstacle ? lastObstacle.x : state.width + gap;
     state.obstacles.push({ x: lastX + gap, width, height });
   };
 
@@ -120,8 +119,8 @@ export function createGame(): TilesRunGame {
     // Remove off-screen obstacles
     state.obstacles = state.obstacles.filter((obstacle) => obstacle.x + obstacle.width > -10);
 
-    const needSpawn =
-      state.obstacles.length === 0 || state.obstacles[state.obstacles.length - 1].x < state.width * 0.6;
+    const tailObstacle = state.obstacles.at(-1);
+    const needSpawn = !tailObstacle || tailObstacle.x < state.width * 0.6;
 
     if (needSpawn) {
       spawnObstacle();
@@ -294,7 +293,6 @@ export function createGame(): TilesRunGame {
       canvas = null;
       ctx = null;
     },
-    onGameOver: undefined,
     playerJump() {
       if (!canvas) return;
       if (!running) return;

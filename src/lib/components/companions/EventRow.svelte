@@ -24,6 +24,11 @@
     daily_bonus: { emoji: '✨', label: 'Daily glow', note: 'Brightened when you checked in today.' },
     system: { emoji: '🌀', label: 'System' }
   };
+  const defaultMeta: { emoji: string; label: string; note?: string } = {
+    emoji: '🌀',
+    label: 'System',
+    note: 'System event'
+  };
 
   const formatDelta = (value: number, label: string) => {
     const prefix = value >= 0 ? '+' : '';
@@ -52,14 +57,14 @@
   };
 
   $: actionKey = (event.kind ?? event.action ?? 'system').toLowerCase();
-  $: meta = milestoneMeta[actionKey] ?? actionMeta[actionKey] ?? actionMeta.system;
+  $: meta = milestoneMeta[actionKey] ?? actionMeta[actionKey] ?? defaultMeta;
   $: hasDeltas = Boolean((event.affection_delta ?? 0) || (event.trust_delta ?? 0) || (event.energy_delta ?? 0));
   $: isMilestone = Boolean(milestoneMeta[actionKey]);
   $: isSoftEvent = actionKey === 'passive' || actionKey === 'daily_bonus' || isMilestone;
   $: fallbackMessage =
     isMilestone
-      ? event.note ?? milestoneForAction(actionKey)?.note('your companion') ?? meta.label
-      : event.note ?? meta.note ?? meta.label;
+      ? event.note ?? milestoneForAction(actionKey)?.note('your companion') ?? defaultMeta.label
+      : event.note ?? actionMeta[actionKey]?.note ?? meta.label;
 </script>
 
 <li class="event-row">

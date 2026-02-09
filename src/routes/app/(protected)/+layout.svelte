@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { afterNavigate } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
-  import type { NotificationItem } from '$lib/components/ui/NotificationBell.svelte';
+  import type { NotificationItem } from '$lib/components/ui/types';
   import { sendAnalytics } from '$lib/utils/analytics';
   import { logout } from '$lib/auth/logout';
   import { page } from '$app/stores';
@@ -12,7 +12,7 @@
   import { FLAGS } from '$lib/config/flags';
   import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
   import LeanHeader from '$lib/components/layout/LeanHeader.svelte';
-  import type { IconNavItem } from '$lib/components/ui/CenterIconNav.svelte';
+  import type { IconNavItem } from '$lib/components/ui/types';
   import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
@@ -285,7 +285,7 @@
         const response = await sendEvent(
           'session.start',
           { path: window.location.pathname },
-          { sessionId: sessionId ?? undefined }
+          sessionId ? { sessionId } : {}
         );
         const output = response?.output ?? null;
         const reaction = output?.suppressed === true ? null : output?.reaction ?? null;

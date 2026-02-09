@@ -146,7 +146,7 @@ export const POST: RequestHandler = async (event) => {
       lines: summary.lines,
       total: summary.total,
       currency: summary.currency,
-      meta,
+      ...(meta ? { meta } : {}),
       client: supabaseAdmin,
       event
     });

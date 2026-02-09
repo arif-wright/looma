@@ -185,7 +185,8 @@ test.describe.serial('Game session security', () => {
   });
 
   test('rate limit caps rapid requests', async () => {
-    const attempts = rateLimitPerMinute => Array.from({ length: rateLimitPerMinute + 1 }, (_, i) => i);
+    const attempts = (rateLimitPerMinute: number) =>
+      Array.from({ length: rateLimitPerMinute + 1 }, (_, i) => i);
     const limit = Number.parseInt(process.env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 
     let lastStatus = 200;

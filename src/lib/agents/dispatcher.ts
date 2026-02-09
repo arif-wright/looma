@@ -41,11 +41,12 @@ export const dispatchEvent = async (
     lastRun.set(safety.id, now);
 
     if (safetyResult.veto) {
+      const vetoReason = safetyResult.reason ?? 'vetoed';
       return {
         event,
         results,
         vetoed: true,
-        vetoReason: safetyResult.reason ?? 'vetoed'
+        vetoReason
       };
     }
   }
@@ -79,11 +80,12 @@ export const dispatchEvent = async (
         veto: true,
         reason: 'Blocked actions due to consent flags.'
       };
+      const vetoReason = safetyResult.reason ?? 'Blocked actions due to consent flags.';
       return {
         event,
         results: [safetyResult, ...results],
         vetoed: true,
-        vetoReason: safetyResult.reason
+        vetoReason
       };
     }
   }

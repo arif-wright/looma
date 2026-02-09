@@ -13,6 +13,11 @@
   export let data: PageData;
 
   const profile = data.profile;
+  const profileExtras = data.profile as {
+    pronouns?: string | null;
+    location?: string | null;
+    show_feed?: boolean;
+  };
   const stats = data.stats;
   const shareUrl = data.shareUrl ?? '';
   const ogImageUrl = data.ogImageUrl ?? `${shareUrl ? new URL('/api/og/profile?handle=' + profile.handle, shareUrl).toString() : ''}`;
@@ -57,7 +62,7 @@
     canEdit={false}
     canShare={!!shareUrl}
     shareUrl={shareUrl}
-    isOwnProfile={data.isOwnProfile ?? data.isOwner}
+    isOwnProfile={data.isOwnProfile ?? false}
     isFollowing={data.isFollowing ?? false}
     requested={data.requested ?? false}
     gated={data.gated ?? false}
@@ -98,7 +103,12 @@
         {/if}
 
         <section class="panel" id="overview">
-          <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+          <ProfileAbout
+            bio={profile.bio}
+            links={profile.links}
+            pronouns={profileExtras.pronouns ?? null}
+            location={profileExtras.location ?? null}
+          />
         </section>
 
         <section class="panel companion-panel" id="companions">
@@ -123,7 +133,7 @@
             <p>Only approved followers can see {profile.display_name ?? profile.handle}'s activity.</p>
           </section>
         {:else}
-          {#if data.profile.show_feed !== false}
+          {#if profileExtras.show_feed !== false}
             <section id="activity" class="space-y-4">
               <ProfileFeed
                 authorIdentifier={profile.handle || profile.id}

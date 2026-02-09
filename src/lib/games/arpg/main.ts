@@ -42,7 +42,7 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
         default: 'arcade',
         arcade: {
           debug: false,
-          gravity: { y: 0 }
+          gravity: { x: 0, y: 0 }
         }
       },
       scene: [GameScene]

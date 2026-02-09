@@ -63,7 +63,7 @@
     { name: 'Sol Vega', status: 'offline' }
   ] as const;
 
-  const stories = [
+  const stories: { id: string; name: string; status: 'new' | 'seen' }[] = [
     { id: 'story-1', name: 'Nova', status: 'new' },
     { id: 'story-2', name: 'Mira', status: 'new' },
     { id: 'story-3', name: 'Kai', status: 'seen' },
@@ -107,7 +107,10 @@
           <div class="sidebar__items">
             {#each navItems as item}
               <NavItem
-                {...item}
+                label={item.label}
+                description={item.description}
+                href={item.href}
+                icon={item.icon as any}
                 on:navigate={(event) => handleNav(event.detail.href)}
               />
             {/each}
@@ -119,7 +122,10 @@
           <div class="sidebar__items">
             {#each shortcuts as item}
               <NavItem
-                {...item}
+                label={item.label}
+                description={item.description}
+                href={item.href}
+                icon={item.icon as any}
                 on:navigate={() => handleShortcut(item.href)}
               />
             {/each}

@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
 
-  export type FollowListKind = 'followers' | 'following';
+  type FollowListKind = 'followers' | 'following';
 
   export let open = false;
   export let userId: string | null = null;

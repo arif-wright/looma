@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
 
-  export type RosterFilterState = {
+  type RosterFilterState = {
     search: string;
     archetype: string;
     mood: string;

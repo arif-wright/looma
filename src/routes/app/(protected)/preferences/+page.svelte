@@ -92,7 +92,7 @@
         version: PORTABLE_STATE_VERSION,
         updatedAt: new Date().toISOString(),
         items: nextItems,
-        companions: portableState?.companions
+        ...(portableState?.companions ? { companions: portableState.companions } : {})
       };
 
       const res = await fetch('/api/context/portable', {
@@ -106,11 +106,11 @@
       }
 
       portableState = nextState;
-      updateCompanionPrefs({
-        visible: typeof patch.visibility === 'boolean' ? patch.visibility : undefined,
-        motion: typeof patch.motion === 'boolean' ? patch.motion : undefined,
-        transparent: typeof patch.transparency === 'boolean' ? patch.transparency : undefined
-      });
+      const companionPatch: { visible?: boolean; motion?: boolean; transparent?: boolean } = {};
+      if (typeof patch.visibility === 'boolean') companionPatch.visible = patch.visibility;
+      if (typeof patch.motion === 'boolean') companionPatch.motion = patch.motion;
+      if (typeof patch.transparency === 'boolean') companionPatch.transparent = patch.transparency;
+      updateCompanionPrefs(companionPatch);
     } catch {
       error = SAFE_LOAD_ERROR;
     } finally {
