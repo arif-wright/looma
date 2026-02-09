@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { env } from '$env/dynamic/private';
 
 let stripeClient: Stripe | null = null;
@@ -29,7 +29,11 @@ const getServiceKey = () => {
 };
 
 export function serviceClient() {
-  return createClient(PUBLIC_SUPABASE_URL, getServiceKey(), {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  if (!url) {
+    throw new Error('PUBLIC_SUPABASE_URL is not configured');
+  }
+  return createClient(url, getServiceKey(), {
     auth: { persistSession: false }
   });
 }

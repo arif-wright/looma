@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+  import { env as publicEnv } from '$env/dynamic/public';
 
   const providers = ['google', 'github'] as const;
 
@@ -18,13 +18,15 @@
 
   onMount(() => {
     if (!browser) return;
-    if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
+    const url = publicEnv.PUBLIC_SUPABASE_URL;
+    const anonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) {
       envError = 'Supabase credentials are not configured.';
       message = envError;
       return;
     }
 
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+    supabase = createClient(url, anonKey, {
       auth: { persistSession: true, detectSessionInUrl: true }
     });
     ready = true;

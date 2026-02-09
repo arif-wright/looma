@@ -7,14 +7,21 @@ import { normalizeHandle } from '$lib/utils/handle';
 import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
+import { env as privateEnv } from '$env/dynamic/private';
 import { getPersonaSummary } from '$lib/server/persona';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
-const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
-});
+const getServiceClient = () => {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false }
+  });
+};
 
 type ProfileRow = {
   id: string;
@@ -318,6 +325,7 @@ const fetchPinnedPreview = async (
 
 export const load: PageServerLoad = async (event) => {
   const { supabase, user } = await requireUserServer(event);
+  const service = getServiceClient();
 
   const profileRow = await ensureProfile(supabase, user);
   const parsedLinks = parseLinks(profileRow.links);

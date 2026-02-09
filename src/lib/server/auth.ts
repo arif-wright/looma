@@ -1,7 +1,7 @@
 import { redirect, type RequestEvent } from '@sveltejs/kit';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '$lib/supabase/server';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 
 type UserResult = {
   supabase: SupabaseClient;
@@ -27,7 +27,12 @@ export const getUserServer = async (event: RequestEvent): Promise<UserResult> =>
 
   const bearerToken = extractBearerToken(event);
   if (bearerToken) {
-    const supabaseWithToken = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+    const url = publicEnv.PUBLIC_SUPABASE_URL;
+    const anonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) {
+      return { supabase, user: null };
+    }
+    const supabaseWithToken = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 

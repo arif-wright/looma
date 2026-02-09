@@ -1,18 +1,26 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
+import { env as privateEnv } from '$env/dynamic/private';
 
-const adminClient = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
-});
+const getAdminClient = () => {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false }
+  });
+};
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
     throw redirect(302, '/app/auth');
   }
 
+  const adminClient = getAdminClient();
   const retake = url.searchParams.get('retake') === '1';
   const userId = locals.user.id;
 

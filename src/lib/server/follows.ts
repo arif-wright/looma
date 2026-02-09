@@ -1,18 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
+import { env as privateEnv } from '$env/dynamic/private';
 
-if (!PUBLIC_SUPABASE_URL) {
-  throw new Error('PUBLIC_SUPABASE_URL is not configured');
-}
-
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
-}
-
-const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const getServiceClient = () => {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+};
 
 export type FollowCounts = {
   followers: number;
@@ -44,6 +43,7 @@ const clampLimit = (value: number) => Math.max(1, Math.min(50, Math.floor(value)
 const clampOffset = (value: number) => Math.max(0, Math.floor(value));
 
 const hydrateProfiles = async (ids: string[]): Promise<Map<string, ProfilePreview>> => {
+  const service = getServiceClient();
   const unique = Array.from(new Set(ids.filter((id) => typeof id === 'string' && id.length > 0)));
   const map = new Map<string, ProfilePreview>();
   if (!unique.length) {
@@ -63,6 +63,7 @@ const hydrateProfiles = async (ids: string[]): Promise<Map<string, ProfilePrevie
 };
 
 export const getFollowCounts = async (userId: string): Promise<FollowCounts> => {
+  const service = getServiceClient();
   if (!userId) {
     return { followers: 0, following: 0 };
   }
@@ -100,6 +101,7 @@ const mapEdgesToEntries = (
   });
 
 export const listFollowers = async (userId: string, limit = 20, from = 0): Promise<FollowListResult> => {
+  const service = getServiceClient();
   if (!userId) {
     return { items: [], nextFrom: null };
   }
@@ -133,6 +135,7 @@ export const listFollowers = async (userId: string, limit = 20, from = 0): Promi
 };
 
 export const listFollowing = async (userId: string, limit = 20, from = 0): Promise<FollowListResult> => {
+  const service = getServiceClient();
   if (!userId) {
     return { items: [], nextFrom: null };
   }

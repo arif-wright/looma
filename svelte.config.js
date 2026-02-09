@@ -8,7 +8,9 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		adapter: adapter()
+		// Ensure a stable, supported runtime for Vercel builds/SSR.
+		// (Local environments may run newer Node versions than the adapter supports.)
+		adapter: adapter({ runtime: 'nodejs20.x' })
 	}
 };
 

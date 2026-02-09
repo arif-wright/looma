@@ -1,10 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
+import { env as privateEnv } from '$env/dynamic/private';
 
-const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const getServiceClient = () => {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    throw new Error('Supabase service client is not configured');
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+};
 
 export type FollowPrivacyStatus = {
   isFollowing: boolean;
@@ -15,6 +22,7 @@ export async function getFollowPrivacyStatus(
   viewerId: string | null,
   ownerId: string
 ): Promise<FollowPrivacyStatus> {
+  const service = getServiceClient();
   if (!viewerId || !ownerId) {
     return { isFollowing: false, requested: false };
   }

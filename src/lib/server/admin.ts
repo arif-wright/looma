@@ -1,7 +1,7 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { env } from '$env/dynamic/private';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 
@@ -26,7 +26,11 @@ export function getServiceKey(): string {
 }
 
 export function serviceClient() {
-  return createClient(PUBLIC_SUPABASE_URL, getServiceKey(), {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  if (!url) {
+    throw new Error('PUBLIC_SUPABASE_URL is not configured');
+  }
+  return createClient(url, getServiceKey(), {
     auth: { persistSession: false }
   });
 }

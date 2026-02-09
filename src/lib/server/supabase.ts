@@ -1,18 +1,28 @@
-import { createClient, type Session } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env as privateEnv } from '$env/dynamic/private';
 import { createSupabaseServerClient as createSupabaseSsrClient } from '$lib/supabase/server';
 
-const SUPABASE_URL = publicEnv.PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = privateEnv.SUPABASE_SERVICE_ROLE_KEY;
+const createAdminClient = (): SupabaseClient => {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    throw new Error('Supabase admin client is not configured');
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+};
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  throw new Error('Supabase admin client is not configured');
-}
+let cachedAdminClient: SupabaseClient | null = null;
+const getAdminClient = () => (cachedAdminClient ??= createAdminClient());
 
-export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false }
+// Proxy prevents build-time static analysis from crashing when env isn't injected.
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_target, prop, _receiver) {
+    const client = getAdminClient();
+    const value = (client as any)[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
 });
 
 type SupabaseServerResult = { supabase: App.Locals['supabase']; session: Session | null };

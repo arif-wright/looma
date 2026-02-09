@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
+import { env as privateEnv } from '$env/dynamic/private';
 import { env } from '$env/dynamic/private';
 
 export type AdminFlags = { isAdmin: boolean; isFinance: boolean; isSuper: boolean };
@@ -23,7 +23,13 @@ export async function getAdminFlags(email?: string | null, userId?: string | nul
     return base;
   }
 
-  const service = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  const key = privateEnv.SUPABASE_SERVICE_ROLE_KEY ?? privateEnv.SUPABASE_SERVICE_ROLE;
+  if (!url || !key) {
+    return base;
+  }
+
+  const service = createClient(url, key, {
     auth: { persistSession: false }
   });
   const { data } = await service
