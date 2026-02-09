@@ -19,6 +19,10 @@
   export let auraColor: string = 'cyan';
   export let glowIntensity = 55;
   export let preserveDrawingBuffer = false;
+  export let eager = false;
+  // `minSize` exists because some surfaces (like modal portraits) need a tiny model view.
+  // Default preserves existing layouts that assumed a minimum 180px panel.
+  export let minSize: string | number = 180;
 
   // Deprecated: use `class` and `transparent` instead.
   export let background = 'transparent';
@@ -138,21 +142,28 @@
       mediaQuery.addListener(handleMotionChange);
     }
 
-    observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        isVisible = Boolean(entry?.isIntersecting);
-        if (isVisible && !shouldLoad) {
-          shouldLoad = true;
-          void loadModelViewer();
-        }
-        updatePlayback();
-      },
-      { rootMargin: '160px' }
-    );
+    if (eager) {
+      // Modals/portaits can be rendered in scroll containers where IntersectionObserver
+      // doesn't always fire promptly. Eager mode guarantees the element loads.
+      shouldLoad = true;
+      void loadModelViewer();
+    } else {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          isVisible = Boolean(entry?.isIntersecting);
+          if (isVisible && !shouldLoad) {
+            shouldLoad = true;
+            void loadModelViewer();
+          }
+          updatePlayback();
+        },
+        { rootMargin: '160px' }
+      );
 
-    if (container) {
-      observer.observe(container);
+      if (container) {
+        observer.observe(container);
+      }
     }
 
     return () => {
@@ -198,7 +209,7 @@
 
 <div
   class={`muse-shell ${className}`}
-  style={`--muse-size: ${normalizeSize(size)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px;`}
+  style={`--muse-size: ${normalizeSize(size)}; --muse-min-size: ${normalizeSize(minSize)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px;`}
   bind:this={container}
 >
   <div class="muse-aura" aria-hidden="true"></div>
@@ -223,7 +234,7 @@
       class:muse-viewer--interactive={cameraControls}
       src="/models/muse.glb"
       alt="Muse companion"
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
       reveal="auto"
       poster={poster}
       autoplay={autoplay && !reducedMotion ? true : undefined}
@@ -277,8 +288,8 @@
   .muse-shell {
     width: var(--muse-size);
     height: var(--muse-size);
-    min-width: 180px;
-    min-height: 180px;
+    min-width: var(--muse-min-size, 180px);
+    min-height: var(--muse-min-size, 180px);
     border-radius: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: linear-gradient(160deg, rgba(12, 16, 32, 0.9), rgba(6, 10, 20, 0.7));

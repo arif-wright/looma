@@ -438,7 +438,15 @@
           {#if portraitSrc}
             <img src={portraitSrc} alt={`${companion.name} portrait`} class="dossier-portrait__img" />
           {:else}
-            <MuseModel bind:this={museRef} size="112px" autoplay={false} respectReducedMotion={false} preserveDrawingBuffer />
+            <MuseModel
+              bind:this={museRef}
+              size="112px"
+              minSize={0}
+              eager={true}
+              autoplay={false}
+              respectReducedMotion={false}
+              preserveDrawingBuffer
+            />
           {/if}
           {#if effective}
             <span class={`mood-dot mood-dot--${effective.moodKey}`} aria-hidden="true"></span>
