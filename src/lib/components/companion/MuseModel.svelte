@@ -143,6 +143,18 @@
       if (canvas && typeof canvas.toDataURL === 'function') {
         return canvas.toDataURL('image/png');
       }
+
+      if (canvas && typeof canvas.toBlob === 'function') {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) return null;
+        const dataUrl = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+        return dataUrl;
+      }
     } catch (err) {
       if (dev) console.debug('[MuseModel] capture failed', err);
     }

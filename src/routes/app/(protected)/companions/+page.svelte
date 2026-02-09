@@ -520,7 +520,7 @@
           size="240px"
           autoplay
           respectReducedMotion={false}
-          preserveDrawingBuffer={Boolean(selectedForCare)}
+          preserveDrawingBuffer={true}
           poster={undefined}
           cameraTarget={undefined}
           auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
