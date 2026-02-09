@@ -110,9 +110,6 @@
     overflow: hidden;
   }
 
-  .wallet-bg :global(canvas) {
-    opacity: 0.26;
-  }
 
   .wallet-shell {
     position: relative;
@@ -127,10 +124,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-  }
-
-  .wallet-panel :global(.packs) {
-    margin-top: 0.5rem;
   }
 
   .packs {

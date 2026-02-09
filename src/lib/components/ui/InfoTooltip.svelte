@@ -15,13 +15,17 @@
   };
 </script>
 
-<span class={`info-hint ${className}`.trim()} on:mouseenter={show} on:mouseleave={hide} on:focusin={show} on:focusout={hide}>
+<span class={`info-hint ${className}`.trim()}>
   <button
     type="button"
     class="info-hint__trigger"
     aria-label={label ?? text}
     aria-expanded={open}
     aria-describedby={open ? tooltipId : undefined}
+    on:mouseenter={show}
+    on:mouseleave={hide}
+    on:focusin={show}
+    on:focusout={hide}
   >
     <span aria-hidden="true">{icon}</span>
   </button>

@@ -341,6 +341,7 @@ $: fullThreadLink = canonicalCommentPath(
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 6;
+    line-clamp: 6;
     overflow: hidden;
   }
 

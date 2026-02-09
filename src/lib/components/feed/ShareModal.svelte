@@ -148,14 +148,13 @@
       on:click={close}
     ></button>
 
-    <section
+    <div
       bind:this={modalEl}
       tabindex="-1"
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-modal-title"
       class="share-modal"
-      on:click|stopPropagation
     >
       <header class="share-modal__header">
         <h2 id="share-modal-title">Quote &amp; Repost</h2>
@@ -200,7 +199,7 @@
           </button>
         </footer>
       </form>
-    </section>
+    </div>
   </Portal>
 {/if}
 

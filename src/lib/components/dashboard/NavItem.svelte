@@ -68,12 +68,6 @@
     color: rgba(255, 255, 255, 0.95);
   }
 
-  .nav-item__icon {
-    width: 1.2rem;
-    height: 1.2rem;
-    color: currentColor;
-  }
-
   .nav-item__copy {
     display: grid;
     gap: 0.15rem;

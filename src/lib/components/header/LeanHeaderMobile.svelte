@@ -5,12 +5,10 @@
   import type { NotificationItem } from '$lib/components/ui/types';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
-  import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
   export let profile: CurrentProfile = null;
-  export let activeCompanion: ActiveCompanionSnapshot | null = null;
   export let onLogout: () => void = () => {};
 
   let search = '';

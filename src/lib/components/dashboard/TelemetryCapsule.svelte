@@ -78,12 +78,6 @@
     color: rgba(248, 250, 252, 0.92);
   }
 
-  .wallet svg {
-    width: 1rem;
-    height: 1rem;
-    color: rgba(165, 243, 252, 0.9);
-  }
-
   .wallet__balance {
     font-variant-numeric: tabular-nums;
   }

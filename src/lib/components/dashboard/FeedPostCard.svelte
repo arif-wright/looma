@@ -7,7 +7,7 @@
   export let timestamp = 'Just now';
 </script>
 
-<article class="post" tabindex="0">
+<article class="post">
   <header class="post__header">
     <div class="post__avatar" aria-hidden="true">{author.slice(0, 2)}</div>
     <div class="post__meta">
@@ -114,11 +114,6 @@
     letter-spacing: 0.12em;
     cursor: pointer;
     transition: all 180ms ease;
-  }
-
-  .post__action svg {
-    width: 1rem;
-    height: 1rem;
   }
 
   .post__action:hover,

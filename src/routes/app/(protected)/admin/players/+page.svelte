@@ -338,7 +338,7 @@
 </div>
 
 {#if grantOpen && selectedPlayer}
-  <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4" on:keydown={handleModalKeydown}>
+  <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4">
     <div
       class="w-full max-w-md rounded-2xl bg-slate-900 text-white ring-1 ring-white/15 p-6 shadow-2xl"
       role="dialog"
@@ -346,6 +346,7 @@
       aria-labelledby="grant-modal-title"
       bind:this={modalEl}
       tabindex="-1"
+      on:keydown={handleModalKeydown}
     >
       <form method="POST" action="?/grant" use:enhance={handleGrantEnhance} class="space-y-4">
         <div class="flex items-start justify-between gap-4">

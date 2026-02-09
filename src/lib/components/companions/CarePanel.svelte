@@ -78,24 +78,24 @@
     <div class="panel-block">
       <p class="label">Vitals</p>
       <div class="meters">
-        <label>
+        <div>
           <span>Affection</span>
           <div class="meter" role="progressbar" aria-valuenow={pct(companion.affection)} aria-valuemin="0" aria-valuemax="100">
             <span class="fill" style={`width:${pct(companion.affection)}%`}></span>
           </div>
-        </label>
-        <label>
+        </div>
+        <div>
           <span>Trust</span>
           <div class="meter" role="progressbar" aria-valuenow={pct(companion.trust)} aria-valuemin="0" aria-valuemax="100">
             <span class="fill alt" style={`width:${pct(companion.trust)}%`}></span>
           </div>
-        </label>
-        <label>
+        </div>
+        <div>
           <span>Energy</span>
           <div class="meter" role="progressbar" aria-valuenow={pct(companion.energy)} aria-valuemin="0" aria-valuemax="100">
             <span class="fill warn" style={`width:${pct(companion.energy)}%`}></span>
           </div>
-        </label>
+        </div>
       </div>
     </div>
     <div class="panel-block">
@@ -222,7 +222,7 @@
     gap: 0.75rem;
   }
 
-  label span {
+  .meters > div > span {
     display: block;
     margin-bottom: 0.2rem;
     font-size: 0.8rem;

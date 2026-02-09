@@ -262,8 +262,15 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
 </script>
 
 {#if open && root}
-  <div class="backdrop" on:click={closeDrawer}>
-    <aside class="drawer" role="dialog" aria-modal="true" on:click|stopPropagation>
+  <div
+    class="backdrop"
+    role="button"
+    tabindex="0"
+    aria-label="Close thread"
+    on:click={(event) => event.currentTarget === event.target && closeDrawer()}
+    on:keydown={(event) => (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') && closeDrawer()}
+  >
+    <div class="drawer" role="dialog" aria-modal="true" tabindex="-1">
       <button type="button" class="close" on:click={closeDrawer} aria-label="Close thread">
         ✕
       </button>
@@ -358,7 +365,7 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
           on:posted={handleReplyPosted}
         />
       </section>
-    </aside>
+    </div>
   </div>
 {/if}
 

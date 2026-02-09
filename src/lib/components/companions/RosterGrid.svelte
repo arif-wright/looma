@@ -112,6 +112,8 @@ const restoreOrder = () => {
     {#each companions as companion, index (companion.id)}
       <div
         class={`roster-item ${isSlotEnabled(index) ? '' : 'roster-item--locked'}`}
+        role="button"
+        tabindex={isSlotEnabled(index) ? 0 : -1}
         data-roster-item="true"
         data-id={companion.id}
         data-slot-enabled={isSlotEnabled(index) ? 'true' : 'false'}

@@ -317,9 +317,6 @@
     overflow: hidden;
   }
 
-  .games-particles :global(canvas) {
-    opacity: 0.4;
-  }
 
   .games-shell {
     position: relative;
@@ -401,57 +398,6 @@
     max-width: 560px;
     color: rgba(255, 255, 255, 0.8);
     text-shadow: 0 10px 24px rgba(4, 6, 16, 0.45);
-  }
-
-  .hero-recent {
-    display: grid;
-    gap: 0.6rem;
-  }
-
-  .hero-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .hero-recent__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  .recent-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(248, 250, 255, 0.85);
-    text-decoration: none;
-    font-size: 0.85rem;
-    transition: background 150ms ease, border 150ms ease, transform 150ms ease;
-  }
-
-  .recent-chip__avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.18);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-  }
-
-  .recent-chip:hover,
-  .recent-chip:focus-visible {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.28);
-    transform: translateY(-2px);
-    outline: none;
   }
 
   .hero-actions {

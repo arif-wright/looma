@@ -94,7 +94,7 @@
       on:click={close}
     ></button>
 
-    <section
+    <div
       bind:this={modalEl}
       tabindex="-1"
       role="dialog"
@@ -170,7 +170,7 @@
           Resume Mission
         </button>
       </footer>
-    </section>
+    </div>
   </Portal>
 {/if}
 

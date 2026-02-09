@@ -72,7 +72,7 @@
     gap: 1rem;
   }
 
-  .highlight-card {
+  :global(.highlight-card) {
     padding: 1.1rem;
     display: grid;
     gap: 0.4rem;

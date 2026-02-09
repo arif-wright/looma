@@ -11,7 +11,7 @@
 
 <div class="stories" role="list">
   {#each stories as story (story.id)}
-    <div class="story" role="listitem" tabindex="0">
+    <div class="story" role="listitem">
       <div class="story__image" data-status={story.status ?? 'seen'} aria-hidden="true">
         {#if story.image}
           <img src={story.image} alt="" />

@@ -54,15 +54,16 @@
 </script>
 
 {#if $companionReaction}
-  <div
+  <button
+    type="button"
     class="reaction-toast"
-    role="status"
     aria-live="polite"
+    aria-label="Dismiss companion reaction"
     style={`opacity: ${$opacity};`}
     on:click={dismiss}
   >
     <span>{$companionReaction.text}</span>
-  </div>
+  </button>
 {/if}
 
 <style>

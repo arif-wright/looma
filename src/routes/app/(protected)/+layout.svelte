@@ -476,7 +476,4 @@
     padding: 0;
   }
 
-  :global(body.looma-game-fullscreen) nav[aria-label='Primary navigation'] {
-    display: none !important;
-  }
 </style>

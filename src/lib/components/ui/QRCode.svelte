@@ -27,7 +27,7 @@
   });
 </script>
 
-<canvas bind:this={canvas} width={size} height={size} class="qr-canvas" aria-hidden="true" />
+<canvas bind:this={canvas} width={size} height={size} class="qr-canvas" aria-hidden="true"></canvas>
 {#if !rendered}
   <div class="qr-placeholder" style={`width:${size}px;height:${size}px`}></div>
 {/if}

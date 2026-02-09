@@ -22,7 +22,7 @@
 </script>
 
 <div class="lg:hidden">
-  <LeanHeaderMobile {notifications} {userEmail} {profile} {activeCompanion} {onLogout} />
+  <LeanHeaderMobile {notifications} {userEmail} {profile} {onLogout} />
 </div>
 <div class="hidden lg:block">
   <LeanHeaderDesktop

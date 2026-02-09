@@ -47,7 +47,7 @@
   };
 </script>
 
-<article
+<div
   class={`companion-card ${compact ? 'companion-card--compact' : ''} ${context === 'roster' ? 'companion-card--roster' : ''} ${
     isActive ? 'companion-card--active' : ''
   } ${disabled ? 'companion-card--disabled' : ''}`}
@@ -56,6 +56,7 @@
   data-roster-draggable={context === 'roster' && !disabled ? 'true' : undefined}
   on:click={openPanel}
   on:keydown={handleKey}
+  role="button"
   tabindex={disabled ? -1 : 0}
   aria-disabled={disabled ? 'true' : undefined}
 >
@@ -135,7 +136,7 @@
       </div>
     {/if}
   </div>
-</article>
+</div>
 
 <style>
   .companion-card {

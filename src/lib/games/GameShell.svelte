@@ -236,7 +236,7 @@
           <canvas
             bind:this={canvasEl}
             class="absolute inset-0 w-full h-full rounded-xl bg-black touch-none"
-          />
+          ></canvas>
           <div class="pointer-events-none absolute inset-0 flex flex-col">
             <div class="flex items-start justify-between px-3 pt-2 text-[11px] sm:text-xs text-slate-100">
               <div class="flex flex-col gap-0.5">

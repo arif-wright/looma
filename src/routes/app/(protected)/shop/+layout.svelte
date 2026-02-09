@@ -1,6 +1,5 @@
 <script lang="ts">
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
-  export let data;
 </script>
 
 <div class="shop-root bg-neuro">
@@ -47,10 +46,6 @@
     min-height: 100vh;
     color: #fff;
     overflow: hidden;
-  }
-
-  .shop-bg :global(canvas) {
-    opacity: 0.32;
   }
 
   .shop-shell {

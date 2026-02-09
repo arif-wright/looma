@@ -333,7 +333,6 @@ export let requestId: number | null = null;
                   class={`achievement-card ${item.unlocked ? 'unlocked' : 'locked'} ${
                     highlightKey === item.key ? 'is-highlighted' : ''
                   }`}
-                  tabindex="0"
                   data-achievement-key={item.key}
                   data-testid={`achievement-card-${item.key}`}
                 >

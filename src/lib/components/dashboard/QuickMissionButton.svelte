@@ -53,11 +53,6 @@
     justify-content: center;
   }
 
-  .quick-mission__icon svg {
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-
   .quick-mission__label {
     display: block;
     font-size: 1rem;
