@@ -32,8 +32,8 @@ export const pickMuseAnimationForMood = (
   if (mood === 'resting') return 'Sleep';
 
   if (mood === 'distant') {
-    // Mostly asleep; sometimes a still idle pose.
-    return bucket % 3 === 0 ? 'Idle' : 'Sleep';
+    // Distant should read clearly as "not fully present".
+    return 'Sleep';
   }
 
   if (mood === 'waiting') {
@@ -55,4 +55,3 @@ export const pickMuseAnimationForMood = (
   // calm
   return bucket % 9 === 0 ? 'Curious' : 'Idle';
 };
-
