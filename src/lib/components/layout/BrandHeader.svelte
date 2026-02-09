@@ -64,7 +64,7 @@
     z-index: 40;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .app-header::before {

@@ -204,7 +204,7 @@
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding-top: env(safe-area-inset-top, 0px);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .lean-header__inner {
