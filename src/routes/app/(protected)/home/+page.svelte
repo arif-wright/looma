@@ -663,6 +663,13 @@
     }
   }
 
+  /* Mobile: hide quick navigation panel entirely (prevents "Stay tethered" from reflowing below the feed). */
+  @media (max-width: 767px) {
+    .column-left {
+      display: none;
+    }
+  }
+
   @media (max-width: 720px) {
     .home-shell {
       --home-pad-top: 1.25rem;
