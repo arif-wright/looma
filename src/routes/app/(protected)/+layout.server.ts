@@ -14,6 +14,7 @@ import { getAdminFlags } from '$lib/server/admin-guard';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+import { alphaGate } from '$lib/server/alphaGate';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -223,6 +224,33 @@ export const load: LayoutServerLoad = async (event) => {
     }
 
     throw redirect(302, '/');
+  }
+
+  const alpha = alphaGate({ id: user.id, email: user.email ?? null });
+  const isAlphaPage = normalizedPath === '/app/alpha';
+  if (alpha.enabled && !alpha.allowed) {
+    if (!isAlphaPage) {
+      throw redirect(302, '/app/alpha');
+    }
+    // Keep the alpha-denied page lightweight: skip heavy queries.
+    return {
+      user,
+      alphaDenied: true,
+      alphaContactEmail: alpha.contactEmail,
+      alphaContactText: alpha.contactText,
+      preferences: null,
+      landingVariant: null,
+      landingSurface: null,
+      navActivity: {},
+      notifications: [],
+      notificationsUnread: 0,
+      headerStats: null,
+      isAdmin: false,
+      adminFlags: { isAdmin: false, isFinance: false, isSuper: false },
+      wallet: { shards: null },
+      activeCompanion: null,
+      portableActiveCompanion: null
+    };
   }
 
   const forceHome = url.searchParams.get('forceHome') === '1';

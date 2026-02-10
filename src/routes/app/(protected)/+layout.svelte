@@ -20,6 +20,8 @@
 
   export let data;
 
+  const isAlphaDenied = () => Boolean(data?.alphaDenied);
+
   const userEmail = data?.user?.email ?? '';
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
@@ -31,7 +33,9 @@
   $: bellUnread = typeof data?.notificationsUnread === 'number' ? data.notificationsUnread : bellUnread;
 
   $: if (browser) {
-    applyHeaderStats(data?.headerStats ?? null);
+    if (!isAlphaDenied()) {
+      applyHeaderStats(data?.headerStats ?? null);
+    }
   }
 
   function handleLogout() {
@@ -291,6 +295,7 @@
 
   if (browser) {
     onMount(async () => {
+      if (isAlphaDenied()) return;
       const month = new Date().getMonth();
       const accent =
         month >= 5 && month <= 8 ? 'amber' : month >= 9 || month <= 1 ? 'neonMagenta' : 'neonCyan';
@@ -335,6 +340,7 @@
     });
 
     afterNavigate((nav) => {
+      if (isAlphaDenied()) return;
       const nextUrl = nav.to?.url ?? new URL(window.location.href);
       const nextPath = nextUrl.pathname;
       visitedPaths.add(nextPath);
@@ -352,14 +358,19 @@
   }
 
   $: if (browser) {
+    if (isAlphaDenied()) {
+      // Keep alpha-gated pages lightweight: skip ambient recompute work.
+    } else {
     // Recalculate intensity when user preferences change.
     $companionPrefs.visible;
     $companionPrefs.motion;
     computeAmbientFromMood(currentMood, currentMoodValue);
+    }
   }
 
   onDestroy(() => {
     if (!browser) return;
+    if (isAlphaDenied()) return;
     unbindSessionListeners();
     if (inactivityTimer) {
       clearTimeout(inactivityTimer);
@@ -374,6 +385,7 @@
 
   onMount(() => {
     if (!browser) return;
+    if (isAlphaDenied()) return;
     nowTimer = window.setInterval(() => {
       nowTick = Date.now();
     }, 30_000);
@@ -386,6 +398,18 @@
   });
 </script>
 
+{#if data?.alphaDenied}
+  <div class="app-shell">
+    <div
+      class="app-surface"
+      style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;`}
+    >
+      <main class="app-main">
+        <slot />
+      </main>
+    </div>
+  </div>
+{:else}
 <div class="app-shell">
   <div
     class="app-surface"
@@ -444,6 +468,7 @@
     companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
     moodKey={activeEffective?.moodKey ?? null}
   />
+{/if}
 {/if}
 
 <style>
