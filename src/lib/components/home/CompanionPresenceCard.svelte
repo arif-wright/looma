@@ -327,15 +327,30 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    /* Thin ring that hugs the portrait (no big glowing disk). */
-    background: conic-gradient(
-      rgba(94, 242, 255, 0.9) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.14) calc(var(--percent, 0) * 1%)
-    );
-    padding: 7px;
+    /* No glow disk: neutral base with a thin progress stroke. */
+    background: rgba(6, 10, 20, 0.65);
+    padding: 5px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.12),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+
+  .avatar-ring__meter::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+      rgba(94, 242, 255, 0.85) calc(var(--percent, 0) * 1%),
+      rgba(255, 255, 255, 0.18) calc(var(--percent, 0) * 1%)
+    );
+    /* Keep it as a thin stroke hugging the edge. */
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    opacity: 0.9;
+    pointer-events: none;
   }
 
   .avatar-ring__img {
@@ -349,7 +364,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.14),
       inset 0 -18px 30px rgba(0, 0, 0, 0.35);
-    filter: contrast(1.08) saturate(1.05);
+    filter: contrast(1.04) saturate(1.02);
   }
 
   .avatar-ring__label {
