@@ -1,6 +1,6 @@
 <script lang="ts">
 import { browser } from '$app/environment';
-import { onDestroy } from 'svelte';
+import { onDestroy, onMount } from 'svelte';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
@@ -12,6 +12,7 @@ import {
   isProbablyValidPortrait
 } from '$lib/companions/portrait';
 import { getPortraitCaptureHost } from '$lib/companions/portraitHost';
+import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
@@ -72,6 +73,19 @@ import { getPortraitCaptureHost } from '$lib/companions/portraitHost';
       if (id) void loadPortrait(id);
     }
   }
+
+  onMount(() => {
+    if (!browser) return;
+    const handler = () => {
+      const id = companion?.id ?? null;
+      if (!id) return;
+      if (portraitSrc) return;
+      // Host just became available; retry capture once.
+      void loadPortrait(id);
+    };
+    window.addEventListener(PORTRAIT_HOST_EVENT, handler);
+    return () => window.removeEventListener(PORTRAIT_HOST_EVENT, handler);
+  });
 
   const clearBondTagTimer = () => {
     if (bondTagTimer) {

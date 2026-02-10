@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { dev } from '$app/environment';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 
@@ -103,6 +103,15 @@
     if (!shouldLoad) {
       shouldLoad = true;
       await loadModelViewer();
+    }
+    // `viewer` won't exist until `shouldLoad` flips and Svelte mounts `<model-viewer />`.
+    // Wait a tick so callers (e.g. Home card capturing from dock) don't race the mount.
+    if (!viewer) {
+      try {
+        await tick();
+      } catch {
+        // Ignore.
+      }
     }
     if (!viewer) return null;
 
