@@ -400,6 +400,11 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 	    width: var(--avatar-meter-size);
 	    height: var(--avatar-meter-size);
 	    aspect-ratio: 1 / 1;
+	    min-width: var(--avatar-meter-size);
+	    min-height: var(--avatar-meter-size);
+	    max-width: var(--avatar-meter-size);
+	    max-height: var(--avatar-meter-size);
+	    flex: none;
 	    border-radius: 999px;
 	    /* No filled disk behind the portrait. Keep this container transparent. */
 	    background: transparent;
@@ -431,16 +436,18 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     stroke-linecap: round;
   }
 
-  .home-avatar__inner {
-    position: absolute;
-    inset: 6px; /* space for the ring stroke */
-    border-radius: inherit;
-    background: radial-gradient(circle at 30% 30%, rgba(18, 24, 44, 0.98), rgba(6, 10, 20, 0.92));
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.1),
-      inset 0 -18px 30px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-  }
+	  .home-avatar__inner {
+	    position: absolute;
+	    inset: 6px; /* space for the ring stroke */
+	    width: auto;
+	    height: auto;
+	    border-radius: inherit;
+	    background: radial-gradient(circle at 30% 30%, rgba(18, 24, 44, 0.98), rgba(6, 10, 20, 0.92));
+	    box-shadow:
+	      0 0 0 1px rgba(255, 255, 255, 0.1),
+	      inset 0 -18px 30px rgba(0, 0, 0, 0.35);
+	    overflow: hidden;
+	  }
 
 	  .home-avatar__img {
 	    width: 100%;
