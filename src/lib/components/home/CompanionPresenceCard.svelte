@@ -327,9 +327,9 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    /* No glow disk: neutral base with a thin progress stroke. */
-    background: rgba(6, 10, 20, 0.65);
-    padding: 5px;
+    /* Neutral base; ring is drawn as a thin stroke via ::before. */
+    background: rgba(6, 10, 20, 0.7);
+    padding: 3px; /* ring thickness */
     position: relative;
     overflow: hidden;
     box-shadow:
@@ -343,13 +343,14 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     inset: 0;
     border-radius: inherit;
     background: conic-gradient(
-      rgba(94, 242, 255, 0.85) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.18) calc(var(--percent, 0) * 1%)
+      rgba(94, 242, 255, 0.9) calc(var(--percent, 0) * 1%),
+      rgba(255, 255, 255, 0.16) calc(var(--percent, 0) * 1%)
     );
-    /* Keep it as a thin stroke hugging the edge. */
-    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
-    mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
-    opacity: 0.9;
+    /* Ultra-thin ring: no halo, no filled disk. */
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
+    mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
+    opacity: 1;
+    filter: none;
     pointer-events: none;
   }
 
