@@ -327,12 +327,28 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    background: conic-gradient(
-      rgba(94, 242, 255, 0.65) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.1) calc(var(--percent, 0) * 1%)
-    );
-    padding: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    /* Border-like ring instead of a big glowing orb. */
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    padding: 5px;
     position: relative;
+  }
+
+  /* Energy ring: thin progress stroke hugging the portrait. */
+  .avatar-ring__meter::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: conic-gradient(
+      rgba(94, 242, 255, 0.82) calc(var(--percent, 0) * 1%),
+      rgba(255, 255, 255, 0.08) calc(var(--percent, 0) * 1%)
+    );
+    /* Create a thin ring by masking out the center. */
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+    mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+    opacity: 0.95;
+    pointer-events: none;
   }
 
   .avatar-ring__img {
