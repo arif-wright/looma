@@ -538,15 +538,21 @@
     z-index: 10;
     min-height: 100vh;
     width: 100%;
-    max-width: 1760px;
+    max-width: 1560px;
     box-sizing: border-box;
-    padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
+    --home-pad-top: clamp(2.5rem, 4vw, 4rem);
+    --home-pad-x: clamp(1.5rem, 3.5vw, 2.75rem);
+    --home-pad-bottom: 5.5rem;
+    /* Bias the layout left a bit to make room for the companion dock on the right. */
+    --home-pad-right-extra: 3.25rem;
+    padding: var(--home-pad-top) calc(var(--home-pad-x) + var(--home-pad-right-extra)) var(--home-pad-bottom)
+      var(--home-pad-x);
     margin: 0 auto;
   }
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 240px minmax(0, 760px) 300px;
+    grid-template-columns: 220px minmax(0, 700px) 280px;
     grid-template-areas: 'left center right';
     column-gap: clamp(0.85rem, 1.8vw, 1.4rem);
     row-gap: 1.5rem;
@@ -577,11 +583,12 @@
   /* Keep desktop proportions: collapse to 2 columns on medium widths. */
   @media (max-width: 1320px) {
     .home-shell {
-      max-width: 1240px;
+      max-width: 1160px;
+      --home-pad-right-extra: 2.25rem;
     }
 
     .dashboard-grid {
-      grid-template-columns: 240px minmax(0, 760px);
+      grid-template-columns: 220px minmax(0, 680px);
       grid-template-areas: 'left center';
     }
 
@@ -590,10 +597,34 @@
     }
   }
 
+  /* Mid-sized desktop: stack quick links under the main column (prevents cramped/zoomed feel). */
+  @media (max-width: 1180px) {
+    .home-shell {
+      --home-pad-right-extra: 1.25rem;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: minmax(0, 720px);
+      grid-template-areas:
+        'center'
+        'left';
+      justify-content: start;
+    }
+
+    .column-left {
+      position: static;
+      top: auto;
+      max-width: none;
+    }
+  }
+
   /* Tablet/mobile: single centered column, tighter padding, no sticky side panels. */
   @media (max-width: 980px) {
     .home-shell {
-      padding: 1.6rem 1.25rem 5.5rem;
+      --home-pad-top: 1.6rem;
+      --home-pad-x: 1.25rem;
+      --home-pad-bottom: 5.5rem;
+      --home-pad-right-extra: 0px;
     }
 
     .dashboard-grid {
@@ -612,26 +643,29 @@
 
   @media (max-width: 720px) {
     .home-shell {
-      padding: 1.25rem 1rem 5.5rem;
+      --home-pad-top: 1.25rem;
+      --home-pad-x: 1rem;
+      --home-pad-bottom: 5.5rem;
+      --home-pad-right-extra: 0px;
     }
   }
 
   .column-left {
     width: 100%;
-    max-width: 240px;
+    max-width: 220px;
   }
 
   .column-right {
     justify-self: stretch;
     width: 100%;
-    max-width: 300px;
+    max-width: 280px;
   }
 
   .column-center {
     display: grid;
     gap: 1.5rem;
     width: 100%;
-    max-width: 760px;
+    max-width: 700px;
     min-width: 0;
   }
 
@@ -748,7 +782,7 @@
 
   @media (max-width: 1480px) {
     .dashboard-grid {
-      grid-template-columns: 220px minmax(0, 700px) 280px;
+      grid-template-columns: 210px minmax(0, 660px) 260px;
       column-gap: 1rem;
     }
   }
@@ -756,7 +790,7 @@
   @media (max-width: 1280px) {
     .dashboard-grid {
       column-gap: 1.25rem;
-      grid-template-columns: 220px minmax(0, 760px);
+      grid-template-columns: 210px minmax(0, 700px);
       justify-content: center;
     }
 
@@ -794,10 +828,6 @@
   }
 
   @media (max-width: 640px) {
-    .home-shell {
-      padding: 2.5rem 1.25rem 4rem;
-    }
-
     .panel {
       padding: 1.6rem;
       border-radius: 1.4rem;
