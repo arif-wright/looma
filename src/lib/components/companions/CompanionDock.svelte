@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { MoreVertical, Eye, EyeOff, Sparkles, Sparkle } from 'lucide-svelte';
-  import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
   import { companionPrefs, updateCompanionPrefs } from '$lib/stores/companionPrefs';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
@@ -14,6 +13,7 @@
   const dispatch = createEventDispatcher<{ open: void }>();
 
   let sheetOpen = false;
+  const DEFAULT_AVATAR = '/avatar.svg';
 
   const open = () => {
     if (onOpen) {
@@ -29,13 +29,13 @@
   const moodLine = () => {
     if (!companion) return 'Choose a companion to travel beside you.';
     const label = effective?.moodLabel ?? 'Steady';
-    const energy = typeof effective?.energy === 'number' ? ` · Energy ${Math.round(effective.energy)}%` : '';
-    return `${label}${energy}`;
+    const energy = typeof effective?.energy === 'number' ? `Energy ${Math.round(effective.energy)}%` : null;
+    return energy ? `${label} · ${energy}` : label;
   };
 
   $: companionName = companion?.name ?? 'Companion';
   $: effectiveMotion = $companionPrefs.motion;
-  $: reducedGlow = 22;
+  $: avatarSrc = companion?.avatar_url ?? DEFAULT_AVATAR;
 </script>
 
 <div class="dock" aria-label="Companion dock">
@@ -54,17 +54,7 @@
     <div class="dock-panel" role="group" aria-label="Companion preview">
       <button type="button" class="dock-main" on:click={open} aria-label="Open companion">
         <div class="dock-avatar" aria-hidden="true">
-          <MuseModel
-            size={72}
-            minSize={72}
-            autoplay={effectiveMotion}
-            cameraControls={false}
-            respectReducedMotion={false}
-            animationName="Idle"
-            transparent={true}
-            auraColor="cyan"
-            glowIntensity={reducedGlow}
-          />
+          <img class="dock-avatar__img" src={avatarSrc} alt="" loading="lazy" decoding="async" />
         </div>
         <div class="dock-copy">
           <p class="dock-copy__name">{companion ? companionName : 'No active companion'}</p>
@@ -100,7 +90,7 @@
     <div class="sheet-row">
       <div class="sheet-row__copy">
         <p class="sheet-row__title">Motion</p>
-        <p class="sheet-row__meta">Animate the companion preview.</p>
+        <p class="sheet-row__meta">Animate companion moments across the app.</p>
       </div>
       <button type="button" class="sheet-row__btn" on:click={toggleMotion} aria-label="Toggle motion">
         {#if $companionPrefs.motion}
@@ -164,12 +154,23 @@
   }
 
   .dock-avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
     overflow: hidden;
     flex: 0 0 auto;
-    box-shadow: 0 0 26px rgba(94, 242, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.45);
+    box-shadow: 0 0 18px rgba(94, 242, 255, 0.08);
+    display: grid;
+    place-items: center;
+  }
+
+  .dock-avatar__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .dock-copy {
@@ -190,9 +191,7 @@
 
   .dock-copy__meta {
     margin: 0;
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 0.84rem;
     color: rgba(226, 232, 240, 0.65);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -213,9 +212,7 @@
     border: 1px solid rgba(94, 234, 212, 0.22);
     background: rgba(12, 20, 28, 0.55);
     color: rgba(236, 254, 255, 0.92);
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
   }
 
   .dock-cta:disabled {
@@ -262,9 +259,7 @@
     align-items: center;
     gap: 0.4rem;
     color: rgba(248, 250, 252, 0.9);
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
 
@@ -313,9 +308,7 @@
     align-items: center;
     gap: 0.4rem;
     color: rgba(248, 250, 252, 0.9);
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
 </style>

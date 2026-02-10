@@ -375,12 +375,23 @@
     <h1 id="home-heading" class="sr-only">Hybrid home dashboard</h1>
 
     <div class="dashboard-grid">
-      <aside class="column-left fade-up" data-delay="0" aria-label="Quick navigation">
+      <aside class="column-left fade-up hidden md:block" data-delay="0" aria-label="Quick navigation">
         <QuickLinks links={quickLinks} />
       </aside>
 
       <section class="column-center">
-        <article id="greeting" class="panel fade-up" data-delay="0" aria-label="Daily greeting">
+        <article class="panel fade-up md:hidden" data-delay="0" aria-label="Whisper composer">
+          <div class="panel__header panel__header--tight">
+            <h2 class="panel__title panel__title--compact">Whisper</h2>
+          </div>
+          <QuickPostPanel
+            placeholder="Whisper something kind…"
+            on:posted={handleQuickPost}
+            on:rituals={handleRitualEvent}
+          />
+        </article>
+
+        <article id="greeting" class="panel fade-up hidden md:grid" data-delay="0" aria-label="Daily greeting">
           <div class="panel__header">
             <h2 class="panel__title">{heroCopy.headline}</h2>
             <p class="panel__subtitle">{heroCopy.subhead}</p>
@@ -412,7 +423,7 @@
           ritualHref="#rituals"
         />
 
-        <article id="whisper" class="panel fade-up" data-delay="1" aria-label="Whisper composer">
+        <article id="whisper" class="panel fade-up hidden md:grid" data-delay="1" aria-label="Whisper composer">
           <div class="panel__header">
             <h2 class="panel__title">Whisper something kind…</h2>
             <p class="panel__subtitle">Tiny sparks keep the resonance alive.</p>
@@ -696,6 +707,10 @@
     gap: 0.35rem;
   }
 
+  .panel__header--tight {
+    gap: 0;
+  }
+
   .panel__title-row {
     display: inline-flex;
     gap: 0.45rem;
@@ -839,9 +854,29 @@
   }
 
   @media (max-width: 640px) {
+    .column-center {
+      gap: 1rem;
+    }
+
     .panel {
-      padding: 1.6rem;
-      border-radius: 1.4rem;
+      gap: 1rem;
+      padding: 1.1rem 1rem;
+      border-radius: 1.25rem;
+      box-shadow: 0 18px 38px rgba(8, 15, 30, 0.38);
+    }
+
+    .panel__title {
+      font-size: 1.1rem;
+    }
+
+    .panel__title--compact {
+      font-size: 1.05rem;
+    }
+
+    .panel__subtitle {
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: none;
     }
 
     .column-center {
