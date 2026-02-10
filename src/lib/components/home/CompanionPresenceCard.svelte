@@ -25,6 +25,9 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   let portraitSrc: string | null = null;
   let portraitForId: string | null = null;
   let portraitRequest = 0;
+  const RING_R = 48;
+  const RING_C = 2 * Math.PI * RING_R;
+  $: ringOffset = RING_C * (1 - Math.min(100, Math.max(0, energyPct)) / 100);
 
   const loadPortrait = async (instanceId: string) => {
     const requestId = ++portraitRequest;
@@ -156,7 +159,18 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   {#if companion}
     <div class="card-body">
       <div class="avatar-ring" aria-label={`Energy ${energyPct}`}>
-        <div class="avatar-ring__meter" style={`--percent:${energyPct}`}>
+        <div class="avatar-ring__meter">
+          <svg class="avatar-ring__stroke" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="avatar-ring__track" cx="50" cy="50" r={RING_R} />
+            <circle
+              class="avatar-ring__progress"
+              cx="50"
+              cy="50"
+              r={RING_R}
+              stroke-dasharray={RING_C}
+              stroke-dashoffset={ringOffset}
+            />
+          </svg>
           <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
         </div>
         <span class="avatar-ring__label"><span class="avatar-ring__label-pill">Energy {energyPct}%</span></span>
@@ -327,9 +341,8 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    /* Neutral base; ring is drawn as a thin stroke via ::before. */
-    background: rgba(6, 10, 20, 0.7);
-    padding: 3px; /* ring thickness */
+    background: rgba(6, 10, 20, 0.65);
+    padding: 6px;
     position: relative;
     overflow: hidden;
     box-shadow:
@@ -337,21 +350,28 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
       inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   }
 
-  .avatar-ring__meter::before {
-    content: '';
+  .avatar-ring__stroke {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    background: conic-gradient(
-      rgba(94, 242, 255, 0.9) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.16) calc(var(--percent, 0) * 1%)
-    );
-    /* Ultra-thin ring: no halo, no filled disk. */
-    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
-    mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
-    opacity: 1;
-    filter: none;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
+    transform: rotate(-90deg);
+  }
+
+  .avatar-ring__track,
+  .avatar-ring__progress {
+    fill: none;
+    stroke-width: 3;
+  }
+
+  .avatar-ring__track {
+    stroke: rgba(255, 255, 255, 0.14);
+  }
+
+  .avatar-ring__progress {
+    stroke: rgba(94, 242, 255, 0.9);
+    stroke-linecap: round;
   }
 
   .avatar-ring__img {
