@@ -466,6 +466,7 @@
     if (shouldUploadPortrait(id, src)) {
       void (async () => {
         try {
+          if (!(await isProbablyNonBlankPortrait(src))) return;
           await uploadCompanionPortrait({ companionId: id, dataUrl: src });
           markPortraitUploaded(id, src);
         } catch (err) {

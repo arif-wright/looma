@@ -8,7 +8,7 @@
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { registerPortraitCaptureHost } from '$lib/companions/portraitHost';
-  import { isProbablyValidPortrait } from '$lib/companions/portrait';
+  import { isProbablyNonBlankPortrait, isProbablyValidPortrait } from '$lib/companions/portrait';
   import { uploadCompanionPortrait } from '$lib/companions/portraitUpload';
   import type { DerivedMoodKey } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
@@ -159,6 +159,7 @@
       // Capture a stable portrait frame (prefer the already-mounted dock model).
       const dataUrl = (await museRef?.capturePortrait?.()) ?? null;
       if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') return;
+      if (!(await isProbablyNonBlankPortrait(dataUrl))) return;
 
       await uploadCompanionPortrait({ companionId: activeCompanionId, dataUrl });
       setPortraitSig(activeCompanionId, cosmeticsSig);

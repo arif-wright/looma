@@ -19,7 +19,7 @@
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
-  import { isProbablyValidPortrait } from '$lib/companions/portrait';
+  import { isProbablyNonBlankPortrait, isProbablyValidPortrait } from '$lib/companions/portrait';
   import {
     markPortraitUploaded,
     shouldUploadPortrait,
@@ -383,6 +383,11 @@
       const dataUrl = (await museHostRef?.capturePortrait?.()) ?? null;
       if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') {
         // Model likely not ready yet; retry a few times.
+        schedulePortraitRetry(attemptKey, 900);
+        return;
+      }
+      if (!(await isProbablyNonBlankPortrait(dataUrl))) {
+        // Sometimes model-viewer returns a "valid" data URL before the first fully-rendered frame.
         schedulePortraitRetry(attemptKey, 900);
         return;
       }
