@@ -547,6 +547,7 @@
   .dashboard-grid {
     display: grid;
     grid-template-columns: 240px minmax(0, 760px) 300px;
+    grid-template-areas: 'left center right';
     column-gap: clamp(0.85rem, 1.8vw, 1.4rem);
     row-gap: 1.5rem;
     align-items: start;
@@ -555,12 +556,64 @@
 
   .column-left,
   .column-right {
+    grid-area: left;
     display: grid;
     gap: 1.5rem;
     position: sticky;
     top: clamp(5rem, 10vw, 6.5rem);
     align-self: start;
     justify-self: stretch;
+  }
+
+  .column-right {
+    grid-area: right;
+  }
+
+  .column-center {
+    grid-area: center;
+    min-width: 0;
+  }
+
+  /* Keep desktop proportions: collapse to 2 columns on medium widths. */
+  @media (max-width: 1320px) {
+    .home-shell {
+      max-width: 1240px;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: 240px minmax(0, 760px);
+      grid-template-areas: 'left center';
+    }
+
+    .column-right {
+      display: none;
+    }
+  }
+
+  /* Tablet/mobile: single centered column, tighter padding, no sticky side panels. */
+  @media (max-width: 980px) {
+    .home-shell {
+      padding: 1.6rem 1.25rem 5.5rem;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        'center'
+        'left';
+      justify-content: stretch;
+    }
+
+    .column-left {
+      position: static;
+      top: auto;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .home-shell {
+      padding: 1.25rem 1rem 5.5rem;
+    }
   }
 
   .column-left {
