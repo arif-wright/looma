@@ -19,6 +19,8 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   export let title = 'Your Companion Today';
   export let showStartHint = false;
   export let showHelper = false;
+  export let ritualSummary: string | null = null;
+  export let ritualHref: string | null = null;
 
   const DEFAULT_AVATAR = '/avatar.svg';
   let previousBondLevel: number | null = null;
@@ -217,6 +219,14 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
       </a>
       {#if showHelper}
         <p class="check-helper">Start with a check-in.</p>
+      {/if}
+      {#if ritualSummary && ritualHref}
+        <a class="ritual-link" href={ritualHref}>
+          <span class="ritual-link__label">Daily rituals</span>
+          <span class="ritual-link__meta">{ritualSummary}</span>
+        </a>
+      {:else if ritualSummary}
+        <p class="ritual-meta">{ritualSummary}</p>
       {/if}
     </div>
   {:else}
@@ -472,6 +482,40 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     border: 1px solid rgba(94, 242, 255, 0.35);
     background: rgba(94, 242, 255, 0.08);
     color: rgba(165, 243, 252, 0.95);
+  }
+
+  .ritual-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.35);
+    padding: 0.65rem 0.8rem;
+    text-decoration: none;
+    color: rgba(226, 232, 255, 0.78);
+  }
+
+  .ritual-link:hover {
+    background: rgba(15, 23, 42, 0.55);
+    color: rgba(248, 250, 252, 0.95);
+  }
+
+  .ritual-link__label {
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .ritual-link__meta {
+    font-size: 0.85rem;
+    color: rgba(226, 232, 255, 0.65);
+  }
+
+  .ritual-meta {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(226, 232, 255, 0.68);
   }
 
   @media (max-width: 720px) {

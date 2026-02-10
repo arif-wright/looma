@@ -8,7 +8,6 @@
   import FeedList from '$lib/components/home/FeedList.svelte';
   import TodayCard from '$lib/components/home/TodayCard.svelte';
   import MissionRow from '$lib/components/home/MissionRow.svelte';
-  import CreatureMoments from '$lib/components/home/CreatureMoments.svelte';
   import EndcapCard from '$lib/components/home/EndcapCard.svelte';
   import TelemetryCapsule from '$lib/components/home/TelemetryCapsule.svelte';
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
@@ -134,8 +133,8 @@
     {
       id: 'companions',
       label: 'Companions',
-      description: 'Check their mood',
-      href: '#companions',
+      description: 'Check in and switch',
+      href: '/app/companions',
       icon: PawPrint,
       indicator: companionNeedsAttention ? { kind: 'needs_attention', label: 'Needs attention' } : null
     },
@@ -165,6 +164,13 @@
   let missionModalData: MissionRowType | null = null;
   const rituals: CompanionRitual[] = data.rituals ?? [];
   applyRitualUpdate(rituals);
+  $: ritualsPendingCount = $companionRitualsStore.filter((ritual) => ritual.status !== 'completed').length;
+  $: ritualsSummary =
+    $companionRitualsStore.length === 0
+      ? null
+      : ritualsPendingCount === 0
+        ? 'Daily rituals complete.'
+        : `${ritualsPendingCount} daily ritual${ritualsPendingCount === 1 ? '' : 's'} left.`;
 
   const showToast = (message: string) => {
     toast = { message };
@@ -378,7 +384,11 @@
             <h2 class="panel__title">{heroCopy.headline}</h2>
             <p class="panel__subtitle">{heroCopy.subhead}</p>
           </div>
-          <p class="panel__body">{heroCopy.body}</p>
+          {#if showGuidance}
+            <p class="panel__body">{heroCopy.body}</p>
+          {:else if circleUnreadCount > 0}
+            <p class="panel__body panel__body--compact">Your circle left a signal while you were away.</p>
+          {/if}
         </article>
 
         <CompanionPresenceCard
@@ -387,6 +397,8 @@
           companion={activeCompanion}
           showStartHint={showStartHere}
           showHelper={showGuidance}
+          ritualSummary={ritualsSummary}
+          ritualHref="#rituals"
         />
 
         <article id="whisper" class="panel fade-up" data-delay="1" aria-label="Whisper composer">
@@ -448,15 +460,7 @@
           {/if}
         </article>
 
-        <article id="companions" class="panel fade-up" data-delay="4" aria-label="Companion pulse">
-          <div class="panel__header">
-            <h2 class="panel__title">Companion pulse</h2>
-            <p class="panel__subtitle">Attune to each mood and keep the bond glowing.</p>
-          </div>
-          <CreatureMoments items={creatures} />
-        </article>
-
-        <article id="rituals" class="panel fade-up" data-delay="4.5" aria-label="Companion rituals">
+        <article id="rituals" class="panel fade-up" data-delay="4" aria-label="Companion rituals">
           <div class="panel__header">
             <div class="panel__title-row">
               <h2 class="panel__title">Daily rituals</h2>
@@ -523,6 +527,10 @@
     margin: 0.35rem 0 0;
     font-size: 0.88rem;
     color: rgba(226, 232, 255, 0.68);
+  }
+
+  .panel__body--compact {
+    max-width: 58ch;
   }
 
   .home-shell {
