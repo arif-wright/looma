@@ -8,11 +8,14 @@
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { registerPortraitCaptureHost } from '$lib/companions/portraitHost';
+  import { isProbablyValidPortrait } from '$lib/companions/portrait';
+  import { uploadCompanionPortrait } from '$lib/companions/portraitUpload';
   import type { DerivedMoodKey } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
+  const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
 
   export let visible = true;
   export let motionEnabled = true;
@@ -30,10 +33,39 @@
   let unregisterCaptureHost: (() => void) | null = null;
   let nowTick = Date.now();
   let nowTimer: number | null = null;
+  let portraitUploadInFlight = false;
+  let portraitUploadTimer: number | null = null;
 
   const readBool = (value: string | null, fallback: boolean) => {
     if (value === null) return fallback;
     return value === 'true';
+  };
+
+  const stableSig = (value: Record<string, unknown>) => {
+    const keys = Object.keys(value).sort();
+    const normalized: Record<string, unknown> = {};
+    keys.forEach((key) => {
+      normalized[key] = value[key];
+    });
+    return JSON.stringify(normalized);
+  };
+
+  const getPortraitSig = (companionId: string) => {
+    if (!browser) return null;
+    try {
+      return window.localStorage.getItem(`${STORAGE_PORTRAIT_SIG_PREFIX}${companionId}`);
+    } catch {
+      return null;
+    }
+  };
+
+  const setPortraitSig = (companionId: string, sig: string) => {
+    if (!browser) return;
+    try {
+      window.localStorage.setItem(`${STORAGE_PORTRAIT_SIG_PREFIX}${companionId}`, sig);
+    } catch {
+      // Ignore.
+    }
   };
 
   const persist = () => {
@@ -100,6 +132,7 @@
   $: activeCosmetics = normalizeCompanionCosmetics(companionCosmetics);
   $: effectiveMotion = motionEnabled && localMotion;
   $: museAnimation = pickMuseAnimationForMood(moodKey, { nowMs: nowTick, seed: activeCompanionId });
+  $: cosmeticsSig = stableSig(activeCosmetics);
 
   $: if (browser) {
     unregisterCaptureHost?.();
@@ -111,6 +144,50 @@
       }
     });
   }
+
+  const attemptUploadPortrait = async (reason: string) => {
+    if (!browser) return;
+    if (!localVisible) return;
+    if (!activeCompanionId) return;
+    if (portraitUploadInFlight) return;
+
+    const existingSig = getPortraitSig(activeCompanionId);
+    if (existingSig === cosmeticsSig) return;
+
+    portraitUploadInFlight = true;
+    try {
+      // Capture a stable portrait frame (prefer the already-mounted dock model).
+      const dataUrl = (await museRef?.capturePortrait?.()) ?? null;
+      if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') return;
+
+      await uploadCompanionPortrait({ companionId: activeCompanionId, dataUrl });
+      setPortraitSig(activeCompanionId, cosmeticsSig);
+      if (dev) console.debug('[CompanionDock] portrait uploaded', { reason, id: activeCompanionId });
+    } catch (err) {
+      if (dev) console.debug('[CompanionDock] portrait upload failed', err);
+    } finally {
+      portraitUploadInFlight = false;
+    }
+  };
+
+  const scheduleUpload = (reason: string) => {
+    if (!browser) return;
+    if (portraitUploadTimer) window.clearTimeout(portraitUploadTimer);
+    portraitUploadTimer = window.setTimeout(() => {
+      portraitUploadTimer = null;
+      void attemptUploadPortrait(reason);
+    }, 250);
+  };
+
+  $: if (browser && localVisible && activeCompanionId && cosmeticsSig) {
+    scheduleUpload('cosmetics_change_or_missing');
+  }
+
+  onDestroy(() => {
+    if (!browser) return;
+    if (portraitUploadTimer) window.clearTimeout(portraitUploadTimer);
+    portraitUploadTimer = null;
+  });
 </script>
 
 {#if visible}
@@ -147,6 +224,7 @@
           transparent={transparent}
           poster={undefined}
           cameraTarget={undefined}
+          preserveDrawingBuffer
           auraColor={activeCosmetics.auraColor}
           glowIntensity={activeCosmetics.glowIntensity}
         />
