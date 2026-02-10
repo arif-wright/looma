@@ -343,7 +343,20 @@
   };
 
   const portraitUploadInFlight = new Set<string>();
-  const portraitUploadAttempted = new Set<string>();
+  const portraitUploadAttempts = new Map<string, number>();
+  const portraitUploadRetryTimers = new Map<string, number>();
+  const schedulePortraitRetry = (attemptKey: string, delayMs: number) => {
+    if (!browser) return;
+    const existing = portraitUploadRetryTimers.get(attemptKey) ?? null;
+    if (existing) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      portraitUploadRetryTimers.delete(attemptKey);
+      const [companionId, cosmeticsSig] = attemptKey.split(':', 2);
+      if (companionId && cosmeticsSig) void ensureSupabasePortrait(companionId, cosmeticsSig);
+    }, delayMs);
+    portraitUploadRetryTimers.set(attemptKey, timer);
+  };
+
   const ensureSupabasePortrait = async (companionId: string, cosmeticsSig: string) => {
     if (!browser) return;
     const target = ownedInstances.find((entry) => entry.id === companionId) ?? null;
@@ -351,19 +364,28 @@
     const attemptKey = `${companionId}:${cosmeticsSig}`;
     // If we already have an avatar_url AND the cosmetics signature matches the last uploaded portrait, nothing to do.
     if (typeof target.avatar_url === 'string' && target.avatar_url && getPortraitSig(companionId) === cosmeticsSig) return;
-    // Avoid spamming attempts if capture/upload isn't possible in the current session for this signature.
-    if (portraitUploadAttempted.has(attemptKey)) return;
+    const attempts = portraitUploadAttempts.get(attemptKey) ?? 0;
+    if (attempts >= 5) return;
     if (portraitUploadInFlight.has(companionId)) return;
 
     portraitUploadInFlight.add(companionId);
-    portraitUploadAttempted.add(attemptKey);
+    portraitUploadAttempts.set(attemptKey, attempts + 1);
     try {
       // Wait for the keyed model to mount after switching.
       await tick();
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 120));
+
+      if (!museHostRef) {
+        schedulePortraitRetry(attemptKey, 600);
+        return;
+      }
 
       const dataUrl = (await museHostRef?.capturePortrait?.()) ?? null;
-      if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') return;
+      if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') {
+        // Model likely not ready yet; retry a few times.
+        schedulePortraitRetry(attemptKey, 900);
+        return;
+      }
       if (!shouldUploadPortrait(companionId, dataUrl)) {
         // Even if the screenshot didn't change, mark the signature so we don't retry for this cosmetics state.
         setPortraitSig(companionId, cosmeticsSig);
@@ -382,6 +404,7 @@
       rosterState = get(companionState);
     } catch (err) {
       console.debug('[companions] portrait upload skipped/failed', err);
+      schedulePortraitRetry(attemptKey, 1500);
     } finally {
       portraitUploadInFlight.delete(companionId);
     }
@@ -538,6 +561,10 @@
     if (toastTimer) clearTimeout(toastTimer);
     if (switchTimer) clearTimeout(switchTimer);
     if (nowTimer) window.clearInterval(nowTimer);
+    if (browser) {
+      portraitUploadRetryTimers.forEach((timer) => window.clearTimeout(timer));
+      portraitUploadRetryTimers.clear();
+    }
   });
 
   const unsubscribeRoster = companionState.subscribe((next) => {
