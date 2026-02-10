@@ -1,10 +1,17 @@
 <script lang="ts">
+import { browser } from '$app/environment';
 import { onDestroy } from 'svelte';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
 import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy';
 import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/companions/effectiveState';
+import {
+  clearCachedCompanionPortrait,
+  getCachedCompanionPortrait,
+  isProbablyNonBlankPortrait,
+  isProbablyValidPortrait
+} from '$lib/companions/portrait';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
@@ -14,6 +21,27 @@ import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/compani
   let previousBondLevel: number | null = null;
   let bondLevelTag: number | null = null;
   let bondTagTimer: ReturnType<typeof setTimeout> | null = null;
+  let portraitSrc: string | null = null;
+  let portraitForId: string | null = null;
+  let portraitRequest = 0;
+
+  const loadPortrait = async (instanceId: string) => {
+    const requestId = ++portraitRequest;
+    const cached = getCachedCompanionPortrait(instanceId);
+    if (!isProbablyValidPortrait(cached)) {
+      portraitSrc = null;
+      return;
+    }
+
+    // Show immediately, then verify it's not a "blank but valid" cached frame.
+    portraitSrc = cached;
+    const ok = await isProbablyNonBlankPortrait(cached);
+    if (requestId !== portraitRequest) return;
+    if (!ok) {
+      clearCachedCompanionPortrait(instanceId);
+      portraitSrc = null;
+    }
+  };
 
   $: companionAsInstance =
     companion
@@ -45,6 +73,15 @@ import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/compani
   $: bondLevel = companion?.bondLevel ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
   $: bonusSummary = formatBonusSummary(bondBonus);
+
+  $: if (browser) {
+    const id = companion?.id ?? null;
+    if (id !== portraitForId) {
+      portraitForId = id;
+      portraitSrc = null;
+      if (id) void loadPortrait(id);
+    }
+  }
 
   const clearBondTagTimer = () => {
     if (bondTagTimer) {
@@ -116,7 +153,7 @@ import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/compani
     <div class="card-body">
       <div class="avatar-ring" aria-label={`Energy ${energyPct}`}>
         <div class="avatar-ring__meter" style={`--percent:${energyPct}`}>
-          <img src={companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
+          <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
         </div>
         <span class="avatar-ring__label">Energy {energyPct}%</span>
       </div>
