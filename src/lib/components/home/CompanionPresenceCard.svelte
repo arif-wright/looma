@@ -158,12 +158,12 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 
   {#if companion}
     <div class="card-body">
-      <div class="avatar-ring" aria-label={`Energy ${energyPct}`}>
-        <div class="avatar-ring__meter">
-          <svg class="avatar-ring__stroke" viewBox="0 0 100 100" aria-hidden="true">
-            <circle class="avatar-ring__track" cx="50" cy="50" r={RING_R} />
+      <div class="home-avatar" aria-label={`Energy ${energyPct}`}>
+        <div class="home-avatar__meter">
+          <svg class="home-avatar__stroke" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="home-avatar__track" cx="50" cy="50" r={RING_R} />
             <circle
-              class="avatar-ring__progress"
+              class="home-avatar__progress"
               cx="50"
               cy="50"
               r={RING_R}
@@ -171,11 +171,11 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
               stroke-dashoffset={ringOffset}
             />
           </svg>
-          <div class="avatar-ring__inner" aria-hidden="true">
-            <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
+          <div class="home-avatar__inner" aria-hidden="true">
+            <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="home-avatar__img" aria-hidden="true" />
           </div>
         </div>
-        <span class="avatar-ring__label"><span class="avatar-ring__label-pill">Energy {energyPct}%</span></span>
+        <span class="home-avatar__label"><span class="home-avatar__label-pill">Energy {energyPct}%</span></span>
       </div>
       <div class="stat-block">
         <div>
@@ -331,7 +331,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     align-items: center;
   }
 
-  .avatar-ring {
+  .home-avatar {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -339,7 +339,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     gap: 0.45rem;
   }
 
-  .avatar-ring__meter {
+  .home-avatar__meter {
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
@@ -349,7 +349,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     overflow: visible;
   }
 
-  .avatar-ring__stroke {
+  .home-avatar__stroke {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -358,22 +358,22 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     transform: rotate(-90deg);
   }
 
-  .avatar-ring__track,
-  .avatar-ring__progress {
+  .home-avatar__track,
+  .home-avatar__progress {
     fill: none;
     stroke-width: 3;
   }
 
-  .avatar-ring__track {
+  .home-avatar__track {
     stroke: rgba(255, 255, 255, 0.14);
   }
 
-  .avatar-ring__progress {
+  .home-avatar__progress {
     stroke: rgba(94, 242, 255, 0.9);
     stroke-linecap: round;
   }
 
-  .avatar-ring__inner {
+  .home-avatar__inner {
     position: absolute;
     inset: 6px; /* space for the ring stroke */
     border-radius: inherit;
@@ -384,7 +384,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     overflow: hidden;
   }
 
-  .avatar-ring__img {
+  .home-avatar__img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -395,12 +395,12 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     filter: contrast(1.04) saturate(1.02);
   }
 
-  .avatar-ring__label {
+  .home-avatar__label {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.76);
   }
 
-  .avatar-ring__label-pill {
+  .home-avatar__label-pill {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
