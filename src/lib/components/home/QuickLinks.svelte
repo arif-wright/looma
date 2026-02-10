@@ -95,6 +95,10 @@
             <span class="link-row__label">{link.label}</span>
             <span class="link-row__description">{link.description}</span>
           </span>
+          {#if link.indicator}
+            <span class="link-row__indicator" data-kind={link.indicator.kind} aria-hidden="true"></span>
+            <span class="sr-only">{link.indicator.label}</span>
+          {/if}
         </button>
       </li>
     {/each}
@@ -102,6 +106,18 @@
 </article>
 
 <style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .quick-links {
     display: grid;
     gap: 1.5rem;
@@ -151,6 +167,32 @@
     text-align: left;
     cursor: pointer;
     transition: all 200ms ease;
+  }
+
+  .link-row__indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    margin-left: auto;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 4px rgba(94, 242, 255, 0.12);
+    flex: 0 0 auto;
+  }
+
+  .link-row__indicator[data-kind='needs_attention'] {
+    background: rgba(255, 196, 120, 0.85);
+    box-shadow: 0 0 0 4px rgba(255, 196, 120, 0.16);
+  }
+
+  .link-row__indicator[data-kind='new_activity'] {
+    background: rgba(94, 242, 255, 0.92);
+    box-shadow: 0 0 0 4px rgba(94, 242, 255, 0.16);
+  }
+
+  .link-row__indicator[data-kind='gentle_nudge'] {
+    background: rgba(236, 146, 255, 0.92);
+    box-shadow: 0 0 0 4px rgba(236, 146, 255, 0.14);
   }
 
   .link-row:focus-visible {

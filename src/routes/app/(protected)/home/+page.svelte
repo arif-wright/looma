@@ -23,13 +23,19 @@
   import type { QuickLink } from '$lib/components/home/types';
   import { PenSquare, MessageCircleHeart, Rss, Target, PawPrint, Compass } from 'lucide-svelte';
   import { logEvent } from '$lib/analytics';
-import { getBondBonusForLevel } from '$lib/companions/bond';
-import { computeEffectiveEnergyMax } from '$lib/player/energy';
-import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
-import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
+  import { getBondBonusForLevel } from '$lib/companions/bond';
+  import { computeEffectiveEnergyMax } from '$lib/player/energy';
+  import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
+  import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
+  import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+  import { getHomeHeroCopy } from '$lib/home/homeCopy';
   import type { PageData } from './$types';
 
   export let data: PageData;
+
+  const HOME_VISITS_KEY = 'looma:homeVisits';
+  const WHISPER_AT_KEY = 'looma:lastWhisperAt';
+  const START_HERE_DISMISSED_KEY = 'looma:homeStartHereDismissed';
 
   const stats = data.stats;
   const missions = data.missions ?? [];
@@ -44,15 +50,97 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
   const initialFeed: FeedItemType[] = Array.isArray(data.feed) ? data.feed : [];
   const bondGenesisEnabled = Boolean(data.flags?.bond_genesis);
   const companionCount = data.companionCount ?? 0;
+  const circleUnreadCount = data.notificationsUnread ?? 0;
 
-  const quickLinks: QuickLink[] = [
+  let homeVisits = 99;
+  let startHereDismissed = false;
+  let lastWhisperAtMs: number | null = null;
+
+  const safeInt = (value: unknown, fallback: number) => {
+    const n = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+  };
+
+  const safeMs = (value: string | null): number | null => {
+    if (!value) return null;
+    const ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : null;
+  };
+
+  const activeAsInstance =
+    activeCompanion
+      ? ({
+          id: activeCompanion.id,
+          name: activeCompanion.name,
+          species: activeCompanion.species ?? 'Muse',
+          rarity: 'common',
+          level: 1,
+          xp: 0,
+          affection: activeCompanion.affection ?? 0,
+          trust: activeCompanion.trust ?? 0,
+          energy: activeCompanion.energy ?? 0,
+          mood: activeCompanion.mood ?? 'steady',
+          avatar_url: activeCompanion.avatar_url ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: activeCompanion.updated_at ?? new Date().toISOString(),
+          stats: activeCompanion.stats ?? null
+        } as any)
+      : null;
+
+  $: activeEffective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance) : null;
+  $: msSinceLastWhisper = typeof lastWhisperAtMs === 'number' ? Math.max(0, Date.now() - lastWhisperAtMs) : null;
+  $: showGuidance = homeVisits <= 3;
+  $: showStartHere = showGuidance && !startHereDismissed;
+  $: heroCopy = getHomeHeroCopy({
+    companionName: activeCompanion?.name ?? null,
+    effective: activeEffective,
+    circleUnreadCount,
+    msSinceLastWhisper
+  });
+
+  $: companionNeedsAttention =
+    Boolean(activeEffective) &&
+    ((activeEffective?.energy ?? 100) < 30 ||
+      (typeof activeEffective?.msSinceCheckIn === 'number' && activeEffective.msSinceCheckIn > 18 * 60 * 60 * 1000));
+
+  $: whisperNudge =
+    showGuidance && typeof msSinceLastWhisper === 'number' && msSinceLastWhisper > 2 * 86_400_000;
+
+  $: quickLinks = [
     { id: 'greeting', label: 'Resonance', description: 'Emotional compass', href: '#greeting', icon: PenSquare },
-    { id: 'whisper', label: 'Whisper', description: 'Send a kind pulse', href: '#whisper', icon: MessageCircleHeart },
-    { id: 'feed', label: 'Circle', description: 'Signals from friends', href: '#feed', icon: Rss },
-    { id: 'missions', label: 'Missions', description: 'Pick your next thread', href: '#missions', icon: Target },
-    { id: 'companions', label: 'Companions', description: 'Check their mood', href: '#companions', icon: PawPrint },
+    {
+      id: 'whisper',
+      label: 'Whisper',
+      description: 'Send a kind pulse',
+      href: '#whisper',
+      icon: MessageCircleHeart,
+      indicator: whisperNudge ? { kind: 'gentle_nudge', label: 'Gentle nudge: send a whisper' } : null
+    },
+    {
+      id: 'feed',
+      label: 'Circle',
+      description: 'Signals from friends',
+      href: '#feed',
+      icon: Rss,
+      indicator: circleUnreadCount > 0 ? { kind: 'new_activity', label: 'New circle activity' } : null
+    },
+    {
+      id: 'missions',
+      label: 'Missions',
+      description: 'Pick your next thread',
+      href: '#missions',
+      icon: Target
+    },
+    {
+      id: 'companions',
+      label: 'Companions',
+      description: 'Check their mood',
+      href: '#companions',
+      icon: PawPrint,
+      indicator: companionNeedsAttention ? { kind: 'needs_attention', label: 'Needs attention' } : null
+    },
     { id: 'path', label: 'Path', description: 'Where to wander next', href: '#path', icon: Compass }
-  ];
+  ] satisfies QuickLink[];
 
   const energyCurrent = stats?.energy ?? 0;
   const companionBonus = getBondBonusForLevel(activeCompanion?.bondLevel ?? 0);
@@ -154,6 +242,14 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     if (normalized) {
       feedPrepend = normalized;
     }
+    if (browser) {
+      try {
+        window.localStorage.setItem(WHISPER_AT_KEY, new Date().toISOString());
+        lastWhisperAtMs = Date.now();
+      } catch {
+        // Ignore.
+      }
+    }
     showToast('Whisper delivered to your circle.');
   };
 
@@ -228,6 +324,28 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
 
     logEvent('login');
 
+    try {
+      const previous = safeInt(window.localStorage.getItem(HOME_VISITS_KEY), 0);
+      const next = previous + 1;
+      window.localStorage.setItem(HOME_VISITS_KEY, String(next));
+      homeVisits = next;
+    } catch {
+      homeVisits = 99;
+    }
+
+    try {
+      startHereDismissed = window.localStorage.getItem(START_HERE_DISMISSED_KEY) === 'true';
+    } catch {
+      startHereDismissed = false;
+    }
+
+    try {
+      const last = window.localStorage.getItem(WHISPER_AT_KEY);
+      lastWhisperAtMs = safeMs(last);
+    } catch {
+      lastWhisperAtMs = null;
+    }
+
     if (preferences) {
       const contextKind = extractContext(preferences.last_context ?? null);
       if (contextKind === 'feed') {
@@ -257,18 +375,27 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
       <section class="column-center">
         <article id="greeting" class="panel fade-up" data-delay="0" aria-label="Daily greeting">
           <div class="panel__header">
-            <h2 class="panel__title">Your bond pulses brighter today.</h2>
-            <p class="panel__subtitle">Let the field settle before you move.</p>
+            <h2 class="panel__title">{heroCopy.headline}</h2>
+            <p class="panel__subtitle">{heroCopy.subhead}</p>
           </div>
-          <p class="panel__body">We refreshed your space for calm focus. Glide through whispers, check in on the circle, and decide when to launch your next thread.</p>
+          <p class="panel__body">{heroCopy.body}</p>
         </article>
 
-        <CompanionPresenceCard className="panel fade-up" data-delay="0" companion={activeCompanion} />
+        <CompanionPresenceCard
+          className="panel fade-up"
+          data-delay="0"
+          companion={activeCompanion}
+          showStartHint={showStartHere}
+          showHelper={showGuidance}
+        />
 
         <article id="whisper" class="panel fade-up" data-delay="1" aria-label="Whisper composer">
           <div class="panel__header">
             <h2 class="panel__title">Whisper something kind…</h2>
             <p class="panel__subtitle">Tiny sparks keep the resonance alive.</p>
+            {#if showGuidance}
+              <p class="panel__helper">Whispers are small messages that build resonance.</p>
+            {/if}
           </div>
           <QuickPostPanel
             placeholder="Whisper something kind…"
@@ -281,6 +408,9 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
           <div class="panel__header">
             <h2 class="panel__title">Signals from your circle</h2>
             <p class="panel__subtitle">Respond with warmth, stay woven together.</p>
+            {#if showGuidance}
+              <p class="panel__helper">Circle signals are updates from friends.</p>
+            {/if}
           </div>
           <FeedList items={initialFeed} prepend={feedPrepend} />
         </article>
@@ -387,6 +517,12 @@ import { RITUALS_TOOLTIP } from '$lib/companions/companionCopy';
     position: relative;
     min-height: 100vh;
     overflow: hidden;
+  }
+
+  .panel__helper {
+    margin: 0.35rem 0 0;
+    font-size: 0.88rem;
+    color: rgba(226, 232, 255, 0.68);
   }
 
   .home-shell {

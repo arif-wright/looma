@@ -17,6 +17,8 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
   export let title = 'Your Companion Today';
+  export let showStartHint = false;
+  export let showHelper = false;
 
   const DEFAULT_AVATAR = '/avatar.svg';
   let previousBondLevel: number | null = null;
@@ -194,7 +196,29 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
         <p class="bonus-copy">{bonusSummary}</p>
       </div>
     </div>
-    <a class="btn-check" href="/app/companions">Check in</a>
+    <div class="check-row">
+      <a
+        class="btn-check"
+        href="/app/companions"
+        on:click={() => {
+          if (!browser) return;
+          try {
+            window.localStorage.setItem('looma:homeStartHereDismissed', 'true');
+          } catch {
+            // Ignore.
+          }
+        }}
+      >
+        <span>Check in</span>
+        {#if showStartHint}
+          <span class="btn-check__tag" aria-hidden="true">Recommended</span>
+          <span class="sr-only">Recommended</span>
+        {/if}
+      </a>
+      {#if showHelper}
+        <p class="check-helper">Start with a check-in.</p>
+      {/if}
+    </div>
   {:else}
     <div class="empty-copy" role="status">
       <p class="empty-title">No active companion yet</p>
@@ -205,6 +229,18 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 </article>
 
 <style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .companion-card {
     border-radius: 22px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -408,6 +444,34 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     background: rgba(8, 10, 18, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.14);
     letter-spacing: 0.02em;
+  }
+
+  .check-row {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .check-helper {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(226, 232, 255, 0.68);
+  }
+
+  .btn-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-check__tag {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    border: 1px solid rgba(94, 242, 255, 0.35);
+    background: rgba(94, 242, 255, 0.08);
+    color: rgba(165, 243, 252, 0.95);
   }
 
   @media (max-width: 720px) {
