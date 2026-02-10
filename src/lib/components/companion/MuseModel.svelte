@@ -115,6 +115,18 @@
     }
     if (!viewer) return null;
 
+    const blobToDataUrl = (blob: Blob) =>
+      new Promise<string | null>((resolve) => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        } catch {
+          resolve(null);
+        }
+      });
+
     // Some browsers will happily return a "real" screenshot of just the environment/background
     // (or even a poster frame) even though the model isn't actually visible yet.
     // For capture-only, temporarily force a solid background so our non-blank checks can
@@ -126,11 +138,24 @@
         return null;
       }
     })();
+    const originalExposure = (() => {
+      try {
+        return viewer?.getAttribute?.('exposure') ?? null;
+      } catch {
+        return null;
+      }
+    })();
 
     try {
       try {
         // Dark neutral behind the model. Matches Looma's existing surfaces and avoids transparency "blank" PNGs.
         viewer?.setAttribute?.('background-color', '#060a14');
+      } catch {
+        // Ignore.
+      }
+      try {
+        // Slightly brighter during capture to avoid "looks blank" portraits on mobile.
+        viewer?.setAttribute?.('exposure', '1.35');
       } catch {
         // Ignore.
       }
@@ -163,28 +188,80 @@
       // Ensure at least one painted frame after load.
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
-      // model-viewer provides a `toDataURL()` helper in modern versions.
       const asAny = viewer as any;
-      try {
-        // If a poster is still up (common on mobile), dismiss it before capture.
-        asAny?.dismissPoster?.();
-      } catch {
-        // Ignore.
-      }
-      if (asAny && typeof asAny.updateComplete?.then === 'function') {
+      for (let attempt = 0; attempt < 4; attempt++) {
         try {
-          await asAny.updateComplete;
+          // If a poster is still up (common on mobile), dismiss it before capture.
+          asAny?.dismissPoster?.();
         } catch {
           // Ignore.
         }
-      }
-      if (typeof asAny.toDataURL === 'function') {
-        // Prefer WebP for much smaller payloads (important for Storage upload limits).
-        // Fall back to PNG if the browser/model-viewer doesn't support WebP encoding.
-        const webp = await asAny.toDataURL('image/webp', 0.82);
-        if (typeof webp === 'string' && webp.startsWith('data:image/webp')) return webp;
-        const png = await asAny.toDataURL('image/png');
-        return typeof png === 'string' ? png : null;
+
+        if (asAny && typeof asAny.updateComplete?.then === 'function') {
+          try {
+            await asAny.updateComplete;
+          } catch {
+            // Ignore.
+          }
+        }
+
+        // Ensure the camera is framed on the model before capturing. Without this,
+        // some devices can capture an "empty" environment frame.
+        if (typeof asAny?.updateFraming === 'function') {
+          try {
+            await asAny.updateFraming();
+          } catch {
+            // Ignore.
+          }
+        }
+        if (typeof asAny?.jumpCameraToGoal === 'function') {
+          try {
+            asAny.jumpCameraToGoal();
+          } catch {
+            // Ignore.
+          }
+        }
+
+        // Give the renderer a couple frames after framing/poster dismissal.
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+        // Prefer `toBlob()` because it uses model-viewer's internal display canvas
+        // and tends to be more reliable across devices than reading the WebGL canvas directly.
+        if (typeof asAny?.toBlob === 'function') {
+          try {
+            const webp = (await asAny.toBlob({ mimeType: 'image/webp', qualityArgument: 0.82, idealAspect: true })) as
+              | Blob
+              | null
+              | undefined;
+            if (webp instanceof Blob) {
+              const url = await blobToDataUrl(webp);
+              if (typeof url === 'string' && url.startsWith('data:image/')) return url;
+            }
+          } catch {
+            // Ignore and fall back.
+          }
+          try {
+            const png = (await asAny.toBlob({ mimeType: 'image/png', idealAspect: true })) as Blob | null | undefined;
+            if (png instanceof Blob) {
+              const url = await blobToDataUrl(png);
+              if (typeof url === 'string' && url.startsWith('data:image/')) return url;
+            }
+          } catch {
+            // Ignore and fall back.
+          }
+        }
+
+        if (typeof asAny?.toDataURL === 'function') {
+          // Prefer WebP for much smaller payloads (important for Storage upload limits).
+          // Fall back to PNG if the browser/model-viewer doesn't support WebP encoding.
+          const webp = await asAny.toDataURL('image/webp', 0.82);
+          if (typeof webp === 'string' && webp.startsWith('data:image/webp')) return webp;
+          const png = await asAny.toDataURL('image/png');
+          if (typeof png === 'string' && png.startsWith('data:image/png')) return png;
+        }
+
+        // Tiny backoff; helps on devices that need a moment after updateFraming().
+        await new Promise((r) => setTimeout(r, 120));
       }
 
       const canvas = (viewer as any)?.shadowRoot?.querySelector?.('canvas') as HTMLCanvasElement | null;
@@ -203,13 +280,7 @@
         let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82));
         if (!blob) blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) return null;
-        const dataUrl = await new Promise<string | null>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
-        return dataUrl;
+        return await blobToDataUrl(blob);
       }
     } catch (err) {
       if (dev) console.debug('[MuseModel] capture failed', err);
@@ -217,6 +288,12 @@
       try {
         if (originalBg === null) viewer?.removeAttribute?.('background-color');
         else viewer?.setAttribute?.('background-color', originalBg);
+      } catch {
+        // Ignore.
+      }
+      try {
+        if (originalExposure === null) viewer?.removeAttribute?.('exposure');
+        else viewer?.setAttribute?.('exposure', originalExposure);
       } catch {
         // Ignore.
       }
