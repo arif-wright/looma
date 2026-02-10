@@ -394,15 +394,17 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     gap: 0.45rem;
   }
 
-  .home-avatar__meter {
-    width: clamp(140px, 12vw, 168px);
-    height: clamp(140px, 12vw, 168px);
-    border-radius: 999px;
-    /* No filled disk behind the portrait. Keep this container transparent. */
-    background: transparent;
-    position: relative;
-    overflow: visible;
-  }
+	  .home-avatar__meter {
+	    width: clamp(140px, 12vw, 168px);
+	    /* Safari can occasionally end up with fractional layout mismatches; force a true square. */
+	    aspect-ratio: 1 / 1;
+	    height: auto;
+	    border-radius: 999px;
+	    /* No filled disk behind the portrait. Keep this container transparent. */
+	    background: transparent;
+	    position: relative;
+	    overflow: visible;
+	  }
 
   .home-avatar__stroke {
     position: absolute;
@@ -439,16 +441,17 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     overflow: hidden;
   }
 
-  .home-avatar__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: inherit;
-    display: block;
-    /* Ensure transparent PNG portraits still read clearly. */
-    background: transparent;
-    filter: contrast(1.04) saturate(1.02);
-  }
+	  .home-avatar__img {
+	    width: 100%;
+	    height: 100%;
+	    object-fit: cover;
+	    object-position: center;
+	    border-radius: inherit;
+	    display: block;
+	    /* Ensure transparent PNG portraits still read clearly. */
+	    background: transparent;
+	    filter: contrast(1.04) saturate(1.02);
+	  }
 
   .home-avatar__label {
     font-size: 0.85rem;
