@@ -16,6 +16,7 @@
   import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
+  import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
 
   export let data;
 
@@ -54,6 +55,31 @@
   let motionQuery: MediaQueryList | null = null;
   let currentMood: 'steady' | 'bright' | 'low' = 'steady';
   let currentMoodValue = 0;
+  let nowTick = Date.now();
+  let nowTimer: number | null = null;
+
+  const activeCompanionSnapshot = data?.activeCompanion ?? null;
+  const activeAsInstance =
+    activeCompanionSnapshot
+      ? ({
+          id: activeCompanionSnapshot.id,
+          name: activeCompanionSnapshot.name,
+          species: activeCompanionSnapshot.species ?? 'Muse',
+          rarity: 'common',
+          level: 1,
+          xp: 0,
+          affection: activeCompanionSnapshot.affection ?? 0,
+          trust: activeCompanionSnapshot.trust ?? 0,
+          energy: activeCompanionSnapshot.energy ?? 0,
+          mood: activeCompanionSnapshot.mood ?? 'steady',
+          avatar_url: activeCompanionSnapshot.avatar_url ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: activeCompanionSnapshot.updated_at ?? new Date().toISOString(),
+          stats: activeCompanionSnapshot.stats ?? null
+        } as any)
+      : null;
+
+  $: activeEffective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance, new Date(nowTick)) : null;
 
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
@@ -345,6 +371,19 @@
     }
     void postSessionEnd('layout_destroy');
   });
+
+  onMount(() => {
+    if (!browser) return;
+    nowTimer = window.setInterval(() => {
+      nowTick = Date.now();
+    }, 30_000);
+    return () => {
+      if (nowTimer) {
+        window.clearInterval(nowTimer);
+        nowTimer = null;
+      }
+    };
+  });
 </script>
 
 <div class="app-shell">
@@ -400,9 +439,10 @@
     motionEnabled={$companionPrefs.motion}
     transparent={$companionPrefs.transparent}
     reactionsEnabled={$companionPrefs.reactionsEnabled}
-    companionId={data?.portableActiveCompanion?.id ?? 'muse'}
-    companionName={data?.portableActiveCompanion?.name ?? 'Muse'}
+    companionId={data?.activeCompanion?.id ?? data?.portableActiveCompanion?.id ?? 'muse'}
+    companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
     companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
+    moodKey={activeEffective?.moodKey ?? null}
   />
 {/if}
 

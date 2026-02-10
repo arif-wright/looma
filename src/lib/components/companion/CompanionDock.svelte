@@ -8,6 +8,8 @@
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { registerPortraitCaptureHost } from '$lib/companions/portraitHost';
+  import type { DerivedMoodKey } from '$lib/companions/effectiveState';
+  import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -19,12 +21,15 @@
   export let companionId = 'muse';
   export let companionName = 'Muse';
   export let companionCosmetics: Record<string, string | number | boolean | null> | null = null;
+  export let moodKey: DerivedMoodKey | null = null;
 
   let expanded = false;
   let localVisible = true;
   let localMotion = true;
   let museRef: MuseModel | null = null;
   let unregisterCaptureHost: (() => void) | null = null;
+  let nowTick = Date.now();
+  let nowTimer: number | null = null;
 
   const readBool = (value: string | null, fallback: boolean) => {
     if (value === null) return fallback;
@@ -41,6 +46,17 @@
     if (!browser) return;
     localVisible = readBool(window.localStorage.getItem(STORAGE_VISIBLE), true);
     localMotion = readBool(window.localStorage.getItem(STORAGE_MOTION), true);
+
+    nowTimer = window.setInterval(() => {
+      nowTick = Date.now();
+    }, 30_000);
+
+    return () => {
+      if (nowTimer) {
+        window.clearInterval(nowTimer);
+        nowTimer = null;
+      }
+    };
   });
 
   onDestroy(() => {
@@ -83,6 +99,7 @@
   $: activeCompanionName = companionName?.trim() || 'Muse';
   $: activeCosmetics = normalizeCompanionCosmetics(companionCosmetics);
   $: effectiveMotion = motionEnabled && localMotion;
+  $: museAnimation = pickMuseAnimationForMood(moodKey, { nowMs: nowTick, seed: activeCompanionId });
 
   $: if (browser) {
     unregisterCaptureHost?.();
@@ -126,7 +143,7 @@
           autoplay={effectiveMotion}
           cameraControls={false}
           respectReducedMotion={false}
-          animationName={activeCompanionId === 'muse' ? 'Idle' : 'Idle'}
+          animationName={museAnimation}
           transparent={transparent}
           poster={undefined}
           cameraTarget={undefined}
