@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { logEvent } from '$lib/analytics';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   export let open = false;
   export let onClose: () => void = () => {};
@@ -25,6 +26,9 @@
     try {
       const res = await fetch('/api/companions/slots/license');
       const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        devLog('[UnlockSlotModal] loadQty failed', payload, { status: res.status });
+      }
       qty = res.ok ? Number(payload?.qty ?? 0) : 0;
     } catch {
       qty = 0;
@@ -41,14 +45,17 @@
       const res = await fetch('/api/companions/slots/license', { method: 'POST' });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(payload?.error ?? 'Failed to use license');
+        errorMsg = safeApiPayloadMessage(payload, res.status);
+        devLog('[UnlockSlotModal] useLicense failed', payload, { status: res.status });
+        logEvent('slot_license_use_failed', { message: errorMsg, status: res.status });
+        return;
       }
       const maxSlots = Number(payload?.maxSlots ?? 0) || 0;
       onUnlocked(maxSlots);
       logEvent('slot_unlocked', { maxSlots, source: 'license' });
       onClose();
     } catch (err) {
-      errorMsg = err instanceof Error ? err.message : 'Failed to use license';
+      errorMsg = safeUiMessage(err);
       logEvent('slot_license_use_failed', { message: errorMsg });
     } finally {
       busy = false;

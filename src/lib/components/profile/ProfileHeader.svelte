@@ -6,6 +6,7 @@
   import FollowListModal from '$lib/components/profile/FollowListModal.svelte';
   import ReportModal from '$lib/components/modals/ReportModal.svelte';
   import ArchetypeBadge from '$lib/components/profile/ArchetypeBadge.svelte';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   type FollowCounts = { followers: number; following: number };
 
@@ -173,12 +174,13 @@ async function requestFollow() {
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      throw new Error(payload?.error ?? 'Unable to send follow request');
+      devLog('[ProfileHeader] follow request failed', payload, { status: res.status });
+      throw new Error(safeApiPayloadMessage(payload, res.status));
     }
     requestedState = true;
   } catch (err) {
-    console.error('[ProfileHeader] follow request failed', err);
-    followError = err instanceof Error ? err.message : 'Unable to send follow request';
+    devLog('[ProfileHeader] follow request error', err);
+    followError = safeUiMessage(err);
   } finally {
     requestPending = false;
   }
@@ -197,7 +199,8 @@ async function toggleFollow() {
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      throw new Error(payload?.error ?? 'Unable to update follow status');
+      devLog('[ProfileHeader] follow toggle failed', payload, { status: res.status });
+      throw new Error(safeApiPayloadMessage(payload, res.status));
     }
     const nextState = !followingState;
     const delta = nextState ? 1 : -1;
@@ -211,8 +214,8 @@ async function toggleFollow() {
       requestedState = false;
     }
   } catch (err) {
-    console.error('[ProfileHeader] follow toggle failed', err);
-    followError = err instanceof Error ? err.message : 'Unable to update follow status';
+    devLog('[ProfileHeader] follow toggle error', err);
+    followError = safeUiMessage(err);
   } finally {
     followPending = false;
   }
@@ -235,12 +238,13 @@ async function blockUser() {
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      throw new Error(payload?.error ?? 'Unable to block user');
+      devLog('[ProfileHeader] block failed', payload, { status: res.status });
+      throw new Error(safeApiPayloadMessage(payload, res.status));
     }
     window.location.reload();
   } catch (err) {
-    console.error('[ProfileHeader] block failed', err);
-    menuError = err instanceof Error ? err.message : 'Unable to block user';
+    devLog('[ProfileHeader] block error', err);
+    menuError = safeUiMessage(err);
   } finally {
     blockPending = false;
   }
@@ -258,12 +262,13 @@ async function unblockUser() {
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      throw new Error(payload?.error ?? 'Unable to unblock user');
+      devLog('[ProfileHeader] unblock failed', payload, { status: res.status });
+      throw new Error(safeApiPayloadMessage(payload, res.status));
     }
     window.location.reload();
   } catch (err) {
-    console.error('[ProfileHeader] unblock failed', err);
-    menuError = err instanceof Error ? err.message : 'Unable to unblock user';
+    devLog('[ProfileHeader] unblock error', err);
+    menuError = safeUiMessage(err);
   } finally {
     blockPending = false;
   }

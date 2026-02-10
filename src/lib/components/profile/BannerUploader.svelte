@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { resizeImage } from '$lib/utils/image-resize';
   import { bust } from '$lib/utils/cachebust';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   const ACCEPT = 'image/png,image/jpeg,image/webp';
   const MAX_UPLOAD_SIZE = 4 * 1024 * 1024;
@@ -54,15 +55,16 @@
       const res = await fetch('/app/profile/upload/banner', { method: 'POST', body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Upload failed');
+        devLog('[BannerUploader] upload failed', data, { status: res.status });
+        throw new Error(safeApiPayloadMessage(data, res.status));
       }
       const data = await res.json();
       const busted = bust(data?.url);
       preview = busted;
       dispatch('changed', { url: busted });
     } catch (err) {
-      console.error('banner upload failed', err);
-      error = err instanceof Error ? err.message : 'Upload failed';
+      devLog('[BannerUploader] upload error', err);
+      error = safeUiMessage(err);
       preview = url;
     } finally {
       cleanup();

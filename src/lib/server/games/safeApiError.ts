@@ -1,5 +1,6 @@
 import { dev } from '$app/environment';
 import { json } from '@sveltejs/kit';
+import { SAFE_COMPLETION_MESSAGE, SAFE_LOAD_MESSAGE, SAFE_UNAUTHORIZED_MESSAGE } from '$lib/safeMessages';
 
 type GameApiContext = 'start' | 'complete' | 'default';
 
@@ -14,9 +15,9 @@ type HttpErrorLike = {
   message?: string;
 };
 
-const GENERIC_MESSAGE = 'Something didn’t load. Try again.';
-const UNAUTHORIZED_MESSAGE = 'Your session expired. Please sign in again.';
-const COMPLETE_FAILED_MESSAGE = 'We could not save that run. Try again.';
+const GENERIC_MESSAGE = SAFE_LOAD_MESSAGE;
+const UNAUTHORIZED_MESSAGE = SAFE_UNAUTHORIZED_MESSAGE;
+const COMPLETE_FAILED_MESSAGE = SAFE_COMPLETION_MESSAGE;
 
 const asHttpErrorLike = (input: unknown): HttpErrorLike => {
   if (!input || typeof input !== 'object') return {};

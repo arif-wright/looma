@@ -3,6 +3,7 @@
   import { SendHorizontal } from 'lucide-svelte';
   import { applyRitualUpdate } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   const MAX_LENGTH = 280;
   const dispatch = createEventDispatcher<{
@@ -46,7 +47,8 @@
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        error = data?.error ?? 'Unable to share right now.';
+        error = safeApiPayloadMessage(data, res.status);
+        devLog('[QuickPostPanel] submit failed', data, { status: res.status });
         return;
       }
       const payload = await res.json().catch(() => ({ item: null }));
@@ -57,8 +59,8 @@
         dispatch('rituals', { completed: (payload.rituals.completed as CompanionRitual[]) ?? [] });
       }
     } catch (err) {
-      console.error('quick post error', err);
-      error = err instanceof Error ? err.message : 'Unexpected error';
+      devLog('[QuickPostPanel] quick post error', err);
+      error = safeUiMessage(err);
     } finally {
       posting = false;
     }

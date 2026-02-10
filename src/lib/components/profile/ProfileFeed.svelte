@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import PostCard from '$lib/social/PostCard.svelte';
   import type { PostRow } from '$lib/social/types';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   export let authorIdentifier: string;
   export let initialItems: PostRow[] = [];
@@ -53,7 +54,8 @@
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        errorMsg = payload?.error ?? 'Unable to load more posts.';
+        devLog('[ProfileFeed] loadMore failed', payload, { status: res.status });
+        errorMsg = safeApiPayloadMessage(payload, res.status);
         return;
       }
       const payload = await res.json();
@@ -61,8 +63,8 @@
       items = [...items, ...incoming];
       cursor = payload?.nextCursor ?? null;
     } catch (err) {
-      console.error('profile feed load error', err);
-      errorMsg = err instanceof Error ? err.message : 'Unable to load feed.';
+      devLog('[ProfileFeed] loadMore error', err);
+      errorMsg = safeUiMessage(err);
     } finally {
       loading = false;
     }

@@ -11,6 +11,7 @@
   import type { FeedItem as FeedItemType } from '$lib/social/types';
   import { sortFeed } from '$lib/social/ranking';
   import { sendAnalytics } from '$lib/utils/analytics';
+  import { safeUiMessage, devLog } from '$lib/utils/safeUiError';
 
   export let items: FeedItemType[] = [];
   export let prepend: FeedItemType | null = null;
@@ -141,8 +142,8 @@
       cursor = feed.length > 0 ? feed[feed.length - 1]?.created_at ?? null : cursor;
       exhausted = incoming.length < pageSize;
     } catch (err) {
-      console.error('feed load error', err);
-      errorMsg = err instanceof Error ? err.message : 'Failed to load feed.';
+      devLog('[FeedList] feed load error', err);
+      errorMsg = safeUiMessage(err);
     } finally {
       loading = false;
     }
@@ -181,8 +182,8 @@
         creatureModalOpen = creature !== null;
       }
     } catch (err) {
-      console.error('deeplink fetch error', err);
-      errorMsg = err instanceof Error ? err.message : 'Failed to open item.';
+      devLog('[FeedList] deeplink fetch error', err);
+      errorMsg = safeUiMessage(err);
     }
   }
 

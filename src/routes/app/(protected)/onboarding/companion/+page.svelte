@@ -4,6 +4,7 @@
   import { fade, fly } from 'svelte/transition';
   import WorldBackground from '$lib/ui/WorldBackground.svelte';
   import { logEvent } from '$lib/analytics';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -191,13 +192,14 @@ function handleConsentChange(next: boolean) {
       });
       const response = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(response?.error ?? 'Unable to score quiz');
+        devLog('[onboarding/companion] persona.save failed', response, { status: res.status });
+        throw new Error(safeApiPayloadMessage(response, res.status));
       }
       result = { archetype: response?.archetype, summary: response?.summary };
       logEvent('persona_quiz_complete', { archetype: response?.archetype ?? null });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save traits';
-      showToast(message);
+      devLog('[onboarding/companion] persona.save error', err);
+      showToast(safeUiMessage(err));
     } finally {
       submitting = false;
     }
@@ -209,7 +211,8 @@ function handleConsentChange(next: boolean) {
       const res = await fetch('/api/persona/spawn', { method: 'POST' });
       const response = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(response?.error ?? 'Failed to spawn companion');
+        devLog('[onboarding/companion] persona.spawn failed', response, { status: res.status });
+        throw new Error(safeApiPayloadMessage(response, res.status));
       }
       celebrate = true;
       logEvent('companion_spawn', { archetype: response?.archetype ?? null, source: 'bond_genesis' });
@@ -217,8 +220,8 @@ function handleConsentChange(next: boolean) {
         window.location.href = '/app/home';
       }, 1200);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to spawn companion';
-      showToast(message);
+      devLog('[onboarding/companion] persona.spawn error', err);
+      showToast(safeUiMessage(err));
     }
   }
 

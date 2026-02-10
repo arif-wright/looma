@@ -1,6 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { supabaseServer } from '$lib/supabaseClient';
+import { SAFE_LOAD_MESSAGE, SAFE_UNAUTHORIZED_MESSAGE } from '$lib/safeMessages';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -10,11 +11,12 @@ export const POST: RequestHandler = async (event) => {
   } = await supabase.auth.getUser();
 
   if (uerr) {
-    return json({ error: uerr.message }, { status: 400 });
+    console.error('[api/xp] auth.getUser failed', uerr);
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
 
   if (!user) {
-    return new Response('Unauthorized', { status: 401 });
+    return json({ error: 'unauthorized', message: SAFE_UNAUTHORIZED_MESSAGE }, { status: 401 });
   }
 
   const body = await event.request.json().catch(() => ({}));
@@ -32,7 +34,7 @@ export const POST: RequestHandler = async (event) => {
 
   if (curErr) {
     console.error('xp:get current profile failed', curErr);
-    return json({ error: curErr.message }, { status: 400 });
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
 
   const nextXp = (cur?.xp ?? 0) + amount;
@@ -44,7 +46,7 @@ export const POST: RequestHandler = async (event) => {
 
   if (updErr) {
     console.error('xp:update profile failed', updErr);
-    return json({ error: updErr.message }, { status: 400 });
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
 
   return json({ ok: true, added: amount, newXp: nextXp });

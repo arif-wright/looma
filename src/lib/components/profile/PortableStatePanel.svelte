@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import type { PortableState } from '$lib/types/portableState';
   import { Eye, RefreshCcw, ShieldCheck, ShieldOff } from 'lucide-svelte';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   type ConsentFlags = { memory: boolean; adaptation: boolean; reactions: boolean };
 
@@ -20,12 +21,14 @@
       const res = await fetch('/api/context/portable');
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(payload?.error ?? 'Unable to load preferences.');
+        devLog('[PortableStatePanel] fetchState failed', payload, { status: res.status });
+        throw new Error(safeApiPayloadMessage(payload, res.status));
       }
       consent = payload?.consent ?? consent;
       portableState = payload?.portableState ?? null;
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to load preferences.';
+      devLog('[PortableStatePanel] fetchState error', err);
+      error = safeUiMessage(err);
     } finally {
       loading = false;
     }
@@ -47,14 +50,16 @@
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Unable to update preferences.');
+        devLog('[PortableStatePanel] updateConsent failed', payload, { status: res.status });
+        throw new Error(safeApiPayloadMessage(payload, res.status));
       }
       consent = { ...consent, ...next };
       if (typeof next.memory === 'boolean' && !next.memory) {
         portableState = null;
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to update preferences.';
+      devLog('[PortableStatePanel] updateConsent error', err);
+      error = safeUiMessage(err);
     } finally {
       saving = false;
     }
@@ -72,11 +77,13 @@
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Unable to reset memory.');
+        devLog('[PortableStatePanel] resetMemory failed', payload, { status: res.status });
+        throw new Error(safeApiPayloadMessage(payload, res.status));
       }
       await fetchState();
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to reset memory.';
+      devLog('[PortableStatePanel] resetMemory error', err);
+      error = safeUiMessage(err);
     } finally {
       saving = false;
     }

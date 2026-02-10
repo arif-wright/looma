@@ -8,6 +8,7 @@ import ReactionBar from '$lib/components/common/ReactionBar.svelte';
 import ReplyComposer from './ReplyComposer.svelte';
 import CommentThread from './CommentThread.svelte';
 import ReportModal from '$lib/components/modals/ReportModal.svelte';
+import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   export let comment: Comment;
   export let postId: string;
@@ -57,8 +58,9 @@ let reportOpen = false;
     try {
       const res = await fetch(`/api/comments?replyTo=${comment.id}&mode=deep`);
       if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || 'Failed to load more replies');
+        const payload = await res.json().catch(() => null);
+        devLog('[CommentItem] loadHiddenReplies failed', payload, { status: res.status });
+        throw new Error(safeApiPayloadMessage(payload, res.status));
       }
       const payload = await res.json();
       const items = Array.isArray(payload?.items) ? payload.items : [];
@@ -80,8 +82,8 @@ let reportOpen = false;
       hasMore = false;
       moreCount = extraReplies.length;
     } catch (err) {
-      console.error('[comments] loadHiddenReplies failed', err);
-      loadError = err instanceof Error ? err.message : 'Unable to load replies';
+      devLog('[CommentItem] loadHiddenReplies error', err);
+      loadError = safeUiMessage(err);
     } finally {
       loadingMore = false;
     }

@@ -3,6 +3,7 @@
   import { resizeImage } from '$lib/utils/image-resize';
   import { bust } from '$lib/utils/cachebust';
   import { currentProfile } from '$lib/stores/profile';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   const ACCEPT = 'image/png,image/jpeg,image/webp';
   const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
@@ -57,7 +58,8 @@
       const res = await fetch('/app/profile/upload/avatar', { method: 'POST', body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Upload failed');
+        devLog('[AvatarUploader] upload failed', data, { status: res.status });
+        throw new Error(safeApiPayloadMessage(data, res.status));
       }
       const data = await res.json();
       const busted = bust(data?.url);
@@ -65,8 +67,8 @@
       dispatch('changed', { url: busted });
       currentProfile.update((profile) => (profile ? { ...profile, avatar_url: busted } : profile));
     } catch (err) {
-      console.error('avatar upload failed', err);
-      error = err instanceof Error ? err.message : 'Upload failed';
+      devLog('[AvatarUploader] upload error', err);
+      error = safeUiMessage(err);
       preview = url;
     } finally {
       cleanupTempUrl();

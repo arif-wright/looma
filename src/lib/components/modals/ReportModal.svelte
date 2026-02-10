@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   type ReportKind = 'profile' | 'post' | 'comment';
 
@@ -52,7 +53,8 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Unable to submit report');
+        devLog('[ReportModal] submit failed', body, { status: res.status });
+        throw new Error(safeApiPayloadMessage(body, res.status));
       }
       successMsg = 'Report submitted. Thank you for the heads-up.';
       dispatch('submitted');
@@ -61,7 +63,8 @@
         successMsg = '';
       }, 1400);
     } catch (err) {
-      errorMsg = err instanceof Error ? err.message : 'Unable to submit report';
+      devLog('[ReportModal] submit error', err);
+      errorMsg = safeUiMessage(err);
     } finally {
       submitting = false;
     }

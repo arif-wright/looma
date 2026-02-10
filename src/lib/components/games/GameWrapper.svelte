@@ -25,6 +25,7 @@ import {
     getGameErrorKind,
     getGameErrorMessage,
     startSession,
+    type GameErrorKind,
     type GameSessionResult,
     type GameSessionServerResult,
     type GameSessionStart
@@ -57,6 +58,7 @@ import {
   let fullscreenActive = false;
   let hasLoaded = false;
   let overlayError: string | null = null;
+  let completionFailure: { kind: GameErrorKind; message: string } | null = null;
   let isPaused = false;
   let showResults = false;
   let mood: { state: string; intensity: number } | null = null;
@@ -280,16 +282,19 @@ import {
         emitGameEvent('neonrun.completed', enrichedResult);
       }
     } catch (err) {
-      console.error('[GameWrapper] failed to complete session', err);
+      if (dev) console.error('[GameWrapper] failed to complete session', err);
       completionFailed = true;
-      overlayVisible = true;
-      overlayError = getGameErrorMessage(err, 'complete');
+      const kind = getGameErrorKind(err, 'complete') as GameErrorKind;
+      const message = getGameErrorMessage(err, 'complete');
+      completionFailure = { kind, message };
+      overlayVisible = false;
+      overlayError = null;
       lastResult = payload;
       lastServerResult = null;
       dispatch('sessionerror', {
         stage: 'complete',
-        kind: getGameErrorKind(err, 'complete'),
-        message: overlayError
+        kind,
+        message
       });
     } finally {
       showResults = !completionFailed;
@@ -318,6 +323,7 @@ import {
   };
 
   const handlePlayAgain = () => {
+    completionFailure = null;
     resetSessionContext();
     showResults = false;
     lastResult = null;
@@ -334,7 +340,13 @@ import {
   }
 
   const handleBackToHub = () => {
+    completionFailure = null;
     goto('/app/games');
+  };
+
+  const handleSignIn = () => {
+    completionFailure = null;
+    goto('/app/auth');
   };
 
   const formatNumber = (value: number | null | undefined) => {
@@ -514,6 +526,33 @@ import {
         <div class="results-actions">
           <button type="button" class="primary" on:click={handlePlayAgain}>Play Again</button>
           <button type="button" class="secondary" on:click={handleBackToHub}>Exit</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if completionFailure && lastResult}
+    <div class="results-overlay" data-testid="completion-failed">
+      <div class="results-card results-card--error">
+        <h2>Couldn’t save that run</h2>
+        <p class="results-error">{completionFailure.message}</p>
+        <div class="results-stats results-stats--compact">
+          <div class="stat">
+            <span class="label">Score</span>
+            <span class="value">{formatNumber(lastResult.score ?? null)}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Duration</span>
+            <span class="value">{formatDurationSeconds(lastResult.durationMs ?? null)}</span>
+          </div>
+        </div>
+        <div class="results-actions">
+          {#if completionFailure.kind === 'unauthorized'}
+            <button type="button" class="primary" on:click={handleSignIn}>Sign in</button>
+          {:else}
+            <button type="button" class="primary" on:click={handlePlayAgain}>Play Again</button>
+          {/if}
+          <button type="button" class="secondary" on:click={handleBackToHub}>Back to Hub</button>
         </div>
       </div>
     </div>
@@ -733,6 +772,20 @@ import {
     padding: 1.75rem;
     text-align: center;
     color: #f8fbff;
+  }
+
+  .results-card--error h2 {
+    color: rgba(248, 250, 252, 0.98);
+  }
+
+  .results-error {
+    margin: 0.35rem 0 0;
+    color: rgba(226, 232, 240, 0.78);
+    line-height: 1.5;
+  }
+
+  .results-stats--compact {
+    margin-top: 1rem;
   }
 
   .pause-card h2,

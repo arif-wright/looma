@@ -128,10 +128,12 @@ const isSemverLike = (value: string) => semverLikePattern.test(value.trim());
 export type GameErrorKind = 'network' | 'unauthorized' | 'completion_failed' | 'generic';
 type GameErrorContext = 'start' | 'complete' | 'sign' | 'load';
 
-const SAFE_LOAD_MESSAGE = 'Something didn’t load. Try again.';
-const SAFE_NETWORK_MESSAGE = 'Network issue. Check your connection and try again.';
-const SAFE_UNAUTHORIZED_MESSAGE = 'Your session expired. Please sign in again.';
-const SAFE_COMPLETION_MESSAGE = 'We could not save that run. Try again.';
+import {
+  SAFE_COMPLETION_MESSAGE,
+  SAFE_LOAD_MESSAGE,
+  SAFE_NETWORK_MESSAGE,
+  SAFE_UNAUTHORIZED_MESSAGE
+} from '$lib/safeMessages';
 
 export class GameClientError extends Error {
   kind: GameErrorKind;

@@ -11,6 +11,7 @@
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP, describeBondLevelUpToast } from '$lib/companions/companionCopy';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import { devLog, safeUiMessage } from '$lib/utils/safeUiError';
   import {
     captureCompanionPortrait,
     clearCachedCompanionPortrait,
@@ -181,7 +182,8 @@
       await renameCompanion(companion.id, next);
       renameMode = false;
     } catch (err) {
-      actionMessage = err instanceof Error ? err.message : 'Rename failed';
+      devLog('[CompanionModal] rename failed', err);
+      actionMessage = safeUiMessage(err);
     } finally {
       busy = null;
     }
@@ -194,7 +196,8 @@
     try {
       await setActive(companion.id);
     } catch (err) {
-      actionMessage = err instanceof Error ? err.message : 'Failed to set active';
+      devLog('[CompanionModal] set active failed', err);
+      actionMessage = safeUiMessage(err);
     } finally {
       busy = null;
     }
@@ -208,7 +211,8 @@
     try {
       await setState(companion.id, nextState);
     } catch (err) {
-      actionMessage = err instanceof Error ? err.message : 'Failed to update state';
+      devLog('[CompanionModal] state update failed', err);
+      actionMessage = safeUiMessage(err);
     } finally {
       busy = null;
     }
@@ -229,7 +233,8 @@
       events = normalizeEvents((payload.events as CareEvent[]) ?? []);
       lastFetchedId = companion.id;
     } catch (err) {
-      eventsError = err instanceof Error ? err.message : 'Unable to load events';
+      devLog('[CompanionModal] load events failed', err);
+      eventsError = safeUiMessage(err);
       events = [];
     } finally {
       loadingEvents = false;
@@ -441,8 +446,8 @@
       dispatch('careApplied', { id: nextCompanion.id, companion: nextCompanion });
       actionMessage = null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : null;
-      careError = formatCareError(message);
+      devLog('[CompanionModal] care action failed', err);
+      careError = formatCareError(safeUiMessage(err));
       emitCareErrorToast();
     } finally {
       careBusy = null;

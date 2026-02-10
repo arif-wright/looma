@@ -4,6 +4,7 @@
   import type { PostRow } from '$lib/social/types';
   import { applyRitualUpdate } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
+  import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   export let avatarUrl: string | null = null;
   export let maxLength = 420;
@@ -42,7 +43,8 @@
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        errorMsg = payload?.error ?? 'Unable to post right now.';
+        devLog('[SmartComposer] submit failed', payload, { status: res.status });
+        errorMsg = safeApiPayloadMessage(payload, res.status);
         return;
       }
       const payload = await res.json().catch(() => ({}));
@@ -56,8 +58,8 @@
       text = '';
       expanded = false;
     } catch (err) {
-      console.error('smart composer error', err);
-      errorMsg = err instanceof Error ? err.message : 'Unexpected error';
+      devLog('[SmartComposer] submit error', err);
+      errorMsg = safeUiMessage(err);
     } finally {
       submitting = false;
     }

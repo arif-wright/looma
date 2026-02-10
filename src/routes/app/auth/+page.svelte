@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { createClient, type SupabaseClient } from '@supabase/supabase-js';
   import { env as publicEnv } from '$env/dynamic/public';
+  import { devLog, safeUiMessage } from '$lib/utils/safeUiError';
 
   const providers = ['google', 'github'] as const;
 
@@ -48,7 +49,8 @@
       if (error) throw error;
       message = 'Redirecting to provider…';
     } catch (err) {
-      message = err instanceof Error ? err.message : 'Unable to start sign in';
+      devLog('[auth] signInWithProvider failed', err);
+      message = safeUiMessage(err);
     } finally {
       submitting = false;
     }
@@ -75,7 +77,8 @@
       if (error) throw error;
       message = 'Check your email for a magic link.';
     } catch (err) {
-      message = err instanceof Error ? err.message : 'Unable to send magic link';
+      devLog('[auth] sendMagicLink failed', err);
+      message = safeUiMessage(err);
     } finally {
       submitting = false;
     }
