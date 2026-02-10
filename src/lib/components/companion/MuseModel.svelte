@@ -115,7 +115,26 @@
     }
     if (!viewer) return null;
 
+    // Some browsers will happily return a "real" screenshot of just the environment/background
+    // (or even a poster frame) even though the model isn't actually visible yet.
+    // For capture-only, temporarily force a solid background so our non-blank checks can
+    // reliably detect missing renders.
+    const originalBg = (() => {
+      try {
+        return viewer?.getAttribute?.('background-color') ?? null;
+      } catch {
+        return null;
+      }
+    })();
+
     try {
+      try {
+        // Dark neutral behind the model. Matches Looma's existing surfaces and avoids transparency "blank" PNGs.
+        viewer?.setAttribute?.('background-color', '#060a14');
+      } catch {
+        // Ignore.
+      }
+
       // If the model isn't loaded yet, wait briefly for a paintable frame.
       if (!isLoaded) {
         await new Promise<void>((resolve) => {
@@ -146,6 +165,12 @@
 
       // model-viewer provides a `toDataURL()` helper in modern versions.
       const asAny = viewer as any;
+      try {
+        // If a poster is still up (common on mobile), dismiss it before capture.
+        asAny?.dismissPoster?.();
+      } catch {
+        // Ignore.
+      }
       if (asAny && typeof asAny.updateComplete?.then === 'function') {
         try {
           await asAny.updateComplete;
@@ -188,6 +213,13 @@
       }
     } catch (err) {
       if (dev) console.debug('[MuseModel] capture failed', err);
+    } finally {
+      try {
+        if (originalBg === null) viewer?.removeAttribute?.('background-color');
+        else viewer?.setAttribute?.('background-color', originalBg);
+      } catch {
+        // Ignore.
+      }
     }
     return null;
   }
