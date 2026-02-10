@@ -171,7 +171,9 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
               stroke-dashoffset={ringOffset}
             />
           </svg>
-          <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
+          <div class="avatar-ring__inner" aria-hidden="true">
+            <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
+          </div>
         </div>
         <span class="avatar-ring__label"><span class="avatar-ring__label-pill">Energy {energyPct}%</span></span>
       </div>
@@ -341,13 +343,10 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    background: rgba(6, 10, 20, 0.65);
-    padding: 6px;
+    /* No filled disk behind the portrait. Keep this container transparent. */
+    background: transparent;
     position: relative;
-    overflow: hidden;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.12),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    overflow: visible;
   }
 
   .avatar-ring__stroke {
@@ -374,6 +373,17 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     stroke-linecap: round;
   }
 
+  .avatar-ring__inner {
+    position: absolute;
+    inset: 6px; /* space for the ring stroke */
+    border-radius: inherit;
+    background: radial-gradient(circle at 30% 30%, rgba(18, 24, 44, 0.98), rgba(6, 10, 20, 0.92));
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      inset 0 -18px 30px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
   .avatar-ring__img {
     width: 100%;
     height: 100%;
@@ -381,10 +391,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     border-radius: inherit;
     display: block;
     /* Ensure transparent PNG portraits still read clearly. */
-    background: radial-gradient(circle at 30% 30%, rgba(18, 24, 44, 0.98), rgba(6, 10, 20, 0.92));
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-      inset 0 -18px 30px rgba(0, 0, 0, 0.35);
+    background: transparent;
     filter: contrast(1.04) saturate(1.02);
   }
 
