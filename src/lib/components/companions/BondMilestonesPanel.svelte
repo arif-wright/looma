@@ -11,7 +11,7 @@
 </script>
 
 {#if renderList.length === 0}
-  <p class="bond-milestones__empty text-sm text-white/60">No bond milestones earned yet.</p>
+  <p class="bond-milestones__empty text-sm text-white/60">No cosmetics unlocked yet. Bond milestones will appear here.</p>
 {:else}
   <ul class={`bond-milestones bond-milestones--${variant}`}>
     {#each renderList as item (item.key)}

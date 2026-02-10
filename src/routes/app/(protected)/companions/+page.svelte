@@ -121,7 +121,7 @@
     if (!companion) {
       return {
         title: 'First-time companion view',
-        body: 'When your first companion arrives, this view becomes your daily check-in space.'
+        body: 'Your companion check-in will appear here once one is active.'
       };
     }
 
@@ -539,8 +539,8 @@
         <h2 id="companion-view-heading">Companion View</h2>
         <p class="time-context">Last check-in: Not yet</p>
         <div class="relationship-copy">
-          <p class="relationship-copy__title">First-time companion view</p>
-          <p>Your active companion will appear here when one is assigned.</p>
+          <p class="relationship-copy__title">{relationshipState.title}</p>
+          <p>{relationshipState.body}</p>
         </div>
       {/if}
     </div>
@@ -571,7 +571,7 @@
     </div>
 
     {#if ownedInstances.length === 0}
-      <p class="empty-copy">First-time companion view. Your switcher appears after your first companion joins you.</p>
+      <p class="empty-copy">No companions yet. Your switcher will appear here after your first companion joins you.</p>
     {:else}
       <div class="switcher-grid">
         {#each ownedInstances as instance (instance.id)}
@@ -722,11 +722,10 @@
     <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Pick an active companion to begin daily rituals." />
   </section>
 
-  {#if bondMilestones.length}
-    <section class="bond-milestones-panel">
-      <BondMilestonesPanel milestones={bondMilestones} />
-    </section>
-  {/if}
+  <section class="bond-milestones-panel" aria-label="Bond milestones">
+    <h2>Bond milestones</h2>
+    <BondMilestonesPanel milestones={bondMilestones} />
+  </section>
 </main>
 
 <CompanionModal

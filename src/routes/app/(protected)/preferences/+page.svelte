@@ -173,7 +173,7 @@
   <header class="preferences-header">
     <div>
       <h1>Preferences</h1>
-      <p class="lede">Manage companion display, transparency, and memory controls.</p>
+      <p class="lede">Companion display, transparency, and memory.</p>
     </div>
   </header>
 
@@ -243,8 +243,8 @@
     </div>
     {#if !portabilityEnabled}
       <div class="portability-disabled" role="status">
-        <p><strong>Portability is disabled.</strong></p>
-        <p>Enable Memory in Transparency settings to generate and copy portable companion export state.</p>
+        <p><strong>Portability is off.</strong></p>
+        <p>Turn on Memory to generate an export.</p>
       </div>
     {:else if !portableState}
       <p class="status-text">Portable state is not available yet.</p>
@@ -309,9 +309,17 @@
     padding: clamp(1.25rem, 3vw, 2.25rem);
     display: grid;
     gap: 1.75rem;
-    width: min(100%, 1760px);
+    width: min(100%, 1560px);
     box-sizing: border-box;
     margin: 0 auto;
+    /* Bias the layout left a bit to make room for the companion dock on the right. */
+    padding-right: calc(clamp(1.25rem, 3vw, 2.25rem) + 3.25rem);
+  }
+
+  @media (max-width: 980px) {
+    .preferences-page {
+      padding-right: clamp(1.25rem, 3vw, 2.25rem);
+    }
   }
 
   .preferences-header {

@@ -244,7 +244,7 @@
     <section class="games-rewards panel-glass" aria-label="Latest rewards">
       <header>
         <h2>Latest rewards</h2>
-        <p>Recent XP bursts and shard drops from your sessions.</p>
+        <p>{hasPlayedGames ? 'Recent XP bursts and shard drops from your sessions.' : 'After your first session, rewards show up here.'}</p>
         {#if rewardList.length > PAGE_SIZE}
           <div class="rewards-pagination">
             <button
@@ -321,15 +321,26 @@
   .games-shell {
     position: relative;
     z-index: 1;
-    max-width: 1760px;
+    max-width: 1560px;
     box-sizing: border-box;
     margin: 0 auto;
-    padding: clamp(1.5rem, 3vw, 2.4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5.5rem;
+    --games-pad-top: clamp(1.5rem, 3vw, 2.4rem);
+    --games-pad-x: clamp(1.5rem, 3.5vw, 2.75rem);
+    --games-pad-bottom: 5.5rem;
+    --games-pad-right-extra: 3.25rem;
+    padding: var(--games-pad-top) calc(var(--games-pad-x) + var(--games-pad-right-extra)) var(--games-pad-bottom)
+      var(--games-pad-x);
     display: flex;
     flex-direction: column;
     gap: 2.75rem;
     width: 100%;
     min-height: 100vh;
+  }
+
+  @media (max-width: 980px) {
+    .games-shell {
+      --games-pad-right-extra: 0px;
+    }
   }
 
   .games-hero {
