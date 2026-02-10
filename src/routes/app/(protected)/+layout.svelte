@@ -458,16 +458,18 @@
 
 <MobileDock items={iconNavItems} />
 {#if !hideCompanionDock}
-  <CompanionDock
-    visible={$companionPrefs.visible}
-    motionEnabled={$companionPrefs.motion}
-    transparent={$companionPrefs.transparent}
-    reactionsEnabled={$companionPrefs.reactionsEnabled}
-    companionId={data?.activeCompanion?.id ?? data?.portableActiveCompanion?.id ?? 'muse'}
-    companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
-    companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
-    moodKey={activeEffective?.moodKey ?? null}
-  />
+  <div class="hidden md:block">
+    <CompanionDock
+      visible={$companionPrefs.visible}
+      motionEnabled={$companionPrefs.motion}
+      transparent={$companionPrefs.transparent}
+      reactionsEnabled={$companionPrefs.reactionsEnabled}
+      companionId={data?.activeCompanion?.id ?? data?.portableActiveCompanion?.id ?? 'muse'}
+      companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
+      companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
+      moodKey={activeEffective?.moodKey ?? null}
+    />
+  </div>
 {/if}
 {/if}
 

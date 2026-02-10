@@ -13,6 +13,7 @@
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
   import CompanionPresenceCard from '$lib/components/home/CompanionPresenceCard.svelte';
+  import CompanionDockMobile from '$lib/components/companions/CompanionDock.svelte';
   import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
   import { companionRitualsStore, applyRitualUpdate } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
@@ -385,14 +386,24 @@
             <p class="panel__subtitle">{heroCopy.subhead}</p>
           </div>
           {#if showGuidance}
-            <p class="panel__body">{heroCopy.body}</p>
+            <p class="panel__body hidden md:block">{heroCopy.body}</p>
           {:else if circleUnreadCount > 0}
-            <p class="panel__body panel__body--compact">Your circle left a signal while you were away.</p>
+            <p class="panel__body panel__body--compact hidden md:block">Your circle left a signal while you were away.</p>
           {/if}
         </article>
 
+        <div class="md:hidden fade-up" data-delay="0" aria-label="Companion dock">
+          <CompanionDockMobile
+            companion={activeCompanion}
+            effective={activeEffective}
+            onOpen={() => {
+              void goto('/app/companions');
+            }}
+          />
+        </div>
+
         <CompanionPresenceCard
-          className="panel fade-up"
+          className="panel fade-up hidden md:block"
           data-delay="0"
           companion={activeCompanion}
           showStartHint={showStartHere}
@@ -406,7 +417,7 @@
             <h2 class="panel__title">Whisper something kind…</h2>
             <p class="panel__subtitle">Tiny sparks keep the resonance alive.</p>
             {#if showGuidance}
-              <p class="panel__helper">Whispers are small messages that build resonance.</p>
+              <p class="panel__helper hidden md:block">Whispers are small messages that build resonance.</p>
             {/if}
           </div>
           <QuickPostPanel
@@ -421,7 +432,7 @@
             <h2 class="panel__title">Signals from your circle</h2>
             <p class="panel__subtitle">Respond with warmth, stay woven together.</p>
             {#if showGuidance}
-              <p class="panel__helper">Circle signals are updates from friends.</p>
+              <p class="panel__helper hidden md:block">Circle signals are updates from friends.</p>
             {/if}
           </div>
           <FeedList items={initialFeed} prepend={feedPrepend} />
