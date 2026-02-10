@@ -16,6 +16,14 @@ const createAdminClient = (): SupabaseClient => {
 let cachedAdminClient: SupabaseClient | null = null;
 const getAdminClient = () => (cachedAdminClient ??= createAdminClient());
 
+export const tryGetSupabaseAdminClient = (): SupabaseClient | null => {
+  try {
+    return getAdminClient();
+  } catch {
+    return null;
+  }
+};
+
 // Proxy prevents build-time static analysis from crashing when env isn't injected.
 export const supabaseAdmin = new Proxy({} as SupabaseClient, {
   get(_target, prop, _receiver) {

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireUserServer } from '$lib/server/auth';
+import { tryGetSupabaseAdminClient } from '$lib/server/supabase';
 
 const ALLOWED_TYPES = new Set(['image/png', 'image/webp']);
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
@@ -11,6 +12,7 @@ const toBuffer = async (file: File) => Buffer.from(await file.arrayBuffer());
 
 export const POST: RequestHandler = async (event) => {
   const { supabase, user } = await requireUserServer(event);
+  const supabaseAdmin = tryGetSupabaseAdminClient();
   const formData = await event.request.formData();
   const file = formData.get('file');
   const companionIdRaw = formData.get('companionId');
@@ -32,7 +34,11 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'file_too_large' }, { status: 400 });
   }
 
-  // Ensure user owns this companion before updating avatar_url.
+  const ext = file.type === 'image/webp' ? 'webp' : 'png';
+  const path = `${user.id}/${companionId}/portrait_${Date.now()}.${ext}`;
+  const buffer = await toBuffer(file);
+
+  // Always enforce ownership via the user-scoped client (keeps auth boundaries sane even with service role).
   const { data: owned, error: ownedError } = await supabase
     .from('companions')
     .select('id')
@@ -42,18 +48,17 @@ export const POST: RequestHandler = async (event) => {
 
   if (ownedError) {
     console.error('[companions/portrait] owner check failed', ownedError);
-    return json({ error: 'owner_check_failed' }, { status: 500 });
+    return json({ error: 'owner_check_failed', details: ownedError.message }, { status: 500 });
   }
 
   if (!owned?.id) {
     return json({ error: 'not_found' }, { status: 404 });
   }
 
-  const ext = file.type === 'image/webp' ? 'webp' : 'png';
-  const path = `${user.id}/${companionId}/portrait_${Date.now()}.${ext}`;
-  const buffer = await toBuffer(file);
+  // Prefer service role for storage + DB update to avoid Storage policy / RLS pitfalls.
+  const writeClient = supabaseAdmin ?? supabase;
 
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+  const { error: uploadError } = await writeClient.storage.from(BUCKET).upload(path, buffer, {
     upsert: true,
     contentType: file.type,
     cacheControl: '3600'
@@ -61,14 +66,14 @@ export const POST: RequestHandler = async (event) => {
 
   if (uploadError) {
     console.error('[companions/portrait] storage upload failed', uploadError);
-    return json({ error: 'upload_failed' }, { status: 500 });
+    return json({ error: 'upload_failed', details: uploadError.message }, { status: 500 });
   }
 
   const {
     data: { publicUrl }
-  } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  } = writeClient.storage.from(BUCKET).getPublicUrl(path);
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await writeClient
     .from('companions')
     .update({ avatar_url: publicUrl })
     .eq('id', companionId)
@@ -76,9 +81,8 @@ export const POST: RequestHandler = async (event) => {
 
   if (updateError) {
     console.error('[companions/portrait] db update failed', updateError);
-    return json({ error: 'db_update_failed' }, { status: 500 });
+    return json({ error: 'db_update_failed', details: updateError.message }, { status: 500 });
   }
 
   return json({ url: publicUrl });
 };
-
