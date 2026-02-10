@@ -52,10 +52,11 @@ export const uploadCompanionPortrait = async (input: { companionId: string; data
   const res = await fetch('/api/companions/portrait', { method: 'POST', body: form });
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(payload?.error ?? 'portrait_upload_failed');
+    const base = payload?.error ?? 'portrait_upload_failed';
+    const details = typeof payload?.details === 'string' && payload.details ? payload.details : null;
+    throw new Error(details ? `${base}: ${details}` : base);
   }
   const url = payload?.url;
   if (typeof url !== 'string' || !url) throw new Error('portrait_upload_missing_url');
   return { url };
 };
-

@@ -154,17 +154,29 @@
         }
       }
       if (typeof asAny.toDataURL === 'function') {
-        const dataUrl = await asAny.toDataURL('image/png');
-        return typeof dataUrl === 'string' ? dataUrl : null;
+        // Prefer WebP for much smaller payloads (important for Storage upload limits).
+        // Fall back to PNG if the browser/model-viewer doesn't support WebP encoding.
+        const webp = await asAny.toDataURL('image/webp', 0.82);
+        if (typeof webp === 'string' && webp.startsWith('data:image/webp')) return webp;
+        const png = await asAny.toDataURL('image/png');
+        return typeof png === 'string' ? png : null;
       }
 
       const canvas = (viewer as any)?.shadowRoot?.querySelector?.('canvas') as HTMLCanvasElement | null;
       if (canvas && typeof canvas.toDataURL === 'function') {
+        try {
+          const webp = canvas.toDataURL('image/webp', 0.82);
+          if (typeof webp === 'string' && webp.startsWith('data:image/webp')) return webp;
+        } catch {
+          // Ignore and fall back to PNG.
+        }
         return canvas.toDataURL('image/png');
       }
 
       if (canvas && typeof canvas.toBlob === 'function') {
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        // Prefer WebP first.
+        let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82));
+        if (!blob) blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) return null;
         const dataUrl = await new Promise<string | null>((resolve) => {
           const reader = new FileReader();
