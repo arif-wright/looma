@@ -159,7 +159,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
         <div class="avatar-ring__meter" style={`--percent:${energyPct}`}>
           <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="avatar-ring__img" aria-hidden="true" />
         </div>
-        <span class="avatar-ring__label">Energy {energyPct}%</span>
+        <span class="avatar-ring__label"><span class="avatar-ring__label-pill">Energy {energyPct}%</span></span>
       </div>
       <div class="stat-block">
         <div>
@@ -327,28 +327,15 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     width: clamp(140px, 12vw, 168px);
     height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    /* Border-like ring instead of a big glowing orb. */
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    padding: 5px;
-    position: relative;
-  }
-
-  /* Energy ring: thin progress stroke hugging the portrait. */
-  .avatar-ring__meter::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
+    /* Thin ring that hugs the portrait (no big glowing disk). */
     background: conic-gradient(
-      rgba(94, 242, 255, 0.82) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.08) calc(var(--percent, 0) * 1%)
+      rgba(94, 242, 255, 0.9) calc(var(--percent, 0) * 1%),
+      rgba(255, 255, 255, 0.14) calc(var(--percent, 0) * 1%)
     );
-    /* Create a thin ring by masking out the center. */
-    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
-    mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
-    opacity: 0.95;
-    pointer-events: none;
+    padding: 7px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .avatar-ring__img {
@@ -357,7 +344,8 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     object-fit: cover;
     border-radius: inherit;
     display: block;
-    background: radial-gradient(circle at 30% 30%, rgba(24, 32, 64, 0.95), rgba(6, 10, 20, 0.85));
+    /* Ensure transparent PNG portraits still read clearly. */
+    background: radial-gradient(circle at 30% 30%, rgba(18, 24, 44, 0.98), rgba(6, 10, 20, 0.92));
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.14),
       inset 0 -18px 30px rgba(0, 0, 0, 0.35);
@@ -366,7 +354,17 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 
   .avatar-ring__label {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.76);
+  }
+
+  .avatar-ring__label-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.6rem;
+    background: rgba(8, 10, 18, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    letter-spacing: 0.02em;
   }
 
   @media (max-width: 720px) {
