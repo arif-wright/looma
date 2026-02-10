@@ -302,17 +302,26 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     letter-spacing: 0.18em;
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .card-head h3 {
     margin: 0.15rem 0 0;
     font-size: 1.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .card-subtitle {
     margin: 0.2rem 0 0;
     color: rgba(255, 255, 255, 0.65);
     font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mood-pill {
@@ -519,10 +528,45 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   }
 
   @media (max-width: 720px) {
+    .companion-card {
+      padding: 1.05rem;
+    }
+
     .card-body {
       grid-template-columns: 1fr;
       justify-items: center;
       text-align: center;
+    }
+
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    .card-head__meta {
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+
+    .card-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+    }
+
+    .card-head h3 {
+      font-size: 1.15rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.86rem;
+    }
+
+    .mood-pill,
+    .bond-pill {
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
     }
   }
 

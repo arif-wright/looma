@@ -699,14 +699,17 @@
   }
 
   .panel {
-    display: grid;
-    gap: 1.5rem;
+    --panel-gap: 1.5rem;
     padding: 2.1rem clamp(1.6rem, 3vw, 2.2rem);
     border-radius: 1.75rem;
     background: rgba(15, 23, 42, 0.72);
     border: 1px solid rgba(148, 163, 184, 0.16);
     box-shadow: 0 32px 64px rgba(8, 15, 30, 0.45);
     backdrop-filter: blur(18px);
+  }
+
+  .panel > :global(* + *) {
+    margin-top: var(--panel-gap);
   }
 
   .panel__header {
@@ -866,10 +869,11 @@
     }
 
     .panel {
-      gap: 1rem;
+      --panel-gap: 1rem;
       padding: 1.1rem 1rem;
       border-radius: 1.25rem;
       box-shadow: 0 18px 38px rgba(8, 15, 30, 0.38);
+      backdrop-filter: none;
     }
 
     .panel__title {
@@ -888,6 +892,16 @@
 
     .column-center {
       width: 100%;
+    }
+  }
+
+  /* Mobile browsers can drop composited layers while scrolling when elements animate from opacity:0.
+     Disable the initial fade-in on small screens to avoid “disappearing sections” flicker. */
+  @media (max-width: 767px) {
+    .fade-up {
+      opacity: 1;
+      transform: none;
+      animation: none;
     }
   }
 </style>
