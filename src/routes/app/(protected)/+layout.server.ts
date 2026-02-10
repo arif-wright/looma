@@ -274,7 +274,7 @@ export const load: LayoutServerLoad = async (event) => {
     const { data: activeRows, error: activeError } = await supabase
       .from('companions')
       .select(
-        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, stats:companion_stats(bond_level, bond_score)'
+        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, updated_at, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
       )
       .eq('owner_id', user.id)
       .order('is_active', { ascending: false })
@@ -286,6 +286,7 @@ export const load: LayoutServerLoad = async (event) => {
       console.error('[resolver] active companion lookup failed', activeError);
     } else if (activeRows && activeRows.length) {
       const row = activeRows[0] as Record<string, any>;
+      const statsRow = (row.stats as Record<string, any> | null) ?? null;
       activeCompanion = {
         id: row.id as string,
         name: (row.name as string) ?? 'Companion',
@@ -295,8 +296,20 @@ export const load: LayoutServerLoad = async (event) => {
         trust: (row.trust as number | null) ?? 0,
         energy: (row.energy as number | null) ?? 0,
         avatar_url: (row.avatar_url as string | null) ?? null,
-        bondLevel: (row.stats as Record<string, unknown> | null)?.bond_level as number | null ?? 0,
-        bondScore: (row.stats as Record<string, unknown> | null)?.bond_score as number | null ?? 0
+        bondLevel: (statsRow?.bond_level as number | null) ?? 0,
+        bondScore: (statsRow?.bond_score as number | null) ?? 0,
+        updated_at: (row.updated_at as string | null) ?? null,
+        stats: statsRow
+          ? {
+              fed_at: (statsRow.fed_at as string | null) ?? null,
+              played_at: (statsRow.played_at as string | null) ?? null,
+              groomed_at: (statsRow.groomed_at as string | null) ?? null,
+              last_passive_tick: (statsRow.last_passive_tick as string | null) ?? null,
+              last_daily_bonus_at: (statsRow.last_daily_bonus_at as string | null) ?? null,
+              bond_level: (statsRow.bond_level as number | null) ?? null,
+              bond_score: (statsRow.bond_score as number | null) ?? null
+            }
+          : null
       };
     }
   } catch (err) {

@@ -1,10 +1,10 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
-import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
 import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
 import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy';
+import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/companions/effectiveState';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
@@ -15,10 +15,32 @@ import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy'
   let bondLevelTag: number | null = null;
   let bondTagTimer: ReturnType<typeof setTimeout> | null = null;
 
-  $: moodMeta = companion ? getCompanionMoodMeta(companion.mood) : null;
-  $: affectionPct = companion ? Math.min(100, Math.max(0, companion.affection)) : 0;
-  $: trustPct = companion ? Math.min(100, Math.max(0, companion.trust)) : 0;
-  $: energyPct = companion ? Math.min(100, Math.max(0, companion.energy)) : 0;
+  $: companionAsInstance =
+    companion
+      ? ({
+          id: companion.id,
+          name: companion.name,
+          species: companion.species ?? 'Muse',
+          rarity: 'common',
+          level: 1,
+          xp: 0,
+          affection: companion.affection,
+          trust: companion.trust,
+          energy: companion.energy,
+          mood: companion.mood ?? 'steady',
+          avatar_url: companion.avatar_url ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: companion.updated_at ?? new Date().toISOString(),
+          stats: companion.stats ?? null
+        } as any)
+      : null;
+
+  $: effective = companionAsInstance ? computeCompanionEffectiveState(companionAsInstance) : null;
+  $: moodKey = effective?.moodKey ?? null;
+  $: moodLabel = effective?.moodLabel ?? null;
+  $: affectionPct = effective ? Math.min(100, Math.max(0, effective.affection)) : companion ? Math.min(100, Math.max(0, companion.affection)) : 0;
+  $: trustPct = effective ? Math.min(100, Math.max(0, effective.trust)) : companion ? Math.min(100, Math.max(0, companion.trust)) : 0;
+  $: energyPct = effective ? Math.min(100, Math.max(0, effective.energy)) : companion ? Math.min(100, Math.max(0, companion.energy)) : 0;
   $: speciesLabel = companion?.species ? `${companion.species}` : 'Unknown species';
   $: bondLevel = companion?.bondLevel ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
@@ -71,22 +93,18 @@ import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy'
         {companion ? speciesLabel : 'Choose a companion to travel beside you across Looma.'}
       </p>
     </div>
-    {#if (moodMeta && companion) || companion}
+    {#if companion}
       <div class="card-head__meta">
-        {#if moodMeta && companion}
-          <div class="pill-with-hint">
-            <span class={`mood-pill mood-pill--${moodMeta.key}`}>{moodMeta.label}</span>
-            <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" />
-          </div>
-        {/if}
-        {#if companion}
-          <div class="pill-with-hint">
-            <span class="bond-pill" aria-label={`Bond level ${bondLevel}`}>
-              Bond Lv {bondLevel}
-            </span>
-            <InfoTooltip text={BOND_LEVEL_TOOLTIP} label="Bond level explainer" />
-          </div>
-        {/if}
+        <div class="pill-with-hint">
+          <span class={`mood-pill mood-pill--${moodKey ?? 'steady'}`}>{moodLabel ?? 'Steady'}</span>
+          <InfoTooltip text={MOOD_TOOLTIP} label="What mood means" />
+        </div>
+        <div class="pill-with-hint">
+          <span class="bond-pill" aria-label={`Bond level ${bondLevel}`}>
+            Bond Lv {bondLevel}
+          </span>
+          <InfoTooltip text={BOND_LEVEL_TOOLTIP} label="Bond level explainer" />
+        </div>
       </div>
     {/if}
     {#if bondLevelTag}
@@ -115,7 +133,7 @@ import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy'
             <span style={`width:${trustPct}%`}></span>
           </div>
         </div>
-        <p class="mood-copy">{moodMeta?.description ?? 'Steady · content by your side.'}</p>
+        <p class="mood-copy">{moodKey ? moodDescriptionFor(moodKey) : 'Steady · content by your side.'}</p>
         <p class="bonus-copy">{bonusSummary}</p>
       </div>
     </div>
@@ -209,6 +227,13 @@ import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy'
     color: rgba(94, 242, 255, 0.9);
   }
 
+  .mood-pill--calm,
+  .mood-pill--quiet {
+    border-color: rgba(255, 255, 255, 0.18);
+    color: rgba(240, 244, 255, 0.82);
+  }
+
+  .mood-pill--waiting,
   .mood-pill--curious {
     border-color: rgba(236, 146, 255, 0.45);
     color: rgba(236, 146, 255, 0.9);
@@ -219,7 +244,14 @@ import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy'
     color: rgba(240, 244, 255, 0.8);
   }
 
+  .mood-pill--distant,
   .mood-pill--tired {
+    border-color: rgba(255, 196, 120, 0.5);
+    color: rgba(255, 196, 120, 0.85);
+  }
+
+  .mood-pill--resting,
+  .mood-pill--sleep {
     border-color: rgba(255, 196, 120, 0.5);
     color: rgba(255, 196, 120, 0.85);
   }

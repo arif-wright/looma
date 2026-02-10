@@ -62,6 +62,12 @@ export type ActiveCompanionSnapshot = {
   avatar_url?: string | null;
   bondLevel: number;
   bondScore: number;
+  // Optional fields used by derived mood/state logic on surfaces like /app/home.
+  updated_at?: string | null;
+  stats?: Pick<
+    CompanionStats,
+    'fed_at' | 'played_at' | 'groomed_at' | 'last_passive_tick' | 'last_daily_bonus_at' | 'bond_level' | 'bond_score'
+  > | null;
 };
 
 type RefreshResult = {
@@ -88,7 +94,9 @@ const deriveActiveSnapshot = (list: Companion[]): ActiveCompanionSnapshot | null
     energy: preferred.energy ?? 0,
     avatar_url: preferred.avatar_url ?? null,
     bondLevel,
-    bondScore
+    bondScore,
+    updated_at: preferred.updated_at ?? null,
+    stats: preferred.stats ?? null
   };
 };
 

@@ -62,6 +62,15 @@ export const moodLabelFor = (key: DerivedMoodKey) => {
   return 'Distant';
 };
 
+export const moodDescriptionFor = (key: DerivedMoodKey) => {
+  if (key === 'radiant') return 'Radiant · bright and present with you.';
+  if (key === 'calm') return 'Calm · settled at your side.';
+  if (key === 'quiet') return 'Quiet · staying close, a little reserved.';
+  if (key === 'waiting') return 'Waiting · ready when you are.';
+  if (key === 'resting') return 'Resting · taking a small pause.';
+  return 'Distant · could use a gentle check-in.';
+};
+
 export const computeCompanionEffectiveState = (instance: Companion, now: Date = new Date()): CompanionEffectiveState => {
   const stats: CompanionStats | null = instance.stats ?? null;
 

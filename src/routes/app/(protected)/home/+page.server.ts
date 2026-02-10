@@ -33,6 +33,8 @@ type CreatureMoment = {
   trust?: number | null;
   energy?: number | null;
   avatar_url?: string | null;
+  updated_at?: string | null;
+  stats?: Record<string, unknown> | Array<Record<string, unknown>> | null;
 };
 
 const DEFAULT_ENDCAP = {
@@ -153,7 +155,9 @@ export const load: PageServerLoad = async (event) => {
       try {
         const { data } = await supabase
           .from('companions')
-          .select('id, name, species, mood, state, is_active, slot_index, created_at, affection, trust, energy, avatar_url')
+          .select(
+            'id, name, species, mood, state, is_active, slot_index, created_at, updated_at, affection, trust, energy, avatar_url, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+          )
           .eq('owner_id', session.user.id)
           .order('is_active', { ascending: false })
           .order('slot_index', { ascending: true, nullsFirst: false })
@@ -162,10 +166,15 @@ export const load: PageServerLoad = async (event) => {
           .throwOnError();
 
         creatureMoments =
-          (data as CreatureMoment[] | null)?.map((row) => ({
-            ...row,
-            mood_label: row.mood ?? row.state ?? 'steady'
-          })) ?? [];
+          (data as CreatureMoment[] | null)?.map((row) => {
+            const statsRaw = (row as any).stats ?? null;
+            const stats = Array.isArray(statsRaw) ? statsRaw[0] ?? null : statsRaw;
+            return {
+              ...row,
+              stats,
+              mood_label: row.mood ?? row.state ?? 'steady'
+            };
+          }) ?? [];
       } catch (err) {
         diagnostics.push('creatures_query_failed');
         reportHomeLoadIssue('creatures_query_failed', { error: err instanceof Error ? err.message : String(err) });
@@ -261,18 +270,34 @@ export const load: PageServerLoad = async (event) => {
       });
     }
 
-    const rowToSnapshot = (row: CreatureMoment): ActiveCompanionSnapshot => ({
-      id: row.id,
-      name: row.name ?? 'Companion',
-      species: row.species ?? null,
-      mood: row.mood ?? row.state ?? null,
-      affection: row.affection ?? 0,
-      trust: row.trust ?? 0,
-      energy: row.energy ?? 0,
-      avatar_url: row.avatar_url ?? null,
-      bondLevel: 0,
-      bondScore: 0
-    });
+    const rowToSnapshot = (row: CreatureMoment): ActiveCompanionSnapshot => {
+      const statsRaw = (row.stats ?? null) as Record<string, any> | Array<Record<string, any>> | null;
+      const statsRow = Array.isArray(statsRaw) ? statsRaw[0] ?? null : statsRaw;
+      return {
+        id: row.id,
+        name: row.name ?? 'Companion',
+        species: row.species ?? null,
+        mood: row.mood ?? row.state ?? null,
+        affection: row.affection ?? 0,
+        trust: row.trust ?? 0,
+        energy: row.energy ?? 0,
+        avatar_url: row.avatar_url ?? null,
+        bondLevel: 0,
+        bondScore: 0,
+        updated_at: row.updated_at ?? null,
+        stats: statsRow
+          ? {
+              fed_at: (statsRow.fed_at as string | null) ?? null,
+              played_at: (statsRow.played_at as string | null) ?? null,
+              groomed_at: (statsRow.groomed_at as string | null) ?? null,
+              last_passive_tick: (statsRow.last_passive_tick as string | null) ?? null,
+              last_daily_bonus_at: (statsRow.last_daily_bonus_at as string | null) ?? null,
+              bond_level: (statsRow.bond_level as number | null) ?? null,
+              bond_score: (statsRow.bond_score as number | null) ?? null
+            }
+          : null
+      };
+    };
 
     const fallbackCompanion = creatureMoments.find((c) => c.is_active) ?? creatureMoments[0] ?? null;
     const activeCompanion =
