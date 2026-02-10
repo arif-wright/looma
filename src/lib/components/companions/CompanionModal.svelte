@@ -21,6 +21,7 @@
   } from '$lib/companions/portrait';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
+  import { shouldUploadPortrait, uploadCompanionPortrait, markPortraitUploaded } from '$lib/companions/portraitUpload';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -456,6 +457,23 @@
 
   $: if (open && companion) {
     void ensurePortrait();
+  }
+
+  // If we successfully captured a data-url portrait, persist it to Supabase so mobile can use `avatar_url`.
+  $: if (browser && open && companion?.id && typeof portraitSrc === 'string' && portraitSrc.startsWith('data:image/')) {
+    const id = companion.id;
+    const src = portraitSrc;
+    if (shouldUploadPortrait(id, src)) {
+      void (async () => {
+        try {
+          await uploadCompanionPortrait({ companionId: id, dataUrl: src });
+          markPortraitUploaded(id, src);
+        } catch (err) {
+          // Best-effort; ignore errors.
+          devLog('[CompanionModal] portrait upload failed', err);
+        }
+      })();
+    }
   }
 </script>
 

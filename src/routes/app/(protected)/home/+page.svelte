@@ -13,7 +13,6 @@
   import PeopleToFollow from '$lib/components/social/PeopleToFollow.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
   import CompanionPresenceCard from '$lib/components/home/CompanionPresenceCard.svelte';
-  import CompanionDockMobile from '$lib/components/companions/CompanionDock.svelte';
   import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
   import { companionRitualsStore, applyRitualUpdate } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
@@ -403,18 +402,8 @@
           {/if}
         </article>
 
-        <div class="md:hidden fade-up" data-delay="0" aria-label="Companion dock">
-          <CompanionDockMobile
-            companion={activeCompanion}
-            effective={activeEffective}
-            onOpen={() => {
-              void goto('/app/companions');
-            }}
-          />
-        </div>
-
         <CompanionPresenceCard
-          className="panel fade-up hidden md:block"
+          className="panel fade-up"
           data-delay="0"
           companion={activeCompanion}
           showStartHint={showStartHere}

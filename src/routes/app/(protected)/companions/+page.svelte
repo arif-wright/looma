@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
@@ -19,6 +19,12 @@
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
+  import { isProbablyValidPortrait } from '$lib/companions/portrait';
+  import {
+    markPortraitUploaded,
+    shouldUploadPortrait,
+    uploadCompanionPortrait
+  } from '$lib/companions/portraitUpload';
 
   export let data: PageData;
 
@@ -297,6 +303,8 @@
       showToast('Active companion updated');
       showSwitchMessage(`${localLabel} is with you now.`);
       logEvent('companion_set_active', { id: targetId, source: activeTab });
+      // Best-effort: ensure we have a Supabase-backed portrait so mobile can render without WebGL capture hosts.
+      void ensureSupabasePortrait(targetId);
     } catch (err) {
       console.error('[companions] set active failed', err);
       // Prefer re-syncing from the API rather than leaving the UI in a contradictory state.
@@ -305,6 +313,45 @@
       showToast(SAFE_LOAD_ERROR, 'error');
     } finally {
       setActiveBusyId = null;
+    }
+  };
+
+  const portraitUploadInFlight = new Set<string>();
+  const portraitUploadAttempted = new Set<string>();
+  const ensureSupabasePortrait = async (companionId: string) => {
+    if (!browser) return;
+    const target = ownedInstances.find((entry) => entry.id === companionId) ?? null;
+    if (!target) return;
+    // If we already have an avatar_url, nothing to do.
+    if (typeof target.avatar_url === 'string' && target.avatar_url) return;
+    // Avoid spamming attempts if capture/upload isn't possible in the current session.
+    if (portraitUploadAttempted.has(companionId)) return;
+    if (portraitUploadInFlight.has(companionId)) return;
+
+    portraitUploadInFlight.add(companionId);
+    portraitUploadAttempted.add(companionId);
+    try {
+      // Wait for the keyed model to mount after switching.
+      await tick();
+      await new Promise((r) => setTimeout(r, 60));
+
+      const dataUrl = (await museHostRef?.capturePortrait?.()) ?? null;
+      if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') return;
+      if (!shouldUploadPortrait(companionId, dataUrl)) return;
+
+      const { url } = await uploadCompanionPortrait({ companionId, dataUrl });
+      markPortraitUploaded(companionId, dataUrl);
+
+      // Update local roster so the UI (and any downstream surfaces) pick up the new avatar immediately.
+      companionState.replaceInstances(
+        ownedInstances.map((entry) => (entry.id === companionId ? { ...entry, avatar_url: url } : entry)),
+        activeCompanion?.id ?? null
+      );
+      rosterState = get(companionState);
+    } catch (err) {
+      console.debug('[companions] portrait upload skipped/failed', err);
+    } finally {
+      portraitUploadInFlight.delete(companionId);
     }
   };
 
@@ -358,6 +405,11 @@
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
+
+  // On mobile, users might never see a WebGL-backed dock. Generate + persist an avatar when missing.
+  $: if (browser && activeCompanion?.id) {
+    void ensureSupabasePortrait(activeCompanion.id);
+  }
   $: effectiveById = new Map(
     ownedInstances.map((instance) => [instance.id, computeCompanionEffectiveState(instance, new Date(nowTick))] as const)
   );
