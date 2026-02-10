@@ -7,11 +7,11 @@ import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
 import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP } from '$lib/companions/companionCopy';
 import { computeCompanionEffectiveState, moodDescriptionFor } from '$lib/companions/effectiveState';
 import {
-  clearCachedCompanionPortrait,
+  captureCompanionPortrait,
   getCachedCompanionPortrait,
-  isProbablyNonBlankPortrait,
   isProbablyValidPortrait
 } from '$lib/companions/portrait';
+import { getPortraitCaptureHost } from '$lib/companions/portraitHost';
 
   export let companion: ActiveCompanionSnapshot | null = null;
   export let className = '';
@@ -27,20 +27,10 @@ import {
 
   const loadPortrait = async (instanceId: string) => {
     const requestId = ++portraitRequest;
-    const cached = getCachedCompanionPortrait(instanceId);
-    if (!isProbablyValidPortrait(cached)) {
-      portraitSrc = null;
-      return;
-    }
-
-    // Show immediately, then verify it's not a "blank but valid" cached frame.
-    portraitSrc = cached;
-    const ok = await isProbablyNonBlankPortrait(cached);
+    const captureHost = getPortraitCaptureHost();
+    const result = await captureCompanionPortrait(instanceId, captureHost ?? undefined);
     if (requestId !== portraitRequest) return;
-    if (!ok) {
-      clearCachedCompanionPortrait(instanceId);
-      portraitSrc = null;
-    }
+    portraitSrc = isProbablyValidPortrait(result) ? result : null;
   };
 
   $: companionAsInstance =

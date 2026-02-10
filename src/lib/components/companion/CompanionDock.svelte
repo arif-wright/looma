@@ -1,12 +1,13 @@
 <script lang="ts">
   import { browser, dev } from '$app/environment';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { Eye, EyeOff, Sparkles, Sparkle, PanelRightOpen } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import ReactionBubble from '$lib/components/companion/ReactionBubble.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+  import { registerPortraitCaptureHost } from '$lib/companions/portraitHost';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -22,6 +23,8 @@
   let expanded = false;
   let localVisible = true;
   let localMotion = true;
+  let museRef: MuseModel | null = null;
+  let unregisterCaptureHost: (() => void) | null = null;
 
   const readBool = (value: string | null, fallback: boolean) => {
     if (value === null) return fallback;
@@ -38,6 +41,11 @@
     if (!browser) return;
     localVisible = readBool(window.localStorage.getItem(STORAGE_VISIBLE), true);
     localMotion = readBool(window.localStorage.getItem(STORAGE_MOTION), true);
+  });
+
+  onDestroy(() => {
+    unregisterCaptureHost?.();
+    unregisterCaptureHost = null;
   });
 
   $: if (browser) {
@@ -75,6 +83,17 @@
   $: activeCompanionName = companionName?.trim() || 'Muse';
   $: activeCosmetics = normalizeCompanionCosmetics(companionCosmetics);
   $: effectiveMotion = motionEnabled && localMotion;
+
+  $: if (browser) {
+    unregisterCaptureHost?.();
+    unregisterCaptureHost = registerPortraitCaptureHost(async () => {
+      try {
+        return (await museRef?.capturePortrait?.()) ?? null;
+      } catch {
+        return null;
+      }
+    });
+  }
 </script>
 
 {#if visible}
@@ -102,6 +121,7 @@
 
       <div class="companion-dock__viewer">
         <MuseModel
+          bind:this={museRef}
           size={expanded ? '184px' : '116px'}
           autoplay={effectiveMotion}
           cameraControls={false}
