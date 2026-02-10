@@ -227,6 +227,44 @@
       // Ignore.
     }
   };
+  const clearPortraitSig = (companionId: string) => {
+    if (!browser) return;
+    try {
+      window.localStorage.removeItem(`${STORAGE_PORTRAIT_SIG_PREFIX}${companionId}`);
+    } catch {
+      // Ignore.
+    }
+  };
+
+  const STORAGE_PORTRAIT_VERIFIED_PREFIX = 'looma:companionPortraitVerified:';
+  const getPortraitVerified = (companionId: string) => {
+    if (!browser) return null;
+    try {
+      return window.localStorage.getItem(`${STORAGE_PORTRAIT_VERIFIED_PREFIX}${companionId}`);
+    } catch {
+      return null;
+    }
+  };
+  const setPortraitVerified = (companionId: string, sig: string) => {
+    if (!browser) return;
+    try {
+      window.localStorage.setItem(`${STORAGE_PORTRAIT_VERIFIED_PREFIX}${companionId}`, sig);
+    } catch {
+      // Ignore.
+    }
+  };
+
+  const blobToDataUrl = (blob: Blob) =>
+    new Promise<string | null>((resolve) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      } catch {
+        resolve(null);
+      }
+    });
 
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
@@ -362,8 +400,28 @@
     const target = ownedInstances.find((entry) => entry.id === companionId) ?? null;
     if (!target) return;
     const attemptKey = `${companionId}:${cosmeticsSig}`;
-    // If we already have an avatar_url AND the cosmetics signature matches the last uploaded portrait, nothing to do.
-    if (typeof target.avatar_url === 'string' && target.avatar_url && getPortraitSig(companionId) === cosmeticsSig) return;
+
+    // If we already have an avatar_url AND the cosmetics signature matches the last uploaded portrait,
+    // verify the stored image isn't blank (older versions could upload empty frames and then "lock" the sig).
+    if (typeof target.avatar_url === 'string' && target.avatar_url && getPortraitSig(companionId) === cosmeticsSig) {
+      const verified = getPortraitVerified(companionId);
+      if (verified === cosmeticsSig) return;
+      try {
+        const res = await fetch(target.avatar_url, { cache: 'no-store' });
+        const blob = await res.blob();
+        const asDataUrl = await blobToDataUrl(blob);
+        if (asDataUrl && (await isProbablyNonBlankPortrait(asDataUrl))) {
+          setPortraitVerified(companionId, cosmeticsSig);
+          return;
+        }
+      } catch {
+        // If verification fails, fall through and attempt a fresh capture/upload.
+      }
+
+      // Signature was locked but the stored portrait is blank or unverifiable; clear and re-attempt.
+      clearPortraitSig(companionId);
+    }
+
     const attempts = portraitUploadAttempts.get(attemptKey) ?? 0;
     if (attempts >= 5) return;
     if (portraitUploadInFlight.has(companionId)) return;
