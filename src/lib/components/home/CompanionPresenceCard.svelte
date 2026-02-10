@@ -395,10 +395,11 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   }
 
 	  .home-avatar__meter {
-	    width: clamp(140px, 12vw, 168px);
-	    /* Safari can occasionally end up with fractional layout mismatches; force a true square. */
+	    /* Explicit width+height avoids Safari oddities where aspect-ratio doesn't apply as expected. */
+	    --avatar-meter-size: clamp(140px, 12vw, 168px);
+	    width: var(--avatar-meter-size);
+	    height: var(--avatar-meter-size);
 	    aspect-ratio: 1 / 1;
-	    height: auto;
 	    border-radius: 999px;
 	    /* No filled disk behind the portrait. Keep this container transparent. */
 	    background: transparent;
