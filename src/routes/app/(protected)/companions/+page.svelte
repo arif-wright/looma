@@ -15,7 +15,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
-  import { DEFAULT_COMPANION_COSMETICS } from '$lib/companions/cosmetics';
+  import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
@@ -202,6 +202,32 @@
   let discoverModal: DiscoverCompanionDefinition | null = null;
   let museHostRef: MuseModel | null = null;
 
+  const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
+  const stableSig = (value: Record<string, unknown>) => {
+    const keys = Object.keys(value).sort();
+    const normalized: Record<string, unknown> = {};
+    keys.forEach((key) => {
+      normalized[key] = value[key];
+    });
+    return JSON.stringify(normalized);
+  };
+  const getPortraitSig = (companionId: string) => {
+    if (!browser) return null;
+    try {
+      return window.localStorage.getItem(`${STORAGE_PORTRAIT_SIG_PREFIX}${companionId}`);
+    } catch {
+      return null;
+    }
+  };
+  const setPortraitSig = (companionId: string, sig: string) => {
+    if (!browser) return;
+    try {
+      window.localStorage.setItem(`${STORAGE_PORTRAIT_SIG_PREFIX}${companionId}`, sig);
+    } catch {
+      // Ignore.
+    }
+  };
+
   let pendingPrefetches: Record<string, PrefetchedEvent[]> = (data.tickEvents ?? []).reduce<Record<string, PrefetchedEvent[]>>(
     (acc, event) => {
       if (!event?.companionId) return acc;
@@ -304,7 +330,7 @@
       showSwitchMessage(`${localLabel} is with you now.`);
       logEvent('companion_set_active', { id: targetId, source: activeTab });
       // Best-effort: ensure we have a Supabase-backed portrait so mobile can render without WebGL capture hosts.
-      void ensureSupabasePortrait(targetId);
+      if (activeCosmeticsSig) void ensureSupabasePortrait(targetId, activeCosmeticsSig);
     } catch (err) {
       console.error('[companions] set active failed', err);
       // Prefer re-syncing from the API rather than leaving the UI in a contradictory state.
@@ -318,18 +344,19 @@
 
   const portraitUploadInFlight = new Set<string>();
   const portraitUploadAttempted = new Set<string>();
-  const ensureSupabasePortrait = async (companionId: string) => {
+  const ensureSupabasePortrait = async (companionId: string, cosmeticsSig: string) => {
     if (!browser) return;
     const target = ownedInstances.find((entry) => entry.id === companionId) ?? null;
     if (!target) return;
-    // If we already have an avatar_url, nothing to do.
-    if (typeof target.avatar_url === 'string' && target.avatar_url) return;
-    // Avoid spamming attempts if capture/upload isn't possible in the current session.
-    if (portraitUploadAttempted.has(companionId)) return;
+    const attemptKey = `${companionId}:${cosmeticsSig}`;
+    // If we already have an avatar_url AND the cosmetics signature matches the last uploaded portrait, nothing to do.
+    if (typeof target.avatar_url === 'string' && target.avatar_url && getPortraitSig(companionId) === cosmeticsSig) return;
+    // Avoid spamming attempts if capture/upload isn't possible in the current session for this signature.
+    if (portraitUploadAttempted.has(attemptKey)) return;
     if (portraitUploadInFlight.has(companionId)) return;
 
     portraitUploadInFlight.add(companionId);
-    portraitUploadAttempted.add(companionId);
+    portraitUploadAttempted.add(attemptKey);
     try {
       // Wait for the keyed model to mount after switching.
       await tick();
@@ -337,10 +364,15 @@
 
       const dataUrl = (await museHostRef?.capturePortrait?.()) ?? null;
       if (!isProbablyValidPortrait(dataUrl) || typeof dataUrl !== 'string') return;
-      if (!shouldUploadPortrait(companionId, dataUrl)) return;
+      if (!shouldUploadPortrait(companionId, dataUrl)) {
+        // Even if the screenshot didn't change, mark the signature so we don't retry for this cosmetics state.
+        setPortraitSig(companionId, cosmeticsSig);
+        return;
+      }
 
       const { url } = await uploadCompanionPortrait({ companionId, dataUrl });
       markPortraitUploaded(companionId, dataUrl);
+      setPortraitSig(companionId, cosmeticsSig);
 
       // Update local roster so the UI (and any downstream surfaces) pick up the new avatar immediately.
       companionState.replaceInstances(
@@ -405,10 +437,16 @@
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
+  $: portableActiveCompanion = (data as any)?.portableActiveCompanion ?? null;
+  $: activeCosmetics =
+    portableActiveCompanion?.id && portableActiveCompanion.id === activeCompanion?.id
+      ? normalizeCompanionCosmetics(portableActiveCompanion.cosmetics)
+      : DEFAULT_COMPANION_COSMETICS;
+  $: activeCosmeticsSig = stableSig(activeCosmetics);
 
   // On mobile, users might never see a WebGL-backed dock. Generate + persist an avatar when missing.
-  $: if (browser && activeCompanion?.id) {
-    void ensureSupabasePortrait(activeCompanion.id);
+  $: if (browser && activeCompanion?.id && activeCosmeticsSig) {
+    void ensureSupabasePortrait(activeCompanion.id, activeCosmeticsSig);
   }
   $: effectiveById = new Map(
     ownedInstances.map((instance) => [instance.id, computeCompanionEffectiveState(instance, new Date(nowTick))] as const)
@@ -608,8 +646,9 @@
             animationName={museAnimation}
             poster={undefined}
             cameraTarget={undefined}
-            auraColor={DEFAULT_COMPANION_COSMETICS.auraColor}
-            glowIntensity={DEFAULT_COMPANION_COSMETICS.glowIntensity}
+            preserveDrawingBuffer
+            auraColor={activeCosmetics.auraColor}
+            glowIntensity={activeCosmetics.glowIntensity}
           />
         {/key}
       {/if}
