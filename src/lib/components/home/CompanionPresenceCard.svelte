@@ -310,7 +310,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 
   .card-body {
     display: grid;
-    grid-template-columns: 160px 1fr;
+    grid-template-columns: 190px 1fr;
     gap: 1.25rem;
     align-items: center;
   }
@@ -324,14 +324,14 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   }
 
   .avatar-ring__meter {
-    width: 120px;
-    height: 120px;
+    width: clamp(140px, 12vw, 168px);
+    height: clamp(140px, 12vw, 168px);
     border-radius: 999px;
     background: conic-gradient(
-      rgba(94, 242, 255, 0.9) calc(var(--percent, 0) * 1%),
-      rgba(255, 255, 255, 0.08) calc(var(--percent, 0) * 1%)
+      rgba(94, 242, 255, 0.65) calc(var(--percent, 0) * 1%),
+      rgba(255, 255, 255, 0.1) calc(var(--percent, 0) * 1%)
     );
-    padding: 4px;
+    padding: 6px;
     position: relative;
   }
 
@@ -341,12 +341,24 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
     object-fit: cover;
     border-radius: inherit;
     display: block;
-    background: rgba(255, 255, 255, 0.05);
+    background: radial-gradient(circle at 30% 30%, rgba(24, 32, 64, 0.95), rgba(6, 10, 20, 0.85));
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+      inset 0 -18px 30px rgba(0, 0, 0, 0.35);
+    filter: contrast(1.08) saturate(1.05);
   }
 
   .avatar-ring__label {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.7);
+  }
+
+  @media (max-width: 720px) {
+    .card-body {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      text-align: center;
+    }
   }
 
   .stat-block {
