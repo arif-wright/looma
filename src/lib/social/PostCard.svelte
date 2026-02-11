@@ -4,12 +4,12 @@
   import CommentList from './CommentList.svelte';
   import ThreadDrawer from './ThreadDrawer.svelte';
   import type { CommentNode, PostRow } from './types';
-import { canonicalPostPath } from '$lib/threads/permalink';
-import { browser } from '$app/environment';
-import RunShareCard from '$lib/components/social/RunShareCard.svelte';
-import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
-import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
-import ReportModal from '$lib/components/modals/ReportModal.svelte';
+  import { canonicalPostPath } from '$lib/threads/permalink';
+  import { browser } from '$app/environment';
+  import RunShareCard from '$lib/components/social/RunShareCard.svelte';
+  import AchievementShareCard from '$lib/components/social/AchievementShareCard.svelte';
+  import type { RunShareMeta, AchievementShareMeta } from '$lib/social/types';
+  import ReportModal from '$lib/components/modals/ReportModal.svelte';
 
   let supabase: ReturnType<typeof supabaseBrowser> | null = null;
 
@@ -46,6 +46,8 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
   let commentChannel: any = null;
   let menuOpen = false;
   let reportOpen = false;
+  let avatarLoadFailed = false;
+  let lastAvatarKey = '';
 
   let lastPropLikeCount = likeCount;
   $: {
@@ -67,10 +69,26 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
 
   $: legacyHandle = post.handle ?? null;
   $: authorHandle = post.author_handle ?? legacyHandle ?? null;
-  $: authorAvatar = post.author_avatar ?? post.avatar_url ?? '/avatar.svg';
+  $: authorAvatarRaw = post.author_avatar ?? post.avatar_url ?? null;
+  $: authorAvatar =
+    typeof authorAvatarRaw === 'string' && authorAvatarRaw.trim().length > 0 ? authorAvatarRaw : null;
   $: authorName =
     post.author_name ??
     (post.display_name ?? (authorHandle ? `@${authorHandle}` : 'Someone'));
+  $: avatarFallbackText = (() => {
+    const source = authorName?.trim() || (authorHandle?.trim() ? `@${authorHandle}` : '');
+    if (!source) return 'U';
+    const tokens = source.replace(/^@/, '').split(/\s+/).filter(Boolean);
+    if (tokens.length >= 2) {
+      return `${tokens[0]?.[0] ?? ''}${tokens[1]?.[0] ?? ''}`.toUpperCase();
+    }
+    return (tokens[0]?.[0] ?? 'U').toUpperCase();
+  })();
+  $: avatarKey = `${post.id}:${authorAvatar ?? ''}`;
+  $: if (avatarKey !== lastAvatarKey) {
+    lastAvatarKey = avatarKey;
+    avatarLoadFailed = false;
+  }
   $: profileHref =
     authorHandle && authorHandle.length > 0 ? `/app/u/${authorHandle}` : `/u/${authorHandle ?? post.user_id}`;
   $: threadSlug = (post.slug ?? null) as string | null;
@@ -210,6 +228,10 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
     menuOpen = !menuOpen;
   }
 
+  function handleAvatarError() {
+    avatarLoadFailed = true;
+  }
+
   function handleReport() {
     reportOpen = true;
     menuOpen = false;
@@ -301,7 +323,13 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
 <article class={`post-card ${highlighted ? 'highlighted' : ''}`}>
   <header class="post-header">
     <div class="identity">
-      <img class="avatar" src={authorAvatar} alt="" width="40" height="40" loading="lazy" />
+      <span class="avatar" aria-hidden="true">
+        {#if authorAvatar && !avatarLoadFailed}
+          <img class="avatar__image" src={authorAvatar} alt="" width="40" height="40" loading="lazy" on:error={handleAvatarError} />
+        {:else}
+          <span class="avatar__fallback">{avatarFallbackText}</span>
+        {/if}
+      </span>
       <div class="meta">
         <a class="name" href={profileHref}>{authorName}</a>
         <div class="sub">
@@ -440,9 +468,32 @@ import ReportModal from '$lib/components/modals/ReportModal.svelte';
   }
 
   .avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .avatar__image {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
     object-fit: cover;
+  }
+
+  .avatar__fallback {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(226, 232, 240, 0.95);
+    text-transform: uppercase;
+    line-height: 1;
   }
 
   .meta {
