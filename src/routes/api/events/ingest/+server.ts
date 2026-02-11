@@ -11,6 +11,7 @@ import { applyWorldStateBoundary, markWorldWhisperShown } from '$lib/server/cont
 import { syncPortableState } from '$lib/server/context/portableSync';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
+import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
 import {
   COMPANION_MILESTONE_RULES,
   FIRST_ACTIVE_AT_ITEM_KEY,
@@ -22,7 +23,8 @@ const ALLOWED_TYPES = new Set([
   'session.end',
   'session.return',
   'game.session.start',
-  'game.complete'
+  'game.complete',
+  'identity.complete'
 ]);
 const WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
@@ -64,6 +66,7 @@ const coercePortableState = (input: unknown): PortableState => {
     version: PORTABLE_STATE_VERSION,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
     items: Array.isArray(payload.items) ? (payload.items as PortableState['items']) : [],
+    identity: coercePortableIdentity(payload.identity),
     companions: normalizePortableCompanions(payload.companions)
   };
 };

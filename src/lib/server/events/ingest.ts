@@ -3,6 +3,9 @@ import type { RequestEvent } from '@sveltejs/kit';
 type ServerEventMeta = {
   sessionId?: string | null;
   ts?: string;
+  suppressReactions?: boolean;
+  suppressMemory?: boolean;
+  suppressAdaptation?: boolean;
 };
 
 type ServerEventPayload = Record<string, unknown> | null | undefined;
@@ -22,7 +25,10 @@ export const ingestServerEvent = async (
         payload: payload ?? undefined,
         meta: {
           sessionId: meta?.sessionId ?? null,
-          ts: meta?.ts ?? new Date().toISOString()
+          ts: meta?.ts ?? new Date().toISOString(),
+          suppressReactions: meta?.suppressReactions === true,
+          suppressMemory: meta?.suppressMemory === true,
+          suppressAdaptation: meta?.suppressAdaptation === true
         }
       })
     });

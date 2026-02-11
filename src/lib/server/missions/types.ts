@@ -4,6 +4,11 @@ export type MissionCost = {
   energy?: number;
 };
 
+export type MissionRequirements = {
+  minLevel?: number;
+  minEnergy?: number;
+};
+
 export type MissionDefinition = {
   id: string;
   owner_id: string | null;
@@ -15,6 +20,7 @@ export type MissionDefinition = {
   xp_reward: number | null;
   type: MissionType;
   cost: MissionCost | null;
+  requirements: MissionRequirements | null;
   cooldown_ms: number | null;
   privacy_tags: string[] | null;
 };
@@ -31,4 +37,9 @@ export type MissionSessionRow = {
 
 export type MissionUser = {
   id: string;
+};
+
+export type MissionStartContext = {
+  level: number;
+  energy: number;
 };

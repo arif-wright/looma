@@ -13,6 +13,7 @@ const baseMission: MissionDefinition = {
   xp_reward: 0,
   type: 'action',
   cost: null,
+  requirements: null,
   cooldown_ms: null,
   privacy_tags: null
 };
@@ -22,7 +23,8 @@ describe('validateMissionStart', () => {
     const result = validateMissionStart(
       { id: 'u1' },
       { ...baseMission, type: 'identity', cost: { energy: 2 } },
-      null
+      null,
+      { level: 1, energy: 10 }
     );
     expect(result.ok).toBe(false);
   });
@@ -31,7 +33,8 @@ describe('validateMissionStart', () => {
     const result = validateMissionStart(
       { id: 'u1' },
       { ...baseMission, type: 'action', cost: {} },
-      null
+      null,
+      { level: 1, energy: 10 }
     );
     expect(result.ok).toBe(false);
   });
@@ -40,9 +43,30 @@ describe('validateMissionStart', () => {
     const result = validateMissionStart(
       { id: 'u1' },
       { ...baseMission, type: 'action', cost: { energy: 0 } },
-      null
+      null,
+      { level: 1, energy: 10 }
     );
     expect(result.ok).toBe(true);
+  });
+
+  it('enforces world mission cost when cost exists', () => {
+    const result = validateMissionStart(
+      { id: 'u1' },
+      { ...baseMission, type: 'world', cost: {} },
+      null,
+      { level: 1, energy: 10 }
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('enforces level requirements', () => {
+    const result = validateMissionStart(
+      { id: 'u1' },
+      { ...baseMission, requirements: { minLevel: 3 } },
+      null,
+      { level: 2, energy: 10 }
+    );
+    expect(result.ok).toBe(false);
   });
 });
 

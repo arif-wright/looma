@@ -1,4 +1,4 @@
-import type { MissionCost, MissionDefinition, MissionType } from './types';
+import type { MissionCost, MissionDefinition, MissionRequirements, MissionType } from './types';
 
 const isMissionType = (value: unknown): value is MissionType =>
   value === 'identity' || value === 'action' || value === 'world';
@@ -10,6 +10,16 @@ const parseCost = (value: unknown): MissionCost | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const energy = asNumberOrNull((value as Record<string, unknown>).energy);
   return energy === null ? {} : { energy };
+};
+
+const parseRequirements = (value: unknown): MissionRequirements | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const minLevel = asNumberOrNull((value as Record<string, unknown>).minLevel);
+  const minEnergy = asNumberOrNull((value as Record<string, unknown>).minEnergy);
+  const next: MissionRequirements = {};
+  if (minLevel !== null) next.minLevel = minLevel;
+  if (minEnergy !== null) next.minEnergy = minEnergy;
+  return Object.keys(next).length ? next : {};
 };
 
 export const parseMissionDefinition = (row: Record<string, unknown>): MissionDefinition | null => {
@@ -32,6 +42,7 @@ export const parseMissionDefinition = (row: Record<string, unknown>): MissionDef
     xp_reward: asNumberOrNull(row.xp_reward),
     type,
     cost: parseCost(row.cost),
+    requirements: parseRequirements(row.requirements),
     cooldown_ms: asNumberOrNull(row.cooldown_ms),
     privacy_tags: privacyTags
   };

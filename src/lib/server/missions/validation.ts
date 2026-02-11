@@ -1,4 +1,4 @@
-import type { MissionDefinition, MissionSessionRow, MissionUser } from './types';
+import type { MissionDefinition, MissionSessionRow, MissionStartContext, MissionUser } from './types';
 
 export type ValidationResult =
   | { ok: true }
@@ -19,6 +19,7 @@ export const validateMissionStart = (
   user: MissionUser,
   mission: MissionDefinition,
   lastSession: MissionSessionRow | null,
+  context: MissionStartContext,
   now = Date.now()
 ): ValidationResult => {
   if (!user?.id) {
@@ -33,6 +34,26 @@ export const validateMissionStart = (
     return { ok: false, status: 409, code: 'mission_unavailable', message: 'Mission is not available.' };
   }
 
+  const minLevel = mission.requirements?.minLevel;
+  if (isFiniteNumber(minLevel) && context.level < minLevel) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'mission_requirement_level',
+      message: `Requires level ${minLevel} or higher.`
+    };
+  }
+
+  const minEnergy = mission.requirements?.minEnergy;
+  if (isFiniteNumber(minEnergy) && context.energy < minEnergy) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'mission_requirement_energy',
+      message: `Requires at least ${minEnergy} energy.`
+    };
+  }
+
   if (mission.type === 'identity') {
     if (hasAnyCostField(mission.cost)) {
       return {
@@ -44,14 +65,14 @@ export const validateMissionStart = (
     }
   }
 
-  if (mission.type === 'action' && mission.cost) {
+  if ((mission.type === 'action' || mission.type === 'world') && mission.cost) {
     const costEnergy = readCostEnergy(mission);
     if (costEnergy === null || costEnergy < 0) {
       return {
         ok: false,
         status: 400,
-        code: 'action_cost_invalid',
-        message: 'Action mission cost.energy must be present and >= 0 when cost exists.'
+        code: 'hybrid_cost_invalid',
+        message: 'Action/world mission cost.energy must be present and >= 0 when cost exists.'
       };
     }
   }

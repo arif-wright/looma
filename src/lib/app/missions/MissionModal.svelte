@@ -19,6 +19,14 @@
   $: bonus = $activeCompanionBonus;
   $: xpBoost = Math.round(((bonus?.xpMultiplier ?? 1) - 1) * 100);
   $: missionEnergyBonus = bonus?.missionEnergyBonus ?? 0;
+  $: missionType =
+    mission?.type === 'identity' || mission?.type === 'world' || mission?.type === 'action'
+      ? mission.type
+      : 'action';
+  $: missionTypeLabel = missionType === 'identity' ? 'Identity' : missionType === 'world' ? 'World' : 'Action';
+  $: missionTypeHint =
+    missionType === 'identity' ? 'No cost' : missionType === 'world' ? 'Usually no cost' : 'Energy cost';
+  $: energyCost = missionType === 'action' ? mission?.cost?.energy ?? 0 : null;
 
   function close() {
     dispatch('close');
@@ -111,6 +119,10 @@
         <h2 id="mission-modal-title" class="text-2xl font-semibold text-slate-50">
           {mission.title ?? 'Mission'}
         </h2>
+        <div class="type-row">
+          <span class={`type-pill ${missionType}`}>{missionTypeLabel}</span>
+          <span class="type-hint">{missionTypeHint}</span>
+        </div>
       </header>
 
       {#if mission.summary}
@@ -121,6 +133,14 @@
         <p id="mission-modal-summary" class="text-[15px] leading-relaxed text-slate-200/80">
           Get ready to dive into this mission. We&apos;ll restore your last progress when you launch.
         </p>
+      {/if}
+
+      {#if missionType === 'identity'}
+        <p class="privacy-note">You&rsquo;re in control of what Looma remembers.</p>
+      {/if}
+
+      {#if missionType === 'action'}
+        <p class="action-cost">Energy cost: <strong>{energyCost}</strong></p>
       {/if}
 
       {#if xpBoost > 0 || missionEnergyBonus > 0}
@@ -153,6 +173,12 @@
           <dd class="text-slate-100/90">{mission.xp_reward ?? 250}</dd>
         </div>
       </dl>
+
+      {#if missionType === 'action'}
+        <p class="reward-summary">
+          Expected rewards: +{mission.energy_reward ?? 0} energy and +{mission.xp_reward ?? 0} XP.
+        </p>
+      {/if}
 
       <footer class="flex justify-end items-center gap-3 pt-3 border-t border-white/10">
         <button
@@ -190,5 +216,70 @@
     border-radius: 0.85rem;
     padding: 0.4rem 0.75rem;
     background: rgba(59, 130, 246, 0.08);
+  }
+
+  .type-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .type-pill {
+    display: inline-flex;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.2rem 0.62rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .type-pill.identity {
+    border-color: rgba(196, 181, 253, 0.42);
+    background: rgba(196, 181, 253, 0.16);
+    color: rgba(237, 233, 254, 0.96);
+  }
+
+  .type-pill.action {
+    border-color: rgba(251, 191, 36, 0.46);
+    background: rgba(251, 191, 36, 0.16);
+    color: rgba(254, 243, 199, 0.96);
+  }
+
+  .type-pill.world {
+    border-color: rgba(34, 211, 238, 0.46);
+    background: rgba(34, 211, 238, 0.16);
+    color: rgba(207, 250, 254, 0.96);
+  }
+
+  .type-hint {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.86);
+  }
+
+  .privacy-note {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(224, 231, 255, 0.93);
+  }
+
+  .action-cost {
+    margin: 0;
+    font-size: 0.86rem;
+    color: rgba(254, 240, 138, 0.95);
+  }
+
+  .action-cost strong {
+    color: rgba(254, 243, 199, 0.98);
+  }
+
+  .reward-summary {
+    margin: 0;
+    font-size: 0.84rem;
+    color: rgba(250, 245, 255, 0.95);
   }
 </style>

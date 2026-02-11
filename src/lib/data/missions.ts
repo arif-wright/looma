@@ -10,6 +10,7 @@ export type MissionRow = {
   xp_reward: number | null;
   type?: 'identity' | 'action' | 'world' | null;
   cost?: { energy?: number } | null;
+  requirements?: { minLevel?: number; minEnergy?: number } | null;
   cooldown_ms?: number | null;
   privacy_tags?: string[] | null;
   meta?: Record<string, unknown> | null;
@@ -19,7 +20,9 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
   const supabase = supabaseBrowser();
   const { data, error } = await supabase
     .from('missions')
-    .select('id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, cooldown_ms, privacy_tags, meta')
+    .select(
+      'id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, cooldown_ms, privacy_tags, meta'
+    )
     .eq('id', id)
     .limit(1)
     .maybeSingle();
@@ -48,6 +51,16 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
             const energy = (row.cost as Record<string, unknown>).energy;
             if (typeof energy === 'number') return { energy };
             return {};
+          })()
+        : null,
+    requirements:
+      row.requirements && typeof row.requirements === 'object'
+        ? (() => {
+            const raw = row.requirements as Record<string, unknown>;
+            const out: { minLevel?: number; minEnergy?: number } = {};
+            if (typeof raw.minLevel === 'number') out.minLevel = raw.minLevel;
+            if (typeof raw.minEnergy === 'number') out.minEnergy = raw.minEnergy;
+            return out;
           })()
         : null,
     cooldown_ms: typeof row.cooldown_ms === 'number' ? row.cooldown_ms : null,

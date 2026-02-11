@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 import { getConsentFlags } from '$lib/server/consent';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
 import { normalizePortableCompanions, withNormalizedCompanions } from '$lib/server/context/portableCompanions';
+import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
 
 const coercePortableState = (input: unknown): PortableState => {
   const now = new Date().toISOString();
@@ -33,6 +34,7 @@ const coercePortableState = (input: unknown): PortableState => {
     version: PORTABLE_STATE_VERSION,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
     items,
+    identity: coercePortableIdentity(payload.identity),
     companions: normalizePortableCompanions(payload.companions)
   };
 };

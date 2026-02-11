@@ -6,6 +6,9 @@ import { parseMissionDefinition } from '$lib/server/missions/config';
 import { spend } from '$lib/server/missions/spend';
 import { validateMissionStart } from '$lib/server/missions/validation';
 import type { MissionSessionRow } from '$lib/server/missions/types';
+import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
+import { ingestServerEvent } from '$lib/server/events/ingest';
+import { grantMissionRewards } from '$lib/server/missions/grant';
 
 const MISSION_SELECT = [
   'id',
@@ -18,6 +21,7 @@ const MISSION_SELECT = [
   'xp_reward',
   'type',
   'cost',
+  'requirements',
   'cooldown_ms',
   'privacy_tags'
 ].join(', ');
@@ -74,17 +78,23 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
 
-  const startValidation = validateMissionStart(
+  const stats = await getPlayerStats(event, supabase).catch(() => null);
+  const validated = validateMissionStart(
     { id: user.id },
     mission,
-    (lastSessionRow as MissionSessionRow | null) ?? null
+    (lastSessionRow as MissionSessionRow | null) ?? null,
+    {
+      level: typeof stats?.level === 'number' ? stats.level : 0,
+      energy: typeof stats?.energy === 'number' ? stats.energy : 0
+    }
   );
-  if (!startValidation.ok) {
-    return json({ error: startValidation.code, message: startValidation.message }, { status: startValidation.status });
+  if (!validated.ok) {
+    return json({ error: validated.code, message: validated.message }, { status: validated.status });
   }
 
   // Identity missions must never spend resources.
-  if (mission.type === 'action' && mission.cost) {
+  let energySpent = 0;
+  if ((mission.type === 'action' || mission.type === 'world') && mission.cost) {
     const spendResult = await spend({
       supabase,
       userId: user.id,
@@ -93,6 +103,7 @@ export const POST: RequestHandler = async (event) => {
     if (!spendResult.ok) {
       return json({ error: spendResult.code, message: spendResult.message }, { status: spendResult.status });
     }
+    energySpent = spendResult.energySpent;
   }
 
   const { data: session, error: sessionError } = await supabase
@@ -112,8 +123,30 @@ export const POST: RequestHandler = async (event) => {
 
   if (sessionError || !session) {
     console.error('[api/missions/start] session insert failed', sessionError);
+    if (energySpent > 0) {
+      await grantMissionRewards({
+        supabase,
+        userId: user.id,
+        xp: 0,
+        energy: energySpent
+      });
+    }
     return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
+
+  await ingestServerEvent(
+    event,
+    'mission.start',
+    {
+      missionId: mission.id,
+      sessionId: session.id,
+      missionType: mission.type,
+      cost: mission.cost,
+      requirements: mission.requirements,
+      cooldownMs: mission.cooldown_ms ?? null
+    },
+    { sessionId: session.id }
+  );
 
   return json({
     ok: true,
@@ -122,6 +155,7 @@ export const POST: RequestHandler = async (event) => {
       id: mission.id,
       type: mission.type,
       cost: mission.cost,
+      requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms,
       privacyTags: mission.privacy_tags ?? []
     }

@@ -239,6 +239,22 @@
       status: 'available',
       energy_reward: summary.energy_reward ?? null,
       xp_reward: summary.xp_reward ?? null,
+      type:
+        summary.type === 'identity' || summary.type === 'action' || summary.type === 'world'
+          ? summary.type
+          : null,
+      cost:
+        summary.cost && typeof summary.cost === 'object'
+          ? (() => {
+              const energy = summary.cost.energy;
+              if (typeof energy === 'number') return { energy };
+              return {};
+            })()
+          : null,
+      cooldown_ms: typeof summary.cooldown_ms === 'number' ? summary.cooldown_ms : null,
+      privacy_tags: Array.isArray(summary.privacy_tags)
+        ? summary.privacy_tags.filter((entry): entry is string => typeof entry === 'string')
+        : null,
       meta: null
     } satisfies MissionRowType;
   };

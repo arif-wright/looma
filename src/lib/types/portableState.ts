@@ -33,6 +33,13 @@ export type PortableState = {
   version: PortableStateVersion;
   updatedAt: string;
   items: PortableStateItem[];
+  identity?: {
+    archetype: string;
+    traits: string[];
+    tone: string;
+    updatedAt: string;
+    source?: string | null;
+  } | null;
   companions?: PortableCompanions;
 };
 
