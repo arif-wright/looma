@@ -9,6 +9,7 @@
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
   import { activeCompanionStore } from '$lib/stores/companions';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
+  import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -65,6 +66,7 @@
       : '';
 
   let menuOpen = false;
+  let feedbackOpen = false;
   let menuRef: HTMLDivElement | null = null;
   let menuButtonRef: HTMLButtonElement | null = null;
 
@@ -183,6 +185,16 @@
               role="menuitem"
               on:click={() => {
                 closeMenu();
+                feedbackOpen = true;
+              }}
+            >
+              Send feedback
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              on:click={() => {
+                closeMenu();
                 onLogout();
               }}
             >
@@ -194,6 +206,8 @@
     </div>
   </div>
 </header>
+
+<FeedbackModal bind:open={feedbackOpen} />
 
 <style>
   .lean-header {

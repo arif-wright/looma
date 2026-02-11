@@ -18,6 +18,9 @@ type HttpErrorLike = {
 const GENERIC_MESSAGE = SAFE_LOAD_MESSAGE;
 const UNAUTHORIZED_MESSAGE = SAFE_UNAUTHORIZED_MESSAGE;
 const COMPLETE_FAILED_MESSAGE = SAFE_COMPLETION_MESSAGE;
+const RATE_LIMITED_MESSAGE = 'You are doing that too quickly. Please wait a moment and try again.';
+const DAILY_SESSION_CAP_MESSAGE = 'Daily session limit reached. Please come back tomorrow.';
+const HOURLY_REWARD_CAP_MESSAGE = 'Hourly reward cap reached. Please try again soon.';
 
 const asHttpErrorLike = (input: unknown): HttpErrorLike => {
   if (!input || typeof input !== 'object') return {};
@@ -41,6 +44,9 @@ const resolveCode = (err: HttpErrorLike, status: number) => {
 };
 
 const resolveMessage = (status: number, code: string, context: GameApiContext) => {
+  if (status === 429 || code === 'rate_limited') return RATE_LIMITED_MESSAGE;
+  if (code === 'cap_sessions_daily') return DAILY_SESSION_CAP_MESSAGE;
+  if (code === 'cap_rewards_hourly') return HOURLY_REWARD_CAP_MESSAGE;
   if (status === 401 || code === 'unauthorized') return UNAUTHORIZED_MESSAGE;
   if (context === 'complete' && (status >= 500 || code === 'server_error')) {
     return COMPLETE_FAILED_MESSAGE;

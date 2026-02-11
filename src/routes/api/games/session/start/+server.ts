@@ -13,6 +13,7 @@ import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { computeEffectiveEnergyMax } from '$lib/player/energy';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
+const maxSessionsPerDay = Number.parseInt(env.GAME_MAX_SESSIONS_PER_DAY ?? '100', 10) || 100;
 
 const buildCaps = (config: any, fallback: { max_score: number | null }) => ({
   maxDurationMs: config?.max_duration_ms ?? 600000,
@@ -48,6 +49,25 @@ export const POST: RequestHandler = async (event) => {
 
     if (await hasAbuseFlag(user.id)) {
       throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
+    }
+
+    const sessionsDayWindowStartIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: recentSessionCount, error: sessionCountError } = await supabase
+      .from('game_sessions')
+      .select('id', { head: true, count: 'exact' })
+      .eq('user_id', user.id)
+      .gte('started_at', sessionsDayWindowStartIso);
+
+    if (sessionCountError) {
+      console.error('[games] failed to enforce daily session cap', sessionCountError);
+      throw error(500, { code: 'server_error', message: 'Unable to start game session.' });
+    }
+
+    if (typeof recentSessionCount === 'number' && recentSessionCount >= maxSessionsPerDay) {
+      throw error(429, {
+        code: 'cap_sessions_daily',
+        message: 'Daily session limit reached. Please come back tomorrow.'
+      });
     }
 
     const gameIdRaw = typeof body.gameId === 'string' ? body.gameId.trim() : '';

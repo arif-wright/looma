@@ -27,6 +27,7 @@ import { ingestServerEvent } from '$lib/server/events/ingest';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
+const maxRewardsPerHour = Number.parseInt(env.GAME_MAX_REWARDS_PER_HOUR ?? '60', 10) || 60;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 type CompanionBonusPayload = {
@@ -90,6 +91,26 @@ export const POST: RequestHandler = async (event) => {
 
   if (await hasAbuseFlag(user.id)) {
     throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
+  }
+
+  const rewardsHourWindowStartIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: recentRewardCount, error: rewardCountError } = await admin
+    .from('game_grants')
+    .select('id', { head: true, count: 'exact' })
+    .eq('user_id', user.id)
+    .eq('source', 'game_session')
+    .gte('inserted_at', rewardsHourWindowStartIso);
+
+  if (rewardCountError) {
+    console.error('[games] failed to enforce hourly reward cap', rewardCountError);
+    throw error(500, { code: 'server_error', message: 'Unable to complete game session.' });
+  }
+
+  if (typeof recentRewardCount === 'number' && recentRewardCount >= maxRewardsPerHour) {
+    throw error(429, {
+      code: 'cap_rewards_hourly',
+      message: 'Hourly reward cap reached. Please try again soon.'
+    });
   }
 
   let body: {

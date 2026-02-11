@@ -22,8 +22,8 @@ export const limit = (key: string, limitPerMinute: number) => {
       ? Math.max(1, Math.ceil((WINDOW_MS - (now - oldest)) / 1000))
       : 1;
     throw error(429, {
-      code: 'rate_limit',
-      message: 'Too many requests. Try again soon.',
+      code: 'rate_limited',
+      message: 'You are doing that too quickly. Please wait a moment and try again.',
       retryAfter
     });
   }

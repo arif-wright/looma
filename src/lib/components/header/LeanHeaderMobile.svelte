@@ -5,6 +5,7 @@
   import type { NotificationItem } from '$lib/components/ui/types';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
+  import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
 
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
@@ -17,6 +18,7 @@
   let pulse = false;
   let pulseTimeout: ReturnType<typeof setTimeout> | null = null;
   let menuOpen = false;
+  let feedbackOpen = false;
   let menuRef: HTMLDivElement | null = null;
   let menuButtonRef: HTMLButtonElement | null = null;
 
@@ -145,6 +147,16 @@
             role="menuitem"
             on:click={() => {
               closeMenu();
+              feedbackOpen = true;
+            }}
+          >
+            Send feedback
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            on:click={() => {
+              closeMenu();
               onLogout();
             }}
           >
@@ -155,6 +167,8 @@
     </div>
   </div>
 </nav>
+
+<FeedbackModal bind:open={feedbackOpen} />
 
 <style>
   .lean-appbar {

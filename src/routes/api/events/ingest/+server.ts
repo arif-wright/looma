@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { trackLightweightUsage, type LightweightTrackedType } from '$lib/server/analytics/lightweight';
 import { agentRegistry, dispatchEvent } from '$lib/server/agents';
@@ -29,22 +30,29 @@ const ALLOWED_TYPES = new Set([
   'companion.swap',
   'preference.toggle'
 ]);
-const WINDOW_MS = 60_000;
-const RATE_LIMIT = 20;
+const EVENTS_RATE_LIMIT_WINDOW_MS =
+  Number.parseInt(env.EVENTS_INGEST_RATE_LIMIT_WINDOW_MS ?? '60000', 10) || 60_000;
+const EVENTS_RATE_LIMIT_PER_WINDOW =
+  Number.parseInt(env.EVENTS_INGEST_RATE_LIMIT_PER_WINDOW ?? '20', 10) || 20;
 const buckets = new Map<string, number[]>();
 
-const prune = (timestamps: number[], now: number) => timestamps.filter((ts) => now - ts < WINDOW_MS);
+const prune = (timestamps: number[], now: number) =>
+  timestamps.filter((ts) => now - ts < EVENTS_RATE_LIMIT_WINDOW_MS);
 
-const throttle = (key: string) => {
+const throttle = (key: string): { ok: true } | { ok: false; retryAfter: number } => {
   const now = Date.now();
   const existing = buckets.get(key) ?? [];
   const recent = prune(existing, now);
-  if (recent.length >= RATE_LIMIT) {
-    return false;
+  if (recent.length >= EVENTS_RATE_LIMIT_PER_WINDOW) {
+    const oldest = recent[0];
+    const retryAfter = oldest
+      ? Math.max(1, Math.ceil((EVENTS_RATE_LIMIT_WINDOW_MS - (now - oldest)) / 1000))
+      : 1;
+    return { ok: false, retryAfter };
   }
   recent.push(now);
   buckets.set(key, recent);
-  return true;
+  return { ok: true };
 };
 
 const resolveScope = (type: string) => {
@@ -111,8 +119,16 @@ export const POST: RequestHandler = async (event) => {
   const sessionId = typeof meta.sessionId === 'string' ? meta.sessionId : null;
 
   const throttleKey = userId ?? (typeof event.getClientAddress === 'function' ? event.getClientAddress() : null) ?? 'anonymous';
-  if (!throttle(throttleKey)) {
-    return json({ error: 'rate_limited' }, { status: 429 });
+  const throttleResult = throttle(throttleKey);
+  if (!throttleResult.ok) {
+    return json(
+      {
+        error: 'rate_limited',
+        message: 'You are sending events too quickly. Please wait a moment and try again.',
+        retryAfter: throttleResult.retryAfter
+      },
+      { status: 429 }
+    );
   }
 
   const consent = await getConsentFlags(event, supabase);

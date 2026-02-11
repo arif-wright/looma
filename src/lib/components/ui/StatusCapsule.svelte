@@ -8,6 +8,7 @@
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { getBondBonusForLevel } from '$lib/companions/bond';
   import { computeEffectiveEnergyMax } from '$lib/player/energy';
+  import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
@@ -95,6 +96,7 @@ const capsuleBaseClass =
       : '';
 
   let menuOpen = false;
+  let feedbackOpen = false;
   let menuRef: HTMLDivElement | null = null;
   let menuButtonRef: HTMLButtonElement | null = null;
 
@@ -234,6 +236,16 @@ const capsuleBaseClass =
           role="menuitem"
           on:click={() => {
             closeMenu();
+            feedbackOpen = true;
+          }}
+        >
+          Send feedback
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          on:click={() => {
+            closeMenu();
             onLogout();
           }}
         >
@@ -243,6 +255,8 @@ const capsuleBaseClass =
     {/if}
   </div>
 </div>
+
+<FeedbackModal bind:open={feedbackOpen} />
 
 <style>
   :global(:root) {
