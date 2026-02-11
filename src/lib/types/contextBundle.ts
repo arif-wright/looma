@@ -9,6 +9,8 @@ export type PlayerStateBundle = {
   xpNext: number | null;
   energy: number | null;
   energyMax: number | null;
+  baseEnergyMax?: number | null;
+  missionEnergyBonus?: number | null;
   currency: number;
   walletUpdatedAt: string | null;
 };
@@ -19,6 +21,7 @@ export type CompanionStateBundle = {
   bondLevel: number | null;
   bondScore: number | null;
   xpMultiplier: number | null;
+  missionEnergyBonus?: number | null;
   state: string | null;
   mood: string | null;
 };

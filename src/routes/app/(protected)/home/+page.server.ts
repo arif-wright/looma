@@ -18,6 +18,10 @@ type MissionSummary = {
   difficulty?: string | null;
   energy_reward?: number | null;
   xp_reward?: number | null;
+  type?: 'identity' | 'action' | 'world' | null;
+  cost?: { energy?: number } | null;
+  cooldown_ms?: number | null;
+  privacy_tags?: string[] | null;
 };
 
 type CreatureMoment = {
@@ -140,7 +144,7 @@ export const load: PageServerLoad = async (event) => {
     try {
       const { data } = await supabase
         .from('missions')
-        .select('id, title, summary, difficulty, energy_reward, xp_reward')
+        .select('id, title, summary, difficulty, energy_reward, xp_reward, type, cost, cooldown_ms, privacy_tags')
         .limit(4)
         .throwOnError();
 

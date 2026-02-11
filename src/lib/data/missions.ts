@@ -8,6 +8,10 @@ export type MissionRow = {
   status: string | null;
   energy_reward: number | null;
   xp_reward: number | null;
+  type?: 'identity' | 'action' | 'world' | null;
+  cost?: { energy?: number } | null;
+  cooldown_ms?: number | null;
+  privacy_tags?: string[] | null;
   meta?: Record<string, unknown> | null;
 };
 
@@ -15,7 +19,7 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
   const supabase = supabaseBrowser();
   const { data, error } = await supabase
     .from('missions')
-    .select('id, title, summary, difficulty, status, energy_reward, xp_reward, meta')
+    .select('id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, cooldown_ms, privacy_tags, meta')
     .eq('id', id)
     .limit(1)
     .maybeSingle();
@@ -34,6 +38,22 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
     status: typeof row.status === 'string' ? row.status : null,
     energy_reward: typeof row.energy_reward === 'number' ? row.energy_reward : null,
     xp_reward: typeof row.xp_reward === 'number' ? row.xp_reward : null,
+    type:
+      row.type === 'identity' || row.type === 'action' || row.type === 'world'
+        ? row.type
+        : null,
+    cost:
+      row.cost && typeof row.cost === 'object'
+        ? (() => {
+            const energy = (row.cost as Record<string, unknown>).energy;
+            if (typeof energy === 'number') return { energy };
+            return {};
+          })()
+        : null,
+    cooldown_ms: typeof row.cooldown_ms === 'number' ? row.cooldown_ms : null,
+    privacy_tags: Array.isArray(row.privacy_tags)
+      ? row.privacy_tags.filter((entry): entry is string => typeof entry === 'string')
+      : null,
     meta: (row.meta as Record<string, unknown> | null) ?? null
   };
 }

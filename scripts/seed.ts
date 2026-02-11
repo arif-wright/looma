@@ -43,6 +43,9 @@ export const SEED_USERS: Record<'author' | 'viewer', SeedUserConfig> = {
 
 const POST_ID = '00000000-0000-4000-8000-00000000feed';
 const COMMENT_ID = '00000000-0000-4000-8000-00000000c0f1';
+const MISSION_IDENTITY_ID = '00000000-0000-4000-8000-00000000m001';
+const MISSION_ACTION_ID = '00000000-0000-4000-8000-00000000m002';
+const MISSION_WORLD_ID = '00000000-0000-4000-8000-00000000m003';
 
 const assertNonProduction = () => {
   if (process.env.NODE_ENV === 'production') {
@@ -220,6 +223,58 @@ const ensureCompanions = async (admin: SupabaseClient, owner: User, entries: Com
   return createdIds;
 };
 
+const ensureMissions = async (admin: SupabaseClient, owner: User) => {
+  const examples = [
+    {
+      id: MISSION_IDENTITY_ID,
+      owner_id: owner.id,
+      title: 'Reflect on your bond',
+      summary: 'Write one sentence about how your companion changed your day.',
+      difficulty: 'easy',
+      status: 'available',
+      type: 'identity',
+      cost: null,
+      cooldown_ms: 0,
+      privacy_tags: ['private-journal'],
+      energy_reward: 2,
+      xp_reward: 30
+    },
+    {
+      id: MISSION_ACTION_ID,
+      owner_id: owner.id,
+      title: 'Pulse sprint',
+      summary: 'Complete a short challenge run.',
+      difficulty: 'medium',
+      status: 'available',
+      type: 'action',
+      cost: { energy: 5 },
+      cooldown_ms: 300000,
+      privacy_tags: ['public-feed'],
+      energy_reward: 4,
+      xp_reward: 60
+    },
+    {
+      id: MISSION_WORLD_ID,
+      owner_id: owner.id,
+      title: 'Signal the world',
+      summary: 'Share a world-state update with your circle.',
+      difficulty: 'easy',
+      status: 'available',
+      type: 'world',
+      cost: null,
+      cooldown_ms: 60000,
+      privacy_tags: ['circle-visible'],
+      energy_reward: 1,
+      xp_reward: 20
+    }
+  ];
+
+  const { error } = await admin.from('missions').upsert(examples, { onConflict: 'id' });
+  if (error) {
+    throw new Error(`Failed to upsert example missions: ${error.message}`);
+  }
+};
+
 export const seed = async (): Promise<SeedResult> => {
   assertNonProduction();
   ensureEnv();
@@ -241,6 +296,7 @@ export const seed = async (): Promise<SeedResult> => {
   await ensureCompanions(admin, authorUser, [
     { name: 'Ember', species: 'Sol Fox', mood: 'Calm', featured: true }
   ]);
+  await ensureMissions(admin, authorUser);
 
   return {
     author: { ...SEED_USERS.author, id: authorUser.id },

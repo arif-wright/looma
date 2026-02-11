@@ -5,12 +5,14 @@ import { supabaseAdmin } from '$lib/server/supabase';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { memoryStore } from '$lib/server/games/store';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
+import { getActiveCompanionBond } from '$lib/server/companions/bonds';
+import { computeEffectiveEnergyMax } from '$lib/player/energy';
 
 export const GET: RequestHandler = async (event) => {
   try {
     const auth = await requireUser(event);
 
-    const [stats, walletRes, rewardsRes] = await Promise.all([
+    const [stats, walletRes, rewardsRes, companionBond] = await Promise.all([
       getPlayerStats(event, auth.supabase),
       auth.supabase
         .from('user_wallets')
@@ -24,8 +26,16 @@ export const GET: RequestHandler = async (event) => {
         )
         .eq('session.user_id', auth.user.id)
         .order('inserted_at', { ascending: false })
-        .limit(5)
+        .limit(5),
+      getActiveCompanionBond(auth.user.id, auth.supabase)
     ]);
+
+    const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
+    const baseEnergyMax = stats?.energy_max ?? null;
+    const effectiveEnergyMax =
+      typeof baseEnergyMax === 'number'
+        ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
+        : baseEnergyMax;
 
   let walletBalance = 0;
   let walletCurrency = 'shards';
@@ -92,7 +102,9 @@ export const GET: RequestHandler = async (event) => {
       level: stats?.level ?? 1,
       xpNext: stats?.xp_next ?? null,
       energy: stats?.energy ?? null,
-      energyMax: stats?.energy_max ?? null,
+      energyMax: effectiveEnergyMax,
+      baseEnergyMax,
+      missionEnergyBonus,
       currency: walletBalance,
       wallet: {
         balance: walletBalance,

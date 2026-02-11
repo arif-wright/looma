@@ -5,6 +5,7 @@ import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { getConsentFlags } from '$lib/server/consent';
 import { extractWorldState } from '$lib/server/context/worldState';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
+import { computeEffectiveEnergyMax } from '$lib/player/energy';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
@@ -183,6 +184,12 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
   const companionRoster = portableExtracted.companions.roster;
   const activeCompanionFromPortable =
     companionRoster.find((entry) => entry.id === portableExtracted.companions.activeId) ?? companionRoster[0] ?? null;
+  const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
+  const baseEnergyMax = stats?.energy_max ?? null;
+  const effectiveEnergyMax =
+    typeof baseEnergyMax === 'number'
+      ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
+      : baseEnergyMax;
 
   return {
     version: CONTEXT_BUNDLE_VERSION,
@@ -193,7 +200,9 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       xp: stats?.xp ?? null,
       xpNext: stats?.xp_next ?? null,
       energy: stats?.energy ?? null,
-      energyMax: stats?.energy_max ?? null,
+      energyMax: effectiveEnergyMax,
+      baseEnergyMax,
+      missionEnergyBonus,
       currency: Number(walletRes.data?.shards ?? 0),
       walletUpdatedAt: walletRes.data?.updated_at ?? null
     },
@@ -203,6 +212,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       bondLevel: companionBond?.level ?? null,
       bondScore: companionBond?.score ?? null,
       xpMultiplier: companionBond?.bonus?.xpMultiplier ?? null,
+      missionEnergyBonus,
       state: typeof companionRes.data?.state === 'string' ? companionRes.data.state : null,
       mood: typeof companionRes.data?.mood === 'string' ? companionRes.data.mood : null
     },
