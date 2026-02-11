@@ -1,5 +1,10 @@
 import type { Agent, AgentRegistry } from './types';
 import { dev } from '$app/environment';
+import {
+  deterministicDailyPick,
+  resolveCompanionPersonaProfile,
+  type PersonaTone
+} from '$lib/companions/personaProfiles';
 
 const WHISPER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const PRE_RUN_COOLDOWN_MS = 60 * 60 * 1000;
@@ -149,7 +154,18 @@ const companionAgent: Agent = {
     allowedScopes: ['companion', 'app']
   },
   handle: (event) => {
-    if (!['session.start', 'session.end', 'session.return', 'game.session.start', 'game.complete'].includes(event.type)) {
+    if (
+      ![
+        'session.start',
+        'session.return',
+        'session.end',
+        'game.session.start',
+        'game.complete',
+        'mission.start',
+        'mission.complete',
+        'companion.swap'
+      ].includes(event.type)
+    ) {
       return { agentId: 'companion', handled: false };
     }
 
@@ -164,12 +180,44 @@ const companionAgent: Agent = {
       };
     }
 
-    const tone = String((event.context as any)?.portableState?.tone ?? 'warm');
-    const isDirect = tone === 'direct';
+    const context = (event.context ?? {}) as Record<string, any>;
+    const activeCompanion =
+      (context?.companion?.active as { id?: unknown; archetype?: unknown; name?: unknown } | null | undefined) ?? null;
+    const profile = resolveCompanionPersonaProfile(activeCompanion);
+    const requestedTone = String(context?.portableState?.tone ?? '').toLowerCase();
+    const tone: PersonaTone = requestedTone === 'direct' || requestedTone === 'warm' ? requestedTone : profile.toneDefault;
+    const userId = String(event.meta?.userId ?? 'anonymous');
+    const pick = <T>(values: readonly T[], namespace: string) =>
+      deterministicDailyPick(values, {
+        timestampIso: event.timestamp,
+        userId,
+        eventType: event.type,
+        namespace
+      });
+    const greeting = pick(profile.vocabulary.greetings, 'vocab:greeting');
+    const affirmation = pick(profile.vocabulary.affirmations, 'vocab:affirmation');
+    const focusCue = pick(profile.vocabulary.focusCues, 'vocab:focus');
+    const closer = pick(profile.vocabulary.closers, 'vocab:closer');
+    const companionName =
+      typeof activeCompanion?.name === 'string' && activeCompanion.name.trim()
+        ? activeCompanion.name.trim()
+        : 'your companion';
 
     let text = '';
     if (event.type === 'session.start') {
-      text = isDirect ? 'You are back. Ready when you are.' : 'Welcome back. I am here if you need me.';
+      const warm = [
+        `${greeting}. ${closer}.`,
+        `${greeting}. ${focusCue}.`,
+        `${greeting}. Ready for your next step?`,
+        `${greeting}. ${affirmation}.`
+      ];
+      const direct = [
+        `${greeting}. Ready.`,
+        `${focusCue}.`,
+        `Back online. ${closer}.`,
+        `Session live. ${focusCue}.`
+      ];
+      text = pick(tone === 'direct' ? direct : warm, 'session.start:text');
     } else if (event.type === 'session.end') {
       return {
         agentId: 'companion',
@@ -177,7 +225,14 @@ const companionAgent: Agent = {
         output: { mood: 'steady', note: 'Muse logged session end.' }
       };
     } else if (event.type === 'session.return') {
-      text = isDirect ? 'Welcome back.' : 'Welcome back. Want to pick up where we left off?';
+      const warm = [
+        `${greeting}. Want to continue?`,
+        `${greeting}. ${closer}.`,
+        `${greeting}. Pick up where you left off.`,
+        `${greeting}. ${focusCue}.`
+      ];
+      const direct = ['Welcome back.', 'Back again. Continue.', `${focusCue}.`, `Return confirmed. ${closer}.`];
+      text = pick(tone === 'direct' ? direct : warm, 'session.return:text');
     } else if (event.type === 'game.session.start') {
       if (!canEmitPreRunReaction(event)) {
         return {
@@ -193,7 +248,14 @@ const companionAgent: Agent = {
           output: { mood: 'steady', note: 'Pre-run reaction skipped by optional gate.' }
         };
       }
-      text = isDirect ? 'Focus up. Make this run clean.' : 'I am with you. Have a strong run.';
+      const warm = [
+        `I am with you. ${focusCue}.`,
+        `Strong run incoming. ${focusCue}.`,
+        `${affirmation}. Make this run yours.`,
+        `${companionName} is with you. ${focusCue}.`
+      ];
+      const direct = ['Focus up.', 'Make this run clean.', `${focusCue}.`, 'Run start. Stay sharp.'];
+      text = pick(tone === 'direct' ? direct : warm, 'game.session.start:text');
     } else if (event.type === 'game.complete') {
       const rewards = payload?.rewardsGranted as Record<string, unknown> | undefined;
       if (!rewards || typeof rewards !== 'object') {
@@ -216,25 +278,82 @@ const companionAgent: Agent = {
               : 'no bonus rewards';
 
       const score = typeof payload?.score === 'number' ? Math.max(0, Math.floor(payload.score)) : null;
-      if (isDirect) {
-        const directOptions = [
-          `Nice work. ${rewardSummary}.`,
-          `Run complete. ${rewardSummary}.`,
-          score !== null ? `Score ${score}. ${rewardSummary}.` : `Session logged. ${rewardSummary}.`
-        ];
-        const pick = simpleHash(`${event.timestamp}|direct|${score ?? 0}|${xpGained}|${shardsGained}`) % directOptions.length;
-        text = directOptions[pick] ?? directOptions[0] ?? `Run complete. ${rewardSummary}.`;
-      } else {
-        const warmOptions = [
-          `Nice work. You earned ${rewardSummary}.`,
-          score !== null
-            ? `Great run at ${score} score. You earned ${rewardSummary}.`
-            : `Great run. You earned ${rewardSummary}.`,
-          `Strong finish. ${rewardSummary}.`
-        ];
-        const pick = simpleHash(`${event.timestamp}|warm|${score ?? 0}|${xpGained}|${shardsGained}`) % warmOptions.length;
-        text = warmOptions[pick] ?? warmOptions[0] ?? `Nice work. You earned ${rewardSummary}.`;
-      }
+      const warm = [
+        `${affirmation}. You earned ${rewardSummary}.`,
+        score !== null ? `Score ${score}. You earned ${rewardSummary}.` : `Run complete. You earned ${rewardSummary}.`,
+        `Strong finish. ${rewardSummary}.`,
+        `${companionName} says nice run. ${rewardSummary}.`
+      ];
+      const direct = [
+        `Run complete. ${rewardSummary}.`,
+        score !== null ? `Score ${score}. ${rewardSummary}.` : `${rewardSummary}.`,
+        `Logged. ${rewardSummary}.`,
+        `Clean finish. ${rewardSummary}.`
+      ];
+      text = pick(tone === 'direct' ? direct : warm, 'game.complete:text');
+    } else if (event.type === 'mission.start') {
+      const missionType =
+        typeof payload?.missionType === 'string' && payload.missionType.trim() ? payload.missionType.trim() : 'mission';
+      const warm = [
+        `${greeting}. ${missionType} mission started.`,
+        `${focusCue}. ${missionType} mission is live.`,
+        `Mission on. ${closer}.`,
+        `${companionName} is ready for this ${missionType} mission.`
+      ];
+      const direct = [
+        `${missionType} mission started.`,
+        `Mission live. ${focusCue}.`,
+        `Start confirmed.`,
+        `${focusCue}. Mission active.`
+      ];
+      text = pick(tone === 'direct' ? direct : warm, 'mission.start:text');
+    } else if (event.type === 'mission.complete') {
+      const rewards = (payload?.rewards as Record<string, unknown> | undefined) ?? {};
+      const xpGranted = clampInteger(rewards.xpGranted, 0);
+      const energyGranted = clampInteger(rewards.energyGranted, 0);
+      const rewardSummary =
+        xpGranted > 0 && energyGranted > 0
+          ? `+${xpGranted} XP, +${energyGranted} energy`
+          : xpGranted > 0
+            ? `+${xpGranted} XP`
+            : energyGranted > 0
+              ? `+${energyGranted} energy`
+              : 'mission complete';
+      const warm = [
+        `${affirmation}. ${rewardSummary}.`,
+        `Mission complete. ${rewardSummary}.`,
+        `${companionName} is proud. ${rewardSummary}.`,
+        `You wrapped it well. ${rewardSummary}.`
+      ];
+      const direct = [
+        `Mission complete. ${rewardSummary}.`,
+        `Done. ${rewardSummary}.`,
+        `Completion logged. ${rewardSummary}.`,
+        `${rewardSummary}.`
+      ];
+      text = pick(tone === 'direct' ? direct : warm, 'mission.complete:text');
+    } else if (event.type === 'companion.swap') {
+      const warm = [
+        `${greeting}. ${companionName} is now active.`,
+        `${companionName} is with you now.`,
+        `Swap complete. ${companionName} is ready.`,
+        `${companionName} joined in. ${closer}.`
+      ];
+      const direct = [
+        `${companionName} active.`,
+        `Companion swapped. ${companionName} online.`,
+        `Swap confirmed.`,
+        `${companionName} selected.`
+      ];
+      text = pick(tone === 'direct' ? direct : warm, 'companion.swap:text');
+    }
+
+    if (!text) {
+      return {
+        agentId: 'companion',
+        handled: true,
+        output: { mood: 'steady', note: 'No reaction text generated.' }
+      };
     }
 
     const reaction = {

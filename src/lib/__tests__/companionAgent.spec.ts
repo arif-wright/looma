@@ -90,4 +90,50 @@ describe('companion agent game reactions', () => {
     );
     expect((result.output?.reaction as { text?: string } | undefined)?.text).toBeUndefined();
   });
+
+  it('supports mission.start with short deterministic text', async () => {
+    __resetCompanionAgentRateLimits();
+    const result = await agentRegistry.companion.handle(
+      baseEvent({
+        type: 'mission.start',
+        timestamp: '2026-02-08T12:20:00.000Z',
+        payload: {
+          missionId: 'm-1',
+          missionType: 'action'
+        }
+      })
+    );
+
+    const text = (result.output?.reaction as { text?: string } | undefined)?.text ?? '';
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.length).toBeLessThan(120);
+  });
+
+  it('produces deterministic daily variants for the same user and event type', async () => {
+    __resetCompanionAgentRateLimits();
+    const one = await agentRegistry.companion.handle(
+      baseEvent({
+        type: 'mission.complete',
+        timestamp: '2026-02-08T09:00:00.000Z',
+        payload: {
+          missionId: 'm-1',
+          rewards: { xpGranted: 8, energyGranted: 3 }
+        }
+      })
+    );
+    const two = await agentRegistry.companion.handle(
+      baseEvent({
+        type: 'mission.complete',
+        timestamp: '2026-02-08T22:59:00.000Z',
+        payload: {
+          missionId: 'm-1',
+          rewards: { xpGranted: 8, energyGranted: 3 }
+        }
+      })
+    );
+
+    const firstText = (one.output?.reaction as { text?: string } | undefined)?.text ?? '';
+    const secondText = (two.output?.reaction as { text?: string } | undefined)?.text ?? '';
+    expect(firstText).toBe(secondText);
+  });
 });

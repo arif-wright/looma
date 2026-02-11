@@ -26,6 +26,8 @@ const ALLOWED_TYPES = new Set([
   'session.return',
   'game.session.start',
   'game.complete',
+  'mission.start',
+  'mission.complete',
   'identity.complete',
   'companion.swap',
   'preference.toggle'
