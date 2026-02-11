@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
+import { trackLightweightUsage, type LightweightTrackedType } from '$lib/server/analytics/lightweight';
 import { agentRegistry, dispatchEvent } from '$lib/server/agents';
 import type { AgentEvent } from '$lib/agents/types';
 import { getContextBundle } from '$lib/server/context/getContextBundle';
@@ -24,7 +25,9 @@ const ALLOWED_TYPES = new Set([
   'session.return',
   'game.session.start',
   'game.complete',
-  'identity.complete'
+  'identity.complete',
+  'companion.swap',
+  'preference.toggle'
 ]);
 const WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
@@ -119,6 +122,31 @@ export const POST: RequestHandler = async (event) => {
       : null;
 
   const suppressAdaptationFromMeta = meta.suppressAdaptation === true;
+  const suppressMemoryFromMeta = meta.suppressMemory === true;
+  const trackableType = ALLOWED_TYPES.has(type as LightweightTrackedType)
+    ? (type as LightweightTrackedType)
+    : null;
+  if (
+    userId &&
+    trackableType &&
+    (trackableType === 'session.start' ||
+      trackableType === 'session.end' ||
+      trackableType === 'game.session.start' ||
+      trackableType === 'game.complete' ||
+      trackableType === 'companion.swap' ||
+      trackableType === 'preference.toggle')
+  ) {
+    await trackLightweightUsage({
+      supabase,
+      type: trackableType,
+      payload: eventPayload,
+      sessionId,
+      consent,
+      suppressMemory: suppressMemoryFromMeta,
+      suppressAdaptation: suppressAdaptationFromMeta
+    });
+  }
+
   if (userId && consent.adaptation && !suppressAdaptationFromMeta && (type === 'session.start' || type === 'session.end')) {
     try {
       const endIsoFromPayload =

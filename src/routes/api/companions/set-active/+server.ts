@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
+import { ingestServerEvent } from '$lib/server/events/ingest';
 
 type SetActivePayload = {
   id?: unknown;
@@ -62,6 +63,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const current = coercePortableState(data?.portable_state);
+  const previousActiveId = current.companions?.activeId ?? null;
   const roster = current.companions?.roster ?? [];
   const target = roster.find((entry) => entry.id === id);
 
@@ -96,6 +98,17 @@ export const POST: RequestHandler = async (event) => {
     console.error('[companions/set-active] update failed', upsertError);
     return json({ error: 'update_failed' }, { status: 500 });
   }
+
+  await ingestServerEvent(
+    event,
+    'companion.swap',
+    {
+      fromId: previousActiveId,
+      toId: target.id,
+      rosterSize: roster.length
+    },
+    { sessionId: null }
+  );
 
   return json({
     ok: true,

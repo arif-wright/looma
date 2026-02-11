@@ -5,6 +5,7 @@ import { getConsentFlags } from '$lib/server/consent';
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
 import { normalizePortableCompanions, withNormalizedCompanions } from '$lib/server/context/portableCompanions';
 import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
+import { ingestServerEvent } from '$lib/server/events/ingest';
 
 const coercePortableState = (input: unknown): PortableState => {
   const now = new Date().toISOString();
@@ -157,6 +158,27 @@ export const PUT: RequestHandler = async (event) => {
   if (error) {
     console.error('[portable_state] update failed', error);
     return json({ error: 'update_failed' }, { status: 500 });
+  }
+
+  const toggleEvents: Array<{ key: string; value: boolean }> = [];
+  if (typeof consentMemory === 'boolean') toggleEvents.push({ key: 'consent_memory', value: consentMemory });
+  if (typeof consentAdaptation === 'boolean') {
+    toggleEvents.push({ key: 'consent_adaptation', value: consentAdaptation });
+  }
+  if (typeof consentReactions === 'boolean') {
+    toggleEvents.push({ key: 'consent_reactions', value: consentReactions });
+  }
+
+  for (const toggle of toggleEvents) {
+    await ingestServerEvent(
+      event,
+      'preference.toggle',
+      {
+        key: toggle.key,
+        value: toggle.value
+      },
+      { sessionId: null }
+    );
   }
 
   return json({ ok: true });
