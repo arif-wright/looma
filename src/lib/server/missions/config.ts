@@ -16,12 +16,14 @@ const parseRequirements = (value: unknown): MissionRequirements | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const minLevel = asNumberOrNull((value as Record<string, unknown>).minLevel);
   const minEnergy = asNumberOrNull((value as Record<string, unknown>).minEnergy);
+  const minDurationMs = asNumberOrNull((value as Record<string, unknown>).minDurationMs);
   const repeatableRaw = (value as Record<string, unknown>).repeatable;
   const repeatable = typeof repeatableRaw === 'boolean' ? repeatableRaw : null;
   const next: MissionRequirements = {};
   if (minLevel !== null) next.minLevel = minLevel;
   if (minEnergy !== null) next.minEnergy = minEnergy;
   if (repeatable !== null) next.repeatable = repeatable;
+  if (minDurationMs !== null) next.minDurationMs = minDurationMs;
   return Object.keys(next).length ? next : {};
 };
 

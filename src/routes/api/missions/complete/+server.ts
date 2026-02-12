@@ -57,17 +57,21 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
   }
 
-  const completionValidation = validateMissionComplete(
-    { id: user.id },
-    (sessionRow as MissionSessionRow | null) ?? null
-  );
-  if (!completionValidation.ok) {
-    return json(
-      { error: completionValidation.code, message: completionValidation.message },
-      { status: completionValidation.status }
-    );
+  const sessionRecord = (sessionRow as MissionSessionRow | null) ?? null;
+  if (sessionRecord?.id && sessionRecord.user_id === user.id && sessionRecord.status === 'completed') {
+    return json({
+      ok: true,
+      idempotent: true,
+      session: sessionRecord,
+      rewards: sessionRecord.rewards ?? { xpGranted: 0, energyGranted: 0 }
+    });
   }
-  const activeSession = sessionRow as MissionSessionRow;
+
+  const completionValidation = validateMissionComplete({ id: user.id }, sessionRecord);
+  if (!completionValidation.ok) {
+    return json({ error: completionValidation.code, message: completionValidation.message }, { status: completionValidation.status });
+  }
+  const activeSession = sessionRecord as MissionSessionRow;
 
   const { data: missionRow, error: missionError } = await supabase
     .from('missions')
@@ -87,30 +91,17 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'mission_not_found', message: 'Mission not found.' }, { status: 404 });
   }
 
+  const timingValidation = validateMissionComplete({ id: user.id }, activeSession, mission);
+  if (!timingValidation.ok) {
+    return json({ error: timingValidation.code, message: timingValidation.message }, { status: timingValidation.status });
+  }
+
   const consent = await getConsentFlags(event, supabase);
   const identitySuppressed =
     suppressMemory ||
     suppressAdaptation ||
     !consent.memory ||
     !consent.adaptation;
-
-  const { data: session, error: updateError } = await supabase
-    .from('mission_sessions')
-    .update({
-      mission_type: mission.type,
-      status: 'completed',
-      completed_at: new Date().toISOString()
-    })
-    .eq('id', sessionId)
-    .eq('user_id', user.id)
-    .eq('status', 'started')
-    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
-    .single();
-
-  if (updateError || !session) {
-    console.error('[api/missions/complete] session update failed', updateError);
-    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
-  }
 
   const [stats, bond] = await Promise.all([
     getPlayerStats(event, supabase).catch(() => null),
@@ -123,7 +114,7 @@ export const POST: RequestHandler = async (event) => {
       ? computeEffectiveEnergyMax(energyCapBase, missionEnergyBonus)
       : null;
 
-  const completionIdempotencyKey = requestIdempotencyKey ?? `mission-complete:${session.id}`;
+  const completionIdempotencyKey = requestIdempotencyKey ?? `mission-complete:${activeSession.id}`;
   const grantResult = await grantMissionRewards({
     supabase,
     userId: user.id,
@@ -134,20 +125,12 @@ export const POST: RequestHandler = async (event) => {
     idempotencyKey: completionIdempotencyKey,
     meta: {
       missionId: mission.id,
-      missionSessionId: session.id,
+      missionSessionId: activeSession.id,
       missionType: mission.type
     }
   });
 
   if (!grantResult.ok) {
-    await supabase
-      .from('mission_sessions')
-      .update({
-        status: 'started',
-        completed_at: null
-      })
-      .eq('id', session.id)
-      .eq('user_id', user.id);
     return json({ error: grantResult.code, message: grantResult.message }, { status: grantResult.status });
   }
 
@@ -156,15 +139,47 @@ export const POST: RequestHandler = async (event) => {
     energyGranted: grantResult.energyGranted
   };
 
-  await supabase
+  const completedAt = new Date().toISOString();
+  const { data: session, error: updateError } = await supabase
     .from('mission_sessions')
     .update({
       mission_type: mission.type,
+      status: 'completed',
+      completed_at: completedAt,
       rewards: rewardsSnapshot,
       idempotency_key: activeSession.idempotency_key ?? completionIdempotencyKey
     })
-    .eq('id', session.id)
-    .eq('user_id', user.id);
+    .eq('id', activeSession.id)
+    .eq('user_id', user.id)
+    .eq('status', 'started')
+    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+    .maybeSingle();
+
+  if (updateError) {
+    console.error('[api/missions/complete] session update failed', updateError);
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+  }
+
+  let finalizedSession = session;
+  if (!finalizedSession) {
+    const { data: latestSession, error: latestSessionError } = await supabase
+      .from('mission_sessions')
+      .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+      .eq('id', activeSession.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (latestSessionError) {
+      console.error('[api/missions/complete] post-update session lookup failed', latestSessionError);
+      return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+    }
+
+    const resolvedSession = (latestSession as MissionSessionRow | null) ?? null;
+    if (resolvedSession?.status !== 'completed') {
+      return json({ error: 'session_not_active', message: 'Mission session is not active.' }, { status: 409 });
+    }
+    finalizedSession = resolvedSession;
+  }
 
   let identityStored = false;
   if (mission.type === 'identity' && localIdentityResult && !identitySuppressed) {
@@ -186,15 +201,15 @@ export const POST: RequestHandler = async (event) => {
     'mission.complete',
     {
       missionId: mission.id,
-      sessionId: session.id,
+      sessionId: finalizedSession.id,
       missionType: mission.type,
-      rewards: {
+      rewardsGranted: {
         xpGranted: grantResult.xpGranted,
         energyGranted: grantResult.energyGranted
       },
       idempotencyKey: completionIdempotencyKey
     },
-    { sessionId: session.id }
+    { sessionId: finalizedSession.id }
   );
 
   if (mission.type === 'identity' && localIdentityResult) {
@@ -203,12 +218,12 @@ export const POST: RequestHandler = async (event) => {
       'identity.complete',
       {
         missionId: mission.id,
-        sessionId: session.id,
+        sessionId: finalizedSession.id,
         result: localIdentityResult,
         stored: identityStored
       },
       {
-        sessionId: session.id,
+        sessionId: finalizedSession.id,
         suppressMemory: identitySuppressed,
         suppressAdaptation: identitySuppressed,
         suppressReactions: suppressReactions || !consent.reactions
@@ -218,8 +233,8 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ok: true,
-    session,
-    rewards: {
+    session: finalizedSession,
+    rewardsGranted: {
       xpGranted: grantResult.xpGranted,
       energyGranted: grantResult.energyGranted
     },

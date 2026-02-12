@@ -90,7 +90,9 @@ export const validateMissionStart = (
 
 export const validateMissionComplete = (
   user: MissionUser,
-  session: MissionSessionRow | null
+  session: MissionSessionRow | null,
+  mission?: MissionDefinition | null,
+  now = Date.now()
 ): ValidationResult => {
   if (!user?.id) {
     return { ok: false, status: 401, code: 'unauthorized', message: 'Authentication required.' };
@@ -111,6 +113,19 @@ export const validateMissionComplete = (
       code: 'session_not_active',
       message: 'Mission session is not active.'
     };
+  }
+
+  const minDurationMs = mission?.requirements?.minDurationMs;
+  if (isFiniteNumber(minDurationMs) && minDurationMs > 0 && session.started_at) {
+    const startedAt = Date.parse(session.started_at);
+    if (Number.isFinite(startedAt) && now - startedAt < minDurationMs) {
+      return {
+        ok: false,
+        status: 409,
+        code: 'mission_too_early_to_complete',
+        message: 'Mission cannot be completed yet.'
+      };
+    }
   }
 
   return { ok: true };

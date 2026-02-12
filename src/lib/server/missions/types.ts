@@ -8,6 +8,7 @@ export type MissionRequirements = {
   minLevel?: number;
   minEnergy?: number;
   repeatable?: boolean;
+  minDurationMs?: number;
 };
 
 export type MissionDefinition = {
