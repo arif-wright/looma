@@ -18,6 +18,7 @@ import {
 import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
 import { applyDailyMissionStreakProgress } from '$lib/server/missions/dailyStreak';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
+import { applyEventToEmotionalState } from '$lib/server/emotionalState';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -210,48 +211,6 @@ export const POST: RequestHandler = async (event) => {
   };
 
   const completedAt = new Date().toISOString();
-  const { data: session, error: updateError } = await supabase
-    .from('mission_sessions')
-    .update({
-      mission_type: mission.type,
-      status: 'completed',
-      completed_at: completedAt,
-      rewards: rewardsSnapshot,
-      rewards_json: rewardsSnapshot,
-      idempotency_key: activeSession.idempotency_key ?? completionIdempotencyKey
-    })
-    .eq('id', activeSession.id)
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
-    .maybeSingle();
-
-  if (updateError) {
-    console.error('[api/missions/complete] session update failed', updateError);
-    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
-  }
-
-  let finalizedSession = session;
-  if (!finalizedSession) {
-    const { data: latestSession, error: latestSessionError } = await supabase
-      .from('mission_sessions')
-      .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
-      .eq('id', activeSession.id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (latestSessionError) {
-      console.error('[api/missions/complete] post-update session lookup failed', latestSessionError);
-      return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
-    }
-
-    const resolvedSession = (latestSession as MissionSessionRow | null) ?? null;
-    if (resolvedSession?.status !== 'completed') {
-      return json({ error: 'session_not_active', message: 'Mission session is not active.' }, { status: 409 });
-    }
-    finalizedSession = resolvedSession;
-  }
-
   let identityStored = false;
   if (mission.type === 'identity' && localIdentityResult && !identitySuppressed) {
     const store = await writeIdentityResultToPortableState({
@@ -282,6 +241,55 @@ export const POST: RequestHandler = async (event) => {
     })
     : null;
   const dailyMilestone = dailyStreakProgress?.milestonesUnlocked?.[0] ?? null;
+  const companionId = bond?.companionId ?? null;
+  const emotionalState = companionId
+    ? await applyEventToEmotionalState(
+        {
+          type: 'mission.complete',
+          userId: user.id,
+          companionId,
+          occurredAt: completedAt,
+          payload: {
+            isDailyCompletion: isDailyMission,
+            hasDailyMilestone: Boolean(dailyMilestone)
+          }
+        },
+        { client: supabase, persist: false }
+      )
+    : null;
+
+  const { data: finalizedRaw, error: finalizeError } = await supabase.rpc('fn_mission_complete_finalize_emotional', {
+    p_session_id: activeSession.id,
+    p_user: user.id,
+    p_completed_at: completedAt,
+    p_rewards_json: rewardsSnapshot,
+    p_mission_type: mission.type,
+    p_idempotency_key: activeSession.idempotency_key ?? completionIdempotencyKey,
+    p_companion_id: companionId,
+    p_emotional_state: emotionalState
+      ? {
+          mood: emotionalState.mood,
+          trust: emotionalState.trust,
+          bond: emotionalState.bond,
+          streakMomentum: emotionalState.streakMomentum,
+          volatility: emotionalState.volatility,
+          recentTone: emotionalState.recentTone,
+          lastMilestoneAt: emotionalState.lastMilestoneAt
+        }
+      : null
+  });
+
+  if (finalizeError) {
+    console.error('[api/missions/complete] mission finalize rpc failed', finalizeError);
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+  }
+
+  const finalizedSession =
+    (Array.isArray(finalizedRaw) ? (finalizedRaw[0] as MissionSessionRow | null) : (finalizedRaw as MissionSessionRow | null)) ??
+    null;
+  if (!finalizedSession || finalizedSession.status !== 'completed') {
+    return json({ error: 'session_not_active', message: 'Mission session is not active.' }, { status: 409 });
+  }
 
   await ingestServerEvent(
     event,

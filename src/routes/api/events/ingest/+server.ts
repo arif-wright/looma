@@ -21,6 +21,7 @@ import {
 } from '$lib/companions/progression';
 import { evaluateMuseEvolutionUnlocks, getMuseEvolutionRules } from '$lib/companions/evolution';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
+import { applyEventToEmotionalState } from '$lib/server/emotionalState';
 
 const ALLOWED_TYPES = new Set([
   'session.start',
@@ -33,6 +34,7 @@ const ALLOWED_TYPES = new Set([
   'missions.daily.refresh',
   'identity.complete',
   'companion.swap',
+  'companion.evolve',
   'companion.ritual.listen',
   'companion.ritual.focus',
   'companion.ritual.celebrate',
@@ -199,6 +201,10 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const context = await getContextBundle(event, { userId, sessionId });
+  const activeCompanionId =
+    typeof (context as any)?.companion?.active?.id === 'string'
+      ? ((context as any).companion.active.id as string)
+      : null;
   const reactionsEnabled = (context as any)?.portableState?.reactionsEnabled;
   const suppressReactions = reactionsEnabled === false || meta.suppressReactions === true;
   const nowIso = typeof meta.ts === 'string' ? meta.ts : new Date().toISOString();
@@ -213,6 +219,22 @@ export const POST: RequestHandler = async (event) => {
       });
     } catch (err) {
       console.error('[events] portable sync stub failed', err);
+    }
+  }
+
+  if (userId && activeCompanionId && type === 'session.start') {
+    try {
+      await applyEventToEmotionalState(
+        {
+          type: 'session.start',
+          userId,
+          companionId: activeCompanionId,
+          occurredAt: nowIso
+        },
+        { client: supabase }
+      );
+    } catch (err) {
+      console.error('[events] emotional state session.start update failed', err);
     }
   }
 
@@ -336,6 +358,21 @@ export const POST: RequestHandler = async (event) => {
               console.error('[events] progression portable_state update failed', updateError);
             } else {
               progressionUnlocks = earnedUnlocks;
+              if (earnedEvolution.length > 0) {
+                try {
+                  await applyEventToEmotionalState(
+                    {
+                      type: 'companion.evolve',
+                      userId,
+                      companionId: activeCompanion.id,
+                      occurredAt: nowIso
+                    },
+                    { client: supabase }
+                  );
+                } catch (err) {
+                  console.error('[events] emotional state companion.evolve update failed', err);
+                }
+              }
             }
           }
         }
