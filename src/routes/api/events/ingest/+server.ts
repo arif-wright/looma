@@ -30,6 +30,9 @@ const ALLOWED_TYPES = new Set([
   'mission.complete',
   'identity.complete',
   'companion.swap',
+  'companion.ritual.listen',
+  'companion.ritual.focus',
+  'companion.ritual.celebrate',
   'preference.toggle'
 ]);
 const EVENTS_RATE_LIMIT_WINDOW_MS =
@@ -60,6 +63,7 @@ const throttle = (key: string): { ok: true } | { ok: false; retryAfter: number }
 const resolveScope = (type: string) => {
   if (type.startsWith('session.')) return 'app';
   if (type.startsWith('game.')) return 'game';
+  if (type.startsWith('companion.')) return 'companion';
   return 'app';
 };
 

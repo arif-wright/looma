@@ -136,4 +136,22 @@ describe('companion agent game reactions', () => {
     const secondText = (two.output?.reaction as { text?: string } | undefined)?.text ?? '';
     expect(firstText).toBe(secondText);
   });
+
+  it('supports companion ritual events with short text', async () => {
+    __resetCompanionAgentRateLimits();
+    const result = await agentRegistry.companion.handle(
+      baseEvent({
+        type: 'companion.ritual.listen',
+        timestamp: '2026-02-08T12:40:00.000Z',
+        payload: {
+          companionId: 'muse',
+          ritualKey: 'listen'
+        }
+      })
+    );
+
+    const text = (result.output?.reaction as { text?: string } | undefined)?.text ?? '';
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.length).toBeLessThan(120);
+  });
 });

@@ -163,7 +163,10 @@ const companionAgent: Agent = {
         'game.complete',
         'mission.start',
         'mission.complete',
-        'companion.swap'
+        'companion.swap',
+        'companion.ritual.listen',
+        'companion.ritual.focus',
+        'companion.ritual.celebrate'
       ].includes(event.type)
     ) {
       return { agentId: 'companion', handled: false };
@@ -346,6 +349,33 @@ const companionAgent: Agent = {
         `${companionName} selected.`
       ];
       text = pick(tone === 'direct' ? direct : warm, 'companion.swap:text');
+    } else if (event.type === 'companion.ritual.listen') {
+      const warm = [
+        `I am listening. Take your time.`,
+        `Quiet moment together.`,
+        `${companionName} is here with you.`,
+        `Breath in, breath out.`
+      ];
+      const direct = ['Listening.', 'I hear you.', 'Quiet check-in logged.', 'Steady and present.'];
+      text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.listen:text');
+    } else if (event.type === 'companion.ritual.focus') {
+      const warm = [
+        `Focus set. We move one step at a time.`,
+        `Focused mode is up. ${focusCue}.`,
+        `${companionName} is locked in with you.`,
+        `We can keep this clean and calm.`
+      ];
+      const direct = ['Focus set.', 'Focused mode active.', `${focusCue}.`, 'Hold form.'];
+      text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.focus:text');
+    } else if (event.type === 'companion.ritual.celebrate') {
+      const warm = [
+        `Nice moment. Let it land.`,
+        `Celebrate this one. ${affirmation}.`,
+        `${companionName} is celebrating with you.`,
+        `Good work. Keep this feeling.`
+      ];
+      const direct = ['Win logged. Nice.', 'Celebrate complete.', `${affirmation}.`, 'Solid result.'];
+      text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.celebrate:text');
     }
 
     if (!text) {

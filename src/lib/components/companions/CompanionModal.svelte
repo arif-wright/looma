@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { createEventDispatcher, onDestroy, onMount, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import Modal from '$lib/components/ui/Modal.svelte';
   import EventRow from '$lib/components/companions/EventRow.svelte';
   import type { Companion } from '$lib/stores/companions';
@@ -22,6 +23,13 @@
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { shouldUploadPortrait, uploadCompanionPortrait, markPortraitUploaded } from '$lib/companions/portraitUpload';
+  import {
+    OPTIONAL_COMPANION_RITUALS,
+    OPTIONAL_COMPANION_RITUAL_MAP,
+    type OptionalCompanionRitualKey
+  } from '$lib/companions/optionalRituals';
+  import { companionPrefs } from '$lib/stores/companionPrefs';
+  import { pushCompanionReaction } from '$lib/stores/companionReactions';
 
   export let open = false;
   export let companion: Companion | null = null;
@@ -54,6 +62,7 @@
   }>();
 
   type CareAction = 'feed' | 'play' | 'groom';
+  type OptionalMood = { label: string; expiresAt: string };
 
   const CARE_ACTIONS: Array<{ key: CareAction; label: string; effect: string; description: string }> = [
     { key: 'feed', label: 'Feed', effect: 'Energy up', description: 'A small refill and a softer bond.' },
@@ -81,6 +90,15 @@
   let careBusy: CareAction | null = null;
   let careError: string | null = null;
   let cooldownUntil: Record<CareAction, number> = { feed: 0, play: 0, groom: 0 };
+  let ritualBusy: OptionalCompanionRitualKey | null = null;
+  let ritualError: string | null = null;
+  let ritualCooldownUntil: Record<OptionalCompanionRitualKey, number> = {
+    listen: 0,
+    focus: 0,
+    celebrate: 0
+  };
+  let ritualMood: OptionalMood | null = null;
+  let prefersReducedMotion = false;
   let nowTick = Date.now();
   let cooldownTimer: number | null = null;
   let lastFetchedId: string | null = null;
@@ -143,6 +161,13 @@
 
   onMount(() => {
     if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    prefersReducedMotion = media.matches;
+    const mediaHandler = (event: MediaQueryListEvent) => {
+      prefersReducedMotion = event.matches;
+    };
+    media.addEventListener?.('change', mediaHandler);
+
     cooldownTimer = window.setInterval(() => {
       nowTick = Date.now();
     }, 500);
@@ -151,6 +176,7 @@
         window.clearInterval(cooldownTimer);
         cooldownTimer = null;
       }
+      media.removeEventListener?.('change', mediaHandler);
     };
   });
 
@@ -252,6 +278,14 @@
     careError = null;
     resetCareState();
     portraitBusy = false;
+    ritualBusy = null;
+    ritualError = null;
+    ritualMood = null;
+    ritualCooldownUntil = {
+      listen: 0,
+      focus: 0,
+      celebrate: 0
+    };
   }
 
   let currentCompanionId: string | null = null;
@@ -291,6 +325,7 @@
   $: bondBonus = getBondBonusForLevel(bondLevel);
   $: bondTier = getBondTierForLevel(bondLevel);
   $: bondBonusSummary = formatBonusSummary(bondBonus);
+  $: ritualMoodLabel = ritualMood && Date.parse(ritualMood.expiresAt) > nowTick ? ritualMood.label : null;
 
   const normalizeRarity = (rarity: string | null | undefined) => (rarity ?? 'common').trim().toLowerCase();
   $: rarityClass = normalizeRarity(companion?.rarity);
@@ -388,6 +423,76 @@
     feed: Math.max(0, Math.ceil((cooldownUntil.feed - nowTick) / 1000)),
     play: Math.max(0, Math.ceil((cooldownUntil.play - nowTick) / 1000)),
     groom: Math.max(0, Math.ceil((cooldownUntil.groom - nowTick) / 1000))
+  };
+
+  $: ritualCooldowns = {
+    listen: Math.max(0, Math.ceil((ritualCooldownUntil.listen - nowTick) / 1000)),
+    focus: Math.max(0, Math.ceil((ritualCooldownUntil.focus - nowTick) / 1000)),
+    celebrate: Math.max(0, Math.ceil((ritualCooldownUntil.celebrate - nowTick) / 1000))
+  };
+
+  const setRitualCooldown = (key: OptionalCompanionRitualKey, remainingMs: number) => {
+    ritualCooldownUntil = {
+      ...ritualCooldownUntil,
+      [key]: Date.now() + Math.max(0, remainingMs)
+    };
+  };
+
+  const handleOptionalRitual = async (key: OptionalCompanionRitualKey) => {
+    if (!companion || ritualBusy || ritualCooldowns[key] > 0) return;
+    ritualBusy = key;
+    ritualError = null;
+    try {
+      const pref = get(companionPrefs);
+      const ritualDef = OPTIONAL_COMPANION_RITUAL_MAP.get(key);
+      const res = await fetch('/api/companions/rituals/act', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companionId: companion.id,
+          ritualKey: key,
+          suppressReactions: !pref.reactionsEnabled
+        })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        if (payload?.error === 'ritual_cooldown' && typeof payload.retryAfter === 'number') {
+          setRitualCooldown(key, payload.retryAfter * 1000);
+        }
+        ritualError = typeof payload?.message === 'string' ? payload.message : 'Could not start ritual right now.';
+        return;
+      }
+
+      const serverCooldownMs =
+        typeof payload?.ritual?.cooldownMs === 'number'
+          ? payload.ritual.cooldownMs
+          : (ritualDef?.cooldownMs ?? 60 * 60 * 1000);
+      setRitualCooldown(key, serverCooldownMs);
+
+      const nextMood =
+        payload?.temporaryMood &&
+        typeof payload.temporaryMood === 'object' &&
+        typeof payload.temporaryMood.label === 'string' &&
+        typeof payload.temporaryMood.expiresAt === 'string'
+          ? { label: payload.temporaryMood.label, expiresAt: payload.temporaryMood.expiresAt }
+          : null;
+      if (nextMood) {
+        ritualMood = nextMood;
+      }
+
+      const reaction = payload?.reaction;
+      const reactionText = typeof reaction?.text === 'string' ? reaction.text : null;
+      if (reactionText && pref.reactionsEnabled && !prefersReducedMotion) {
+        pushCompanionReaction(reaction);
+      } else if (reactionText) {
+        dispatch('toast', { message: reactionText, kind: 'success' });
+      }
+    } catch (err) {
+      devLog('[CompanionModal] optional ritual failed', err);
+      ritualError = safeUiMessage(err);
+    } finally {
+      ritualBusy = null;
+    }
   };
 
   const handleCareAction = async (action: CareAction) => {
@@ -595,7 +700,7 @@
     <section class="stat-grid" aria-label="Bond stats">
       <div class="stat-grid__meta">
         <h3>Bond stats</h3>
-        <span class="last-care-pill">Mood: {effective?.moodLabel ?? 'Calm'}</span>
+        <span class="last-care-pill">Mood: {ritualMoodLabel ?? effective?.moodLabel ?? 'Calm'}</span>
       </div>
       <article>
         <header>Affection</header>
@@ -615,6 +720,45 @@
           <span style={`width:${pct(effective?.energy ?? companion.energy)}%`}></span>
         </div>
       </article>
+    </section>
+
+    <section class="ritual-section" aria-label="Optional rituals">
+      <div class="ritual-section__head">
+        <div>
+          <p class="label">Optional rituals</p>
+          <h3>Small moments with {companion.name}</h3>
+        </div>
+      </div>
+      {#if ritualError}
+        <p class="care-error" role="alert">{ritualError}</p>
+      {/if}
+      <div class="ritual-buttons">
+        {#each OPTIONAL_COMPANION_RITUALS as ritual}
+          <button
+            type="button"
+            class={`ritual-button ${ritualBusy === ritual.key ? 'busy' : ''}`}
+            disabled={!!ritualBusy || ritualCooldowns[ritual.key] > 0}
+            on:click={() => handleOptionalRitual(ritual.key)}
+          >
+            <div class="care-copy">
+              <div class="care-title-row">
+                <span class="care-title">{ritual.title}</span>
+                <span class="care-badge">1h cooldown</span>
+              </div>
+              <p>{ritual.description}</p>
+              <span class="care-cooldown">
+                {#if ritualBusy === ritual.key}
+                  Starting…
+                {:else if ritualCooldowns[ritual.key] > 0}
+                  Ready in {ritualCooldowns[ritual.key]}s
+                {:else}
+                  Ready
+                {/if}
+              </span>
+            </div>
+          </button>
+        {/each}
+      </div>
     </section>
 
     <section class="care-section" aria-label="Care actions" bind:this={careSection}>
@@ -985,6 +1129,28 @@
     gap: 0.75rem;
   }
 
+  .ritual-section {
+    margin: 1.5rem 0;
+    border: 1px solid rgba(147, 197, 253, 0.2);
+    border-radius: 18px;
+    padding: 1rem;
+    background: rgba(147, 197, 253, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .ritual-section__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .ritual-buttons {
+    display: grid;
+    gap: 0.75rem;
+  }
+
   .bond-overview {
     display: grid;
     grid-template-columns: 160px 1fr;
@@ -1128,6 +1294,28 @@
   }
 
   .care-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .ritual-button {
+    border-radius: 16px;
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    background: rgba(8, 10, 20, 0.9);
+    padding: 0.85rem 1rem;
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+    text-align: left;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+
+  .ritual-button:hover:not(:disabled) {
+    border-color: rgba(147, 197, 253, 0.5);
+    background: rgba(10, 13, 24, 0.95);
+  }
+
+  .ritual-button:disabled {
     opacity: 0.65;
     cursor: not-allowed;
   }
