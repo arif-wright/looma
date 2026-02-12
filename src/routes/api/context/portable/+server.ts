@@ -6,6 +6,8 @@ import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableS
 import { normalizePortableCompanions, withNormalizedCompanions } from '$lib/server/context/portableCompanions';
 import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
 import { ingestServerEvent } from '$lib/server/events/ingest';
+import { writeCloudWeaveAuditLog } from '$lib/server/cloudweave/audit';
+import { getCloudWeaveConfig } from '$lib/server/cloudweave/config';
 
 const coercePortableState = (input: unknown): PortableState => {
   const now = new Date().toISOString();
@@ -202,6 +204,31 @@ export const PUT: RequestHandler = async (event) => {
       },
       { sessionId: null }
     );
+  }
+
+  if (typeof consentEmotionalAdaptation === 'boolean' || typeof consentCrossAppContinuity === 'boolean') {
+    const companionId = (() => {
+      const companionEntries = portableState?.companions?.roster ?? [];
+      const activeId = portableState?.companions?.activeId ?? null;
+      if (activeId) return activeId;
+      return companionEntries[0]?.id ?? 'muse';
+    })();
+    const config = getCloudWeaveConfig();
+    await writeCloudWeaveAuditLog({
+      supabase,
+      userId: session.user.id,
+      companionId,
+      action: 'consent_change',
+      exportVersion: config.exportVersion,
+      metadata: {
+        ...(typeof consentEmotionalAdaptation === 'boolean'
+          ? { consent_emotional_adaptation: consentEmotionalAdaptation }
+          : {}),
+        ...(typeof consentCrossAppContinuity === 'boolean'
+          ? { consent_cross_app_continuity: consentCrossAppContinuity }
+          : {})
+      }
+    });
   }
 
   return json({ ok: true });

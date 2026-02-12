@@ -146,6 +146,25 @@
     }
   };
 
+  const resetMuseState = async () => {
+    if (summarySaving) return;
+    if (!window.confirm('Reset Muse emotional state and memory summary for this companion?')) return;
+    summarySaving = true;
+    error = null;
+    try {
+      const targetId = activeCompanionId;
+      const query = targetId ? `?companionId=${encodeURIComponent(targetId)}` : '';
+      const res = await fetch(`/api/cloudweave/clear${query}`, { method: 'POST' });
+      if (!res.ok) throw new Error('reset failed');
+      await fetchMuseSummary();
+      window.dispatchEvent(new CustomEvent('looma:ambient-refresh', { detail: { reason: 'cloudweave.clear' } }));
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
+    }
+  };
+
   const resolveItem = (items: PortableState['items'], key: string, fallback: boolean) => {
     const match = items.find((entry) => entry.key === key);
     if (!match) return fallback;
@@ -515,6 +534,9 @@
         disabled={summarySaving}
       >
         {emotionalAdaptationPaused ? 'Resume emotional adaptation' : 'Pause emotional adaptation'}
+      </button>
+      <button type="button" class="pill pill-action" on:click={resetMuseState} disabled={summarySaving}>
+        Reset Muse state
       </button>
     </div>
   </section>

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '$lib/server/supabase';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { buildCompanionMemorySummary } from '$lib/server/memorySummary';
 import { resolveMuseEvolutionStage } from '$lib/companions/evolution';
+import { getCloudWeaveConfig } from '$lib/server/cloudweave/config';
 
 type ConsentRow = {
   consent_adaptation?: boolean | null;
@@ -34,7 +35,7 @@ type CompanionRow = {
 };
 
 export type CloudWeaveExport = {
-  version: 'cw-0.1';
+  version: string;
   userId: string;
   companionId: string;
   generatedAt: string;
@@ -94,6 +95,7 @@ export const buildCloudWeaveExport = async (
   client: SupabaseClient = supabaseAdmin
 ): Promise<CloudWeaveExport> => {
   const generatedAt = new Date().toISOString();
+  const config = getCloudWeaveConfig();
 
   const [preferencesRes, emotionalRes, summaryRes, companionRes] = await Promise.all([
     client
@@ -171,7 +173,7 @@ export const buildCloudWeaveExport = async (
     readPortableItem(portableItems, 'reduced_motion') ?? readPortableItem(portableItems, 'reducedMotion');
 
   return {
-    version: 'cw-0.1',
+    version: config.exportVersion,
     userId,
     companionId,
     generatedAt,
