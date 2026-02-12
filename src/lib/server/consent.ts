@@ -6,12 +6,16 @@ export type ConsentFlags = {
   memory: boolean;
   adaptation: boolean;
   reactions: boolean;
+  emotionalAdaptation: boolean;
+  crossAppContinuity: boolean;
 };
 
 const DEFAULT_CONSENT: ConsentFlags = {
   memory: true,
   adaptation: true,
-  reactions: true
+  reactions: true,
+  emotionalAdaptation: true,
+  crossAppContinuity: false
 };
 
 const extractPortableReactions = (portableState: unknown): boolean | null => {
@@ -29,10 +33,15 @@ const extractPortableReactions = (portableState: unknown): boolean | null => {
   return null;
 };
 
-const isMissingReactionsColumn = (error: { code?: string | null; message?: string | null } | null | undefined) => {
+const isMissingConsentColumn = (error: { code?: string | null; message?: string | null } | null | undefined) => {
   if (!error) return false;
   if (error.code === '42703' || error.code === 'PGRST204') return true;
-  return typeof error.message === 'string' && error.message.includes('consent_reactions');
+  return (
+    typeof error.message === 'string' &&
+    (error.message.includes('consent_reactions') ||
+      error.message.includes('consent_emotional_adaptation') ||
+      error.message.includes('consent_cross_app_continuity'))
+  );
 };
 
 export const getConsentFlags = async (
@@ -45,15 +54,17 @@ export const getConsentFlags = async (
 
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('consent_memory, consent_adaptation, consent_reactions')
+    .select(
+      'consent_memory, consent_adaptation, consent_reactions, consent_emotional_adaptation, consent_cross_app_continuity'
+    )
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error && error.code !== 'PGRST116' && !isMissingReactionsColumn(error)) {
+  if (error && error.code !== 'PGRST116' && !isMissingConsentColumn(error)) {
     console.error('[consent] fetch failed', error);
   }
 
-  if (isMissingReactionsColumn(error)) {
+  if (isMissingConsentColumn(error)) {
     const fallback = await supabase
       .from('user_preferences')
       .select('consent_memory, consent_adaptation, portable_state')
@@ -72,7 +83,12 @@ export const getConsentFlags = async (
         typeof fallback.data?.consent_adaptation === 'boolean'
           ? fallback.data.consent_adaptation
           : DEFAULT_CONSENT.adaptation,
-      reactions: typeof portableReactions === 'boolean' ? portableReactions : DEFAULT_CONSENT.reactions
+      reactions: typeof portableReactions === 'boolean' ? portableReactions : DEFAULT_CONSENT.reactions,
+      emotionalAdaptation:
+        typeof fallback.data?.consent_adaptation === 'boolean'
+          ? fallback.data.consent_adaptation
+          : DEFAULT_CONSENT.emotionalAdaptation,
+      crossAppContinuity: DEFAULT_CONSENT.crossAppContinuity
     };
   }
 
@@ -81,6 +97,16 @@ export const getConsentFlags = async (
     adaptation:
       typeof data?.consent_adaptation === 'boolean' ? data.consent_adaptation : DEFAULT_CONSENT.adaptation,
     reactions:
-      typeof data?.consent_reactions === 'boolean' ? data.consent_reactions : DEFAULT_CONSENT.reactions
+      typeof data?.consent_reactions === 'boolean' ? data.consent_reactions : DEFAULT_CONSENT.reactions,
+    emotionalAdaptation:
+      typeof data?.consent_emotional_adaptation === 'boolean'
+        ? data.consent_emotional_adaptation
+        : typeof data?.consent_adaptation === 'boolean'
+          ? data.consent_adaptation
+          : DEFAULT_CONSENT.emotionalAdaptation,
+    crossAppContinuity:
+      typeof data?.consent_cross_app_continuity === 'boolean'
+        ? data.consent_cross_app_continuity
+        : DEFAULT_CONSENT.crossAppContinuity
   };
 };

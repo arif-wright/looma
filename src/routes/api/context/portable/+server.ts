@@ -40,10 +40,15 @@ const coercePortableState = (input: unknown): PortableState => {
   };
 };
 
-const isMissingReactionsColumn = (error: { code?: string | null; message?: string | null } | null | undefined) => {
+const isMissingConsentColumn = (error: { code?: string | null; message?: string | null } | null | undefined) => {
   if (!error) return false;
   if (error.code === '42703' || error.code === 'PGRST204') return true;
-  return typeof error.message === 'string' && error.message.includes('consent_reactions');
+  return (
+    typeof error.message === 'string' &&
+    (error.message.includes('consent_reactions') ||
+      error.message.includes('consent_emotional_adaptation') ||
+      error.message.includes('consent_cross_app_continuity'))
+  );
 };
 
 const upsertPortableBool = (state: PortableState, key: string, value: boolean, source = 'preferences'): PortableState => {
@@ -100,6 +105,10 @@ export const PUT: RequestHandler = async (event) => {
     typeof payload.consentAdaptation === 'boolean' ? payload.consentAdaptation : undefined;
   const consentReactions =
     typeof payload.consentReactions === 'boolean' ? payload.consentReactions : undefined;
+  const consentEmotionalAdaptation =
+    typeof payload.consentEmotionalAdaptation === 'boolean' ? payload.consentEmotionalAdaptation : undefined;
+  const consentCrossAppContinuity =
+    typeof payload.consentCrossAppContinuity === 'boolean' ? payload.consentCrossAppContinuity : undefined;
   const reset = payload.reset === true;
 
   const nextState = reset ? { version: PORTABLE_STATE_VERSION, updatedAt: new Date().toISOString(), items: [] } : undefined;
@@ -128,6 +137,12 @@ export const PUT: RequestHandler = async (event) => {
   if (typeof consentMemory === 'boolean') upsertPayload.consent_memory = consentMemory;
   if (typeof consentAdaptation === 'boolean') upsertPayload.consent_adaptation = consentAdaptation;
   if (typeof consentReactions === 'boolean') upsertPayload.consent_reactions = consentReactions;
+  if (typeof consentEmotionalAdaptation === 'boolean') {
+    upsertPayload.consent_emotional_adaptation = consentEmotionalAdaptation;
+  }
+  if (typeof consentCrossAppContinuity === 'boolean') {
+    upsertPayload.consent_cross_app_continuity = consentCrossAppContinuity;
+  }
   if (portableState) upsertPayload.portable_state = portableState;
 
   if (typeof consentMemory === 'boolean' && !consentMemory) {
@@ -142,9 +157,11 @@ export const PUT: RequestHandler = async (event) => {
     .from('user_preferences')
     .upsert(upsertPayload, { onConflict: 'user_id', ignoreDuplicates: false });
 
-  if (isMissingReactionsColumn(error)) {
+  if (isMissingConsentColumn(error)) {
     const retryPayload = { ...upsertPayload };
     delete retryPayload.consent_reactions;
+    delete retryPayload.consent_emotional_adaptation;
+    delete retryPayload.consent_cross_app_continuity;
     const retry = await supabase
       .from('user_preferences')
       .upsert(retryPayload, { onConflict: 'user_id', ignoreDuplicates: false });
@@ -167,6 +184,12 @@ export const PUT: RequestHandler = async (event) => {
   }
   if (typeof consentReactions === 'boolean') {
     toggleEvents.push({ key: 'consent_reactions', value: consentReactions });
+  }
+  if (typeof consentEmotionalAdaptation === 'boolean') {
+    toggleEvents.push({ key: 'consent_emotional_adaptation', value: consentEmotionalAdaptation });
+  }
+  if (typeof consentCrossAppContinuity === 'boolean') {
+    toggleEvents.push({ key: 'consent_cross_app_continuity', value: consentCrossAppContinuity });
   }
 
   for (const toggle of toggleEvents) {
