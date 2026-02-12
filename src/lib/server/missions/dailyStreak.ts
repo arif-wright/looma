@@ -15,26 +15,35 @@ export type DailyStreakMilestone = {
   title: string;
 };
 
-const DAILY_STREAK_MILESTONES: DailyStreakMilestone[] = [
-  {
-    id: 'daily_streak_3',
-    threshold: 3,
-    cosmeticId: 'daily-glow-3',
-    title: 'Glow Seed'
-  },
-  {
-    id: 'daily_streak_7',
-    threshold: 7,
-    cosmeticId: 'daily-glow-7',
-    title: 'Lumen Thread'
-  },
-  {
-    id: 'daily_streak_14',
-    threshold: 14,
-    cosmeticId: 'daily-glow-14',
-    title: 'Aurora Weave'
-  }
-];
+const buildDailyStreakMilestones = (thresholds?: {
+  streak3?: number;
+  streak7?: number;
+  streak14?: number;
+}): DailyStreakMilestone[] => {
+  const streak3 = Math.max(1, Math.floor(thresholds?.streak3 ?? 3));
+  const streak7 = Math.max(streak3 + 1, Math.floor(thresholds?.streak7 ?? 7));
+  const streak14 = Math.max(streak7 + 1, Math.floor(thresholds?.streak14 ?? 14));
+  return [
+    {
+      id: 'daily_streak_3',
+      threshold: streak3,
+      cosmeticId: 'daily-glow-3',
+      title: 'Glow Seed'
+    },
+    {
+      id: 'daily_streak_7',
+      threshold: streak7,
+      cosmeticId: 'daily-glow-7',
+      title: 'Lumen Thread'
+    },
+    {
+      id: 'daily_streak_14',
+      threshold: streak14,
+      cosmeticId: 'daily-glow-14',
+      title: 'Aurora Weave'
+    }
+  ];
+};
 
 type DailyStreakProgress = {
   streakDays: number;
@@ -164,12 +173,19 @@ const computeDailyStreak = async ({
 export const applyDailyMissionStreakProgress = async ({
   supabase,
   userId,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
+  thresholds
 }: {
   supabase: SupabaseClient;
   userId: string;
   nowIso?: string;
+  thresholds?: {
+    streak3?: number;
+    streak7?: number;
+    streak14?: number;
+  };
 }): Promise<DailyStreakProgress> => {
+  const milestones = buildDailyStreakMilestones(thresholds);
   const streak = await computeDailyStreak({ supabase, userId, nowIso });
 
   const { data, error } = await supabase
@@ -190,7 +206,7 @@ export const applyDailyMissionStreakProgress = async ({
   const portable = toPortableState(data?.portable_state);
   const milestoneItem = portable.items.find((entry) => entry.key === ITEM_KEY_DAILY_STREAK_MILESTONES);
   const claimedMilestones = parseCsvSet(milestoneItem?.value);
-  const milestonesUnlocked = DAILY_STREAK_MILESTONES.filter(
+  const milestonesUnlocked = milestones.filter(
     (milestone) => streak.streakDays >= milestone.threshold && !claimedMilestones.has(milestone.id)
   );
 

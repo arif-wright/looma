@@ -17,6 +17,7 @@ import {
 } from '$lib/server/missions/identityResult';
 import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
 import { applyDailyMissionStreakProgress } from '$lib/server/missions/dailyStreak';
+import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -267,12 +268,18 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const isDailyMission = Array.isArray(mission.tags) && mission.tags.includes('daily');
+  const tuning = await getLoomaTuningConfig();
   const dailyStreakProgress = isDailyMission
     ? await applyDailyMissionStreakProgress({
-        supabase,
-        userId: user.id,
-        nowIso: completedAt
-      })
+      supabase,
+      userId: user.id,
+      nowIso: completedAt,
+      thresholds: {
+        streak3: tuning.milestones.dailyStreak.streak3,
+        streak7: tuning.milestones.dailyStreak.streak7,
+        streak14: tuning.milestones.dailyStreak.streak14
+      }
+    })
     : null;
   const dailyMilestone = dailyStreakProgress?.milestonesUnlocked?.[0] ?? null;
 

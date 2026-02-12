@@ -2,6 +2,11 @@ import { env as privateEnv } from '$env/dynamic/private';
 import { tryGetSupabaseAdminClient } from '$lib/server/supabase';
 
 export type LoomaTuningConfig = {
+  missions: {
+    dailyCount: number;
+    weeklyCount: number;
+    repeatAvoidanceWindow: number;
+  };
   reactions: {
     preRunCooldownMs: number;
     preRunChancePercent: number;
@@ -23,6 +28,11 @@ export type LoomaTuningConfig = {
     focusMoodDurationMs: number;
   };
   milestones: {
+    dailyStreak: {
+      streak3: number;
+      streak7: number;
+      streak14: number;
+    };
     companion: {
       streak3: number;
       games5: number;
@@ -64,6 +74,16 @@ const parseEnvInt = (value: string | undefined, fallback: number, min = 0, max =
 const asRecord = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null);
 
 const withEnvOverrides = (base: LoomaTuningConfig): LoomaTuningConfig => ({
+  missions: {
+    dailyCount: parseEnvInt(privateEnv.TUNING_MISSIONS_DAILY_COUNT, base.missions.dailyCount, 1, 10),
+    weeklyCount: parseEnvInt(privateEnv.TUNING_MISSIONS_WEEKLY_COUNT, base.missions.weeklyCount, 1, 10),
+    repeatAvoidanceWindow: parseEnvInt(
+      privateEnv.TUNING_MISSIONS_REPEAT_AVOIDANCE_WINDOW,
+      base.missions.repeatAvoidanceWindow,
+      0,
+      14
+    )
+  },
   reactions: {
     preRunCooldownMs: parseEnvInt(privateEnv.TUNING_REACTION_PRE_RUN_COOLDOWN_MS, base.reactions.preRunCooldownMs, 0),
     preRunChancePercent: parseEnvInt(privateEnv.TUNING_REACTION_PRE_RUN_CHANCE_PERCENT, base.reactions.preRunChancePercent, 0, 100),
@@ -89,6 +109,23 @@ const withEnvOverrides = (base: LoomaTuningConfig): LoomaTuningConfig => ({
     )
   },
   milestones: {
+    dailyStreak: {
+      streak3: parseEnvInt(
+        privateEnv.TUNING_MILESTONE_DAILY_STREAK_3_THRESHOLD,
+        base.milestones.dailyStreak.streak3,
+        1
+      ),
+      streak7: parseEnvInt(
+        privateEnv.TUNING_MILESTONE_DAILY_STREAK_7_THRESHOLD,
+        base.milestones.dailyStreak.streak7,
+        1
+      ),
+      streak14: parseEnvInt(
+        privateEnv.TUNING_MILESTONE_DAILY_STREAK_14_THRESHOLD,
+        base.milestones.dailyStreak.streak14,
+        1
+      )
+    },
     companion: {
       streak3: parseEnvInt(privateEnv.TUNING_MILESTONE_STREAK_3_THRESHOLD, base.milestones.companion.streak3, 1),
       games5: parseEnvInt(privateEnv.TUNING_MILESTONE_GAMES_5_THRESHOLD, base.milestones.companion.games5, 1),
@@ -130,16 +167,28 @@ const withEnvOverrides = (base: LoomaTuningConfig): LoomaTuningConfig => ({
 const withDbOverrides = (base: LoomaTuningConfig, rows: TuningRow[]): LoomaTuningConfig => {
   const byKey = new Map(rows.map((row) => [row.key, row.value] as const));
   const reaction = asRecord(byKey.get('reactions'));
+  const mission = asRecord(byKey.get('missions'));
   const whisper = asRecord(byKey.get('whispers'));
   const ritual = asRecord(byKey.get('rituals'));
   const milestone = asRecord(byKey.get('milestones'));
   const ritualCooldown = asRecord(ritual?.cooldownMs);
   const companionMilestone = asRecord(milestone?.companion);
+  const dailyStreakMilestone = asRecord(milestone?.dailyStreak);
   const museMilestone = asRecord(milestone?.museEvolution);
   const museHarmonae = asRecord(museMilestone?.harmonae);
   const museMirae = asRecord(museMilestone?.mirae);
 
   return {
+    missions: {
+      dailyCount: clampInt(mission?.dailyCount, base.missions.dailyCount, 1, 10),
+      weeklyCount: clampInt(mission?.weeklyCount, base.missions.weeklyCount, 1, 10),
+      repeatAvoidanceWindow: clampInt(
+        mission?.repeatAvoidanceWindow,
+        base.missions.repeatAvoidanceWindow,
+        0,
+        14
+      )
+    },
     reactions: {
       preRunCooldownMs: clampInt(reaction?.preRunCooldownMs, base.reactions.preRunCooldownMs, 0),
       preRunChancePercent: clampInt(reaction?.preRunChancePercent, base.reactions.preRunChancePercent, 0, 100),
@@ -161,6 +210,11 @@ const withDbOverrides = (base: LoomaTuningConfig, rows: TuningRow[]): LoomaTunin
       focusMoodDurationMs: clampInt(ritual?.focusMoodDurationMs, base.rituals.focusMoodDurationMs, 1_000)
     },
     milestones: {
+      dailyStreak: {
+        streak3: clampInt(dailyStreakMilestone?.streak3, base.milestones.dailyStreak.streak3, 1),
+        streak7: clampInt(dailyStreakMilestone?.streak7, base.milestones.dailyStreak.streak7, 1),
+        streak14: clampInt(dailyStreakMilestone?.streak14, base.milestones.dailyStreak.streak14, 1)
+      },
       companion: {
         streak3: clampInt(companionMilestone?.streak3, base.milestones.companion.streak3, 1),
         games5: clampInt(companionMilestone?.games5, base.milestones.companion.games5, 1),
@@ -181,6 +235,11 @@ const withDbOverrides = (base: LoomaTuningConfig, rows: TuningRow[]): LoomaTunin
 };
 
 export const DEFAULT_LOOMA_TUNING_CONFIG: LoomaTuningConfig = {
+  missions: {
+    dailyCount: 3,
+    weeklyCount: 3,
+    repeatAvoidanceWindow: 1
+  },
   reactions: {
     preRunCooldownMs: 60 * 60 * 1000,
     preRunChancePercent: 55,
@@ -202,6 +261,11 @@ export const DEFAULT_LOOMA_TUNING_CONFIG: LoomaTuningConfig = {
     focusMoodDurationMs: 15 * 60 * 1000
   },
   milestones: {
+    dailyStreak: {
+      streak3: 3,
+      streak7: 7,
+      streak14: 14
+    },
     companion: {
       streak3: 3,
       games5: 5,
@@ -231,7 +295,7 @@ export const getLoomaTuningConfig = async (): Promise<LoomaTuningConfig> => {
         .from('runtime_tuning')
         .select('key, value')
         .eq('enabled', true)
-        .in('key', ['reactions', 'whispers', 'rituals', 'milestones']);
+        .in('key', ['missions', 'reactions', 'whispers', 'rituals', 'milestones']);
 
       const code = (error as { code?: string | null } | null)?.code ?? null;
       if (error && code !== 'PGRST116' && code !== '42P01' && code !== 'PGRST205') {

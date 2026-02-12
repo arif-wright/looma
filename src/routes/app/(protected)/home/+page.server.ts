@@ -12,6 +12,7 @@ import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
 import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
 import { ingestServerEvent } from '$lib/server/events/ingest';
+import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 
 type MissionSummary = {
   id: string;
@@ -205,6 +206,7 @@ export const load: PageServerLoad = async (event) => {
         .throwOnError();
 
       const missionPool = (data as MissionSummary[] | null)?.filter(Boolean) ?? [];
+      const tuning = await getLoomaTuningConfig();
       const today = new Date().toISOString().slice(0, 10);
       const baseSeed = `${today}:${userId ?? 'anon'}`;
       const userLevel = typeof stats?.level === 'number' ? stats.level : 0;
@@ -216,23 +218,25 @@ export const load: PageServerLoad = async (event) => {
       const isoWeekSeed = `${utcYear}-W${String(isoWeek).padStart(2, '0')}`;
 
       dailyMissionSuggestions = getDailySet(missionPool, today, {
-        limit: 3,
+        limit: tuning.missions.dailyCount,
         requiredTags: ['daily'],
         userLevel,
         includeIdentityForEnergyDaily: false,
         globalSeed: 'looma-missions-v1',
-        scopeKey: `${baseSeed}:daily`
+        scopeKey: `${baseSeed}:daily`,
+        repeatAvoidanceWindow: tuning.missions.repeatAvoidanceWindow
       });
 
       weeklyMissionSuggestions = getWeeklySet(
         missionPool.filter((entry) => !dailyMissionSuggestions.some((pick) => pick.id === entry.id)),
         isoWeekSeed,
         {
-          limit: 3,
+          limit: tuning.missions.weeklyCount,
           requiredTags: ['weekly'],
           userLevel,
           globalSeed: 'looma-missions-v1',
-          scopeKey: `${baseSeed}:weekly`
+          scopeKey: `${baseSeed}:weekly`,
+          repeatAvoidanceWindow: tuning.missions.repeatAvoidanceWindow
         }
       );
 

@@ -31,6 +31,7 @@ type RotatingSetOptions = {
   globalSeed?: string;
   scopeKey?: string;
   avoidBackToBack?: boolean;
+  repeatAvoidanceWindow?: number;
 };
 
 const normalizeTags = (tags: string[] | null | undefined) =>
@@ -176,7 +177,7 @@ export const pickRotatedMissionPool = <T extends MissionPoolEntry>(
 const pickWithOptionalRepeatAvoidance = <T extends MissionPoolEntry>(
   pool: T[],
   seed: string,
-  previousSeed: string,
+  previousSeeds: string[],
   options: RotatingSetOptions
 ) => {
   const pickOptions = {
@@ -194,14 +195,29 @@ const pickWithOptionalRepeatAvoidance = <T extends MissionPoolEntry>(
     seed
   });
 
-  if (!options.avoidBackToBack) return primary;
+  const repeatWindow = Math.max(
+    0,
+    Math.floor(
+      typeof options.repeatAvoidanceWindow === 'number'
+        ? options.repeatAvoidanceWindow
+        : options.avoidBackToBack === false
+          ? 0
+          : 1
+    )
+  );
+  if (repeatWindow === 0) return primary;
 
-  const previous = pickRotatedMissionPool(pool, {
-    ...pickOptions,
-    seed: previousSeed
-  });
+  const previousIds = new Set<string>();
+  for (let i = 0; i < Math.min(repeatWindow, previousSeeds.length); i += 1) {
+    const previousSeed = previousSeeds[i];
+    if (!previousSeed) continue;
+    const previous = pickRotatedMissionPool(pool, {
+      ...pickOptions,
+      seed: previousSeed
+    });
+    for (const previousEntry of previous) previousIds.add(previousEntry.id);
+  }
 
-  const previousIds = new Set(previous.map((entry) => entry.id));
   const nonRepeatedPool = pool.filter((entry) => !previousIds.has(entry.id));
   if (nonRepeatedPool.length < options.limit) return primary;
 
@@ -219,12 +235,29 @@ export const getDailySet = <T extends MissionPoolEntry>(pool: T[], dateSeed: str
   const currentSeed = buildSeed(`daily:${dateSeed}`, {
     ...seedOptions
   });
-  const previousSeed = buildSeed(`daily:${previousDaySeed(dateSeed)}`, {
-    ...seedOptions
-  });
-  return pickWithOptionalRepeatAvoidance(pool, currentSeed, previousSeed, {
+  const previousSeeds: string[] = [];
+  const repeatWindow = Math.max(
+    0,
+    Math.floor(
+      typeof options.repeatAvoidanceWindow === 'number'
+        ? options.repeatAvoidanceWindow
+        : options.avoidBackToBack === false
+          ? 0
+          : 1
+    )
+  );
+  let cursor = dateSeed;
+  for (let i = 0; i < repeatWindow; i += 1) {
+    cursor = previousDaySeed(cursor);
+    previousSeeds.push(
+      buildSeed(`daily:${cursor}`, {
+        ...seedOptions
+      })
+    );
+  }
+  return pickWithOptionalRepeatAvoidance(pool, currentSeed, previousSeeds, {
     ...options,
-    avoidBackToBack: options.avoidBackToBack !== false
+    repeatAvoidanceWindow: repeatWindow
   });
 };
 
@@ -236,11 +269,28 @@ export const getWeeklySet = <T extends MissionPoolEntry>(pool: T[], weekSeed: st
   const currentSeed = buildSeed(`weekly:${weekSeed}`, {
     ...seedOptions
   });
-  const previousSeed = buildSeed(`weekly:${previousWeekSeed(weekSeed)}`, {
-    ...seedOptions
-  });
-  return pickWithOptionalRepeatAvoidance(pool, currentSeed, previousSeed, {
+  const previousSeeds: string[] = [];
+  const repeatWindow = Math.max(
+    0,
+    Math.floor(
+      typeof options.repeatAvoidanceWindow === 'number'
+        ? options.repeatAvoidanceWindow
+        : options.avoidBackToBack === false
+          ? 0
+          : 1
+    )
+  );
+  let cursor = weekSeed;
+  for (let i = 0; i < repeatWindow; i += 1) {
+    cursor = previousWeekSeed(cursor);
+    previousSeeds.push(
+      buildSeed(`weekly:${cursor}`, {
+        ...seedOptions
+      })
+    );
+  }
+  return pickWithOptionalRepeatAvoidance(pool, currentSeed, previousSeeds, {
     ...options,
-    avoidBackToBack: options.avoidBackToBack !== false
+    repeatAvoidanceWindow: repeatWindow
   });
 };
