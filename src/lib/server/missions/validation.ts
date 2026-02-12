@@ -7,9 +7,6 @@ export type ValidationResult =
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-const hasAnyCostField = (cost: MissionDefinition['cost']) =>
-  Boolean(cost && typeof cost === 'object' && Object.keys(cost).length > 0);
-
 const readCostEnergy = (mission: MissionDefinition): number | null => {
   const raw = mission.cost?.energy;
   return isFiniteNumber(raw) ? raw : null;
@@ -54,15 +51,14 @@ export const validateMissionStart = (
     };
   }
 
-  if (mission.type === 'identity') {
-    if (hasAnyCostField(mission.cost)) {
-      return {
-        ok: false,
-        status: 400,
-        code: 'identity_cost_forbidden',
-        message: 'Identity missions cannot define cost.'
-      };
-    }
+  const repeatable = mission.requirements?.repeatable !== false;
+  if (!repeatable && lastSession?.status === 'started') {
+    return {
+      ok: false,
+      status: 409,
+      code: 'mission_already_active',
+      message: 'This mission is already active.'
+    };
   }
 
   if ((mission.type === 'action' || mission.type === 'world') && mission.cost) {

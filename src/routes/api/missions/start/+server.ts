@@ -96,13 +96,19 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: validated.code, message: validated.message }, { status: validated.status });
   }
 
+  const effectiveCost = mission.type === 'identity' ? null : mission.cost;
+  const costSummary = {
+    energy: effectiveCost?.energy ?? 0,
+    hasCost: typeof effectiveCost?.energy === 'number' && effectiveCost.energy > 0
+  };
+
   // Identity missions must never spend resources.
   let energySpent = 0;
-  if ((mission.type === 'action' || mission.type === 'world') && mission.cost) {
+  if ((mission.type === 'action' || mission.type === 'world') && effectiveCost) {
     const spendResult = await spend({
       supabase,
       userId: user.id,
-      energy: mission.cost.energy ?? 0,
+      energy: effectiveCost.energy ?? 0,
       source: `mission.start:${mission.id}`,
       idempotencyKey,
       meta: {
@@ -123,8 +129,8 @@ export const POST: RequestHandler = async (event) => {
       user_id: user.id,
       mission_type: mission.type,
       status: 'started',
-      cost_snapshot: mission.cost,
-      cost: mission.cost,
+      cost_snapshot: effectiveCost,
+      cost: effectiveCost,
       rewards: null,
       idempotency_key: idempotencyKey,
       meta: {
@@ -153,7 +159,7 @@ export const POST: RequestHandler = async (event) => {
           mission: {
             id: mission.id,
             type: mission.type,
-            cost: mission.cost,
+            cost: effectiveCost,
             requirements: mission.requirements,
             cooldownMs: mission.cooldown_ms,
             privacyTags: mission.privacy_tags ?? []
@@ -187,8 +193,9 @@ export const POST: RequestHandler = async (event) => {
     {
       missionId: mission.id,
       sessionId: session.id,
+      type: mission.type,
       missionType: mission.type,
-      cost: mission.cost,
+      costSummary,
       requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms ?? null,
       idempotencyKey
@@ -202,7 +209,8 @@ export const POST: RequestHandler = async (event) => {
     mission: {
       id: mission.id,
       type: mission.type,
-      cost: mission.cost,
+      cost: effectiveCost,
+      costSummary,
       requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms,
       privacyTags: mission.privacy_tags ?? []

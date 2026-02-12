@@ -7,6 +7,7 @@ export type MissionCost = {
 export type MissionRequirements = {
   minLevel?: number;
   minEnergy?: number;
+  repeatable?: boolean;
 };
 
 export type MissionDefinition = {
