@@ -9,6 +9,7 @@ import type { MissionSessionRow } from '$lib/server/missions/types';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { grantMissionRewards } from '$lib/server/missions/grant';
+import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
 
 const MISSION_SELECT = [
   'id',
@@ -28,6 +29,7 @@ const MISSION_SELECT = [
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
+  const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
   const {
     data: { user },
     error: authError
@@ -40,6 +42,37 @@ export const POST: RequestHandler = async (event) => {
 
   if (!user) {
     return json({ error: 'unauthorized', message: SAFE_UNAUTHORIZED_MESSAGE }, { status: 401 });
+  }
+
+  const rateResult = enforceMissionRateLimit('start', user.id, clientIp);
+  if (!rateResult.ok) {
+    return json(
+      { error: rateResult.code, message: rateResult.message, retryAfter: rateResult.retryAfter },
+      { status: rateResult.status }
+    );
+  }
+
+  const caps = getMissionCaps();
+  const minuteWindowStartIso = new Date(Date.now() - 60_000).toISOString();
+  const { count: recentStartCount, error: recentStartCountError } = await supabase
+    .from('mission_sessions')
+    .select('id', { head: true, count: 'exact' })
+    .eq('user_id', user.id)
+    .gte('started_at', minuteWindowStartIso);
+
+  if (recentStartCountError) {
+    console.error('[api/missions/start] start cap check failed', recentStartCountError);
+    return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+  }
+
+  if (typeof recentStartCount === 'number' && recentStartCount >= caps.startsPerMinute) {
+    return json(
+      {
+        error: 'cap_mission_starts_minute',
+        message: 'You have reached the mission start limit for this minute. Please wait and try again.'
+      },
+      { status: 429 }
+    );
   }
 
   const body = await event.request.json().catch(() => ({}));

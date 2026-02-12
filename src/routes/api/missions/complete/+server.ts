@@ -15,9 +15,11 @@ import {
   sanitizeIdentityResult,
   writeIdentityResultToPortableState
 } from '$lib/server/missions/identityResult';
+import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
+  const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
   const {
     data: { user },
     error: authError
@@ -30,6 +32,14 @@ export const POST: RequestHandler = async (event) => {
 
   if (!user) {
     return json({ error: 'unauthorized', message: SAFE_UNAUTHORIZED_MESSAGE }, { status: 401 });
+  }
+
+  const rateResult = enforceMissionRateLimit('complete', user.id, clientIp);
+  if (!rateResult.ok) {
+    return json(
+      { error: rateResult.code, message: rateResult.message, retryAfter: rateResult.retryAfter },
+      { status: rateResult.status }
+    );
   }
 
   const body = await event.request.json().catch(() => ({}));
@@ -89,6 +99,58 @@ export const POST: RequestHandler = async (event) => {
   const mission = missionRow ? parseMissionDefinition(missionRow as Record<string, unknown>) : null;
   if (!mission) {
     return json({ error: 'mission_not_found', message: 'Mission not found.' }, { status: 404 });
+  }
+
+  if (mission.type === 'action') {
+    const caps = getMissionCaps();
+    const now = Date.now();
+    const hourWindowStartIso = new Date(now - 60 * 60 * 1000).toISOString();
+    const dayWindowStartIso = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+
+    const [hourlyRewards, dailyRewards] = await Promise.all([
+      supabase
+        .from('mission_sessions')
+        .select('id', { head: true, count: 'exact' })
+        .eq('user_id', user.id)
+        .eq('mission_type', 'action')
+        .eq('status', 'completed')
+        .gte('completed_at', hourWindowStartIso),
+      supabase
+        .from('mission_sessions')
+        .select('id', { head: true, count: 'exact' })
+        .eq('user_id', user.id)
+        .eq('mission_type', 'action')
+        .eq('status', 'completed')
+        .gte('completed_at', dayWindowStartIso)
+    ]);
+
+    if (hourlyRewards.error || dailyRewards.error) {
+      console.error('[api/missions/complete] reward cap check failed', {
+        hourlyError: hourlyRewards.error,
+        dailyError: dailyRewards.error
+      });
+      return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+    }
+
+    if (typeof hourlyRewards.count === 'number' && hourlyRewards.count >= caps.actionRewardsPerHour) {
+      return json(
+        {
+          error: 'cap_mission_rewards_hourly',
+          message: 'Action mission reward cap reached for this hour. Please try again soon.'
+        },
+        { status: 429 }
+      );
+    }
+
+    if (typeof dailyRewards.count === 'number' && dailyRewards.count >= caps.actionRewardsPerDay) {
+      return json(
+        {
+          error: 'cap_mission_rewards_daily',
+          message: 'Action mission reward cap reached for today. Please come back tomorrow.'
+        },
+        { status: 429 }
+      );
+    }
   }
 
   const timingValidation = validateMissionComplete({ id: user.id }, activeSession, mission);
