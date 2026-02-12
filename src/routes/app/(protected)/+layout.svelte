@@ -468,6 +468,7 @@
       companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
       companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
       moodKey={activeEffective?.moodKey ?? null}
+      worldMood={currentMood}
       bondLevel={data?.activeCompanion?.bondLevel ?? 0}
     />
   </div>

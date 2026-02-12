@@ -13,6 +13,7 @@
   import type { DerivedMoodKey } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { getBondTierForLevel } from '$lib/companions/bond';
+  import { resolveMuseVisualMood, type WorldMood } from '$lib/companions/museVisuals';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -26,6 +27,7 @@
   export let companionName = 'Muse';
   export let companionCosmetics: Record<string, string | number | boolean | null> | null = null;
   export let moodKey: DerivedMoodKey | null = null;
+  export let worldMood: WorldMood | null = null;
   export let bondLevel: number | null = 0;
 
   let expanded = false;
@@ -134,6 +136,7 @@
   $: activeCosmetics = normalizeCompanionCosmetics(companionCosmetics);
   $: effectiveMotion = motionEnabled && localMotion;
   $: museAnimation = pickMuseAnimationForMood(moodKey, { nowMs: nowTick, seed: activeCompanionId });
+  $: visualMood = resolveMuseVisualMood({ companionMoodKey: moodKey, worldMood });
   $: cosmeticsSig = stableSig(activeCosmetics);
   $: bondTier = getBondTierForLevel(bondLevel);
 
@@ -227,6 +230,9 @@
           respectReducedMotion={false}
           animationName={museAnimation}
           transparent={transparent}
+          motionEnabled={effectiveMotion}
+          glowEnabled={transparent}
+          visualMood={visualMood}
           poster={undefined}
           cameraTarget={undefined}
           preserveDrawingBuffer

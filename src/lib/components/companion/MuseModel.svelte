@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { dev } from '$app/environment';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+  import { MUSE_VISUAL_BY_MOOD, type MuseVisualMood } from '$lib/companions/museVisuals';
 
   type ModelViewerElement = HTMLElement & {
     animationName?: string | null;
@@ -18,6 +19,9 @@
   export let transparent = true;
   export let auraColor: string = 'cyan';
   export let glowIntensity = 55;
+  export let glowEnabled = true;
+  export let motionEnabled = true;
+  export let visualMood: MuseVisualMood = 'calm';
   export let preserveDrawingBuffer = false;
   export let eager = false;
   // `minSize` exists because some surfaces (like modal portraits) need a tiny model view.
@@ -379,14 +383,19 @@
   }
 
   $: normalizedCosmetics = normalizeCompanionCosmetics({ auraColor, glowIntensity });
+  $: visualVars = MUSE_VISUAL_BY_MOOD[visualMood] ?? MUSE_VISUAL_BY_MOOD.calm;
   $: auraRgb = auraColorMap[normalizedCosmetics.auraColor] ?? auraColorMap.cyan;
-  $: auraOpacity = 0.18 + normalizedCosmetics.glowIntensity / 340;
-  $: auraBlurPx = 24 + normalizedCosmetics.glowIntensity * 0.42;
+  $: auraTintRgb = auraColorMap[visualVars.auraPalette] ?? auraColorMap.cyan;
+  $: baseAuraOpacity = (0.18 + normalizedCosmetics.glowIntensity / 340) * visualVars.auraIntensityScale;
+  $: auraOpacity = glowEnabled ? Math.min(0.75, Math.max(0, baseAuraOpacity)) : 0;
+  $: auraBlurPx = glowEnabled ? (24 + normalizedCosmetics.glowIntensity * 0.42) * visualVars.auraIntensityScale : 0;
+  $: hoverAmplitudePx = motionEnabled && !reducedMotion ? visualVars.hoverAmplitudePx : 0;
 </script>
 
 <div
   class={`muse-shell ${className}`}
-  style={`--muse-size: ${normalizeSize(size)}; --muse-min-size: ${normalizeSize(minSize)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px;`}
+  class:muse-shell--floating={hoverAmplitudePx > 0}
+  style={`--muse-size: ${normalizeSize(size)}; --muse-min-size: ${normalizeSize(minSize)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-tint-rgb:${auraTintRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px; --muse-hover-amplitude:${hoverAmplitudePx}px;`}
   bind:this={container}
 >
   <div class="muse-aura" aria-hidden="true"></div>
@@ -476,13 +485,18 @@
     place-items: center;
   }
 
+  .muse-shell--floating {
+    animation: museFloat 4.6s ease-in-out infinite;
+  }
+
   .muse-aura {
     position: absolute;
     inset: 16%;
     border-radius: 999px;
     background:
       radial-gradient(circle at 50% 50%, rgba(var(--muse-aura-rgb) / 0.56), transparent 66%),
-      radial-gradient(circle at 50% 55%, rgba(var(--muse-aura-rgb) / 0.34), transparent 76%);
+      radial-gradient(circle at 50% 55%, rgba(var(--muse-aura-rgb) / 0.34), transparent 76%),
+      radial-gradient(circle at 50% 45%, rgba(var(--muse-aura-tint-rgb) / 0.2), transparent 70%);
     opacity: var(--muse-aura-opacity);
     filter: blur(var(--muse-aura-blur));
     z-index: 0;
@@ -543,5 +557,21 @@
     background: radial-gradient(circle at 30% 30%, rgba(94, 234, 212, 0.9), rgba(59, 130, 246, 0.15));
     box-shadow: 0 0 25px rgba(94, 234, 212, 0.35);
     margin-bottom: 0.75rem;
+  }
+
+  @keyframes museFloat {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(calc(var(--muse-hover-amplitude) * -1));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .muse-shell--floating {
+      animation: none;
+    }
   }
 </style>
