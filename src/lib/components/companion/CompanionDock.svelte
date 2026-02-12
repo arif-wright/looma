@@ -12,6 +12,7 @@
   import { uploadCompanionPortrait } from '$lib/companions/portraitUpload';
   import type { DerivedMoodKey } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
+  import { getBondTierForLevel } from '$lib/companions/bond';
 
   const STORAGE_VISIBLE = 'looma_companion_visible';
   const STORAGE_MOTION = 'looma_companion_motion';
@@ -25,6 +26,7 @@
   export let companionName = 'Muse';
   export let companionCosmetics: Record<string, string | number | boolean | null> | null = null;
   export let moodKey: DerivedMoodKey | null = null;
+  export let bondLevel: number | null = 0;
 
   let expanded = false;
   let localVisible = true;
@@ -133,6 +135,7 @@
   $: effectiveMotion = motionEnabled && localMotion;
   $: museAnimation = pickMuseAnimationForMood(moodKey, { nowMs: nowTick, seed: activeCompanionId });
   $: cosmeticsSig = stableSig(activeCosmetics);
+  $: bondTier = getBondTierForLevel(bondLevel);
 
   $: if (browser) {
     unregisterCaptureHost?.();
@@ -203,6 +206,7 @@
         <div>
           <p class="companion-dock__eyebrow">Companion</p>
           <p class="companion-dock__title">{activeCompanionName}</p>
+          <p class="companion-dock__tier">Bond tier: {bondTier.name}</p>
         </div>
         <button
           class="companion-dock__icon"
@@ -257,7 +261,7 @@
         {/if}
       </div>
 
-        <p class="companion-dock__hint">{activeCompanionName} is with you. More companion behaviors coming soon.</p>
+        <p class="companion-dock__hint">{activeCompanionName} is with you. Check in any time.</p>
       </div>
     {:else}
       <button
@@ -326,6 +330,12 @@
     margin: 0.2rem 0 0;
     font-size: 0.94rem;
     font-weight: 600;
+  }
+
+  .companion-dock__tier {
+    margin: 0.25rem 0 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.68);
   }
 
   .companion-dock__icon {

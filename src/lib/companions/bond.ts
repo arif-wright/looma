@@ -29,6 +29,18 @@ type BondBonusTier = {
   strong?: boolean;
 };
 
+export type BondTier = {
+  level: number;
+  name: string;
+  description: string;
+};
+
+type BondTierDefinition = {
+  minLevel: number;
+  name: string;
+  description: string;
+};
+
 const BASE_TIER: BondBonus = {
   level: 0,
   xpMultiplier: 1,
@@ -36,6 +48,13 @@ const BASE_TIER: BondBonus = {
   label: 'Warming up',
   description: 'Spend time together to unlock boosts.'
 };
+
+export const BOND_LEVEL_TIERS: BondTierDefinition[] = [
+  { minLevel: 8, name: 'Resonant', description: 'Deeply aligned and highly familiar.' },
+  { minLevel: 5, name: 'Trusted', description: 'Reliable and steady over time.' },
+  { minLevel: 2, name: 'Familiar', description: 'Comfortable and growing in sync.' },
+  { minLevel: 0, name: 'Acquainted', description: 'Early connection, still getting to know each other.' }
+];
 
 const BOND_BONUS_TABLE: BondBonusTier[] = [
   { minLevel: 8, xpMultiplier: 1.1, missionEnergyBonus: 5, label: 'Strong bond', description: '+10% XP, +5 mission energy cap', strong: true },
@@ -165,6 +184,23 @@ export const getBondBonusForLevel = (level?: number | null): BondBonus => {
     label: tier.label,
     description: tier.description,
     ...(tier.strong !== undefined ? { strong: tier.strong } : {})
+  };
+};
+
+export const getBondTierForLevel = (level?: number | null): BondTier => {
+  const safeLevel = Number.isFinite(level as number) ? Math.max(0, Math.floor(level as number)) : 0;
+  const tier = BOND_LEVEL_TIERS.find((entry) => safeLevel >= entry.minLevel) ?? BOND_LEVEL_TIERS[BOND_LEVEL_TIERS.length - 1];
+  if (!tier) {
+    return {
+      level: safeLevel,
+      name: 'Acquainted',
+      description: 'Early connection, still getting to know each other.'
+    };
+  }
+  return {
+    level: safeLevel,
+    name: tier.name,
+    description: tier.description
   };
 };
 

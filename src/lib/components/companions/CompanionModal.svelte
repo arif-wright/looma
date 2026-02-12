@@ -7,7 +7,7 @@
   import { describeMilestoneToast } from '$lib/companions/bond';
   import { applyRitualUpdate } from '$lib/stores/companionRituals';
   import { describeRitualCompletion } from '$lib/companions/rituals';
-  import { getBondBonusForLevel, formatBonusSummary } from '$lib/companions/bond';
+  import { getBondBonusForLevel, formatBonusSummary, getBondTierForLevel } from '$lib/companions/bond';
   import InfoTooltip from '$lib/components/ui/InfoTooltip.svelte';
   import { BOND_LEVEL_TOOLTIP, MOOD_TOOLTIP, describeBondLevelUpToast } from '$lib/companions/companionCopy';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
@@ -289,6 +289,7 @@
   $: bondLevel = statsRecord?.bond_level ?? companion?.bond_level ?? 0;
   $: bondScore = statsRecord?.bond_score ?? companion?.bond_score ?? 0;
   $: bondBonus = getBondBonusForLevel(bondLevel);
+  $: bondTier = getBondTierForLevel(bondLevel);
   $: bondBonusSummary = formatBonusSummary(bondBonus);
 
   const normalizeRarity = (rarity: string | null | undefined) => (rarity ?? 'common').trim().toLowerCase();
@@ -515,6 +516,7 @@
               <span class="chip chip--active">Active</span>
             {/if}
             <span class="chip">Bond Lv {bondLevel}</span>
+            <span class="chip">Tier {bondTier.name}</span>
             <span class="chip">{effective?.moodLabel ?? 'Calm'}</span>
             <span class="chip">Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
           </div>
@@ -558,9 +560,10 @@
         {#if bondLevelCelebration}
           <span class="bond-level-tag" role="status">Bond level up! Lv {bondLevelCelebration.level}</span>
         {/if}
-        <p class="bond-kicker">{bondBonus.label}</p>
+        <p class="bond-kicker">{bondTier.name}</p>
+        <p class="bond-tier-note">{bondTier.description}</p>
         <p class="bond-summary">{bondBonusSummary}</p>
-        <p class="bond-note">Active companion bonuses apply to XP & missions.</p>
+        <p class="bond-note">Companion bonuses apply while this companion is active.</p>
       </div>
     </section>
 
@@ -1075,9 +1078,14 @@
   }
 
   .bond-summary,
-  .bond-note {
+  .bond-note,
+  .bond-tier-note {
     margin: 0;
     color: rgba(226, 232, 255, 0.85);
+  }
+
+  .bond-tier-note {
+    color: rgba(196, 245, 255, 0.86);
   }
 
   .bond-note {

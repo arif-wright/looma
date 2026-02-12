@@ -1,5 +1,5 @@
 export const BOND_LEVEL_TOOLTIP =
-  'Bond level reflects your affection, trust, and time spent together. Higher bond means better XP and mission energy bonuses.';
+  'Bond level describes how familiar you and your companion are. Check in whenever you want; bonuses grow over time.';
 
 export const MOOD_TOOLTIP =
   'Mood changes with affection, trust, and energy. Radiant companions boost your progress; tired companions need rest and care.';
