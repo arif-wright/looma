@@ -29,8 +29,15 @@ export type MissionSessionRow = {
   id: string;
   mission_id: string;
   user_id: string;
+  mission_type?: MissionType | string | null;
   status: 'started' | 'completed' | 'cancelled' | string;
   cost_snapshot: MissionCost | null;
+  cost?: MissionCost | null;
+  rewards?: {
+    xpGranted?: number;
+    energyGranted?: number;
+  } | null;
+  idempotency_key?: string | null;
   started_at: string;
   completed_at: string | null;
 };

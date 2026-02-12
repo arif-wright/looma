@@ -44,6 +44,10 @@ export const POST: RequestHandler = async (event) => {
 
   const body = await event.request.json().catch(() => ({}));
   const missionId = typeof body?.missionId === 'string' ? body.missionId : null;
+  const idempotencyKey =
+    typeof body?.idempotencyKey === 'string' && body.idempotencyKey.trim().length > 0
+      ? body.idempotencyKey.trim()
+      : crypto.randomUUID();
   if (!missionId) {
     return json({ error: 'mission_id_required', message: 'Mission id is required.' }, { status: 400 });
   }
@@ -66,7 +70,7 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: lastSessionRow, error: lastSessionError } = await supabase
     .from('mission_sessions')
-    .select('id, mission_id, user_id, status, cost_snapshot, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
     .eq('mission_id', mission.id)
     .eq('user_id', user.id)
     .order('started_at', { ascending: false })
@@ -98,7 +102,13 @@ export const POST: RequestHandler = async (event) => {
     const spendResult = await spend({
       supabase,
       userId: user.id,
-      energy: mission.cost.energy ?? 0
+      energy: mission.cost.energy ?? 0,
+      source: `mission.start:${mission.id}`,
+      idempotencyKey,
+      meta: {
+        missionId: mission.id,
+        missionType: mission.type
+      }
     });
     if (!spendResult.ok) {
       return json({ error: spendResult.code, message: spendResult.message }, { status: spendResult.status });
@@ -111,24 +121,61 @@ export const POST: RequestHandler = async (event) => {
     .insert({
       mission_id: mission.id,
       user_id: user.id,
+      mission_type: mission.type,
       status: 'started',
       cost_snapshot: mission.cost,
+      cost: mission.cost,
+      rewards: null,
+      idempotency_key: idempotencyKey,
       meta: {
         missionType: mission.type,
-        privacyTags: mission.privacy_tags ?? []
+        privacyTags: mission.privacy_tags ?? [],
+        idempotencyKey
       }
     })
-    .select('id, mission_id, user_id, status, cost_snapshot, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
     .single();
 
   if (sessionError || !session) {
+    if ((sessionError as { code?: string | null } | null)?.code === '23505') {
+      const { data: existingSession } = await supabase
+        .from('mission_sessions')
+        .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+        .eq('user_id', user.id)
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+
+      if (existingSession) {
+        return json({
+          ok: true,
+          idempotent: true,
+          session: existingSession,
+          mission: {
+            id: mission.id,
+            type: mission.type,
+            cost: mission.cost,
+            requirements: mission.requirements,
+            cooldownMs: mission.cooldown_ms,
+            privacyTags: mission.privacy_tags ?? []
+          }
+        });
+      }
+    }
+
     console.error('[api/missions/start] session insert failed', sessionError);
     if (energySpent > 0) {
       await grantMissionRewards({
         supabase,
         userId: user.id,
         xp: 0,
-        energy: energySpent
+        energy: energySpent,
+        source: `mission.start.refund:${mission.id}`,
+        idempotencyKey: `refund:${idempotencyKey}`,
+        meta: {
+          missionId: mission.id,
+          missionSessionId: null,
+          reason: 'session_insert_failed'
+        }
       });
     }
     return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
@@ -143,7 +190,8 @@ export const POST: RequestHandler = async (event) => {
       missionType: mission.type,
       cost: mission.cost,
       requirements: mission.requirements,
-      cooldownMs: mission.cooldown_ms ?? null
+      cooldownMs: mission.cooldown_ms ?? null,
+      idempotencyKey
     },
     { sessionId: session.id }
   );
@@ -158,6 +206,7 @@ export const POST: RequestHandler = async (event) => {
       requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms,
       privacyTags: mission.privacy_tags ?? []
-    }
+    },
+    idempotencyKey
   });
 };

@@ -34,6 +34,10 @@ export const POST: RequestHandler = async (event) => {
 
   const body = await event.request.json().catch(() => ({}));
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : null;
+  const requestIdempotencyKey =
+    typeof body?.idempotencyKey === 'string' && body.idempotencyKey.trim().length > 0
+      ? body.idempotencyKey.trim()
+      : null;
   const localIdentityResult = sanitizeIdentityResult(body?.identityResult);
   const suppressMemory = body?.suppressMemory === true;
   const suppressAdaptation = body?.suppressAdaptation === true;
@@ -44,7 +48,7 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: sessionRow, error: sessionError } = await supabase
     .from('mission_sessions')
-    .select('id, mission_id, user_id, status, cost_snapshot, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -93,13 +97,14 @@ export const POST: RequestHandler = async (event) => {
   const { data: session, error: updateError } = await supabase
     .from('mission_sessions')
     .update({
+      mission_type: mission.type,
       status: 'completed',
       completed_at: new Date().toISOString()
     })
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .eq('status', 'started')
-    .select('id, mission_id, user_id, status, cost_snapshot, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
     .single();
 
   if (updateError || !session) {
@@ -118,12 +123,20 @@ export const POST: RequestHandler = async (event) => {
       ? computeEffectiveEnergyMax(energyCapBase, missionEnergyBonus)
       : null;
 
+  const completionIdempotencyKey = requestIdempotencyKey ?? `mission-complete:${session.id}`;
   const grantResult = await grantMissionRewards({
     supabase,
     userId: user.id,
     xp: mission.xp_reward ?? 0,
     energy: mission.energy_reward ?? 0,
-    energyCap
+    energyCap,
+    source: `mission.complete:${mission.id}`,
+    idempotencyKey: completionIdempotencyKey,
+    meta: {
+      missionId: mission.id,
+      missionSessionId: session.id,
+      missionType: mission.type
+    }
   });
 
   if (!grantResult.ok) {
@@ -137,6 +150,21 @@ export const POST: RequestHandler = async (event) => {
       .eq('user_id', user.id);
     return json({ error: grantResult.code, message: grantResult.message }, { status: grantResult.status });
   }
+
+  const rewardsSnapshot = {
+    xpGranted: grantResult.xpGranted,
+    energyGranted: grantResult.energyGranted
+  };
+
+  await supabase
+    .from('mission_sessions')
+    .update({
+      mission_type: mission.type,
+      rewards: rewardsSnapshot,
+      idempotency_key: activeSession.idempotency_key ?? completionIdempotencyKey
+    })
+    .eq('id', session.id)
+    .eq('user_id', user.id);
 
   let identityStored = false;
   if (mission.type === 'identity' && localIdentityResult && !identitySuppressed) {
@@ -163,7 +191,8 @@ export const POST: RequestHandler = async (event) => {
       rewards: {
         xpGranted: grantResult.xpGranted,
         energyGranted: grantResult.energyGranted
-      }
+      },
+      idempotencyKey: completionIdempotencyKey
     },
     { sessionId: session.id }
   );
@@ -194,6 +223,7 @@ export const POST: RequestHandler = async (event) => {
       xpGranted: grantResult.xpGranted,
       energyGranted: grantResult.energyGranted
     },
+    idempotencyKey: completionIdempotencyKey,
     identity: {
       result: localIdentityResult,
       stored: identityStored,
