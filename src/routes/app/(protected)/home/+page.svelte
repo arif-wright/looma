@@ -485,7 +485,7 @@
           />
           {#if missions.length > 1}
             <div class="mission-stack">
-              <MissionRow items={missions.slice(0, 3)} on:start={handleMissionRowStart} />
+              <MissionRow items={missions.slice(0, 3)} currentEnergy={energyCurrent} on:start={handleMissionRowStart} />
             </div>
           {/if}
         </article>
@@ -531,7 +531,7 @@
     {/if}
   </main>
 
-  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} />
+  <MissionModal open={missionModalOpen} mission={missionModalData} currentEnergy={energyCurrent} on:close={closeMissionModal} />
 </div>
 
 <style>

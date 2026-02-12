@@ -14,6 +14,7 @@
   };
 
   export let items: MissionItem[] = [];
+  export let currentEnergy: number | null = null;
 
   const dispatch = createEventDispatcher<{ start: { missionId: string } }>();
 
@@ -25,6 +26,13 @@
     type === 'identity' ? 'type-identity' : type === 'world' ? 'type-world' : 'type-action';
   const missionTypeHint = (type: MissionItem['type']) =>
     type === 'identity' ? 'No cost' : type === 'world' ? 'Usually no cost' : 'Energy cost';
+  const actionCost = (mission: MissionItem) =>
+    mission.type === 'action' ? Math.max(0, Math.floor(mission.cost?.energy ?? 0)) : 0;
+  const canStartMission = (mission: MissionItem) =>
+    mission.type !== 'action' ||
+    typeof currentEnergy !== 'number' ||
+    actionCost(mission) === 0 ||
+    currentEnergy >= actionCost(mission);
 
   $: companionBonus = $activeCompanionBonus;
   $: xpBoost = Math.round(((companionBonus?.xpMultiplier ?? 1) - 1) * 100);
@@ -61,7 +69,7 @@
           </header>
           <p class="type-note">{missionTypeHint(mission.type)}</p>
           {#if mission.type === 'identity'}
-            <p class="privacy-note">You&rsquo;re in control of what Looma remembers.</p>
+            <p class="privacy-note">You control what Looma remembers.</p>
           {/if}
           {#if xpBoost > 0}
             <p class="companion-badge">+{xpBoost}% XP from bond</p>
@@ -70,7 +78,13 @@
             <p class="summary">{mission.summary}</p>
           {/if}
           {#if mission.type === 'action'}
-            <p class="action-cost">Energy cost: <strong>{mission.cost?.energy ?? 0}</strong></p>
+            <p class="action-cost">Energy cost: <strong>{actionCost(mission)}</strong></p>
+            {#if typeof currentEnergy === 'number'}
+              <p class="action-energy-state">Available energy: {currentEnergy}</p>
+            {/if}
+            {#if !canStartMission(mission)}
+              <p class="action-blocked" role="alert">Not enough energy to start.</p>
+            {/if}
           {/if}
           <dl class="rewards">
             {#if mission.energy_reward !== undefined && mission.energy_reward !== null}
@@ -98,6 +112,7 @@
             type="button"
             class="mission-action btn-ripple hover-glow"
             on:click={() => dispatch('start', { missionId: mission.id })}
+            disabled={!canStartMission(mission)}
           >
             Start mission
           </button>
@@ -270,6 +285,18 @@
 
   .action-cost strong {
     color: rgba(254, 243, 199, 0.98);
+  }
+
+  .action-energy-state {
+    margin: -0.25rem 0 0;
+    font-size: 0.75rem;
+    color: rgba(203, 213, 225, 0.92);
+  }
+
+  .action-blocked {
+    margin: 0;
+    font-size: 0.78rem;
+    color: rgba(254, 202, 202, 0.95);
   }
 
   .mission-action:focus-visible {

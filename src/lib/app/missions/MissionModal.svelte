@@ -7,6 +7,7 @@
 
   export let mission: MissionRow | null = null;
   export let open = false;
+  export let currentEnergy: number | null = null;
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -33,6 +34,12 @@
   $: missionTypeHint =
     missionType === 'identity' ? 'No cost' : missionType === 'world' ? 'Usually no cost' : 'Energy cost';
   $: energyCost = missionType === 'action' ? mission?.cost?.energy ?? 0 : null;
+  $: hasInsufficientEnergy =
+    missionType === 'action' &&
+    typeof energyCost === 'number' &&
+    energyCost > 0 &&
+    typeof currentEnergy === 'number' &&
+    currentEnergy < energyCost;
   $: startDisabled = runtimeState === 'starting' || runtimeState === 'completing';
   $: completeDisabled = runtimeState === 'starting' || runtimeState === 'completing';
 
@@ -243,7 +250,7 @@
       {/if}
 
       {#if missionType === 'identity'}
-        <p class="privacy-note">You&rsquo;re in control of what Looma remembers.</p>
+        <p class="privacy-note">You control what Looma remembers.</p>
       {/if}
 
       {#if missionType === 'action'}
@@ -303,6 +310,12 @@
         </p>
       {/if}
 
+      {#if hasInsufficientEnergy && runtimeState === 'idle'}
+        <p class="modal-error" role="alert">
+          Not enough energy to start. You have {currentEnergy ?? 0}, need {energyCost ?? 0}.
+        </p>
+      {/if}
+
       <footer class="flex justify-end items-center gap-3 pt-3 border-t border-white/10">
         <button
           type="button"
@@ -316,7 +329,7 @@
             type="button"
             class="px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 text-slate-900 font-semibold shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 transition"
             on:click={startMission}
-            disabled={startDisabled}
+            disabled={startDisabled || hasInsufficientEnergy}
           >
             Start mission
           </button>
