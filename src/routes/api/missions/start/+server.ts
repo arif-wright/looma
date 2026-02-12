@@ -10,6 +10,7 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { grantMissionRewards } from '$lib/server/missions/grant';
 import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
+import { getCadencePeriodStartIso, resolveMissionCadence } from '$lib/server/missions/period';
 
 const MISSION_SELECT = [
   'id',
@@ -151,13 +152,41 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const stats = await getPlayerStats(event, supabase).catch(() => null);
+  const missionCadence = resolveMissionCadence(mission.tags);
+  let completedInCadencePeriod = false;
+  let cadencePeriodStartIso: string | null = null;
+
+  if (missionCadence) {
+    cadencePeriodStartIso = getCadencePeriodStartIso(missionCadence);
+    const { count: completedCount, error: completedCountError } = await supabase
+      .from('mission_sessions')
+      .select('id', { head: true, count: 'exact' })
+      .eq('user_id', user.id)
+      .eq('mission_id', mission.id)
+      .eq('status', 'completed')
+      .gte('completed_at', cadencePeriodStartIso);
+
+    if (completedCountError) {
+      console.error('[api/missions/start] cadence completion lookup failed', completedCountError);
+      return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+    }
+
+    completedInCadencePeriod = typeof completedCount === 'number' && completedCount > 0;
+  }
+
   const validated = validateMissionStart(
     { id: user.id },
     mission,
     (lastSessionRow as MissionSessionRow | null) ?? null,
     {
       level: typeof stats?.level === 'number' ? stats.level : 0,
-      energy: typeof stats?.energy === 'number' ? stats.energy : 0
+      energy: typeof stats?.energy === 'number' ? stats.energy : 0,
+      periodCompletion: missionCadence
+        ? {
+            cadence: missionCadence,
+            isCompleted: completedInCadencePeriod
+          }
+        : null
     }
   );
   if (!validated.ok) {
@@ -275,6 +304,8 @@ export const POST: RequestHandler = async (event) => {
       costSummary,
       requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms ?? null,
+      cadence: missionCadence,
+      cadencePeriodStart: cadencePeriodStartIso,
       idempotencyKey
     },
     { sessionId: session.id }
@@ -295,6 +326,8 @@ export const POST: RequestHandler = async (event) => {
       costSummary,
       requirements: mission.requirements,
       cooldownMs: mission.cooldown_ms,
+      cadence: missionCadence,
+      cadencePeriodStart: cadencePeriodStartIso,
       privacyTags: mission.privacy_tags ?? []
     },
     idempotencyKey

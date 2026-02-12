@@ -51,6 +51,23 @@ export const validateMissionStart = (
     };
   }
 
+  if (context.periodCompletion?.isCompleted) {
+    if (context.periodCompletion.cadence === 'daily') {
+      return {
+        ok: false,
+        status: 409,
+        code: 'mission_already_done_daily',
+        message: 'You already completed this daily mission today.'
+      };
+    }
+    return {
+      ok: false,
+      status: 409,
+      code: 'mission_already_done_weekly',
+      message: 'You already completed this weekly mission this week.'
+    };
+  }
+
   const repeatable = mission.requirements?.repeatable !== false;
   if (!repeatable && lastSession?.status === 'active') {
     return {

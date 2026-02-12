@@ -1,4 +1,5 @@
 export type MissionType = 'identity' | 'action' | 'world';
+export type MissionCadence = 'daily' | 'weekly';
 
 export type MissionCost = {
   energy?: number;
@@ -62,4 +63,8 @@ export type MissionUser = {
 export type MissionStartContext = {
   level: number;
   energy: number;
+  periodCompletion?: {
+    cadence: MissionCadence;
+    isCompleted: boolean;
+  } | null;
 };

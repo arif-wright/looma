@@ -90,6 +90,10 @@
         return 'This mission is cooling down. Try again in a bit.';
       case 'mission_already_active':
         return 'This mission is already in progress.';
+      case 'mission_already_done_daily':
+        return 'You already completed this daily mission today.';
+      case 'mission_already_done_weekly':
+        return 'You already completed this weekly mission this week.';
       case 'insufficient_energy':
         return 'Not enough energy to start this mission yet.';
       case 'session_not_found':
