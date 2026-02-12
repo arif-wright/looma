@@ -37,6 +37,11 @@
   $: missionTypeLabel = missionType === 'identity' ? 'Identity' : missionType === 'world' ? 'World' : 'Action';
   $: missionTypeHint =
     missionType === 'identity' ? 'No cost' : missionType === 'world' ? 'Usually no cost' : 'Energy cost';
+  $: missionPeriod = mission?.tags?.includes('daily')
+    ? 'Today'
+    : mission?.tags?.includes('weekly')
+      ? 'This Week'
+      : null;
   $: energyCost = missionType === 'action' ? mission?.cost?.energy ?? 0 : null;
   $: hasInsufficientEnergy =
     missionType === 'action' &&
@@ -271,6 +276,9 @@
         </h2>
         <div class="type-row">
           <span class={`type-pill ${missionType}`}>{missionTypeLabel}</span>
+          {#if missionPeriod}
+            <span class="period-pill">{missionPeriod}</span>
+          {/if}
           <span class="type-hint">{missionTypeHint}</span>
         </div>
       </header>
@@ -475,6 +483,20 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(148, 163, 184, 0.86);
+  }
+
+  .period-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid rgba(165, 180, 252, 0.45);
+    background: rgba(129, 140, 248, 0.16);
+    color: rgba(224, 231, 255, 0.96);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   .privacy-note {

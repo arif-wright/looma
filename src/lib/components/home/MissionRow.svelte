@@ -11,6 +11,7 @@
     xp_reward?: number | null;
     type?: 'identity' | 'action' | 'world' | null;
     cost?: { energy?: number } | null;
+    tags?: string[] | null;
   };
 
   export let items: MissionItem[] = [];
@@ -30,6 +31,12 @@
     type === 'identity' ? 'No cost' : type === 'world' ? 'Usually no cost' : 'Energy cost';
   const actionCost = (mission: MissionItem) =>
     mission.type === 'action' ? Math.max(0, Math.floor(mission.cost?.energy ?? 0)) : 0;
+  const missionPeriod = (mission: MissionItem) => {
+    const tags = mission.tags ?? [];
+    if (tags.includes('daily')) return 'Today';
+    if (tags.includes('weekly')) return 'This Week';
+    return null;
+  };
   const canStartMission = (mission: MissionItem) => {
     if (activeSessionByMission[mission.id]) return false;
     if (mission.type !== 'action') return true;
@@ -68,6 +75,9 @@
             <div class="header-pills">
               <span class="pill">{readableDifficulty(mission.difficulty)}</span>
               <span class={`pill type-pill ${missionTypeClass(mission.type)}`}>{missionTypeLabel(mission.type)}</span>
+              {#if missionPeriod(mission)}
+                <span class="pill period-pill">{missionPeriod(mission)}</span>
+              {/if}
             </div>
           </header>
           <p class="type-note">{missionTypeHint(mission.type)}</p>
@@ -114,7 +124,15 @@
           {#if activeSessionByMission[mission.id]}
             <p class="mission-status mission-status--active">In progress</p>
           {:else if recentCompletedByMission[mission.id]}
-            <p class="mission-status mission-status--completed">Completed</p>
+            <p class="mission-status mission-status--completed">
+              {#if missionPeriod(mission) === 'Today'}
+                Done today
+              {:else if missionPeriod(mission) === 'This Week'}
+                Done this week
+              {:else}
+                Completed
+              {/if}
+            </p>
           {/if}
           <button
             type="button"
@@ -231,6 +249,15 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(148, 163, 184, 0.82);
+  }
+
+  .period-pill {
+    border: 1px solid rgba(165, 180, 252, 0.45);
+    background: rgba(129, 140, 248, 0.16);
+    color: rgba(224, 231, 255, 0.96);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
   }
 
   .privacy-note {

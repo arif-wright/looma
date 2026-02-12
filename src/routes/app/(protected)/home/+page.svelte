@@ -38,6 +38,10 @@
 
   const stats = data.stats;
   const missions = data.missions ?? [];
+  const dailyMissions = data.dailyMissions ?? [];
+  const weeklyMissions = data.weeklyMissions ?? [];
+  const missionPool = [...dailyMissions, ...weeklyMissions, ...missions];
+  const allMissions = Array.from(new Map(missionPool.map((mission) => [mission.id, mission])).values());
   const creatures = data.creatures ?? [];
   const activeCompanion = data.activeCompanion ?? null;
   const endcap = data.endcap;
@@ -148,12 +152,13 @@
   const energyEffectiveMax = computeEffectiveEnergyMax(energyBaseMax ?? 0, companionEnergyBonus);
   const streak = stats?.missions_completed ?? 0;
   const petMood = creatures[0]?.mood_label ?? creatures[0]?.mood ?? null;
-  const activeMission = missions[0]
+  const quickMission = dailyMissions[0] ?? weeklyMissions[0] ?? allMissions[0] ?? null;
+  const activeMission = quickMission
     ? {
-        id: missions[0].id,
-        name: missions[0].title ?? null,
-        summary: missions[0].summary ?? null,
-        difficulty: missions[0].difficulty ?? null
+        id: quickMission.id,
+        name: quickMission.title ?? null,
+        summary: quickMission.summary ?? null,
+        difficulty: quickMission.difficulty ?? null
       }
     : null;
 
@@ -319,6 +324,9 @@
       privacy_tags: Array.isArray(summary.privacy_tags)
         ? summary.privacy_tags.filter((entry): entry is string => typeof entry === 'string')
         : null,
+      tags: Array.isArray(summary.tags)
+        ? summary.tags.filter((entry): entry is string => typeof entry === 'string')
+        : null,
       meta: null
     } satisfies MissionRowType;
   };
@@ -355,8 +363,8 @@
       void goto('/app/games/arpg');
       return;
     }
-    const target = missionId ? missions.find((mission) => mission.id === missionId) : undefined;
-    const mission = mapMissionSummary(target) ?? mapMissionSummary(missions[0]);
+    const target = missionId ? allMissions.find((mission) => mission.id === missionId) : undefined;
+    const mission = mapMissionSummary(target) ?? mapMissionSummary(quickMission ?? undefined);
 
     if (!mission) {
       void goto('/app/missions');
@@ -376,7 +384,7 @@
   const handleMissionRowStart = (event: CustomEvent<{ missionId: string }>) => {
     const missionId = event.detail?.missionId ?? null;
     if (!missionId) return;
-    const target = missions.find((mission) => mission.id === missionId);
+    const target = allMissions.find((mission) => mission.id === missionId);
     const mapped = mapMissionSummary(target);
     if (!mapped) return;
     missionModalData = mapped;
@@ -530,7 +538,7 @@
           </div>
           <TodayCard
             {stats}
-            mission={missions[0] ?? null}
+            mission={quickMission}
             creature={creatures[0] ?? null}
             {variant}
             energy={energyCurrent}
@@ -549,15 +557,32 @@
             on:claim={handleClaimReward}
             on:checkCreature={handleCheckCreature}
           />
-          {#if missions.length > 1}
+          {#if dailyMissions.length > 0 || weeklyMissions.length > 0}
             <div class="mission-stack">
-              <MissionRow
-                items={missions.slice(0, 3)}
-                currentEnergy={energyCurrent}
-                activeSessionByMission={activeMissionById}
-                recentCompletedByMission={recentCompletedById}
-                on:start={handleMissionRowStart}
-              />
+              {#if dailyMissions.length > 0}
+                <section class="mission-period">
+                  <h3 class="mission-period__title">Today</h3>
+                  <MissionRow
+                    items={dailyMissions.slice(0, 3)}
+                    currentEnergy={energyCurrent}
+                    activeSessionByMission={activeMissionById}
+                    recentCompletedByMission={recentCompletedById}
+                    on:start={handleMissionRowStart}
+                  />
+                </section>
+              {/if}
+              {#if weeklyMissions.length > 0}
+                <section class="mission-period">
+                  <h3 class="mission-period__title">This Week</h3>
+                  <MissionRow
+                    items={weeklyMissions.slice(0, 3)}
+                    currentEnergy={energyCurrent}
+                    activeSessionByMission={activeMissionById}
+                    recentCompletedByMission={recentCompletedById}
+                    on:start={handleMissionRowStart}
+                  />
+                </section>
+              {/if}
             </div>
           {/if}
         </article>
@@ -637,6 +662,19 @@
     margin: 0.35rem 0 0;
     font-size: 0.88rem;
     color: rgba(226, 232, 255, 0.68);
+  }
+
+  .mission-period {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .mission-period__title {
+    margin: 0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(191, 219, 254, 0.85);
   }
 
   .panel__body--compact {

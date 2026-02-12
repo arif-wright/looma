@@ -65,6 +65,8 @@ export const load: PageServerLoad = async (event) => {
     stats: null as Awaited<ReturnType<typeof getPlayerStats>>,
     feed: [] as FeedItem[],
     missions: [] as MissionSummary[],
+    dailyMissions: [] as MissionSummary[],
+    weeklyMissions: [] as MissionSummary[],
     creatures: [] as CreatureMoment[],
     endcap: DEFAULT_ENDCAP,
     landingVariant: parent.landingVariant ?? null,
@@ -148,6 +150,8 @@ export const load: PageServerLoad = async (event) => {
     }
 
     let missionSuggestions: MissionSummary[] = [];
+    let dailyMissionSuggestions: MissionSummary[] = [];
+    let weeklyMissionSuggestions: MissionSummary[] = [];
     try {
       const { data } = await supabase
         .from('missions')
@@ -162,51 +166,35 @@ export const load: PageServerLoad = async (event) => {
       const today = new Date().toISOString().slice(0, 10);
       const baseSeed = `${today}:${userId ?? 'anon'}`;
       const userLevel = typeof stats?.level === 'number' ? stats.level : 0;
+      const now = new Date();
+      const utcYear = now.getUTCFullYear();
+      const janFirstUtc = new Date(Date.UTC(utcYear, 0, 1));
+      const dayOfYear = Math.floor((Date.parse(today) - Date.UTC(utcYear, 0, 1)) / 86400000) + 1;
+      const isoWeek = Math.ceil((dayOfYear + janFirstUtc.getUTCDay() + 1) / 7);
+      const isoWeekSeed = `${utcYear}-W${String(isoWeek).padStart(2, '0')}`;
 
-      const energyDaily = getDailySet(missionPool, today, {
-        limit: 1,
-        requiredTags: ['daily', 'energy'],
+      dailyMissionSuggestions = getDailySet(missionPool, today, {
+        limit: 3,
+        requiredTags: ['daily'],
         userLevel,
         includeIdentityForEnergyDaily: false,
         globalSeed: 'looma-missions-v1',
-        scopeKey: `${baseSeed}:daily-energy`
+        scopeKey: `${baseSeed}:daily`
       });
 
-      const dailyOrWeekly = getDailySet(
-        missionPool.filter((entry) => !energyDaily.some((pick) => pick.id === entry.id)),
-        today,
-        {
-          limit: 1,
-          requiredTags: ['daily'],
-          userLevel,
-          globalSeed: 'looma-missions-v1',
-          scopeKey: `${baseSeed}:daily-general`
-        }
-      );
-
-      const isoWeekSeed = `${new Date().getUTCFullYear()}-W${Math.ceil(
-        ((Date.parse(today) - Date.UTC(new Date().getUTCFullYear(), 0, 1) + 1) / 86400000 +
-          new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)).getUTCDay() +
-          1) /
-          7
-      )}`;
-
-      const fallback = getWeeklySet(
-        missionPool.filter(
-          (entry) =>
-            !energyDaily.some((pick) => pick.id === entry.id) &&
-            !dailyOrWeekly.some((pick) => pick.id === entry.id)
-        ),
+      weeklyMissionSuggestions = getWeeklySet(
+        missionPool.filter((entry) => !dailyMissionSuggestions.some((pick) => pick.id === entry.id)),
         isoWeekSeed,
         {
-          limit: 2,
+          limit: 3,
+          requiredTags: ['weekly'],
           userLevel,
           globalSeed: 'looma-missions-v1',
-          scopeKey: `${baseSeed}:fallback`
+          scopeKey: `${baseSeed}:weekly`
         }
       );
 
-      missionSuggestions = [...energyDaily, ...dailyOrWeekly, ...fallback].slice(0, 2);
+      missionSuggestions = [...dailyMissionSuggestions, ...weeklyMissionSuggestions].slice(0, 3);
     } catch (err) {
       diagnostics.push('missions_query_failed');
       reportHomeLoadIssue('missions_query_failed', { error: err instanceof Error ? err.message : String(err) });
@@ -369,6 +357,8 @@ export const load: PageServerLoad = async (event) => {
       stats,
       feed: feedItems,
       missions: missionSuggestions,
+      dailyMissions: dailyMissionSuggestions,
+      weeklyMissions: weeklyMissionSuggestions,
       creatures: creatureMoments,
       endcap,
       landingVariant: parent.landingVariant ?? null,
