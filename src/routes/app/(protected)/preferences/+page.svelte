@@ -2,6 +2,12 @@
   import { onMount } from 'svelte';
   import PortableStatePanel from '$lib/components/profile/PortableStatePanel.svelte';
   import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
+  import {
+    MEMORY_SUMMARY_ITEM_KEY,
+    buildDeterministicMemorySummary,
+    decodeStoredMemorySummary,
+    encodeMemorySummary
+  } from '$lib/memory/summary';
   import { hydrateCompanionPrefs, updateCompanionPrefs } from '$lib/stores/companionPrefs';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   const SAFE_LOAD_ERROR = 'Something didn’t load. Try again.';
@@ -11,6 +17,10 @@
   let error: string | null = null;
   let portableState: PortableState | null = null;
   let portabilityEnabled = true;
+  let memoryPaused = false;
+  let memorySummary: string[] = [];
+  let summaryUpdatedAt: string | null = null;
+  let summarySaving = false;
   let copyStatus: 'idle' | 'copied' | 'error' = 'idle';
 
   let companionVisible = true;
@@ -25,12 +35,15 @@
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? 'Unable to load preferences.');
       portabilityEnabled = payload?.consent?.memory !== false;
+      memoryPaused = !portabilityEnabled;
       portableState = payload?.portableState ?? null;
       hydrateCompanionPrefs(payload ?? {});
       const items = portableState?.items ?? [];
       companionVisible = resolveItem(items, 'companion_visibility', true);
       companionMotion = resolveItem(items, 'companion_motion', true);
       companionTransparent = resolveItem(items, 'companion_transparency', true);
+      resolveMemorySummary();
+      await ensureMemorySummaryStored();
     } catch {
       error = SAFE_LOAD_ERROR;
     } finally {
@@ -52,6 +65,15 @@
     return next;
   };
 
+  const upsertTextItem = (items: PortableState['items'], key: string, value: string) => {
+    const now = new Date().toISOString();
+    const next = items.filter((entry) => entry.key !== key);
+    next.push({ key, value, updatedAt: now, source: 'memory_summary' });
+    return next;
+  };
+
+  const removeItem = (items: PortableState['items'], key: string) => items.filter((entry) => entry.key !== key);
+
   const itemValue = (key: string): string | number | boolean | null => {
     const items = portableState?.items ?? [];
     const entry = items.find((row) => row.key === key);
@@ -69,6 +91,95 @@
     setTimeout(() => {
       copyStatus = 'idle';
     }, 2200);
+  };
+
+  const persistPortableState = async (nextState: PortableState) => {
+    const res = await fetch('/api/context/portable', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ portableState: nextState })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Unable to save preferences.');
+    }
+    portableState = nextState;
+  };
+
+  const resolveMemorySummary = () => {
+    const stored = decodeStoredMemorySummary(portableState);
+    if (stored) {
+      memorySummary = stored.bullets;
+      summaryUpdatedAt = stored.generatedAt;
+      return;
+    }
+    const deterministic = buildDeterministicMemorySummary(portableState);
+    memorySummary = deterministic;
+    summaryUpdatedAt = portableState?.updatedAt ?? null;
+  };
+
+  const ensureMemorySummaryStored = async () => {
+    if (!portableState || !portabilityEnabled) return;
+    const stored = decodeStoredMemorySummary(portableState);
+    if (stored) return;
+    const bullets = buildDeterministicMemorySummary(portableState);
+    const encoded = encodeMemorySummary(bullets);
+    const nextState: PortableState = {
+      version: PORTABLE_STATE_VERSION,
+      updatedAt: new Date().toISOString(),
+      items: upsertTextItem(portableState.items ?? [], MEMORY_SUMMARY_ITEM_KEY, encoded),
+      ...(portableState?.identity ? { identity: portableState.identity } : {}),
+      ...(portableState?.companions ? { companions: portableState.companions } : {})
+    };
+    try {
+      await persistPortableState(nextState);
+      resolveMemorySummary();
+    } catch {
+      // Keep deterministic local summary visible even if persistence fails.
+    }
+  };
+
+  const clearMemorySummary = async () => {
+    if (!portableState || saving || summarySaving) return;
+    summarySaving = true;
+    error = null;
+    try {
+      const nextState: PortableState = {
+        version: PORTABLE_STATE_VERSION,
+        updatedAt: new Date().toISOString(),
+        items: removeItem(portableState.items ?? [], MEMORY_SUMMARY_ITEM_KEY),
+        ...(portableState?.identity ? { identity: portableState.identity } : {}),
+        ...(portableState?.companions ? { companions: portableState.companions } : {})
+      };
+      await persistPortableState(nextState);
+      resolveMemorySummary();
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
+    }
+  };
+
+  const setMemoryPause = async (paused: boolean) => {
+    if (saving || summarySaving) return;
+    summarySaving = true;
+    error = null;
+    try {
+      const res = await fetch('/api/context/portable', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consentMemory: !paused })
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error ?? 'Unable to update memory preference.');
+      }
+      await fetchPrefs();
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
+    }
   };
 
   const savePortable = async (patch: { visibility?: boolean; motion?: boolean; transparency?: boolean }) => {
@@ -95,17 +206,7 @@
         ...(portableState?.companions ? { companions: portableState.companions } : {})
       };
 
-      const res = await fetch('/api/context/portable', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ portableState: nextState })
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Unable to save preferences.');
-      }
-
-      portableState = nextState;
+      await persistPortableState(nextState);
       const companionPatch: { visible?: boolean; motion?: boolean; transparent?: boolean } = {};
       if (typeof patch.visibility === 'boolean') companionPatch.visible = patch.visibility;
       if (typeof patch.motion === 'boolean') companionPatch.motion = patch.motion;
@@ -235,6 +336,46 @@
       <h2 id="transparency-heading" class="panel-title">Transparency &amp; Memory</h2>
     </div>
     <PortableStatePanel />
+  </section>
+
+  <section class="preferences-panel memory-summary-panel" aria-labelledby="memory-summary-heading">
+    <div class="panel-title-row">
+      <h2 id="memory-summary-heading" class="panel-title">Memory Summary</h2>
+    </div>
+    <p class="memory-summary-copy">
+      High-level summary only. This section never displays raw event logs or sensitive entries.
+    </p>
+    {#if memoryPaused}
+      <p class="status-text">Summary updates are paused while Memory is off.</p>
+    {:else}
+      <ul class="memory-summary-list">
+        {#each memorySummary as bullet, index (`${index}-${bullet}`)}
+          <li>{bullet}</li>
+        {/each}
+      </ul>
+      {#if summaryUpdatedAt}
+        <p class="memory-summary-timestamp">Last summary update: {summaryUpdatedAt}</p>
+      {/if}
+    {/if}
+
+    <div class="memory-summary-actions">
+      <button
+        type="button"
+        class="pill pill-action"
+        on:click={clearMemorySummary}
+        disabled={summarySaving || !portableState || memoryPaused}
+      >
+        Clear summary
+      </button>
+      <button
+        type="button"
+        class="pill pill-action"
+        on:click={() => setMemoryPause(!memoryPaused)}
+        disabled={summarySaving}
+      >
+        {memoryPaused ? 'Resume updates' : 'Pause updates'}
+      </button>
+    </div>
   </section>
 
   <section class="preferences-panel portability-panel" aria-labelledby="portability-heading">
@@ -393,6 +534,37 @@
   .preferences-group {
     display: grid;
     gap: 0.75rem;
+  }
+
+  .memory-summary-panel {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .memory-summary-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.88rem;
+  }
+
+  .memory-summary-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.35rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .memory-summary-timestamp {
+    margin: 0;
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.58);
+  }
+
+  .memory-summary-actions {
+    display: inline-flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
   }
 
   .portability-panel {
