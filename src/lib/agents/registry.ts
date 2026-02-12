@@ -6,6 +6,7 @@ import {
   type PersonaTone
 } from '$lib/companions/personaProfiles';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
+import { classifyCompanionLlmIntensity, generateCompanionText } from '$lib/server/llm/companionText';
 
 const preRunReactionTimestamps = new Map<string, number>();
 const WHISPER_LIBRARY = {
@@ -172,7 +173,9 @@ const companionAgent: Agent = {
     }
 
     const payload = (event.payload ?? {}) as Record<string, any>;
-    const suppress = Boolean(payload?.suppressReactions === true || event.meta?.suppressReactions === true);
+    const context = (event.context ?? {}) as Record<string, any>;
+    const reactionsEnabled = context?.portableState?.reactionsEnabled !== false;
+    const suppress = Boolean(!reactionsEnabled || payload?.suppressReactions === true || event.meta?.suppressReactions === true);
 
     if (suppress) {
       return {
@@ -182,7 +185,6 @@ const companionAgent: Agent = {
       };
     }
 
-    const context = (event.context ?? {}) as Record<string, any>;
     const activeCompanion =
       (context?.companion?.active as { id?: unknown; archetype?: unknown; name?: unknown } | null | undefined) ?? null;
     const profile = resolveCompanionPersonaProfile(activeCompanion);
@@ -204,6 +206,27 @@ const companionAgent: Agent = {
       typeof activeCompanion?.name === 'string' && activeCompanion.name.trim()
         ? activeCompanion.name.trim()
         : 'your companion';
+
+    const llmIntensity = classifyCompanionLlmIntensity({ event, context });
+    if (llmIntensity) {
+      const llmText = await generateCompanionText({
+        event,
+        context,
+        intensity: llmIntensity
+      });
+      if (llmText) {
+        const reaction = {
+          text: llmText,
+          kind: event.type,
+          ttlMs: tuning.reactions.ttlMs
+        };
+        return {
+          agentId: 'companion',
+          handled: true,
+          output: { reaction, mood: 'steady', note: 'Muse generated an LLM reaction.' }
+        };
+      }
+    }
 
     let text = '';
     if (event.type === 'session.start') {
