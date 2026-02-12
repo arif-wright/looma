@@ -30,6 +30,7 @@ const ALLOWED_TYPES = new Set([
   'game.complete',
   'mission.start',
   'mission.complete',
+  'missions.daily.refresh',
   'identity.complete',
   'companion.swap',
   'companion.ritual.listen',

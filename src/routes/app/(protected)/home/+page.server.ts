@@ -11,6 +11,7 @@ import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
 import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
+import { ingestServerEvent } from '$lib/server/events/ingest';
 
 type MissionSummary = {
   id: string;
@@ -52,6 +53,47 @@ const DEFAULT_ENDCAP = {
   title: 'Welcome back',
   description: 'Explore your community for a quick boost.',
   href: '/app/home'
+};
+
+const upsertMissionAssignment = async (args: {
+  supabase: SupabaseClient;
+  period: 'daily' | 'weekly';
+  periodKey: string;
+  missionIds: string[];
+}) => {
+  const missionIds = args.missionIds.filter((id) => typeof id === 'string' && id.trim().length > 0);
+  if (missionIds.length === 0) return { created: false as const };
+
+  const { data: existing, error: existingError } = await args.supabase
+    .from('mission_assignments')
+    .select('id')
+    .eq('period', args.period)
+    .eq('period_key', args.periodKey)
+    .maybeSingle();
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('[home] mission assignment lookup failed', existingError);
+    return { created: false as const };
+  }
+
+  if (existing?.id) {
+    return { created: false as const };
+  }
+
+  const { error: insertError } = await args.supabase.from('mission_assignments').insert({
+    period: args.period,
+    period_key: args.periodKey,
+    mission_ids: missionIds
+  });
+
+  if (insertError) {
+    if (insertError.code !== '23505') {
+      console.error('[home] mission assignment insert failed', insertError);
+    }
+    return { created: false as const };
+  }
+
+  return { created: true as const };
 };
 
 export const load: PageServerLoad = async (event) => {
@@ -195,6 +237,21 @@ export const load: PageServerLoad = async (event) => {
       );
 
       missionSuggestions = [...dailyMissionSuggestions, ...weeklyMissionSuggestions].slice(0, 3);
+
+      const dailyAssignment = await upsertMissionAssignment({
+        supabase,
+        period: 'daily',
+        periodKey: today,
+        missionIds: dailyMissionSuggestions.map((mission) => mission.id)
+      });
+
+      if (dailyAssignment.created) {
+        await ingestServerEvent(event, 'missions.daily.refresh', {
+          period: 'daily',
+          periodKey: today,
+          missionIds: dailyMissionSuggestions.map((mission) => mission.id)
+        });
+      }
     } catch (err) {
       diagnostics.push('missions_query_failed');
       reportHomeLoadIssue('missions_query_failed', { error: err instanceof Error ? err.message : String(err) });
