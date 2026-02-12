@@ -14,6 +14,7 @@ import { getAdminFlags } from '$lib/server/admin-guard';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+import { isMuseCompanion, resolveMuseEvolutionStage } from '$lib/companions/evolution';
 import { alphaGate } from '$lib/server/alphaGate';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
@@ -274,7 +275,13 @@ export const load: LayoutServerLoad = async (event) => {
 
   let activeCompanion: ActiveCompanionSnapshot | null = null;
   let portableActiveCompanion:
-    | { id: string; name: string; archetype: string; cosmetics: Record<string, string | number | boolean | null> }
+    | {
+        id: string;
+        name: string;
+        archetype: string;
+        cosmetics: Record<string, string | number | boolean | null>;
+        evolutionStage: string | null;
+      }
     | null = null;
 
   try {
@@ -364,7 +371,13 @@ export const load: LayoutServerLoad = async (event) => {
             id: active.id,
             name: active.name,
             archetype: active.archetype,
-            cosmetics: normalizeCompanionCosmetics(active.cosmetics)
+            cosmetics: normalizeCompanionCosmetics(active.cosmetics),
+            evolutionStage: isMuseCompanion(active.id)
+              ? resolveMuseEvolutionStage({
+                  companionId: active.id,
+                  unlockedCosmetics: active.cosmeticsUnlocked
+                }).label
+              : null
           }
         : null;
     }

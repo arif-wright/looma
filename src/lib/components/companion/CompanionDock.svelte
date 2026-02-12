@@ -25,6 +25,7 @@
   export let reactionsEnabled = true;
   export let companionId = 'muse';
   export let companionName = 'Muse';
+  export let evolutionStageLabel: string | null = null;
   export let companionCosmetics: Record<string, string | number | boolean | null> | null = null;
   export let moodKey: DerivedMoodKey | null = null;
   export let worldMood: WorldMood | null = null;
@@ -210,6 +211,12 @@
           <p class="companion-dock__eyebrow">Companion</p>
           <p class="companion-dock__title">{activeCompanionName}</p>
           <p class="companion-dock__tier">Bond tier: {bondTier.name}</p>
+          {#if evolutionStageLabel}
+            <p class="companion-dock__stage">
+              <span class="companion-dock__stage-badge">Evolution</span>
+              {evolutionStageLabel}
+            </p>
+          {/if}
         </div>
         <button
           class="companion-dock__icon"
@@ -342,6 +349,26 @@
     margin: 0.25rem 0 0;
     font-size: 0.72rem;
     color: rgba(255, 255, 255, 0.68);
+  }
+
+  .companion-dock__stage {
+    margin: 0.25rem 0 0;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.75);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .companion-dock__stage-badge {
+    border-radius: 999px;
+    border: 1px solid rgba(94, 242, 255, 0.35);
+    background: rgba(94, 242, 255, 0.12);
+    color: rgba(175, 243, 255, 0.95);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.06rem 0.4rem;
   }
 
   .companion-dock__icon {

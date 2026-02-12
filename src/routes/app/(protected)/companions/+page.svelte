@@ -173,6 +173,7 @@
     });
 
   const rituals: CompanionRitual[] = (data.rituals ?? []) as CompanionRitual[];
+  const evolutionStagesByCompanionId = (data.evolutionStagesByCompanionId ?? {}) as Record<string, string>;
   applyRitualUpdate(rituals);
 
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
@@ -520,6 +521,8 @@
 
   $: ownedInstances = rosterState.instances;
   $: activeCompanion = findActiveFromState(rosterState);
+  $: activeCompanionEvolutionStage =
+    activeCompanion?.id ? evolutionStagesByCompanionId[activeCompanion.id] ?? null : null;
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
@@ -596,6 +599,8 @@
     const refreshed = ownedInstances.find((entry) => entry.id === selectedForCare?.id);
     if (refreshed) selectedForCare = refreshed;
   }
+  $: selectedCompanionEvolutionStage =
+    selectedForCare?.id ? evolutionStagesByCompanionId[selectedForCare.id] ?? null : null;
 
   $: if (selectedForCare?.id) {
     const seeds = pendingPrefetches[selectedForCare.id] ?? [];
@@ -670,6 +675,9 @@
             <div class="view-chips">
               <span class="chip">Active</span>
               <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
+              {#if activeCompanionEvolutionStage}
+                <span class="chip chip--evolution">Evolution {activeCompanionEvolutionStage}</span>
+              {/if}
               <span class="chip">{activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label}</span>
             </div>
           </div>
@@ -912,6 +920,7 @@
 <CompanionModal
   open={Boolean(selectedForCare)}
   companion={selectedForCare}
+  evolutionStageLabel={selectedCompanionEvolutionStage}
   {maxSlots}
   capturePortrait={() => museHostRef?.capturePortrait?.() ?? Promise.resolve(null)}
   allowLivePortrait={true}
@@ -1093,6 +1102,12 @@
     padding: 0.26rem 0.72rem;
     font-size: 0.86rem;
     background: rgba(17, 24, 46, 0.7);
+  }
+
+  .chip--evolution {
+    border-color: rgba(94, 242, 255, 0.42);
+    background: rgba(94, 242, 255, 0.12);
+    color: rgba(199, 248, 255, 0.96);
   }
 
   .time-context {

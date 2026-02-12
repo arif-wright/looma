@@ -19,6 +19,7 @@ import {
   FIRST_ACTIVE_AT_ITEM_KEY,
   evaluateCompanionMilestones
 } from '$lib/companions/progression';
+import { MUSE_EVOLUTION_RULES, evaluateMuseEvolutionUnlocks } from '$lib/companions/evolution';
 
 const ALLOWED_TYPES = new Set([
   'session.start',
@@ -245,21 +246,39 @@ export const POST: RequestHandler = async (event) => {
           const firstActiveAtItem = portableState.items.find((entry) => entry.key === FIRST_ACTIVE_AT_ITEM_KEY);
           const firstActiveAtIso =
             typeof firstActiveAtItem?.value === 'string' && firstActiveAtItem.value ? firstActiveAtItem.value : nowIso;
-          const earned = evaluateCompanionMilestones({
+          const earnedMilestones = evaluateCompanionMilestones({
             nowIso,
             firstActiveAtIso,
             streakDays,
             gamesPlayedCount,
             unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? []
           });
+          const earnedEvolution = evaluateMuseEvolutionUnlocks({
+            companionId: activeCompanion.id,
+            streakDays,
+            gamesPlayedCount,
+            unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? []
+          });
+          const earnedUnlocks: Array<{ id: string; cosmeticId: string; label: string }> = [
+            ...earnedMilestones.map((rule) => ({
+              id: rule.id,
+              cosmeticId: rule.cosmeticId,
+              label: rule.label
+            })),
+            ...earnedEvolution.map((rule) => ({
+              id: `stage_${rule.stage.key}`,
+              cosmeticId: rule.cosmeticId,
+              label: rule.stage.label
+            }))
+          ];
 
           const hasFirstActiveAtStored = Boolean(
             firstActiveAtItem && typeof firstActiveAtItem.value === 'string' && firstActiveAtItem.value
           );
 
-          if (earned.length > 0 || !hasFirstActiveAtStored) {
+          if (earnedUnlocks.length > 0 || !hasFirstActiveAtStored) {
             const nextUnlocked = new Set(activeCompanion.cosmeticsUnlocked ?? []);
-            for (const unlock of earned) {
+            for (const unlock of earnedUnlocks) {
               nextUnlocked.add(unlock.cosmeticId);
             }
 
@@ -295,11 +314,7 @@ export const POST: RequestHandler = async (event) => {
             if (updateError) {
               console.error('[events] progression portable_state update failed', updateError);
             } else {
-              progressionUnlocks = earned.map((rule) => ({
-                id: rule.id,
-                cosmeticId: rule.cosmeticId,
-                label: rule.label
-              }));
+              progressionUnlocks = earnedUnlocks;
             }
           }
         }
@@ -372,12 +387,20 @@ export const POST: RequestHandler = async (event) => {
     output = {
       ...(output ?? {}),
       progressionUnlocks,
-      progressionRules: COMPANION_MILESTONE_RULES.map((rule) => ({
-        id: rule.id,
-        threshold: rule.threshold,
-        kind: rule.kind,
-        cosmeticId: rule.cosmeticId
-      }))
+      progressionRules: [
+        ...COMPANION_MILESTONE_RULES.map((rule) => ({
+          id: rule.id as string,
+          threshold: rule.threshold as number | { streakDays: number; gamesPlayedCount: number },
+          kind: rule.kind as string,
+          cosmeticId: rule.cosmeticId
+        })),
+        ...MUSE_EVOLUTION_RULES.map((rule) => ({
+          id: `stage_${rule.stage.key}`,
+          threshold: { streakDays: rule.streakThreshold, gamesPlayedCount: rule.gamesThreshold },
+          kind: 'evolution_stage',
+          cosmeticId: rule.cosmeticId
+        }))
+      ]
     };
     if (!suppressReactions) {
       const unlockLabel = progressionUnlocks[0]?.label ?? 'Companion unlock';

@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
+import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
+import { isMuseCompanion, resolveMuseEvolutionStage } from '$lib/companions/evolution';
 
 const COMPANION_COLUMNS =
   'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
@@ -90,6 +92,33 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       .order('name', { ascending: true })
   ]);
 
+  let evolutionStagesByCompanionId: Record<string, string> = {};
+  try {
+    const { data: prefData, error: prefError } = await supabase
+      .from('user_preferences')
+      .select('portable_state')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (prefError && prefError.code !== 'PGRST116') {
+      console.error('[companions:load] portable_state lookup failed', prefError);
+    } else {
+      const portableCompanions = normalizePortableCompanions(
+        (prefData?.portable_state as Record<string, unknown> | null)?.companions
+      );
+      evolutionStagesByCompanionId = portableCompanions.roster.reduce<Record<string, string>>((acc, entry) => {
+        if (!isMuseCompanion(entry.id)) return acc;
+        acc[entry.id] = resolveMuseEvolutionStage({
+          companionId: entry.id,
+          unlockedCosmetics: entry.cosmeticsUnlocked
+        }).label;
+        return acc;
+      }, {});
+    }
+  } catch (err) {
+    console.error('[companions:load] failed to compute evolution stages', err);
+  }
+
   const companions = (companionsResult.data ?? []).map((companion) => {
     const ticked = tickedCompanions.get(companion.id);
     if (!ticked) {
@@ -141,6 +170,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     tickEvents,
     error: companionsResult.error?.message ?? slotsResult.error?.message ?? archetypesResult.error?.message ?? null,
     bondMilestones,
-    rituals
+    rituals,
+    evolutionStagesByCompanionId
   };
 };

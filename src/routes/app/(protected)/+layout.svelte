@@ -466,6 +466,7 @@
       reactionsEnabled={$companionPrefs.reactionsEnabled}
       companionId={data?.activeCompanion?.id ?? data?.portableActiveCompanion?.id ?? 'muse'}
       companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
+      evolutionStageLabel={data?.portableActiveCompanion?.evolutionStage ?? null}
       companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
       moodKey={activeEffective?.moodKey ?? null}
       worldMood={currentMood}

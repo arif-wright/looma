@@ -33,6 +33,7 @@
 
   export let open = false;
   export let companion: Companion | null = null;
+  export let evolutionStageLabel: string | null = null;
   export let maxSlots = 3;
   export let onClose: () => void = () => {};
   export let renameCompanion: (id: string, name: string) => Promise<void> = async () => {};
@@ -622,6 +623,9 @@
             {/if}
             <span class="chip">Bond Lv {bondLevel}</span>
             <span class="chip">Tier {bondTier.name}</span>
+            {#if evolutionStageLabel}
+              <span class="chip chip--stage">Evolution {evolutionStageLabel}</span>
+            {/if}
             <span class="chip">{effective?.moodLabel ?? 'Calm'}</span>
             <span class="chip">Slot {typeof companion.slot_index === 'number' ? companion.slot_index + 1 : '–'} / {maxSlots}</span>
           </div>
@@ -957,6 +961,12 @@
   .chip--active {
     border-color: rgba(94, 234, 212, 0.35);
     box-shadow: inset 0 0 18px rgba(94, 234, 212, 0.12);
+  }
+
+  .chip--stage {
+    border-color: rgba(94, 242, 255, 0.4);
+    color: rgba(188, 246, 255, 0.94);
+    background: rgba(94, 242, 255, 0.1);
   }
 
   .dossier-state-row {
