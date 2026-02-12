@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { OPTIONAL_COMPANION_RITUAL_MAP, type OptionalCompanionRitualKey } from '$lib/companions/optionalRituals';
 import { ingestServerEvent } from '$lib/server/events/ingest';
+import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 
 type RitualActPayload = {
   companionId?: unknown;
@@ -27,6 +28,10 @@ export const POST: RequestHandler = async (event) => {
   const ritualKeyRaw = typeof payload.ritualKey === 'string' ? payload.ritualKey.trim().toLowerCase() : '';
   const ritualKey = ritualKeyRaw as OptionalCompanionRitualKey;
   const ritual = OPTIONAL_COMPANION_RITUAL_MAP.get(ritualKey);
+  const tuning = await getLoomaTuningConfig();
+  const ritualCooldownMs = ritual
+    ? (tuning.rituals.cooldownMs[ritual.key] ?? ritual.cooldownMs)
+    : 60 * 60 * 1000;
   const suppressReactions = payload.suppressReactions === true;
 
   if (!companionId || !ritual) {
@@ -65,7 +70,7 @@ export const POST: RequestHandler = async (event) => {
   const now = Date.now();
   const latestAt = latest?.inserted_at ? Date.parse(latest.inserted_at) : NaN;
   const remainingMs =
-    Number.isFinite(latestAt) && latestAt > 0 ? Math.max(0, ritual.cooldownMs - (now - latestAt)) : 0;
+    Number.isFinite(latestAt) && latestAt > 0 ? Math.max(0, ritualCooldownMs - (now - latestAt)) : 0;
   if (remainingMs > 0) {
     return json(
       {
@@ -120,17 +125,17 @@ export const POST: RequestHandler = async (event) => {
     ritual: {
       key: ritual.key,
       title: ritual.title,
-      cooldownMs: ritual.cooldownMs,
+      cooldownMs: ritualCooldownMs,
       startedAt: insertedAtIso
     },
     reaction: maybeReaction,
     temporaryMood: ritual.temporaryMood
       ? {
           key: ritual.temporaryMood,
-          label: 'Focused',
-          expiresAt: new Date(now + (ritual.temporaryMoodMs ?? 0)).toISOString(),
-          durationMs: ritual.temporaryMoodMs ?? 0
-        }
+        label: 'Focused',
+        expiresAt: new Date(now + tuning.rituals.focusMoodDurationMs).toISOString(),
+        durationMs: tuning.rituals.focusMoodDurationMs
+      }
       : null
   });
 };

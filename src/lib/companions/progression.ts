@@ -9,6 +9,8 @@ export type CompanionMilestoneRule = {
   kind: 'streak_days' | 'games_played' | 'first_week_days';
 };
 
+export type CompanionMilestoneThresholdOverrides = Partial<Record<CompanionMilestoneId, number>>;
+
 export const FIRST_ACTIVE_AT_ITEM_KEY = 'companion_progress_first_active_at';
 export const FIRST_ACTIVE_WINDOW_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +42,17 @@ export const COMPANION_MILESTONE_RULES: CompanionMilestoneRule[] = [
   }
 ];
 
+export const getCompanionMilestoneRules = (
+  overrides: CompanionMilestoneThresholdOverrides = {}
+): CompanionMilestoneRule[] =>
+  COMPANION_MILESTONE_RULES.map((rule) => ({
+    ...rule,
+    threshold:
+      typeof overrides[rule.id] === 'number' && Number.isFinite(overrides[rule.id])
+        ? Math.max(1, Math.floor(overrides[rule.id] as number))
+        : rule.threshold
+  }));
+
 const parseMs = (iso: string | null | undefined): number | null => {
   if (!iso) return null;
   const parsed = Date.parse(iso);
@@ -64,14 +77,16 @@ export const evaluateCompanionMilestones = (args: {
   streakDays: number;
   gamesPlayedCount: number;
   unlockedCosmetics: string[];
+  rules?: CompanionMilestoneRule[];
 }) => {
   const unlockedSet = new Set((args.unlockedCosmetics ?? []).filter((id) => typeof id === 'string' && id.length > 0));
   const streakDays = clampCount(args.streakDays);
   const gamesPlayedCount = clampCount(args.gamesPlayedCount);
   const activeDays = elapsedDays(args.firstActiveAtIso, args.nowIso);
+  const rules = Array.isArray(args.rules) && args.rules.length > 0 ? args.rules : COMPANION_MILESTONE_RULES;
 
   const earned: CompanionMilestoneRule[] = [];
-  for (const rule of COMPANION_MILESTONE_RULES) {
+  for (const rule of rules) {
     if (unlockedSet.has(rule.cosmeticId)) continue;
     let hit = false;
     if (rule.kind === 'streak_days') hit = streakDays >= rule.threshold;
@@ -82,4 +97,3 @@ export const evaluateCompanionMilestones = (args: {
 
   return earned;
 };
-

@@ -5,10 +5,8 @@ import {
   resolveCompanionPersonaProfile,
   type PersonaTone
 } from '$lib/companions/personaProfiles';
+import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 
-const WHISPER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const PRE_RUN_COOLDOWN_MS = 60 * 60 * 1000;
-const MAX_PRE_RUN_BUCKETS = 5000;
 const preRunReactionTimestamps = new Map<string, number>();
 const WHISPER_LIBRARY = {
   bright: {
@@ -71,22 +69,22 @@ const simpleHash = (input: string) => {
 const preRunThrottleKey = (event: Parameters<Agent['handle']>[0]) =>
   String(event.meta?.userId ?? event.meta?.sessionId ?? 'anonymous');
 
-const shouldEmitPreRunLine = (event: Parameters<Agent['handle']>[0]) => {
+const shouldEmitPreRunLine = (event: Parameters<Agent['handle']>[0], chancePercent: number) => {
   const payload = (event.payload ?? {}) as Record<string, unknown>;
   const gameId = String(payload.gameId ?? payload.gameSlug ?? payload.slug ?? '');
   const seed = `${event.timestamp}|${event.meta?.sessionId ?? ''}|${gameId}`;
-  return simpleHash(seed) % 100 < 55;
+  return simpleHash(seed) % 100 < Math.max(0, Math.min(100, Math.floor(chancePercent)));
 };
 
-const canEmitPreRunReaction = (event: Parameters<Agent['handle']>[0]) => {
+const canEmitPreRunReaction = (event: Parameters<Agent['handle']>[0], cooldownMs: number, maxBuckets: number) => {
   const nowMs = parseTime(event.timestamp) ?? Date.now();
   const key = preRunThrottleKey(event);
   const lastMs = preRunReactionTimestamps.get(key) ?? null;
-  if (lastMs && nowMs - lastMs < PRE_RUN_COOLDOWN_MS) {
+  if (lastMs && nowMs - lastMs < cooldownMs) {
     return false;
   }
   preRunReactionTimestamps.set(key, nowMs);
-  if (preRunReactionTimestamps.size > MAX_PRE_RUN_BUCKETS) {
+  if (preRunReactionTimestamps.size > maxBuckets) {
     const entries = [...preRunReactionTimestamps.entries()].sort((a, b) => a[1] - b[1]);
     const pruneCount = Math.max(1, Math.floor(entries.length / 3));
     for (let i = 0; i < pruneCount; i += 1) {
@@ -131,7 +129,7 @@ const safetyAgent: Agent = {
     minIntervalMs: 100,
     allowedScopes: ['app', 'companion', 'world', 'system']
   },
-  handle: (event) => {
+  handle: async (event) => {
     if (event.type === 'unsafe_action') {
       return {
         agentId: 'safety',
@@ -153,7 +151,8 @@ const companionAgent: Agent = {
     minIntervalMs: 250,
     allowedScopes: ['companion', 'app']
   },
-  handle: (event) => {
+  handle: async (event) => {
+    const tuning = await getLoomaTuningConfig();
     if (
       ![
         'session.start',
@@ -237,14 +236,14 @@ const companionAgent: Agent = {
       const direct = ['Welcome back.', 'Back again. Continue.', `${focusCue}.`, `Return confirmed. ${closer}.`];
       text = pick(tone === 'direct' ? direct : warm, 'session.return:text');
     } else if (event.type === 'game.session.start') {
-      if (!canEmitPreRunReaction(event)) {
+      if (!canEmitPreRunReaction(event, tuning.reactions.preRunCooldownMs, tuning.reactions.maxPreRunBuckets)) {
         return {
           agentId: 'companion',
           handled: true,
           output: { mood: 'steady', note: 'Pre-run reaction cooldown active.' }
         };
       }
-      if (!shouldEmitPreRunLine(event)) {
+      if (!shouldEmitPreRunLine(event, tuning.reactions.preRunChancePercent)) {
         return {
           agentId: 'companion',
           handled: true,
@@ -389,7 +388,7 @@ const companionAgent: Agent = {
     const reaction = {
       text,
       kind: event.type,
-      ttlMs: 3500
+      ttlMs: tuning.reactions.ttlMs
     };
 
     if (dev) {
@@ -412,7 +411,7 @@ const worldAgent: Agent = {
     minIntervalMs: 300,
     allowedScopes: ['world', 'app']
   },
-  handle: (event) => {
+  handle: async (event) => {
     if (event.type !== 'session.start') {
       return { agentId: 'world', handled: false };
     }
@@ -434,22 +433,23 @@ const worldAgent: Agent = {
     const lastSessionEnd = typeof world.lastSessionEnd === 'string' ? world.lastSessionEnd : null;
     const lastWhisperAt = typeof world.lastWhisperAt === 'string' ? world.lastWhisperAt : null;
 
+    const tuning = await getLoomaTuningConfig();
     const nowMs = parseTime(timestampIso) ?? Date.now();
     const lastWhisperMs = parseTime(lastWhisperAt);
-    if (lastWhisperMs && nowMs - lastWhisperMs < WHISPER_COOLDOWN_MS) {
+    if (lastWhisperMs && nowMs - lastWhisperMs < tuning.whispers.cooldownMs) {
       return { agentId: 'world', handled: true, output: { note: 'Whisper cooldown active.' } };
     }
 
-    const streakIncreased = streakDays > previousStreakDays && streakDays >= 2;
+    const streakIncreased = streakDays > previousStreakDays && streakDays >= tuning.whispers.streakMinDays;
     const daysSinceLastEnd = daysSince(timestampIso, lastSessionEnd);
-    const longBreakReturn = daysSinceLastEnd >= 3;
+    const longBreakReturn = daysSinceLastEnd >= tuning.whispers.longBreakDays;
     if (!streakIncreased && !longBreakReturn) {
       return { agentId: 'world', handled: true, output: { note: 'No whisper trigger.' } };
     }
 
     const scenario: 'streak' | 'long_break' = longBreakReturn ? 'long_break' : 'streak';
     const text = pickWhisper({ mood, scenario, streakDays, daysSinceLastEnd, timestampIso });
-    const whisper = { text, ttlMs: 4800 };
+    const whisper = { text, ttlMs: tuning.whispers.ttlMs };
 
     if (dev) {
       console.debug('[agent:world] whisper', { whisper, scenario, mood, streakDays, daysSinceLastEnd });

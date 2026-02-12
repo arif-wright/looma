@@ -15,11 +15,12 @@ import { normalizePortableCompanions } from '$lib/server/context/portableCompani
 import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
 import { coercePortableIdentity } from '$lib/server/context/portableIdentity';
 import {
-  COMPANION_MILESTONE_RULES,
   FIRST_ACTIVE_AT_ITEM_KEY,
-  evaluateCompanionMilestones
+  evaluateCompanionMilestones,
+  getCompanionMilestoneRules
 } from '$lib/companions/progression';
-import { MUSE_EVOLUTION_RULES, evaluateMuseEvolutionUnlocks } from '$lib/companions/evolution';
+import { evaluateMuseEvolutionUnlocks, getMuseEvolutionRules } from '$lib/companions/evolution';
+import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 
 const ALLOWED_TYPES = new Set([
   'session.start',
@@ -123,6 +124,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const userId = session?.user?.id ?? null;
+  const tuning = await getLoomaTuningConfig();
   const sessionId = typeof meta.sessionId === 'string' ? meta.sessionId : null;
 
   const throttleKey = userId ?? (typeof event.getClientAddress === 'function' ? event.getClientAddress() : null) ?? 'anonymous';
@@ -246,18 +248,36 @@ export const POST: RequestHandler = async (event) => {
           const firstActiveAtItem = portableState.items.find((entry) => entry.key === FIRST_ACTIVE_AT_ITEM_KEY);
           const firstActiveAtIso =
             typeof firstActiveAtItem?.value === 'string' && firstActiveAtItem.value ? firstActiveAtItem.value : nowIso;
+          const milestoneRules = getCompanionMilestoneRules({
+            streak_3: tuning.milestones.companion.streak3,
+            games_5: tuning.milestones.companion.games5,
+            first_week_active: tuning.milestones.companion.firstWeekActive
+          });
+          const evolutionRules = getMuseEvolutionRules({
+            harmonae: {
+              streakThreshold: tuning.milestones.museEvolution.harmonae.streakDays,
+              gamesThreshold: tuning.milestones.museEvolution.harmonae.gamesPlayed
+            },
+            mirae: {
+              streakThreshold: tuning.milestones.museEvolution.mirae.streakDays,
+              gamesThreshold: tuning.milestones.museEvolution.mirae.gamesPlayed
+            }
+          });
+
           const earnedMilestones = evaluateCompanionMilestones({
             nowIso,
             firstActiveAtIso,
             streakDays,
             gamesPlayedCount,
-            unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? []
+            unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? [],
+            rules: milestoneRules
           });
           const earnedEvolution = evaluateMuseEvolutionUnlocks({
             companionId: activeCompanion.id,
             streakDays,
             gamesPlayedCount,
-            unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? []
+            unlockedCosmetics: activeCompanion.cosmeticsUnlocked ?? [],
+            rules: evolutionRules
           });
           const earnedUnlocks: Array<{ id: string; cosmeticId: string; label: string }> = [
             ...earnedMilestones.map((rule) => ({
@@ -388,13 +408,26 @@ export const POST: RequestHandler = async (event) => {
       ...(output ?? {}),
       progressionUnlocks,
       progressionRules: [
-        ...COMPANION_MILESTONE_RULES.map((rule) => ({
+        ...getCompanionMilestoneRules({
+          streak_3: tuning.milestones.companion.streak3,
+          games_5: tuning.milestones.companion.games5,
+          first_week_active: tuning.milestones.companion.firstWeekActive
+        }).map((rule) => ({
           id: rule.id as string,
           threshold: rule.threshold as number | { streakDays: number; gamesPlayedCount: number },
           kind: rule.kind as string,
           cosmeticId: rule.cosmeticId
         })),
-        ...MUSE_EVOLUTION_RULES.map((rule) => ({
+        ...getMuseEvolutionRules({
+          harmonae: {
+            streakThreshold: tuning.milestones.museEvolution.harmonae.streakDays,
+            gamesThreshold: tuning.milestones.museEvolution.harmonae.gamesPlayed
+          },
+          mirae: {
+            streakThreshold: tuning.milestones.museEvolution.mirae.streakDays,
+            gamesThreshold: tuning.milestones.museEvolution.mirae.gamesPlayed
+          }
+        }).map((rule) => ({
           id: `stage_${rule.stage.key}`,
           threshold: { streakDays: rule.streakThreshold, gamesPlayedCount: rule.gamesThreshold },
           kind: 'evolution_stage',

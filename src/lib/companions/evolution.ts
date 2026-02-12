@@ -13,6 +13,10 @@ export type MuseEvolutionRule = {
   gamesThreshold: number;
 };
 
+export type MuseEvolutionThresholdOverrides = Partial<
+  Record<MuseEvolutionStageKey, { streakThreshold?: number; gamesThreshold?: number }>
+>;
+
 const MUSE_ID = 'muse';
 
 const STAGE_WHISPERLIGHT: MuseEvolutionStage = {
@@ -48,6 +52,26 @@ export const MUSE_EVOLUTION_RULES: MuseEvolutionRule[] = [
   }
 ];
 
+export const getMuseEvolutionRules = (
+  overrides: MuseEvolutionThresholdOverrides = {}
+): MuseEvolutionRule[] =>
+  MUSE_EVOLUTION_RULES.map((rule) => {
+    const override = overrides[rule.stage.key];
+    const streakThreshold =
+      typeof override?.streakThreshold === 'number' && Number.isFinite(override.streakThreshold)
+        ? Math.max(1, Math.floor(override.streakThreshold))
+        : rule.streakThreshold;
+    const gamesThreshold =
+      typeof override?.gamesThreshold === 'number' && Number.isFinite(override.gamesThreshold)
+        ? Math.max(1, Math.floor(override.gamesThreshold))
+        : rule.gamesThreshold;
+    return {
+      ...rule,
+      streakThreshold,
+      gamesThreshold
+    };
+  });
+
 const normalizeId = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
 
 const hasRuleUnlock = (unlockedCosmetics: string[], cosmeticId: string) => {
@@ -61,6 +85,7 @@ export const evaluateMuseEvolutionUnlocks = (args: {
   streakDays: number;
   gamesPlayedCount: number;
   unlockedCosmetics: string[];
+  rules?: MuseEvolutionRule[];
 }): MuseEvolutionRule[] => {
   if (!isMuseCompanion(args.companionId)) return [];
 
@@ -68,8 +93,9 @@ export const evaluateMuseEvolutionUnlocks = (args: {
   const gamesPlayedCount = Number.isFinite(args.gamesPlayedCount) ? Math.max(0, Math.floor(args.gamesPlayedCount)) : 0;
   const unlockedCosmetics = Array.isArray(args.unlockedCosmetics) ? args.unlockedCosmetics : [];
 
+  const rules = Array.isArray(args.rules) && args.rules.length > 0 ? args.rules : MUSE_EVOLUTION_RULES;
   const earned: MuseEvolutionRule[] = [];
-  for (const rule of MUSE_EVOLUTION_RULES) {
+  for (const rule of rules) {
     if (hasRuleUnlock(unlockedCosmetics, rule.cosmeticId)) continue;
     const meetsThreshold = streakDays >= rule.streakThreshold || gamesPlayedCount >= rule.gamesThreshold;
     if (meetsThreshold) earned.push(rule);
