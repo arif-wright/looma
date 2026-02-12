@@ -13,6 +13,7 @@ type GenerateCompanionTextArgs = {
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_LIGHT_MODEL = 'gpt-5-nano';
 const DEFAULT_PEAK_MODEL = 'gpt-5-mini';
+const LLM_ENABLED = (privateEnv.LOOMA_LLM_ENABLED ?? 'true').toLowerCase() !== 'false';
 const PEAK_DAILY_CAP = Number.parseInt(privateEnv.LOOMA_LLM_PEAK_DAILY_CAP ?? '2', 10) || 2;
 const LIGHT_INPUT_TOKENS = 1000;
 const LIGHT_OUTPUT_TOKENS = 120;
@@ -170,6 +171,7 @@ export const classifyCompanionLlmIntensity = (args: {
 };
 
 export const generateCompanionText = async (args: GenerateCompanionTextArgs): Promise<string | null> => {
+  if (!LLM_ENABLED) return null;
   const apiKey = privateEnv.OPENAI_API_KEY;
   if (!apiKey) return null;
 

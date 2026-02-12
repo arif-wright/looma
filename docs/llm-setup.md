@@ -5,6 +5,7 @@ Looma supports optional server-side LLM text generation for companion reactions 
 ## Required env vars
 
 - `OPENAI_API_KEY` (required for LLM calls)
+- `LOOMA_LLM_ENABLED` (optional, default: `true`; set to `false` as an instant kill switch)
 - `LOOMA_LLM_LIGHT_MODEL` (optional, default: `gpt-5-nano`)
 - `LOOMA_LLM_PEAK_MODEL` (optional, default: `gpt-5-mini`)
 - `LOOMA_LLM_PEAK_DAILY_CAP` (optional, default: `2`)
@@ -39,6 +40,7 @@ These override defaults/runtime DB tuning:
 
 ```bash
 OPENAI_API_KEY=sk-...
+LOOMA_LLM_ENABLED=true
 LOOMA_LLM_LIGHT_MODEL=gpt-5-nano
 LOOMA_LLM_PEAK_MODEL=gpt-5-mini
 LOOMA_LLM_PEAK_DAILY_CAP=2
@@ -51,6 +53,7 @@ LOOMA_LLM_PEAK_DAILY_CAP=2
 
 1. In Vercel project settings, add:
    - `OPENAI_API_KEY`
+   - `LOOMA_LLM_ENABLED` (set `false` to disable all LLM usage)
    - `LOOMA_LLM_LIGHT_MODEL` (optional)
    - `LOOMA_LLM_PEAK_MODEL` (optional)
    - `LOOMA_LLM_PEAK_DAILY_CAP` (optional)
@@ -82,6 +85,8 @@ LOOMA_LLM_PEAK_DAILY_CAP=2
 
 ## Fallback behavior
 
+- If `LOOMA_LLM_ENABLED=false`:
+  - all LLM calls are skipped and companion reactions use deterministic templates.
 - If `OPENAI_API_KEY` is missing, API fails, or response is empty:
   - Companion agent falls back to existing deterministic templates.
 - LLM is server-side only.
