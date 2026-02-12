@@ -58,7 +58,7 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: sessionRow, error: sessionError } = await supabase
     .from('mission_sessions')
-    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -69,11 +69,17 @@ export const POST: RequestHandler = async (event) => {
 
   const sessionRecord = (sessionRow as MissionSessionRow | null) ?? null;
   if (sessionRecord?.id && sessionRecord.user_id === user.id && sessionRecord.status === 'completed') {
+    const existingRewards =
+      sessionRecord.rewards_json ?? sessionRecord.rewards ?? { xpGranted: 0, energyGranted: 0 };
     return json({
       ok: true,
       idempotent: true,
+      sessionId: sessionRecord.id,
+      status: sessionRecord.status,
+      completedAt: sessionRecord.completed_at,
+      rewardsGranted: existingRewards,
       session: sessionRecord,
-      rewards: sessionRecord.rewards ?? { xpGranted: 0, energyGranted: 0 }
+      rewards: existingRewards
     });
   }
 
@@ -209,12 +215,13 @@ export const POST: RequestHandler = async (event) => {
       status: 'completed',
       completed_at: completedAt,
       rewards: rewardsSnapshot,
+      rewards_json: rewardsSnapshot,
       idempotency_key: activeSession.idempotency_key ?? completionIdempotencyKey
     })
     .eq('id', activeSession.id)
     .eq('user_id', user.id)
-    .eq('status', 'started')
-    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+    .eq('status', 'active')
+    .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
     .maybeSingle();
 
   if (updateError) {
@@ -226,7 +233,7 @@ export const POST: RequestHandler = async (event) => {
   if (!finalizedSession) {
     const { data: latestSession, error: latestSessionError } = await supabase
       .from('mission_sessions')
-      .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+      .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
       .eq('id', activeSession.id)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -295,6 +302,9 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ok: true,
+    sessionId: finalizedSession.id,
+    status: finalizedSession.status,
+    completedAt: finalizedSession.completed_at,
     session: finalizedSession,
     rewardsGranted: {
       xpGranted: grantResult.xpGranted,

@@ -52,7 +52,7 @@ export const validateMissionStart = (
   }
 
   const repeatable = mission.requirements?.repeatable !== false;
-  if (!repeatable && lastSession?.status === 'started') {
+  if (!repeatable && lastSession?.status === 'active') {
     return {
       ok: false,
       status: 409,
@@ -106,7 +106,7 @@ export const validateMissionComplete = (
     return { ok: false, status: 403, code: 'forbidden', message: 'Mission session ownership mismatch.' };
   }
 
-  if (session.status !== 'started') {
+  if (session.status !== 'active') {
     return {
       ok: false,
       status: 409,

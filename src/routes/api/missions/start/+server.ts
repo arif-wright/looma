@@ -101,9 +101,40 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'mission_not_found', message: 'Mission not found.' }, { status: 404 });
   }
 
+  if (idempotencyKey) {
+    const { data: existingByIdempotency, error: existingByIdempotencyError } = await supabase
+      .from('mission_sessions')
+      .select(
+        'id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at'
+      )
+      .eq('user_id', user.id)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle();
+
+    if (existingByIdempotencyError) {
+      console.error('[api/missions/start] idempotency session lookup failed', existingByIdempotencyError);
+      return json({ error: 'bad_request', message: SAFE_LOAD_MESSAGE }, { status: 400 });
+    }
+
+    if (existingByIdempotency) {
+      return json({
+        ok: true,
+        idempotent: true,
+        sessionId: existingByIdempotency.id,
+        status: existingByIdempotency.status,
+        startedAt: existingByIdempotency.started_at,
+        cost: existingByIdempotency.cost_json ?? null,
+        missionType: existingByIdempotency.mission_type ?? mission.type,
+        session: existingByIdempotency
+      });
+    }
+  }
+
   const { data: lastSessionRow, error: lastSessionError } = await supabase
     .from('mission_sessions')
-    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+    .select(
+      'id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at'
+    )
     .eq('mission_id', mission.id)
     .eq('user_id', user.id)
     .order('started_at', { ascending: false })
@@ -161,10 +192,12 @@ export const POST: RequestHandler = async (event) => {
       mission_id: mission.id,
       user_id: user.id,
       mission_type: mission.type,
-      status: 'started',
+      status: 'active',
       cost_snapshot: effectiveCost,
       cost: effectiveCost,
+      cost_json: effectiveCost,
       rewards: null,
+      rewards_json: null,
       idempotency_key: idempotencyKey,
       meta: {
         missionType: mission.type,
@@ -172,14 +205,16 @@ export const POST: RequestHandler = async (event) => {
         idempotencyKey
       }
     })
-    .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+    .select('id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at')
     .single();
 
   if (sessionError || !session) {
     if ((sessionError as { code?: string | null } | null)?.code === '23505') {
       const { data: existingSession } = await supabase
         .from('mission_sessions')
-        .select('id, mission_id, user_id, mission_type, status, cost_snapshot, cost, rewards, idempotency_key, started_at, completed_at')
+        .select(
+          'id, mission_id, user_id, mission_type, status, cost_json, rewards_json, idempotency_key, started_at, completed_at'
+        )
         .eq('user_id', user.id)
         .eq('idempotency_key', idempotencyKey)
         .maybeSingle();
@@ -188,6 +223,11 @@ export const POST: RequestHandler = async (event) => {
         return json({
           ok: true,
           idempotent: true,
+          sessionId: existingSession.id,
+          status: existingSession.status,
+          startedAt: existingSession.started_at,
+          cost: existingSession.cost_json ?? null,
+          missionType: existingSession.mission_type ?? mission.type,
           session: existingSession,
           mission: {
             id: mission.id,
@@ -238,6 +278,11 @@ export const POST: RequestHandler = async (event) => {
 
   return json({
     ok: true,
+    sessionId: session.id,
+    status: session.status,
+    startedAt: session.started_at,
+    cost: session.cost_json ?? effectiveCost,
+    missionType: session.mission_type ?? mission.type,
     session,
     mission: {
       id: mission.id,

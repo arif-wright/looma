@@ -162,6 +162,9 @@
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let missionModalOpen = false;
   let missionModalData: MissionRowType | null = null;
+  let missionSessionsLoading = false;
+  let activeMissionById: Record<string, { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null }> = {};
+  let recentCompletedById: Record<string, { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }> = {};
   const rituals: CompanionRitual[] = data.rituals ?? [];
   applyRitualUpdate(rituals);
   $: ritualsPendingCount = $companionRitualsStore.filter((ritual) => ritual.status !== 'completed').length;
@@ -184,6 +187,67 @@
   onDestroy(() => {
     if (toastTimer) clearTimeout(toastTimer);
   });
+
+  const refreshMissionSessions = async () => {
+    if (!browser || missionSessionsLoading) return;
+    missionSessionsLoading = true;
+    try {
+      const res = await fetch('/api/missions/sessions', { headers: { accept: 'application/json' } });
+      const payload = (await res.json().catch(() => null)) as
+        | {
+            active?: Array<{
+              sessionId: string;
+              missionId: string;
+              status: string;
+              startedAt: string;
+              cost?: { energy?: number } | null;
+            }>;
+            recent?: Array<{
+              sessionId: string;
+              missionId: string;
+              status: string;
+              completedAt: string | null;
+              rewards?: { xpGranted?: number; energyGranted?: number } | null;
+            }>;
+          }
+        | null;
+      if (!res.ok || !payload) return;
+
+      const activeMap: Record<string, { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null }> = {};
+      for (const session of payload.active ?? []) {
+        if (!session?.missionId || !session?.sessionId) continue;
+        activeMap[session.missionId] = {
+          sessionId: session.sessionId,
+          status: session.status,
+          startedAt: session.startedAt,
+          cost: session.cost ?? null
+        };
+      }
+
+      const recentMap: Record<
+        string,
+        { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }
+      > = {};
+      for (const session of payload.recent ?? []) {
+        if (!session?.missionId || !session?.sessionId) continue;
+        if (!recentMap[session.missionId]) {
+          recentMap[session.missionId] = {
+            sessionId: session.sessionId,
+            status: session.status,
+            completedAt: session.completedAt ?? null,
+            rewards: session.rewards ?? null
+          };
+        }
+      }
+
+      activeMissionById = activeMap;
+      recentCompletedById = recentMap;
+    } catch {
+      // Ignore and keep existing state.
+    } finally {
+      missionSessionsLoading = false;
+    }
+  };
 
   const normalizeFeedItem = (entry: Record<string, unknown> | null): FeedItemType | null => {
     if (!entry || typeof entry !== 'object') return null;
@@ -383,6 +447,8 @@
         }
       }
     }
+
+    await refreshMissionSessions();
   });
 </script>
 
@@ -485,7 +551,13 @@
           />
           {#if missions.length > 1}
             <div class="mission-stack">
-              <MissionRow items={missions.slice(0, 3)} currentEnergy={energyCurrent} on:start={handleMissionRowStart} />
+              <MissionRow
+                items={missions.slice(0, 3)}
+                currentEnergy={energyCurrent}
+                activeSessionByMission={activeMissionById}
+                recentCompletedByMission={recentCompletedById}
+                on:start={handleMissionRowStart}
+              />
             </div>
           {/if}
         </article>
@@ -531,7 +603,15 @@
     {/if}
   </main>
 
-  <MissionModal open={missionModalOpen} mission={missionModalData} currentEnergy={energyCurrent} on:close={closeMissionModal} />
+  <MissionModal
+    open={missionModalOpen}
+    mission={missionModalData}
+    currentEnergy={energyCurrent}
+    activeSession={missionModalData ? activeMissionById[missionModalData.id] ?? null : null}
+    recentCompletion={missionModalData ? recentCompletedById[missionModalData.id] ?? null : null}
+    on:close={closeMissionModal}
+    on:refreshSessions={refreshMissionSessions}
+  />
 </div>
 
 <style>

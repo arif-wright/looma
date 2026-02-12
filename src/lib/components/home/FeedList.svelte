@@ -28,6 +28,11 @@
 
   let missionModalOpen = false;
   let missionModalData: MissionRow | null = null;
+  let activeMissionById: Record<string, { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null }> = {};
+  let recentCompletedById: Record<
+    string,
+    { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }
+  > = {};
   let creatureModalOpen = false;
   let creatureModalData: CreatureRow | null = null;
 
@@ -148,6 +153,64 @@
     }
   }
 
+  async function refreshMissionSessions() {
+    if (!browser) return;
+    try {
+      const res = await fetch('/api/missions/sessions', { headers: { accept: 'application/json' } });
+      const payload = (await res.json().catch(() => null)) as
+        | {
+            active?: Array<{
+              sessionId: string;
+              missionId: string;
+              status: string;
+              startedAt: string;
+              cost?: { energy?: number } | null;
+            }>;
+            recent?: Array<{
+              sessionId: string;
+              missionId: string;
+              status: string;
+              completedAt: string | null;
+              rewards?: { xpGranted?: number; energyGranted?: number } | null;
+            }>;
+          }
+        | null;
+      if (!res.ok || !payload) return;
+
+      const activeMap: Record<string, { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null }> = {};
+      for (const session of payload.active ?? []) {
+        if (!session?.missionId || !session?.sessionId) continue;
+        activeMap[session.missionId] = {
+          sessionId: session.sessionId,
+          status: session.status,
+          startedAt: session.startedAt,
+          cost: session.cost ?? null
+        };
+      }
+
+      const recentMap: Record<
+        string,
+        { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }
+      > = {};
+      for (const session of payload.recent ?? []) {
+        if (!session?.missionId || !session?.sessionId) continue;
+        if (!recentMap[session.missionId]) {
+          recentMap[session.missionId] = {
+            sessionId: session.sessionId,
+            status: session.status,
+            completedAt: session.completedAt ?? null,
+            rewards: session.rewards ?? null
+          };
+        }
+      }
+
+      activeMissionById = activeMap;
+      recentCompletedById = recentMap;
+    } catch {
+      // Ignore.
+    }
+  }
+
   async function handleDeeplink(event: CustomEvent<{ target: Record<string, unknown>; item: FeedItemType }>) {
     const { target } = event.detail;
     const targetType = typeof target?.type === 'string' ? (target.type as string) : null;
@@ -200,6 +263,9 @@
     primeFeed(items);
     if (browser && feed.length === 0) {
       void loadMore(true);
+    }
+    if (browser) {
+      void refreshMissionSessions();
     }
     if (browser) {
       lastScroll = window.scrollY;
@@ -269,7 +335,14 @@
     {/if}
   </div>
 
-  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} />
+  <MissionModal
+    open={missionModalOpen}
+    mission={missionModalData}
+    activeSession={missionModalData ? activeMissionById[missionModalData.id] ?? null : null}
+    recentCompletion={missionModalData ? recentCompletedById[missionModalData.id] ?? null : null}
+    on:close={closeMissionModal}
+    on:refreshSessions={refreshMissionSessions}
+  />
 
   <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
 </section>

@@ -8,10 +8,14 @@
   export let mission: MissionRow | null = null;
   export let open = false;
   export let currentEnergy: number | null = null;
+  export let activeSession: { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null } | null = null;
+  export let recentCompletion:
+    | { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }
+    | null = null;
 
   const dispatch = createEventDispatcher<{
     close: void;
-    launch: { missionId: string };
+    refreshSessions: void;
   }>();
 
   type RuntimeState = 'idle' | 'starting' | 'in_progress' | 'completing' | 'completed';
@@ -52,6 +56,27 @@
     missionSessionId = null;
     rewardsGranted = null;
     friendlyError = null;
+  }
+
+  function syncRuntimeFromServerSession() {
+    if (!open) return;
+    if (activeSession?.sessionId) {
+      missionSessionId = activeSession.sessionId;
+      runtimeState = 'in_progress';
+      return;
+    }
+    if (recentCompletion?.sessionId) {
+      missionSessionId = recentCompletion.sessionId;
+      rewardsGranted = {
+        xpGranted: Math.max(0, Math.floor(recentCompletion.rewards?.xpGranted ?? 0)),
+        energyGranted: Math.max(0, Math.floor(recentCompletion.rewards?.energyGranted ?? 0))
+      };
+      runtimeState = 'completed';
+      return;
+    }
+    runtimeState = 'idle';
+    missionSessionId = null;
+    rewardsGranted = null;
   }
 
   function resolveFriendlyError(payload: Record<string, unknown> | null, fallback = 'Something went wrong. Please try again.') {
@@ -98,8 +123,12 @@
         return;
       }
 
-      const session = payload?.session as Record<string, unknown> | undefined;
-      const sessionId = typeof session?.id === 'string' ? session.id : null;
+      const sessionId =
+        typeof payload?.sessionId === 'string'
+          ? payload.sessionId
+          : typeof (payload?.session as Record<string, unknown> | undefined)?.id === 'string'
+            ? ((payload?.session as Record<string, unknown>).id as string)
+            : null;
       if (!sessionId) {
         friendlyError = 'Mission started, but we could not recover your session. Please try again.';
         runtimeState = 'idle';
@@ -108,6 +137,7 @@
 
       missionSessionId = sessionId;
       runtimeState = 'in_progress';
+      dispatch('refreshSessions');
     } catch (error) {
       friendlyError = 'Network issue while starting mission. Please try again.';
       runtimeState = 'idle';
@@ -139,6 +169,7 @@
           typeof rewards?.energyGranted === 'number' ? Math.max(0, Math.floor(rewards.energyGranted)) : 0
       };
       runtimeState = 'completed';
+      dispatch('refreshSessions');
     } catch (error) {
       friendlyError = 'Network issue while completing mission. Please try again.';
       runtimeState = 'in_progress';
@@ -182,6 +213,7 @@
     if (open) {
       previouslyFocused = (document.activeElement as HTMLElement | null) ?? previouslyFocused;
       document.body.classList.add('modal-open');
+      syncRuntimeFromServerSession();
       void focusModal();
     } else {
       document.body.classList.remove('modal-open');
@@ -255,6 +287,14 @@
 
       {#if missionType === 'action'}
         <p class="action-cost">Energy cost: <strong>{energyCost}</strong></p>
+      {/if}
+
+      {#if runtimeState === 'in_progress'}
+        <p class="mission-status mission-status--active">Status: Active</p>
+      {:else if runtimeState === 'completed'}
+        <p class="mission-status mission-status--completed">Status: Completed</p>
+      {:else}
+        <p class="mission-status">Status: Not started</p>
       {/if}
 
       {#if xpBoost > 0 || missionEnergyBonus > 0}
@@ -474,5 +514,21 @@
   .session-note code {
     color: rgba(226, 232, 240, 0.95);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+
+  .mission-status {
+    margin: 0;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(203, 213, 225, 0.9);
+  }
+
+  .mission-status--active {
+    color: rgba(147, 197, 253, 0.98);
+  }
+
+  .mission-status--completed {
+    color: rgba(134, 239, 172, 0.98);
   }
 </style>

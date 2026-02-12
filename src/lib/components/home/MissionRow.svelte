@@ -15,6 +15,8 @@
 
   export let items: MissionItem[] = [];
   export let currentEnergy: number | null = null;
+  export let activeSessionByMission: Record<string, { sessionId: string; status: string } | undefined> = {};
+  export let recentCompletedByMission: Record<string, { sessionId: string; completedAt: string | null } | undefined> = {};
 
   const dispatch = createEventDispatcher<{ start: { missionId: string } }>();
 
@@ -28,11 +30,12 @@
     type === 'identity' ? 'No cost' : type === 'world' ? 'Usually no cost' : 'Energy cost';
   const actionCost = (mission: MissionItem) =>
     mission.type === 'action' ? Math.max(0, Math.floor(mission.cost?.energy ?? 0)) : 0;
-  const canStartMission = (mission: MissionItem) =>
-    mission.type !== 'action' ||
-    typeof currentEnergy !== 'number' ||
-    actionCost(mission) === 0 ||
-    currentEnergy >= actionCost(mission);
+  const canStartMission = (mission: MissionItem) => {
+    if (activeSessionByMission[mission.id]) return false;
+    if (mission.type !== 'action') return true;
+    if (typeof currentEnergy !== 'number') return true;
+    return actionCost(mission) <= currentEnergy;
+  };
 
   $: companionBonus = $activeCompanionBonus;
   $: xpBoost = Math.round(((companionBonus?.xpMultiplier ?? 1) - 1) * 100);
@@ -108,13 +111,22 @@
               Expected rewards: +{mission.energy_reward ?? 0} energy, +{mission.xp_reward ?? 0} XP.
             </p>
           {/if}
+          {#if activeSessionByMission[mission.id]}
+            <p class="mission-status mission-status--active">In progress</p>
+          {:else if recentCompletedByMission[mission.id]}
+            <p class="mission-status mission-status--completed">Completed</p>
+          {/if}
           <button
             type="button"
             class="mission-action btn-ripple hover-glow"
             on:click={() => dispatch('start', { missionId: mission.id })}
             disabled={!canStartMission(mission)}
           >
-            Start mission
+            {#if activeSessionByMission[mission.id]}
+              In progress
+            {:else}
+              Start mission
+            {/if}
           </button>
         </article>
       </li>
@@ -297,6 +309,21 @@
     margin: 0;
     font-size: 0.78rem;
     color: rgba(254, 202, 202, 0.95);
+  }
+
+  .mission-status {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mission-status--active {
+    color: rgba(147, 197, 253, 0.98);
+  }
+
+  .mission-status--completed {
+    color: rgba(134, 239, 172, 0.98);
   }
 
   .mission-action:focus-visible {
