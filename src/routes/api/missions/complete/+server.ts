@@ -16,6 +16,7 @@ import {
   writeIdentityResultToPortableState
 } from '$lib/server/missions/identityResult';
 import { enforceMissionRateLimit, getMissionCaps } from '$lib/server/missions/rate';
+import { applyDailyMissionStreakProgress } from '$lib/server/missions/dailyStreak';
 
 export const POST: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
@@ -265,6 +266,16 @@ export const POST: RequestHandler = async (event) => {
     }
   }
 
+  const isDailyMission = Array.isArray(mission.tags) && mission.tags.includes('daily');
+  const dailyStreakProgress = isDailyMission
+    ? await applyDailyMissionStreakProgress({
+        supabase,
+        userId: user.id,
+        nowIso: completedAt
+      })
+    : null;
+  const dailyMilestone = dailyStreakProgress?.milestonesUnlocked?.[0] ?? null;
+
   await ingestServerEvent(
     event,
     'mission.complete',
@@ -276,6 +287,24 @@ export const POST: RequestHandler = async (event) => {
         xpGranted: grantResult.xpGranted,
         energyGranted: grantResult.energyGranted
       },
+      ...(dailyStreakProgress
+        ? {
+            dailyStreak: {
+              days: dailyStreakProgress.streakDays,
+              completedToday: dailyStreakProgress.completedToday
+            },
+            ...(dailyMilestone
+              ? {
+                  dailyStreakMilestone: {
+                    id: dailyMilestone.id,
+                    threshold: dailyMilestone.threshold,
+                    cosmeticId: dailyMilestone.cosmeticId,
+                    title: dailyMilestone.title
+                  }
+                }
+              : {})
+          }
+        : {}),
       idempotencyKey: completionIdempotencyKey
     },
     { sessionId: finalizedSession.id }
@@ -310,6 +339,20 @@ export const POST: RequestHandler = async (event) => {
       xpGranted: grantResult.xpGranted,
       energyGranted: grantResult.energyGranted
     },
+    dailyStreak: dailyStreakProgress
+      ? {
+          days: dailyStreakProgress.streakDays,
+          completedToday: dailyStreakProgress.completedToday,
+          milestone: dailyMilestone
+            ? {
+                id: dailyMilestone.id,
+                threshold: dailyMilestone.threshold,
+                cosmeticId: dailyMilestone.cosmeticId,
+                title: dailyMilestone.title
+              }
+            : null
+        }
+      : null,
     idempotencyKey: completionIdempotencyKey,
     identity: {
       result: localIdentityResult,

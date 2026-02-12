@@ -333,9 +333,23 @@ const companionAgent: Agent = {
       ];
       text = pick(tone === 'direct' ? direct : warm, 'mission.start:text');
     } else if (event.type === 'mission.complete') {
-      const rewards = (payload?.rewards as Record<string, unknown> | undefined) ?? {};
+      const rewards =
+        (payload?.rewardsGranted as Record<string, unknown> | undefined) ??
+        (payload?.rewards as Record<string, unknown> | undefined) ??
+        {};
       const xpGranted = clampInteger(rewards.xpGranted, 0);
       const energyGranted = clampInteger(rewards.energyGranted, 0);
+      const streakMilestoneRaw =
+        payload?.dailyStreakMilestone && typeof payload.dailyStreakMilestone === 'object'
+          ? (payload.dailyStreakMilestone as Record<string, unknown>)
+          : null;
+      const streakMilestoneTitle =
+        typeof streakMilestoneRaw?.title === 'string' ? streakMilestoneRaw.title : null;
+      const streakDaysRaw =
+        payload?.dailyStreak && typeof payload.dailyStreak === 'object'
+          ? (payload.dailyStreak as Record<string, unknown>)
+          : null;
+      const streakDays = clampInteger(streakDaysRaw?.days, 0);
       const rewardSummary =
         xpGranted > 0 && energyGranted > 0
           ? `+${xpGranted} XP, +${energyGranted} energy`
@@ -345,13 +359,19 @@ const companionAgent: Agent = {
               ? `+${energyGranted} energy`
               : 'mission complete';
       const warm = [
-        `${affirmation}. ${rewardSummary}.`,
-        `Mission complete. ${rewardSummary}.`,
+        streakMilestoneTitle
+          ? `${affirmation}. ${streakMilestoneTitle} unlocked at a ${streakDays}-day streak.`
+          : `${affirmation}. ${rewardSummary}.`,
+        streakMilestoneTitle
+          ? `Powerful moment: ${streakMilestoneTitle} just unlocked.`
+          : `Mission complete. ${rewardSummary}.`,
         `${companionName} is proud. ${rewardSummary}.`,
         `You wrapped it well. ${rewardSummary}.`
       ];
       const direct = [
-        `Mission complete. ${rewardSummary}.`,
+        streakMilestoneTitle
+          ? `${streakMilestoneTitle} unlocked. ${streakDays}-day streak.`
+          : `Mission complete. ${rewardSummary}.`,
         `Done. ${rewardSummary}.`,
         `Completion logged. ${rewardSummary}.`,
         `${rewardSummary}.`

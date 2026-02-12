@@ -164,6 +164,11 @@ export const classifyCompanionLlmIntensity = (args: {
       : 0;
 
   if (type === 'companion.evolve' || type === 'bond.milestone') return 'peak';
+  if (type === 'mission.complete') {
+    const payload = (args.event.payload ?? {}) as Record<string, unknown>;
+    const milestone = payload.dailyStreakMilestone;
+    if (milestone && typeof milestone === 'object') return 'peak';
+  }
   if (type === 'session.return' && daysSinceLastEnd >= 3) return 'peak'; // session.return_long_absence
   if (type === 'session.start' && streakDays >= 7 && streakDays > previousStreakDays) return 'peak'; // major_streak
   if (type === 'session.start' || type === 'session.end') return 'light';
