@@ -1,0 +1,100 @@
+type RateConfig = {
+  windowMs: number;
+  limit: number;
+  code: string;
+  message: string;
+};
+
+type RateResult =
+  | { ok: true }
+  | { ok: false; status: 429; code: string; message: string; retryAfter: number };
+
+const buckets = new Map<string, number[]>();
+
+const prune = (entries: number[], now: number, windowMs: number) =>
+  entries.filter((stamp) => now - stamp < windowMs);
+
+const touch = (key: string, config: RateConfig): RateResult => {
+  const now = Date.now();
+  const recent = prune(buckets.get(key) ?? [], now, config.windowMs);
+  if (recent.length >= config.limit) {
+    const oldest = recent[0] ?? now;
+    const retryAfter = Math.max(1, Math.ceil((config.windowMs - (now - oldest)) / 1000));
+    return {
+      ok: false,
+      status: 429,
+      code: config.code,
+      message: config.message,
+      retryAfter
+    };
+  }
+
+  recent.push(now);
+  buckets.set(key, recent);
+  return { ok: true };
+};
+
+const apply = (keys: string[], config: RateConfig): RateResult => {
+  for (const key of keys) {
+    const result = touch(key, config);
+    if (!result.ok) {
+      return result;
+    }
+  }
+  return { ok: true };
+};
+
+export const enforceMessengerStartDmRateLimit = (
+  userId: string,
+  ip: string | null | undefined
+): RateResult => {
+  const keys = [`messenger:start:user:${userId}`];
+  if (ip) {
+    keys.push(`messenger:start:ip:${ip}`);
+  }
+
+  return apply(keys, {
+    windowMs: 60_000,
+    limit: 10,
+    code: 'messenger_start_dm_rate_limited',
+    message: 'You are starting conversations too quickly. Please wait a moment.'
+  });
+};
+
+export const enforceMessengerSendRateLimit = (
+  userId: string,
+  conversationId: string,
+  ip: string | null | undefined
+): RateResult => {
+  const userKeys = [`messenger:send:user:${userId}`];
+  if (ip) {
+    userKeys.push(`messenger:send:ip:${ip}`);
+  }
+
+  const userWindow = apply(userKeys, {
+    windowMs: 10_000,
+    limit: 20,
+    code: 'messenger_send_rate_limited',
+    message: 'You are sending messages too quickly. Please slow down.'
+  });
+  if (!userWindow.ok) {
+    return userWindow;
+  }
+
+  const burstWindow = apply(userKeys, {
+    windowMs: 2_000,
+    limit: 8,
+    code: 'messenger_send_burst_limited',
+    message: 'Message burst protection triggered. Please wait a moment.'
+  });
+  if (!burstWindow.ok) {
+    return burstWindow;
+  }
+
+  return apply([`messenger:send:conversation:${conversationId}`], {
+    windowMs: 10_000,
+    limit: 50,
+    code: 'messenger_conversation_rate_limited',
+    message: 'This conversation is receiving messages too quickly. Please wait a moment.'
+  });
+};
