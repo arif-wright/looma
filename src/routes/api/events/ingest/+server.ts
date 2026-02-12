@@ -22,6 +22,7 @@ import {
 import { evaluateMuseEvolutionUnlocks, getMuseEvolutionRules } from '$lib/companions/evolution';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { applyEventToEmotionalState } from '$lib/server/emotionalState';
+import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
 
 const ALLOWED_TYPES = new Set([
   'session.start',
@@ -235,6 +236,24 @@ export const POST: RequestHandler = async (event) => {
       );
     } catch (err) {
       console.error('[events] emotional state session.start update failed', err);
+    }
+  }
+
+  const hasMissionMilestone =
+    type === 'mission.complete' &&
+    eventPayload &&
+    typeof eventPayload === 'object' &&
+    !Array.isArray(eventPayload) &&
+    typeof (eventPayload as Record<string, unknown>).dailyStreakMilestone === 'object' &&
+    (eventPayload as Record<string, unknown>).dailyStreakMilestone !== null;
+
+  if (userId && activeCompanionId && (type === 'session.end' || hasMissionMilestone)) {
+    try {
+      await upsertCompanionMemorySummary(userId, activeCompanionId, 14, supabase, {
+        minIntervalMs: 30 * 60 * 1000
+      });
+    } catch (err) {
+      console.error('[events] companion memory summary rebuild failed', err);
     }
   }
 

@@ -21,6 +21,14 @@ export type CompanionMemorySummary = {
   last_built_at: string;
 };
 
+export type UpsertCompanionMemorySummaryResult = {
+  rebuilt: boolean;
+  summary: CompanionMemorySummary | null;
+  minIntervalMs: number;
+  skippedReason?: 'rate_limited';
+  nextAllowedAt?: string | null;
+};
+
 type EmotionalStateRow = {
   mood: string | null;
   trust: number | null;
@@ -218,8 +226,37 @@ export const upsertCompanionMemorySummary = async (
   userId: string,
   companionId: string,
   windowDays = 14,
-  client: SupabaseClient = supabaseAdmin
-): Promise<CompanionMemorySummary> => {
+  client: SupabaseClient = supabaseAdmin,
+  options?: { minIntervalMs?: number }
+): Promise<UpsertCompanionMemorySummaryResult> => {
+  const minIntervalMs = clampInt(options?.minIntervalMs ?? 30 * 60 * 1000, 0, 24 * 60 * 60 * 1000);
+  const nowMs = Date.now();
+
+  if (minIntervalMs > 0) {
+    const { data: existing, error: existingError } = await client
+      .from('companion_memory_summary')
+      .select('last_built_at')
+      .eq('user_id', userId)
+      .eq('companion_id', companionId)
+      .maybeSingle();
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('[memorySummary] rate-limit lookup failed', { error: existingError, userId, companionId });
+    } else if (typeof existing?.last_built_at === 'string') {
+      const lastBuiltMs = Date.parse(existing.last_built_at);
+      if (Number.isFinite(lastBuiltMs) && nowMs - lastBuiltMs < minIntervalMs) {
+        const nextAllowedAt = new Date(lastBuiltMs + minIntervalMs).toISOString();
+        return {
+          rebuilt: false,
+          summary: null,
+          minIntervalMs,
+          skippedReason: 'rate_limited',
+          nextAllowedAt
+        };
+      }
+    }
+  }
+
   const built = await buildCompanionMemorySummary(userId, companionId, windowDays, client);
 
   const { error } = await client.from('companion_memory_summary').upsert(
@@ -238,5 +275,10 @@ export const upsertCompanionMemorySummary = async (
     console.error('[memorySummary] upsert failed', { error, userId, companionId });
   }
 
-  return built;
+  return {
+    rebuilt: true,
+    summary: built,
+    minIntervalMs,
+    nextAllowedAt: null
+  };
 };
