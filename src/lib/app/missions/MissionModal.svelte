@@ -13,9 +13,15 @@
     launch: { missionId: string };
   }>();
 
+  type RuntimeState = 'idle' | 'starting' | 'in_progress' | 'completing' | 'completed';
+
   let modalEl: HTMLElement | null = null;
   let focusable: HTMLElement[] = [];
   let previouslyFocused: HTMLElement | null = null;
+  let runtimeState: RuntimeState = 'idle';
+  let missionSessionId: string | null = null;
+  let rewardsGranted: { xpGranted: number; energyGranted: number } | null = null;
+  let friendlyError: string | null = null;
   $: bonus = $activeCompanionBonus;
   $: xpBoost = Math.round(((bonus?.xpMultiplier ?? 1) - 1) * 100);
   $: missionEnergyBonus = bonus?.missionEnergyBonus ?? 0;
@@ -27,9 +33,109 @@
   $: missionTypeHint =
     missionType === 'identity' ? 'No cost' : missionType === 'world' ? 'Usually no cost' : 'Energy cost';
   $: energyCost = missionType === 'action' ? mission?.cost?.energy ?? 0 : null;
+  $: startDisabled = runtimeState === 'starting' || runtimeState === 'completing';
+  $: completeDisabled = runtimeState === 'starting' || runtimeState === 'completing';
 
   function close() {
     dispatch('close');
+  }
+
+  function resetRuntime() {
+    runtimeState = 'idle';
+    missionSessionId = null;
+    rewardsGranted = null;
+    friendlyError = null;
+  }
+
+  function resolveFriendlyError(payload: Record<string, unknown> | null, fallback = 'Something went wrong. Please try again.') {
+    const code = typeof payload?.error === 'string' ? payload.error : null;
+    switch (code) {
+      case 'unauthorized':
+        return 'Please sign in again to continue this mission.';
+      case 'mission_not_found':
+        return 'This mission could not be found.';
+      case 'mission_cooldown':
+        return 'This mission is cooling down. Try again in a bit.';
+      case 'mission_already_active':
+        return 'This mission is already in progress.';
+      case 'insufficient_energy':
+        return 'Not enough energy to start this mission yet.';
+      case 'session_not_found':
+        return 'This mission session is no longer available.';
+      case 'session_not_active':
+        return 'This mission session has already been completed.';
+      case 'mission_too_early_to_complete':
+        return 'This mission needs a little more time before completion.';
+      default:
+        return typeof payload?.message === 'string' && payload.message.trim().length > 0
+          ? payload.message
+          : fallback;
+    }
+  }
+
+  async function startMission() {
+    if (!mission?.id || startDisabled) return;
+    runtimeState = 'starting';
+    friendlyError = null;
+
+    try {
+      const res = await fetch('/api/missions/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ missionId: mission.id })
+      });
+      const payload = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!res.ok) {
+        friendlyError = resolveFriendlyError(payload, 'Unable to start this mission right now.');
+        runtimeState = 'idle';
+        return;
+      }
+
+      const session = payload?.session as Record<string, unknown> | undefined;
+      const sessionId = typeof session?.id === 'string' ? session.id : null;
+      if (!sessionId) {
+        friendlyError = 'Mission started, but we could not recover your session. Please try again.';
+        runtimeState = 'idle';
+        return;
+      }
+
+      missionSessionId = sessionId;
+      runtimeState = 'in_progress';
+    } catch (error) {
+      friendlyError = 'Network issue while starting mission. Please try again.';
+      runtimeState = 'idle';
+    }
+  }
+
+  async function completeMission() {
+    if (!mission?.id || !missionSessionId || completeDisabled) return;
+    runtimeState = 'completing';
+    friendlyError = null;
+
+    try {
+      const res = await fetch('/api/missions/complete', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: missionSessionId, results: {} })
+      });
+      const payload = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!res.ok) {
+        friendlyError = resolveFriendlyError(payload, 'Unable to complete this mission right now.');
+        runtimeState = 'in_progress';
+        return;
+      }
+
+      const rewards = (payload?.rewardsGranted ?? payload?.rewards ?? null) as Record<string, unknown> | null;
+      rewardsGranted = {
+        xpGranted: typeof rewards?.xpGranted === 'number' ? Math.max(0, Math.floor(rewards.xpGranted)) : 0,
+        energyGranted:
+          typeof rewards?.energyGranted === 'number' ? Math.max(0, Math.floor(rewards.energyGranted)) : 0
+      };
+      runtimeState = 'completed';
+    } catch (error) {
+      friendlyError = 'Network issue while completing mission. Please try again.';
+      runtimeState = 'in_progress';
+    }
   }
 
   function handleKey(event: KeyboardEvent) {
@@ -75,6 +181,7 @@
       focusable = [];
       previouslyFocused?.focus?.();
       previouslyFocused = null;
+      resetRuntime();
     }
   }
 
@@ -180,6 +287,22 @@
         </p>
       {/if}
 
+      {#if friendlyError}
+        <p class="modal-error" role="alert">{friendlyError}</p>
+      {/if}
+
+      {#if missionSessionId}
+        <p class="session-note">Session active: <code>{missionSessionId}</code></p>
+      {/if}
+
+      {#if runtimeState === 'completed'}
+        <p class="reward-summary">
+          Completed. Rewards granted:
+          <strong>+{rewardsGranted?.xpGranted ?? 0} XP</strong>,
+          <strong>+{rewardsGranted?.energyGranted ?? 0} energy</strong>.
+        </p>
+      {/if}
+
       <footer class="flex justify-end items-center gap-3 pt-3 border-t border-white/10">
         <button
           type="button"
@@ -188,13 +311,49 @@
         >
           Close
         </button>
-        <button
-          type="button"
-          class="px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 text-slate-900 font-semibold shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 transition"
-          on:click={() => dispatch('launch', { missionId: mission.id })}
-        >
-          Resume Mission
-        </button>
+        {#if runtimeState === 'idle'}
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 text-slate-900 font-semibold shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 transition"
+            on:click={startMission}
+            disabled={startDisabled}
+          >
+            Start mission
+          </button>
+        {:else if runtimeState === 'starting'}
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full bg-slate-600/80 text-slate-100 font-semibold"
+            disabled
+          >
+            Starting...
+          </button>
+        {:else if runtimeState === 'in_progress'}
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full bg-gradient-to-r from-emerald-400/90 to-teal-500/90 text-slate-900 font-semibold shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 transition"
+            on:click={completeMission}
+            disabled={completeDisabled}
+          >
+            Complete mission
+          </button>
+        {:else if runtimeState === 'completing'}
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full bg-slate-600/80 text-slate-100 font-semibold"
+            disabled
+          >
+            Completing...
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="px-5 py-2 rounded-full bg-emerald-500/75 text-slate-950 font-semibold"
+            disabled
+          >
+            Completed
+          </button>
+        {/if}
       </footer>
     </div>
   </Portal>
@@ -281,5 +440,26 @@
     margin: 0;
     font-size: 0.84rem;
     color: rgba(250, 245, 255, 0.95);
+  }
+
+  .modal-error {
+    margin: 0;
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(127, 29, 29, 0.24);
+    color: rgba(254, 226, 226, 0.96);
+    font-size: 0.84rem;
+  }
+
+  .session-note {
+    margin: 0;
+    font-size: 0.75rem;
+    color: rgba(148, 163, 184, 0.9);
+  }
+
+  .session-note code {
+    color: rgba(226, 232, 240, 0.95);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   }
 </style>

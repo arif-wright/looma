@@ -309,16 +309,19 @@
     missionModalOpen = true;
   };
 
+  const handleMissionRowStart = (event: CustomEvent<{ missionId: string }>) => {
+    const missionId = event.detail?.missionId ?? null;
+    if (!missionId) return;
+    const target = missions.find((mission) => mission.id === missionId);
+    const mapped = mapMissionSummary(target);
+    if (!mapped) return;
+    missionModalData = mapped;
+    missionModalOpen = true;
+  };
+
   const closeMissionModal = () => {
     missionModalOpen = false;
     missionModalData = null;
-  };
-
-  const handleMissionLaunch = (event: CustomEvent<{ missionId: string }>) => {
-    const missionId = event.detail?.missionId;
-    closeMissionModal();
-    if (!missionId) return;
-    void goto(`/app/missions/${missionId}`);
   };
 
   const handleClaimReward = () => {
@@ -482,7 +485,7 @@
           />
           {#if missions.length > 1}
             <div class="mission-stack">
-              <MissionRow items={missions.slice(0, 3)} />
+              <MissionRow items={missions.slice(0, 3)} on:start={handleMissionRowStart} />
             </div>
           {/if}
         </article>
@@ -528,7 +531,7 @@
     {/if}
   </main>
 
-  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} on:launch={handleMissionLaunch} />
+  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} />
 </div>
 
 <style>

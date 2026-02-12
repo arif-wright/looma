@@ -1,7 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
-  import { goto } from '$app/navigation';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import FeedItem from './FeedItem.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
@@ -192,22 +191,6 @@
     missionModalData = null;
   }
 
-  function handleMissionLaunch(event: CustomEvent<{ missionId: string }>) {
-    const missionId = event.detail?.missionId ?? null;
-    closeMissionModal();
-    if (!missionId) return;
-    persistContext('mission_click', { targetType: 'mission', targetId: missionId, action: 'launch' });
-    sendAnalytics('feed_click_deeplink', {
-      surface: 'home',
-      payload: {
-        target_type: 'mission',
-        target_id: missionId,
-        action: 'launch'
-      }
-    });
-    void goto(`/app/missions/${missionId}`);
-  }
-
   function closeCreatureModal() {
     creatureModalOpen = false;
     creatureModalData = null;
@@ -286,7 +269,7 @@
     {/if}
   </div>
 
-  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} on:launch={handleMissionLaunch} />
+  <MissionModal open={missionModalOpen} mission={missionModalData} on:close={closeMissionModal} />
 
   <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
 </section>
