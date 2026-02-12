@@ -10,7 +10,7 @@ import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
-import { pickRotatedMissionPool } from '$lib/server/missions/rotation';
+import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
 
 type MissionSummary = {
   id: string;
@@ -163,34 +163,46 @@ export const load: PageServerLoad = async (event) => {
       const baseSeed = `${today}:${userId ?? 'anon'}`;
       const userLevel = typeof stats?.level === 'number' ? stats.level : 0;
 
-      const energyDaily = pickRotatedMissionPool(missionPool, {
+      const energyDaily = getDailySet(missionPool, today, {
         limit: 1,
         requiredTags: ['daily', 'energy'],
         userLevel,
         includeIdentityForEnergyDaily: false,
-        seed: `${baseSeed}:daily-energy`
+        globalSeed: 'looma-missions-v1',
+        scopeKey: `${baseSeed}:daily-energy`
       });
 
-      const dailyOrWeekly = pickRotatedMissionPool(
+      const dailyOrWeekly = getDailySet(
         missionPool.filter((entry) => !energyDaily.some((pick) => pick.id === entry.id)),
+        today,
         {
           limit: 1,
           requiredTags: ['daily'],
           userLevel,
-          seed: `${baseSeed}:daily-general`
+          globalSeed: 'looma-missions-v1',
+          scopeKey: `${baseSeed}:daily-general`
         }
       );
 
-      const fallback = pickRotatedMissionPool(
+      const isoWeekSeed = `${new Date().getUTCFullYear()}-W${Math.ceil(
+        ((Date.parse(today) - Date.UTC(new Date().getUTCFullYear(), 0, 1) + 1) / 86400000 +
+          new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)).getUTCDay() +
+          1) /
+          7
+      )}`;
+
+      const fallback = getWeeklySet(
         missionPool.filter(
           (entry) =>
             !energyDaily.some((pick) => pick.id === entry.id) &&
             !dailyOrWeekly.some((pick) => pick.id === entry.id)
         ),
+        isoWeekSeed,
         {
           limit: 2,
           userLevel,
-          seed: `${baseSeed}:fallback`
+          globalSeed: 'looma-missions-v1',
+          scopeKey: `${baseSeed}:fallback`
         }
       );
 
