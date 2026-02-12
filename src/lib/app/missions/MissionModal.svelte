@@ -178,6 +178,16 @@
           typeof rewards?.energyGranted === 'number' ? Math.max(0, Math.floor(rewards.energyGranted)) : 0
       };
       runtimeState = 'completed';
+      if (browser) {
+        window.dispatchEvent(
+          new CustomEvent('looma:ambient-refresh', {
+            detail: {
+              reason: 'mission.complete',
+              hasStreakMilestone: Boolean((payload as Record<string, unknown>)?.dailyStreak)
+            }
+          })
+        );
+      }
       dispatch('refreshSessions');
     } catch (error) {
       friendlyError = 'Network issue while completing mission. Please try again.';

@@ -21,6 +21,8 @@
   export let glowIntensity = 55;
   export let glowEnabled = true;
   export let motionEnabled = true;
+  export let motionScale = 1;
+  export let glowScale = 1;
   export let visualMood: MuseVisualMood = 'calm';
   export let preserveDrawingBuffer = false;
   export let eager = false;
@@ -386,10 +388,14 @@
   $: visualVars = MUSE_VISUAL_BY_MOOD[visualMood] ?? MUSE_VISUAL_BY_MOOD.calm;
   $: auraRgb = auraColorMap[normalizedCosmetics.auraColor] ?? auraColorMap.cyan;
   $: auraTintRgb = auraColorMap[visualVars.auraPalette] ?? auraColorMap.cyan;
-  $: baseAuraOpacity = (0.18 + normalizedCosmetics.glowIntensity / 340) * visualVars.auraIntensityScale;
+  $: safeMotionScale = Math.max(0.7, Math.min(1.15, motionScale || 1));
+  $: safeGlowScale = Math.max(0.6, Math.min(1.2, glowScale || 1));
+  $: baseAuraOpacity = (0.18 + normalizedCosmetics.glowIntensity / 340) * visualVars.auraIntensityScale * safeGlowScale;
   $: auraOpacity = glowEnabled ? Math.min(0.75, Math.max(0, baseAuraOpacity)) : 0;
-  $: auraBlurPx = glowEnabled ? (24 + normalizedCosmetics.glowIntensity * 0.42) * visualVars.auraIntensityScale : 0;
-  $: hoverAmplitudePx = motionEnabled && !reducedMotion ? visualVars.hoverAmplitudePx : 0;
+  $: auraBlurPx = glowEnabled
+    ? (24 + normalizedCosmetics.glowIntensity * 0.42) * visualVars.auraIntensityScale * safeGlowScale
+    : 0;
+  $: hoverAmplitudePx = motionEnabled && !reducedMotion ? visualVars.hoverAmplitudePx * safeMotionScale : 0;
 </script>
 
 <div

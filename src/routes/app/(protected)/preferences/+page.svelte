@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import PortableStatePanel from '$lib/components/profile/PortableStatePanel.svelte';
   import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
   import {
@@ -22,6 +23,12 @@
   let summaryUpdatedAt: string | null = null;
   let summarySaving = false;
   let copyStatus: 'idle' | 'copied' | 'error' = 'idle';
+  let emotionalAdaptationPaused = false;
+  let museSummaryLoading = false;
+  let museSummaryText = '';
+  let museHighlights: string[] = [];
+  let museSummaryBuiltAt: string | null = null;
+  let activeCompanionId = 'muse';
 
   let companionVisible = true;
   let companionMotion = true;
@@ -44,10 +51,98 @@
       companionTransparent = resolveItem(items, 'companion_transparency', true);
       resolveMemorySummary();
       await ensureMemorySummaryStored();
+      await fetchMuseSummary();
     } catch {
       error = SAFE_LOAD_ERROR;
     } finally {
       loading = false;
+    }
+  };
+
+  const fetchMuseSummary = async () => {
+    museSummaryLoading = true;
+    try {
+      const targetId = activeCompanionId;
+      const query = targetId ? `?companionId=${encodeURIComponent(targetId)}` : '';
+      const res = await fetch(`/api/companions/ambient${query}`);
+      const payload = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!res.ok || !payload) throw new Error('ambient fetch failed');
+      const consent = (payload?.consent ?? null) as Record<string, unknown> | null;
+      emotionalAdaptationPaused = consent?.emotionalAdaptation === false;
+      const summary = (payload?.memorySummary ?? null) as Record<string, unknown> | null;
+      museSummaryText = typeof summary?.summary_text === 'string' ? summary.summary_text : '';
+      museHighlights = Array.isArray(summary?.highlights_json)
+        ? summary.highlights_json.filter((entry): entry is string => typeof entry === 'string').slice(0, 7)
+        : [];
+      museSummaryBuiltAt = typeof summary?.last_built_at === 'string' ? summary.last_built_at : null;
+    } catch {
+      // Keep existing values on failure.
+    } finally {
+      museSummaryLoading = false;
+    }
+  };
+
+  const rebuildMuseSummary = async () => {
+    summarySaving = true;
+    error = null;
+    try {
+      const targetId = activeCompanionId;
+      const res = await fetch('/api/companions/memory-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: targetId })
+      });
+      if (!res.ok) throw new Error('rebuild failed');
+      await fetchMuseSummary();
+      window.dispatchEvent(new CustomEvent('looma:ambient-refresh', { detail: { reason: 'summary.rebuild' } }));
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
+    }
+  };
+
+  const clearMuseSummary = async () => {
+    summarySaving = true;
+    error = null;
+    try {
+      const targetId = activeCompanionId;
+      const res = await fetch('/api/companions/memory-summary', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: targetId })
+      });
+      if (!res.ok) throw new Error('clear failed');
+      await fetchMuseSummary();
+      window.dispatchEvent(new CustomEvent('looma:ambient-refresh', { detail: { reason: 'summary.clear' } }));
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
+    }
+  };
+
+  const setEmotionalAdaptationPaused = async (paused: boolean) => {
+    summarySaving = true;
+    error = null;
+    try {
+      const res = await fetch('/api/context/portable', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consentEmotionalAdaptation: !paused })
+      });
+      if (!res.ok) throw new Error('toggle failed');
+      emotionalAdaptationPaused = paused;
+      if (paused) {
+        window.dispatchEvent(new CustomEvent('looma:ambient-refresh', { detail: { reason: 'adaptation.off' } }));
+      } else {
+        await fetchMuseSummary();
+        window.dispatchEvent(new CustomEvent('looma:ambient-refresh', { detail: { reason: 'adaptation.on' } }));
+      }
+    } catch {
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      summarySaving = false;
     }
   };
 
@@ -223,6 +318,8 @@
     void fetchPrefs();
   });
 
+  $: activeCompanionId = $page.data?.activeCompanion?.id ?? $page.data?.portableActiveCompanion?.id ?? 'muse';
+
   $: portabilityTone = typeof itemValue('tone') === 'string' ? String(itemValue('tone')) : 'default';
   $: portabilityMood = typeof itemValue('world_mood_label') === 'string' ? String(itemValue('world_mood_label')) : 'steady';
   $: portabilityStreakDays =
@@ -374,6 +471,50 @@
         disabled={summarySaving}
       >
         {memoryPaused ? 'Resume updates' : 'Pause updates'}
+      </button>
+    </div>
+  </section>
+
+  <section class="preferences-panel memory-summary-panel" aria-labelledby="muse-understands-heading">
+    <div class="panel-title-row">
+      <h2 id="muse-understands-heading" class="panel-title">What Muse Understands</h2>
+    </div>
+    {#if museSummaryLoading}
+      <p class="status-text">Loading summary…</p>
+    {:else}
+      <p class="memory-summary-copy">
+        {museSummaryText || 'No summary yet for this companion. Rebuild to generate one.'}
+      </p>
+      {#if museHighlights.length > 0}
+        <ul class="memory-summary-list">
+          {#each museHighlights as bullet, idx (`muse-${idx}-${bullet}`)}
+            <li>{bullet}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if museSummaryBuiltAt}
+        <p class="memory-summary-timestamp">Last built: {museSummaryBuiltAt}</p>
+      {/if}
+    {/if}
+    <div class="memory-summary-actions">
+      <button
+        type="button"
+        class="pill pill-action"
+        on:click={rebuildMuseSummary}
+        disabled={summarySaving || museSummaryLoading}
+      >
+        Rebuild summary
+      </button>
+      <button type="button" class="pill pill-action" on:click={clearMuseSummary} disabled={summarySaving}>
+        Clear summary
+      </button>
+      <button
+        type="button"
+        class="pill pill-action"
+        on:click={() => setEmotionalAdaptationPaused(!emotionalAdaptationPaused)}
+        disabled={summarySaving}
+      >
+        {emotionalAdaptationPaused ? 'Resume emotional adaptation' : 'Pause emotional adaptation'}
       </button>
     </div>
   </section>

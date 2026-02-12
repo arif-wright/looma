@@ -17,6 +17,7 @@
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+  import { ambient } from '$lib/stores/ambient';
 
   export let data;
 
@@ -55,10 +56,11 @@
   let ambientSecondaryHue = 192;
   let ambientIntensity = 0.1;
   let ambientDrift = 14;
+  let ambientGlow = 0.72;
+  let ambientMotion = 1;
+  let ambientAccent = '#7dd3fc';
   let prefersReducedMotion = false;
   let motionQuery: MediaQueryList | null = null;
-  let currentMood: 'steady' | 'bright' | 'low' = 'steady';
-  let currentMoodValue = 0;
   let nowTick = Date.now();
   let nowTimer: number | null = null;
 
@@ -109,45 +111,35 @@
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-  const computeAmbientFromMood = (mood: string | null | undefined, moodValue: number | null | undefined) => {
-    const normalizedMood = mood === 'bright' || mood === 'low' ? mood : 'steady';
-    const value = Number.isFinite(moodValue as number) ? clamp(Number(moodValue), -1, 1) : 0;
-    currentMood = normalizedMood;
-    currentMoodValue = value;
-    const base = 0.075 + Math.abs(value) * 0.07;
-
-    let nextHue = 224;
-    let nextSecondaryHue = 192;
-    let nextDrift = 14;
-    if (normalizedMood === 'bright') {
-      nextHue = 190;
-      nextSecondaryHue = 160;
-      nextDrift = 20;
-    } else if (normalizedMood === 'low') {
-      nextHue = 255;
-      nextSecondaryHue = 228;
-      nextDrift = 9;
+  const mapAccentToPalette = (accentVariant: string) => {
+    if (accentVariant === 'luminous') {
+      return { hue: 190, secondaryHue: 160, drift: 20, accent: '#67e8f9' };
     }
-
-    let intensity = base;
-    if (prefersReducedMotion) intensity *= 0.35;
-    if (!$companionPrefs.motion) intensity *= 0.55;
-    if (!$companionPrefs.visible) intensity *= 0.75;
-
-    ambientHue = nextHue;
-    ambientSecondaryHue = nextSecondaryHue;
-    ambientDrift = nextDrift;
-    ambientIntensity = Number(clamp(intensity, 0.03, 0.18).toFixed(3));
+    if (accentVariant === 'dim') {
+      return { hue: 255, secondaryHue: 228, drift: 9, accent: '#a78bfa' };
+    }
+    return { hue: 224, secondaryHue: 192, drift: 14, accent: '#7dd3fc' };
   };
 
   const refreshAmbientContext = async () => {
     if (!browser) return;
     try {
-      const res = await fetch('/api/context/bundle');
+      const res = await fetch('/api/companions/ambient');
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload) return;
-      const world = payload?.worldState ?? null;
-      computeAmbientFromMood(world?.companionMood, world?.companionMoodValue);
+      const adaptationEnabled = payload?.consent?.emotionalAdaptation !== false;
+      if (!adaptationEnabled) {
+        ambient.reset({ instant: prefersReducedMotion, reducedMotion: prefersReducedMotion });
+        return;
+      }
+      ambient.setFromEmotionalState(payload?.emotionalState ?? null, {
+        instant: prefersReducedMotion,
+        reducedMotion: prefersReducedMotion
+      });
+      ambient.setFromSummary(payload?.memorySummary ?? null, {
+        instant: prefersReducedMotion,
+        reducedMotion: prefersReducedMotion
+      });
     } catch {
       // keep existing ambient values
     }
@@ -290,7 +282,11 @@
 
   const handleMotionChange = () => {
     prefersReducedMotion = motionQuery?.matches ?? false;
-    computeAmbientFromMood(currentMood, currentMoodValue);
+    void refreshAmbientContext();
+  };
+
+  const handleAmbientRefresh = () => {
+    void refreshAmbientContext();
   };
 
   if (browser) {
@@ -304,6 +300,7 @@
       motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
       prefersReducedMotion = motionQuery.matches;
       motionQuery.addEventListener('change', handleMotionChange);
+      window.addEventListener('looma:ambient-refresh', handleAmbientRefresh);
       ensureSessionState();
       visitedPaths = new Set([window.location.pathname]);
       bindSessionListeners();
@@ -361,10 +358,20 @@
     if (isAlphaDenied()) {
       // Keep alpha-gated pages lightweight: skip ambient recompute work.
     } else {
-    // Recalculate intensity when user preferences change.
-    $companionPrefs.visible;
-    $companionPrefs.motion;
-    computeAmbientFromMood(currentMood, currentMoodValue);
+      $ambient;
+      $companionPrefs.visible;
+      $companionPrefs.motion;
+      const palette = mapAccentToPalette($ambient.accentVariant);
+      ambientHue = palette.hue;
+      ambientSecondaryHue = palette.secondaryHue;
+      ambientDrift = palette.drift;
+      ambientAccent = palette.accent;
+      const visibilityScale = $companionPrefs.visible ? 1 : 0.82;
+      const motionPrefScale = $companionPrefs.motion ? 1 : 0.92;
+      const baseIntensity = clamp($ambient.intensity * visibilityScale * motionPrefScale, 0, 1);
+      ambientIntensity = Number(clamp(0.04 + baseIntensity * 0.14, 0.04, 0.18).toFixed(3));
+      ambientGlow = Number(clamp($ambient.glowScale, 0.6, 1.2).toFixed(3));
+      ambientMotion = Number((prefersReducedMotion ? 1 : clamp($ambient.motionScale, 0.7, 1.15)).toFixed(3));
     }
   }
 
@@ -380,6 +387,7 @@
       motionQuery.removeEventListener('change', handleMotionChange);
       motionQuery = null;
     }
+    window.removeEventListener('looma:ambient-refresh', handleAmbientRefresh);
     void postSessionEnd('layout_destroy');
   });
 
@@ -402,7 +410,7 @@
   <div class="app-shell">
     <div
       class="app-surface"
-      style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;`}
+      style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
     >
       <main class="app-main">
         <slot />
@@ -413,7 +421,7 @@
 <div class="app-shell">
   <div
     class="app-surface"
-    style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;`}
+    style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
   >
     {#if FLAGS.NEW_BRAND_HEADER}
       <BrandHeader
@@ -469,8 +477,10 @@
       evolutionStageLabel={data?.portableActiveCompanion?.evolutionStage ?? null}
       companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
       moodKey={activeEffective?.moodKey ?? null}
-      worldMood={currentMood}
+      worldMood={$ambient.accentVariant === 'luminous' ? 'bright' : $ambient.accentVariant === 'dim' ? 'low' : 'steady'}
       bondLevel={data?.activeCompanion?.bondLevel ?? 0}
+      ambientMotionScale={prefersReducedMotion ? 1 : ambientMotion}
+      ambientGlowScale={ambientGlow}
     />
   </div>
 {/if}
@@ -508,6 +518,19 @@
     transition: background 360ms ease;
     background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
     overflow-x: clip;
+    position: relative;
+  }
+
+  .app-surface::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ambientAccent), transparent);
+    opacity: calc(var(--ambientIntensity) * 0.85);
+    pointer-events: none;
   }
 
   .app-main {
@@ -520,6 +543,12 @@
 
   .app-main :global(*) {
     min-width: 0;
+  }
+
+  .app-main :global(.panel),
+  .app-main :global(.preferences-panel),
+  .app-main :global(.mission-card) {
+    box-shadow: 0 0 calc(18px * var(--ambientGlow)) color-mix(in oklab, var(--ambientAccent) 14%, transparent);
   }
 
   @media (max-width: 960px) {

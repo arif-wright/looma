@@ -30,6 +30,8 @@
   export let moodKey: DerivedMoodKey | null = null;
   export let worldMood: WorldMood | null = null;
   export let bondLevel: number | null = 0;
+  export let ambientMotionScale = 1;
+  export let ambientGlowScale = 1;
 
   let expanded = false;
   let localVisible = true;
@@ -238,7 +240,9 @@
           animationName={museAnimation}
           transparent={transparent}
           motionEnabled={effectiveMotion}
+          motionScale={ambientMotionScale}
           glowEnabled={transparent}
+          glowScale={ambientGlowScale}
           visualMood={visualMood}
           poster={undefined}
           cameraTarget={undefined}
