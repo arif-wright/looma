@@ -34,6 +34,8 @@
     description: string;
     color: string;
     seed: string;
+    renderHook: string;
+    locked: boolean;
   };
 
   type TabKey = 'owned' | 'discover';
@@ -174,6 +176,10 @@
 
   const rituals: CompanionRitual[] = (data.rituals ?? []) as CompanionRitual[];
   const evolutionStagesByCompanionId = (data.evolutionStagesByCompanionId ?? {}) as Record<string, string>;
+  const archetypeMetadataByCompanionId = (data.archetypeMetadataByCompanionId ?? {}) as Record<
+    string,
+    { renderHook: string; archetypeKey: string | null }
+  >;
   applyRitualUpdate(rituals);
 
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
@@ -523,6 +529,8 @@
   $: activeCompanion = findActiveFromState(rosterState);
   $: activeCompanionEvolutionStage =
     activeCompanion?.id ? evolutionStagesByCompanionId[activeCompanion.id] ?? null : null;
+  $: activeCompanionRenderHook =
+    activeCompanion?.id ? archetypeMetadataByCompanionId[activeCompanion.id]?.renderHook ?? null : null;
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
@@ -601,6 +609,8 @@
   }
   $: selectedCompanionEvolutionStage =
     selectedForCare?.id ? evolutionStagesByCompanionId[selectedForCare.id] ?? null : null;
+  $: selectedCompanionRenderHook =
+    selectedForCare?.id ? archetypeMetadataByCompanionId[selectedForCare.id]?.renderHook ?? null : null;
 
   $: if (selectedForCare?.id) {
     const seeds = pendingPrefetches[selectedForCare.id] ?? [];
@@ -675,6 +685,9 @@
             <div class="view-chips">
               <span class="chip">Active</span>
               <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
+              {#if activeCompanionRenderHook}
+                <span class="chip chip--hook">Hook {activeCompanionRenderHook}</span>
+              {/if}
               {#if activeCompanionEvolutionStage}
                 <span class="chip chip--evolution">Evolution {activeCompanionEvolutionStage}</span>
               {/if}
@@ -858,6 +871,9 @@
                 <h3>{instance.name} · {cleanArchetype(instance.species)}</h3>
                 <p>Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
                 <p>Bond level {getBondLevel(instance)}</p>
+                <p class="discover-meta">
+                  Hook {archetypeMetadataByCompanionId[instance.id]?.renderHook ?? 'default_core'}
+                </p>
               </div>
               <div class="list-card__actions">
                 <span class="status-chip">{statusLabel(instance, activeCompanion?.id === instance.id)}</span>
@@ -884,17 +900,18 @@
           {#each filteredDiscover as entry (entry.key)}
             <button
               type="button"
-              class="list-card discover-card"
+              class={`list-card discover-card ${entry.locked ? 'discover-card--locked' : ''}`}
               data-discover-row="true"
               on:click={() => {
                 discoverModal = entry;
               }}
             >
               <div>
-                <h3>{entry.name}</h3>
+                <h3>{entry.name} {#if entry.locked}<span class="discover-lock">Locked</span>{/if}</h3>
                 <p>{entry.description}</p>
+                <p class="discover-meta">Render hook: {entry.renderHook}</p>
               </div>
-              <span class="inline-action">View details</span>
+              <span class="inline-action">{entry.locked ? 'Preview' : 'View details'}</span>
             </button>
           {/each}
         </div>
@@ -921,6 +938,7 @@
   open={Boolean(selectedForCare)}
   companion={selectedForCare}
   evolutionStageLabel={selectedCompanionEvolutionStage}
+  archetypeRenderHook={selectedCompanionRenderHook}
   {maxSlots}
   capturePortrait={() => museHostRef?.capturePortrait?.() ?? Promise.resolve(null)}
   allowLivePortrait={true}
@@ -979,7 +997,7 @@
 
 <Modal
   open={Boolean(discoverModal)}
-  title={discoverModal ? `${discoverModal.name} archetype` : 'Companion archetype'}
+  title={discoverModal ? `${discoverModal.name} archetype${discoverModal.locked ? ' (locked)' : ''}` : 'Companion archetype'}
   onClose={() => {
     discoverModal = null;
   }}
@@ -990,7 +1008,14 @@
       <h3>{discoverModal.name}</h3>
       <p>{discoverModal.description}</p>
       <p>Who bonds well: people who enjoy {discoverModal.seed.replace(/-/g, ' ')} rhythms.</p>
-      <p class="discover-modal__hint">Unlock hint: keep checking in and expanding your slots to meet new companions.</p>
+      <p class="discover-modal__hint">
+        Render hook: <code>{discoverModal.renderHook}</code>
+      </p>
+      {#if discoverModal.locked}
+        <p class="discover-modal__hint">This archetype is a placeholder and will unlock in a future release.</p>
+      {:else}
+        <p class="discover-modal__hint">Unlock hint: keep checking in and expanding your slots to meet new companions.</p>
+      {/if}
       <button type="button" class="inline-action" on:click={() => (discoverModal = null)}>Close</button>
     </section>
   {/if}
@@ -1108,6 +1133,12 @@
     border-color: rgba(94, 242, 255, 0.42);
     background: rgba(94, 242, 255, 0.12);
     color: rgba(199, 248, 255, 0.96);
+  }
+
+  .chip--hook {
+    border-color: rgba(186, 157, 255, 0.42);
+    background: rgba(186, 157, 255, 0.1);
+    color: rgba(232, 220, 255, 0.95);
   }
 
   .time-context {
@@ -1371,6 +1402,25 @@
   .discover-card {
     text-align: left;
     cursor: pointer;
+  }
+
+  .discover-card--locked {
+    border-color: rgba(255, 209, 142, 0.36);
+    background: rgba(42, 33, 20, 0.65);
+  }
+
+  .discover-lock {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: rgba(255, 222, 163, 0.94);
+  }
+
+  .discover-meta {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: rgba(199, 209, 236, 0.84);
   }
 
   .empty-copy {

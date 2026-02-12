@@ -3,6 +3,10 @@ import { getCompanionRituals } from '$lib/server/companions/rituals';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { isMuseCompanion, resolveMuseEvolutionStage } from '$lib/companions/evolution';
+import {
+  buildCompanionArchetypeMetadataByCompanionId,
+  buildCompanionDiscoverCatalog
+} from '$lib/companions/definitions';
 
 const COMPANION_COLUMNS =
   'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
@@ -160,7 +164,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
   const bondMilestones = await fetchBondAchievementsForUser(supabase, userId);
   const rituals = await getCompanionRituals(supabase, userId);
-  const discoverCatalog = (archetypesResult.data ?? []) as CompanionArchetypeRow[];
+  const discoverCatalog = buildCompanionDiscoverCatalog((archetypesResult.data ?? []) as CompanionArchetypeRow[]);
+  const archetypeMetadataByCompanionId = buildCompanionArchetypeMetadataByCompanionId(companions);
 
   return {
     companions,
@@ -171,6 +176,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     error: companionsResult.error?.message ?? slotsResult.error?.message ?? archetypesResult.error?.message ?? null,
     bondMilestones,
     rituals,
-    evolutionStagesByCompanionId
+    evolutionStagesByCompanionId,
+    archetypeMetadataByCompanionId
   };
 };
