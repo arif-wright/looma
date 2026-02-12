@@ -92,7 +92,7 @@ export const POST: RequestHandler = async (event) => {
   const { data: missionRow, error: missionError } = await supabase
     .from('missions')
     .select(
-      'id, owner_id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, cooldown_ms, privacy_tags'
+      'id, owner_id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, requires, min_level, tags, weight, cooldown_ms, privacy_tags'
     )
     .eq('id', activeSession.mission_id)
     .maybeSingle();

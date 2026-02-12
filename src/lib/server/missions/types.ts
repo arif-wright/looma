@@ -23,7 +23,13 @@ export type MissionDefinition = {
   type: MissionType;
   cost: MissionCost | null;
   requirements: MissionRequirements | null;
+  requires?: Record<string, unknown> | null;
+  min_level?: number | null;
+  minLevel?: number | null;
+  tags?: string[] | null;
+  weight?: number | null;
   cooldown_ms: number | null;
+  cooldownMs?: number | null;
   privacy_tags: string[] | null;
 };
 

@@ -11,7 +11,12 @@ export type MissionRow = {
   type?: 'identity' | 'action' | 'world' | null;
   cost?: { energy?: number } | null;
   requirements?: { minLevel?: number; minEnergy?: number } | null;
+  requires?: Record<string, unknown> | null;
+  min_level?: number | null;
+  tags?: string[] | null;
+  weight?: number | null;
   cooldown_ms?: number | null;
+  cooldownMs?: number | null;
   privacy_tags?: string[] | null;
   meta?: Record<string, unknown> | null;
 };
@@ -21,7 +26,7 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
   const { data, error } = await supabase
     .from('missions')
     .select(
-      'id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, cooldown_ms, privacy_tags, meta'
+      'id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, requires, min_level, tags, weight, cooldown_ms, privacy_tags, meta'
     )
     .eq('id', id)
     .limit(1)
@@ -63,7 +68,17 @@ export async function fetchMissionById(id: string): Promise<MissionRow | null> {
             return out;
           })()
         : null,
+    requires:
+      row.requires && typeof row.requires === 'object' && !Array.isArray(row.requires)
+        ? (row.requires as Record<string, unknown>)
+        : null,
+    min_level: typeof row.min_level === 'number' ? row.min_level : null,
+    tags: Array.isArray(row.tags)
+      ? row.tags.filter((entry): entry is string => typeof entry === 'string')
+      : null,
+    weight: typeof row.weight === 'number' ? row.weight : null,
     cooldown_ms: typeof row.cooldown_ms === 'number' ? row.cooldown_ms : null,
+    cooldownMs: typeof row.cooldown_ms === 'number' ? row.cooldown_ms : null,
     privacy_tags: Array.isArray(row.privacy_tags)
       ? row.privacy_tags.filter((entry): entry is string => typeof entry === 'string')
       : null,

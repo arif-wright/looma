@@ -6,6 +6,11 @@ const isMissionType = (value: unknown): value is MissionType =>
 const asNumberOrNull = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
+const parseTags = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+};
+
 const parseCost = (value: unknown): MissionCost | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const energy = asNumberOrNull((value as Record<string, unknown>).energy);
@@ -35,6 +40,15 @@ export const parseMissionDefinition = (row: Record<string, unknown>): MissionDef
   const privacyTags = Array.isArray(row.privacy_tags)
     ? row.privacy_tags.filter((entry): entry is string => typeof entry === 'string')
     : null;
+  const tags = parseTags(row.tags);
+  const weightRaw = asNumberOrNull(row.weight);
+  const weight = weightRaw === null ? 1 : Math.max(1, Math.floor(weightRaw));
+  const requirements = parseRequirements(row.requirements);
+  const minLevelFromRequirements =
+    requirements && typeof requirements.minLevel === 'number' ? requirements.minLevel : null;
+  const minLevelFromColumn = asNumberOrNull(row.min_level);
+  const minLevel = minLevelFromColumn ?? minLevelFromRequirements;
+  const cooldownMsRaw = asNumberOrNull(row.cooldown_ms);
 
   return {
     id,
@@ -47,8 +61,19 @@ export const parseMissionDefinition = (row: Record<string, unknown>): MissionDef
     xp_reward: asNumberOrNull(row.xp_reward),
     type,
     cost: parseCost(row.cost),
-    requirements: parseRequirements(row.requirements),
-    cooldown_ms: asNumberOrNull(row.cooldown_ms),
+    requirements,
+    requires:
+      row.requires && typeof row.requires === 'object' && !Array.isArray(row.requires)
+        ? (row.requires as Record<string, unknown>)
+        : row.requirements && typeof row.requirements === 'object' && !Array.isArray(row.requirements)
+          ? (row.requirements as Record<string, unknown>)
+          : null,
+    min_level: minLevel,
+    minLevel,
+    tags,
+    weight,
+    cooldown_ms: cooldownMsRaw,
+    cooldownMs: cooldownMsRaw,
     privacy_tags: privacyTags
   };
 };

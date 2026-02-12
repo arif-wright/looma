@@ -10,6 +10,7 @@ import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
+import { pickRotatedMissionPool } from '$lib/server/missions/rotation';
 
 type MissionSummary = {
   id: string;
@@ -21,7 +22,12 @@ type MissionSummary = {
   type?: 'identity' | 'action' | 'world' | null;
   cost?: { energy?: number } | null;
   requirements?: { minLevel?: number; minEnergy?: number } | null;
+  requires?: Record<string, unknown> | null;
+  min_level?: number | null;
+  tags?: string[] | null;
+  weight?: number | null;
   cooldown_ms?: number | null;
+  cooldownMs?: number | null;
   privacy_tags?: string[] | null;
 };
 
@@ -146,12 +152,49 @@ export const load: PageServerLoad = async (event) => {
       const { data } = await supabase
         .from('missions')
         .select(
-          'id, title, summary, difficulty, energy_reward, xp_reward, type, cost, requirements, cooldown_ms, privacy_tags'
+          'id, title, summary, difficulty, status, energy_reward, xp_reward, type, cost, requirements, requires, min_level, tags, weight, cooldown_ms, privacy_tags'
         )
-        .limit(4)
+        .eq('status', 'available')
+        .limit(32)
         .throwOnError();
 
-      missionSuggestions = (data as MissionSummary[] | null)?.filter(Boolean).slice(0, 2) ?? [];
+      const missionPool = (data as MissionSummary[] | null)?.filter(Boolean) ?? [];
+      const today = new Date().toISOString().slice(0, 10);
+      const baseSeed = `${today}:${userId ?? 'anon'}`;
+      const userLevel = typeof stats?.level === 'number' ? stats.level : 0;
+
+      const energyDaily = pickRotatedMissionPool(missionPool, {
+        limit: 1,
+        requiredTags: ['daily', 'energy'],
+        userLevel,
+        includeIdentityForEnergyDaily: false,
+        seed: `${baseSeed}:daily-energy`
+      });
+
+      const dailyOrWeekly = pickRotatedMissionPool(
+        missionPool.filter((entry) => !energyDaily.some((pick) => pick.id === entry.id)),
+        {
+          limit: 1,
+          requiredTags: ['daily'],
+          userLevel,
+          seed: `${baseSeed}:daily-general`
+        }
+      );
+
+      const fallback = pickRotatedMissionPool(
+        missionPool.filter(
+          (entry) =>
+            !energyDaily.some((pick) => pick.id === entry.id) &&
+            !dailyOrWeekly.some((pick) => pick.id === entry.id)
+        ),
+        {
+          limit: 2,
+          userLevel,
+          seed: `${baseSeed}:fallback`
+        }
+      );
+
+      missionSuggestions = [...energyDaily, ...dailyOrWeekly, ...fallback].slice(0, 2);
     } catch (err) {
       diagnostics.push('missions_query_failed');
       reportHomeLoadIssue('missions_query_failed', { error: err instanceof Error ? err.message : String(err) });

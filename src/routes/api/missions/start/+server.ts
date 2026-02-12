@@ -23,6 +23,10 @@ const MISSION_SELECT = [
   'type',
   'cost',
   'requirements',
+  'requires',
+  'min_level',
+  'tags',
+  'weight',
   'cooldown_ms',
   'privacy_tags'
 ].join(', ');
