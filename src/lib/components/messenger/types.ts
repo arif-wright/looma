@@ -3,6 +3,13 @@ export type MessengerPeer = {
   handle: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  presence: MessengerPresence | null;
+};
+
+export type MessengerPresence = {
+  status: 'online' | 'away' | 'offline';
+  last_active_at: string;
+  updated_at: string;
 };
 
 export type MessengerConversation = {

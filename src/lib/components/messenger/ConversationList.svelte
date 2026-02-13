@@ -34,6 +34,14 @@
     if (conversation.blocked) return 'Blocked';
     return conversation.preview ?? 'No messages yet';
   };
+
+  const presenceClass = (conversation: MessengerConversation) => {
+    const status = conversation.peer?.presence?.status ?? null;
+    if (status === 'online') return 'online';
+    if (status === 'away') return 'away';
+    if (status === 'offline') return 'offline';
+    return 'hidden';
+  };
 </script>
 
 <section class="conversation-list" aria-label="Conversations">
@@ -66,7 +74,12 @@
             on:click={() => dispatch('select', { conversationId: conversation.conversationId })}
           >
             <div class="conversation-list__row">
-              <strong>{titleFor(conversation)}</strong>
+              <strong class="name-row">
+                <span>{titleFor(conversation)}</span>
+                {#if conversation.peer?.presence}
+                  <span class={`presence-dot ${presenceClass(conversation)}`} aria-label={`Status ${conversation.peer.presence.status}`}></span>
+                {/if}
+              </strong>
               <time datetime={conversation.last_message_at ?? undefined}>{formatTime(conversation.last_message_at)}</time>
             </div>
             <div class="conversation-list__row conversation-list__meta">
@@ -180,6 +193,32 @@
   time {
     font-size: 0.74rem;
     color: rgba(148, 163, 184, 0.95);
+  }
+
+  .name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .presence-dot {
+    width: 0.54rem;
+    height: 0.54rem;
+    border-radius: 50%;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    display: inline-block;
+  }
+
+  .presence-dot.online {
+    background: #22c55e;
+  }
+
+  .presence-dot.away {
+    background: #eab308;
+  }
+
+  .presence-dot.offline {
+    background: #64748b;
   }
 
   .badge {

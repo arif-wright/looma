@@ -8,6 +8,8 @@
   export let blocked = false;
   export let loading = false;
   export let title = 'Select a conversation';
+  export let presenceLabel: string | null = null;
+  export let typing = false;
 
   const dispatch = createEventDispatcher<{ report: { messageId: string } }>();
 
@@ -31,6 +33,12 @@
 <section class="thread" aria-label="Chat thread">
   <header>
     <h2>{title}</h2>
+    {#if presenceLabel}
+      <p class="presence" role="status">{presenceLabel}</p>
+    {/if}
+    {#if typing}
+      <p class="typing" role="status">Typing…</p>
+    {/if}
     {#if blocked}
       <p role="status">You can’t message this user.</p>
     {/if}
@@ -79,6 +87,22 @@
     margin: 0.3rem 0 0;
     color: rgba(253, 186, 116, 0.95);
     font-size: 0.85rem;
+  }
+
+  .presence {
+    color: rgba(186, 230, 253, 0.95);
+  }
+
+  .typing {
+    color: rgba(148, 163, 184, 0.95);
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .typing {
+      transition: none;
+    }
   }
 
   .thread__messages {

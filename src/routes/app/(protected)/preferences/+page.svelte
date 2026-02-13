@@ -29,6 +29,8 @@
   let museHighlights: string[] = [];
   let museSummaryBuiltAt: string | null = null;
   let activeCompanionId = 'muse';
+  let presenceVisible = true;
+  let presenceSaving = false;
 
   let companionVisible = true;
   let companionMotion = true;
@@ -52,10 +54,42 @@
       resolveMemorySummary();
       await ensureMemorySummaryStored();
       await fetchMuseSummary();
+      await fetchPresenceSetting();
     } catch {
       error = SAFE_LOAD_ERROR;
     } finally {
       loading = false;
+    }
+  };
+
+  const fetchPresenceSetting = async () => {
+    try {
+      const res = await fetch('/api/presence/settings');
+      const payload = (await res.json().catch(() => null)) as { presenceVisible?: boolean } | null;
+      if (!res.ok || !payload) return;
+      presenceVisible = payload.presenceVisible !== false;
+    } catch {
+      // keep last known value
+    }
+  };
+
+  const setPresenceVisible = async (next: boolean) => {
+    if (presenceSaving) return;
+    presenceSaving = true;
+    const previous = presenceVisible;
+    presenceVisible = next;
+    try {
+      const res = await fetch('/api/presence/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presenceVisible: next })
+      });
+      if (!res.ok) throw new Error('presence update failed');
+    } catch {
+      presenceVisible = previous;
+      error = SAFE_LOAD_ERROR;
+    } finally {
+      presenceSaving = false;
     }
   };
 
@@ -441,6 +475,30 @@
           <span>
             <strong>Companion transparency</strong>
             <span>Use transparent background behind Muse.</span>
+          </span>
+        </label>
+      </div>
+    {/if}
+  </section>
+
+  <section class="panel preferences-panel" aria-labelledby="presence-heading">
+    <div class="panel-title-row">
+      <h2 id="presence-heading" class="panel-title">Presence &amp; Activity</h2>
+    </div>
+    {#if loading}
+      <p class="status-text">Loading presence settings…</p>
+    {:else}
+      <div class="toggle-grid">
+        <label class="toggle-card">
+          <input
+            type="checkbox"
+            bind:checked={presenceVisible}
+            disabled={presenceSaving}
+            on:change={() => setPresenceVisible(presenceVisible)}
+          />
+          <span>
+            <strong>Show my online status</strong>
+            <span>If disabled, others see you as offline and typing indicators are off.</span>
           </span>
         </label>
       </div>

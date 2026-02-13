@@ -24,6 +24,7 @@
   const isAlphaDenied = () => Boolean(data?.alphaDenied);
 
   const userEmail = data?.user?.email ?? '';
+  const presenceVisible = data?.preferences?.presence_visible !== false;
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
   let previousPath: string | null = null;
@@ -63,6 +64,10 @@
   let motionQuery: MediaQueryList | null = null;
   let nowTick = Date.now();
   let nowTimer: number | null = null;
+  let presenceAwayTimer: number | null = null;
+  let presenceHeartbeatTimer: number | null = null;
+  let currentPresenceStatus: 'online' | 'away' | 'offline' = 'offline';
+  let lastPresenceHeartbeatAt = 0;
 
   const activeCompanionSnapshot = data?.activeCompanion ?? null;
   const activeAsInstance =
@@ -252,14 +257,23 @@
 
   const handleActivity = () => {
     resetInactivityTimer();
+    if (presenceVisible) {
+      void touchPresenceActivity();
+    }
   };
 
   const handlePageHide = () => {
     void postSessionEnd('pagehide', true);
+    if (presenceVisible) {
+      void postPresence('offline', true);
+    }
   };
 
   const handleBeforeUnload = () => {
     void postSessionEnd('beforeunload', true);
+    if (presenceVisible) {
+      void postPresence('offline', true);
+    }
   };
 
   const bindSessionListeners = () => {
@@ -291,6 +305,57 @@
     void refreshAmbientContext();
   };
 
+  const postPresence = async (status: 'online' | 'away' | 'offline', keepalive = false) => {
+    if (!browser || !presenceVisible) return;
+
+    currentPresenceStatus = status;
+    const payload = JSON.stringify({ status });
+
+    if (keepalive) {
+      void fetch('/api/presence', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: payload,
+        keepalive: true
+      }).catch(() => {});
+      return;
+    }
+
+    await fetch('/api/presence', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: payload
+    }).catch(() => {});
+  };
+
+  const resetPresenceAwayTimer = () => {
+    if (!browser || !presenceVisible) return;
+    if (presenceAwayTimer) {
+      window.clearTimeout(presenceAwayTimer);
+      presenceAwayTimer = null;
+    }
+    presenceAwayTimer = window.setTimeout(() => {
+      if (currentPresenceStatus !== 'away') {
+        void postPresence('away');
+      }
+    }, 2 * 60 * 1000);
+  };
+
+  const touchPresenceActivity = async () => {
+    if (!browser || !presenceVisible) return;
+    resetPresenceAwayTimer();
+    const now = Date.now();
+    if (currentPresenceStatus !== 'online') {
+      await postPresence('online');
+      lastPresenceHeartbeatAt = now;
+      return;
+    }
+    if (now - lastPresenceHeartbeatAt >= 60_000) {
+      lastPresenceHeartbeatAt = now;
+      await postPresence('online');
+    }
+  };
+
   if (browser) {
     onMount(async () => {
       if (isAlphaDenied()) return;
@@ -307,6 +372,17 @@
       visitedPaths = new Set([window.location.pathname]);
       bindSessionListeners();
       resetInactivityTimer();
+      if (presenceVisible) {
+        await postPresence('online');
+        lastPresenceHeartbeatAt = Date.now();
+        resetPresenceAwayTimer();
+        presenceHeartbeatTimer = window.setInterval(() => {
+          if (currentPresenceStatus === 'online') {
+            lastPresenceHeartbeatAt = Date.now();
+            void postPresence('online');
+          }
+        }, 75_000);
+      }
 
       const today = new Date().toISOString().slice(0, 10);
       const stored = window.localStorage.getItem(SESSION_START_DAY_KEY);
@@ -390,6 +466,17 @@
       motionQuery = null;
     }
     window.removeEventListener('looma:ambient-refresh', handleAmbientRefresh);
+    if (presenceAwayTimer) {
+      window.clearTimeout(presenceAwayTimer);
+      presenceAwayTimer = null;
+    }
+    if (presenceHeartbeatTimer) {
+      window.clearInterval(presenceHeartbeatTimer);
+      presenceHeartbeatTimer = null;
+    }
+    if (presenceVisible) {
+      void postPresence('offline', true);
+    }
     void postSessionEnd('layout_destroy');
   });
 

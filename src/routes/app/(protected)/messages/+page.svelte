@@ -16,6 +16,7 @@
   export let data;
 
   const currentUserId = (data?.user?.id as string | undefined) ?? null;
+  const presenceVisible = data?.preferences?.presence_visible !== false;
 
   let conversations: MessengerConversation[] = [];
   let activeConversationId: string | null = null;
@@ -34,9 +35,14 @@
   let startModalFriends: MessengerFriendOption[] = [];
 
   let readDebounce: ReturnType<typeof setTimeout> | null = null;
+  let typingStopTimer: ReturnType<typeof setTimeout> | null = null;
+  let peerTypingTimer: ReturnType<typeof setTimeout> | null = null;
+  let peerTyping = false;
+  let localTypingActive = false;
   let supabaseClient: ReturnType<typeof supabaseBrowser> | null = null;
   let activeMessagesChannel: RealtimeChannel | null = null;
   let conversationsChannel: RealtimeChannel | null = null;
+  let presenceChannel: RealtimeChannel | null = null;
 
   $: filteredConversations = conversations.filter((conversation) => {
     const key = `${conversation.peer?.display_name ?? ''} ${conversation.peer?.handle ?? ''} ${conversation.preview ?? ''}`.toLowerCase();
@@ -51,6 +57,27 @@
   $: threadTitle =
     activeConversation?.peer?.display_name ??
     (activeConversation?.peer?.handle ? `@${activeConversation.peer.handle}` : 'Conversation');
+
+  const relativeLastActive = (iso: string) => {
+    const ts = Date.parse(iso);
+    if (Number.isNaN(ts)) return null;
+    const deltaMs = Math.max(0, Date.now() - ts);
+    const minutes = Math.floor(deltaMs / 60_000);
+    if (minutes < 1) return 'Active just now';
+    if (minutes < 60) return `Active ${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Active ${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `Active ${days}d ago`;
+  };
+
+  $: presenceLabel = (() => {
+    const presence = activeConversation?.peer?.presence ?? null;
+    if (!presence) return null;
+    if (presence.status === 'online') return 'Online';
+    if (presence.status === 'away') return 'Away';
+    return relativeLastActive(presence.last_active_at);
+  })();
 
   const byNewest = (a: MessengerConversation, b: MessengerConversation) => {
     const aTime = a.last_message_at ? Date.parse(a.last_message_at) : 0;
@@ -98,6 +125,29 @@
     }, 350);
   };
 
+  const syncPeerPresence = (
+    userId: string,
+    status: 'online' | 'away' | 'offline',
+    lastActiveAt: string,
+    updatedAt: string
+  ) => {
+    conversations = conversations.map((conversation) =>
+      conversation.peer?.id === userId
+        ? {
+            ...conversation,
+            peer: {
+              ...conversation.peer,
+              presence: {
+                status,
+                last_active_at: lastActiveAt,
+                updated_at: updatedAt
+              }
+            }
+          }
+        : conversation
+    );
+  };
+
   const loadConversations = async (preferCurrent = true) => {
     loadingConversations = true;
     errorMessage = null;
@@ -112,6 +162,7 @@
 
       const next = Array.isArray(payload?.items) ? (payload.items as MessengerConversation[]) : [];
       conversations = [...next].sort(byNewest);
+      await bindPresenceRealtime();
 
       if (!next.length) {
         activeConversationId = null;
@@ -158,8 +209,28 @@
 
       if (!older && conversationId === activeConversationId) {
         const blocked = payload?.blocked === true;
+        const peerPresence =
+          payload?.peer?.presence &&
+          (payload.peer.presence.status === 'online' ||
+            payload.peer.presence.status === 'away' ||
+            payload.peer.presence.status === 'offline') &&
+          typeof payload.peer.presence.last_active_at === 'string' &&
+          typeof payload.peer.presence.updated_at === 'string'
+            ? payload.peer.presence
+            : null;
         conversations = conversations.map((conversation) =>
-          conversation.conversationId === conversationId ? { ...conversation, blocked } : conversation
+          conversation.conversationId === conversationId
+            ? {
+                ...conversation,
+                blocked,
+                peer: conversation.peer
+                  ? {
+                      ...conversation.peer,
+                      presence: peerPresence
+                    }
+                  : null
+              }
+            : conversation
         );
       }
     } finally {
@@ -318,6 +389,52 @@
     }
   };
 
+  const sendTyping = async (typing: boolean) => {
+    if (!presenceVisible || !activeMessagesChannel || !activeConversationId || !currentUserId) return;
+    localTypingActive = typing;
+    await activeMessagesChannel
+      .send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          conversationId: activeConversationId,
+          userId: currentUserId,
+          typing
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleComposerTyping = (event: CustomEvent<{ typing: boolean }>) => {
+    if (!presenceVisible || !activeConversationId || activeConversation?.blocked) return;
+
+    if (!event.detail.typing) {
+      if (typingStopTimer) {
+        clearTimeout(typingStopTimer);
+        typingStopTimer = null;
+      }
+      if (localTypingActive) {
+        void sendTyping(false);
+      }
+      return;
+    }
+
+    if (!localTypingActive) {
+      void sendTyping(true);
+    }
+
+    if (typingStopTimer) {
+      clearTimeout(typingStopTimer);
+    }
+
+    typingStopTimer = setTimeout(() => {
+      typingStopTimer = null;
+      if (localTypingActive) {
+        void sendTyping(false);
+      }
+    }, 1200);
+  };
+
   const bindConversationsRealtime = async () => {
     if (!supabaseClient) return;
 
@@ -338,19 +455,61 @@
       .subscribe();
   };
 
+  const bindPresenceRealtime = async () => {
+    if (!supabaseClient) return;
+    if (presenceChannel) {
+      await supabaseClient.removeChannel(presenceChannel);
+      presenceChannel = null;
+    }
+
+    const peerIds = [...new Set(conversations.map((conversation) => conversation.peer?.id).filter((id): id is string => Boolean(id)))];
+    if (!peerIds.length) return;
+
+    presenceChannel = supabaseClient
+      .channel('messenger:presence')
+      .on<RealtimePostgresChangesPayload<Record<string, unknown>>>(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_presence' },
+        (payload) => {
+          const row =
+            payload.eventType === 'DELETE'
+              ? (payload.old as Record<string, unknown> | null)
+              : (payload.new as Record<string, unknown> | null);
+          const userId = typeof row?.user_id === 'string' ? row.user_id : null;
+          const status = row?.status;
+          const lastActiveAt = typeof row?.last_active_at === 'string' ? row.last_active_at : null;
+          const updatedAt = typeof row?.updated_at === 'string' ? row.updated_at : null;
+          if (!userId || !peerIds.includes(userId)) return;
+          if (status !== 'online' && status !== 'away' && status !== 'offline') return;
+          if (!lastActiveAt || !updatedAt) return;
+          syncPeerPresence(userId, status, lastActiveAt, updatedAt);
+        }
+      )
+      .subscribe();
+  };
+
   const bindActiveMessagesRealtime = async () => {
     if (!supabaseClient) return;
 
     if (activeMessagesChannel) {
+      if (localTypingActive) {
+        void sendTyping(false);
+      }
       await supabaseClient.removeChannel(activeMessagesChannel);
       activeMessagesChannel = null;
     }
+
+    peerTyping = false;
 
     if (!activeConversationId) return;
 
     const conversationId = activeConversationId;
     activeMessagesChannel = supabaseClient
-      .channel(`messenger:messages:${conversationId}`)
+      .channel(`messenger:messages:${conversationId}`, {
+        config: {
+          broadcast: { self: false, ack: false }
+        }
+      })
       .on<RealtimePostgresChangesPayload<MessengerMessage>>(
         'postgres_changes',
         {
@@ -399,6 +558,29 @@
             .sort(byNewest);
         }
       )
+      .on('broadcast', { event: 'typing' }, (event) => {
+        if (!presenceVisible) return;
+        const payload = event.payload as { conversationId?: string; userId?: string; typing?: boolean } | null;
+        if (!payload || payload.conversationId !== conversationId) return;
+        if (!payload.userId || payload.userId === currentUserId) return;
+        if (payload.typing !== true) {
+          peerTyping = false;
+          if (peerTypingTimer) {
+            clearTimeout(peerTypingTimer);
+            peerTypingTimer = null;
+          }
+          return;
+        }
+
+        peerTyping = true;
+        if (peerTypingTimer) {
+          clearTimeout(peerTypingTimer);
+        }
+        peerTypingTimer = setTimeout(() => {
+          peerTyping = false;
+          peerTypingTimer = null;
+        }, 3000);
+      })
       .subscribe();
   };
 
@@ -413,6 +595,7 @@
       await handleSelectConversation(initialConversationHint);
     }
     await bindConversationsRealtime();
+    await bindPresenceRealtime();
     await bindActiveMessagesRealtime();
 
     if (activeConversationId) {
@@ -426,13 +609,28 @@
       clearTimeout(readDebounce);
       readDebounce = null;
     }
+    if (typingStopTimer) {
+      clearTimeout(typingStopTimer);
+      typingStopTimer = null;
+    }
+    if (peerTypingTimer) {
+      clearTimeout(peerTypingTimer);
+      peerTypingTimer = null;
+    }
     if (activeMessagesChannel) {
+      if (localTypingActive) {
+        void sendTyping(false);
+      }
       void supabaseClient.removeChannel(activeMessagesChannel);
       activeMessagesChannel = null;
     }
     if (conversationsChannel) {
       void supabaseClient.removeChannel(conversationsChannel);
       conversationsChannel = null;
+    }
+    if (presenceChannel) {
+      void supabaseClient.removeChannel(presenceChannel);
+      presenceChannel = null;
     }
   });
 </script>
@@ -465,6 +663,8 @@
         blocked={activeConversation?.blocked ?? false}
         loading={loadingConversations || loadingMessages}
         title={threadTitle}
+        {presenceLabel}
+        typing={peerTyping && presenceVisible}
         on:report={handleReportMessage}
       >
         <svelte:fragment slot="composer">
@@ -473,7 +673,12 @@
               <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
             </div>
           {/if}
-          <MessageComposer disabled={activeConversation?.blocked ?? false} {sending} on:send={handleSendMessage} />
+          <MessageComposer
+            disabled={activeConversation?.blocked ?? false}
+            {sending}
+            on:send={handleSendMessage}
+            on:typing={handleComposerTyping}
+          />
         </svelte:fragment>
       </ChatThread>
     {/if}

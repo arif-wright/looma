@@ -82,6 +82,13 @@ export const GET: RequestHandler = async (event) => {
         .in('id', peerIds)
     : { data: [] };
 
+  const { data: presenceRows } = peerIds.length
+    ? await supabase
+        .from('user_presence')
+        .select('user_id, status, last_active_at, updated_at')
+        .in('user_id', peerIds)
+    : { data: [] };
+
   const profileMap = new Map<
     string,
     { id: string; handle: string | null; display_name: string | null; avatar_url: string | null }
@@ -99,6 +106,28 @@ export const GET: RequestHandler = async (event) => {
         handle: typeof row.handle === 'string' ? row.handle : null,
         display_name: typeof row.display_name === 'string' ? row.display_name : null,
         avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null
+      });
+    }
+  }
+
+  const presenceMap = new Map<
+    string,
+    { status: 'online' | 'away' | 'offline'; last_active_at: string; updated_at: string }
+  >();
+  if (Array.isArray(presenceRows)) {
+    for (const row of presenceRows as Array<{
+      user_id?: unknown;
+      status?: unknown;
+      last_active_at?: unknown;
+      updated_at?: unknown;
+    }>) {
+      if (typeof row.user_id !== 'string') continue;
+      if (row.status !== 'online' && row.status !== 'away' && row.status !== 'offline') continue;
+      if (typeof row.last_active_at !== 'string' || typeof row.updated_at !== 'string') continue;
+      presenceMap.set(row.user_id, {
+        status: row.status,
+        last_active_at: row.last_active_at,
+        updated_at: row.updated_at
       });
     }
   }
@@ -124,7 +153,17 @@ export const GET: RequestHandler = async (event) => {
         last_message_at: conversation.last_message_at,
         preview: conversation.last_message_preview,
         memberIds,
-        peer: peerId ? profileMap.get(peerId) ?? { id: peerId, handle: null, display_name: null, avatar_url: null } : null,
+        peer: peerId
+          ? {
+              ...(profileMap.get(peerId) ?? {
+                id: peerId,
+                handle: null,
+                display_name: null,
+                avatar_url: null
+              }),
+              presence: presenceMap.get(peerId) ?? null
+            }
+          : null,
         muted: membership?.muted ?? false,
         lastReadAt: membership?.last_read_at ?? null,
         unreadCount: unreadMap.get(conversation.id) ?? 0,

@@ -4,7 +4,7 @@
   export let disabled = false;
   export let sending = false;
 
-  const dispatch = createEventDispatcher<{ send: { body: string } }>();
+  const dispatch = createEventDispatcher<{ send: { body: string }; typing: { typing: boolean } }>();
 
   let body = '';
 
@@ -21,6 +21,14 @@
       submit();
     }
   };
+
+  const onInput = () => {
+    dispatch('typing', { typing: body.trim().length > 0 });
+  };
+
+  const onBlur = () => {
+    dispatch('typing', { typing: false });
+  };
 </script>
 
 <div class="composer">
@@ -32,6 +40,8 @@
     bind:value={body}
     {disabled}
     on:keydown={onKeydown}
+    on:input={onInput}
+    on:blur={onBlur}
   ></textarea>
   <button type="button" on:click={submit} disabled={disabled || sending || body.trim().length === 0}>
     {sending ? 'Sending...' : 'Send'}

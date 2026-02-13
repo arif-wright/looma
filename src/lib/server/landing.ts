@@ -9,6 +9,7 @@ export type PreferenceRow = {
   last_context: ContextRecord | string | null;
   last_context_payload: Record<string, unknown> | null;
   ab_variant: 'A' | 'B' | 'C' | null;
+  presence_visible?: boolean | null;
   updated_at: string | null;
 };
 

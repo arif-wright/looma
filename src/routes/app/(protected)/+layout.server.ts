@@ -44,7 +44,7 @@ const getOrCreatePreferences = async (
 ): Promise<PreferenceRow> => {
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('user_id, start_on, last_context, last_context_payload, ab_variant, updated_at')
+    .select('user_id, start_on, last_context, last_context_payload, ab_variant, presence_visible, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -59,7 +59,7 @@ const getOrCreatePreferences = async (
   const { data: inserted, error: insertError } = await supabase
     .from('user_preferences')
     .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: false })
-    .select('user_id, start_on, last_context, last_context_payload, ab_variant, updated_at')
+    .select('user_id, start_on, last_context, last_context_payload, ab_variant, presence_visible, updated_at')
     .single();
 
   if (insertError) {
@@ -73,6 +73,7 @@ const getOrCreatePreferences = async (
       last_context: null,
       last_context_payload: null,
       ab_variant: null,
+      presence_visible: true,
       updated_at: null
     }
   );

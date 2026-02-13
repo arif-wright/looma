@@ -100,6 +100,13 @@ export const GET: RequestHandler = async (event) => {
         .eq('id', peerId)
         .maybeSingle()
     : { data: null };
+  const { data: peerPresence } = peerId
+    ? await supabase
+        .from('user_presence')
+        .select('status, last_active_at, updated_at')
+        .eq('user_id', peerId)
+        .maybeSingle()
+    : { data: null };
 
   let blocked = false;
   if (peerId) {
@@ -120,10 +127,41 @@ export const GET: RequestHandler = async (event) => {
               id: peerId,
               handle: typeof peerProfile.handle === 'string' ? peerProfile.handle : null,
               display_name: typeof peerProfile.display_name === 'string' ? peerProfile.display_name : null,
-              avatar_url: typeof peerProfile.avatar_url === 'string' ? peerProfile.avatar_url : null
+              avatar_url: typeof peerProfile.avatar_url === 'string' ? peerProfile.avatar_url : null,
+              presence:
+                peerPresence &&
+                (peerPresence.status === 'online' ||
+                  peerPresence.status === 'away' ||
+                  peerPresence.status === 'offline') &&
+                typeof peerPresence.last_active_at === 'string' &&
+                typeof peerPresence.updated_at === 'string'
+                  ? {
+                      status: peerPresence.status,
+                      last_active_at: peerPresence.last_active_at,
+                      updated_at: peerPresence.updated_at
+                    }
+                  : null
             }
           : peerId
-            ? { id: peerId, handle: null, display_name: null, avatar_url: null }
+            ? {
+                id: peerId,
+                handle: null,
+                display_name: null,
+                avatar_url: null,
+                presence:
+                  peerPresence &&
+                  (peerPresence.status === 'online' ||
+                    peerPresence.status === 'away' ||
+                    peerPresence.status === 'offline') &&
+                  typeof peerPresence.last_active_at === 'string' &&
+                  typeof peerPresence.updated_at === 'string'
+                    ? {
+                        status: peerPresence.status,
+                        last_active_at: peerPresence.last_active_at,
+                        updated_at: peerPresence.updated_at
+                      }
+                    : null
+              }
             : null,
       blocked
     },
