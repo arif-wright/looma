@@ -8,6 +8,7 @@ import {
 } from '$lib/server/friends';
 import { enforceFriendRequestRateLimit } from '$lib/server/friends/rate';
 import { getClientIp } from '$lib/server/utils/ip';
+import { enforceSocialActionAllowed } from '$lib/server/moderation';
 
 type RequestPayload = {
   recipientId?: string;
@@ -28,6 +29,22 @@ export const POST: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
   if (!session) {
     return json({ error: 'unauthorized' }, { status: 401, headers: FRIENDS_CACHE_HEADERS });
+  }
+
+  const moderationCheck = await enforceSocialActionAllowed(
+    supabase,
+    session.user.id,
+    'friend_request'
+  );
+  if (!moderationCheck.ok) {
+    return json(
+      {
+        error: moderationCheck.code,
+        message: moderationCheck.message,
+        moderationStatus: moderationCheck.moderationStatus
+      },
+      { status: moderationCheck.status, headers: FRIENDS_CACHE_HEADERS }
+    );
   }
 
   const rate = enforceFriendRequestRateLimit(session.user.id, getClientIp(event));

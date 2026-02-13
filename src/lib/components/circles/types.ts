@@ -16,6 +16,7 @@ export type CircleMember = {
   userId: string;
   role: 'owner' | 'admin' | 'member';
   joinedAt: string;
+  moderationStatus?: 'active' | 'muted' | 'suspended' | 'banned';
   profile: {
     id: string;
     handle: string | null;

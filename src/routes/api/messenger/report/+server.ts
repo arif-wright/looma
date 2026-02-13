@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { MESSENGER_CACHE_HEADERS, isUuid } from '$lib/server/messenger';
+import { serviceClient } from '$lib/server/admin';
+import { ensureCaseForReport } from '$lib/server/moderation/cases';
 
 type ReportPayload = {
   messageId?: string;
@@ -46,15 +48,20 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'not_found' }, { status: 404, headers: MESSENGER_CACHE_HEADERS });
   }
 
-  const { error } = await supabase.from('message_reports').insert({
+  const { data: reportRow, error } = await supabase.from('message_reports').insert({
     reporter_id: session.user.id,
     message_id: messageId,
     reason,
     details
-  });
+  }).select('id').maybeSingle<{ id: string }>();
 
   if (error) {
     return json({ error: error.message }, { status: 400, headers: MESSENGER_CACHE_HEADERS });
+  }
+
+  if (reportRow?.id) {
+    const admin = serviceClient();
+    await ensureCaseForReport(admin, reportRow.id);
   }
 
   return json({ ok: true }, { headers: MESSENGER_CACHE_HEADERS });

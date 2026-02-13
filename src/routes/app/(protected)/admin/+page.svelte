@@ -21,6 +21,7 @@
     { label: 'Hub', href: '/app/admin' },
     { label: 'Shop Admin', href: '/app/admin/shop' },
     { label: 'Reports', href: '/app/admin/reports' },
+    { label: 'Moderation', href: '/app/admin/moderation' },
     { label: 'Players', href: '/app/admin/players', hidden: !flags.isSuper },
     { label: 'Roles', href: '/app/admin/roles', hidden: !flags.isAdmin },
     { label: 'Event Traces', href: '/app/dev/traces', hidden: !flags.isSuper },
@@ -138,6 +139,7 @@
       <div class="header-actions">
         <a href="/app/admin/shop">Shop Admin</a>
         <a href="/app/admin/reports">Reports</a>
+        <a href="/app/admin/moderation">Moderation</a>
         {#if flags.isAdmin}
           <a href="/app/admin/roles">Roles</a>
         {/if}

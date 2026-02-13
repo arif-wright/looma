@@ -28,6 +28,9 @@
         <div>
           <strong>{labelFor(member)}</strong>
           <span>{member.role}</span>
+          {#if member.moderationStatus && member.moderationStatus !== 'active'}
+            <span class={`moderation moderation-${member.moderationStatus}`}>{member.moderationStatus}</span>
+          {/if}
         </div>
         {#if canManage && member.userId !== myUserId && member.role !== 'owner'}
           <div class="actions">
@@ -51,6 +54,17 @@
   li { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
   strong { display: block; }
   span { font-size: 0.78rem; color: rgba(186, 230, 253, 0.88); text-transform: capitalize; }
+  .moderation {
+    margin-left: 0.4rem;
+    color: rgba(254, 226, 226, 0.95);
+    background: rgba(127, 29, 29, 0.32);
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 999px;
+    padding: 0.02rem 0.38rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
   .actions { display: inline-flex; gap: 0.45rem; }
   button { border: none; border-radius: 0.62rem; padding: 0.35rem 0.65rem; background: rgba(148, 163, 184, 0.2); color: #e2e8f0; cursor: pointer; }
 </style>

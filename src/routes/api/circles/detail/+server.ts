@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { CIRCLES_CACHE_HEADERS, isUuid } from '$lib/server/circles';
+import { requireModerator } from '$lib/server/moderation';
 
 type CircleRow = {
   id: string;
@@ -88,24 +89,43 @@ export const GET: RequestHandler = async (event) => {
 
   const memberRows = (membersResult.data ?? []) as MemberRow[];
   const memberIds = memberRows.map((row) => row.user_id);
+  const moderatorView = await requireModerator(supabase, session.user.id, session.user.email ?? null);
   const { data: profiles } = memberIds.length
     ? await supabase
         .from('profiles')
         .select('id, handle, display_name, avatar_url')
         .in('id', memberIds)
     : { data: [] };
+  const { data: memberPrefs } =
+    moderatorView.ok && memberIds.length
+      ? await supabase
+          .from('user_preferences')
+          .select('user_id, moderation_status')
+          .in('user_id', memberIds)
+      : { data: [] };
 
   const profileMap = new Map(
     (profiles ?? []).map((row) => [row.id as string, row as { id: string; handle: string | null; display_name: string | null; avatar_url: string | null }])
   );
+  const moderationMap = new Map(
+    (memberPrefs ?? []).map((row) => [
+      row.user_id as string,
+      row.moderation_status === 'muted' ||
+      row.moderation_status === 'suspended' ||
+      row.moderation_status === 'banned'
+        ? row.moderation_status
+        : 'active'
+    ])
+  );
 
   const members = memberRows.map((row) => ({
-    userId: row.user_id,
-    role: row.role,
-    joinedAt: row.joined_at,
-    profile: profileMap.get(row.user_id) ?? {
-      id: row.user_id,
-      handle: null,
+      userId: row.user_id,
+      role: row.role,
+      joinedAt: row.joined_at,
+      moderationStatus: moderatorView.ok ? (moderationMap.get(row.user_id) ?? 'active') : undefined,
+      profile: profileMap.get(row.user_id) ?? {
+        id: row.user_id,
+        handle: null,
       display_name: null,
       avatar_url: null
     }

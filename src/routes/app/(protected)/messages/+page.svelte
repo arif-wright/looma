@@ -8,6 +8,7 @@
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import type {
+    ModerationBadgeStatus,
     MessengerConversation,
     MessengerFriendOption,
     MessengerMessage
@@ -21,6 +22,8 @@
   let conversations: MessengerConversation[] = [];
   let activeConversationId: string | null = null;
   let messages: MessengerMessage[] = [];
+  let moderationByUserId: Record<string, { status: ModerationBadgeStatus; until: string | null }> = {};
+  let viewerCanModerate = false;
   let nextCursor: string | null = null;
   let searchQuery = '';
 
@@ -200,6 +203,11 @@
 
       const items = Array.isArray(payload?.items) ? (payload.items as MessengerMessage[]) : [];
       nextCursor = typeof payload?.nextCursor === 'string' ? payload.nextCursor : null;
+      viewerCanModerate = payload?.viewerCanModerate === true;
+      moderationByUserId =
+        payload?.moderationByUserId && typeof payload.moderationByUserId === 'object'
+          ? (payload.moderationByUserId as Record<string, { status: ModerationBadgeStatus; until: string | null }>)
+          : {};
 
       if (older) {
         messages = [...items, ...messages];
@@ -660,6 +668,8 @@
       <ChatThread
         messages={messages}
         {currentUserId}
+        {viewerCanModerate}
+        {moderationByUserId}
         blocked={activeConversation?.blocked ?? false}
         loading={loadingConversations || loadingMessages}
         title={threadTitle}

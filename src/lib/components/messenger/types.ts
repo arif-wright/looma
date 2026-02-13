@@ -35,6 +35,8 @@ export type MessengerMessage = {
   client_nonce: string | null;
 };
 
+export type ModerationBadgeStatus = 'active' | 'muted' | 'suspended' | 'banned';
+
 export type MessengerFriendOption = {
   id: string;
   handle: string | null;

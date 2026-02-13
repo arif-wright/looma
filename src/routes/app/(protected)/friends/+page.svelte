@@ -13,6 +13,7 @@
     friendId: string;
     createdAt: string;
     profile: ProfileLite;
+    moderationStatus?: 'active' | 'muted' | 'suspended' | 'banned';
   };
 
   type RequestItem = {
@@ -33,6 +34,7 @@
   let friends: FriendItem[] = [];
   let incoming: RequestItem[] = [];
   let outgoing: RequestItem[] = [];
+  let viewerCanModerate = false;
   let errorMessage: string | null = null;
 
   let addFriendOpen = false;
@@ -57,6 +59,7 @@
     }
 
     friends = Array.isArray(payload?.items) ? (payload.items as FriendItem[]) : [];
+    viewerCanModerate = payload?.viewerCanModerate === true;
   };
 
   const loadRequests = async () => {
@@ -217,6 +220,9 @@
                 <strong>{userLabel(friend.profile)}</strong>
                 {#if friend.profile.handle}
                   <small>@{friend.profile.handle}</small>
+                {/if}
+                {#if viewerCanModerate && friend.moderationStatus && friend.moderationStatus !== 'active'}
+                  <small class="mod-badge">{friend.moderationStatus}</small>
                 {/if}
               </div>
               <div class="actions">
@@ -384,6 +390,18 @@
 
   small {
     color: rgba(186, 230, 253, 0.8);
+  }
+
+  .mod-badge {
+    margin-left: 0.4rem;
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    background: rgba(127, 29, 29, 0.35);
+    color: rgba(254, 226, 226, 0.95);
+    border-radius: 999px;
+    padding: 0.02rem 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.66rem;
   }
 
   p {

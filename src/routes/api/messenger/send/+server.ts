@@ -12,6 +12,7 @@ import {
 } from '$lib/server/messenger';
 import { enforceMessengerSendRateLimit } from '$lib/server/messenger/rate';
 import { getClientIp } from '$lib/server/utils/ip';
+import { enforceSocialActionAllowed } from '$lib/server/moderation';
 
 type SendPayload = {
   conversationId?: string;
@@ -29,6 +30,22 @@ export const POST: RequestHandler = async (event) => {
 
   if (!session) {
     return json({ error: 'unauthorized' }, { status: 401, headers: MESSENGER_CACHE_HEADERS });
+  }
+
+  const moderationCheck = await enforceSocialActionAllowed(
+    supabase,
+    session.user.id,
+    'message_send'
+  );
+  if (!moderationCheck.ok) {
+    return json(
+      {
+        error: moderationCheck.code,
+        message: moderationCheck.message,
+        moderationStatus: moderationCheck.moderationStatus
+      },
+      { status: moderationCheck.status, headers: MESSENGER_CACHE_HEADERS }
+    );
   }
 
   let body: SendPayload;

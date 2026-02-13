@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 import { CIRCLES_CACHE_HEADERS, cleanText, parseCirclePrivacy } from '$lib/server/circles';
 import { enforceCircleCreateRateLimit } from '$lib/server/circles/rate';
 import { getClientIp } from '$lib/server/utils/ip';
+import { enforceSocialActionAllowed } from '$lib/server/moderation';
 
 type CreatePayload = {
   name?: string;
@@ -15,6 +16,22 @@ export const POST: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
   if (!session) {
     return json({ error: 'unauthorized' }, { status: 401, headers: CIRCLES_CACHE_HEADERS });
+  }
+
+  const moderationCheck = await enforceSocialActionAllowed(
+    supabase,
+    session.user.id,
+    'circle_create'
+  );
+  if (!moderationCheck.ok) {
+    return json(
+      {
+        error: moderationCheck.code,
+        message: moderationCheck.message,
+        moderationStatus: moderationCheck.moderationStatus
+      },
+      { status: moderationCheck.status, headers: CIRCLES_CACHE_HEADERS }
+    );
   }
 
   const rate = enforceCircleCreateRateLimit(session.user.id, getClientIp(event));

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import MessageBubble from './MessageBubble.svelte';
-  import type { MessengerMessage } from './types';
+  import type { MessengerMessage, ModerationBadgeStatus } from './types';
 
   export let messages: MessengerMessage[] = [];
   export let currentUserId: string | null = null;
   export let blocked = false;
+  export let viewerCanModerate = false;
+  export let moderationByUserId: Record<string, { status: ModerationBadgeStatus; until: string | null }> = {};
   export let loading = false;
   export let title = 'Select a conversation';
   export let presenceLabel: string | null = null;
@@ -55,6 +57,7 @@
           <MessageBubble
             {message}
             isOwn={message.sender_id === currentUserId}
+            moderationStatus={viewerCanModerate ? (moderationByUserId[message.sender_id]?.status ?? 'active') : 'active'}
             on:report={(event) => dispatch('report', event.detail)}
           />
         </div>
