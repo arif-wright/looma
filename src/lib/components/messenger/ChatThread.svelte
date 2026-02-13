@@ -20,6 +20,7 @@
     react: { messageId: string; emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥'; action: 'add' | 'remove' };
     edit: { messageId: string; body: string };
     delete: { messageId: string };
+    openMedia: { messageId: string; attachmentId: string };
   }>();
 
   let scroller: HTMLDivElement | null = null;
@@ -85,6 +86,7 @@
             on:react={(event) => dispatch('react', event.detail)}
             on:edit={(event) => dispatch('edit', event.detail)}
             on:delete={(event) => dispatch('delete', event.detail)}
+            on:openMedia={(event) => dispatch('openMedia', event.detail)}
           />
         </div>
       {/each}

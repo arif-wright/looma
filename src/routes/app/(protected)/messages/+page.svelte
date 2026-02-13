@@ -7,6 +7,8 @@
   import ChatThread from '$lib/components/messenger/ChatThread.svelte';
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
+  import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
+  import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
     ModerationBadgeStatus,
@@ -38,6 +40,9 @@
   let sending = false;
   let errorMessage: string | null = null;
   let sendLocked = false;
+  let mediaViewerOpen = false;
+  let mediaViewerStartIndex = 0;
+  let mediaViewerError: string | null = null;
 
   let showStartModal = false;
   let startModalLoading = false;
@@ -156,6 +161,32 @@
     const messageAtMs = Date.parse(lastOwn.created_at);
     if (!Number.isFinite(seenAtMs) || !Number.isFinite(messageAtMs)) return null;
     return seenAtMs >= messageAtMs ? 'Seen' : null;
+  })();
+
+  $: galleryItems = (() => {
+    const items: MediaViewerItem[] = [];
+    for (const message of messages) {
+      if (message.deleted_at) continue;
+      const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+      for (const attachment of attachments) {
+        if (attachment.kind !== 'image' && attachment.kind !== 'gif') continue;
+        const profile = memberProfiles[message.sender_id];
+        items.push({
+          messageId: message.id,
+          attachmentId: attachment.id,
+          kind: attachment.kind,
+          url: attachment.view_url ?? attachment.url,
+          width: attachment.width ?? null,
+          height: attachment.height ?? null,
+          mimeType: attachment.mime_type ?? null,
+          bytes: attachment.bytes ?? null,
+          createdAt: message.created_at,
+          senderId: message.sender_id,
+          senderHandle: profile?.display_name ?? profile?.handle ?? null
+        });
+      }
+    }
+    return items;
   })();
 
   const loadFriendOptions = async () => {
@@ -359,6 +390,8 @@
     activeConversationId = conversationId;
     editingMessageId = null;
     editingSeed = '';
+    mediaViewerOpen = false;
+    mediaViewerError = null;
     clearTypingUsers();
     sendLocked = false;
     await loadMessages(conversationId, false);
@@ -368,6 +401,17 @@
 
   const updateLocalMessage = (messageId: string, patch: Partial<MessengerMessage>) => {
     messages = messages.map((row) => (row.id === messageId ? { ...row, ...patch } : row));
+  };
+
+  const handleOpenMedia = (event: CustomEvent<{ messageId: string; attachmentId: string }>) => {
+    mediaViewerError = null;
+    const index = galleryItems.findIndex((item) => item.attachmentId === event.detail.attachmentId);
+    if (index < 0) {
+      mediaViewerError = 'This media is no longer available.';
+      return;
+    }
+    mediaViewerStartIndex = index;
+    mediaViewerOpen = true;
   };
 
   const handleSendMessage = async (
@@ -508,6 +552,14 @@
     if (editingMessageId === event.detail.messageId) {
       editingMessageId = null;
       editingSeed = '';
+    }
+
+    if (mediaViewerOpen) {
+      if (galleryItems.length <= 1) {
+        mediaViewerOpen = false;
+      } else {
+        mediaViewerStartIndex = clampIndex(mediaViewerStartIndex, galleryItems.length - 1);
+      }
     }
   };
 
@@ -1039,6 +1091,7 @@
         on:react={handleReactMessage}
         on:edit={handleEditMessage}
         on:delete={handleDeleteMessage}
+        on:openMedia={handleOpenMedia}
       >
         <svelte:fragment slot="composer">
           {#if activeConversation?.peer?.id}
@@ -1076,6 +1129,9 @@
     {#if errorMessage}
       <p class="surface-error" role="status">{errorMessage}</p>
     {/if}
+    {#if mediaViewerError}
+      <p class="surface-error" role="status">{mediaViewerError}</p>
+    {/if}
   </section>
 </div>
 
@@ -1089,6 +1145,18 @@
   }}
   on:start={handleStartChat}
   on:startFriend={handleStartChatWithFriend}
+/>
+
+<MediaViewerModal
+  open={mediaViewerOpen}
+  items={galleryItems}
+  startIndex={mediaViewerStartIndex}
+  onClose={() => {
+    mediaViewerOpen = false;
+  }}
+  on:close={() => {
+    mediaViewerOpen = false;
+  }}
 />
 
 <style>

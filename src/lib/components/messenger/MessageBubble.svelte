@@ -22,6 +22,7 @@
     react: { messageId: string; emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥'; action: 'add' | 'remove' };
     edit: { messageId: string; body: string };
     delete: { messageId: string };
+    openMedia: { messageId: string; attachmentId: string };
   }>();
 
   const formattedTime = new Intl.DateTimeFormat(undefined, {
@@ -34,7 +35,6 @@
   const attachments: MessengerAttachment[] = Array.isArray(message.attachments) ? message.attachments : [];
 
   let reduceMotion = false;
-  let playingGifIds = new Set<string>();
 
   if (browser) {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -89,16 +89,6 @@
     return withoutWhitespace === emojis.join('');
   };
 
-  const toggleGif = (attachmentId: string) => {
-    const next = new Set(playingGifIds);
-    if (next.has(attachmentId)) {
-      next.delete(attachmentId);
-    } else {
-      next.add(attachmentId);
-    }
-    playingGifIds = next;
-  };
-
   $: bodyParts = splitWithUrls(message.body ?? '');
   $: largeEmoji = isLargeEmojiMessage(message.body ?? '');
 </script>
@@ -111,7 +101,12 @@
       <div class="attachments" role="group" aria-label="Attachments">
         {#each attachments as attachment (attachment.id)}
           {#if attachment.kind === 'image'}
-            <a class="attachment-card" href={attachment.view_url ?? attachment.url} target="_blank" rel="noopener noreferrer">
+            <button
+              type="button"
+              class="attachment-card media-button"
+              aria-label="Open media viewer"
+              on:click={() => dispatch('openMedia', { messageId: message.id, attachmentId: attachment.id })}
+            >
               <img
                 loading="lazy"
                 src={attachment.view_url ?? attachment.url}
@@ -119,28 +114,27 @@
                 width={attachment.width ?? undefined}
                 height={attachment.height ?? undefined}
               />
-            </a>
+            </button>
           {:else if attachment.kind === 'gif'}
-            <div class="attachment-card gif-card">
-              {#if reduceMotion && !playingGifIds.has(attachment.id)}
-                <button type="button" class="gif-toggle" on:click={() => toggleGif(attachment.id)}>
-                  Play GIF
-                </button>
-              {:else}
-                <img
-                  loading="lazy"
-                  src={attachment.view_url ?? attachment.url}
-                  alt={attachment.alt_text ?? 'Shared GIF'}
-                  width={attachment.width ?? undefined}
-                  height={attachment.height ?? undefined}
-                />
-                {#if reduceMotion}
-                  <button type="button" class="gif-toggle" on:click={() => toggleGif(attachment.id)}>
-                    Pause GIF
-                  </button>
-                {/if}
+            <button
+              type="button"
+              class="attachment-card gif-card media-button"
+              aria-label="Open media viewer"
+              on:click={() => dispatch('openMedia', { messageId: message.id, attachmentId: attachment.id })}
+            >
+              <img
+                loading="lazy"
+                src={attachment.view_url ?? attachment.url}
+                alt={attachment.alt_text ?? 'Shared GIF'}
+                width={attachment.width ?? undefined}
+                height={attachment.height ?? undefined}
+              />
+              {#if reduceMotion}
+                <span class="gif-toggle">
+                  GIF
+                </span>
               {/if}
-            </div>
+            </button>
           {/if}
         {/each}
       </div>
@@ -264,6 +258,12 @@
     background: rgba(2, 6, 23, 0.45);
     display: block;
     max-width: min(28rem, 100%);
+  }
+
+  .media-button {
+    cursor: zoom-in;
+    padding: 0;
+    text-align: left;
   }
 
   .attachment-card img {
