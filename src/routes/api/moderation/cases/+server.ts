@@ -32,6 +32,17 @@ type MessageRow = {
   created_at: string;
   deleted_at: string | null;
 };
+type AttachmentMetaRow = {
+  id: string;
+  message_id: string;
+  kind: 'image' | 'gif' | 'file' | 'link';
+  mime_type: string | null;
+  bytes: number | null;
+  width: number | null;
+  height: number | null;
+  storage_path: string | null;
+  url: string;
+};
 type TrustRow = {
   user_id: string;
   score: number;
@@ -127,6 +138,18 @@ export const GET: RequestHandler = async (event) => {
 
   const messageRows = (messageRowsRaw ?? []) as MessageRow[];
   const messagesById = new Map(messageRows.map((row) => [row.id, row]));
+  const { data: attachmentRowsRaw } = messageIds.length
+    ? await admin
+        .from('message_attachments')
+        .select('id, message_id, kind, mime_type, bytes, width, height, storage_path, url')
+        .in('message_id', messageIds)
+    : { data: [] };
+  const attachmentsByMessageId = new Map<string, AttachmentMetaRow[]>();
+  for (const attachment of (attachmentRowsRaw ?? []) as AttachmentMetaRow[]) {
+    const bucket = attachmentsByMessageId.get(attachment.message_id) ?? [];
+    bucket.push(attachment);
+    attachmentsByMessageId.set(attachment.message_id, bucket);
+  }
 
   const conversationIds = Array.from(new Set(messageRows.map((row) => row.conversation_id)));
   const { data: circlesRaw } = conversationIds.length
@@ -215,6 +238,7 @@ export const GET: RequestHandler = async (event) => {
             body: message.body,
             createdAt: message.created_at,
             deletedAt: message.deleted_at,
+            attachments: attachmentsByMessageId.get(message.id) ?? [],
             moderation: senderModeration.get(message.sender_id) ?? { status: 'active', until: null },
             trust:
               trustByUser.get(message.sender_id) ?? {

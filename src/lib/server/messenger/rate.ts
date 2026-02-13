@@ -105,3 +105,54 @@ export const enforceMessengerSendRateLimit = (
     message: 'This conversation is receiving messages too quickly. Please wait a moment.'
   });
 };
+
+export const enforceMessengerUploadPrepareRateLimit = (
+  userId: string,
+  ip: string | null | undefined
+): RateResult => {
+  const keys = [`messenger:upload_prepare:user:${userId}`];
+  if (ip) {
+    keys.push(`messenger:upload_prepare:ip:${ip}`);
+  }
+
+  return apply(keys, {
+    windowMs: 60_000,
+    limit: 10,
+    code: 'messenger_upload_prepare_rate_limited',
+    message: 'Too many upload attempts. Please wait a moment.'
+  });
+};
+
+export const enforceMessengerGifSearchRateLimit = (
+  userId: string,
+  ip: string | null | undefined
+): RateResult => {
+  const keys = [`messenger:gif_search:user:${userId}`];
+  if (ip) {
+    keys.push(`messenger:gif_search:ip:${ip}`);
+  }
+
+  return apply(keys, {
+    windowMs: 60_000,
+    limit: 30,
+    code: 'messenger_gif_search_rate_limited',
+    message: 'GIF search is rate-limited. Please wait a moment.'
+  });
+};
+
+export const enforceMessengerAttachmentSendRateLimit = (
+  userId: string,
+  ip: string | null | undefined
+): RateResult => {
+  const keys = [`messenger:attachment_send:user:${userId}`];
+  if (ip) {
+    keys.push(`messenger:attachment_send:ip:${ip}`);
+  }
+
+  return apply(keys, {
+    windowMs: 10_000,
+    limit: 6,
+    code: 'messenger_attachment_rate_limited',
+    message: 'You are sending attachments too quickly. Please slow down.'
+  });
+};

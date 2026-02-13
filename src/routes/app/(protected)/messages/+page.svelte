@@ -37,6 +37,7 @@
   let loadingMessages = false;
   let sending = false;
   let errorMessage: string | null = null;
+  let sendLocked = false;
 
   let showStartModal = false;
   let startModalLoading = false;
@@ -359,6 +360,7 @@
     editingMessageId = null;
     editingSeed = '';
     clearTypingUsers();
+    sendLocked = false;
     await loadMessages(conversationId, false);
     await markConversationRead(conversationId);
     await bindActiveMessagesRealtime();
@@ -368,13 +370,28 @@
     messages = messages.map((row) => (row.id === messageId ? { ...row, ...patch } : row));
   };
 
-  const handleSendMessage = async (event: CustomEvent<{ body: string }>) => {
+  const handleSendMessage = async (
+    event: CustomEvent<{
+      body: string;
+      attachments?: Array<{
+        kind?: 'image' | 'gif' | 'file' | 'link';
+        storagePath?: string;
+        url?: string;
+        mimeType?: string;
+        bytes?: number;
+        width?: number;
+        height?: number;
+        altText?: string | null;
+      }>;
+    }>
+  ) => {
     if (!activeConversationId || !currentUserId) return;
     sending = true;
     errorMessage = null;
 
     try {
       const body = event.detail.body;
+      const attachments = Array.isArray(event.detail.attachments) ? event.detail.attachments : [];
 
       if (editingMessageId) {
         const res = await fetch('/api/messenger/message/edit', {
@@ -408,13 +425,17 @@
         body: JSON.stringify({
           conversationId: activeConversationId,
           body,
-          clientNonce
+          clientNonce,
+          attachments
         })
       });
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         errorMessage = typeof payload?.message === 'string' ? payload.message : 'Failed to send message.';
+        if (payload?.error === 'moderation_blocked' || payload?.error === 'trust_restricted') {
+          sendLocked = true;
+        }
         return;
       }
 
@@ -426,7 +447,14 @@
         created_at: typeof payload.createdAt === 'string' ? payload.createdAt : new Date().toISOString(),
         edited_at: null,
         deleted_at: null,
-        client_nonce: clientNonce
+        client_nonce: clientNonce,
+        has_attachments: attachments.length > 0,
+        preview_kind: attachments.some((entry) => entry.kind === 'gif')
+          ? 'gif'
+          : attachments.length > 0
+            ? 'image'
+            : 'text',
+        attachments: Array.isArray(payload?.attachments) ? payload.attachments : []
       };
 
       if (!messages.some((row) => row.id === message.id)) {
@@ -439,7 +467,7 @@
             ? {
                 ...conversation,
                 last_message_at: message.created_at,
-                preview: body,
+                preview: body || (attachments.some((entry) => entry.kind === 'gif') ? 'GIF' : '📷 Photo'),
                 unreadCount: 0
               }
             : conversation
@@ -836,14 +864,19 @@
                 conversation.conversationId === conversationId
                   ? {
                       ...conversation,
-                      last_message_at: incoming.created_at,
-                      preview: incoming.deleted_at ? 'Message removed' : incoming.body,
-                      unreadCount: incoming.sender_id === currentUserId ? 0 : conversation.unreadCount
-                    }
-                  : conversation
+                    last_message_at: incoming.created_at,
+                    preview: incoming.deleted_at
+                      ? 'Message removed'
+                      : incoming.body || (incoming.preview_kind === 'gif' ? 'GIF' : incoming.has_attachments ? '📷 Photo' : ''),
+                    unreadCount: incoming.sender_id === currentUserId ? 0 : conversation.unreadCount
+                  }
+                : conversation
               )
               .sort(byNewest);
 
+            if (incoming.has_attachments) {
+              void loadMessages(conversationId, false);
+            }
             scheduleRead(conversationId);
             return;
           }
@@ -854,7 +887,9 @@
                 ? {
                     ...conversation,
                     last_message_at: incoming.created_at,
-                    preview: incoming.deleted_at ? 'Message removed' : incoming.body,
+                    preview: incoming.deleted_at
+                      ? 'Message removed'
+                      : incoming.body || (incoming.preview_kind === 'gif' ? 'GIF' : incoming.has_attachments ? '📷 Photo' : ''),
                     unreadCount: incoming.sender_id === currentUserId ? conversation.unreadCount : conversation.unreadCount + 1
                   }
                 : conversation
@@ -1012,7 +1047,8 @@
             </div>
           {/if}
           <MessageComposer
-            disabled={activeConversation?.blocked ?? false}
+            conversationId={activeConversationId}
+            disabled={(activeConversation?.blocked ?? false) || sendLocked}
             {sending}
             editing={editingMessageId !== null}
             editSeed={editingSeed}

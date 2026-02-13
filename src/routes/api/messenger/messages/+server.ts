@@ -8,6 +8,7 @@ import {
   isUuid
 } from '$lib/server/messenger';
 import { requireModerator } from '$lib/server/moderation';
+import { resolveAttachmentViewUrls } from '$lib/server/messenger/media';
 
 type MessageRow = {
   id: string;
@@ -18,6 +19,22 @@ type MessageRow = {
   edited_at: string | null;
   deleted_at: string | null;
   client_nonce: string | null;
+  has_attachments: boolean;
+  preview_kind: 'image' | 'gif' | 'text' | null;
+};
+type AttachmentRow = {
+  id: string;
+  message_id: string;
+  kind: 'image' | 'gif' | 'file' | 'link';
+  url: string;
+  storage_path: string | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  alt_text: string | null;
+  created_at: string;
+  view_url: string;
 };
 
 type ReactionRow = {
@@ -69,7 +86,7 @@ export const GET: RequestHandler = async (event) => {
 
   let query = supabase
     .from('messages')
-    .select('id, conversation_id, sender_id, body, created_at, edited_at, deleted_at, client_nonce')
+    .select('id, conversation_id, sender_id, body, created_at, edited_at, deleted_at, client_nonce, has_attachments, preview_kind')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -181,6 +198,21 @@ export const GET: RequestHandler = async (event) => {
   }
 
   const messageIds = pageRows.map((row) => row.id);
+  const { data: attachmentRowsRaw } = messageIds.length
+    ? await supabase
+        .from('message_attachments')
+        .select('id, message_id, kind, url, storage_path, mime_type, width, height, bytes, alt_text, created_at')
+        .in('message_id', messageIds)
+    : { data: [] };
+
+  const signedAttachments = await resolveAttachmentViewUrls((attachmentRowsRaw ?? []) as AttachmentRow[]);
+  const attachmentsByMessageId = new Map<string, AttachmentRow[]>();
+  for (const attachment of signedAttachments) {
+    const bucket = attachmentsByMessageId.get(attachment.message_id) ?? [];
+    bucket.push(attachment);
+    attachmentsByMessageId.set(attachment.message_id, bucket);
+  }
+
   const { data: reactionsRaw } = messageIds.length
     ? await supabase
         .from('message_reactions')
@@ -227,7 +259,10 @@ export const GET: RequestHandler = async (event) => {
 
   return json(
     {
-      items: [...pageRows].reverse(),
+      items: [...pageRows].reverse().map((row) => ({
+        ...row,
+        attachments: attachmentsByMessageId.get(row.id) ?? []
+      })),
       nextCursor,
       memberIds,
       memberProfiles,

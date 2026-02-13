@@ -24,6 +24,16 @@
       body: string;
       createdAt: string;
       deletedAt: string | null;
+      attachments: Array<{
+        id: string;
+        kind: 'image' | 'gif' | 'file' | 'link';
+        mime_type: string | null;
+        bytes: number | null;
+        width: number | null;
+        height: number | null;
+        storage_path: string | null;
+        url: string;
+      }>;
       moderation: { status: 'active' | 'muted' | 'suspended' | 'banned'; until: string | null };
       trust: { user_id: string; score: number; tier: 'new' | 'standard' | 'trusted' | 'restricted'; forced_tier: 'new' | 'standard' | 'trusted' | 'restricted' | null };
     } | null;
@@ -317,6 +327,7 @@
             <p><strong>Circle:</strong> {activeCase.circle ? `${activeCase.circle.name} (${activeCase.circle.circleId})` : '—'}</p>
             <p><strong>Sender moderation:</strong> {activeCase.message?.moderation.status ?? 'active'}</p>
             <p><strong>Trust tier:</strong> {activeCase.message?.trust?.tier ?? 'new'}</p>
+            <p><strong>Attachments:</strong> {activeCase.message?.attachments?.length ?? 0}</p>
 
             <div class="message-box">
               <h3>Message</h3>

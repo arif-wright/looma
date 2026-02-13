@@ -33,6 +33,24 @@ export type MessengerMessage = {
   edited_at: string | null;
   deleted_at: string | null;
   client_nonce: string | null;
+  has_attachments?: boolean;
+  preview_kind?: 'image' | 'gif' | 'text' | null;
+  attachments?: MessengerAttachment[];
+};
+
+export type MessengerAttachment = {
+  id: string;
+  message_id: string;
+  kind: 'image' | 'gif' | 'file' | 'link';
+  url: string;
+  view_url: string;
+  storage_path: string | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  alt_text: string | null;
+  created_at: string;
 };
 
 export type MessageReactionSummary = {

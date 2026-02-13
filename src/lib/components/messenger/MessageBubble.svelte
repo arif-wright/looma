@@ -1,6 +1,12 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { createEventDispatcher } from 'svelte';
-  import type { MessageReactionSummary, MessengerMessage, ModerationBadgeStatus } from './types';
+  import type {
+    MessageReactionSummary,
+    MessengerAttachment,
+    MessengerMessage,
+    ModerationBadgeStatus
+  } from './types';
 
   export let message: MessengerMessage;
   export let isOwn = false;
@@ -25,6 +31,18 @@
 
   const isDeleted = Boolean(message.deleted_at);
   const isEdited = Boolean(message.edited_at) && !isDeleted;
+  const attachments: MessengerAttachment[] = Array.isArray(message.attachments) ? message.attachments : [];
+
+  let reduceMotion = false;
+  let playingGifIds = new Set<string>();
+
+  if (browser) {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reduceMotion = media.matches;
+    media.addEventListener('change', (event) => {
+      reduceMotion = event.matches;
+    });
+  }
 
   const getReaction = (emoji: MessageReactionSummary['emoji']) =>
     reactions.find((entry) => entry.emoji === emoji) ?? null;
@@ -57,22 +75,88 @@
     return parts;
   };
 
+  const extractEmojis = (text: string): string[] => {
+    const matches = text.match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*/gu);
+    return matches ?? [];
+  };
+
+  const isLargeEmojiMessage = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || attachments.length > 0) return false;
+    const emojis = extractEmojis(trimmed);
+    if (emojis.length < 1 || emojis.length > 3) return false;
+    const withoutWhitespace = trimmed.replace(/\s+/g, '');
+    return withoutWhitespace === emojis.join('');
+  };
+
+  const toggleGif = (attachmentId: string) => {
+    const next = new Set(playingGifIds);
+    if (next.has(attachmentId)) {
+      next.delete(attachmentId);
+    } else {
+      next.add(attachmentId);
+    }
+    playingGifIds = next;
+  };
+
   $: bodyParts = splitWithUrls(message.body ?? '');
+  $: largeEmoji = isLargeEmojiMessage(message.body ?? '');
 </script>
 
-<article class={`bubble ${isOwn ? 'bubble--own' : ''} ${isDeleted ? 'bubble--deleted' : ''}`}>
+<article class={`bubble ${isOwn ? 'bubble--own' : ''} ${isDeleted ? 'bubble--deleted' : ''} ${largeEmoji ? 'bubble--emoji' : ''}`}>
   {#if isDeleted}
     <p class="deleted">Message removed</p>
   {:else}
-    <p>
-      {#each bodyParts as part}
-        {#if part.type === 'url'}
-          <a href={part.value} target="_blank" rel="noopener noreferrer nofollow">{part.value}</a>
-        {:else}
-          {part.value}
-        {/if}
-      {/each}
-    </p>
+    {#if attachments.length > 0}
+      <div class="attachments" role="group" aria-label="Attachments">
+        {#each attachments as attachment (attachment.id)}
+          {#if attachment.kind === 'image'}
+            <a class="attachment-card" href={attachment.view_url ?? attachment.url} target="_blank" rel="noopener noreferrer">
+              <img
+                loading="lazy"
+                src={attachment.view_url ?? attachment.url}
+                alt={attachment.alt_text ?? 'Shared image'}
+                width={attachment.width ?? undefined}
+                height={attachment.height ?? undefined}
+              />
+            </a>
+          {:else if attachment.kind === 'gif'}
+            <div class="attachment-card gif-card">
+              {#if reduceMotion && !playingGifIds.has(attachment.id)}
+                <button type="button" class="gif-toggle" on:click={() => toggleGif(attachment.id)}>
+                  Play GIF
+                </button>
+              {:else}
+                <img
+                  loading="lazy"
+                  src={attachment.view_url ?? attachment.url}
+                  alt={attachment.alt_text ?? 'Shared GIF'}
+                  width={attachment.width ?? undefined}
+                  height={attachment.height ?? undefined}
+                />
+                {#if reduceMotion}
+                  <button type="button" class="gif-toggle" on:click={() => toggleGif(attachment.id)}>
+                    Pause GIF
+                  </button>
+                {/if}
+              {/if}
+            </div>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+
+    {#if message.body.trim().length > 0}
+      <p class={largeEmoji ? 'emoji-only' : ''}>
+        {#each bodyParts as part}
+          {#if part.type === 'url'}
+            <a href={part.value} target="_blank" rel="noopener noreferrer nofollow">{part.value}</a>
+          {:else}
+            {part.value}
+          {/if}
+        {/each}
+      </p>
+    {/if}
   {/if}
 
   <div class="reaction-strip" aria-label="Quick reactions">
@@ -150,10 +234,58 @@
     opacity: 0.86;
   }
 
+  .bubble--emoji {
+    background: transparent;
+    border-color: transparent;
+    padding: 0.2rem 0.35rem;
+  }
+
   p {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  .emoji-only {
+    font-size: clamp(2rem, 4vw, 3.1rem);
+    line-height: 1.12;
+  }
+
+  .attachments {
+    display: grid;
+    gap: 0.45rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .attachment-card {
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 0.7rem;
+    overflow: hidden;
+    background: rgba(2, 6, 23, 0.45);
+    display: block;
+    max-width: min(28rem, 100%);
+  }
+
+  .attachment-card img {
+    width: 100%;
+    max-height: 24rem;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gif-card {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.45rem;
+  }
+
+  .gif-toggle {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 0.55rem;
+    background: rgba(15, 23, 42, 0.7);
+    color: #e2e8f0;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
   }
 
   .deleted {
