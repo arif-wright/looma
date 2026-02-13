@@ -1,19 +1,26 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import MessageBubble from './MessageBubble.svelte';
-  import type { MessengerMessage, ModerationBadgeStatus } from './types';
+  import type { MessageReactionSummary, MessengerMessage, ModerationBadgeStatus } from './types';
 
   export let messages: MessengerMessage[] = [];
   export let currentUserId: string | null = null;
   export let blocked = false;
   export let viewerCanModerate = false;
   export let moderationByUserId: Record<string, { status: ModerationBadgeStatus; until: string | null }> = {};
+  export let reactionsByMessageId: Record<string, MessageReactionSummary[]> = {};
   export let loading = false;
   export let title = 'Select a conversation';
   export let presenceLabel: string | null = null;
-  export let typing = false;
+  export let typingLabel: string | null = null;
+  export let seenLabel: string | null = null;
 
-  const dispatch = createEventDispatcher<{ report: { messageId: string } }>();
+  const dispatch = createEventDispatcher<{
+    report: { messageId: string };
+    react: { messageId: string; emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥'; action: 'add' | 'remove' };
+    edit: { messageId: string; body: string };
+    delete: { messageId: string };
+  }>();
 
   let scroller: HTMLDivElement | null = null;
 
@@ -21,6 +28,19 @@
     await tick();
     if (!scroller) return;
     scroller.scrollTop = scroller.scrollHeight;
+  };
+
+  const isEditable = (message: MessengerMessage) => {
+    if (message.sender_id !== currentUserId) return false;
+    if (message.deleted_at) return false;
+    const createdMs = Date.parse(message.created_at);
+    if (!Number.isFinite(createdMs)) return false;
+    return Date.now() - createdMs <= 10 * 60 * 1000;
+  };
+
+  const isDeletable = (message: MessengerMessage) => {
+    if (message.deleted_at) return false;
+    return message.sender_id === currentUserId;
   };
 
   $: if (messages.length) {
@@ -38,8 +58,8 @@
     {#if presenceLabel}
       <p class="presence" role="status">{presenceLabel}</p>
     {/if}
-    {#if typing}
-      <p class="typing" role="status">Typing…</p>
+    {#if typingLabel}
+      <p class="typing" role="status">{typingLabel}</p>
     {/if}
     {#if blocked}
       <p role="status">You can’t message this user.</p>
@@ -56,14 +76,24 @@
         <div class={`thread__line ${message.sender_id === currentUserId ? 'own' : ''}`}>
           <MessageBubble
             {message}
+            reactions={reactionsByMessageId[message.id] ?? []}
+            canEdit={isEditable(message)}
+            canDelete={isDeletable(message)}
             isOwn={message.sender_id === currentUserId}
             moderationStatus={viewerCanModerate ? (moderationByUserId[message.sender_id]?.status ?? 'active') : 'active'}
             on:report={(event) => dispatch('report', event.detail)}
+            on:react={(event) => dispatch('react', event.detail)}
+            on:edit={(event) => dispatch('edit', event.detail)}
+            on:delete={(event) => dispatch('delete', event.detail)}
           />
         </div>
       {/each}
     {/if}
   </div>
+
+  {#if seenLabel}
+    <p class="seen" role="status">{seenLabel}</p>
+  {/if}
 
   <slot name="composer" />
 </section>
@@ -71,7 +101,7 @@
 <style>
   .thread {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr auto auto;
     min-height: 0;
   }
 
@@ -100,6 +130,14 @@
     color: rgba(148, 163, 184, 0.95);
     opacity: 0.9;
     transition: opacity 0.2s ease;
+  }
+
+  .seen {
+    margin: 0;
+    padding: 0.2rem 1rem 0;
+    color: rgba(148, 163, 184, 0.94);
+    font-size: 0.74rem;
+    text-align: right;
   }
 
   @media (prefers-reduced-motion: reduce) {

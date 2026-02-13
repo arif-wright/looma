@@ -20,6 +20,12 @@ type MessageRow = {
   client_nonce: string | null;
 };
 
+type ReactionRow = {
+  message_id: string;
+  user_id: string;
+  emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥';
+};
+
 const parseLimit = (value: string | null) => {
   if (!value) return 40;
   const parsed = Number(value);
@@ -65,7 +71,6 @@ export const GET: RequestHandler = async (event) => {
     .from('messages')
     .select('id, conversation_id, sender_id, body, created_at, edited_at, deleted_at, client_nonce')
     .eq('conversation_id', conversationId)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit + 25);
@@ -94,6 +99,14 @@ export const GET: RequestHandler = async (event) => {
 
   const memberIds = await getConversationMembers(supabase, conversationId);
   const peerId = memberIds.find((id) => id !== session.user.id) ?? null;
+
+  const { data: conversationRow } = await supabase
+    .from('conversations')
+    .select('type')
+    .eq('id', conversationId)
+    .maybeSingle<{ type: 'dm' | 'group' }>();
+  const conversationType = conversationRow?.type === 'group' ? 'group' : 'dm';
+
   const { data: peerProfile } = peerId
     ? await supabase
         .from('profiles')
@@ -101,6 +114,7 @@ export const GET: RequestHandler = async (event) => {
         .eq('id', peerId)
         .maybeSingle()
     : { data: null };
+
   const { data: peerPresence } = peerId
     ? await supabase
         .from('user_presence')
@@ -108,6 +122,25 @@ export const GET: RequestHandler = async (event) => {
         .eq('user_id', peerId)
         .maybeSingle()
     : { data: null };
+
+  const { data: memberProfilesRaw } = memberIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, handle, display_name')
+        .in('id', memberIds)
+    : { data: [] };
+
+  const memberProfiles = Object.fromEntries(
+    (memberProfilesRaw ?? [])
+      .filter((row) => typeof row.id === 'string')
+      .map((row) => [
+        row.id as string,
+        {
+          handle: typeof row.handle === 'string' ? row.handle : null,
+          display_name: typeof row.display_name === 'string' ? row.display_name : null
+        }
+      ])
+  );
 
   let blocked = false;
   if (peerId) {
@@ -124,29 +157,72 @@ export const GET: RequestHandler = async (event) => {
   );
 
   let moderationByUserId: Record<string, { status: 'active' | 'muted' | 'suspended' | 'banned'; until: string | null }> = {};
-  if (moderatorAccess.ok) {
-    const senderIds = Array.from(new Set(pageRows.map((row) => row.sender_id)));
-    if (senderIds.length) {
-      const { data: senderPrefs } = await supabase
-        .from('user_preferences')
-        .select('user_id, moderation_status, moderation_until')
-        .in('user_id', senderIds);
+  const senderIds = Array.from(new Set(pageRows.map((row) => row.sender_id)));
+  if (moderatorAccess.ok && senderIds.length) {
+    const { data: senderPrefs } = await supabase
+      .from('user_preferences')
+      .select('user_id, moderation_status, moderation_until')
+      .in('user_id', senderIds);
 
-      moderationByUserId = Object.fromEntries(
-        (senderPrefs ?? []).map((row) => [
-          row.user_id as string,
-          {
-            status:
-              row.moderation_status === 'muted' ||
-              row.moderation_status === 'suspended' ||
-              row.moderation_status === 'banned'
-                ? row.moderation_status
-                : 'active',
-            until: (row.moderation_until as string | null) ?? null
-          }
-        ])
-      );
+    moderationByUserId = Object.fromEntries(
+      (senderPrefs ?? []).map((row) => [
+        row.user_id as string,
+        {
+          status:
+            row.moderation_status === 'muted' ||
+            row.moderation_status === 'suspended' ||
+            row.moderation_status === 'banned'
+              ? row.moderation_status
+              : 'active',
+          until: (row.moderation_until as string | null) ?? null
+        }
+      ])
+    );
+  }
+
+  const messageIds = pageRows.map((row) => row.id);
+  const { data: reactionsRaw } = messageIds.length
+    ? await supabase
+        .from('message_reactions')
+        .select('message_id, user_id, emoji')
+        .in('message_id', messageIds)
+    : { data: [] };
+
+  const reactionMap: Record<string, Array<{ emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥'; count: number; reacted: boolean }>> = {};
+  const reactionBuckets = new Map<string, Map<string, { count: number; reacted: boolean }>>();
+
+  for (const row of (reactionsRaw ?? []) as ReactionRow[]) {
+    if (!reactionBuckets.has(row.message_id)) {
+      reactionBuckets.set(row.message_id, new Map());
     }
+
+    const bucket = reactionBuckets.get(row.message_id) as Map<string, { count: number; reacted: boolean }>;
+    const existing = bucket.get(row.emoji) ?? { count: 0, reacted: false };
+    existing.count += 1;
+    if (row.user_id === session.user.id) {
+      existing.reacted = true;
+    }
+    bucket.set(row.emoji, existing);
+  }
+
+  for (const [messageId, bucket] of reactionBuckets.entries()) {
+    reactionMap[messageId] = Array.from(bucket.entries()).map(([emoji, value]) => ({
+      emoji: emoji as '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥',
+      count: value.count,
+      reacted: value.reacted
+    }));
+  }
+
+  let seenByPeerAt: string | null = null;
+  if (conversationType === 'dm' && peerId) {
+    const { data: peerMembership } = await supabase
+      .from('conversation_members')
+      .select('last_read_at')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', peerId)
+      .maybeSingle<{ last_read_at: string | null }>();
+
+    seenByPeerAt = peerMembership?.last_read_at ?? null;
   }
 
   return json(
@@ -154,6 +230,9 @@ export const GET: RequestHandler = async (event) => {
       items: [...pageRows].reverse(),
       nextCursor,
       memberIds,
+      memberProfiles,
+      conversationType,
+      seenByPeerAt,
       peer:
         peerId && peerProfile
           ? {
@@ -198,7 +277,8 @@ export const GET: RequestHandler = async (event) => {
             : null,
       blocked,
       viewerCanModerate: moderatorAccess.ok,
-      moderationByUserId
+      moderationByUserId,
+      reactionsByMessageId: reactionMap
     },
     { headers: MESSENGER_CACHE_HEADERS }
   );

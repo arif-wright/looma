@@ -8,6 +8,7 @@
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import type {
+    MessageReactionSummary,
     ModerationBadgeStatus,
     MessengerConversation,
     MessengerFriendOption,
@@ -22,6 +23,11 @@
   let conversations: MessengerConversation[] = [];
   let activeConversationId: string | null = null;
   let messages: MessengerMessage[] = [];
+  let reactionsByMessageId: Record<string, MessageReactionSummary[]> = {};
+  let memberProfiles: Record<string, { handle: string | null; display_name: string | null }> = {};
+  let conversationType: 'dm' | 'group' = 'dm';
+  let seenByPeerAt: string | null = null;
+
   let moderationByUserId: Record<string, { status: ModerationBadgeStatus; until: string | null }> = {};
   let viewerCanModerate = false;
   let nextCursor: string | null = null;
@@ -37,15 +43,62 @@
   let startModalError: string | null = null;
   let startModalFriends: MessengerFriendOption[] = [];
 
+  let editingMessageId: string | null = null;
+  let editingSeed = '';
+
   let readDebounce: ReturnType<typeof setTimeout> | null = null;
   let typingStopTimer: ReturnType<typeof setTimeout> | null = null;
-  let peerTypingTimer: ReturnType<typeof setTimeout> | null = null;
-  let peerTyping = false;
   let localTypingActive = false;
+  let lastTypingTrueAt = 0;
+  let typingUsers = new Set<string>();
+  let typingUserTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
   let supabaseClient: ReturnType<typeof supabaseBrowser> | null = null;
   let activeMessagesChannel: RealtimeChannel | null = null;
   let conversationsChannel: RealtimeChannel | null = null;
   let presenceChannel: RealtimeChannel | null = null;
+
+  const byNewest = (a: MessengerConversation, b: MessengerConversation) => {
+    const aTime = a.last_message_at ? Date.parse(a.last_message_at) : 0;
+    const bTime = b.last_message_at ? Date.parse(b.last_message_at) : 0;
+    return bTime - aTime;
+  };
+
+  const clearTypingUsers = () => {
+    for (const timer of typingUserTimers.values()) {
+      clearTimeout(timer);
+    }
+    typingUserTimers = new Map();
+    typingUsers = new Set();
+  };
+
+  const setUserTyping = (userId: string, typing: boolean) => {
+    if (typing) {
+      const next = new Set(typingUsers);
+      next.add(userId);
+      typingUsers = next;
+
+      const existing = typingUserTimers.get(userId);
+      if (existing) clearTimeout(existing);
+      const timer = setTimeout(() => {
+        const after = new Set(typingUsers);
+        after.delete(userId);
+        typingUsers = after;
+        typingUserTimers.delete(userId);
+      }, 3000);
+      typingUserTimers.set(userId, timer);
+      return;
+    }
+
+    const timer = typingUserTimers.get(userId);
+    if (timer) {
+      clearTimeout(timer);
+      typingUserTimers.delete(userId);
+    }
+    const next = new Set(typingUsers);
+    next.delete(userId);
+    typingUsers = next;
+  };
 
   $: filteredConversations = conversations.filter((conversation) => {
     const key = `${conversation.peer?.display_name ?? ''} ${conversation.peer?.handle ?? ''} ${conversation.preview ?? ''}`.toLowerCase();
@@ -59,7 +112,7 @@
 
   $: threadTitle =
     activeConversation?.peer?.display_name ??
-    (activeConversation?.peer?.handle ? `@${activeConversation.peer.handle}` : 'Conversation');
+    (activeConversation?.peer?.handle ? `@${activeConversation.peer.handle}` : activeConversation?.group_name ?? 'Conversation');
 
   const relativeLastActive = (iso: string) => {
     const ts = Date.parse(iso);
@@ -82,11 +135,27 @@
     return relativeLastActive(presence.last_active_at);
   })();
 
-  const byNewest = (a: MessengerConversation, b: MessengerConversation) => {
-    const aTime = a.last_message_at ? Date.parse(a.last_message_at) : 0;
-    const bTime = b.last_message_at ? Date.parse(b.last_message_at) : 0;
-    return bTime - aTime;
-  };
+  $: typingLabel = (() => {
+    if (!presenceVisible || typingUsers.size === 0) return null;
+    const names = [...typingUsers]
+      .map((id) => memberProfiles[id]?.display_name ?? (memberProfiles[id]?.handle ? `@${memberProfiles[id]?.handle}` : id.slice(0, 8)))
+      .filter((value) => typeof value === 'string' && value.length > 0);
+
+    if (names.length === 0) return 'Typing…';
+    if (names.length === 1) return `${names[0]} is typing…`;
+    if (names.length === 2) return `${names[0]}, ${names[1]} typing…`;
+    return `${names[0]}, ${names[1]} +${names.length - 2} typing…`;
+  })();
+
+  $: seenLabel = (() => {
+    if (conversationType !== 'dm' || !seenByPeerAt || !currentUserId) return null;
+    const lastOwn = [...messages].reverse().find((message) => message.sender_id === currentUserId && !message.deleted_at) ?? null;
+    if (!lastOwn) return null;
+    const seenAtMs = Date.parse(seenByPeerAt);
+    const messageAtMs = Date.parse(lastOwn.created_at);
+    if (!Number.isFinite(seenAtMs) || !Number.isFinite(messageAtMs)) return null;
+    return seenAtMs >= messageAtMs ? 'Seen' : null;
+  })();
 
   const loadFriendOptions = async () => {
     const res = await fetch('/api/friends/list', { headers: { 'cache-control': 'no-store' } });
@@ -186,6 +255,33 @@
     }
   };
 
+  const normalizeReactionMap = (input: unknown): Record<string, MessageReactionSummary[]> => {
+    if (!input || typeof input !== 'object') return {};
+    const source = input as Record<string, unknown>;
+    const out: Record<string, MessageReactionSummary[]> = {};
+
+    for (const [messageId, reactions] of Object.entries(source)) {
+      if (!Array.isArray(reactions)) continue;
+      out[messageId] = reactions
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object') return null;
+          const row = entry as Record<string, unknown>;
+          if (row.emoji !== '👍' && row.emoji !== '❤️' && row.emoji !== '😂' && row.emoji !== '😮' && row.emoji !== '😢' && row.emoji !== '🔥') {
+            return null;
+          }
+          const count = Number(row.count ?? 0);
+          return {
+            emoji: row.emoji,
+            count: Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0,
+            reacted: row.reacted === true
+          } satisfies MessageReactionSummary;
+        })
+        .filter((entry): entry is MessageReactionSummary => Boolean(entry));
+    }
+
+    return out;
+  };
+
   const loadMessages = async (conversationId: string, older: boolean) => {
     loadingMessages = !older;
 
@@ -208,6 +304,17 @@
         payload?.moderationByUserId && typeof payload.moderationByUserId === 'object'
           ? (payload.moderationByUserId as Record<string, { status: ModerationBadgeStatus; until: string | null }>)
           : {};
+
+      const nextProfiles = payload?.memberProfiles && typeof payload.memberProfiles === 'object'
+        ? (payload.memberProfiles as Record<string, { handle: string | null; display_name: string | null }>)
+        : {};
+      memberProfiles = { ...memberProfiles, ...nextProfiles };
+
+      conversationType = payload?.conversationType === 'group' ? 'group' : 'dm';
+      seenByPeerAt = typeof payload?.seenByPeerAt === 'string' ? payload.seenByPeerAt : null;
+
+      const nextReactionMap = normalizeReactionMap(payload?.reactionsByMessageId);
+      reactionsByMessageId = older ? { ...nextReactionMap, ...reactionsByMessageId } : nextReactionMap;
 
       if (older) {
         messages = [...items, ...messages];
@@ -249,9 +356,16 @@
   const handleSelectConversation = async (conversationId: string) => {
     if (conversationId === activeConversationId) return;
     activeConversationId = conversationId;
+    editingMessageId = null;
+    editingSeed = '';
+    clearTypingUsers();
     await loadMessages(conversationId, false);
     await markConversationRead(conversationId);
     await bindActiveMessagesRealtime();
+  };
+
+  const updateLocalMessage = (messageId: string, patch: Partial<MessengerMessage>) => {
+    messages = messages.map((row) => (row.id === messageId ? { ...row, ...patch } : row));
   };
 
   const handleSendMessage = async (event: CustomEvent<{ body: string }>) => {
@@ -260,9 +374,34 @@
     errorMessage = null;
 
     try {
-      const clientNonce = crypto.randomUUID();
       const body = event.detail.body;
 
+      if (editingMessageId) {
+        const res = await fetch('/api/messenger/message/edit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ messageId: editingMessageId, body })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errorMessage = typeof payload?.message === 'string' ? payload.message : 'Failed to edit message.';
+          return;
+        }
+
+        updateLocalMessage(editingMessageId, {
+          body,
+          edited_at: typeof payload.editedAt === 'string' ? payload.editedAt : new Date().toISOString()
+        });
+
+        editingMessageId = null;
+        editingSeed = '';
+        if (localTypingActive) {
+          void sendTyping(false, true);
+        }
+        return;
+      }
+
+      const clientNonce = crypto.randomUUID();
       const res = await fetch('/api/messenger/send', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -308,6 +447,9 @@
         .sort(byNewest);
 
       scheduleRead(activeConversationId);
+      if (localTypingActive) {
+        void sendTyping(false, true);
+      }
     } finally {
       sending = false;
     }
@@ -322,6 +464,91 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ messageId: event.detail.messageId, reason })
     });
+  };
+
+  const handleDeleteMessage = async (event: CustomEvent<{ messageId: string }>) => {
+    const res = await fetch('/api/messenger/message/delete', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messageId: event.detail.messageId })
+    });
+
+    if (!res.ok) return;
+
+    updateLocalMessage(event.detail.messageId, { deleted_at: new Date().toISOString() });
+
+    if (editingMessageId === event.detail.messageId) {
+      editingMessageId = null;
+      editingSeed = '';
+    }
+  };
+
+  const handleEditMessage = (event: CustomEvent<{ messageId: string; body: string }>) => {
+    editingMessageId = event.detail.messageId;
+    editingSeed = event.detail.body;
+  };
+
+  const applyReactionLocally = (
+    messageId: string,
+    emoji: MessageReactionSummary['emoji'],
+    action: 'add' | 'remove'
+  ) => {
+    const current = reactionsByMessageId[messageId] ?? [];
+    const existing = current.find((entry) => entry.emoji === emoji) ?? null;
+    let next = current;
+
+    if (action === 'add') {
+      if (existing) {
+        next = current.map((entry) =>
+          entry.emoji === emoji
+            ? {
+                ...entry,
+                count: entry.reacted ? entry.count : entry.count + 1,
+                reacted: true
+              }
+            : entry
+        );
+      } else {
+        next = [...current, { emoji, count: 1, reacted: true }];
+      }
+    } else {
+      if (!existing) return;
+      if (existing.count <= 1) {
+        next = current.filter((entry) => entry.emoji !== emoji);
+      } else {
+        next = current.map((entry) =>
+          entry.emoji === emoji
+            ? {
+                ...entry,
+                count: Math.max(0, entry.count - (entry.reacted ? 1 : 0)),
+                reacted: false
+              }
+            : entry
+        );
+      }
+    }
+
+    reactionsByMessageId = {
+      ...reactionsByMessageId,
+      [messageId]: next
+    };
+  };
+
+  const handleReactMessage = async (
+    event: CustomEvent<{ messageId: string; emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥'; action: 'add' | 'remove' }>
+  ) => {
+    const { messageId, emoji, action } = event.detail;
+    applyReactionLocally(messageId, emoji, action);
+
+    const res = await fetch('/api/messenger/react', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messageId, emoji, action })
+    });
+
+    if (!res.ok) {
+      applyReactionLocally(messageId, emoji, action === 'add' ? 'remove' : 'add');
+    }
   };
 
   const handleBlock = async () => {
@@ -397,8 +624,15 @@
     }
   };
 
-  const sendTyping = async (typing: boolean) => {
+  const sendTyping = async (typing: boolean, force = false) => {
     if (!presenceVisible || !activeMessagesChannel || !activeConversationId || !currentUserId) return;
+
+    if (typing && !force) {
+      const now = Date.now();
+      if (now - lastTypingTrueAt < 1000) return;
+      lastTypingTrueAt = now;
+    }
+
     localTypingActive = typing;
     await activeMessagesChannel
       .send({
@@ -422,14 +656,12 @@
         typingStopTimer = null;
       }
       if (localTypingActive) {
-        void sendTyping(false);
+        void sendTyping(false, true);
       }
       return;
     }
 
-    if (!localTypingActive) {
-      void sendTyping(true);
-    }
+    void sendTyping(true);
 
     if (typingStopTimer) {
       clearTimeout(typingStopTimer);
@@ -438,7 +670,7 @@
     typingStopTimer = setTimeout(() => {
       typingStopTimer = null;
       if (localTypingActive) {
-        void sendTyping(false);
+        void sendTyping(false, true);
       }
     }, 1200);
   };
@@ -496,18 +728,82 @@
       .subscribe();
   };
 
+  const applyReactionRealtime = (
+    eventType: 'INSERT' | 'DELETE' | 'UPDATE',
+    row: { message_id?: string | null; user_id?: string | null; emoji?: string | null } | null
+  ) => {
+    if (!row?.message_id || !row?.emoji) return;
+    if (!messages.some((message) => message.id === row.message_id)) return;
+    if (row.emoji !== '👍' && row.emoji !== '❤️' && row.emoji !== '😂' && row.emoji !== '😮' && row.emoji !== '😢' && row.emoji !== '🔥') {
+      return;
+    }
+
+    const current = reactionsByMessageId[row.message_id] ?? [];
+    const existing = current.find((entry) => entry.emoji === row.emoji) ?? null;
+
+    if (eventType === 'INSERT') {
+      if (!existing) {
+        reactionsByMessageId = {
+          ...reactionsByMessageId,
+          [row.message_id]: [
+            ...current,
+            {
+              emoji: row.emoji,
+              count: 1,
+              reacted: row.user_id === currentUserId
+            }
+          ]
+        };
+        return;
+      }
+
+      reactionsByMessageId = {
+        ...reactionsByMessageId,
+        [row.message_id]: current.map((entry) =>
+          entry.emoji === row.emoji
+            ? {
+                ...entry,
+                count: entry.count + 1,
+                reacted: entry.reacted || row.user_id === currentUserId
+              }
+            : entry
+        )
+      };
+      return;
+    }
+
+    if (!existing) return;
+
+    const next = current
+      .map((entry) =>
+        entry.emoji === row.emoji
+          ? {
+              ...entry,
+              count: Math.max(0, entry.count - 1),
+              reacted: row.user_id === currentUserId ? false : entry.reacted
+            }
+          : entry
+      )
+      .filter((entry) => entry.count > 0);
+
+    reactionsByMessageId = {
+      ...reactionsByMessageId,
+      [row.message_id]: next
+    };
+  };
+
   const bindActiveMessagesRealtime = async () => {
     if (!supabaseClient) return;
 
     if (activeMessagesChannel) {
       if (localTypingActive) {
-        void sendTyping(false);
+        void sendTyping(false, true);
       }
       await supabaseClient.removeChannel(activeMessagesChannel);
       activeMessagesChannel = null;
     }
 
-    peerTyping = false;
+    clearTypingUsers();
 
     if (!activeConversationId) return;
 
@@ -541,7 +837,7 @@
                   ? {
                       ...conversation,
                       last_message_at: incoming.created_at,
-                      preview: incoming.body,
+                      preview: incoming.deleted_at ? 'Message removed' : incoming.body,
                       unreadCount: incoming.sender_id === currentUserId ? 0 : conversation.unreadCount
                     }
                   : conversation
@@ -558,7 +854,7 @@
                 ? {
                     ...conversation,
                     last_message_at: incoming.created_at,
-                    preview: incoming.body,
+                    preview: incoming.deleted_at ? 'Message removed' : incoming.body,
                     unreadCount: incoming.sender_id === currentUserId ? conversation.unreadCount : conversation.unreadCount + 1
                   }
                 : conversation
@@ -566,28 +862,58 @@
             .sort(byNewest);
         }
       )
+      .on<RealtimePostgresChangesPayload<MessengerMessage>>(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const incoming = payload.new as unknown as MessengerMessage;
+          if (!incoming || typeof incoming.id !== 'string') return;
+          messages = messages.map((message) => (message.id === incoming.id ? { ...message, ...incoming } : message));
+        }
+      )
+      .on<RealtimePostgresChangesPayload<Record<string, unknown>>>(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | null;
+          if (!row) return;
+          const userId = typeof row.user_id === 'string' ? row.user_id : null;
+          const lastReadAt = typeof row.last_read_at === 'string' ? row.last_read_at : null;
+          if (!userId || !lastReadAt || userId === currentUserId) return;
+          seenByPeerAt = lastReadAt;
+        }
+      )
+      .on<RealtimePostgresChangesPayload<Record<string, unknown>>>(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'message_reactions' },
+        (payload) => {
+          const row =
+            payload.eventType === 'DELETE'
+              ? (payload.old as Record<string, unknown> | null)
+              : (payload.new as Record<string, unknown> | null);
+          applyReactionRealtime(payload.eventType, {
+            message_id: typeof row?.message_id === 'string' ? row.message_id : null,
+            user_id: typeof row?.user_id === 'string' ? row.user_id : null,
+            emoji: typeof row?.emoji === 'string' ? row.emoji : null
+          });
+        }
+      )
       .on('broadcast', { event: 'typing' }, (event) => {
         if (!presenceVisible) return;
         const payload = event.payload as { conversationId?: string; userId?: string; typing?: boolean } | null;
         if (!payload || payload.conversationId !== conversationId) return;
         if (!payload.userId || payload.userId === currentUserId) return;
-        if (payload.typing !== true) {
-          peerTyping = false;
-          if (peerTypingTimer) {
-            clearTimeout(peerTypingTimer);
-            peerTypingTimer = null;
-          }
-          return;
-        }
-
-        peerTyping = true;
-        if (peerTypingTimer) {
-          clearTimeout(peerTypingTimer);
-        }
-        peerTypingTimer = setTimeout(() => {
-          peerTyping = false;
-          peerTypingTimer = null;
-        }, 3000);
+        setUserTyping(payload.userId, payload.typing === true);
       })
       .subscribe();
   };
@@ -621,13 +947,10 @@
       clearTimeout(typingStopTimer);
       typingStopTimer = null;
     }
-    if (peerTypingTimer) {
-      clearTimeout(peerTypingTimer);
-      peerTypingTimer = null;
-    }
+    clearTypingUsers();
     if (activeMessagesChannel) {
       if (localTypingActive) {
-        void sendTyping(false);
+        void sendTyping(false, true);
       }
       void supabaseClient.removeChannel(activeMessagesChannel);
       activeMessagesChannel = null;
@@ -667,6 +990,7 @@
     {:else}
       <ChatThread
         messages={messages}
+        reactionsByMessageId={reactionsByMessageId}
         {currentUserId}
         {viewerCanModerate}
         {moderationByUserId}
@@ -674,8 +998,12 @@
         loading={loadingConversations || loadingMessages}
         title={threadTitle}
         {presenceLabel}
-        typing={peerTyping && presenceVisible}
+        {typingLabel}
+        {seenLabel}
         on:report={handleReportMessage}
+        on:react={handleReactMessage}
+        on:edit={handleEditMessage}
+        on:delete={handleDeleteMessage}
       >
         <svelte:fragment slot="composer">
           {#if activeConversation?.peer?.id}
@@ -686,8 +1014,14 @@
           <MessageComposer
             disabled={activeConversation?.blocked ?? false}
             {sending}
+            editing={editingMessageId !== null}
+            editSeed={editingSeed}
             on:send={handleSendMessage}
             on:typing={handleComposerTyping}
+            on:cancelEdit={() => {
+              editingMessageId = null;
+              editingSeed = '';
+            }}
           />
         </svelte:fragment>
       </ChatThread>
@@ -709,7 +1043,7 @@
   </section>
 </div>
 
-  <StartChatModal
+<StartChatModal
   open={showStartModal}
   loading={startModalLoading}
   error={startModalError}
@@ -778,24 +1112,15 @@
     background: rgba(51, 65, 85, 0.88);
     border: 1px solid rgba(251, 113, 133, 0.35);
     border-radius: 0.6rem;
-    padding: 0.5rem 0.7rem;
-    max-width: 28rem;
+    padding: 0.45rem 0.65rem;
   }
 
   @media (max-width: 960px) {
     .messenger-shell {
-      margin: 0.5rem 0.5rem 5.4rem;
+      margin: 0.5rem 0.5rem 5.2rem;
       min-height: calc(100vh - 7rem);
       grid-template-columns: 1fr;
-      grid-template-rows: minmax(16rem, 34vh) 1fr;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .messenger-shell,
-    .thread-actions button,
-    .load-older {
-      transition: none;
+      grid-template-rows: minmax(16rem, 35vh) 1fr;
     }
   }
 </style>

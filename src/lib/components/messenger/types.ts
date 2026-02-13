@@ -35,6 +35,12 @@ export type MessengerMessage = {
   client_nonce: string | null;
 };
 
+export type MessageReactionSummary = {
+  emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🔥';
+  count: number;
+  reacted: boolean;
+};
+
 export type ModerationBadgeStatus = 'active' | 'muted' | 'suspended' | 'banned';
 
 export type MessengerFriendOption = {
