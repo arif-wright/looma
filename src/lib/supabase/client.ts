@@ -13,6 +13,8 @@ export const createSupabaseBrowserClient = () => {
 
     browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
       auth: {
+        flowType: 'implicit',
+        detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true
       }
