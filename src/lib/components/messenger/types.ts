@@ -26,3 +26,10 @@ export type MessengerMessage = {
   deleted_at: string | null;
   client_nonce: string | null;
 };
+
+export type MessengerFriendOption = {
+  id: string;
+  handle: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};

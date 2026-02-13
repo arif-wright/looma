@@ -7,7 +7,11 @@
   import ChatThread from '$lib/components/messenger/ChatThread.svelte';
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
-  import type { MessengerConversation, MessengerMessage } from '$lib/components/messenger/types';
+  import type {
+    MessengerConversation,
+    MessengerFriendOption,
+    MessengerMessage
+  } from '$lib/components/messenger/types';
 
   export let data;
 
@@ -27,6 +31,7 @@
   let showStartModal = false;
   let startModalLoading = false;
   let startModalError: string | null = null;
+  let startModalFriends: MessengerFriendOption[] = [];
 
   let readDebounce: ReturnType<typeof setTimeout> | null = null;
   let supabaseClient: ReturnType<typeof supabaseBrowser> | null = null;
@@ -51,6 +56,23 @@
     const aTime = a.last_message_at ? Date.parse(a.last_message_at) : 0;
     const bTime = b.last_message_at ? Date.parse(b.last_message_at) : 0;
     return bTime - aTime;
+  };
+
+  const loadFriendOptions = async () => {
+    const res = await fetch('/api/friends/list', { headers: { 'cache-control': 'no-store' } });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      startModalFriends = [];
+      return;
+    }
+
+    const items = Array.isArray(payload?.items)
+      ? payload.items
+      : [];
+
+    startModalFriends = items
+      .map((item: { profile?: MessengerFriendOption }) => item.profile)
+      .filter((profile: MessengerFriendOption | undefined): profile is MessengerFriendOption => Boolean(profile));
   };
 
   const markConversationRead = async (conversationId: string) => {
@@ -268,6 +290,34 @@
     }
   };
 
+  const handleStartChatWithFriend = async (event: CustomEvent<{ userId: string }>) => {
+    startModalLoading = true;
+    startModalError = null;
+
+    try {
+      const res = await fetch('/api/messenger/dm/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ otherUserId: event.detail.userId })
+      });
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok || typeof payload?.conversationId !== 'string') {
+        startModalError =
+          payload?.error === 'blocked'
+            ? 'You cannot start a chat with this user.'
+            : 'Could not start this chat right now.';
+        return;
+      }
+
+      showStartModal = false;
+      await loadConversations(false);
+      await handleSelectConversation(payload.conversationId);
+    } finally {
+      startModalLoading = false;
+    }
+  };
+
   const bindConversationsRealtime = async () => {
     if (!supabaseClient) return;
 
@@ -355,8 +405,13 @@
   onMount(async () => {
     if (!browser) return;
     supabaseClient = supabaseBrowser();
+    const initialConversationHint = new URL(window.location.href).searchParams.get('conversationId');
 
     await loadConversations(false);
+    await loadFriendOptions();
+    if (typeof initialConversationHint === 'string' && initialConversationHint.length > 0) {
+      await handleSelectConversation(initialConversationHint);
+    }
     await bindConversationsRealtime();
     await bindActiveMessagesRealtime();
 
@@ -391,6 +446,7 @@
     on:create={() => {
       showStartModal = true;
       startModalError = null;
+      void loadFriendOptions();
     }}
     on:query={(event) => {
       searchQuery = event.detail.value;
@@ -438,14 +494,16 @@
   </section>
 </div>
 
-<StartChatModal
+  <StartChatModal
   open={showStartModal}
   loading={startModalLoading}
   error={startModalError}
+  friends={startModalFriends}
   on:close={() => {
     showStartModal = false;
   }}
   on:start={handleStartChat}
+  on:startFriend={handleStartChatWithFriend}
 />
 
 <style>
