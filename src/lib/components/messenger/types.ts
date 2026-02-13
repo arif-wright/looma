@@ -15,6 +15,7 @@ export type MessengerPresence = {
 export type MessengerConversation = {
   conversationId: string;
   type: 'dm' | 'group';
+  group_name?: string | null;
   last_message_at: string | null;
   preview: string | null;
   memberIds: string[];

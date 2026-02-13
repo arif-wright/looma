@@ -57,6 +57,23 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: unreadError.message }, { status: 400, headers: MESSENGER_CACHE_HEADERS });
   }
 
+  const groupConversationIds = ((conversations ?? []) as ConversationRow[])
+    .filter((conversation) => conversation.type === 'group')
+    .map((conversation) => conversation.id);
+  const { data: circleRows } = groupConversationIds.length
+    ? await supabase
+        .from('circles')
+        .select('conversation_id, name')
+        .in('conversation_id', groupConversationIds)
+    : { data: [] };
+  const groupNameMap = new Map<string, string>();
+  if (Array.isArray(circleRows)) {
+    for (const row of circleRows as Array<{ conversation_id?: unknown; name?: unknown }>) {
+      if (typeof row.conversation_id !== 'string' || typeof row.name !== 'string') continue;
+      groupNameMap.set(row.conversation_id, row.name);
+    }
+  }
+
   const unreadMap = new Map<string, number>();
   if (Array.isArray(unreadRaw)) {
     for (const row of unreadRaw as Array<{ conversation_id?: unknown; unread_count?: unknown }>) {
@@ -150,6 +167,7 @@ export const GET: RequestHandler = async (event) => {
       return {
         conversationId: conversation.id,
         type: conversation.type,
+        group_name: conversation.type === 'group' ? groupNameMap.get(conversation.id) ?? null : null,
         last_message_at: conversation.last_message_at,
         preview: conversation.last_message_preview,
         memberIds,

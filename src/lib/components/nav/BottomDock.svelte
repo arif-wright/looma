@@ -13,6 +13,7 @@
     { href: '/app/home', label: 'Home', icon: '🏠' },
     { href: '/app/messages', label: 'Messages', icon: '💬' },
     { href: '/app/friends', label: 'Friends', icon: '🫂' },
+    { href: '/app/circles', label: 'Circles', icon: '⭕' },
     { href: '/app/creatures', label: 'Creatures', icon: '🐾' },
     { href: '/app/shop', label: 'Shop', icon: '🛒' },
     { href: '/app/companions', label: 'Companions', icon: '🤝' },

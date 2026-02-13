@@ -25,6 +25,7 @@
   };
 
   const titleFor = (conversation: MessengerConversation) => {
+    if (conversation.type === 'group' && conversation.group_name) return conversation.group_name;
     if (conversation.peer?.display_name) return conversation.peer.display_name;
     if (conversation.peer?.handle) return `@${conversation.peer.handle}`;
     return conversation.peer?.id ? conversation.peer.id.slice(0, 8) : 'Conversation';
