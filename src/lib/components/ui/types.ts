@@ -11,9 +11,15 @@ export type NotificationItem = {
   id: string;
   user_id: string;
   actor_id: string | null;
-  kind: 'reaction' | 'comment' | 'share' | 'achievement_unlocked' | 'companion_nudge';
+  kind:
+    | 'reaction'
+    | 'comment'
+    | 'share'
+    | 'achievement_unlocked'
+    | 'companion_nudge'
+    | 'event_reminder';
   target_id: string;
-  target_kind: 'post' | 'comment' | 'achievement' | 'companion';
+  target_kind: 'post' | 'comment' | 'achievement' | 'companion' | 'event';
   created_at: string;
   read: boolean;
   metadata: Record<string, unknown> | null;

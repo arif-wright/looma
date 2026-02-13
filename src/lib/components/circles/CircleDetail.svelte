@@ -2,10 +2,13 @@
   import { createEventDispatcher } from 'svelte';
   import CircleMembersPanel from './CircleMembersPanel.svelte';
   import CircleAnnouncementPanel from './CircleAnnouncementPanel.svelte';
-  import type { CircleDetailPayload } from './types';
+  import CircleEventsPanel from './CircleEventsPanel.svelte';
+  import type { CircleDetailPayload, CircleEventSummary } from './types';
 
   export let detail: CircleDetailPayload | null = null;
   export let currentUserId: string | null = null;
+  export let events: CircleEventSummary[] = [];
+  export let eventsLoading = false;
 
   const dispatch = createEventDispatcher<{
     openChat: { conversationId: string };
@@ -13,6 +16,15 @@
     announce: { circleId: string; title: string; body: string; pinned: boolean };
     setRole: { circleId: string; userId: string; role: 'admin' | 'member' };
     kick: { circleId: string; userId: string };
+    createEvent: {
+      circleId: string;
+      title: string;
+      description: string;
+      startsAt: string;
+      endsAt: string;
+      location: string;
+    };
+    viewAllEvents: { circleId: string };
   }>();
 
   $: canManage = detail?.circle?.myRole === 'owner' || detail?.circle?.myRole === 'admin';
@@ -44,6 +56,15 @@
     </header>
 
     <div class="grid">
+      <CircleEventsPanel
+        circleId={detail.circle.circleId}
+        {canManage}
+        {events}
+        loading={eventsLoading}
+        on:create={(event) => dispatch('createEvent', event.detail)}
+        on:viewAll={() => dispatch('viewAllEvents', { circleId: detail.circle.circleId })}
+      />
+
       <CircleAnnouncementPanel
         pinned={detail.pinnedAnnouncement}
         canManage={canManage}

@@ -33,6 +33,24 @@ export type CircleAnnouncement = {
   createdAt: string;
 };
 
+export type CircleEventSummary = {
+  eventId: string;
+  circleId: string;
+  creatorId: string;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  location: string | null;
+  isRecurring: boolean;
+  rrule: string | null;
+  createdAt: string;
+  updatedAt: string;
+  phase: 'upcoming' | 'past';
+  myRsvp: 'going' | 'interested' | 'not_going' | null;
+  counts: { going: number; interested: number; notGoing: number };
+};
+
 export type CircleDetailPayload = {
   circle: CircleSummary & { myRole: 'owner' | 'admin' | 'member' };
   members: CircleMember[];

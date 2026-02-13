@@ -44,7 +44,9 @@ export async function createNotification(
     kind,
     target_id: targetId,
     target_kind: targetKind,
-    metadata: metadata ?? {}
+    metadata: metadata ?? {},
+    meta: metadata ?? {},
+    read_at: null
   };
 
   const { error } = await supabase.from('notifications').insert(insertPayload);
@@ -73,7 +75,9 @@ export async function createAchievementNotification(
     target_id: achievementId,
     target_kind: 'achievement' as const,
     metadata: metadata ?? {},
-    read: false
+    meta: metadata ?? {},
+    read: false,
+    read_at: null
   };
 
   const { error } = await supabase.from('notifications').insert(insertPayload);
@@ -126,7 +130,7 @@ export async function markNotificationsRead(
 
   const query = supabase
     .from('notifications')
-    .update({ read: true })
+    .update({ read: true, read_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('read', false);
 

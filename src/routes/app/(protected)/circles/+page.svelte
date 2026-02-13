@@ -5,7 +5,7 @@
   import CircleDetail from '$lib/components/circles/CircleDetail.svelte';
   import CircleCreateModal from '$lib/components/circles/CircleCreateModal.svelte';
   import CircleJoinModal from '$lib/components/circles/CircleJoinModal.svelte';
-  import type { CircleDetailPayload, CircleSummary } from '$lib/components/circles/types';
+  import type { CircleDetailPayload, CircleEventSummary, CircleSummary } from '$lib/components/circles/types';
 
   export let data;
 
@@ -14,6 +14,8 @@
   let circles: CircleSummary[] = [];
   let activeCircleId: string | null = null;
   let activeDetail: CircleDetailPayload | null = null;
+  let activeEvents: CircleEventSummary[] = [];
+  let eventsLoading = false;
   let loading = false;
   let errorMessage: string | null = null;
 
@@ -24,6 +26,23 @@
   let showJoin = false;
   let joinLoading = false;
   let joinError: string | null = null;
+
+  const loadCircleEvents = async (circleId: string) => {
+    eventsLoading = true;
+    try {
+      const res = await fetch(`/api/circles/events?circleId=${encodeURIComponent(circleId)}`, {
+        headers: { 'cache-control': 'no-store' }
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof payload?.message === 'string' ? payload.message : 'Failed to load events.');
+      }
+
+      activeEvents = Array.isArray(payload?.items) ? (payload.items as CircleEventSummary[]) : [];
+    } finally {
+      eventsLoading = false;
+    }
+  };
 
   const loadCircles = async (preferCurrent = true) => {
     loading = true;
@@ -40,6 +59,7 @@
       if (!items.length) {
         activeCircleId = null;
         activeDetail = null;
+        activeEvents = [];
         return;
       }
 
@@ -67,6 +87,7 @@
       throw new Error(typeof payload?.message === 'string' ? payload.message : 'Failed to load circle detail.');
     }
     activeDetail = payload as CircleDetailPayload;
+    await loadCircleEvents(circleId);
   };
 
   const post = async (path: string, body: Record<string, unknown>) => {
@@ -158,6 +179,27 @@
     }
   };
 
+  const onCreateEvent = async (
+    event: CustomEvent<{ circleId: string; title: string; description: string; startsAt: string; endsAt: string; location: string }>
+  ) => {
+    errorMessage = null;
+    try {
+      await post('/api/circles/events/create', {
+        circleId: event.detail.circleId,
+        title: event.detail.title,
+        description: event.detail.description,
+        startsAt: event.detail.startsAt,
+        endsAt: event.detail.endsAt || undefined,
+        location: event.detail.location || undefined
+      });
+      if (activeCircleId) {
+        await loadCircleEvents(activeCircleId);
+      }
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : 'Could not create event.';
+    }
+  };
+
   onMount(async () => {
     await loadCircles(false);
   });
@@ -191,12 +233,16 @@
     {:else}
       <CircleDetail
         detail={activeDetail}
+        events={activeEvents}
+        {eventsLoading}
         {currentUserId}
         on:openChat={(event) => goto(`/app/messages?conversationId=${encodeURIComponent(event.detail.conversationId)}`)}
         on:leave={onLeave}
         on:announce={onAnnounce}
         on:setRole={onSetRole}
         on:kick={onKick}
+        on:createEvent={onCreateEvent}
+        on:viewAllEvents={(event) => goto(`/app/events?circleId=${encodeURIComponent(event.detail.circleId)}`)}
       />
     {/if}
 

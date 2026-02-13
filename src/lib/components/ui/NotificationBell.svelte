@@ -79,6 +79,10 @@
         if (reason === 'care_due') return `${name} is ready for care`;
         return `${name} has a new update`;
       }
+      case 'event_reminder': {
+        const title = getMetaString(payload, 'title', 'eventTitle');
+        return title ? `${title} starts soon` : 'Event reminder';
+      }
       default:
         return 'You have an update';
     }
@@ -124,6 +128,11 @@
 
     if (item.target_kind === 'companion') {
       return `/app/companions?focus=${item.target_id}`;
+    }
+
+    if (item.target_kind === 'event') {
+      const eventId = getMetaString(meta, 'eventId', 'event_id') ?? item.target_id;
+      return `/app/events?eventId=${encodeURIComponent(eventId)}`;
     }
 
     return null;

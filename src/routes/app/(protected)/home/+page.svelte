@@ -54,6 +54,14 @@
   const bondGenesisEnabled = Boolean(data.flags?.bond_genesis);
   const companionCount = data.companionCount ?? 0;
   const circleUnreadCount = data.notificationsUnread ?? 0;
+  type UpcomingCardEvent = {
+    eventId: string;
+    title: string;
+    circleName: string;
+    startsAt: string;
+    location: string | null;
+    myRsvp: 'going' | 'interested' | 'not_going' | null;
+  };
 
   let homeVisits = 99;
   let startHereDismissed = false;
@@ -168,6 +176,9 @@
   let missionModalOpen = false;
   let missionModalData: MissionRowType | null = null;
   let missionSessionsLoading = false;
+  let upcomingEvents: UpcomingCardEvent[] = [];
+  let remindersPulling = false;
+  let upcomingLoading = false;
   let activeMissionById: Record<string, { sessionId: string; status: string; startedAt: string; cost?: { energy?: number } | null }> = {};
   let recentCompletedById: Record<string, { sessionId: string; status: string; completedAt: string | null; rewards?: { xpGranted?: number; energyGranted?: number } | null }> = {};
   const rituals: CompanionRitual[] = data.rituals ?? [];
@@ -187,6 +198,46 @@
       toast = null;
       toastTimer = null;
     }, 3200);
+  };
+
+  const pullEventReminders = async () => {
+    if (!browser || remindersPulling) return;
+    remindersPulling = true;
+    try {
+      const lastKey = 'looma:eventReminderPullAt';
+      const lastRaw = window.sessionStorage.getItem(lastKey);
+      const last = lastRaw ? Number.parseInt(lastRaw, 10) : 0;
+      const now = Date.now();
+      if (Number.isFinite(last) && now - last < 120_000) {
+        return;
+      }
+
+      window.sessionStorage.setItem(lastKey, String(now));
+      await fetch('/api/events/reminders/pull', { method: 'POST' });
+    } catch {
+      // ignore reminder pull failures
+    } finally {
+      remindersPulling = false;
+    }
+  };
+
+  const loadUpcomingEvents = async () => {
+    if (!browser) return;
+    upcomingLoading = true;
+    try {
+      const res = await fetch('/api/events/upcoming?days=7', {
+        headers: { 'cache-control': 'no-store' }
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      upcomingEvents = Array.isArray(payload?.items)
+        ? (payload.items as UpcomingCardEvent[]).slice(0, 3)
+        : [];
+    } catch {
+      // ignore upcoming fetch failures
+    } finally {
+      upcomingLoading = false;
+    }
   };
 
   onDestroy(() => {
@@ -457,6 +508,8 @@
     }
 
     await refreshMissionSessions();
+    await pullEventReminders();
+    await loadUpcomingEvents();
   });
 </script>
 
@@ -504,6 +557,27 @@
           ritualSummary={ritualsSummary}
           ritualHref="#rituals"
         />
+
+        <article class="panel fade-up" data-delay="1" aria-label="Upcoming events">
+          <div class="panel__header">
+            <h2 class="panel__title">Upcoming</h2>
+            <p class="panel__subtitle">Next gatherings in your circles.</p>
+          </div>
+          {#if upcomingLoading}
+            <p class="panel__body panel__body--compact">Loading events…</p>
+          {:else if upcomingEvents.length === 0}
+            <p class="panel__body panel__body--compact">No events scheduled for the next 7 days.</p>
+          {:else}
+            <ul class="upcoming-list">
+              {#each upcomingEvents as eventItem}
+                <li>
+                  <a href={`/app/events?eventId=${encodeURIComponent(eventItem.eventId)}`}>{eventItem.title}</a>
+                  <small>{eventItem.circleName} · {new Date(eventItem.startsAt).toLocaleString()}</small>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </article>
 
         <article id="whisper" class="panel fade-up hidden md:grid" data-delay="1" aria-label="Whisper composer">
           <div class="panel__header">
@@ -662,6 +736,39 @@
     margin: 0.35rem 0 0;
     font-size: 0.88rem;
     color: rgba(226, 232, 255, 0.68);
+  }
+
+  .upcoming-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .upcoming-list li {
+    display: grid;
+    gap: 0.2rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.62rem;
+    background: rgba(15, 23, 42, 0.32);
+  }
+
+  .upcoming-list a {
+    color: rgba(226, 232, 240, 0.96);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .upcoming-list a:hover,
+  .upcoming-list a:focus-visible {
+    text-decoration: underline;
+  }
+
+  .upcoming-list small {
+    color: rgba(148, 163, 184, 0.94);
+    font-size: 0.78rem;
   }
 
   .mission-period {
