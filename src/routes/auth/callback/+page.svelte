@@ -19,6 +19,20 @@
     sessionStorage.removeItem(STORAGE_KEY);
   };
 
+  const hasPkceCodeVerifier = (): boolean => {
+    try {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.endsWith('-code-verifier')) continue;
+        const value = localStorage.getItem(key);
+        if (value && value.trim().length > 0) return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  };
+
   onMount(async () => {
     const supabase = createSupabaseBrowserClient();
 
@@ -59,6 +73,11 @@
         const authCode = parsed.searchParams.get('code');
         if (!authCode) {
           fail('We could not complete the sign-in process.');
+          return;
+        }
+
+        if (!hasPkceCodeVerifier()) {
+          fail('Sign-in session expired. Please start again from the login page.');
           return;
         }
 
