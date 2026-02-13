@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 type RateResult =
   | { ok: true }
   | { ok: false; status: 429; code: string; message: string; retryAfter: number };
+type TrustTier = 'new' | 'standard' | 'trusted' | 'restricted';
 
 type Config = {
   windowMs: number;
@@ -50,8 +51,20 @@ const apply = (keys: string[], config: Config): RateResult => {
   return { ok: true };
 };
 
-export const enforceCircleCreateRateLimit = (userId: string, ip: string | null | undefined): RateResult => {
-  const limit = parsePositiveInt(env.CIRCLE_CREATE_RATE_LIMIT_PER_HOUR, 10);
+export const enforceCircleCreateRateLimit = (
+  userId: string,
+  ip: string | null | undefined,
+  tier: TrustTier = 'standard'
+): RateResult => {
+  const baseLimit = parsePositiveInt(env.CIRCLE_CREATE_RATE_LIMIT_PER_HOUR, 10);
+  const limit =
+    tier === 'restricted'
+      ? Math.min(baseLimit, 1)
+      : tier === 'new'
+        ? Math.min(baseLimit, 3)
+        : tier === 'trusted'
+          ? Math.max(baseLimit, 12)
+          : baseLimit;
   const keys = [`circles:create:user:${userId}`];
   if (ip) keys.push(`circles:create:ip:${ip}`);
 

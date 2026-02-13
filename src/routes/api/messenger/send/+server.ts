@@ -13,6 +13,7 @@ import {
 import { enforceMessengerSendRateLimit } from '$lib/server/messenger/rate';
 import { getClientIp } from '$lib/server/utils/ip';
 import { enforceSocialActionAllowed } from '$lib/server/moderation';
+import { enforceTrustActionAllowed, getTrust } from '$lib/server/trust';
 
 type SendPayload = {
   conversationId?: string;
@@ -71,7 +72,13 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'forbidden' }, { status: 403, headers: MESSENGER_CACHE_HEADERS });
   }
 
-  const rate = enforceMessengerSendRateLimit(session.user.id, conversationId, getClientIp(event));
+  const trust = await getTrust(supabase, session.user.id);
+  const rate = enforceMessengerSendRateLimit(
+    session.user.id,
+    conversationId,
+    getClientIp(event),
+    trust.tier
+  );
   if (!rate.ok) {
     return json(
       { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
@@ -87,6 +94,23 @@ export const POST: RequestHandler = async (event) => {
   if (conversationType === 'dm') {
     const members = await getConversationMembers(supabase, conversationId);
     const peerId = members.find((id) => id !== session.user.id) ?? null;
+    const trustCheck = await enforceTrustActionAllowed(supabase, session.user.id, {
+      scope: 'message_send',
+      conversationType,
+      otherUserId: peerId
+    });
+    if (!trustCheck.ok) {
+      return json(
+        {
+          error: trustCheck.code,
+          message: trustCheck.message,
+          retryAfter: trustCheck.retryAfter,
+          trustTier: trustCheck.trust.tier
+        },
+        { status: trustCheck.status, headers: MESSENGER_CACHE_HEADERS }
+      );
+    }
+
     if (peerId) {
       const { data: blocked } = await supabase.rpc('rpc_is_blocked', {
         p_other_user_id: peerId

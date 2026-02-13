@@ -8,6 +8,7 @@ import {
 } from '$lib/server/messenger';
 import { getClientIp } from '$lib/server/utils/ip';
 import { enforceMessengerStartDmRateLimit } from '$lib/server/messenger/rate';
+import { enforceTrustActionAllowed } from '$lib/server/trust';
 
 type StartDmPayload = {
   otherUserId?: string;
@@ -48,14 +49,6 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401, headers: MESSENGER_CACHE_HEADERS });
   }
 
-  const rate = enforceMessengerStartDmRateLimit(session.user.id, getClientIp(event));
-  if (!rate.ok) {
-    return json(
-      { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
-      { status: rate.status, headers: MESSENGER_CACHE_HEADERS }
-    );
-  }
-
   let body: StartDmPayload;
   try {
     body = await event.request.json();
@@ -79,6 +72,34 @@ export const POST: RequestHandler = async (event) => {
 
   if (blocked === true) {
     return json({ error: 'blocked' }, { status: 403, headers: MESSENGER_CACHE_HEADERS });
+  }
+
+  const trustCheck = await enforceTrustActionAllowed(supabase, session.user.id, {
+    scope: 'dm_start',
+    otherUserId
+  });
+  if (!trustCheck.ok) {
+    return json(
+      {
+        error: trustCheck.code,
+        message: trustCheck.message,
+        retryAfter: trustCheck.retryAfter,
+        trustTier: trustCheck.trust.tier
+      },
+      { status: trustCheck.status, headers: MESSENGER_CACHE_HEADERS }
+    );
+  }
+
+  const rate = enforceMessengerStartDmRateLimit(
+    session.user.id,
+    getClientIp(event),
+    trustCheck.trust.tier
+  );
+  if (!rate.ok) {
+    return json(
+      { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
+      { status: rate.status, headers: MESSENGER_CACHE_HEADERS }
+    );
   }
 
   const { data: conversationId, error } = await supabase.rpc('rpc_get_or_create_dm', {

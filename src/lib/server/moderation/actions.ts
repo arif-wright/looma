@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isUuid, parseDurationMinutes } from '$lib/server/moderation';
+import { applyTrustDelta } from '$lib/server/trust';
 
 export type ModerationActionType =
   | 'warn'
@@ -19,6 +20,14 @@ export type ApplyModerationActionInput = {
 };
 
 const nowIso = () => new Date().toISOString();
+const TRUST_DELTAS: Record<ModerationActionType, number> = {
+  warn: -3,
+  mute: -8,
+  suspend: -20,
+  ban: -40,
+  message_delete: 0,
+  circle_kick: 0
+};
 
 export const parseModerationActionType = (value: unknown): ModerationActionType | null => {
   if (
@@ -144,6 +153,15 @@ export const applyModerationAction = async (
       code: 'bad_request',
       message: actionError?.message ?? 'Failed to insert moderation action.'
     };
+  }
+
+  const trustDelta = TRUST_DELTAS[input.action];
+  if (trustDelta !== 0) {
+    await applyTrustDelta(adminSupabase, input.userId, input.action, trustDelta, {
+      moderationActionId: actionRow.id,
+      createdBy: input.actorId,
+      reason
+    });
   }
 
   return { ok: true, actionId: actionRow.id };

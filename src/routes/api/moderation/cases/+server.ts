@@ -32,6 +32,19 @@ type MessageRow = {
   created_at: string;
   deleted_at: string | null;
 };
+type TrustRow = {
+  user_id: string;
+  score: number;
+  tier: 'new' | 'standard' | 'trusted' | 'restricted';
+  forced_tier: 'new' | 'standard' | 'trusted' | 'restricted' | null;
+};
+type TrustEventRow = {
+  id: string;
+  user_id: string;
+  kind: string;
+  delta: number;
+  created_at: string;
+};
 
 export const GET: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
@@ -145,6 +158,34 @@ export const GET: RequestHandler = async (event) => {
     ])
   );
 
+  const { data: trustRowsRaw } = senderIds.length
+    ? await admin
+        .from('user_trust')
+        .select('user_id, score, tier, forced_tier')
+        .in('user_id', senderIds)
+    : { data: [] };
+  const trustByUser = new Map(
+    ((trustRowsRaw ?? []) as TrustRow[]).map((row) => [row.user_id, row])
+  );
+
+  const { data: trustEventsRaw } = senderIds.length
+    ? await admin
+        .from('trust_events')
+        .select('id, user_id, kind, delta, created_at')
+        .in('user_id', senderIds)
+        .order('created_at', { ascending: false })
+        .limit(500)
+    : { data: [] };
+
+  const trustEventsByUser = new Map<string, TrustEventRow[]>();
+  for (const eventRow of (trustEventsRaw ?? []) as TrustEventRow[]) {
+    const bucket = trustEventsByUser.get(eventRow.user_id) ?? [];
+    if (bucket.length < 6) {
+      bucket.push(eventRow);
+      trustEventsByUser.set(eventRow.user_id, bucket);
+    }
+  }
+
   const items = caseRows.map((moderationCase) => {
     const report = reportsById.get(moderationCase.report_id) ?? null;
     const message = report ? messagesById.get(report.message_id) ?? null : null;
@@ -174,9 +215,17 @@ export const GET: RequestHandler = async (event) => {
             body: message.body,
             createdAt: message.created_at,
             deletedAt: message.deleted_at,
-            moderation: senderModeration.get(message.sender_id) ?? { status: 'active', until: null }
+            moderation: senderModeration.get(message.sender_id) ?? { status: 'active', until: null },
+            trust:
+              trustByUser.get(message.sender_id) ?? {
+                user_id: message.sender_id,
+                score: 50,
+                tier: 'new',
+                forced_tier: null
+              }
           }
         : null,
+      trustEvents: message ? trustEventsByUser.get(message.sender_id) ?? [] : [],
       circle: circle
         ? {
             circleId: circle.id,

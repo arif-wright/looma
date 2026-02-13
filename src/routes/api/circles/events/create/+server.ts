@@ -11,6 +11,8 @@ import {
 } from '$lib/server/circle-events';
 import { enforceEventCreateRateLimit } from '$lib/server/circle-events/rate';
 import { getClientIp } from '$lib/server/utils/ip';
+import { enforceSocialActionAllowed } from '$lib/server/moderation';
+import { enforceTrustActionAllowed } from '$lib/server/trust';
 
 const toBoolean = (value: unknown) => value === true;
 
@@ -31,7 +33,38 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401, headers: EVENTS_CACHE_HEADERS });
   }
 
-  const rate = enforceEventCreateRateLimit(session.user.id, getClientIp(event));
+  const moderationCheck = await enforceSocialActionAllowed(supabase, session.user.id, 'circle_create');
+  if (!moderationCheck.ok) {
+    return json(
+      {
+        error: moderationCheck.code,
+        message: moderationCheck.message,
+        moderationStatus: moderationCheck.moderationStatus
+      },
+      { status: moderationCheck.status, headers: EVENTS_CACHE_HEADERS }
+    );
+  }
+
+  const trustCheck = await enforceTrustActionAllowed(supabase, session.user.id, {
+    scope: 'event_create'
+  });
+  if (!trustCheck.ok) {
+    return json(
+      {
+        error: trustCheck.code,
+        message: trustCheck.message,
+        retryAfter: trustCheck.retryAfter,
+        trustTier: trustCheck.trust.tier
+      },
+      { status: trustCheck.status, headers: EVENTS_CACHE_HEADERS }
+    );
+  }
+
+  const rate = enforceEventCreateRateLimit(
+    session.user.id,
+    getClientIp(event),
+    trustCheck.trust.tier
+  );
   if (!rate.ok) {
     return json(
       { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },

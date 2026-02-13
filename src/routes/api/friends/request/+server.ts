@@ -9,6 +9,7 @@ import {
 import { enforceFriendRequestRateLimit } from '$lib/server/friends/rate';
 import { getClientIp } from '$lib/server/utils/ip';
 import { enforceSocialActionAllowed } from '$lib/server/moderation';
+import { enforceTrustActionAllowed } from '$lib/server/trust';
 
 type RequestPayload = {
   recipientId?: string;
@@ -47,14 +48,6 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  const rate = enforceFriendRequestRateLimit(session.user.id, getClientIp(event));
-  if (!rate.ok) {
-    return json(
-      { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
-      { status: rate.status, headers: FRIENDS_CACHE_HEADERS }
-    );
-  }
-
   let body: RequestPayload;
   try {
     body = await event.request.json();
@@ -67,6 +60,34 @@ export const POST: RequestHandler = async (event) => {
     return json(
       { error: 'invalid_recipient', message: 'Please provide a valid recipient.' },
       { status: 400, headers: FRIENDS_CACHE_HEADERS }
+    );
+  }
+
+  const trustCheck = await enforceTrustActionAllowed(supabase, session.user.id, {
+    scope: 'friend_request',
+    otherUserId: recipientId
+  });
+  if (!trustCheck.ok) {
+    return json(
+      {
+        error: trustCheck.code,
+        message: trustCheck.message,
+        retryAfter: trustCheck.retryAfter,
+        trustTier: trustCheck.trust.tier
+      },
+      { status: trustCheck.status, headers: FRIENDS_CACHE_HEADERS }
+    );
+  }
+
+  const rate = enforceFriendRequestRateLimit(
+    session.user.id,
+    getClientIp(event),
+    trustCheck.trust.tier
+  );
+  if (!rate.ok) {
+    return json(
+      { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
+      { status: rate.status, headers: FRIENDS_CACHE_HEADERS }
     );
   }
 

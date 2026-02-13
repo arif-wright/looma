@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 type RateResult =
   | { ok: true }
   | { ok: false; status: 429; code: string; message: string; retryAfter: number };
+type TrustTier = 'new' | 'standard' | 'trusted' | 'restricted';
 
 type Config = {
   windowMs: number;
@@ -52,9 +53,18 @@ const apply = (keys: string[], config: Config): RateResult => {
 
 export const enforceEventCreateRateLimit = (
   userId: string,
-  ip: string | null | undefined
+  ip: string | null | undefined,
+  tier: TrustTier = 'standard'
 ): RateResult => {
-  const limit = parsePositiveInt(env.CIRCLE_EVENT_CREATE_RATE_LIMIT_PER_HOUR, 30);
+  const baseLimit = parsePositiveInt(env.CIRCLE_EVENT_CREATE_RATE_LIMIT_PER_HOUR, 30);
+  const limit =
+    tier === 'restricted'
+      ? Math.min(baseLimit, 6)
+      : tier === 'new'
+        ? Math.min(baseLimit, 12)
+        : tier === 'trusted'
+          ? Math.max(baseLimit, 40)
+          : baseLimit;
   const keys = [`events:create:user:${userId}`];
   if (ip) keys.push(`events:create:ip:${ip}`);
 

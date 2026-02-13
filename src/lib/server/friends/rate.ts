@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 type RateResult =
   | { ok: true }
   | { ok: false; status: 429; code: string; message: string; retryAfter: number };
+type TrustTier = 'new' | 'standard' | 'trusted' | 'restricted';
 
 type RateConfig = {
   windowMs: number;
@@ -51,9 +52,18 @@ const apply = (keys: string[], config: RateConfig): RateResult => {
 
 export const enforceFriendRequestRateLimit = (
   userId: string,
-  ip: string | null | undefined
+  ip: string | null | undefined,
+  tier: TrustTier = 'standard'
 ): RateResult => {
-  const limit = parsePositiveInt(env.FRIEND_REQUEST_RATE_LIMIT_PER_HOUR, 10);
+  const baseLimit = parsePositiveInt(env.FRIEND_REQUEST_RATE_LIMIT_PER_HOUR, 10);
+  const limit =
+    tier === 'restricted'
+      ? Math.min(baseLimit, 3)
+      : tier === 'new'
+        ? Math.min(baseLimit, 6)
+        : tier === 'trusted'
+          ? Math.max(baseLimit, 14)
+          : baseLimit;
   const keys = [`friends:request:user:${userId}`];
   if (ip) {
     keys.push(`friends:request:ip:${ip}`);

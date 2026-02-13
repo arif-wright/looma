@@ -25,7 +25,9 @@
       createdAt: string;
       deletedAt: string | null;
       moderation: { status: 'active' | 'muted' | 'suspended' | 'banned'; until: string | null };
+      trust: { user_id: string; score: number; tier: 'new' | 'standard' | 'trusted' | 'restricted'; forced_tier: 'new' | 'standard' | 'trusted' | 'restricted' | null };
     } | null;
+    trustEvents: Array<{ id: string; kind: string; delta: number; created_at: string }>;
     circle: {
       circleId: string;
       name: string;
@@ -56,6 +58,7 @@
   let caseQueryKey = '';
 
   $: activeCase = activeCaseId ? cases.find((item) => item.caseId === activeCaseId) ?? null : null;
+  $: activeSenderId = activeCase?.message?.senderId ?? null;
 
   const loadCases = async () => {
     loading = true;
@@ -157,6 +160,32 @@
     const note = window.prompt('Dismiss reason:', 'insufficient_evidence');
     if (!note) return;
     await resolveCase(caseId, note);
+  };
+
+  const setTrustTier = async (userId: string, tier: 'restricted' | 'standard') => {
+    busy = true;
+    try {
+      const note = window.prompt(
+        tier === 'restricted' ? 'Reason for restriction:' : 'Reason for restoring standard:',
+        tier === 'restricted' ? 'safety_limit' : 'restored_after_review'
+      );
+      if (!note) return;
+
+      const res = await fetch('/api/moderation/trust/set', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId, tier, note })
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof payload?.message === 'string' ? payload.message : 'Could not update trust tier.');
+      }
+      await loadCases();
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : 'Could not update trust tier.';
+    } finally {
+      busy = false;
+    }
   };
 
   const actOnCase = async (
@@ -287,11 +316,27 @@
             <p><strong>Conversation:</strong> {activeCase.message?.conversationId ?? '—'}</p>
             <p><strong>Circle:</strong> {activeCase.circle ? `${activeCase.circle.name} (${activeCase.circle.circleId})` : '—'}</p>
             <p><strong>Sender moderation:</strong> {activeCase.message?.moderation.status ?? 'active'}</p>
+            <p><strong>Trust tier:</strong> {activeCase.message?.trust?.tier ?? 'new'}</p>
 
             <div class="message-box">
               <h3>Message</h3>
               <p>{activeCase.message?.body ?? 'Message not found.'}</p>
             </div>
+
+            {#if activeCase.trustEvents.length > 0}
+              <div class="message-box">
+                <h3>Recent trust events</h3>
+                <ul class="trust-events">
+                  {#each activeCase.trustEvents as eventItem}
+                    <li>
+                      <strong>{eventItem.kind}</strong>
+                      <span>{eventItem.delta >= 0 ? `+${eventItem.delta}` : eventItem.delta}</span>
+                      <small>{new Date(eventItem.created_at).toLocaleString()}</small>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
 
             <div class="actions">
               <button type="button" disabled={busy} on:click={() => assignCase(activeCase.caseId)}>Assign to me</button>
@@ -301,6 +346,10 @@
               <button type="button" disabled={busy} class="danger" on:click={() => actOnCase('ban')}>Ban</button>
               <button type="button" disabled={busy} on:click={() => actOnCase('message_delete')}>Delete Message</button>
               <button type="button" disabled={busy} on:click={() => dismissCase(activeCase.caseId)}>Dismiss</button>
+              {#if activeSenderId}
+                <button type="button" disabled={busy} on:click={() => setTrustTier(activeSenderId, 'restricted')}>Set restricted</button>
+                <button type="button" disabled={busy} on:click={() => setTrustTier(activeSenderId, 'standard')}>Restore standard</button>
+              {/if}
             </div>
           </article>
         {:else}
@@ -358,6 +407,9 @@
   .message-box { border:1px solid rgba(148,163,184,.2); border-radius:.65rem; padding:.6rem; background: rgba(15,23,42,.5); }
   .message-box h3 { margin:0 0 .3rem; font-size:.86rem; }
   .message-box p { margin:0; white-space: pre-wrap; }
+  .trust-events { list-style:none; margin:.25rem 0 0; padding:0; display:grid; gap:.3rem; }
+  .trust-events li { display:flex; gap:.45rem; align-items:center; font-size:.82rem; color: rgba(226,232,240,.92); }
+  .trust-events small { color: rgba(148,163,184,.9); margin-left:auto; }
   .actions { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.4rem; }
   .danger { border-color: rgba(248,113,113,.45); color: rgba(254,226,226,.96); background: rgba(127,29,29,.35); }
   .actions-panel li { border:1px solid rgba(148,163,184,.2); border-radius:.65rem; padding:.55rem .6rem; }

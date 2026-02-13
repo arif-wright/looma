@@ -31,6 +31,8 @@
   let activeCompanionId = 'muse';
   let presenceVisible = true;
   let presenceSaving = false;
+  let accountStanding: 'normal' | 'limited' = 'normal';
+  let standingLimits: string[] = [];
 
   let companionVisible = true;
   let companionMotion = true;
@@ -55,6 +57,7 @@
       await ensureMemorySummaryStored();
       await fetchMuseSummary();
       await fetchPresenceSetting();
+      await fetchTrustStanding();
     } catch {
       error = SAFE_LOAD_ERROR;
     } finally {
@@ -90,6 +93,22 @@
       error = SAFE_LOAD_ERROR;
     } finally {
       presenceSaving = false;
+    }
+  };
+
+  const fetchTrustStanding = async () => {
+    try {
+      const res = await fetch('/api/trust/standing');
+      const payload = (await res.json().catch(() => null)) as
+        | { standing?: 'normal' | 'limited'; limits?: string[] }
+        | null;
+      if (!res.ok || !payload) return;
+      accountStanding = payload.standing === 'limited' ? 'limited' : 'normal';
+      standingLimits = Array.isArray(payload.limits)
+        ? payload.limits.filter((item): item is string => typeof item === 'string').slice(0, 5)
+        : [];
+    } catch {
+      // keep defaults
     }
   };
 
@@ -503,6 +522,18 @@
         </label>
       </div>
     {/if}
+    <article class="standing-card" aria-live="polite">
+      <strong>Account standing: {accountStanding === 'limited' ? 'Limited' : 'Normal'}</strong>
+      {#if accountStanding === 'limited'}
+        <ul>
+          {#each standingLimits as limit}
+            <li>{limit}</li>
+          {/each}
+        </ul>
+      {:else}
+        <p>No temporary social limits are active.</p>
+      {/if}
+    </article>
   </section>
 
   <section class="preferences-group" aria-labelledby="transparency-heading">
@@ -713,6 +744,32 @@
   .toggle-grid {
     display: grid;
     gap: 0.85rem;
+  }
+
+  .standing-card {
+    margin-top: 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 14, 26, 0.6);
+    padding: 0.85rem;
+    display: grid;
+    gap: 0.4rem;
+    color: rgba(255, 255, 255, 0.84);
+  }
+
+  .standing-card ul {
+    margin: 0;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.2rem;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.84rem;
+  }
+
+  .standing-card p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.84rem;
   }
 
   .toggle-card {

@@ -5,6 +5,7 @@ import { CIRCLES_CACHE_HEADERS, cleanText, parseCirclePrivacy } from '$lib/serve
 import { enforceCircleCreateRateLimit } from '$lib/server/circles/rate';
 import { getClientIp } from '$lib/server/utils/ip';
 import { enforceSocialActionAllowed } from '$lib/server/moderation';
+import { enforceTrustActionAllowed } from '$lib/server/trust';
 
 type CreatePayload = {
   name?: string;
@@ -34,7 +35,26 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  const rate = enforceCircleCreateRateLimit(session.user.id, getClientIp(event));
+  const trustCheck = await enforceTrustActionAllowed(supabase, session.user.id, {
+    scope: 'circle_create'
+  });
+  if (!trustCheck.ok) {
+    return json(
+      {
+        error: trustCheck.code,
+        message: trustCheck.message,
+        retryAfter: trustCheck.retryAfter,
+        trustTier: trustCheck.trust.tier
+      },
+      { status: trustCheck.status, headers: CIRCLES_CACHE_HEADERS }
+    );
+  }
+
+  const rate = enforceCircleCreateRateLimit(
+    session.user.id,
+    getClientIp(event),
+    trustCheck.trust.tier
+  );
   if (!rate.ok) {
     return json(
       { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
