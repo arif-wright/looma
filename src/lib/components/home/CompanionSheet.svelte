@@ -4,21 +4,30 @@
   export let open = false;
   export let name: string | null = null;
   export let status = 'Steady';
+  export let bondTier = 'Tier 1';
+  export let evolutionTag = 'Base form';
+  export let imageUrl: string | null = null;
   export let energy = 0;
-  export let affection = 0;
-  export let trust = 0;
   export let onClose: () => void = () => {};
 </script>
 
 <BottomSheet {open} title="Companion" {onClose}>
   <section class="sheet">
-    <h3>{name ?? 'Companion'}</h3>
-    <p class="status">{status}</p>
+    <div class="head">
+      <img src={imageUrl ?? '/avatar.svg'} alt="" />
+      <div>
+        <h3>{name ?? 'Companion'}</h3>
+        <p class="status">{status}</p>
+      </div>
+    </div>
+    <div class="tags">
+      <span>{bondTier}</span>
+      <span>{evolutionTag}</span>
+    </div>
 
     <div class="stats">
+      <div><span>Link</span><strong>{status}</strong></div>
       <div><span>Energy</span><strong>{Math.round(energy)}</strong></div>
-      <div><span>Affection</span><strong>{Math.round(affection)}</strong></div>
-      <div><span>Trust</span><strong>{Math.round(trust)}</strong></div>
     </div>
 
     <a class="cta" href="/app/companions">Visit companion</a>
@@ -29,6 +38,21 @@
   .sheet {
     display: grid;
     gap: 0.7rem;
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .head img {
+    width: 2.7rem;
+    height: 2.7rem;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(125, 211, 252, 0.42);
+    background: rgba(15, 23, 42, 0.82);
   }
 
   h3 {
@@ -45,9 +69,26 @@
     letter-spacing: 0.06em;
   }
 
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tags span {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(15, 23, 42, 0.52);
+    color: rgba(186, 230, 253, 0.92);
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.22rem 0.5rem;
+  }
+
   .stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.42rem;
   }
 

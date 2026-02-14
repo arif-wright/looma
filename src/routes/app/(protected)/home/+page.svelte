@@ -77,6 +77,7 @@
     (typeof data.dailyCheckinToday?.mood === 'string' ? (data.dailyCheckinToday.mood as HomeMood) : null) ?? null;
   let hasCheckedInToday = Boolean(data.dailyCheckinToday);
   let showMoodSeeds = !hasCheckedInToday;
+  let moodFading = false;
   let companionSheetOpen = false;
   let reconnectModalOpen = false;
   let microRitualModalOpen = false;
@@ -119,6 +120,7 @@
   const submitMood = async (mood: HomeMood) => {
     if (hasCheckedInToday) return;
     selectedMood = mood;
+    moodFading = true;
     const today = localDateKey();
 
     try {
@@ -137,7 +139,10 @@
     }
 
     hasCheckedInToday = true;
-    showMoodSeeds = false;
+    setTimeout(() => {
+      showMoodSeeds = false;
+      moodFading = false;
+    }, 260);
     track('mood_checkin_submit', { mood });
   };
 
@@ -186,6 +191,11 @@
   const executeMicroRitual = () => {
     microRitualModalOpen = false;
     showReward('+5 XP · +3 Energy');
+  };
+
+  const handleSeedFollow = async (href: string, source: 'tap' | 'magnetic') => {
+    track('primary_action_click', { intent: 'SEED_NAV', href, source });
+    await goto(href);
   };
 
   onMount(() => {
@@ -243,9 +253,12 @@
       actionLabel={primaryLabel}
       actionIntent={primaryAction}
       {showMoodSeeds}
+      {moodFading}
       {selectedMood}
       on:primary={(event) => handlePrimaryAction(event.detail.intent)}
       on:mood={(event) => submitMood(event.detail.mood)}
+      on:seed={(event) => handleSeedFollow(event.detail.href, 'tap')}
+      on:magnetic={(event) => handleSeedFollow(event.detail.href, 'magnetic')}
       on:orb={() => {
         companionSheetOpen = true;
         track('orb_open_sheet', { companion: activeCompanion?.id ?? null });
@@ -266,10 +279,11 @@
 <CompanionSheet
   open={companionSheetOpen}
   name={activeCompanion?.name ?? null}
-  status={companionStatusText}
+  status={companionStatus}
+  bondTier={`Bond Tier ${activeCompanion?.bondLevel ?? 1}`}
+  evolutionTag={activeCompanion?.species ? `${activeCompanion.species} form` : 'Base form'}
+  imageUrl={activeCompanion?.avatar_url ?? null}
   energy={effective?.energy ?? activeCompanion?.energy ?? 0}
-  affection={effective?.affection ?? activeCompanion?.affection ?? 0}
-  trust={effective?.trust ?? activeCompanion?.trust ?? 0}
   onClose={() => {
     companionSheetOpen = false;
   }}

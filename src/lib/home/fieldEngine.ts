@@ -18,6 +18,8 @@ export type ConstellationId = 'signals' | 'missions' | 'companion' | 'games' | '
 export type ConstellationConfig = {
   id: ConstellationId;
   label: string;
+  description: string;
+  icon: 'warmth' | 'spark' | 'companion' | 'ritual' | 'mission';
   href: string;
   relevance: number;
   x: number;
@@ -51,11 +53,27 @@ const BASE_ANGLES: Record<ConstellationId, number> = {
 };
 
 const BASE_LABELS: Record<ConstellationId, string> = {
-  signals: 'Signals',
-  missions: 'Missions',
-  companion: 'Companion',
-  games: 'Games',
-  ritual: 'Ritual'
+  signals: 'Send warmth',
+  missions: 'Quick spark',
+  companion: 'Visit companion',
+  games: 'Play now',
+  ritual: 'Micro ritual'
+};
+
+const BASE_DESCRIPTIONS: Record<ConstellationId, string> = {
+  signals: 'Reply to your circle',
+  missions: 'Short action burst',
+  companion: 'Check your bond',
+  games: 'Fast momentum loop',
+  ritual: '20-second reset'
+};
+
+const BASE_ICONS: Record<ConstellationId, ConstellationConfig['icon']> = {
+  signals: 'warmth',
+  missions: 'mission',
+  companion: 'companion',
+  games: 'spark',
+  ritual: 'ritual'
 };
 
 const BASE_HREFS: Record<ConstellationId, string> = {
@@ -103,8 +121,17 @@ export const buildFieldConfig = (state: HomeState): FieldConfig => {
   const primaryAction = choosePrimaryAction(state);
   const fieldMode = state.moodToday ? MODE_BY_MOOD[state.moodToday] : 'neutral';
 
+  const modeBoost = (id: ConstellationId) => {
+    if (fieldMode === 'support' && (id === 'companion' || id === 'signals')) return 0.14;
+    if (fieldMode === 'activate' && (id === 'games' || id === 'missions')) return 0.14;
+    if (fieldMode === 'explore' && id === 'missions') return 0.12;
+    if (fieldMode === 'recover' && (id === 'ritual' || id === 'companion')) return 0.12;
+    if (fieldMode === 'settle' && (id === 'ritual' || id === 'companion')) return 0.1;
+    return 0;
+  };
+
   const constellations = (Object.keys(BASE_ANGLES) as ConstellationId[]).map((id) => {
-    const relevance = relevanceByAction(primaryAction, id, state);
+    const relevance = clamp(relevanceByAction(primaryAction, id, state) + modeBoost(id), 0.24, 1);
     const inward = relevance * 16;
     const radius = 43 - inward;
     const angle = BASE_ANGLES[id] + stableOffset(id);
@@ -113,6 +140,8 @@ export const buildFieldConfig = (state: HomeState): FieldConfig => {
     return {
       id,
       label: BASE_LABELS[id],
+      description: BASE_DESCRIPTIONS[id],
+      icon: BASE_ICONS[id],
       href: BASE_HREFS[id],
       relevance,
       x: 50 + Math.cos(rad) * radius,
