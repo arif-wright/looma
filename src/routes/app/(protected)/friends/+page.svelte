@@ -79,6 +79,9 @@
     errorMessage = null;
     try {
       await Promise.all([loadFriends(), loadRequests()]);
+      if (incoming.length > 0 && activeTab === 'friends') {
+        activeTab = 'requests';
+      }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : 'Failed to load friends data.';
     } finally {
@@ -210,6 +213,11 @@
     <p class="state">Loading…</p>
   {:else if activeTab === 'friends'}
     <section class="panel" aria-label="Friends list">
+      {#if incoming.length > 0}
+        <p class="hint" role="status">
+          You have {incoming.length} incoming request{incoming.length === 1 ? '' : 's'}. Open the Requests tab to respond.
+        </p>
+      {/if}
       {#if friends.length === 0}
         <p class="state">No friends yet.</p>
       {:else}
@@ -435,6 +443,16 @@
   .state {
     margin-top: 0.8rem;
     color: rgba(148, 163, 184, 0.95);
+  }
+
+  .hint {
+    margin: 0.2rem 0 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    background: rgba(14, 116, 144, 0.22);
+    color: rgba(224, 242, 254, 0.98);
+    font-size: 0.88rem;
   }
 
   .error {
