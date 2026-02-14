@@ -8,7 +8,7 @@ type RequestRow = {
   id: string;
   requester_id: string;
   recipient_id: string;
-  status: 'pending';
+  status: 'pending' | 'accepted' | 'declined' | 'canceled';
   message: string | null;
   created_at: string;
   updated_at: string;
@@ -45,14 +45,15 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401, headers: FRIENDS_CACHE_HEADERS });
   }
 
+  let queryClient: typeof supabase = supabase;
   let [incomingResult, outgoingResult] = await Promise.all([
-    supabase
+    queryClient
       .from('friend_requests')
       .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
       .eq('recipient_id', session.user.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),
-    supabase
+    queryClient
       .from('friend_requests')
       .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
       .eq('requester_id', session.user.id)
@@ -69,14 +70,15 @@ export const GET: RequestHandler = async (event) => {
       );
     }
 
+    queryClient = admin as typeof supabase;
     [incomingResult, outgoingResult] = await Promise.all([
-      admin
+      queryClient
         .from('friend_requests')
         .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
         .eq('recipient_id', session.user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false }),
-      admin
+      queryClient
         .from('friend_requests')
         .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
         .eq('requester_id', session.user.id)
@@ -94,11 +96,22 @@ export const GET: RequestHandler = async (event) => {
 
   const incomingRows = (incomingResult.data ?? []) as RequestRow[];
   const outgoingRows = (outgoingResult.data ?? []) as RequestRow[];
+  const recentResult = await queryClient
+    .from('friend_requests')
+    .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
+    .or(`recipient_id.eq.${session.user.id},requester_id.eq.${session.user.id}`)
+    .neq('status', 'pending')
+    .order('updated_at', { ascending: false })
+    .limit(20);
+
+  const recentRows = recentResult.error ? [] : ((recentResult.data ?? []) as RequestRow[]);
 
   const profileIds = [
     ...new Set([
       ...incomingRows.map((row) => row.requester_id),
-      ...outgoingRows.map((row) => row.recipient_id)
+      ...outgoingRows.map((row) => row.recipient_id),
+      ...recentRows.map((row) => row.requester_id),
+      ...recentRows.map((row) => row.recipient_id)
     ])
   ];
 
@@ -114,7 +127,8 @@ export const GET: RequestHandler = async (event) => {
   return json(
     {
       incoming: incomingRows.map((row) => attachProfile(row, session.user.id, profileMap)),
-      outgoing: outgoingRows.map((row) => attachProfile(row, session.user.id, profileMap))
+      outgoing: outgoingRows.map((row) => attachProfile(row, session.user.id, profileMap)),
+      recent: recentRows.map((row) => attachProfile(row, session.user.id, profileMap))
     },
     { headers: FRIENDS_CACHE_HEADERS }
   );

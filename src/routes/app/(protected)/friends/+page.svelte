@@ -20,7 +20,7 @@
     id: string;
     requesterId: string;
     recipientId: string;
-    status: 'pending';
+    status: 'pending' | 'accepted' | 'declined' | 'canceled';
     note: string | null;
     createdAt: string;
     updatedAt: string;
@@ -34,6 +34,7 @@
   let friends: FriendItem[] = [];
   let incoming: RequestItem[] = [];
   let outgoing: RequestItem[] = [];
+  let recent: RequestItem[] = [];
   let viewerCanModerate = false;
   let errorMessage: string | null = null;
 
@@ -72,6 +73,7 @@
 
     incoming = Array.isArray(payload?.incoming) ? (payload.incoming as RequestItem[]) : [];
     outgoing = Array.isArray(payload?.outgoing) ? (payload.outgoing as RequestItem[]) : [];
+    recent = Array.isArray(payload?.recent) ? (payload.recent as RequestItem[]) : [];
   };
 
   const refresh = async () => {
@@ -286,6 +288,25 @@
           {/each}
         </ul>
       {/if}
+
+      <h2>Recent</h2>
+      {#if recent.length === 0}
+        <p class="state">No recent request activity.</p>
+      {:else}
+        <ul>
+          {#each recent as request (request.id)}
+            <li>
+              <div>
+                <strong>{userLabel(request.profile)}</strong>
+                <small class="request-status">{request.status}</small>
+                {#if request.note}
+                  <p>{request.note}</p>
+                {/if}
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </section>
   {/if}
 
@@ -410,6 +431,18 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-size: 0.66rem;
+  }
+
+  .request-status {
+    display: inline-flex;
+    margin-top: 0.22rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+    padding: 0.05rem 0.42rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.64rem;
+    color: rgba(224, 242, 254, 0.9);
   }
 
   p {
