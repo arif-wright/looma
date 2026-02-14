@@ -9,7 +9,6 @@
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
-  import FollowRequestsPanel from '$lib/components/profile/FollowRequestsPanel.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { currentProfile } from '$lib/stores/profile';
@@ -81,11 +80,7 @@ let editOpen = false;
     canShare={!!shareUrl}
     shareUrl={shareUrl}
     isOwnProfile={data.isOwner}
-    isFollowing={data.isFollowing ?? false}
-    requested={data.requested ?? false}
-    gated={data.gated ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
-    viewerCanFollow={false}
     showBondGenesisCta={showBondGenesisCta}
     personaArchetype={data.persona?.archetype ?? null}
     personaColor={data.persona?.color ?? null}
@@ -105,8 +100,6 @@ let editOpen = false;
           companionHidden={data.companionHidden ?? false}
           bondMilestones={data.bondMilestones ?? []}
         />
-
-        <FollowRequestsPanel items={data.followRequests ?? []} />
       </div>
 
       <div class="space-y-4">

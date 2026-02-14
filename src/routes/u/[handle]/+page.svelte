@@ -63,12 +63,8 @@
     canShare={!!shareUrl}
     shareUrl={shareUrl}
     isOwnProfile={data.isOwnProfile ?? false}
-    isFollowing={data.isFollowing ?? false}
-    requested={data.requested ?? false}
-    gated={data.gated ?? false}
     blocked={data.blocked ?? false}
     followCounts={data.followCounts ?? { followers: 0, following: 0 }}
-    viewerCanFollow={!data.blocked && Boolean(data.viewerId)}
     personaArchetype={data.gated ? null : data.personaPublic?.archetype ?? null}
     personaColor={data.gated ? null : data.personaPublic?.color ?? null}
   />

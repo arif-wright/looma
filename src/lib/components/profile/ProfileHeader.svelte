@@ -17,11 +17,7 @@
   export let canShare = false;
   export let shareUrl: string | null = null;
   export let isOwnProfile = false;
-  export let isFollowing = false;
-  export let requested = false;
-  export let gated = false;
   export let followCounts: FollowCounts = { followers: 0, following: 0 };
-  export let viewerCanFollow = false;
   export let blocked = false;
   export let showBondGenesisCta = false;
   export let personaArchetype: string | null = null;
@@ -31,27 +27,18 @@
 
   let compact = false;
   let scrollHandler: ((event: Event) => void) | null = null;
-  let shareOpen = false;
-  let shareStatus = '';
-  let downloading = false;
-let followPending = false;
+let shareOpen = false;
+let shareStatus = '';
+let downloading = false;
 let followError = '';
 let followListOpen = false;
 let followListKind: 'followers' | 'following' = 'followers';
 let targetUserId: string | null = null;
-let showFollowButton = false;
-let followingState = isFollowing;
-let lastFollowingProp = isFollowing;
-let requestedState = requested;
-let lastRequestedProp = requested;
 let countsState: FollowCounts = {
   followers: followCounts?.followers ?? 0,
   following: followCounts?.following ?? 0
 };
 let lastCountsProp: FollowCounts = followCounts;
-let requestPending = false;
-let gatedState = gated;
-let lastGatedProp = gated;
 let menuOpen = false;
 let blockPending = false;
 let menuError = '';
@@ -76,28 +63,15 @@ $: targetUserId =
     : typeof profile?.id === 'string'
       ? profile.id
       : null;
-$: showFollowButton = Boolean(!isOwnProfile && viewerCanFollow && targetUserId && !blocked);
   $: if (!targetUserId && followListOpen) {
     followListOpen = false;
   }
-$: if (isFollowing !== lastFollowingProp) {
-  lastFollowingProp = isFollowing;
-  followingState = isFollowing;
-}
-$: if (requested !== lastRequestedProp) {
-  lastRequestedProp = requested;
-  requestedState = requested;
-}
 $: if (followCounts !== lastCountsProp) {
   lastCountsProp = followCounts;
   countsState = {
     followers: followCounts?.followers ?? 0,
     following: followCounts?.following ?? 0
   };
-}
-$: if (gated !== lastGatedProp) {
-  lastGatedProp = gated;
-  gatedState = gated;
 }
 
   function handleEdit() {
@@ -163,65 +137,6 @@ $: if (gated !== lastGatedProp) {
     shareOpen = false;
     shareStatus = '';
   }
-
-async function requestFollow() {
-  if (!showFollowButton || !targetUserId || requestPending || requestedState) return;
-  requestPending = true;
-  followError = '';
-  try {
-    const res = await fetch('/api/privacy/follow-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: targetUserId })
-    });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      devLog('[ProfileHeader] follow request failed', payload, { status: res.status });
-      throw new Error(safeApiPayloadMessage(payload, res.status));
-    }
-    requestedState = true;
-  } catch (err) {
-    devLog('[ProfileHeader] follow request error', err);
-    followError = safeUiMessage(err);
-  } finally {
-    requestPending = false;
-  }
-}
-
-async function toggleFollow() {
-  if (!showFollowButton || !targetUserId || followPending) return;
-  followPending = true;
-  followError = '';
-  const action = followingState ? 'unfollow' : 'follow';
-  try {
-    const res = await fetch('/api/follow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: targetUserId, action })
-    });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      devLog('[ProfileHeader] follow toggle failed', payload, { status: res.status });
-      throw new Error(safeApiPayloadMessage(payload, res.status));
-    }
-    const nextState = !followingState;
-    const delta = nextState ? 1 : -1;
-    followingState = nextState;
-    countsState = {
-      ...countsState,
-      followers: Math.max(0, countsState.followers + delta)
-    };
-    if (nextState) {
-      gatedState = false;
-      requestedState = false;
-    }
-  } catch (err) {
-    devLog('[ProfileHeader] follow toggle error', err);
-    followError = safeUiMessage(err);
-  } finally {
-    followPending = false;
-  }
-}
 
 async function requestFriend() {
   if (!targetUserId || friendPending || blocked || isOwnProfile) return;
@@ -392,7 +307,6 @@ function openReport() {
               <button
                 type="button"
                 class="follow-count-btn"
-                class:dimmed={gatedState && !followingState && !isOwnProfile}
                 data-testid="profile-followers-count"
                 on:click={() => openFollowList('followers')}
                 disabled={!targetUserId}
@@ -403,7 +317,6 @@ function openReport() {
               <button
                 type="button"
                 class="follow-count-btn"
-                class:dimmed={gatedState && !followingState && !isOwnProfile}
                 data-testid="profile-following-count"
                 on:click={() => openFollowList('following')}
                 disabled={!targetUserId}
@@ -414,40 +327,9 @@ function openReport() {
             </div>
           </div>
         </div>
-        {#if canEdit || canShare || showFollowButton || (!isOwnProfile && targetUserId)}
+        {#if canEdit || canShare || (!isOwnProfile && targetUserId)}
           <div class="action-group self-end md:self-start">
             <div class="flex items-center gap-2">
-              {#if showFollowButton}
-                {#if gatedState}
-                  <button
-                    class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
-                    type="button"
-                    data-testid="profile-follow-request"
-                    on:click={requestFollow}
-                    disabled={requestedState || requestPending}
-                  >
-                    {#if requestPending}
-                      Working…
-                    {:else}
-                      {requestedState ? 'Requested' : 'Request to follow'}
-                    {/if}
-                  </button>
-                {:else}
-                  <button
-                    class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
-                    type="button"
-                    data-testid="profile-follow-toggle"
-                    on:click={toggleFollow}
-                    disabled={followPending}
-                  >
-                    {#if followPending}
-                      Working…
-                    {:else}
-                      {followingState ? 'Following' : 'Follow'}
-                    {/if}
-                  </button>
-                {/if}
-              {/if}
               {#if !isOwnProfile && targetUserId && !blocked}
                 <button
                   class="px-4 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 ring-1 ring-cyan-300/35 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
@@ -505,7 +387,7 @@ function openReport() {
               {/if}
             </div>
           </div>
-          {#if followError && showFollowButton}
+          {#if followError}
             <p class="follow-error" aria-live="polite">{followError}</p>
           {/if}
           {#if friendStatus}
@@ -580,10 +462,6 @@ function openReport() {
 
   .follow-count-btn:not(:disabled):hover {
     color: rgba(255, 255, 255, 0.95);
-  }
-
-  .follow-count-btn.dimmed {
-    opacity: 0.45;
   }
 
   .count-value {
