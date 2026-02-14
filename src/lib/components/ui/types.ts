@@ -5,6 +5,7 @@ export type IconNavItem = {
   label: string;
   icon: IconComponent;
   analyticsKey?: string;
+  badgeCount?: number;
 };
 
 export type NotificationItem = {

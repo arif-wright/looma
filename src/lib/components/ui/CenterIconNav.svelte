@@ -50,6 +50,11 @@
           class="h-5 w-5 text-inherit transition-colors duration-150 ease-out motion-reduce:transition-none"
           aria-hidden="true"
         />
+        {#if (item.badgeCount ?? 0) > 0}
+          <span class="nav-badge" aria-label={`${item.badgeCount} unread`}>
+            {item.badgeCount! > 9 ? '9+' : item.badgeCount}
+          </span>
+        {/if}
         <span class="sr-only">{item.label}</span>
       </a>
     {/each}
@@ -65,6 +70,25 @@
   .brand-icon-button {
     font-size: 0;
     border-radius: 16px;
+    position: relative;
+  }
+
+  .nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    color: #fff;
+    background: #ef4444;
+    border: 1px solid rgba(15, 23, 42, 0.8);
   }
 
   .brand-icon-button.active,

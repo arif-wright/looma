@@ -27,6 +27,7 @@
   const presenceVisible = data?.preferences?.presence_visible !== false;
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
+  let messageUnread = 0;
   let previousPath: string | null = null;
   const initialWalletBalance =
     typeof data?.wallet?.shards === 'number' ? (data.wallet.shards as number) : null;
@@ -66,8 +67,10 @@
   let nowTimer: number | null = null;
   let presenceAwayTimer: number | null = null;
   let presenceHeartbeatTimer: number | null = null;
+  let unreadPollTimer: number | null = null;
   let currentPresenceStatus: 'online' | 'away' | 'offline' = 'offline';
   let lastPresenceHeartbeatAt = 0;
+  let iconNavItems: IconNavItem[] = [];
 
   const activeCompanionSnapshot = data?.activeCompanion ?? null;
   const activeAsInstance =
@@ -105,18 +108,37 @@
       : initialWalletBalance;
   $: walletCurrency = 'SHARDS';
 
-  const iconNavItems: IconNavItem[] = [
+  $: iconNavItems = [
     { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
     { href: '/app/shop', label: 'Shop', icon: ShoppingBag, analyticsKey: 'shop' },
     { href: '/app/companions', label: 'Companions', icon: PawPrint, analyticsKey: 'companions' },
     { href: '/app/home', label: 'Feed', icon: MessageCircle, analyticsKey: 'feed' },
-    { href: '/app/messages', label: 'Messages', icon: MessageSquare, analyticsKey: 'messages' },
+    {
+      href: '/app/messages',
+      label: 'Messages',
+      icon: MessageSquare,
+      analyticsKey: 'messages',
+      badgeCount: messageUnread
+    },
     { href: '/app/friends', label: 'Friends', icon: Users, analyticsKey: 'friends' },
     { href: '/app/circles', label: 'Circles', icon: UsersRound, analyticsKey: 'circles' },
     { href: '/app/events', label: 'Events', icon: CalendarDays, analyticsKey: 'events' },
     { href: '/app/dashboard', label: 'Achievements', icon: Trophy, analyticsKey: 'achievements' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
-  ];
+  ] satisfies IconNavItem[];
+
+  const refreshMessageUnread = async () => {
+    if (!browser || isAlphaDenied()) return;
+    try {
+      const res = await fetch('/api/messenger/unread', { headers: { 'cache-control': 'no-store' } });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const count = Number(payload?.totalUnread ?? 0);
+      messageUnread = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    } catch {
+      // keep current unread count
+    }
+  };
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -404,6 +426,7 @@
       }
 
       await refreshAmbientContext();
+      await refreshMessageUnread();
 
       try {
         const res = await fetch('/api/context/portable');
@@ -414,6 +437,10 @@
       } catch {
         // keep defaults
       }
+
+      unreadPollTimer = window.setInterval(() => {
+        void refreshMessageUnread();
+      }, 15_000);
     });
 
     afterNavigate((nav) => {
@@ -431,6 +458,7 @@
         });
       }
       previousPath = nextPath;
+      void refreshMessageUnread();
     });
   }
 
@@ -475,6 +503,10 @@
     if (presenceHeartbeatTimer) {
       window.clearInterval(presenceHeartbeatTimer);
       presenceHeartbeatTimer = null;
+    }
+    if (unreadPollTimer) {
+      window.clearInterval(unreadPollTimer);
+      unreadPollTimer = null;
     }
     if (presenceVisible) {
       void postPresence('offline', true);

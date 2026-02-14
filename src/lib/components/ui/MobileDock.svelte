@@ -36,11 +36,18 @@
             aria-current={isActive(item.href) ? 'page' : undefined}
             data-testid={`dock-${item.label.toLowerCase()}`}
           >
-            <svelte:component
-              this={item.icon}
-              class="h-[20px] w-[20px] text-inherit"
-              aria-hidden="true"
-            />
+            <span class="icon-wrap">
+              <svelte:component
+                this={item.icon}
+                class="h-[20px] w-[20px] text-inherit"
+                aria-hidden="true"
+              />
+              {#if (item.badgeCount ?? 0) > 0}
+                <span class="dock-badge" aria-label={`${item.badgeCount} unread`}>
+                  {item.badgeCount! > 9 ? '9+' : item.badgeCount}
+                </span>
+              {/if}
+            </span>
             <span class="text-[10px] uppercase tracking-[0.18em] text-white/70">
               {item.label}
             </span>
@@ -59,5 +66,30 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dock-badge {
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    color: #fff;
+    background: #ef4444;
+    border: 1px solid rgba(15, 23, 42, 0.8);
   }
 </style>
