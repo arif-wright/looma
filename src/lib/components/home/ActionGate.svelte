@@ -9,6 +9,8 @@
   export let orbX = 50;
   export let orbY = 42;
   export let active = false;
+  export let dragging = false;
+  export let orbStatus: 'Distant' | 'Synced' | 'Resonant' | 'Steady' = 'Steady';
   export let hint = '';
   export let showHint = false;
 
@@ -20,7 +22,7 @@
     <path d={`M ${orbX} ${orbY + 7} Q ${orbX} ${(orbY + y) / 2} ${x} ${y - 5}`} />
   </svg>
 
-  <button class={`gate ${active ? 'gate--active' : ''}`} type="button" aria-label={label} on:click={() => dispatch('activate', { intent })}>
+  <button class={`gate ${active ? 'gate--active' : ''} ${dragging ? 'gate--dragging' : ''} ${orbStatus === 'Distant' ? 'gate--distant' : ''}`} type="button" aria-label={label} on:click={() => dispatch('activate', { intent })}>
     <span class="gate__arc"></span>
     <span class="gate__core">{label}</span>
   </button>
@@ -92,6 +94,17 @@
   .gate--active .gate__arc {
     border-color: rgba(45, 212, 191, 0.72);
     box-shadow: inset 0 0 24px rgba(45, 212, 191, 0.3), 0 14px 28px rgba(45, 212, 191, 0.32);
+  }
+
+  .gate--distant .gate__arc {
+    border-color: rgba(45, 212, 191, 0.24);
+    box-shadow: inset 0 0 14px rgba(45, 212, 191, 0.12), 0 8px 16px rgba(45, 212, 191, 0.12);
+  }
+
+  .gate--distant.gate--dragging .gate__arc,
+  .gate--distant.gate--active .gate__arc {
+    border-color: rgba(45, 212, 191, 0.82);
+    box-shadow: inset 0 0 26px rgba(45, 212, 191, 0.34), 0 18px 32px rgba(45, 212, 191, 0.38);
   }
 
   .gate__hint {

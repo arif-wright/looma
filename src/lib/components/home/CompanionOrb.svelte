@@ -6,15 +6,21 @@
   export let statusLine: string = '';
   export let x = 50;
   export let y = 44;
+  export let scaleBoost = 1;
+  export let warmBoost = false;
 
   const dispatch = createEventDispatcher<{ open: Record<string, never>; press: { clientX: number; clientY: number; pointerId: number } }>();
 
   $: glowClass = status === 'Distant' ? 'orb--dim' : status === 'Resonant' ? 'orb--resonant' : 'orb--steady';
+  $: statusScale = status === 'Distant' ? 0.92 : status === 'Resonant' ? 1.04 : 1;
+  $: baseScale = statusScale * scaleBoost;
+  $: statusSaturation = status === 'Distant' ? 0.68 : status === 'Resonant' ? 1.08 : 1;
+  $: glowWarm = warmBoost || status === 'Resonant';
 </script>
 
 <button
-  class={`orb ${glowClass}`}
-  style={`left:${x}%; top:${y}%;`}
+  class={`orb ${glowClass} ${glowWarm ? 'orb--warm' : ''}`}
+  style={`left:${x}%; top:${y}%; --orb-scale:${baseScale}; --orb-sat:${statusSaturation};`}
   type="button"
   on:pointerdown={(event) =>
     dispatch('press', {
@@ -34,7 +40,7 @@
 <style>
   .orb {
     position: absolute;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
     width: clamp(6.6rem, 27vw, 9rem);
     aspect-ratio: 1/1;
     border-radius: 999px;
@@ -48,6 +54,7 @@
     z-index: 8;
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08), 0 18px 34px rgba(2, 6, 23, 0.45);
     touch-action: none;
+    filter: saturate(var(--orb-sat, 1));
   }
 
   .orb__core,
@@ -85,8 +92,7 @@
   }
 
   .orb--dim {
-    filter: saturate(0.75) brightness(0.83);
-    animation: pulseDim 4.2s ease-in-out infinite;
+    animation: pulseDim 5.2s ease-in-out infinite, distantDrift 7.6s ease-in-out infinite;
   }
 
   .orb--steady {
@@ -97,19 +103,29 @@
     animation: shimmer 2.2s linear infinite;
   }
 
+  .orb--warm {
+    border-color: rgba(251, 191, 36, 0.35);
+    background: radial-gradient(circle at 34% 30%, rgba(251, 191, 36, 0.22), rgba(2, 6, 23, 0.9) 62%);
+  }
+
   @keyframes pulseDim {
-    0%,100% { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.05), 0 14px 28px rgba(2, 6, 23, 0.36); }
-    50% { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1), 0 18px 34px rgba(2, 6, 23, 0.42); }
+    0%,100% { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.04), 0 12px 22px rgba(2, 6, 23, 0.34); }
+    50% { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.08), 0 16px 30px rgba(2, 6, 23, 0.4); }
   }
 
   @keyframes pulseSteady {
-    0%,100% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.025); }
+    0%,100% { transform: translate(-50%, -50%) scale(var(--orb-scale, 1)); }
+    50% { transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 1.025)); }
   }
 
   @keyframes shimmer {
     0% { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12), 0 18px 36px rgba(2, 6, 23, 0.5); }
     50% { box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.24), 0 22px 42px rgba(2, 6, 23, 0.58); }
     100% { box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2), 0 20px 40px rgba(2, 6, 23, 0.54); }
+  }
+
+  @keyframes distantDrift {
+    0%,100% { transform: translate(-50%, -50%) scale(var(--orb-scale, 1)); }
+    50% { transform: translate(-47%, -53%) scale(var(--orb-scale, 1)); }
   }
 </style>

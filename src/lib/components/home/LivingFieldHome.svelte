@@ -60,6 +60,10 @@
 
   let flickerOn = false;
   let flickerTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectFx = false;
+  let reconnectLine = '';
+  let rippleOn = false;
+  let rippleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -134,7 +138,23 @@
   };
 
   const triggerPrimary = () => {
-    dispatch('primary', { intent: actionIntent });
+    if (actionIntent === 'RECONNECT_30') {
+      reconnectFx = true;
+      reconnectLine = "She's closer.";
+      rippleOn = true;
+      setTimeout(() => {
+        reconnectFx = false;
+        reconnectLine = '';
+      }, 900);
+      setTimeout(() => {
+        rippleOn = false;
+      }, 1100);
+      setTimeout(() => {
+        dispatch('primary', { intent: actionIntent });
+      }, 820);
+    } else {
+      dispatch('primary', { intent: actionIntent });
+    }
     if (browser) {
       showGateHint = false;
       window.localStorage.setItem(GATE_HINT_KEY, 'true');
@@ -163,6 +183,8 @@
 
     const handleUp = () => {
       if (draggingOrb && gateActive) {
+        orbX = gatePoint.x;
+        orbY = gatePoint.y - 2;
         triggerPrimary();
       } else if (draggingOrb && dragMoved) {
         ignoreOpen = true;
@@ -202,6 +224,25 @@
     schedule();
   };
 
+  const startResonantRippleLoop = () => {
+    if (!browser) return;
+    const schedule = () => {
+      const nextDelay = 8000 + Math.round(Math.random() * 4000);
+      rippleTimer = setTimeout(() => {
+        if (companionStatus === 'Resonant') {
+          rippleOn = true;
+          setTimeout(() => {
+            rippleOn = false;
+            schedule();
+          }, 850);
+        } else {
+          schedule();
+        }
+      }, nextDelay);
+    };
+    schedule();
+  };
+
   onMount(() => {
     if (!browser) return;
     showGateHint = window.localStorage.getItem(GATE_HINT_KEY) !== 'true';
@@ -214,10 +255,12 @@
     mediaQuery.addEventListener('change', mediaHandler);
 
     startFlickerLoop();
+    startResonantRippleLoop();
 
     return () => {
       if (mediaQuery && mediaHandler) mediaQuery.removeEventListener('change', mediaHandler);
       if (flickerTimer) clearTimeout(flickerTimer);
+      if (rippleTimer) clearTimeout(rippleTimer);
       unlockScroll();
     };
   });
@@ -225,6 +268,7 @@
   onDestroy(() => {
     if (pressTimer) clearTimeout(pressTimer);
     if (flickerTimer) clearTimeout(flickerTimer);
+    if (rippleTimer) clearTimeout(rippleTimer);
     unlockScroll();
   });
 </script>
@@ -267,6 +311,8 @@
     statusLine={companionStatusLine}
     x={orbX}
     y={orbY}
+    scaleBoost={reconnectFx ? 1.06 : 1}
+    warmBoost={reconnectFx}
     on:press={startOrbDrag}
     on:open={handleOrbOpen}
   />
@@ -288,10 +334,20 @@
     orbX={orbX}
     orbY={orbY}
     active={gateActive}
+    dragging={draggingOrb}
+    orbStatus={companionStatus}
     showHint={showGateHint}
     hint={`Pull ${companionName ?? 'your companion'} into the glow to ${actionLabel.toLowerCase()}.`}
     on:activate={(event) => dispatch('primary', event.detail)}
   />
+
+  {#if reconnectLine}
+    <p class="living-field__reconnect-line">{reconnectLine}</p>
+  {/if}
+
+  {#if rippleOn}
+    <span class="living-field__ripple" style={`left:${baseOrb.x}%; top:${baseOrb.y}%;`}></span>
+  {/if}
 </section>
 
 <style>
@@ -350,6 +406,32 @@
     filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
   }
 
+  .living-field__reconnect-line {
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    transform: translateX(-50%);
+    margin: 0;
+    color: rgba(252, 211, 77, 0.95);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    z-index: 10;
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
+  }
+
+  .living-field__ripple {
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.46);
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    pointer-events: none;
+    animation: rippleOut 850ms ease-out;
+  }
+
   .mode-neutral { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.16), transparent 62%), #020617; }
   .mode-support { background: radial-gradient(90rem 50rem at 12% -16%, rgba(192, 132, 252, 0.28), transparent 58%), #020617; }
   .mode-settle { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.2), transparent 62%), #020617; }
@@ -380,5 +462,18 @@
   @keyframes sweep {
     0%,100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
+  }
+
+  @keyframes rippleOut {
+    from {
+      width: 1rem;
+      height: 1rem;
+      opacity: 0.65;
+    }
+    to {
+      width: 13rem;
+      height: 13rem;
+      opacity: 0;
+    }
   }
 </style>

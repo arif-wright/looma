@@ -79,8 +79,8 @@
   let showMoodSeeds = !hasCheckedInToday;
   let moodFading = false;
   let companionSheetOpen = false;
-  let reconnectModalOpen = false;
   let microRitualModalOpen = false;
+  let ritualVariant: 'micro' | 'reconnect' = 'micro';
   let rewardToast: string | null = null;
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -164,7 +164,8 @@
     }
 
     if (intent === 'RECONNECT_30') {
-      reconnectModalOpen = true;
+      ritualVariant = 'reconnect';
+      microRitualModalOpen = true;
       return;
     }
 
@@ -180,17 +181,16 @@
     }
 
     microRitualModalOpen = true;
-  };
-
-  const executeReconnect = async () => {
-    reconnectModalOpen = false;
-    showReward('+8 XP · +5 Energy');
-    await goto('/app/companions');
+    ritualVariant = 'micro';
   };
 
   const executeMicroRitual = () => {
     microRitualModalOpen = false;
-    showReward('+5 XP · +3 Energy');
+    if (ritualVariant === 'reconnect') {
+      showReward("She's closer. +8 XP · +5 Energy");
+    } else {
+      showReward('+5 XP · +3 Energy');
+    }
   };
 
   const handleSeedFollow = async (href: string) => {
@@ -290,27 +290,18 @@
 />
 
 <BottomSheet
-  open={reconnectModalOpen}
-  title="Reconnect"
-  onClose={() => {
-    reconnectModalOpen = false;
-  }}
->
-  <section class="modal-copy">
-    <p>Take one gentle breath, send one warm signal, and return to your companion.</p>
-    <button type="button" on:click={executeReconnect}>Complete reconnect</button>
-  </section>
-</BottomSheet>
-
-<BottomSheet
   open={microRitualModalOpen}
-  title="Micro Ritual"
+  title={ritualVariant === 'reconnect' ? 'Reconnect Ritual' : 'Micro Ritual'}
   onClose={() => {
     microRitualModalOpen = false;
   }}
 >
   <section class="modal-copy">
-    <p>Place attention on one small intention for 20 seconds.</p>
+    <p>
+      {ritualVariant === 'reconnect'
+        ? 'Take one soft breath and call her closer for 30 seconds.'
+        : 'Place attention on one small intention for 20 seconds.'}
+    </p>
     <button type="button" on:click={executeMicroRitual}>Done</button>
   </section>
 </BottomSheet>
