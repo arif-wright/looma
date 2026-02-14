@@ -3,9 +3,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
-  import HomeArrivalCard from '$lib/components/home/HomeArrivalCard.svelte';
-  import HomeCompanionCard from '$lib/components/home/HomeCompanionCard.svelte';
-  import HomePrimaryActionCard from '$lib/components/home/HomePrimaryActionCard.svelte';
+  import HomeResonanceLens from '$lib/components/home/HomeResonanceLens.svelte';
   import HomeSecondaryStack from '$lib/components/home/HomeSecondaryStack.svelte';
   import type { HomeMood, HomePrimaryIntent } from '$lib/components/home/homeLoopTypes';
   import { logEvent } from '$lib/analytics';
@@ -258,33 +256,19 @@
     <h1 id="home-title" class="sr-only">Looma Home</h1>
 
     <section class="loop" bind:this={arrivalSection}>
-      <div class="slot slot--arrival">
-        <HomeArrivalCard
-          {selectedMood}
-          hasCheckedInToday={hasCheckedInToday}
-          attunementLine={attunementLine ?? null}
-          submitting={submittingMood}
-          on:select={(event) => submitMood(event.detail.mood)}
-        />
-      </div>
-
-      <div class="slot slot--companion">
-        <HomeCompanionCard
-          companion={activeCompanion}
-          bondLevel={activeCompanion?.bondLevel ?? 0}
-          statusLabel={companionStatusLabel}
-          statusText={companionStatusText}
-        />
-      </div>
-
-      <div class="slot slot--action">
-        <HomePrimaryActionCard
-          intent={homeIntent}
-          label={primaryCopy.label}
-          helper={primaryCopy.helper}
-          on:action={handlePrimaryAction}
-        />
-      </div>
+      <HomeResonanceLens
+        {selectedMood}
+        {hasCheckedInToday}
+        attunementLine={attunementLine ?? null}
+        companionName={activeCompanion?.name ?? null}
+        companionStatusLabel={companionStatusLabel}
+        companionStatusText={companionStatusText}
+        primaryLabel={primaryCopy.label}
+        primaryHelper={primaryCopy.helper}
+        signalsCount={data.notificationsUnread ?? 0}
+        on:moodcommit={(event) => submitMood(event.detail.mood)}
+        on:primary={handlePrimaryAction}
+      />
     </section>
 
     <div class="slot slot--secondary">
@@ -448,34 +432,7 @@
     }
 
     .loop {
-      grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
-      grid-template-areas:
-        'arrival companion'
-        'action companion';
       gap: 1rem;
-      padding: 1.2rem;
-      border-radius: 1.4rem;
-      border: 1px solid rgba(125, 211, 252, 0.18);
-      background:
-        radial-gradient(70rem 30rem at 10% -20%, rgba(56, 189, 248, 0.1), transparent 65%),
-        radial-gradient(54rem 26rem at 120% 100%, rgba(45, 212, 191, 0.1), transparent 62%),
-        rgba(2, 8, 23, 0.4);
-      box-shadow: inset 0 1px 0 rgba(125, 211, 252, 0.08), 0 20px 46px rgba(2, 6, 23, 0.36);
-    }
-
-    .slot--arrival {
-      grid-area: arrival;
-    }
-
-    .slot--action {
-      grid-area: action;
-    }
-
-    .slot--companion {
-      grid-area: companion;
-      position: sticky;
-      top: 5.8rem;
-      align-self: start;
     }
 
     .slot--secondary :global(.secondary.card) {
