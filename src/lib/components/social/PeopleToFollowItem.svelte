@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+
   export let user_id: string;
   export let profile: { handle: string; display_name: string; avatar_url?: string | null };
   export let mutuals = 0;
@@ -46,9 +48,39 @@
       pending = false;
     }
   }
+
+  const profileHref = () => {
+    const handle = profile.handle?.trim();
+    return handle ? `/app/u/${encodeURIComponent(handle)}` : null;
+  };
+
+  function handleCardClick(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button')) return;
+    const href = profileHref();
+    if (!href) return;
+    void goto(href);
+  }
+
+  function handleCardKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if ((event.target as HTMLElement | null)?.closest('button')) return;
+    const href = profileHref();
+    if (!href) return;
+    event.preventDefault();
+    void goto(href);
+  }
 </script>
 
-<div class="rec-card" data-testid="people-to-follow-item" data-user-id={user_id}>
+<div
+  class="rec-card"
+  data-testid="people-to-follow-item"
+  data-user-id={user_id}
+  role="button"
+  tabindex="0"
+  on:click={handleCardClick}
+  on:keydown={handleCardKeydown}
+>
   <img src={avatarSrc()} alt={displayName()} class="rec-avatar" loading="lazy" on:error={() => (avatarLoadFailed = true)} />
   <div class="rec-details">
     <div class="rec-name" data-testid="people-to-follow-name">{displayName()}</div>
