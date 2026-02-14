@@ -584,7 +584,7 @@ const capsuleBaseClass =
     justify-content: center;
   }
 
-  .avatar-thumb {
+  :global(.avatar-thumb) {
     width: 28px;
     height: 28px;
     border-radius: 999px;

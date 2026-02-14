@@ -330,7 +330,7 @@
     overflow: hidden;
   }
 
-  .avatar-img {
+  :global(.avatar-img) {
     width: 100%;
     height: 100%;
     object-fit: cover;

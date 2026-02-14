@@ -589,7 +589,7 @@
     font-weight: 600;
   }
 
-  .lean-account__avatar {
+  :global(.lean-account__avatar) {
     width: 28px;
     height: 28px;
     border-radius: 999px;
