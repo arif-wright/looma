@@ -1,11 +1,19 @@
 <script lang="ts">
   import type { ProfileSummary } from './types';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let profile: ProfileSummary;
 </script>
 
 <header class="hero">
-  <img class="avatar" src={profile.avatar_url || '/avatar.svg'} alt="" />
+  <AvatarImage
+    className="profile-hero-avatar"
+    src={profile.avatar_url}
+    name={profile.display_name}
+    handle={profile.handle}
+    alt=""
+    loading="eager"
+  />
   <div>
     <h1>{profile.display_name || profile.handle}</h1>
     <p class="sub">@{profile.handle}</p>
@@ -34,7 +42,7 @@
     margin-bottom: 8px;
   }
 
-  .avatar {
+  :global(.profile-hero-avatar) {
     width: 64px;
     height: 64px;
     border-radius: 999px;

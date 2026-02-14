@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import CenterIconNav from '$lib/components/ui/CenterIconNav.svelte';
   import type { NotificationItem, IconNavItem } from '$lib/components/ui/types';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
@@ -41,12 +42,6 @@
   const profileStore = currentProfile;
   $: mergedProfile = $profileStore ?? profile;
   $: profileAvatar = mergedProfile?.avatar_url ?? null;
-  $: initials =
-    (mergedProfile?.display_name?.charAt(0) ??
-      mergedProfile?.handle?.charAt(0) ??
-      userEmail?.charAt(0) ??
-      '•'
-    ).toUpperCase();
 
   const navWallet = (event: MouseEvent) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
@@ -167,11 +162,16 @@
           aria-expanded={menuOpen}
           aria-label={userEmail ? `Account menu for ${userEmail}` : 'Account menu'}
         >
-          {#if profileAvatar}
-            <img src={profileAvatar} alt="" class="lean-account__avatar" aria-hidden="true" />
-          {:else}
-            <span class="lean-account__initial" aria-hidden="true">{initials}</span>
-          {/if}
+          <AvatarImage
+            src={profileAvatar}
+            name={mergedProfile?.display_name ?? null}
+            handle={mergedProfile?.handle ?? null}
+            email={userEmail}
+            alt=""
+            className="lean-account__avatar"
+            ariaHidden={true}
+            loading="eager"
+          />
           {#if userEmail}
             <span class="lean-account__email">{userEmail}</span>
           {/if}

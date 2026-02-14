@@ -4,6 +4,7 @@
 import { formatCommentBody, remainingRepliesText, relativeTime } from './commentHelpers';
 import { canonicalCommentPath } from '$lib/threads/permalink';
   import type { CommentNode, PostComment } from './types';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   type ReplyState = {
     items: CommentNode[];
@@ -117,13 +118,14 @@ $: fullThreadLink = canonicalCommentPath(
     data-depth={displayDepth}
   >
     <div class="guide" aria-hidden="true"></div>
-    <img
-      class:avatar-inline={depth === 0}
-      class:avatar-reply={depth >= 1}
+    <AvatarImage
       src={comment.author_avatar_url ?? '/avatar.svg'}
+      name={comment.author_display_name}
+      handle={comment.author_handle}
       alt=""
       width={depth === 0 ? 32 : 24}
       height={depth === 0 ? 32 : 24}
+      className={depth === 0 ? 'avatar-inline' : 'avatar-reply'}
       loading="lazy"
     />
     <div class="content">
@@ -282,7 +284,7 @@ $: fullThreadLink = canonicalCommentPath(
     outline-offset: 2px;
   }
 
-  .avatar-inline {
+  :global(.avatar-inline) {
     width: 32px;
     height: 32px;
     border-radius: 999px;
@@ -290,7 +292,7 @@ $: fullThreadLink = canonicalCommentPath(
     object-fit: cover;
   }
 
-  .avatar-reply {
+  :global(.avatar-reply) {
     width: 24px;
     height: 24px;
     border-radius: 999px;

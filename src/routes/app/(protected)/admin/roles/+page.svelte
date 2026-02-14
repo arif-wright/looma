@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -90,9 +91,13 @@
                 </td>
                 <td>
                   <div class="user-cell">
-                    {#if user.avatar_url}
-                      <img src={user.avatar_url} alt="" />
-                    {/if}
+                    <AvatarImage
+                      src={user.avatar_url}
+                      name={user.display_name}
+                      handle={user.handle}
+                      alt=""
+                      className="user-cell-avatar"
+                    />
                     <div>
                       <p>{user.display_name ?? user.handle ?? 'Unknown'}</p>
                       <p class="handle">@{user.handle ?? 'unknown'}</p>
@@ -288,7 +293,7 @@
     gap: 0.75rem;
   }
 
-  .user-cell img {
+  :global(.user-cell-avatar) {
     width: 40px;
     height: 40px;
     border-radius: 999px;

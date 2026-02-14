@@ -4,6 +4,7 @@
   import { walletBalance } from '$lib/stores/economy';
   import type { NotificationItem } from '$lib/components/ui/types';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
   import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
 
@@ -49,12 +50,6 @@
 
   $: mergedProfile = $profileStore ?? profile;
   $: profileAvatar = mergedProfile?.avatar_url ?? null;
-  $: initials =
-    (mergedProfile?.display_name?.charAt(0) ??
-      mergedProfile?.handle?.charAt(0) ??
-      userEmail?.charAt(0) ??
-      '•'
-    ).toUpperCase();
 
   $: notifCount = Array.isArray(notifications)
     ? notifications.filter((n: any) => !n?.read).length || notifications.length || 0
@@ -133,11 +128,16 @@
         aria-expanded={menuOpen}
         aria-label="Account menu"
       >
-        {#if profileAvatar}
-          <img src={profileAvatar} alt="" class="avatar-img" aria-hidden="true" />
-        {:else}
-          <span class="avatar-text" aria-hidden="true">{initials}</span>
-        {/if}
+        <AvatarImage
+          src={profileAvatar}
+          name={mergedProfile?.display_name ?? null}
+          handle={mergedProfile?.handle ?? null}
+          email={userEmail}
+          alt=""
+          className="avatar-img"
+          ariaHidden={true}
+          loading="eager"
+        />
       </button>
       {#if menuOpen}
         <div class="account-menu__dropdown" role="menu">

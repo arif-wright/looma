@@ -1,4 +1,6 @@
 <script lang="ts">
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
+
   export let items: Array<{
     requester_id: string;
     display_name?: string | null;
@@ -37,10 +39,12 @@
     <ul class="mt-3 space-y-2">
       {#each items as it (it.requester_id)}
         <li class="flex items-center gap-3">
-          <img
+          <AvatarImage
             src={it.avatar_url ?? '/avatar-fallback.png'}
+            name={it.display_name}
+            handle={it.handle}
             alt=""
-            class="h-8 w-8 rounded-full object-cover ring-1 ring-white/10"
+            className="h-8 w-8 rounded-full object-cover ring-1 ring-white/10"
             loading="lazy"
           />
           <div class="min-w-0 flex-1">

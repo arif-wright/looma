@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   type FollowListKind = 'followers' | 'following';
 
@@ -144,7 +145,14 @@
       {#each items as item}
         <li class="follow-row">
           <div class="follow-avatar">
-            <img src={item.avatar_url ?? '/avatars/default.png'} alt="" loading="lazy" />
+            <AvatarImage
+              src={item.avatar_url ?? '/avatars/default.png'}
+              name={item.display_name}
+              handle={item.handle}
+              alt=""
+              className="follow-avatar-img"
+              loading="lazy"
+            />
           </div>
           <div class="follow-details">
             <div class="follow-name">{item.display_name ?? item.handle ?? 'Explorer'}</div>
@@ -187,7 +195,7 @@
     padding: 0.25rem 0;
   }
 
-  .follow-avatar img {
+  :global(.follow-avatar-img) {
     width: 44px;
     height: 44px;
     border-radius: 999px;

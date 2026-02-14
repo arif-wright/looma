@@ -6,6 +6,7 @@
   import FollowListModal from '$lib/components/profile/FollowListModal.svelte';
   import ReportModal from '$lib/components/modals/ReportModal.svelte';
   import ArchetypeBadge from '$lib/components/profile/ArchetypeBadge.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
 
   type FollowCounts = { followers: number; following: number };
@@ -280,10 +281,12 @@ function openReport() {
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div class="flex items-center gap-4">
           <div class="avatar-ring" data-intensity={pulseIntensity}>
-            <img
+            <AvatarImage
               src={avatarUrl ?? '/avatars/default.png'}
+              name={displayName}
+              handle={handle}
               alt=""
-              class="relative z-10 h-16 w-16 rounded-full object-cover ring-2 ring-black/20 sm:h-20 sm:w-20"
+              className="relative z-10 h-16 w-16 rounded-full object-cover ring-2 ring-black/20 sm:h-20 sm:w-20"
               loading="lazy"
             />
           </div>

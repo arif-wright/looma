@@ -12,6 +12,7 @@
   } from './commentHelpers';
   import { canonicalPostPath } from '$lib/threads/permalink';
   import type { CommentNode, PostComment } from './types';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
 export let open = false;
 export let postId: string;
@@ -288,7 +289,16 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
         <header class="root-meta">
           <div class="root-author">
             <span class="avatar">
-              <img src={root.author_avatar_url ?? '/avatar.svg'} alt="" width="32" height="32" loading="lazy" />
+              <AvatarImage
+                src={root.author_avatar_url ?? '/avatar.svg'}
+                name={root.author_display_name}
+                handle={root.author_handle}
+                alt=""
+                width={32}
+                height={32}
+                className="thread-root-avatar"
+                loading="lazy"
+              />
             </span>
             <div>
               <strong>{root.author_display_name ?? root.author_handle ?? 'Someone'}</strong>
@@ -462,7 +472,7 @@ export let pageSize = THREAD_DRAWER_PAGE_SIZE;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .avatar img {
+  :global(.thread-root-avatar) {
     width: 100%;
     height: 100%;
     object-fit: cover;

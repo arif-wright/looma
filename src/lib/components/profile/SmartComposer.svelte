@@ -5,6 +5,7 @@
   import { applyRitualUpdate } from '$lib/stores/companionRituals';
   import type { CompanionRitual } from '$lib/companions/rituals';
   import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let avatarUrl: string | null = null;
   export let maxLength = 420;
@@ -70,10 +71,12 @@
 
 <section class={`composer ${expanded ? 'composer-expanded' : 'composer-collapsed'}`} aria-label="Create a new post">
   <div class="flex items-start gap-3">
-    <img
+    <AvatarImage
       src={avatarUrl ?? '/avatars/default.png'}
+      name={null}
+      handle={null}
       alt=""
-      class="h-10 w-10 rounded-full ring-1 ring-white/20 object-cover"
+      className="h-10 w-10 rounded-full ring-1 ring-white/20 object-cover"
       loading="lazy"
     />
     <div class="flex-1">

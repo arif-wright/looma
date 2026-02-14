@@ -5,6 +5,7 @@ import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
 import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
 import ProfileHighlights from '$lib/components/profile/ProfileHighlights.svelte';
+import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 import ProfileFeed from '$lib/components/profile/ProfileFeed.svelte';
 import type { PageData } from './$types';
 
@@ -119,7 +120,14 @@ import type { PageData } from './$types';
                 <article class="panel">
                   <header class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3 min-w-0">
-                      <img src={item.author_avatar ?? profile.avatar_url} alt="" class="h-8 w-8 rounded-full ring-1 ring-white/15" />
+                      <AvatarImage
+                        src={item.author_avatar ?? profile.avatar_url}
+                        name={item.author_name ?? profile.display_name}
+                        handle={profile.handle}
+                        alt=""
+                        className="h-8 w-8 rounded-full ring-1 ring-white/15"
+                        loading="lazy"
+                      />
                       <div class="min-w-0">
                         <div class="text-sm font-medium truncate">{item.author_name ?? profile.display_name ?? '@' + profile.handle}</div>
                         <div class="text-xs text-white/60 truncate">{item.when_label}</div>

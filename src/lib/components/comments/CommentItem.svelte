@@ -9,6 +9,7 @@ import ReplyComposer from './ReplyComposer.svelte';
 import CommentThread from './CommentThread.svelte';
 import ReportModal from '$lib/components/modals/ReportModal.svelte';
 import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
+import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let comment: Comment;
   export let postId: string;
@@ -124,12 +125,14 @@ let reportOpen = false;
   class={`comment-card ${isHighlighted ? 'highlighted' : ''}`}
 >
   <header class="comment-header">
-    <img
+    <AvatarImage
       src={comment.author.avatar_url ?? '/avatar.svg'}
+      name={comment.author.display_name}
+      handle={comment.author.handle}
       alt=""
-      width="40"
-      height="40"
-      class="avatar"
+      width={40}
+      height={40}
+      className="avatar"
       loading="lazy"
     />
     <div class="meta">

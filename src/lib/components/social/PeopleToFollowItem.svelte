@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let user_id: string;
   export let profile: { handle: string; display_name: string; avatar_url?: string | null };
@@ -9,22 +10,8 @@
   export let onFollow: (id: string) => Promise<void> | void;
 
   let pending = false;
-  let avatarLoadFailed = false;
-  let avatarKey = '';
-
   const displayName = () => profile.display_name?.trim() || profile.handle || 'Explorer';
   const handleLabel = () => profile.handle ?? 'unknown';
-  const normalizedAvatar = () =>
-    typeof profile.avatar_url === 'string' && profile.avatar_url.trim().length > 0
-      ? profile.avatar_url
-      : null;
-  const avatarSrc = () => (avatarLoadFailed ? '/avatars/default.png' : normalizedAvatar() ?? '/avatars/default.png');
-
-  $: nextAvatarKey = `${user_id}:${normalizedAvatar() ?? ''}`;
-  $: if (nextAvatarKey !== avatarKey) {
-    avatarKey = nextAvatarKey;
-    avatarLoadFailed = false;
-  }
 
   const contextLabel = () => {
     if (mutuals > 0) {
@@ -81,7 +68,14 @@
   on:click={handleCardClick}
   on:keydown={handleCardKeydown}
 >
-  <img src={avatarSrc()} alt={displayName()} class="rec-avatar" loading="lazy" on:error={() => (avatarLoadFailed = true)} />
+  <AvatarImage
+    src={profile.avatar_url ?? '/avatars/default.png'}
+    name={profile.display_name}
+    handle={profile.handle}
+    alt={displayName()}
+    className="rec-avatar"
+    loading="lazy"
+  />
   <div class="rec-details">
     <div class="rec-name" data-testid="people-to-follow-name">{displayName()}</div>
     <div class="rec-handle">@{handleLabel()}</div>
@@ -114,7 +108,7 @@
     border-color: rgba(255, 255, 255, 0.15);
   }
 
-  .rec-avatar {
+  :global(.rec-avatar) {
     width: 44px;
     height: 44px;
     border-radius: 999px;

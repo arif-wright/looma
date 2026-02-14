@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import type { NotificationItem } from '$lib/components/ui/types';
   import { currentProfile } from '$lib/stores/profile';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
@@ -46,12 +47,6 @@ const capsuleBaseClass =
   let xpRatio = 0;
 
   $: profileAvatar = $profileStore?.avatar_url ?? null;
-  $: initials =
-    ($profileStore?.display_name?.charAt(0) ??
-      $profileStore?.handle?.charAt(0) ??
-      userEmail?.charAt(0) ??
-      '•'
-    ).toUpperCase();
 
   $: {
     const numeric = typeof walletBalance === 'number' ? walletBalance : null;
@@ -213,16 +208,16 @@ const capsuleBaseClass =
       aria-expanded={menuOpen}
       aria-label={userEmail ? `Account menu for ${userEmail}` : 'Open account menu'}
     >
-      {#if profileAvatar}
-        <img src={profileAvatar} alt="" class="avatar-thumb" />
-      {:else}
-        <span
-          class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-aura-cyan/40 to-aura-violet/40 text-xs font-semibold uppercase tracking-wide text-ink-900 md:h-7 md:w-7"
-          aria-hidden="true"
-        >
-          {initials}
-        </span>
-      {/if}
+      <AvatarImage
+        src={profileAvatar}
+        name={$profileStore?.display_name ?? null}
+        handle={$profileStore?.handle ?? null}
+        email={userEmail}
+        alt=""
+        className="avatar-thumb"
+        ariaHidden={true}
+        loading="eager"
+      />
       {#if userEmail}
         <span class="max-w-[140px] truncate text-xs text-white/75">{userEmail}</span>
       {/if}

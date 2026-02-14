@@ -17,6 +17,7 @@ import { copyToClipboard } from '$lib/utils/copy';
 import { formatCommentBody } from '$lib/social/commentHelpers';
 import { sendAnalytics } from '$lib/utils/analytics';
 import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
+import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let data: {
     profile: ProfileSummary;
@@ -117,11 +118,14 @@ import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
       <article class="post-card">
         <header class="post-header">
           <div class="author">
-            <img
+            <AvatarImage
               src={post.author.avatar_url ?? '/avatar.svg'}
+              name={post.author.display_name}
+              handle={post.author.handle}
               alt=""
-              width="40"
-              height="40"
+              width={40}
+              height={40}
+              className="focused-author-avatar"
               loading="lazy"
             />
             <div>
@@ -266,7 +270,7 @@ import ReplyComposer from '$lib/components/comments/ReplyComposer.svelte';
     align-items: center;
   }
 
-  .author img {
+  :global(.focused-author-avatar) {
     width: 48px;
     height: 48px;
     border-radius: 999px;

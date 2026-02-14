@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import PostList from '$lib/social/PostList.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   type FeedRow = {
     id: string;
@@ -57,7 +58,7 @@
     const handle = getAuthorHandle(row);
     return row.author_name ?? (row.display_name ?? (handle ? `@${handle}` : 'Someone'));
   };
-  const getAuthorAvatar = (row: FeedRow) => row.author_avatar ?? row.avatar_url ?? '/avatar.svg';
+  const getAuthorAvatar = (row: FeedRow) => row.author_avatar ?? row.avatar_url ?? null;
 
   function openCard(id: string) {
     if (hideTimer) {
@@ -312,9 +313,11 @@
               aria-haspopup="dialog"
               on:keydown={onKeydownCard}
             >
-              <img
-                class="avatar"
+              <AvatarImage
+                className="avatar"
                 src={getAuthorAvatar(row)}
+                name={getAuthorName(row)}
+                handle={getAuthorHandle(row)}
                 alt={getAuthorName(row)}
                 loading="lazy"
               />
@@ -334,7 +337,14 @@
               on:keydown={onKeydownCard}
             >
               <span class="hc-header">
-                <img class="hc-avatar" src={getAuthorAvatar(row)} alt="" />
+                <AvatarImage
+                  className="hc-avatar"
+                  src={getAuthorAvatar(row)}
+                  name={getAuthorName(row)}
+                  handle={getAuthorHandle(row)}
+                  alt=""
+                  loading="lazy"
+                />
                 <span>
                   <b class="hc-name">{getAuthorName(row)}</b>
                   <span class="hc-handle">@{getAuthorHandle(row) ?? 'user'}</span>

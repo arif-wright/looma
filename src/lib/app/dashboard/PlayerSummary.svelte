@@ -4,6 +4,7 @@
   import StatBadge from '$lib/app/components/StatBadge.svelte';
   import PanelFrame from '$lib/app/components/PanelFrame.svelte';
   import ProgressBar from '$lib/ui/ProgressBar.svelte';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import type { RealtimeChannel } from '@supabase/supabase-js';
 
   type Profile = {
@@ -161,10 +162,12 @@
     <div class="summary-grid" aria-live="polite">
       <div>
         <div class="identity">
-          <img
+          <AvatarImage
             src={profile.avatar_url ?? '/avatar-fallback.png'}
+            name={profile.display_name}
+            handle={profile.handle}
             alt="Player avatar"
-            class="avatar"
+            className="player-summary-avatar"
             loading="lazy"
           />
           <div>
@@ -246,7 +249,7 @@
     gap: 1rem;
   }
 
-  .avatar {
+  :global(.player-summary-avatar) {
     height: 4rem;
     width: 4rem;
     border-radius: 999px;

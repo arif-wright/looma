@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { MentionOption } from './types';
+  import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
 
   export let open = false;
   export let items: MentionOption[] = [];
@@ -54,7 +55,16 @@
             class:active={index === active}
             on:mousedown|preventDefault={() => handleSelect(item)}
           >
-            <img src={item.author_avatar_url ?? '/avatar.svg'} alt="" width="28" height="28" loading="lazy" />
+            <AvatarImage
+              src={item.author_avatar_url ?? '/avatar.svg'}
+              name={item.author_display_name}
+              handle={item.author_handle}
+              alt=""
+              width={28}
+              height={28}
+              className="mention-avatar"
+              loading="lazy"
+            />
             <span>
               <b>
                 {item.author_display_name ?? (item.author_handle ? `@${item.author_handle}` : 'Someone')}
@@ -106,7 +116,7 @@
     background: rgba(255, 255, 255, 0.12);
   }
 
-  img {
+  :global(.mention-avatar) {
     width: 28px;
     height: 28px;
     border-radius: 999px;
