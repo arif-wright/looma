@@ -19,6 +19,15 @@ export type FollowRecommendation = {
 
 const clampLimit = (value: number) => Math.max(1, Math.min(50, Math.floor(value)));
 const clampOffset = (value: number) => Math.max(0, Math.floor(value));
+const TEST_HANDLE_PATTERNS = [/^seed-/i, /^test[-_]/i];
+
+const isHiddenRecommendationProfile = (profile: FollowRecommendationProfile) => {
+  const handle = (profile.handle ?? '').trim();
+  const displayName = (profile.display_name ?? '').trim();
+  if (!handle && !displayName) return false;
+  const identity = `${handle} ${displayName}`.toLowerCase();
+  return TEST_HANDLE_PATTERNS.some((pattern) => pattern.test(handle)) || identity.includes('seed-author');
+};
 
 export async function fetchPeopleRecs(
   supabase: SupabaseClient,
@@ -72,6 +81,7 @@ export async function fetchPeopleRecs(
     .map((row) => {
       const profile = profileMap.get(row.user_id);
       if (!profile) return null;
+      if (isHiddenRecommendationProfile(profile)) return null;
       return {
         user_id: row.user_id,
         mutuals: Number(row.mutuals ?? 0),

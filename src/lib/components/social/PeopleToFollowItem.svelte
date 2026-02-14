@@ -7,10 +7,22 @@
   export let onFollow: (id: string) => Promise<void> | void;
 
   let pending = false;
+  let avatarLoadFailed = false;
+  let avatarKey = '';
 
   const displayName = () => profile.display_name?.trim() || profile.handle || 'Explorer';
   const handleLabel = () => profile.handle ?? 'unknown';
-  const avatarSrc = () => profile.avatar_url ?? '/avatars/default.png';
+  const normalizedAvatar = () =>
+    typeof profile.avatar_url === 'string' && profile.avatar_url.trim().length > 0
+      ? profile.avatar_url
+      : null;
+  const avatarSrc = () => (avatarLoadFailed ? '/avatars/default.png' : normalizedAvatar() ?? '/avatars/default.png');
+
+  $: nextAvatarKey = `${user_id}:${normalizedAvatar() ?? ''}`;
+  $: if (nextAvatarKey !== avatarKey) {
+    avatarKey = nextAvatarKey;
+    avatarLoadFailed = false;
+  }
 
   const contextLabel = () => {
     if (mutuals > 0) {
@@ -37,7 +49,7 @@
 </script>
 
 <div class="rec-card" data-testid="people-to-follow-item" data-user-id={user_id}>
-  <img src={avatarSrc()} alt={displayName()} class="rec-avatar" loading="lazy" />
+  <img src={avatarSrc()} alt={displayName()} class="rec-avatar" loading="lazy" on:error={() => (avatarLoadFailed = true)} />
   <div class="rec-details">
     <div class="rec-name" data-testid="people-to-follow-name">{displayName()}</div>
     <div class="rec-handle">@{handleLabel()}</div>
