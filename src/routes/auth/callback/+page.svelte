@@ -77,13 +77,13 @@
         return;
       }
 
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getUser();
       if (error) {
         fail(error.message ?? 'We could not complete the sign-in process.');
         return;
       }
 
-      if (data.session) {
+      if (data.user) {
         await complete();
         return;
       }

@@ -363,8 +363,12 @@
     if (!supabase) return;
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id;
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('[NotificationBell] auth user lookup failed', userError);
+        return;
+      }
+      const userId = userData?.user?.id;
       if (!userId) return;
 
       await teardownChannel();

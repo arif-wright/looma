@@ -1,4 +1,4 @@
-import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env as privateEnv } from '$env/dynamic/private';
@@ -35,6 +35,16 @@ export const supabaseAdmin = new Proxy({} as SupabaseClient, {
 
 type SupabaseServerResult = { supabase: App.Locals['supabase']; session: Session | null };
 
+const buildVerifiedSession = (user: User): Session =>
+  ({
+    access_token: '',
+    refresh_token: '',
+    token_type: 'bearer',
+    expires_in: 0,
+    expires_at: 0,
+    user
+  }) as Session;
+
 export const createSupabaseServerClient = async (event: RequestEvent): Promise<SupabaseServerResult> => {
   const supabase = event.locals.supabase ?? createSupabaseSsrClient(event);
   if (!event.locals.supabase) {
@@ -46,20 +56,26 @@ export const createSupabaseServerClient = async (event: RequestEvent): Promise<S
   }
 
   const {
-    data: { session },
+    data: { user },
     error
-  } = await supabase.auth.getSession();
+  } = await supabase.auth.getUser();
 
   if (error) {
-    console.error('[supabase] failed to fetch session', error);
+    console.error('[supabase] failed to fetch authenticated user', error);
     event.locals.session = null;
     return { supabase, session: null as Session | null };
   }
 
-  event.locals.session = session ?? null;
-  if (!event.locals.user && session?.user) {
-    event.locals.user = session.user;
+  if (!user) {
+    event.locals.session = null;
+    return { supabase, session: null as Session | null };
   }
 
-  return { supabase, session: session ?? null };
+  const session = buildVerifiedSession(user);
+  event.locals.session = session;
+  if (!event.locals.user) {
+    event.locals.user = user;
+  }
+
+  return { supabase, session };
 };
