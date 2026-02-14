@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
+import { tryGetSupabaseAdminClient } from '$lib/server/supabase';
 import { FRIENDS_CACHE_HEADERS } from '$lib/server/friends';
 import { requireModerator } from '$lib/server/moderation';
 
@@ -15,14 +16,28 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401, headers: FRIENDS_CACHE_HEADERS });
   }
 
-  const { data: friendRows, error: friendError } = await supabase
+  let { data: friendRows, error: friendError } = await supabase
     .from('friends')
     .select('friend_id, created_at')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false });
 
   if (friendError) {
-    return json({ error: friendError.message }, { status: 400, headers: FRIENDS_CACHE_HEADERS });
+    const admin = tryGetSupabaseAdminClient();
+    if (!admin) {
+      return json({ error: friendError.message }, { status: 400, headers: FRIENDS_CACHE_HEADERS });
+    }
+
+    const fallback = await admin
+      .from('friends')
+      .select('friend_id, created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    friendRows = fallback.data;
+    friendError = fallback.error;
+    if (friendError) {
+      return json({ error: friendError.message }, { status: 400, headers: FRIENDS_CACHE_HEADERS });
+    }
   }
 
   const rows = (friendRows ?? []) as FriendRow[];
@@ -32,7 +47,8 @@ export const GET: RequestHandler = async (event) => {
 
   const friendIds = rows.map((row) => row.friend_id);
   const moderatorView = await requireModerator(supabase, session.user.id, session.user.email ?? null);
-  const { data: profiles } = await supabase
+  const profileClient = tryGetSupabaseAdminClient() ?? supabase;
+  const { data: profiles } = await profileClient
     .from('profiles')
     .select('id, handle, display_name, avatar_url')
     .in('id', friendIds);

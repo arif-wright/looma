@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { FRIENDS_CACHE_HEADERS } from '$lib/server/friends';
+import { tryGetSupabaseAdminClient } from '$lib/server/supabase';
 
 type RequestRow = {
   id: string;
@@ -44,7 +45,7 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: 'unauthorized' }, { status: 401, headers: FRIENDS_CACHE_HEADERS });
   }
 
-  const [incomingResult, outgoingResult] = await Promise.all([
+  let [incomingResult, outgoingResult] = await Promise.all([
     supabase
       .from('friend_requests')
       .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
@@ -60,10 +61,35 @@ export const GET: RequestHandler = async (event) => {
   ]);
 
   if (incomingResult.error || outgoingResult.error) {
-    return json(
-      { error: incomingResult.error?.message ?? outgoingResult.error?.message ?? 'bad_request' },
-      { status: 400, headers: FRIENDS_CACHE_HEADERS }
-    );
+    const admin = tryGetSupabaseAdminClient();
+    if (!admin) {
+      return json(
+        { error: incomingResult.error?.message ?? outgoingResult.error?.message ?? 'bad_request' },
+        { status: 400, headers: FRIENDS_CACHE_HEADERS }
+      );
+    }
+
+    [incomingResult, outgoingResult] = await Promise.all([
+      admin
+        .from('friend_requests')
+        .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
+        .eq('recipient_id', session.user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      admin
+        .from('friend_requests')
+        .select('id, requester_id, recipient_id, status, message, created_at, updated_at')
+        .eq('requester_id', session.user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+    ]);
+
+    if (incomingResult.error || outgoingResult.error) {
+      return json(
+        { error: incomingResult.error?.message ?? outgoingResult.error?.message ?? 'bad_request' },
+        { status: 400, headers: FRIENDS_CACHE_HEADERS }
+      );
+    }
   }
 
   const incomingRows = (incomingResult.data ?? []) as RequestRow[];
@@ -76,11 +102,9 @@ export const GET: RequestHandler = async (event) => {
     ])
   ];
 
+  const profileClient = tryGetSupabaseAdminClient() ?? supabase;
   const { data: profiles } = profileIds.length
-    ? await supabase
-        .from('profiles')
-        .select('id, handle, display_name, avatar_url')
-        .in('id', profileIds)
+    ? await profileClient.from('profiles').select('id, handle, display_name, avatar_url').in('id', profileIds)
     : { data: [] };
 
   const profileMap = new Map(
