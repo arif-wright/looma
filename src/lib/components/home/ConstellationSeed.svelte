@@ -15,7 +15,7 @@
   const dispatch = createEventDispatcher<{ follow: { id: string; href: string } }>();
 
   $: brightness = Math.max(0.24, Math.min(1, relevance + (exploreMode ? 0.35 : 0)));
-  $: revealLabels = exploreMode || brightness > 0.72;
+  $: revealLabels = exploreMode;
   $: dynamicLabel = id === 'companion' && companionName ? `Visit ${companionName}` : label;
 
   let holdTimer: ReturnType<typeof setTimeout> | null = null;

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import CompanionOrb from '$lib/components/home/CompanionOrb.svelte';
-  import ActionHalo from '$lib/components/home/ActionHalo.svelte';
+  import ActionGate from '$lib/components/home/ActionGate.svelte';
   import ConstellationSeed from '$lib/components/home/ConstellationSeed.svelte';
   import MoodSeeds from '$lib/components/home/MoodSeeds.svelte';
   import type { ConstellationConfig, FieldConfig, FieldMode, PrimaryAction } from '$lib/home/fieldEngine';
@@ -10,6 +11,7 @@
   export let fieldConfig: FieldConfig;
   export let companionName: string | null = null;
   export let companionStatus: 'Distant' | 'Synced' | 'Resonant' | 'Steady' = 'Steady';
+  export let companionStatusLine = 'Mirae feels far.';
   export let actionLabel = 'Do this now';
   export let actionIntent: PrimaryAction = 'MICRO_RITUAL';
   export let showMoodSeeds = false;
@@ -22,16 +24,7 @@
     orb: Record<string, never>;
     explore: { enabled: boolean };
     seed: { id: string; href: string };
-    magnetic: { id: string; href: string };
   }>();
-
-  let exploreMode = false;
-  let pressTimer: ReturnType<typeof setTimeout> | null = null;
-  let magneticDrag = false;
-  let magneticX = fieldConfig.layoutPositions.orb.x;
-  let magneticY = fieldConfig.layoutPositions.orb.y;
-  let sceneEl: HTMLElement | null = null;
-  let showMagHint = true;
 
   const modeClass: Record<FieldMode, string> = {
     neutral: 'mode-neutral',
@@ -42,46 +35,96 @@
     recover: 'mode-recover'
   };
 
-  const magneticDistance = (seed: ConstellationConfig) => Math.hypot(seed.x - magneticX, seed.y - magneticY);
+  let sceneEl: HTMLElement | null = null;
+  let exploreMode = false;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
 
-  $: nearestSeed = fieldConfig.constellations.reduce<ConstellationConfig | null>((closest, seed) => {
-    if (!closest) return seed;
-    return magneticDistance(seed) < magneticDistance(closest) ? seed : closest;
+  let isMobile = false;
+  let mediaQuery: MediaQueryList | null = null;
+  let mediaHandler: ((event: MediaQueryListEvent) => void) | null = null;
+
+  const baseOrb = fieldConfig.layoutPositions.orb;
+  const gatePoint = fieldConfig.layoutPositions.halo;
+
+  let orbX = baseOrb.x;
+  let orbY = baseOrb.y;
+  let draggingOrb = false;
+  let dragMoved = false;
+  let ignoreOpen = false;
+
+  let previousBodyOverflow: string | null = null;
+  let previousBodyTouch: string | null = null;
+
+  let showGateHint = true;
+  const GATE_HINT_KEY = 'looma:gestureGateHintDone';
+
+  let flickerOn = false;
+  let flickerTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const dist = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x1 - x2, y1 - y2);
+
+  $: gateActive = dist(orbX, orbY, gatePoint.x, gatePoint.y) < 8;
+
+  $: seeds = (() => {
+    if (!isMobile) return fieldConfig.constellations;
+    const byId = new Map(fieldConfig.constellations.map((seed) => [seed.id, seed]));
+    const ordered = ['signals', 'games', 'companion', 'missions', 'ritual'] as const;
+    const arc = [
+      { x: 30, y: 63 },
+      { x: 50, y: 66 },
+      { x: 70, y: 63 },
+      { x: 38, y: 76 },
+      { x: 62, y: 76 }
+    ];
+    return ordered
+      .map((id, index) => {
+        const seed = byId.get(id);
+        const pos = arc[index];
+        if (!seed || !pos) return null;
+        return {
+          ...seed,
+          x: pos.x,
+          y: pos.y
+        };
+      })
+      .filter((seed): seed is ConstellationConfig => Boolean(seed));
+  })();
+
+  $: topSeed = seeds.reduce<ConstellationConfig | null>((current, seed) => {
+    if (!current) return seed;
+    return seed.relevance > current.relevance ? seed : current;
   }, null);
 
-  const beginMagnetic = () => {
-    magneticDrag = true;
-    magneticX = fieldConfig.layoutPositions.orb.x;
-    magneticY = fieldConfig.layoutPositions.orb.y;
+  $: flickerPath = topSeed
+    ? `M ${baseOrb.x} ${baseOrb.y} Q ${(baseOrb.x + topSeed.x) / 2} ${Math.min(baseOrb.y, topSeed.y) - 4} ${topSeed.x} ${topSeed.y}`
+    : '';
+
+  const lockScroll = () => {
+    if (!browser) return;
+    if (previousBodyOverflow === null) previousBodyOverflow = document.body.style.overflow;
+    if (previousBodyTouch === null) previousBodyTouch = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
   };
 
-  const updateMagnetic = (event: PointerEvent) => {
-    if (!magneticDrag || !sceneEl) return;
-    const rect = sceneEl.getBoundingClientRect();
-    const nx = ((event.clientX - rect.left) / rect.width) * 100;
-    const ny = ((event.clientY - rect.top) / rect.height) * 100;
-    magneticX = Math.max(8, Math.min(92, nx));
-    magneticY = Math.max(12, Math.min(88, ny));
-  };
-
-  const endMagnetic = () => {
-    if (!magneticDrag) return;
-    magneticDrag = false;
-    if (nearestSeed && magneticDistance(nearestSeed) < 7.5) {
-      dispatch('magnetic', { id: nearestSeed.id, href: nearestSeed.href });
-    }
-    magneticX = fieldConfig.layoutPositions.orb.x;
-    magneticY = fieldConfig.layoutPositions.orb.y;
-    showMagHint = false;
+  const unlockScroll = () => {
+    if (!browser) return;
+    if (previousBodyOverflow !== null) document.body.style.overflow = previousBodyOverflow;
+    if (previousBodyTouch !== null) document.body.style.touchAction = previousBodyTouch;
+    previousBodyOverflow = null;
+    previousBodyTouch = null;
   };
 
   const beginLongPress = () => {
+    if (draggingOrb) return;
     if (pressTimer) clearTimeout(pressTimer);
     pressTimer = setTimeout(() => {
       exploreMode = !exploreMode;
       dispatch('explore', { enabled: exploreMode });
       pressTimer = null;
-    }, 540);
+    }, 560);
   };
 
   const endLongPress = () => {
@@ -90,8 +133,99 @@
     pressTimer = null;
   };
 
+  const triggerPrimary = () => {
+    dispatch('primary', { intent: actionIntent });
+    if (browser) {
+      showGateHint = false;
+      window.localStorage.setItem(GATE_HINT_KEY, 'true');
+    }
+  };
+
+  const startOrbDrag = (event: CustomEvent<{ clientX: number; clientY: number; pointerId: number }>) => {
+    draggingOrb = true;
+    dragMoved = false;
+    ignoreOpen = false;
+    lockScroll();
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (!draggingOrb || !sceneEl) return;
+      const rect = sceneEl.getBoundingClientRect();
+      const nx = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      const ny = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      const clampedX = clamp(nx, baseOrb.x - 18, baseOrb.x + 18);
+      const clampedY = clamp(ny, baseOrb.y - 8, baseOrb.y + 36);
+      if (Math.abs(clampedX - baseOrb.x) > 2 || Math.abs(clampedY - baseOrb.y) > 2) {
+        dragMoved = true;
+      }
+      orbX = clampedX;
+      orbY = clampedY;
+    };
+
+    const handleUp = () => {
+      if (draggingOrb && gateActive) {
+        triggerPrimary();
+      } else if (draggingOrb && dragMoved) {
+        ignoreOpen = true;
+      }
+      draggingOrb = false;
+      orbX = baseOrb.x;
+      orbY = baseOrb.y;
+      unlockScroll();
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp, { once: true });
+  };
+
+  const handleOrbOpen = () => {
+    if (ignoreOpen) {
+      ignoreOpen = false;
+      return;
+    }
+    dispatch('orb', {});
+  };
+
+  const startFlickerLoop = () => {
+    if (!browser) return;
+    const schedule = () => {
+      const nextDelay = 6000 + Math.round(Math.random() * 4000);
+      flickerTimer = setTimeout(() => {
+        flickerOn = true;
+        setTimeout(() => {
+          flickerOn = false;
+          schedule();
+        }, 700);
+      }, nextDelay);
+    };
+    schedule();
+  };
+
+  onMount(() => {
+    if (!browser) return;
+    showGateHint = window.localStorage.getItem(GATE_HINT_KEY) !== 'true';
+
+    mediaQuery = window.matchMedia('(max-width: 900px)');
+    isMobile = mediaQuery.matches;
+    mediaHandler = (event: MediaQueryListEvent) => {
+      isMobile = event.matches;
+    };
+    mediaQuery.addEventListener('change', mediaHandler);
+
+    startFlickerLoop();
+
+    return () => {
+      if (mediaQuery && mediaHandler) mediaQuery.removeEventListener('change', mediaHandler);
+      if (flickerTimer) clearTimeout(flickerTimer);
+      unlockScroll();
+    };
+  });
+
   onDestroy(() => {
     if (pressTimer) clearTimeout(pressTimer);
+    if (flickerTimer) clearTimeout(flickerTimer);
+    unlockScroll();
   });
 </script>
 
@@ -105,7 +239,13 @@
   <div class="living-field__mesh" aria-hidden="true"></div>
   <div class="living-field__particles" aria-hidden="true"></div>
 
-  {#each fieldConfig.constellations as seed}
+  <svg class="living-field__synapse" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    {#if topSeed}
+      <path d={flickerPath} class:flicker-on={flickerOn} />
+    {/if}
+  </svg>
+
+  {#each seeds as seed}
     <ConstellationSeed
       id={seed.id}
       label={seed.label}
@@ -124,62 +264,47 @@
   <CompanionOrb
     name={companionName}
     status={companionStatus}
-    x={fieldConfig.layoutPositions.orb.x}
-    y={fieldConfig.layoutPositions.orb.y}
-    on:open={() => dispatch('orb', {})}
+    statusLine={companionStatusLine}
+    x={orbX}
+    y={orbY}
+    on:press={startOrbDrag}
+    on:open={handleOrbOpen}
   />
 
   <MoodSeeds
     open={showMoodSeeds}
     {selectedMood}
-    orbX={fieldConfig.layoutPositions.orb.x}
-    orbY={fieldConfig.layoutPositions.orb.y}
+    orbX={baseOrb.x}
+    orbY={baseOrb.y}
     fading={moodFading}
     on:select={(event) => dispatch('mood', event.detail)}
   />
 
-  <ActionHalo
+  <ActionGate
     label={actionLabel}
     intent={actionIntent}
-    x={fieldConfig.layoutPositions.halo.x}
-    y={fieldConfig.layoutPositions.halo.y}
-    orbX={fieldConfig.layoutPositions.orb.x}
-    orbY={fieldConfig.layoutPositions.orb.y}
-    orbStatus={companionStatus}
+    x={gatePoint.x}
+    y={gatePoint.y}
+    orbX={orbX}
+    orbY={orbY}
+    active={gateActive}
+    showHint={showGateHint}
+    hint={`Pull ${companionName ?? 'your companion'} into the glow to ${actionLabel.toLowerCase()}.`}
     on:activate={(event) => dispatch('primary', event.detail)}
   />
-
-  {#if showMagHint}
-    <p class="living-field__hint">Pull toward a glow to act.</p>
-  {/if}
-
-  {#if showMoodSeeds}
-    <p class="living-field__start">Start here: choose your arrival mood.</p>
-  {/if}
-
-  <button
-    type="button"
-    class={`magnetic-dot ${magneticDrag ? 'magnetic-dot--active' : ''}`}
-    style={`left:${magneticX}%; top:${magneticY}%;`}
-    on:pointerdown={beginMagnetic}
-    on:pointermove={updateMagnetic}
-    on:pointerup={endMagnetic}
-    on:pointercancel={endMagnetic}
-    aria-label="Pull to activate a seed"
-  ></button>
 </section>
 
 <style>
   .living-field {
     position: relative;
-    min-height: min(78vh, 42rem);
-    border-radius: 1.5rem;
+    min-height: min(79vh, 43rem);
+    border-radius: 1.45rem;
     border: 1px solid rgba(125, 211, 252, 0.24);
     overflow: hidden;
     background: radial-gradient(90rem 52rem at 10% -20%, rgba(56, 189, 248, 0.16), transparent 62%), #020617;
     box-shadow: 0 30px 60px rgba(2, 6, 23, 0.44);
     user-select: none;
-    touch-action: manipulation;
+    touch-action: none;
   }
 
   .living-field__mesh {
@@ -189,7 +314,7 @@
       linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
     background-size: 1.1rem 1.1rem;
-    mask-image: radial-gradient(circle at center, black 32%, transparent 78%);
+    mask-image: radial-gradient(circle at center, black 30%, transparent 78%);
     pointer-events: none;
   }
 
@@ -205,52 +330,28 @@
     animation: particleDrift 28s linear infinite;
   }
 
-  .living-field__hint {
+  .living-field__synapse {
     position: absolute;
-    left: 50%;
-    top: 9%;
-    transform: translateX(-50%);
-    margin: 0;
-    color: rgba(186, 230, 253, 0.88);
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    z-index: 8;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
   }
 
-  .living-field__start {
-    position: absolute;
-    left: 50%;
-    top: 16%;
-    transform: translateX(-50%);
-    margin: 0;
-    color: rgba(224, 242, 254, 0.94);
-    font-size: 0.82rem;
-    font-weight: 600;
-    z-index: 8;
-    text-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+  .living-field__synapse path {
+    stroke: rgba(56, 189, 248, 0.18);
+    stroke-width: 1.4;
+    fill: none;
+    transition: stroke 280ms ease;
   }
 
-  .magnetic-dot {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    width: 1rem;
-    height: 1rem;
-    border-radius: 999px;
-    border: 1px solid rgba(56, 189, 248, 0.65);
-    background: rgba(2, 6, 23, 0.86);
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2), 0 0 14px rgba(56, 189, 248, 0.38);
-    z-index: 9;
-  }
-
-  .magnetic-dot--active {
-    border-color: rgba(45, 212, 191, 0.92);
-    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.24), 0 0 18px rgba(45, 212, 191, 0.45);
+  .living-field__synapse path.flicker-on {
+    stroke: rgba(56, 189, 248, 0.88);
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
   }
 
   .mode-neutral { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.16), transparent 62%), #020617; }
   .mode-support { background: radial-gradient(90rem 50rem at 12% -16%, rgba(192, 132, 252, 0.28), transparent 58%), #020617; }
-  .mode-support :global(.orb) { animation-duration: 4.2s; }
   .mode-settle { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.2), transparent 62%), #020617; }
   .mode-settle .living-field__particles { animation-duration: 42s; opacity: 0.65; }
   .mode-explore {
@@ -266,7 +367,7 @@
 
   @media (max-width: 640px) {
     .living-field {
-      min-height: min(76vh, 38rem);
+      min-height: min(77vh, 39rem);
       border-radius: 1.2rem;
     }
   }

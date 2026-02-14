@@ -66,12 +66,12 @@
   $: companionStatus = deriveCompanionStatus();
   $: companionStatusText =
     companionStatus === 'Distant'
-      ? `${activeCompanion?.name ?? 'Your companion'} misses you. Reconnect.`
+      ? `${activeCompanion?.name ?? 'Mirae'} feels far.`
       : companionStatus === 'Resonant'
-        ? `${activeCompanion?.name ?? 'Your companion'} is fully tuned with you.`
+        ? `${activeCompanion?.name ?? 'Mirae'} is close and radiant.`
         : companionStatus === 'Synced'
-          ? `${activeCompanion?.name ?? 'Your companion'} is synced and responsive.`
-          : 'Your companion is nearby and listening.';
+          ? `${activeCompanion?.name ?? 'Mirae'} is with you.`
+          : `${activeCompanion?.name ?? 'Mirae'} is nearby.`;
 
   let selectedMood: HomeMood | null =
     (typeof data.dailyCheckinToday?.mood === 'string' ? (data.dailyCheckinToday.mood as HomeMood) : null) ?? null;
@@ -193,8 +193,8 @@
     showReward('+5 XP · +3 Energy');
   };
 
-  const handleSeedFollow = async (href: string, source: 'tap' | 'magnetic') => {
-    track('primary_action_click', { intent: 'SEED_NAV', href, source });
+  const handleSeedFollow = async (href: string) => {
+    track('primary_action_click', { intent: 'SEED_NAV', href });
     await goto(href);
   };
 
@@ -252,13 +252,13 @@
       companionStatus={companionStatus}
       actionLabel={primaryLabel}
       actionIntent={primaryAction}
+      companionStatusLine={companionStatusText}
       {showMoodSeeds}
       {moodFading}
       {selectedMood}
       on:primary={(event) => handlePrimaryAction(event.detail.intent)}
       on:mood={(event) => submitMood(event.detail.mood)}
-      on:seed={(event) => handleSeedFollow(event.detail.href, 'tap')}
-      on:magnetic={(event) => handleSeedFollow(event.detail.href, 'magnetic')}
+      on:seed={(event) => handleSeedFollow(event.detail.href)}
       on:orb={() => {
         companionSheetOpen = true;
         track('orb_open_sheet', { companion: activeCompanion?.id ?? null });
