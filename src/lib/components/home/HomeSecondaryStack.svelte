@@ -9,8 +9,13 @@
   export let quickMissionTitle: string | null = null;
   export let quickMissionSummary: string | null = null;
   export let quickMissionHref = '/app/games/arpg';
+  export let alwaysExpanded = false;
 
-  let expanded = false;
+  let expanded = alwaysExpanded;
+
+  $: if (alwaysExpanded) {
+    expanded = true;
+  }
 
   const formatTime = (iso: string) => {
     const ts = Date.parse(iso);
@@ -20,16 +25,18 @@
 </script>
 
 <section class="secondary card" aria-label="Secondary content">
-  <button
-    type="button"
-    class="secondary__toggle"
-    aria-expanded={expanded}
-    on:click={() => {
-      expanded = !expanded;
-    }}
-  >
-    {expanded ? 'See less' : 'See more'}
-  </button>
+  {#if !alwaysExpanded}
+    <button
+      type="button"
+      class="secondary__toggle"
+      aria-expanded={expanded}
+      on:click={() => {
+        expanded = !expanded;
+      }}
+    >
+      {expanded ? 'See less' : 'See more'}
+    </button>
+  {/if}
 
   {#if expanded}
     <div class="secondary__stack">
