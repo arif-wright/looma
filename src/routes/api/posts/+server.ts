@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
+import { randomUUID } from 'crypto';
 import { supabaseServer } from '$lib/supabaseClient';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
@@ -11,6 +12,18 @@ const parseLimit = (value: string | null, fallback = 20) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(1, Math.min(50, Math.floor(parsed)));
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '')
+    .slice(0, 40);
+
+const generatePostSlug = (body: string) => {
+  const base = slugify(body) || 'post';
+  return `${base}-${randomUUID().slice(0, 8)}`;
 };
 
 export const GET: RequestHandler = async (event) => {
@@ -85,6 +98,7 @@ export const POST: RequestHandler = async (event) => {
     .insert({
       user_id: user.id,
       kind: 'text',
+      slug: generatePostSlug(body),
       body,
       text: body,
       meta,
