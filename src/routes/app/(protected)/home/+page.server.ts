@@ -50,6 +50,13 @@ type CreatureMoment = {
   stats?: Record<string, unknown> | Array<Record<string, unknown>> | null;
 };
 
+type DailyCheckin = {
+  id: string;
+  mood: 'calm' | 'heavy' | 'curious' | 'energized' | 'numb';
+  checkin_date: string;
+  created_at: string;
+};
+
 const DEFAULT_ENDCAP = {
   title: 'Welcome back',
   description: 'Explore your community for a quick boost.',
@@ -121,7 +128,9 @@ export const load: PageServerLoad = async (event) => {
     flags: { bond_genesis: false },
     companionCount: 0,
     rituals: [] as CompanionRitual[],
-    activeCompanion: parentActiveCompanion
+    activeCompanion: parentActiveCompanion,
+    dailyCheckinToday: null as DailyCheckin | null,
+    latestDailyCheckin: null as DailyCheckin | null
   };
 
   try {
@@ -170,7 +179,7 @@ export const load: PageServerLoad = async (event) => {
         )
         .order('score', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(6);
 
       if (error) {
         throw error;
@@ -297,6 +306,8 @@ export const load: PageServerLoad = async (event) => {
     let flags = { ...safe.flags };
     let companionCount = safe.companionCount;
     let rituals: CompanionRitual[] = safe.rituals;
+    let dailyCheckinToday: DailyCheckin | null = null;
+    let latestDailyCheckin: DailyCheckin | null = null;
 
     if (session?.user?.id) {
       try {
@@ -322,6 +333,37 @@ export const load: PageServerLoad = async (event) => {
       } catch (err) {
         diagnostics.push('companion_count_failed');
         reportHomeLoadIssue('companion_count_failed', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const [{ data: latest, error: latestError }, { data: todayRow, error: todayError }] = await Promise.all([
+          supabase
+            .from('user_daily_checkins')
+            .select('id, mood, checkin_date, created_at')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('user_daily_checkins')
+            .select('id, mood, checkin_date, created_at')
+            .eq('user_id', session.user.id)
+            .eq('checkin_date', today)
+            .limit(1)
+            .maybeSingle()
+        ]);
+
+        if (latestError) throw latestError;
+        if (todayError) throw todayError;
+
+        latestDailyCheckin = (latest as DailyCheckin | null) ?? null;
+        dailyCheckinToday = (todayRow as DailyCheckin | null) ?? null;
+      } catch (err) {
+        diagnostics.push('daily_checkin_query_failed');
+        reportHomeLoadIssue('daily_checkin_query_failed', {
           error: err instanceof Error ? err.message : String(err)
         });
       }
@@ -431,7 +473,9 @@ export const load: PageServerLoad = async (event) => {
       flags,
       companionCount,
       rituals,
-      activeCompanion
+      activeCompanion,
+      dailyCheckinToday,
+      latestDailyCheckin
     };
   } catch (err) {
     diagnostics.push('home_load_failed');
