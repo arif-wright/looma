@@ -19,20 +19,6 @@
     sessionStorage.removeItem(STORAGE_KEY);
   };
 
-  const hasPkceCodeVerifier = (): boolean => {
-    try {
-      for (let i = 0; i < localStorage.length; i += 1) {
-        const key = localStorage.key(i);
-        if (!key || !key.endsWith('-code-verifier')) continue;
-        const value = localStorage.getItem(key);
-        if (value && value.trim().length > 0) return true;
-      }
-    } catch {
-      return false;
-    }
-    return false;
-  };
-
   onMount(async () => {
     const supabase = createSupabaseBrowserClient();
 
@@ -76,13 +62,13 @@
           return;
         }
 
-        if (!hasPkceCodeVerifier()) {
-          fail('Sign-in session expired. Please start again from the login page.');
-          return;
-        }
-
         const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
         if (error || !data.session) {
+          const raw = (error?.message ?? '').toLowerCase();
+          if (raw.includes('code verifier') || raw.includes('flow state')) {
+            fail('Sign-in session expired. Please start again from the login page.');
+            return;
+          }
           fail(error?.message ?? 'We could not complete the sign-in process.');
           return;
         }
@@ -116,7 +102,7 @@
       <p>{message}</p>
     {:else}
       <p class="error">{message}</p>
-      <a href="/app/login" class="link">Back to login</a>
+      <a href="/app/auth" class="link">Back to login</a>
     {/if}
   </div>
 </section>
