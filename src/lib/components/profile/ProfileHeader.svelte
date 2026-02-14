@@ -56,6 +56,8 @@ let menuOpen = false;
 let blockPending = false;
 let menuError = '';
 let reportOpen = false;
+let friendPending = false;
+let friendStatus = '';
 
   $: displayName = profile?.display_name ?? 'Anonymous Explorer';
   $: handle = profile?.handle ?? 'player';
@@ -218,6 +220,37 @@ async function toggleFollow() {
     followError = safeUiMessage(err);
   } finally {
     followPending = false;
+  }
+}
+
+async function requestFriend() {
+  if (!targetUserId || friendPending || blocked || isOwnProfile) return;
+  friendPending = true;
+  followError = '';
+  friendStatus = '';
+  try {
+    const res = await fetch('/api/friends/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: targetUserId })
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      devLog('[ProfileHeader] friend request failed', payload, { status: res.status });
+      throw new Error(safeApiPayloadMessage(payload, res.status));
+    }
+
+    const status = typeof payload?.status === 'string' ? payload.status : 'pending';
+    if (status === 'accepted' || status === 'already_friends') {
+      friendStatus = 'Already friends';
+      return;
+    }
+    friendStatus = 'Friend request sent';
+  } catch (err) {
+    devLog('[ProfileHeader] friend request error', err);
+    followError = safeUiMessage(err);
+  } finally {
+    friendPending = false;
   }
 }
 
@@ -415,6 +448,21 @@ function openReport() {
                   </button>
                 {/if}
               {/if}
+              {#if !isOwnProfile && targetUserId && !blocked}
+                <button
+                  class="px-4 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 ring-1 ring-cyan-300/35 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition disabled:opacity-60"
+                  type="button"
+                  data-testid="profile-friend-request"
+                  on:click={requestFriend}
+                  disabled={friendPending || friendStatus === 'Friend request sent'}
+                >
+                  {#if friendPending}
+                    Sending…
+                  {:else}
+                    {friendStatus === 'Friend request sent' ? 'Friend request sent' : 'Add friend'}
+                  {/if}
+                </button>
+              {/if}
               {#if canShare}
                 <button class="btn-ghost" type="button" on:click={handleShare}>Share</button>
               {/if}
@@ -459,6 +507,9 @@ function openReport() {
           </div>
           {#if followError && showFollowButton}
             <p class="follow-error" aria-live="polite">{followError}</p>
+          {/if}
+          {#if friendStatus}
+            <p class="friend-status" aria-live="polite">{friendStatus}</p>
           {/if}
           {#if menuError}
             <p class="follow-error" aria-live="polite">{menuError}</p>
@@ -543,6 +594,13 @@ function openReport() {
     margin-top: 0.35rem;
     font-size: 0.78rem;
     color: #f87171;
+    text-align: right;
+  }
+
+  .friend-status {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    color: #a5f3fc;
     text-align: right;
   }
 
