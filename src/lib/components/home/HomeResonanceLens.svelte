@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import type { HomeMood } from '$lib/components/home/homeLoopTypes';
 
   export let selectedMood: HomeMood | null = null;
@@ -17,418 +17,449 @@
     primary: Record<string, never>;
   }>();
 
-  const MOOD_POINTS: Record<HomeMood, { x: number; y: number }> = {
-    calm: { x: 0.6, y: 0.2 },
-    heavy: { x: -0.62, y: -0.12 },
-    curious: { x: 0.05, y: 0.02 },
-    energized: { x: 0.12, y: 0.68 },
-    numb: { x: 0.04, y: -0.7 }
+  type NodeDef = {
+    mood: HomeMood;
+    label: string;
+    angleDeg: number;
+    glow: string;
+    axis: string;
+  };
+
+  const MOOD_NODES: NodeDef[] = [
+    { mood: 'energized', label: 'Energized', angleDeg: -88, glow: '#34d399', axis: 'Activation' },
+    { mood: 'calm', label: 'Calm', angleDeg: -18, glow: '#38bdf8', axis: 'Settling' },
+    { mood: 'curious', label: 'Curious', angleDeg: 52, glow: '#f59e0b', axis: 'Exploration' },
+    { mood: 'numb', label: 'Numb', angleDeg: 132, glow: '#a78bfa', axis: 'Recovery' },
+    { mood: 'heavy', label: 'Heavy', angleDeg: 202, glow: '#f472b6', axis: 'Support' }
+  ];
+
+  const BRANCH_COPY: Record<HomeMood, string[]> = {
+    energized: ['Channel momentum', 'Take a decisive step', 'Convert energy to care'],
+    calm: ['Hold the rhythm', 'Anchor with consistency', 'Strengthen the bond softly'],
+    curious: ['Follow one thread', 'Ask one better question', 'Explore without pressure'],
+    numb: ['Start tiny', 'Regulate first', 'Reconnect through one signal'],
+    heavy: ['Reduce load', 'Choose gentle action', 'Request support from your circle']
   };
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-  const moodFromPoint = (x: number, y: number): HomeMood => {
-    if (y > 0.44) return 'energized';
-    if (y < -0.44) return 'numb';
-    if (x < -0.24) return 'heavy';
-    if (x > 0.28) return 'calm';
-    return 'curious';
-  };
-
-  const pointFromMood = (mood: HomeMood | null) => {
-    if (!mood) return { x: 0, y: 0 };
-    return MOOD_POINTS[mood];
-  };
-
-  const formatMood = (mood: HomeMood | null) => {
+  const titleCase = (mood: HomeMood | null) => {
     if (!mood) return 'Unknown';
     return mood.charAt(0).toUpperCase() + mood.slice(1);
   };
 
-  let lensEl: HTMLButtonElement | null = null;
-  let dragging = false;
-  let pointX = 0;
-  let pointY = 0;
-  let hoverMood: HomeMood | null = null;
+  let focusMood: HomeMood | null = null;
+  let expandedMood: HomeMood | null = null;
 
-  const syncToSelectedMood = () => {
-    if (dragging) return;
-    const target = pointFromMood(selectedMood);
-    pointX = target.x;
-    pointY = target.y;
-  };
+  $: activeMood = selectedMood ?? focusMood ?? 'curious';
+  $: effectiveMood = hasCheckedInToday ? selectedMood : activeMood;
+  $: alignmentPenalty = companionStatusLabel === 'Distant' ? 24 : 8;
+  $: signalsLoad = clamp(signalsCount, 0, 9);
+  $: alignment = clamp(92 - alignmentPenalty + (effectiveMood === 'calm' ? 6 : 0) - signalsLoad * 2, 18, 98);
+  $: branches = expandedMood ? BRANCH_COPY[expandedMood] : BRANCH_COPY[activeMood];
 
-  $: syncToSelectedMood();
-  $: hoverMood = moodFromPoint(pointX, pointY);
+  $: graphNodes = MOOD_NODES.map((node) => {
+    const rad = (node.angleDeg * Math.PI) / 180;
+    const radius = 39;
+    const x = 50 + Math.cos(rad) * radius;
+    const y = 50 + Math.sin(rad) * radius;
+    const isActive = effectiveMood === node.mood;
+    const isFocused = focusMood === node.mood;
+    const relevance = clamp(
+      (isActive ? 0.98 : 0.44) +
+        (node.mood === 'heavy' && companionStatusLabel === 'Distant' ? 0.22 : 0) +
+        (node.mood === 'calm' && companionStatusLabel !== 'Distant' ? 0.1 : 0) +
+        (isFocused ? 0.16 : 0),
+      0.28,
+      1
+    );
 
-  $: orbitCount = clamp(signalsCount, 0, 6);
-  $: orbitDots = Array.from({ length: orbitCount }, (_, i) => {
-    const angle = ((i + 1) / (orbitCount + 1)) * Math.PI * 2 - Math.PI / 2;
     return {
-      left: 50 + Math.cos(angle) * 46,
-      top: 50 + Math.sin(angle) * 46,
-      delay: i * 70
+      ...node,
+      x,
+      y,
+      isActive,
+      isFocused,
+      relevance,
+      strokeWidth: 0.8 + relevance * 2.5,
+      opacity: 0.22 + relevance * 0.78
     };
   });
 
-  $: alignment = clamp(
-    100 - Math.round((Math.abs(pointX - 0.1) + Math.abs(pointY - 0.2)) * 50) - (companionStatusLabel === 'Distant' ? 24 : 0),
-    18,
-    96
-  );
-
-  const updateFromPointer = (event: PointerEvent) => {
-    if (!lensEl) return;
-    const rect = lensEl.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const radius = Math.min(rect.width, rect.height) / 2;
-
-    const dx = event.clientX - cx;
-    const dy = event.clientY - cy;
-
-    let nx = dx / radius;
-    let ny = -dy / radius;
-
-    const mag = Math.sqrt(nx * nx + ny * ny);
-    if (mag > 1) {
-      nx /= mag;
-      ny /= mag;
-    }
-
-    pointX = clamp(nx, -1, 1);
-    pointY = clamp(ny, -1, 1);
-  };
-
-  const stopDrag = () => {
-    if (!dragging) return;
-    dragging = false;
-    window.removeEventListener('pointermove', handleMove);
-    window.removeEventListener('pointerup', handleUp);
-    if (hasCheckedInToday) return;
-    dispatch('moodcommit', { mood: moodFromPoint(pointX, pointY) });
-  };
-
-  const handleMove = (event: PointerEvent) => {
-    if (!dragging) return;
-    updateFromPointer(event);
-  };
-
-  const handleUp = () => {
-    stopDrag();
-  };
-
-  const handleDown = (event: PointerEvent) => {
-    if (hasCheckedInToday) return;
-    dragging = true;
-    updateFromPointer(event);
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp, { once: true });
-  };
-
-  onDestroy(() => {
-    stopDrag();
+  $: orbitCount = clamp(signalsCount, 0, 8);
+  $: signalOrbits = Array.from({ length: orbitCount }, (_, i) => {
+    const angle = ((i + 1) / (orbitCount + 1)) * Math.PI * 2 - Math.PI / 2;
+    return {
+      left: 50 + Math.cos(angle) * 47,
+      top: 50 + Math.sin(angle) * 47,
+      delay: i * 110,
+      scale: 0.7 + (i % 3) * 0.1
+    };
   });
+
+  const handleMood = (mood: HomeMood) => {
+    expandedMood = mood;
+    if (hasCheckedInToday) return;
+    dispatch('moodcommit', { mood });
+  };
 </script>
 
-<section class="resonance" aria-label="Resonance Lens">
-  <div class="stage">
-    <article class="pane pane--you">
-      <p class="eyebrow">Arrival Lens</p>
-      <h2>How are you arriving?</h2>
-
-      <button
-        class={`lens ${dragging ? 'lens--dragging' : ''} ${hasCheckedInToday ? 'lens--locked' : ''}`}
-        bind:this={lensEl}
-        type="button"
-        on:pointerdown={handleDown}
-        aria-label={hasCheckedInToday ? 'Mood already checked in for today' : 'Drag to choose your mood'}
-      >
-        <span class="lens__halo"></span>
-        <span class="lens__grid"></span>
-
-        {#each orbitDots as dot}
-          <span
-            class="orbit-dot"
-            style={`left:${dot.left}%; top:${dot.top}%; animation-delay:${dot.delay}ms;`}
-            aria-hidden="true"
-          ></span>
+<section class="resonance" aria-label="Neural home interface">
+  <div class="resonance__stage">
+    <div class="graph" role="group" aria-label="Mood network">
+      <svg class="graph__edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {#each graphNodes as node}
+          <line
+            x1="50"
+            y1="50"
+            x2={node.x}
+            y2={node.y}
+            stroke={node.glow}
+            stroke-width={node.strokeWidth}
+            stroke-linecap="round"
+            opacity={node.opacity}
+            class:edge-active={node.isActive}
+          />
         {/each}
+      </svg>
 
-        <span class="lens__labels">
-          <span>Heavy</span>
-          <span>Calm</span>
-          <span>Energized</span>
-          <span>Numb</span>
-        </span>
-
-        <span class="lens__marker" style={`left:${50 + pointX * 42}%; top:${50 - pointY * 42}%`} aria-hidden="true"></span>
+      <button type="button" class="nucleus" on:click={() => dispatch('primary', {})}>
+        <span class="nucleus__eyebrow">Nucleus</span>
+        <strong>{primaryLabel}</strong>
+        <small>{primaryHelper}</small>
       </button>
 
-      <p class="arrival-readout">
-        <strong>{formatMood(hasCheckedInToday ? selectedMood : hoverMood)}</strong>
+      {#each graphNodes as node}
+        <button
+          type="button"
+          class={`node ${node.isActive ? 'node--active' : ''} ${node.isFocused ? 'node--focus' : ''}`}
+          style={`left:${node.x}%; top:${node.y}%; --node-glow:${node.glow};`}
+          on:mouseenter={() => (focusMood = node.mood)}
+          on:mouseleave={() => (focusMood = null)}
+          on:focus={() => (focusMood = node.mood)}
+          on:blur={() => (focusMood = null)}
+          on:click={() => handleMood(node.mood)}
+          aria-pressed={effectiveMood === node.mood}
+          aria-label={`Select mood ${node.label}`}
+        >
+          <span class="node__label">{node.label}</span>
+          <small>{node.axis}</small>
+        </button>
+      {/each}
+
+      {#each signalOrbits as orbit}
+        <span
+          class="signal"
+          style={`left:${orbit.left}%; top:${orbit.top}%; animation-delay:${orbit.delay}ms; transform:scale(${orbit.scale});`}
+          aria-hidden="true"
+        ></span>
+      {/each}
+    </div>
+
+    <aside class="telemetry">
+      <p class="telemetry__eyebrow">Companion Link</p>
+      <h3>{companionName ?? 'Companion'}</h3>
+      <p class="telemetry__copy"><strong>{companionStatusLabel}.</strong> {companionStatusText}</p>
+
+      <div class="meter" aria-hidden="true">
+        <span class="meter__bar" style={`width:${alignment}%`}></span>
+      </div>
+      <p class="telemetry__metric">Alignment {alignment}%</p>
+
+      <p class="telemetry__status">
+        <strong>{titleCase(effectiveMood)}</strong>
         {#if hasCheckedInToday}
-          is logged for today.
+          is synced for today.
         {:else}
-          release to check in.
+          is your current vector.
         {/if}
       </p>
 
       {#if attunementLine}
         <p class="attunement" role="status">{attunementLine}</p>
       {/if}
-    </article>
 
-    <article class="pane pane--companion">
-      <p class="eyebrow">Companion Field</p>
-      <h3>{companionName ?? 'Your companion'}</h3>
-      <p class="companion-state"><strong>{companionStatusLabel}.</strong> {companionStatusText}</p>
-
-      <div class="bridge-wrap" aria-hidden="true">
-        <div class="bridge-track">
-          <span class="bridge-current" style={`width:${alignment}%`}></span>
-        </div>
-        <small>Alignment {alignment}%</small>
+      <div class="branches" aria-label="Suggested pathways">
+        {#each branches as branch}
+          <span>{branch}</span>
+        {/each}
       </div>
-
-      <button type="button" class="primary" on:click={() => dispatch('primary', {})}>
-        {primaryLabel}
-      </button>
-      <p class="primary-help">{primaryHelper}</p>
-    </article>
+    </aside>
   </div>
 </section>
 
 <style>
   .resonance {
+    border: 1px solid rgba(100, 116, 139, 0.26);
     border-radius: 1.4rem;
-    border: 1px solid rgba(125, 211, 252, 0.2);
     background:
-      radial-gradient(70rem 34rem at 18% -30%, rgba(56, 189, 248, 0.2), transparent 62%),
-      radial-gradient(52rem 28rem at 120% 100%, rgba(45, 212, 191, 0.18), transparent 60%),
-      linear-gradient(168deg, rgba(2, 8, 23, 0.92), rgba(7, 20, 44, 0.9));
-    box-shadow: 0 22px 54px rgba(2, 6, 23, 0.4);
+      radial-gradient(62rem 32rem at 0% -28%, rgba(56, 189, 248, 0.2), transparent 60%),
+      radial-gradient(52rem 30rem at 120% 118%, rgba(167, 139, 250, 0.22), transparent 62%),
+      linear-gradient(170deg, rgba(2, 6, 23, 0.98), rgba(4, 12, 32, 0.96));
+    box-shadow: 0 24px 56px rgba(2, 6, 23, 0.48);
     overflow: hidden;
   }
 
-  .stage {
+  .resonance__stage {
     display: grid;
     gap: 0.9rem;
     padding: 0.95rem;
   }
 
-  .pane {
+  .graph {
+    position: relative;
+    min-height: min(84vw, 23rem);
+    border-radius: 1.15rem;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(15, 118, 110, 0.12), transparent 42%),
+      rgba(2, 8, 23, 0.66);
+    overflow: hidden;
+  }
+
+  .graph::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+    background-size: 1.05rem 1.05rem;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 76%);
+  }
+
+  .graph__edges {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.3));
+  }
+
+  .graph :global(.edge-active) {
+    animation: pulseEdge 1600ms ease-in-out infinite;
+  }
+
+  .nucleus {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 42%;
+    min-width: 10.5rem;
+    max-width: 14rem;
+    aspect-ratio: 1 / 1;
+    border-radius: 999px;
+    border: 1px solid rgba(45, 212, 191, 0.44);
+    background:
+      radial-gradient(circle at 30% 28%, rgba(34, 211, 238, 0.42), rgba(8, 47, 73, 0.84) 60%),
+      rgba(2, 6, 23, 0.92);
+    color: rgba(240, 249, 255, 0.98);
+    display: grid;
+    gap: 0.2rem;
+    place-content: center;
+    text-align: center;
+    box-shadow:
+      inset 0 0 24px rgba(45, 212, 191, 0.3),
+      0 0 0 4px rgba(45, 212, 191, 0.12),
+      0 14px 34px rgba(8, 15, 30, 0.56);
+    z-index: 2;
+  }
+
+  .nucleus__eyebrow {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(186, 230, 253, 0.86);
+  }
+
+  .nucleus strong {
+    font-size: 0.92rem;
+    line-height: 1.2;
+    padding: 0 0.7rem;
+  }
+
+  .nucleus small {
+    font-size: 0.74rem;
+    color: rgba(186, 230, 253, 0.82);
+    padding: 0 0.68rem;
+    line-height: 1.3;
+  }
+
+  .node {
+    position: absolute;
+    width: 4.7rem;
+    min-height: 3.6rem;
+    margin-left: -2.35rem;
+    margin-top: -1.8rem;
+    border-radius: 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--node-glow) 35%, #0f172a);
+    background: linear-gradient(158deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
+    color: rgba(226, 232, 240, 0.95);
+    display: grid;
+    place-content: center;
+    text-align: center;
+    gap: 0.1rem;
+    z-index: 3;
+    box-shadow: 0 8px 22px rgba(2, 6, 23, 0.45);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .node__label {
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .node small {
+    font-size: 0.64rem;
+    color: rgba(148, 163, 184, 0.96);
+  }
+
+  .node--focus,
+  .node:focus-visible {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--node-glow) 26%, transparent), 0 14px 24px rgba(2, 6, 23, 0.55);
+    border-color: color-mix(in srgb, var(--node-glow) 62%, #0f172a);
+    outline: none;
+  }
+
+  .node--active {
+    border-color: color-mix(in srgb, var(--node-glow) 78%, #0f172a);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--node-glow) 34%, transparent),
+      0 0 26px color-mix(in srgb, var(--node-glow) 22%, transparent);
+  }
+
+  .signal {
+    position: absolute;
+    width: 0.46rem;
+    height: 0.46rem;
+    margin-left: -0.23rem;
+    margin-top: -0.23rem;
+    border-radius: 999px;
+    background: rgba(34, 211, 238, 0.95);
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.52);
+    animation: signalBlink 2.8s ease-in-out infinite;
+    z-index: 1;
+  }
+
+  .telemetry {
     border-radius: 1.05rem;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(2, 8, 23, 0.46);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: linear-gradient(165deg, rgba(2, 8, 23, 0.82), rgba(8, 28, 48, 0.72));
     padding: 0.9rem;
   }
 
-  .eyebrow {
+  .telemetry__eyebrow {
     margin: 0;
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
+    font-size: 0.69rem;
     text-transform: uppercase;
+    letter-spacing: 0.09em;
     color: rgba(125, 211, 252, 0.88);
   }
 
-  h2 {
-    margin: 0.34rem 0 0;
-    font-size: 1.1rem;
-    color: rgba(248, 250, 252, 0.98);
-  }
-
   h3 {
-    margin: 0.34rem 0 0;
+    margin: 0.32rem 0 0;
     font-size: 1.04rem;
     color: rgba(248, 250, 252, 0.98);
   }
 
-  .lens {
-    margin-top: 0.8rem;
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    background:
-      radial-gradient(circle at 52% 45%, rgba(14, 165, 233, 0.18), rgba(2, 6, 23, 0.72) 55%),
-      rgba(2, 8, 23, 0.8);
-    overflow: hidden;
-    cursor: grab;
-  }
-
-  .lens--dragging {
-    cursor: grabbing;
-  }
-
-  .lens--locked {
-    cursor: default;
-  }
-
-  .lens__halo {
-    position: absolute;
-    inset: 8%;
-    border-radius: 999px;
-    border: 1px solid rgba(56, 189, 248, 0.22);
-    box-shadow: inset 0 0 30px rgba(56, 189, 248, 0.12);
-  }
-
-  .lens__grid {
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.12)) 50% 0 / 1px 100% no-repeat,
-      linear-gradient(90deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.12)) 0 50% / 100% 1px no-repeat;
-  }
-
-  .lens__labels {
-    position: absolute;
-    inset: 0;
-    font-size: 0.72rem;
-    color: rgba(226, 232, 240, 0.7);
-  }
-
-  .lens__labels span:nth-child(1) {
-    position: absolute;
-    left: 8%;
-    top: 48%;
-  }
-
-  .lens__labels span:nth-child(2) {
-    position: absolute;
-    right: 8%;
-    top: 48%;
-  }
-
-  .lens__labels span:nth-child(3) {
-    position: absolute;
-    left: 50%;
-    top: 8%;
-    transform: translateX(-50%);
-  }
-
-  .lens__labels span:nth-child(4) {
-    position: absolute;
-    left: 50%;
-    bottom: 8%;
-    transform: translateX(-50%);
-  }
-
-  .lens__marker {
-    position: absolute;
-    width: 1.18rem;
-    height: 1.18rem;
-    margin-left: -0.59rem;
-    margin-top: -0.59rem;
-    border-radius: 999px;
-    border: 1px solid rgba(7, 17, 36, 0.7);
-    background: linear-gradient(135deg, rgba(45, 212, 191, 0.98), rgba(56, 189, 248, 0.97));
-    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2), 0 0 24px rgba(56, 189, 248, 0.34);
-    transition: left 100ms linear, top 100ms linear;
-  }
-
-  .orbit-dot {
-    position: absolute;
-    width: 0.52rem;
-    height: 0.52rem;
-    margin-left: -0.26rem;
-    margin-top: -0.26rem;
-    border-radius: 999px;
-    background: rgba(125, 211, 252, 0.92);
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-    animation: blink 2.4s ease-in-out infinite;
-  }
-
-  .arrival-readout {
-    margin: 0.65rem 0 0;
-    color: rgba(226, 232, 240, 0.9);
-    font-size: 0.9rem;
-  }
-
-  .attunement {
-    margin: 0.45rem 0 0;
-    color: rgba(186, 230, 253, 0.96);
-    font-size: 0.88rem;
-  }
-
-  .companion-state {
-    margin: 0.55rem 0 0;
+  .telemetry__copy {
+    margin: 0.6rem 0 0;
     color: rgba(226, 232, 240, 0.92);
     font-size: 0.88rem;
     line-height: 1.4;
   }
 
-  .bridge-wrap {
-    margin-top: 0.82rem;
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .bridge-track {
-    width: 100%;
-    height: 0.56rem;
+  .meter {
+    margin-top: 0.75rem;
+    height: 0.58rem;
     border-radius: 999px;
-    background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    background: rgba(30, 41, 59, 0.92);
     overflow: hidden;
   }
 
-  .bridge-current {
+  .meter__bar {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, rgba(45, 212, 191, 0.96), rgba(56, 189, 248, 0.95));
+    background: linear-gradient(90deg, rgba(45, 212, 191, 0.98), rgba(56, 189, 248, 0.94), rgba(167, 139, 250, 0.92));
   }
 
-  small {
+  .telemetry__metric {
+    margin: 0.38rem 0 0;
     color: rgba(148, 163, 184, 0.96);
     font-size: 0.74rem;
   }
 
-  .primary {
-    margin-top: 0.9rem;
-    width: 100%;
-    min-height: 3rem;
-    border: none;
-    border-radius: 0.92rem;
-    background: linear-gradient(135deg, rgba(45, 212, 191, 0.98), rgba(56, 189, 248, 0.95));
-    color: rgba(7, 17, 36, 0.95);
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    box-shadow: 0 12px 24px rgba(45, 212, 191, 0.25);
+  .telemetry__status {
+    margin: 0.66rem 0 0;
+    font-size: 0.87rem;
+    color: rgba(226, 232, 240, 0.96);
   }
 
-  .primary-help {
-    margin: 0.55rem 0 0;
-    color: rgba(203, 213, 225, 0.84);
-    font-size: 0.82rem;
+  .attunement {
+    margin: 0.52rem 0 0;
+    color: rgba(186, 230, 253, 0.96);
+    font-size: 0.86rem;
+    line-height: 1.45;
   }
 
-  @keyframes blink {
+  .branches {
+    margin-top: 0.72rem;
+    display: grid;
+    gap: 0.38rem;
+  }
+
+  .branches span {
+    border-radius: 0.66rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(15, 23, 42, 0.7);
+    padding: 0.42rem 0.55rem;
+    font-size: 0.76rem;
+    color: rgba(203, 213, 225, 0.95);
+  }
+
+  @keyframes pulseEdge {
     0%,
     100% {
-      opacity: 0.34;
-      transform: scale(0.86);
+      opacity: 0.55;
     }
     50% {
       opacity: 1;
-      transform: scale(1);
     }
   }
 
-  @media (min-width: 1100px) {
-    .stage {
-      grid-template-columns: 1.15fr 0.85fr;
-      align-items: stretch;
+  @keyframes signalBlink {
+    0%,
+    100% {
+      opacity: 0.22;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (min-width: 860px) {
+    .resonance__stage {
+      grid-template-columns: 1.25fr 0.75fr;
+      padding: 1.05rem;
       gap: 1rem;
-      padding: 1.15rem;
     }
 
-    .pane--companion {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+    .graph {
+      min-height: min(56vw, 33rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .signal,
+    .graph :global(.edge-active) {
+      animation: none;
+    }
+
+    .node {
+      transition: none;
     }
   }
 </style>
