@@ -10,6 +10,8 @@
   export let warmBoost = false;
   export let tiltX = 0;
   export let tiltY = 0;
+  export let dragProgress = 0;
+  export let successBoost = false;
 
   const dispatch = createEventDispatcher<{ open: Record<string, never>; press: { clientX: number; clientY: number; pointerId: number } }>();
 
@@ -22,8 +24,8 @@
 </script>
 
 <button
-  class={`orb ${glowClass} ${glowWarm ? 'orb--warm' : ''}`}
-  style={`left:${x}%; top:${y}%; --orb-scale:${baseScale}; --orb-sat:${statusSaturation}; --tilt-x:${tiltX}; --tilt-y:${tiltY};`}
+  class={`orb ${glowClass} ${glowWarm ? 'orb--warm' : ''} ${successBoost ? 'orb--success' : ''}`}
+  style={`left:${x}%; top:${y}%; --orb-scale:${baseScale}; --orb-sat:${statusSaturation}; --tilt-x:${tiltX}; --tilt-y:${tiltY}; --drag-p:${dragProgress};`}
   type="button"
   on:pointerdown={(event) =>
     dispatch('press', {
@@ -35,6 +37,7 @@
   aria-label={a11yLabel}
 >
   <span class="orb__outer-diffusion"></span>
+  <span class="orb__ring"></span>
   <span class="orb__mid-glass"></span>
   <span class="orb__inner-core"></span>
   <span class="orb__refraction"></span>
@@ -42,7 +45,7 @@
 
 <style>
   .orb {
-    --ease-orb: cubic-bezier(0.22, 0.74, 0.25, 1);
+    --ease-orb: cubic-bezier(0.16, 0.84, 0.32, 1);
     position: absolute;
     transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
     width: clamp(7.8rem, 30vw, 9.8rem);
@@ -57,13 +60,14 @@
     filter: saturate(var(--orb-sat, 1));
     box-shadow:
       0 34px 58px rgba(1, 6, 19, 0.58),
-      0 0 68px rgba(130, 220, 255, 0.14),
+      0 0 68px rgba(130, 220, 255, calc(0.14 + (var(--drag-p) * 0.2))),
       inset 0 -14px 24px rgba(3, 10, 28, 0.58),
-      inset 0 12px 24px rgba(185, 230, 255, 0.16);
-    transition: box-shadow 820ms var(--ease-orb), filter 820ms var(--ease-orb), opacity 820ms var(--ease-orb);
+      inset 0 12px 24px rgba(185, 230, 255, calc(0.16 + (var(--drag-p) * 0.16)));
+    transition: box-shadow 420ms var(--ease-orb), filter 420ms var(--ease-orb), opacity 420ms var(--ease-orb);
   }
 
   .orb__outer-diffusion,
+  .orb__ring,
   .orb__mid-glass,
   .orb__inner-core,
   .orb__refraction {
@@ -74,9 +78,17 @@
 
   .orb__outer-diffusion {
     inset: -22%;
-    background: radial-gradient(circle, rgba(114, 215, 255, 0.22), rgba(114, 215, 255, 0) 70%);
+    background: radial-gradient(circle, rgba(114, 215, 255, calc(0.22 + (var(--drag-p) * 0.2))), rgba(114, 215, 255, 0) 70%);
     filter: blur(14px);
     opacity: 0.65;
+    transition: all 420ms var(--ease-orb);
+  }
+
+  .orb__ring {
+    inset: calc(3% + (var(--drag-p) * 1.2%));
+    border: 1px solid rgba(174, 236, 255, calc(0.24 + (var(--drag-p) * 0.26)));
+    transform: scale(calc(1 - (var(--drag-p) * 0.05)));
+    transition: all 360ms var(--ease-orb);
   }
 
   .orb__mid-glass {
@@ -93,7 +105,7 @@
   .orb__inner-core {
     inset: 23%;
     background:
-      radial-gradient(circle at 37% 36%, rgba(237, 248, 255, 0.74), rgba(132, 214, 255, 0.28) 54%, rgba(132, 214, 255, 0) 72%),
+      radial-gradient(circle at 37% 36%, rgba(237, 248, 255, calc(0.74 + (var(--drag-p) * 0.18))), rgba(132, 214, 255, 0.28) 54%, rgba(132, 214, 255, 0) 72%),
       radial-gradient(circle at 62% 65%, rgba(39, 99, 172, 0.42), rgba(39, 99, 172, 0));
     opacity: 0.84;
     filter: blur(0.25px);
@@ -122,15 +134,18 @@
     animation: orbBreathDistant 13.8s cubic-bezier(0.34, 0, 0.2, 1) infinite;
   }
 
+  .orb--success {
+    box-shadow:
+      0 34px 58px rgba(1, 6, 19, 0.58),
+      0 0 84px rgba(255, 204, 150, 0.26),
+      inset 0 -14px 24px rgba(3, 10, 28, 0.58),
+      inset 0 12px 24px rgba(255, 224, 178, 0.24);
+  }
+
   .orb--warm {
     background:
       radial-gradient(circle at 36% 28%, rgba(255, 231, 192, 0.52), rgba(255, 171, 112, 0.2) 35%, rgba(13, 16, 36, 0.92) 72%),
       linear-gradient(152deg, rgba(187, 126, 96, 0.36), rgba(10, 12, 31, 0.94));
-    box-shadow:
-      0 34px 58px rgba(6, 5, 20, 0.58),
-      0 0 74px rgba(255, 196, 135, 0.22),
-      inset 0 -14px 24px rgba(9, 8, 22, 0.58),
-      inset 0 12px 24px rgba(255, 213, 163, 0.2);
   }
 
   @media (min-width: 900px) {
@@ -140,18 +155,12 @@
   }
 
   @keyframes orbBreath {
-    0%,
-    100% {
-      transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 1.032));
-    }
+    0%, 100% { transform: translate(-50%, -50%) scale(var(--orb-scale, 1)); }
+    50% { transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 1.032)); }
   }
 
   @keyframes orbBreathDistant {
-    0%,
-    100% {
+    0%, 100% {
       transform: translate(-50%, -50%) translateY(0) scale(var(--orb-scale, 1));
       filter: saturate(var(--orb-sat, 1)) brightness(0.88);
     }
@@ -162,17 +171,9 @@
   }
 
   @keyframes refractionSweep {
-    0% {
-      transform: translateX(-34%) rotate(7deg);
-      opacity: 0.12;
-    }
-    45% {
-      opacity: 0.24;
-    }
-    100% {
-      transform: translateX(34%) rotate(7deg);
-      opacity: 0.12;
-    }
+    0% { transform: translateX(-34%) rotate(7deg); opacity: 0.12; }
+    45% { opacity: 0.24; }
+    100% { transform: translateX(34%) rotate(7deg); opacity: 0.12; }
   }
 
   @media (prefers-reduced-motion: reduce) {

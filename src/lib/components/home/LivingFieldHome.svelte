@@ -3,9 +3,8 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import CompanionOrb from '$lib/components/home/CompanionOrb.svelte';
   import ActionGate from '$lib/components/home/ActionGate.svelte';
-  import ConstellationSeed from '$lib/components/home/ConstellationSeed.svelte';
   import MoodSeeds from '$lib/components/home/MoodSeeds.svelte';
-  import type { ConstellationConfig, FieldConfig, FieldMode, PrimaryAction } from '$lib/home/fieldEngine';
+  import type { FieldConfig, FieldMode, PrimaryAction } from '$lib/home/fieldEngine';
   import type { HomeMood } from '$lib/components/home/homeLoopTypes';
 
   export let fieldConfig: FieldConfig;
@@ -36,10 +35,13 @@
     recover: 'mode-recover'
   };
 
+  const DRAG_HINT_KEY = 'looma:reconnectDragHintDone';
+
   let sceneEl: HTMLElement | null = null;
   let exploreMode = false;
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
   let intentTimer: ReturnType<typeof setTimeout> | null = null;
+  let successTimer: ReturnType<typeof setTimeout> | null = null;
 
   let isMobile = false;
   let mediaQuery: MediaQueryList | null = null;
@@ -57,18 +59,15 @@
   let previousBodyOverflow: string | null = null;
   let previousBodyTouch: string | null = null;
 
-  let showGateHint = true;
-  const GATE_HINT_KEY = 'looma:gestureGateHintDone';
-
   let gatePulseCount = 0;
   let reconnectFx = false;
+  let reconnectSuccess = false;
   let intentActive = false;
   let moodOverlayOpenPrev = false;
+  let showDragHint = false;
 
   let parallaxX = 0;
   let parallaxY = 0;
-  let storyShift = 0;
-  let storyShiftTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
   const dist = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x1 - x2, y1 - y2);
@@ -83,36 +82,26 @@
   $: gateX = clamp(gatePoint.x + (isMobile ? 1.8 : 3.8), 45, 60);
   $: gateY = clamp(gatePoint.y + (isMobile ? 0.8 : 1.4), isMobile ? 70 : 72, isMobile ? 77 : 79);
   $: gateActive = dist(orbX, orbY, gateX, gateY) < 8.2;
-  $: revealSeeds = exploreMode || intentActive || draggingOrb;
+
+  $: baseGateDistance = Math.max(0.1, dist(orbRestX, orbRestY, gateX, gateY));
+  $: dragProgressRaw = clamp(1 - dist(orbX, orbY, gateX, gateY) / baseGateDistance, 0, 1);
+  $: dragProgress = draggingOrb ? dragProgressRaw : 0;
 
   $: statementX = clamp(orbRestX + (isMobile ? 4 : 7.5), 34, 70);
   $: statementY = clamp(orbRestY + (isMobile ? 8.8 : 10.6), 42, 58);
 
-  $: seeds = (() => {
-    if (!isMobile) return fieldConfig.constellations;
-    const byId = new Map(fieldConfig.constellations.map((seed) => [seed.id, seed]));
-    const ordered = ['signals', 'games', 'companion', 'missions', 'ritual'] as const;
-    const arc = [
-      { x: 26, y: 61 },
-      { x: 42, y: 66 },
-      { x: 60, y: 63 },
-      { x: 34, y: 77 },
-      { x: 54, y: 74 }
-    ];
+  $: livePrimaryLine = reconnectSuccess
+    ? "You're connected."
+    : draggingOrb && dragProgress > 0.72
+      ? "She's almost here."
+      : draggingOrb && dragProgress > 0.34
+        ? "She's listening."
+        : companionStatusLine;
 
-    return ordered
-      .map((id, index) => {
-        const seed = byId.get(id);
-        const pos = arc[index];
-        if (!seed || !pos) return null;
-        return {
-          ...seed,
-          x: pos.x,
-          y: pos.y
-        };
-      })
-      .filter((seed): seed is ConstellationConfig => Boolean(seed));
-  })();
+  $: liveSecondaryLine = reconnectSuccess ? 'Stay with her.' : statementSecondary;
+
+  $: revealDragArc = draggingOrb;
+  $: dragArcPath = `M ${orbRestX} ${orbRestY + 3} Q ${(orbRestX + gateX) / 2} ${Math.min(orbRestY, gateY) - 8} ${gateX} ${gateY - 4}`;
 
   const lockScroll = () => {
     if (!browser) return;
@@ -165,22 +154,22 @@
     reconnectFx = true;
     gatePulseCount += 1;
 
+    dispatch('primary', { intent: actionIntent });
+
     if (actionIntent === 'RECONNECT_30') {
-      setTimeout(() => {
-        dispatch('primary', { intent: actionIntent });
-      }, 820);
-    } else {
-      dispatch('primary', { intent: actionIntent });
+      reconnectSuccess = true;
+      showDragHint = false;
+      if (browser) window.localStorage.setItem(DRAG_HINT_KEY, 'true');
+      if (successTimer) clearTimeout(successTimer);
+      successTimer = setTimeout(() => {
+        reconnectSuccess = false;
+        successTimer = null;
+      }, 3200);
     }
 
     setTimeout(() => {
       reconnectFx = false;
-    }, 1200);
-
-    if (browser) {
-      showGateHint = false;
-      window.localStorage.setItem(GATE_HINT_KEY, 'true');
-    }
+    }, 1400);
   };
 
   const startOrbDrag = (_event: CustomEvent<{ clientX: number; clientY: number; pointerId: number }>) => {
@@ -248,22 +237,12 @@
     parallaxY = 0;
   };
 
-  const handleWheel = (event: WheelEvent) => {
-    if (!exploreMode) return;
-    storyShift = clamp(storyShift + event.deltaY * 0.012, -12, 12);
-    if (storyShiftTimer) clearTimeout(storyShiftTimer);
-    storyShiftTimer = setTimeout(() => {
-      storyShift = 0;
-      storyShiftTimer = null;
-    }, 1200);
-  };
-
   $: if (showMoodSeeds && !moodOverlayOpenPrev) armIntentWindow(10000);
   $: moodOverlayOpenPrev = showMoodSeeds;
 
   onMount(() => {
     if (!browser) return;
-    showGateHint = window.localStorage.getItem(GATE_HINT_KEY) !== 'true';
+    showDragHint = window.localStorage.getItem(DRAG_HINT_KEY) !== 'true';
 
     mediaQuery = window.matchMedia('(max-width: 900px)');
     isMobile = mediaQuery.matches;
@@ -275,7 +254,7 @@
     return () => {
       if (mediaQuery && mediaHandler) mediaQuery.removeEventListener('change', mediaHandler);
       if (intentTimer) clearTimeout(intentTimer);
-      if (storyShiftTimer) clearTimeout(storyShiftTimer);
+      if (successTimer) clearTimeout(successTimer);
       unlockScroll();
     };
   });
@@ -283,7 +262,7 @@
   onDestroy(() => {
     if (pressTimer) clearTimeout(pressTimer);
     if (intentTimer) clearTimeout(intentTimer);
-    if (storyShiftTimer) clearTimeout(storyShiftTimer);
+    if (successTimer) clearTimeout(successTimer);
     unlockScroll();
   });
 </script>
@@ -291,41 +270,28 @@
 <section
   bind:this={sceneEl}
   class={`living-field ${modeClass[fieldConfig.fieldMode]}`}
-  style={`--parallax-x:${parallaxX}; --parallax-y:${parallaxY}; --orb-x:${orbX}; --orb-y:${orbY}; --statement-x:${statementX}; --statement-y:${statementY}; --story-shift:${storyShift};`}
+  style={`--parallax-x:${parallaxX}; --parallax-y:${parallaxY}; --orb-x:${orbX}; --orb-y:${orbY}; --statement-x:${statementX}; --statement-y:${statementY};`}
   on:pointerdown={beginLongPress}
   on:pointerup={endLongPress}
   on:pointercancel={endLongPress}
   on:pointermove={handleParallax}
   on:pointerleave={resetParallax}
-  on:wheel={handleWheel}
 >
   <div class="living-field__base" aria-hidden="true"></div>
   <div class="living-field__bleed" aria-hidden="true"></div>
   <div class="living-field__drift living-field__drift--one" aria-hidden="true"></div>
   <div class="living-field__drift living-field__drift--two" aria-hidden="true"></div>
   <div class="living-field__orb-spill {companionStatus === 'Distant' ? 'living-field__orb-spill--distant' : ''} {companionStatus === 'Resonant' || reconnectFx ? 'living-field__orb-spill--warm' : ''}" aria-hidden="true"></div>
+  <div class="living-field__stars" aria-hidden="true"></div>
   <div class="living-field__grain" aria-hidden="true"></div>
   <div class="living-field__aberration" aria-hidden="true"></div>
   <div class="living-field__vignette" aria-hidden="true"></div>
 
-  <div class="living-field__constellation">
-    {#each seeds as seed}
-      <ConstellationSeed
-        id={seed.id}
-        label={seed.label}
-        description={seed.description}
-        icon={seed.icon}
-        href={seed.href}
-        relevance={seed.relevance}
-        x={seed.x}
-        y={seed.y}
-        {exploreMode}
-        visible={revealSeeds}
-        {companionName}
-        on:follow={(event) => dispatch('seed', event.detail)}
-      />
-    {/each}
-  </div>
+  {#if revealDragArc}
+    <svg class="living-field__drag-arc" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d={dragArcPath}></path>
+    </svg>
+  {/if}
 
   <CompanionOrb
     name={companionName}
@@ -333,17 +299,23 @@
     statusLine={companionStatusLine}
     x={orbX}
     y={orbY}
-    scaleBoost={reconnectFx ? 1.04 : 1}
+    scaleBoost={reconnectFx ? 1.03 : 1}
     warmBoost={reconnectFx}
     tiltX={parallaxX}
     tiltY={parallaxY}
+    dragProgress={dragProgress}
+    successBoost={reconnectSuccess}
     on:press={startOrbDrag}
     on:open={handleOrbOpen}
   />
 
+  {#if showDragHint}
+    <p class="living-field__drag-hint">Drag {companionName ?? 'Mirae'} downward to reconnect.</p>
+  {/if}
+
   <div class="living-field__statement">
-    <p class="living-field__statement-primary">{companionStatusLine}</p>
-    <p class="living-field__statement-secondary">{statementSecondary}</p>
+    <p class="living-field__statement-primary">{livePrimaryLine}</p>
+    <p class="living-field__statement-secondary">{liveSecondaryLine}</p>
   </div>
 
   <ActionGate
@@ -355,9 +327,11 @@
     orbY={orbY}
     active={gateActive}
     dragging={draggingOrb}
+    progress={dragProgress}
     orbStatus={companionStatus}
-    showHint={showGateHint}
-    hint="Drag the orb into the light"
+    showHint={false}
+    hint=""
+    caption="Reconnect"
     pulseCount={gatePulseCount}
     on:activate={(event) => dispatch('primary', event.detail)}
   />
@@ -374,7 +348,7 @@
 
 <style>
   .living-field {
-    --ease-space: cubic-bezier(0.22, 0.74, 0.25, 1);
+    --ease-space: cubic-bezier(0.16, 0.84, 0.32, 1);
     position: relative;
     min-height: 100dvh;
     overflow: hidden;
@@ -388,6 +362,7 @@
   .living-field__bleed,
   .living-field__drift,
   .living-field__orb-spill,
+  .living-field__stars,
   .living-field__grain,
   .living-field__aberration,
   .living-field__vignette {
@@ -412,7 +387,7 @@
     mix-blend-mode: screen;
     opacity: 0.82;
     transform: translate3d(calc(var(--parallax-x) * -0.65rem), calc(var(--parallax-y) * -0.44rem), 0);
-    transition: transform 700ms var(--ease-space);
+    transition: transform 760ms var(--ease-space);
   }
 
   .living-field__drift {
@@ -452,21 +427,65 @@
     opacity: 0.58;
   }
 
-  .living-field__grain {
+  .living-field__stars {
     z-index: 4;
+    opacity: 0.16;
+    filter: blur(0.8px);
+    background-image:
+      radial-gradient(circle at 18% 24%, rgba(214, 241, 255, 0.8) 0.26px, transparent 0.8px),
+      radial-gradient(circle at 72% 18%, rgba(214, 241, 255, 0.7) 0.24px, transparent 0.8px),
+      radial-gradient(circle at 60% 66%, rgba(214, 241, 255, 0.7) 0.24px, transparent 0.8px),
+      radial-gradient(circle at 34% 82%, rgba(214, 241, 255, 0.72) 0.22px, transparent 0.8px);
+    background-size: 280px 280px, 260px 260px, 300px 300px, 240px 240px;
+  }
+
+  .living-field__grain {
+    z-index: 5;
     opacity: 0.09;
     mix-blend-mode: soft-light;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
   }
 
   .living-field__aberration {
-    z-index: 5;
+    z-index: 6;
     box-shadow: inset 34px 0 90px rgba(66, 212, 255, 0.06), inset -34px 0 90px rgba(222, 119, 255, 0.05);
   }
 
   .living-field__vignette {
-    z-index: 6;
+    z-index: 7;
     background: radial-gradient(130% 110% at 50% 44%, rgba(0, 0, 0, 0) 54%, rgba(2, 4, 10, 0.54) 100%);
+  }
+
+  .living-field__drag-arc {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    pointer-events: none;
+  }
+
+  .living-field__drag-arc path {
+    stroke: rgba(176, 238, 255, 0.34);
+    stroke-width: 1;
+    fill: none;
+    filter: blur(0.35px);
+    stroke-linecap: round;
+    stroke-dasharray: 3 5;
+    animation: arcFlow 1400ms linear infinite;
+  }
+
+  .living-field__drag-hint {
+    position: absolute;
+    left: calc(var(--orb-x) * 1%);
+    top: calc((var(--orb-y) * 1%) + 10.3%);
+    transform: translateX(-50%);
+    margin: 0;
+    z-index: 15;
+    color: rgba(197, 224, 246, 0.78);
+    font-size: 0.68rem;
+    letter-spacing: 0.045em;
+    text-transform: none;
+    animation: hintFloat 2600ms var(--ease-space) infinite;
+    pointer-events: none;
   }
 
   .living-field__statement {
@@ -478,16 +497,6 @@
     pointer-events: none;
     display: grid;
     gap: 0.42rem;
-    transform: translateX(calc(var(--story-shift) * 0.26%));
-    transition: transform 760ms var(--ease-space);
-  }
-
-  .living-field__constellation {
-    position: absolute;
-    inset: 0;
-    z-index: 11;
-    transform: translateX(calc(var(--story-shift) * -0.34%));
-    transition: transform 760ms var(--ease-space);
   }
 
   .living-field__statement-primary {
@@ -499,7 +508,7 @@
     line-height: 1.02;
     text-wrap: balance;
     text-shadow: 0 16px 36px rgba(1, 5, 14, 0.62);
-    transition: letter-spacing 620ms var(--ease-space), transform 620ms var(--ease-space);
+    transition: all 420ms var(--ease-space);
   }
 
   .living-field__statement-secondary {
@@ -510,37 +519,7 @@
     letter-spacing: 0.11em;
     font-weight: 440;
     transform: translateX(0.75rem);
-    transition: transform 620ms var(--ease-space), letter-spacing 620ms var(--ease-space);
-  }
-
-  .mode-explore .living-field__statement-primary {
-    letter-spacing: 0.005em;
-    transform: translateX(calc(var(--story-shift) * 0.08%));
-  }
-
-  .mode-explore .living-field__statement-secondary {
-    letter-spacing: 0.13em;
-    transform: translateX(calc(0.75rem + (var(--story-shift) * 0.1%)));
-  }
-
-  .mode-neutral .living-field__bleed {
-    opacity: 0.8;
-  }
-
-  .mode-support .living-field__bleed {
-    filter: hue-rotate(14deg);
-  }
-
-  .mode-settle .living-field__drift {
-    opacity: 0.22;
-  }
-
-  .mode-explore .living-field__bleed {
-    opacity: 0.9;
-  }
-
-  .mode-activate .living-field__orb-spill {
-    opacity: 0.62;
+    transition: all 420ms var(--ease-space);
   }
 
   .mode-recover .living-field__base {
@@ -560,33 +539,39 @@
     .living-field__statement-secondary {
       transform: translateX(0.45rem);
     }
+
+    .living-field__drag-hint {
+      width: min(84vw, 16rem);
+      text-align: center;
+      font-size: 0.64rem;
+    }
   }
 
   @keyframes cloudOne {
-    0% {
-      transform: translate3d(-2%, 0, 0) scale(1);
-      opacity: 0.2;
-    }
-    100% {
-      transform: translate3d(3%, -2%, 0) scale(1.08);
-      opacity: 0.34;
-    }
+    0% { transform: translate3d(-2%, 0, 0) scale(1); opacity: 0.2; }
+    100% { transform: translate3d(3%, -2%, 0) scale(1.08); opacity: 0.34; }
   }
 
   @keyframes cloudTwo {
-    0% {
-      transform: translate3d(2%, 1%, 0) scale(1);
-      opacity: 0.18;
-    }
-    100% {
-      transform: translate3d(-3%, -2%, 0) scale(1.1);
-      opacity: 0.31;
-    }
+    0% { transform: translate3d(2%, 1%, 0) scale(1); opacity: 0.18; }
+    100% { transform: translate3d(-3%, -2%, 0) scale(1.1); opacity: 0.31; }
+  }
+
+  @keyframes arcFlow {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -14; }
+  }
+
+  @keyframes hintFloat {
+    0%, 100% { opacity: 0.66; transform: translateX(-50%) translateY(0); }
+    50% { opacity: 0.9; transform: translateX(-50%) translateY(-0.18rem); }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .living-field__bleed,
-    .living-field__drift {
+    .living-field__drift,
+    .living-field__drag-arc path,
+    .living-field__drag-hint {
       transition: none;
       animation: none;
       transform: none;
