@@ -1,29 +1,18 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
-  import LivingFieldHome from '$lib/components/home/LivingFieldHome.svelte';
+  import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
   import CompanionSheet from '$lib/components/home/CompanionSheet.svelte';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-  import type { HomeMood } from '$lib/components/home/homeLoopTypes';
   import { logEvent } from '$lib/analytics';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
-  import { buildFieldConfig, type HomeState, type PrimaryAction } from '$lib/home/fieldEngine';
+  import type { QuickNavItem } from '$lib/components/home/quickNavTypes';
   import type { PageData } from './$types';
 
   export let data: PageData;
 
-  const localDateKey = () => {
-    const now = new Date();
-    const shifted = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-    return shifted.toISOString().slice(0, 10);
-  };
-
-  const localMoodKey = (date: string) => `looma_mood_checkin_${date}`;
-
   const activeCompanion = data.activeCompanion ?? null;
-  const quickMission = data.dailyMissions?.[0] ?? data.weeklyMissions?.[0] ?? data.missions?.[0] ?? null;
 
   const activeAsInstance =
     activeCompanion
@@ -47,104 +36,55 @@
 
   $: effective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance) : null;
 
-  const deriveCompanionStatus = () => {
-    if (!activeCompanion) return 'Steady' as const;
+  const deriveClosenessState = () => {
+    if (!activeCompanion) return 'Near' as const;
     if (effective?.moodKey === 'distant') return 'Distant' as const;
     if (effective?.moodKey === 'radiant') return 'Resonant' as const;
-    if (effective?.moodKey === 'calm') return 'Synced' as const;
-    return 'Steady' as const;
+    return 'Near' as const;
   };
 
-  $: companionStatus = deriveCompanionStatus();
-  $: companionStatusText =
-    companionStatus === 'Distant'
-      ? `${activeCompanion?.name ?? 'Mirae'} feels far.`
-      : companionStatus === 'Resonant'
-        ? `${activeCompanion?.name ?? 'Mirae'} is close and radiant.`
-        : companionStatus === 'Synced'
-          ? `${activeCompanion?.name ?? 'Mirae'} is with you.`
-          : `${activeCompanion?.name ?? 'Mirae'} is nearby.`;
-  $: sanctuarySecondaryLine =
-    companionStatus === 'Distant'
-      ? 'Bring her closer.'
-      : companionStatus === 'Resonant'
-        ? 'Stay in this warmth.'
-        : companionStatus === 'Synced'
-          ? 'Hold this closeness.'
-          : 'Enter the ritual.';
+  $: closenessState = deriveClosenessState();
+  $: companionName = activeCompanion?.name ?? 'Mirae';
+  $: companionSpecies = activeCompanion?.species ?? 'Muse';
+  $: statusLine =
+    closenessState === 'Distant'
+      ? `${companionName} feels distant.`
+      : closenessState === 'Resonant'
+        ? `${companionName} feels deeply connected.`
+        : `${companionName} is near.`;
 
-  let selectedMood: HomeMood | null =
-    (typeof data.dailyCheckinToday?.mood === 'string' ? (data.dailyCheckinToday.mood as HomeMood) : null) ?? null;
-  let hasCheckedInToday = Boolean(data.dailyCheckinToday);
-  let showMoodSeeds = !hasCheckedInToday;
-  let moodFading = false;
+  $: statusReason =
+    !data.dailyCheckinToday
+      ? `${companionName} hasn't heard from you today.`
+      : (effective?.energy ?? activeCompanion?.energy ?? 0) < 35
+        ? `${companionName} could use a quick check-in right now.`
+        : (data.notificationsUnread ?? 0) > 0
+          ? 'You have new moments waiting together.'
+          : 'Your bond is steady right now.';
+
+  $: needsReconnectToday = closenessState === 'Distant' || !data.dailyCheckinToday;
+
+  const quickNavItems: QuickNavItem[] = [
+    { id: 'circles', label: 'Circles', href: '/app/circles' },
+    { id: 'messages', label: 'Messages', href: '/app/messages' },
+    { id: 'games', label: 'Games', href: '/app/games' },
+    { id: 'companion', label: 'Companion', href: '/app/companions' }
+  ];
+
   let companionSheetOpen = false;
-  let microRitualModalOpen = false;
-  let ritualVariant: 'micro' | 'reconnect' = 'micro';
+  let reconnectModalOpen = false;
   let rewardToast: string | null = null;
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
 
-  $: homeState = {
-    moodToday: hasCheckedInToday ? selectedMood : null,
-    companionStatus,
-    companionEnergy: effective?.energy ?? activeCompanion?.energy ?? 0,
-    unreadWhispers: data.notificationsUnread ?? 0,
-    quickMissionAvailable: Boolean(quickMission),
-    energyOk: (data.stats?.energy ?? 0) >= 8
-  } satisfies HomeState;
-
-  $: fieldConfig = buildFieldConfig(homeState);
-  $: primaryAction = fieldConfig.primaryAction;
-
-  $: primaryLabel =
-    primaryAction === 'CHECK_IN'
-      ? 'How are you arriving?'
-      : primaryAction === 'RECONNECT_30'
-        ? 'Reconnect (30 sec)'
-        : primaryAction === 'SEND_WARMTH'
-          ? 'Send warmth'
-          : primaryAction === 'QUICK_SPARK'
-            ? 'Quick Spark'
-            : 'Micro Ritual';
-
   const track = (
-    kind: 'home_view' | 'mood_checkin_submit' | 'primary_action_click' | 'explore_mode_toggle' | 'orb_open_sheet',
+    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'home_quick_nav_click',
     meta: Record<string, unknown> = {}
   ) => {
     console.debug('[home]', kind, meta);
     void logEvent(kind, meta);
   };
 
-  const submitMood = async (mood: HomeMood) => {
-    if (hasCheckedInToday) return;
-    selectedMood = mood;
-    moodFading = true;
-    const today = localDateKey();
-
-    try {
-      const response = await fetch('/api/home/checkin', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ mood, date: today })
-      });
-      if (!response.ok) throw new Error('checkin_failed');
-    } catch {
-      // Fall back to local key only when API write fails.
-    }
-
-    if (browser) {
-      window.localStorage.setItem(localMoodKey(today), mood);
-    }
-
-    hasCheckedInToday = true;
-    setTimeout(() => {
-      showMoodSeeds = false;
-      moodFading = false;
-    }, 260);
-    track('mood_checkin_submit', { mood });
-  };
-
-  const showReward = (copy = '+XP · +Energy') => {
+  const showReward = (copy = "You're connected. +8 XP · +5 Energy") => {
     rewardToast = copy;
     if (rewardTimer) clearTimeout(rewardTimer);
     rewardTimer = setTimeout(() => {
@@ -153,84 +93,27 @@
     }, 2200);
   };
 
-  const handlePrimaryAction = async (intent: PrimaryAction) => {
-    track('primary_action_click', { intent, mood: selectedMood });
-
-    if (intent === 'CHECK_IN') {
-      showMoodSeeds = true;
-      return;
-    }
-
-    if (intent === 'RECONNECT_30') {
-      ritualVariant = 'reconnect';
-      microRitualModalOpen = true;
-      return;
-    }
-
-    if (intent === 'SEND_WARMTH') {
-      await goto('/app/circles');
-      return;
-    }
-
-    if (intent === 'QUICK_SPARK') {
-      showReward('+12 XP · +4 Energy');
-      await goto('/app/games');
-      return;
-    }
-
-    microRitualModalOpen = true;
-    ritualVariant = 'micro';
+  const handlePrimaryReconnect = () => {
+    track('primary_action_click', { intent: 'RECONNECT_30' });
+    reconnectModalOpen = true;
   };
 
-  const executeMicroRitual = () => {
-    microRitualModalOpen = false;
-    if (ritualVariant === 'reconnect') {
-      showReward("She's closer. +8 XP · +5 Energy");
-    } else {
-      showReward('+5 XP · +3 Energy');
-    }
-  };
-
-  const handleSeedFollow = async (href: string) => {
-    track('primary_action_click', { intent: 'SEED_NAV', href });
+  const handleQuickNav = async (id: QuickNavItem['id'], href: string) => {
+    track('home_quick_nav_click', { id, href });
     await goto(href);
+  };
+
+  const executeReconnect = () => {
+    reconnectModalOpen = false;
+    showReward();
   };
 
   onMount(() => {
     track('home_view', {
-      hasMood: hasCheckedInToday,
       companion: activeCompanion?.id ?? null,
-      mode: fieldConfig.fieldMode
+      closenessState,
+      hasMood: Boolean(data.dailyCheckinToday)
     });
-
-    const run = async () => {
-      const today = localDateKey();
-
-      if (browser && !hasCheckedInToday) {
-        const localMood = window.localStorage.getItem(localMoodKey(today));
-        if (localMood && ['calm', 'heavy', 'curious', 'energized', 'numb'].includes(localMood)) {
-          selectedMood = localMood as HomeMood;
-          hasCheckedInToday = true;
-          showMoodSeeds = false;
-        }
-      }
-
-      try {
-        const syncRes = await fetch(`/api/home/checkin?date=${encodeURIComponent(today)}`, {
-          headers: { 'cache-control': 'no-store' }
-        });
-        const payload = await syncRes.json().catch(() => ({}));
-        if (syncRes.ok && payload?.today?.mood) {
-          selectedMood = payload.today.mood as HomeMood;
-          hasCheckedInToday = true;
-          showMoodSeeds = false;
-        }
-      } catch {
-        // Keep local state.
-      }
-    };
-
-    void run();
 
     return () => {
       if (rewardTimer) clearTimeout(rewardTimer);
@@ -242,27 +125,25 @@
   <BackgroundStack />
 
   <main class="home-shell" aria-labelledby="home-title">
-    <h1 id="home-title" class="sr-only">Living Field Home</h1>
+    <h1 id="home-title" class="sr-only">Companion Home</h1>
 
-    <LivingFieldHome
-      {fieldConfig}
-      companionName={activeCompanion?.name ?? null}
-      companionStatus={companionStatus}
-      actionLabel={primaryLabel}
-      actionIntent={primaryAction}
-      companionStatusLine={companionStatusText}
-      statementSecondary={sanctuarySecondaryLine}
-      {showMoodSeeds}
-      {moodFading}
-      {selectedMood}
-      on:primary={(event) => handlePrimaryAction(event.detail.intent)}
-      on:mood={(event) => submitMood(event.detail.mood)}
-      on:seed={(event) => handleSeedFollow(event.detail.href)}
-      on:orb={() => {
+    <HomeSanctuaryV1
+      companionName={companionName}
+      companionSpecies={companionSpecies}
+      companionAvatarUrl={activeCompanion?.avatar_url ?? null}
+      {closenessState}
+      {statusLine}
+      {statusReason}
+      needsReconnectToday={needsReconnectToday}
+      primaryLabel="Reconnect (30 sec)"
+      primaryCopy="A quick check-in to bring Mirae closer."
+      {quickNavItems}
+      on:primary={handlePrimaryReconnect}
+      on:companion={() => {
         companionSheetOpen = true;
         track('orb_open_sheet', { companion: activeCompanion?.id ?? null });
       }}
-      on:explore={(event) => track('explore_mode_toggle', { enabled: event.detail.enabled })}
+      on:navigate={(event) => handleQuickNav(event.detail.id, event.detail.href)}
     />
 
     {#if rewardToast}
@@ -274,7 +155,7 @@
 <CompanionSheet
   open={companionSheetOpen}
   name={activeCompanion?.name ?? null}
-  status={companionStatus}
+  status={closenessState === 'Near' ? 'Synced' : closenessState}
   bondTier={`Bond Tier ${activeCompanion?.bondLevel ?? 1}`}
   evolutionTag={activeCompanion?.species ? `${activeCompanion.species} form` : 'Base form'}
   imageUrl={activeCompanion?.avatar_url ?? null}
@@ -285,19 +166,15 @@
 />
 
 <BottomSheet
-  open={microRitualModalOpen}
-  title={ritualVariant === 'reconnect' ? 'Reconnect Ritual' : 'Micro Ritual'}
+  open={reconnectModalOpen}
+  title="Reconnect Ritual"
   onClose={() => {
-    microRitualModalOpen = false;
+    reconnectModalOpen = false;
   }}
 >
   <section class="modal-copy">
-    <p>
-      {ritualVariant === 'reconnect'
-        ? 'Take one soft breath and call her closer for 30 seconds.'
-        : 'Place attention on one small intention for 20 seconds.'}
-    </p>
-    <button type="button" on:click={executeMicroRitual}>Done</button>
+    <p>Take one soft breath and call {companionName} closer for 30 seconds.</p>
+    <button type="button" on:click={executeReconnect}>Done</button>
   </section>
 </BottomSheet>
 
@@ -327,7 +204,7 @@
     width: 100%;
     max-width: none;
     box-sizing: border-box;
-    padding: 0 0 calc(7.9rem + env(safe-area-inset-bottom));
+    padding: 0;
     display: grid;
     gap: 0;
   }
@@ -366,12 +243,5 @@
     background: linear-gradient(135deg, rgba(45, 212, 191, 0.95), rgba(56, 189, 248, 0.95));
     color: rgba(7, 17, 36, 0.96);
     font-weight: 700;
-  }
-
-  @media (min-width: 900px) {
-    .home-shell {
-      padding: 0 0 4.6rem;
-      gap: 0;
-    }
   }
 </style>
