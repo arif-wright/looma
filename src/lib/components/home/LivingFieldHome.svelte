@@ -60,35 +60,46 @@
   let showGateHint = true;
   const GATE_HINT_KEY = 'looma:gestureGateHintDone';
 
-  let flickerOn = false;
-  let flickerTimer: ReturnType<typeof setTimeout> | null = null;
-  let reconnectFx = false;
   let gatePulseCount = 0;
+  let reconnectFx = false;
   let intentActive = false;
   let moodOverlayOpenPrev = false;
 
   let parallaxX = 0;
   let parallaxY = 0;
+  let storyShift = 0;
+  let storyShiftTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
   const dist = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x1 - x2, y1 - y2);
 
-  $: gateY = clamp(gatePoint.y, isMobile ? 68 : 70, isMobile ? 75 : 77);
-  $: gateActive = dist(orbX, orbY, gatePoint.x, gatePoint.y) < 8;
+  $: orbRestX = clamp(baseOrb.x - (isMobile ? 6 : 7.5), 28, 52);
+  $: orbRestY = clamp(baseOrb.y - (isMobile ? 8 : 9), 31, 40);
+  $: if (!draggingOrb) {
+    orbX = orbRestX;
+    orbY = orbRestY;
+  }
+
+  $: gateX = clamp(gatePoint.x + (isMobile ? 1.8 : 3.8), 45, 60);
+  $: gateY = clamp(gatePoint.y + (isMobile ? 0.8 : 1.4), isMobile ? 70 : 72, isMobile ? 77 : 79);
+  $: gateActive = dist(orbX, orbY, gateX, gateY) < 8.2;
   $: revealSeeds = exploreMode || intentActive || draggingOrb;
+
+  $: statementX = clamp(orbRestX + (isMobile ? 4 : 7.5), 34, 70);
+  $: statementY = clamp(orbRestY + (isMobile ? 8.8 : 10.6), 42, 58);
 
   $: seeds = (() => {
     if (!isMobile) return fieldConfig.constellations;
     const byId = new Map(fieldConfig.constellations.map((seed) => [seed.id, seed]));
     const ordered = ['signals', 'games', 'companion', 'missions', 'ritual'] as const;
     const arc = [
-      { x: 30, y: 63 },
-      { x: 50, y: 66 },
-      { x: 70, y: 63 },
-      { x: 38, y: 76 },
-      { x: 62, y: 76 }
+      { x: 26, y: 61 },
+      { x: 42, y: 66 },
+      { x: 60, y: 63 },
+      { x: 34, y: 77 },
+      { x: 54, y: 74 }
     ];
+
     return ordered
       .map((id, index) => {
         const seed = byId.get(id);
@@ -102,14 +113,6 @@
       })
       .filter((seed): seed is ConstellationConfig => Boolean(seed));
   })();
-
-  $: topSeed = seeds.reduce<ConstellationConfig | null>((current, seed) => {
-    if (!current) return seed;
-    return seed.relevance > current.relevance ? seed : current;
-  }, null);
-
-  $: sweepLength = topSeed ? Math.hypot(topSeed.x - baseOrb.x, topSeed.y - baseOrb.y) : 0;
-  $: sweepAngle = topSeed ? (Math.atan2(topSeed.y - baseOrb.y, topSeed.x - baseOrb.x) * 180) / Math.PI : 0;
 
   const lockScroll = () => {
     if (!browser) return;
@@ -165,14 +168,14 @@
     if (actionIntent === 'RECONNECT_30') {
       setTimeout(() => {
         dispatch('primary', { intent: actionIntent });
-      }, 780);
+      }, 820);
     } else {
       dispatch('primary', { intent: actionIntent });
     }
 
     setTimeout(() => {
       reconnectFx = false;
-    }, 1080);
+    }, 1200);
 
     if (browser) {
       showGateHint = false;
@@ -192,9 +195,9 @@
       const rect = sceneEl.getBoundingClientRect();
       const nx = ((moveEvent.clientX - rect.left) / rect.width) * 100;
       const ny = ((moveEvent.clientY - rect.top) / rect.height) * 100;
-      const clampedX = clamp(nx, baseOrb.x - 18, baseOrb.x + 18);
-      const clampedY = clamp(ny, baseOrb.y - 8, baseOrb.y + 36);
-      if (Math.abs(clampedX - baseOrb.x) > 2 || Math.abs(clampedY - baseOrb.y) > 2) {
+      const clampedX = clamp(nx, orbRestX - 18, orbRestX + 22);
+      const clampedY = clamp(ny, orbRestY - 6, orbRestY + 40);
+      if (Math.abs(clampedX - orbRestX) > 2 || Math.abs(clampedY - orbRestY) > 2) {
         dragMoved = true;
       }
       orbX = clampedX;
@@ -203,15 +206,15 @@
 
     const handleUp = () => {
       if (draggingOrb && gateActive) {
-        orbX = gatePoint.x;
-        orbY = gateY - 2;
+        orbX = gateX;
+        orbY = gateY - 2.3;
         triggerPrimary();
       } else if (draggingOrb && dragMoved) {
         ignoreOpen = true;
       }
       draggingOrb = false;
-      orbX = baseOrb.x;
-      orbY = baseOrb.y;
+      orbX = orbRestX;
+      orbY = orbRestY;
       unlockScroll();
       armIntentWindow(7600);
       window.removeEventListener('pointermove', handleMove);
@@ -231,21 +234,6 @@
     dispatch('orb', {});
   };
 
-  const startFlickerLoop = () => {
-    if (!browser) return;
-    const schedule = () => {
-      const nextDelay = 9000 + Math.round(Math.random() * 6500);
-      flickerTimer = setTimeout(() => {
-        flickerOn = true;
-        setTimeout(() => {
-          flickerOn = false;
-          schedule();
-        }, 1400);
-      }, nextDelay);
-    };
-    schedule();
-  };
-
   const handleParallax = (event: PointerEvent) => {
     if (!sceneEl) return;
     const rect = sceneEl.getBoundingClientRect();
@@ -258,6 +246,16 @@
   const resetParallax = () => {
     parallaxX = 0;
     parallaxY = 0;
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    if (!exploreMode) return;
+    storyShift = clamp(storyShift + event.deltaY * 0.012, -12, 12);
+    if (storyShiftTimer) clearTimeout(storyShiftTimer);
+    storyShiftTimer = setTimeout(() => {
+      storyShift = 0;
+      storyShiftTimer = null;
+    }, 1200);
   };
 
   $: if (showMoodSeeds && !moodOverlayOpenPrev) armIntentWindow(10000);
@@ -274,20 +272,18 @@
     };
     mediaQuery.addEventListener('change', mediaHandler);
 
-    startFlickerLoop();
-
     return () => {
       if (mediaQuery && mediaHandler) mediaQuery.removeEventListener('change', mediaHandler);
-      if (flickerTimer) clearTimeout(flickerTimer);
       if (intentTimer) clearTimeout(intentTimer);
+      if (storyShiftTimer) clearTimeout(storyShiftTimer);
       unlockScroll();
     };
   });
 
   onDestroy(() => {
     if (pressTimer) clearTimeout(pressTimer);
-    if (flickerTimer) clearTimeout(flickerTimer);
     if (intentTimer) clearTimeout(intentTimer);
+    if (storyShiftTimer) clearTimeout(storyShiftTimer);
     unlockScroll();
   });
 </script>
@@ -295,43 +291,41 @@
 <section
   bind:this={sceneEl}
   class={`living-field ${modeClass[fieldConfig.fieldMode]}`}
-  style={`--parallax-x:${parallaxX}; --parallax-y:${parallaxY};`}
+  style={`--parallax-x:${parallaxX}; --parallax-y:${parallaxY}; --orb-x:${orbX}; --orb-y:${orbY}; --statement-x:${statementX}; --statement-y:${statementY}; --story-shift:${storyShift};`}
   on:pointerdown={beginLongPress}
   on:pointerup={endLongPress}
   on:pointercancel={endLongPress}
   on:pointermove={handleParallax}
   on:pointerleave={resetParallax}
+  on:wheel={handleWheel}
 >
   <div class="living-field__base" aria-hidden="true"></div>
-  <div class="living-field__chroma" aria-hidden="true"></div>
-  <div class="living-field__mist" aria-hidden="true"></div>
+  <div class="living-field__bleed" aria-hidden="true"></div>
+  <div class="living-field__drift living-field__drift--one" aria-hidden="true"></div>
+  <div class="living-field__drift living-field__drift--two" aria-hidden="true"></div>
+  <div class="living-field__orb-spill {companionStatus === 'Distant' ? 'living-field__orb-spill--distant' : ''} {companionStatus === 'Resonant' || reconnectFx ? 'living-field__orb-spill--warm' : ''}" aria-hidden="true"></div>
   <div class="living-field__grain" aria-hidden="true"></div>
+  <div class="living-field__aberration" aria-hidden="true"></div>
   <div class="living-field__vignette" aria-hidden="true"></div>
 
-  {#if topSeed}
-    <div
-      class={`living-field__sweep ${flickerOn ? 'living-field__sweep--on' : ''}`}
-      style={`left:${baseOrb.x}%; top:${baseOrb.y}%; width:${sweepLength}%; --sweep-angle:${sweepAngle}deg;`}
-      aria-hidden="true"
-    ></div>
-  {/if}
-
-  {#each seeds as seed}
-    <ConstellationSeed
-      id={seed.id}
-      label={seed.label}
-      description={seed.description}
-      icon={seed.icon}
-      href={seed.href}
-      relevance={seed.relevance}
-      x={seed.x}
-      y={seed.y}
-      {exploreMode}
-      visible={revealSeeds}
-      {companionName}
-      on:follow={(event) => dispatch('seed', event.detail)}
-    />
-  {/each}
+  <div class="living-field__constellation">
+    {#each seeds as seed}
+      <ConstellationSeed
+        id={seed.id}
+        label={seed.label}
+        description={seed.description}
+        icon={seed.icon}
+        href={seed.href}
+        relevance={seed.relevance}
+        x={seed.x}
+        y={seed.y}
+        {exploreMode}
+        visible={revealSeeds}
+        {companionName}
+        on:follow={(event) => dispatch('seed', event.detail)}
+      />
+    {/each}
+  </div>
 
   <CompanionOrb
     name={companionName}
@@ -341,6 +335,8 @@
     y={orbY}
     scaleBoost={reconnectFx ? 1.04 : 1}
     warmBoost={reconnectFx}
+    tiltX={parallaxX}
+    tiltY={parallaxY}
     on:press={startOrbDrag}
     on:open={handleOrbOpen}
   />
@@ -353,7 +349,7 @@
   <ActionGate
     label={actionLabel}
     intent={actionIntent}
-    x={gatePoint.x}
+    x={gateX}
     y={gateY}
     orbX={orbX}
     orbY={orbY}
@@ -369,8 +365,8 @@
   <MoodSeeds
     open={showMoodSeeds}
     {selectedMood}
-    orbX={baseOrb.x}
-    orbY={baseOrb.y}
+    orbX={orbRestX}
+    orbY={orbRestY}
     fading={moodFading}
     on:select={(event) => dispatch('mood', event.detail)}
   />
@@ -378,22 +374,22 @@
 
 <style>
   .living-field {
-    --ease-organic: cubic-bezier(0.23, 0.9, 0.32, 1);
+    --ease-space: cubic-bezier(0.22, 0.74, 0.25, 1);
     position: relative;
-    min-height: min(80vh, 44rem);
-    border-radius: 1.55rem;
+    min-height: 100dvh;
     overflow: hidden;
-    background: #03040b;
-    box-shadow: 0 40px 80px rgba(1, 3, 12, 0.52);
+    background: #040711;
     user-select: none;
     touch-action: none;
     isolation: isolate;
   }
 
   .living-field__base,
-  .living-field__chroma,
-  .living-field__mist,
+  .living-field__bleed,
+  .living-field__drift,
+  .living-field__orb-spill,
   .living-field__grain,
+  .living-field__aberration,
   .living-field__vignette {
     position: absolute;
     inset: 0;
@@ -401,128 +397,199 @@
   }
 
   .living-field__base {
-    background:
-      radial-gradient(120% 95% at 50% -12%, rgba(18, 23, 48, 0.66), rgba(4, 6, 16, 0) 65%),
-      linear-gradient(180deg, rgba(5, 7, 18, 0.94), rgba(3, 4, 11, 0.98));
     z-index: 0;
+    background:
+      radial-gradient(140% 120% at 88% -18%, rgba(110, 144, 244, 0.2), rgba(110, 144, 244, 0) 54%),
+      radial-gradient(120% 95% at -14% 108%, rgba(61, 188, 214, 0.15), rgba(61, 188, 214, 0) 62%),
+      linear-gradient(168deg, rgba(7, 11, 27, 0.98), rgba(3, 6, 14, 1) 60%);
   }
 
-  .living-field__chroma {
-    background:
-      radial-gradient(44% 36% at calc(24% + (var(--parallax-x) * 2.6%)) calc(14% + (var(--parallax-y) * 2.4%)), rgba(67, 220, 255, 0.16), rgba(67, 220, 255, 0) 80%),
-      radial-gradient(48% 42% at calc(70% - (var(--parallax-x) * 2.2%)) calc(24% - (var(--parallax-y) * 2.6%)), rgba(214, 98, 255, 0.14), rgba(214, 98, 255, 0) 76%),
-      radial-gradient(52% 36% at calc(56% + (var(--parallax-x) * 1.4%)) calc(70% + (var(--parallax-y) * 1.8%)), rgba(124, 96, 255, 0.14), rgba(124, 96, 255, 0) 80%);
-    mix-blend-mode: screen;
-    opacity: 0.85;
-    transform: translate3d(calc(var(--parallax-x) * -0.8rem), calc(var(--parallax-y) * -0.5rem), 0);
-    transition: transform 640ms var(--ease-organic);
+  .living-field__bleed {
     z-index: 1;
+    background:
+      radial-gradient(76% 56% at calc(16% + (var(--parallax-x) * 1.5%)) calc(20% + (var(--parallax-y) * 1.2%)), rgba(76, 222, 255, 0.11), rgba(76, 222, 255, 0) 72%),
+      radial-gradient(72% 54% at calc(80% - (var(--parallax-x) * 1.6%)) calc(74% - (var(--parallax-y) * 1.5%)), rgba(216, 108, 255, 0.09), rgba(216, 108, 255, 0) 76%);
+    mix-blend-mode: screen;
+    opacity: 0.82;
+    transform: translate3d(calc(var(--parallax-x) * -0.65rem), calc(var(--parallax-y) * -0.44rem), 0);
+    transition: transform 700ms var(--ease-space);
   }
 
-  .living-field__mist {
-    background:
-      radial-gradient(70% 60% at 50% 30%, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 76%),
-      radial-gradient(80% 44% at 50% 80%, rgba(120, 227, 255, 0.06), rgba(120, 227, 255, 0) 72%);
-    filter: blur(12px);
-    opacity: 0.72;
+  .living-field__drift {
     z-index: 2;
+    filter: blur(42px);
+    opacity: 0.3;
+  }
+
+  .living-field__drift--one {
+    background: radial-gradient(42% 32% at 28% 34%, rgba(66, 212, 255, 0.22), rgba(66, 212, 255, 0));
+    animation: cloudOne 18s var(--ease-space) infinite alternate;
+  }
+
+  .living-field__drift--two {
+    background: radial-gradient(46% 30% at 72% 70%, rgba(216, 124, 255, 0.2), rgba(216, 124, 255, 0));
+    animation: cloudTwo 15s var(--ease-space) infinite alternate;
+  }
+
+  .living-field__orb-spill {
+    z-index: 3;
+    background:
+      radial-gradient(36% 28% at calc(var(--orb-x) * 1%) calc((var(--orb-y) * 1%) + 7%), rgba(128, 229, 255, 0.24), rgba(128, 229, 255, 0) 74%),
+      radial-gradient(28% 22% at calc((var(--orb-x) * 1%) + 10%) calc((var(--orb-y) * 1%) + 12%), rgba(92, 156, 255, 0.12), rgba(92, 156, 255, 0) 82%);
+    transition: opacity 900ms var(--ease-space), filter 900ms var(--ease-space);
+    opacity: 0.5;
+  }
+
+  .living-field__orb-spill--distant {
+    opacity: 0.3;
+    filter: saturate(0.78);
+  }
+
+  .living-field__orb-spill--warm {
+    background:
+      radial-gradient(38% 30% at calc(var(--orb-x) * 1%) calc((var(--orb-y) * 1%) + 8%), rgba(255, 209, 162, 0.24), rgba(255, 209, 162, 0) 72%),
+      radial-gradient(30% 24% at calc((var(--orb-x) * 1%) + 10%) calc((var(--orb-y) * 1%) + 12%), rgba(255, 163, 110, 0.14), rgba(255, 163, 110, 0) 84%);
+    opacity: 0.58;
   }
 
   .living-field__grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
-    opacity: 0.1;
+    z-index: 4;
+    opacity: 0.09;
     mix-blend-mode: soft-light;
-    z-index: 3;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+  }
+
+  .living-field__aberration {
+    z-index: 5;
+    box-shadow: inset 34px 0 90px rgba(66, 212, 255, 0.06), inset -34px 0 90px rgba(222, 119, 255, 0.05);
   }
 
   .living-field__vignette {
-    background: radial-gradient(130% 110% at 50% 42%, rgba(0, 0, 0, 0) 48%, rgba(2, 3, 9, 0.5) 100%);
-    z-index: 4;
-  }
-
-  .living-field__sweep {
-    position: absolute;
-    height: 0.72rem;
-    transform: translateY(-50%) rotate(var(--sweep-angle));
-    transform-origin: left center;
-    background: linear-gradient(90deg, rgba(132, 235, 255, 0.02), rgba(132, 235, 255, 0.24), rgba(132, 235, 255, 0));
-    filter: blur(7px);
-    opacity: 0.1;
-    z-index: 5;
-    transition: opacity 720ms var(--ease-organic);
-    pointer-events: none;
-  }
-
-  .living-field__sweep--on {
-    opacity: 0.36;
+    z-index: 6;
+    background: radial-gradient(130% 110% at 50% 44%, rgba(0, 0, 0, 0) 54%, rgba(2, 4, 10, 0.54) 100%);
   }
 
   .living-field__statement {
     position: absolute;
-    left: 50%;
-    top: 60%;
-    transform: translateX(-50%);
-    width: min(84vw, 31rem);
-    display: grid;
-    gap: 0.5rem;
-    text-align: center;
-    z-index: 11;
+    left: calc(var(--statement-x) * 1%);
+    top: calc(var(--statement-y) * 1%);
+    width: min(80vw, 30rem);
+    z-index: 15;
     pointer-events: none;
+    display: grid;
+    gap: 0.42rem;
+    transform: translateX(calc(var(--story-shift) * 0.26%));
+    transition: transform 760ms var(--ease-space);
+  }
+
+  .living-field__constellation {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    transform: translateX(calc(var(--story-shift) * -0.34%));
+    transition: transform 760ms var(--ease-space);
   }
 
   .living-field__statement-primary {
     margin: 0;
-    color: rgba(245, 249, 255, 0.98);
-    font-size: clamp(1.75rem, 5.8vw, 3.12rem);
-    line-height: 1.03;
-    letter-spacing: -0.015em;
+    color: rgba(242, 247, 255, 0.95);
+    font-size: clamp(1.9rem, 5.2vw, 3.32rem);
     font-weight: 560;
+    letter-spacing: -0.01em;
+    line-height: 1.02;
     text-wrap: balance;
-    text-shadow: 0 8px 30px rgba(7, 10, 24, 0.72);
+    text-shadow: 0 16px 36px rgba(1, 5, 14, 0.62);
+    transition: letter-spacing 620ms var(--ease-space), transform 620ms var(--ease-space);
   }
 
   .living-field__statement-secondary {
     margin: 0;
-    color: rgba(198, 215, 237, 0.74);
-    font-size: clamp(0.76rem, 1.8vw, 0.94rem);
-    letter-spacing: 0.06em;
+    color: rgba(177, 200, 230, 0.58);
+    font-size: clamp(0.67rem, 1.3vw, 0.82rem);
     text-transform: uppercase;
-    font-weight: 450;
+    letter-spacing: 0.11em;
+    font-weight: 440;
+    transform: translateX(0.75rem);
+    transition: transform 620ms var(--ease-space), letter-spacing 620ms var(--ease-space);
   }
 
-  .mode-neutral .living-field__chroma { opacity: 0.78; }
-  .mode-support .living-field__chroma { filter: hue-rotate(18deg); opacity: 0.88; }
-  .mode-settle .living-field__mist { opacity: 0.6; }
-  .mode-explore .living-field__chroma { opacity: 1; filter: saturate(1.08); }
-  .mode-activate .living-field__chroma { opacity: 1; filter: saturate(1.16) hue-rotate(-8deg); }
-  .mode-recover .living-field__base { filter: saturate(0.82); }
+  .mode-explore .living-field__statement-primary {
+    letter-spacing: 0.005em;
+    transform: translateX(calc(var(--story-shift) * 0.08%));
+  }
+
+  .mode-explore .living-field__statement-secondary {
+    letter-spacing: 0.13em;
+    transform: translateX(calc(0.75rem + (var(--story-shift) * 0.1%)));
+  }
+
+  .mode-neutral .living-field__bleed {
+    opacity: 0.8;
+  }
+
+  .mode-support .living-field__bleed {
+    filter: hue-rotate(14deg);
+  }
+
+  .mode-settle .living-field__drift {
+    opacity: 0.22;
+  }
+
+  .mode-explore .living-field__bleed {
+    opacity: 0.9;
+  }
+
+  .mode-activate .living-field__orb-spill {
+    opacity: 0.62;
+  }
+
+  .mode-recover .living-field__base {
+    filter: saturate(0.82);
+  }
 
   @media (max-width: 640px) {
     .living-field {
-      min-height: min(79vh, 40rem);
-      border-radius: 1.26rem;
+      min-height: 100svh;
     }
 
     .living-field__statement {
-      top: 62%;
-      width: min(90vw, 26rem);
-      gap: 0.34rem;
+      width: min(86vw, 22rem);
+      gap: 0.32rem;
     }
 
     .living-field__statement-secondary {
-      font-size: 0.69rem;
-      letter-spacing: 0.075em;
+      transform: translateX(0.45rem);
+    }
+  }
+
+  @keyframes cloudOne {
+    0% {
+      transform: translate3d(-2%, 0, 0) scale(1);
+      opacity: 0.2;
+    }
+    100% {
+      transform: translate3d(3%, -2%, 0) scale(1.08);
+      opacity: 0.34;
+    }
+  }
+
+  @keyframes cloudTwo {
+    0% {
+      transform: translate3d(2%, 1%, 0) scale(1);
+      opacity: 0.18;
+    }
+    100% {
+      transform: translate3d(-3%, -2%, 0) scale(1.1);
+      opacity: 0.31;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .living-field__chroma {
+    .living-field__bleed,
+    .living-field__drift {
       transition: none;
+      animation: none;
       transform: none;
-    }
-
-    .living-field__sweep {
-      transition: none;
     }
   }
 </style>

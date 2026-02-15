@@ -53,20 +53,17 @@
 <style>
   .seed {
     position: absolute;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: translate(-50%, -50%) scale(0.94);
     display: inline-flex;
     align-items: center;
-    gap: 0.54rem;
+    gap: 0.56rem;
     border: none;
     background: transparent;
     padding: 0;
-    color: rgba(226, 232, 240, calc(0.5 + var(--seed-bright) * 0.32));
-    z-index: 8;
+    z-index: 12;
     opacity: 0;
     pointer-events: none;
-    transition:
-      opacity 640ms cubic-bezier(0.24, 0.8, 0.34, 1),
-      transform 640ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    transition: opacity 720ms cubic-bezier(0.22, 0.74, 0.25, 1), transform 720ms cubic-bezier(0.22, 0.74, 0.25, 1);
   }
 
   .seed--visible {
@@ -76,17 +73,17 @@
   }
 
   .seed__dot {
-    width: 0.96rem;
-    height: 0.96rem;
+    width: 0.86rem;
+    height: 0.86rem;
     position: relative;
     border-radius: 999px;
-    background: radial-gradient(circle at 36% 34%, rgba(205, 245, 255, 0.88), rgba(96, 206, 255, 0.8) 52%, rgba(96, 206, 255, 0.34));
+    background: radial-gradient(circle at 35% 35%, rgba(218, 247, 255, 0.9), rgba(109, 209, 255, 0.84) 58%, rgba(109, 209, 255, 0.24));
     box-shadow:
-      0 0 14px rgba(115, 221, 255, calc(0.12 + var(--seed-bright) * 0.36)),
-      0 0 34px rgba(115, 221, 255, calc(0.08 + var(--seed-bright) * 0.24));
+      0 0 18px rgba(114, 216, 255, calc(0.16 + var(--seed-bright) * 0.26)),
+      0 0 40px rgba(114, 216, 255, calc(0.08 + var(--seed-bright) * 0.18));
     display: grid;
     place-items: center;
-    transition: transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    transition: transform 460ms cubic-bezier(0.22, 0.74, 0.25, 1), opacity 460ms cubic-bezier(0.22, 0.74, 0.25, 1);
   }
 
   .seed__icon {
@@ -94,9 +91,9 @@
     height: 0.62rem;
     display: inline-grid;
     place-items: center;
-    color: rgba(236, 248, 255, 0.92);
-    opacity: 0.7;
-    transition: opacity 360ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    color: rgba(236, 248, 255, 0.9);
+    opacity: 0;
+    transition: opacity 460ms cubic-bezier(0.22, 0.74, 0.25, 1);
   }
 
   .seed__icon svg {
@@ -109,10 +106,14 @@
     display: grid;
     gap: 0.1rem;
     opacity: 0;
-    transform: translateY(0.22rem);
-    transition: opacity 420ms cubic-bezier(0.24, 0.8, 0.34, 1), transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    transform: translateY(0.24rem);
+    transition: opacity 460ms cubic-bezier(0.22, 0.74, 0.25, 1), transform 460ms cubic-bezier(0.22, 0.74, 0.25, 1);
     pointer-events: none;
     text-align: left;
+  }
+
+  .seed--explore .seed__icon {
+    opacity: 0.92;
   }
 
   .seed--explore .seed__meta {
@@ -120,28 +121,26 @@
     transform: translateY(0);
   }
 
-  .seed--explore .seed__icon {
-    opacity: 0.92;
-  }
-
   .seed__label {
-    font-size: 0.72rem;
-    letter-spacing: 0.055em;
+    margin: 0;
+    font-size: 0.71rem;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     line-height: 1;
-    color: rgba(234, 244, 255, 0.95);
+    color: rgba(233, 243, 255, 0.94);
   }
 
   .seed__desc {
-    font-size: 0.66rem;
-    color: rgba(167, 188, 214, 0.82);
-    max-width: 9.8rem;
-    line-height: 1.2;
+    margin: 0;
+    font-size: 0.64rem;
+    color: rgba(163, 184, 210, 0.82);
+    max-width: 9.2rem;
+    line-height: 1.25;
   }
 
   .seed:hover .seed__dot,
   .seed:focus-visible .seed__dot {
-    transform: scale(1.08);
+    transform: scale(1.12);
   }
 
   .seed:focus-visible {

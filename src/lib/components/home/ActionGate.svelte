@@ -20,8 +20,11 @@
   let previousPulse = pulseCount;
   let snapFlare = false;
   let echoText = false;
+  let screenPulse = false;
+
   let flareTimer: ReturnType<typeof setTimeout> | null = null;
   let echoTimer: ReturnType<typeof setTimeout> | null = null;
+  let screenTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: gateClass = active || dragging ? 'gate--open' : 'gate--rest';
 
@@ -29,30 +32,45 @@
     previousPulse = pulseCount;
     snapFlare = true;
     echoText = true;
+    screenPulse = true;
+
     if (flareTimer) clearTimeout(flareTimer);
     if (echoTimer) clearTimeout(echoTimer);
+    if (screenTimer) clearTimeout(screenTimer);
+
     flareTimer = setTimeout(() => {
       snapFlare = false;
       flareTimer = null;
-    }, 760);
+    }, 1100);
+
     echoTimer = setTimeout(() => {
       echoText = false;
       echoTimer = null;
     }, 1200);
+
+    screenTimer = setTimeout(() => {
+      screenPulse = false;
+      screenTimer = null;
+    }, 1800);
   }
 
   onDestroy(() => {
     if (flareTimer) clearTimeout(flareTimer);
     if (echoTimer) clearTimeout(echoTimer);
+    if (screenTimer) clearTimeout(screenTimer);
   });
 </script>
 
 <div class="gate-layer" style={`--gate-x:${x}%; --gate-y:${y}%; --orb-x:${orbX}%; --orb-y:${orbY}%;`}>
+  {#if screenPulse}
+    <span class="gate__screen-pulse" aria-hidden="true"></span>
+  {/if}
+
   <div class={`gate ${gateClass} ${orbStatus === 'Distant' ? 'gate--distant' : ''} ${snapFlare ? 'gate--snap' : ''}`}>
-    <span class="gate__floor"></span>
-    <span class="gate__bloom"></span>
-    <span class="gate__lift"></span>
-    <span class="gate__particles" aria-hidden="true"></span>
+    <span class="gate__pool"></span>
+    <span class="gate__mist"></span>
+    <span class="gate__ripple"></span>
+
     {#if echoText}
       <p class="gate__echo">She's closer.</p>
     {/if}
@@ -69,7 +87,7 @@
   .gate-layer {
     position: absolute;
     inset: 0;
-    z-index: 10;
+    z-index: 16;
     pointer-events: none;
   }
 
@@ -78,91 +96,78 @@
     left: var(--gate-x);
     top: var(--gate-y);
     transform: translate(-50%, -50%);
-    width: min(78vw, 19rem);
-    height: clamp(4.6rem, 16vw, 5.8rem);
+    width: min(80vw, 23rem);
+    height: clamp(5.4rem, 18vw, 7rem);
     pointer-events: none;
   }
 
-  .gate__floor,
-  .gate__bloom,
-  .gate__lift,
-  .gate__particles {
+  .gate__pool,
+  .gate__mist,
+  .gate__ripple {
     position: absolute;
     inset: 0;
     border-radius: 999px;
     pointer-events: none;
   }
 
-  .gate__floor {
+  .gate__pool {
     background:
-      radial-gradient(62% 72% at 50% 64%, rgba(121, 250, 216, 0.26), rgba(121, 250, 216, 0) 74%),
-      radial-gradient(52% 68% at 50% 78%, rgba(255, 200, 128, 0.16), rgba(255, 200, 128, 0) 78%);
+      radial-gradient(60% 70% at 50% 62%, rgba(130, 245, 225, 0.24), rgba(130, 245, 225, 0) 72%),
+      radial-gradient(48% 62% at 50% 75%, rgba(255, 198, 137, 0.13), rgba(255, 198, 137, 0) 78%);
     filter: blur(2px);
-    opacity: 0.34;
-    transform: scale(0.94);
-    transition: opacity 420ms cubic-bezier(0.24, 0.8, 0.34, 1), transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
-  }
-
-  .gate__bloom {
-    inset: 12% 16%;
-    background: radial-gradient(circle at 50% 50%, rgba(119, 247, 214, 0.2), rgba(119, 247, 214, 0));
-    filter: blur(14px);
     opacity: 0.32;
-    transform: scale(0.92);
-    transition: opacity 460ms cubic-bezier(0.24, 0.8, 0.34, 1), transform 460ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    transform: scale(0.94);
+    transition: opacity 620ms cubic-bezier(0.22, 0.74, 0.25, 1), transform 620ms cubic-bezier(0.22, 0.74, 0.25, 1);
   }
 
-  .gate__lift {
-    inset: 8% 22%;
-    border-top: 1px solid rgba(164, 255, 236, 0.24);
-    border-bottom: 1px solid rgba(164, 255, 236, 0.05);
-    filter: blur(0.2px);
-    opacity: 0.42;
-    transition: opacity 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
+  .gate__mist {
+    inset: 8% 16%;
+    background: radial-gradient(circle at 50% 70%, rgba(176, 255, 241, 0.19), rgba(176, 255, 241, 0));
+    filter: blur(16px);
+    opacity: 0.28;
+    transform: translateY(0.3rem) scale(0.94);
+    transition: opacity 620ms cubic-bezier(0.22, 0.74, 0.25, 1), transform 620ms cubic-bezier(0.22, 0.74, 0.25, 1);
   }
 
-  .gate__particles {
-    inset: 20% 16%;
-    background-image:
-      radial-gradient(circle at 16% 86%, rgba(188, 255, 243, 0.44) 0.8px, rgba(188, 255, 243, 0) 1.8px),
-      radial-gradient(circle at 50% 84%, rgba(188, 255, 243, 0.4) 0.8px, rgba(188, 255, 243, 0) 1.8px),
-      radial-gradient(circle at 84% 84%, rgba(188, 255, 243, 0.4) 0.8px, rgba(188, 255, 243, 0) 1.8px);
-    animation: rise 11.5s linear infinite;
-    opacity: 0.2;
-    filter: blur(0.2px);
+  .gate__ripple {
+    inset: 24% 26%;
+    border: 1px solid rgba(168, 255, 239, 0.24);
+    opacity: 0;
+    transform: scale(0.72);
   }
 
-  .gate--open .gate__floor {
-    opacity: 0.62;
-    transform: scale(1.05);
-  }
-
-  .gate--open .gate__bloom {
-    opacity: 0.62;
+  .gate--open .gate__pool {
+    opacity: 0.58;
     transform: scale(1.06);
   }
 
-  .gate--open .gate__lift {
-    opacity: 0.74;
+  .gate--open .gate__mist {
+    opacity: 0.48;
+    transform: translateY(-0.1rem) scale(1.06);
   }
 
-  .gate--distant .gate__floor,
-  .gate--distant .gate__bloom {
+  .gate--open .gate__ripple {
+    opacity: 0.5;
+    animation: activeRipple 1800ms cubic-bezier(0.22, 0.74, 0.25, 1) infinite;
+  }
+
+  .gate--distant .gate__pool,
+  .gate--distant .gate__mist {
     opacity: 0.2;
   }
 
-  .gate--distant.gate--open .gate__floor,
-  .gate--distant.gate--open .gate__bloom {
-    opacity: 0.68;
+  .gate--distant.gate--open .gate__pool,
+  .gate--distant.gate--open .gate__mist {
+    opacity: 0.54;
   }
 
   .gate--snap {
-    animation: snapPulse 760ms cubic-bezier(0.2, 0.74, 0.2, 1) both;
+    animation: gatePulse 1100ms cubic-bezier(0.22, 0.74, 0.25, 1) both;
   }
 
   .gate__hit {
     position: absolute;
-    inset: -14% -6%;
+    inset: -16% -8%;
     border: none;
     border-radius: 999px;
     background: transparent;
@@ -173,15 +178,15 @@
   .gate__echo {
     position: absolute;
     left: 50%;
-    top: -0.6rem;
+    top: -0.9rem;
     transform: translateX(-50%);
     margin: 0;
-    color: rgba(255, 224, 171, 0.98);
+    color: rgba(255, 225, 184, 0.96);
     font-size: 0.74rem;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-weight: 520;
-    text-shadow: 0 0 14px rgba(255, 200, 128, 0.3);
+    font-weight: 500;
+    text-shadow: 0 0 16px rgba(255, 198, 137, 0.32);
     animation: echoIn 1200ms ease both;
     pointer-events: none;
   }
@@ -189,41 +194,47 @@
   .gate__hint {
     position: absolute;
     left: 50%;
-    top: calc(var(--gate-y) - 5.15rem);
+    top: calc(var(--gate-y) - 4.8rem);
     transform: translateX(-50%);
     margin: 0;
-    font-size: 0.62rem;
-    color: rgba(199, 228, 237, 0.58);
+    font-size: 0.6rem;
+    color: rgba(198, 219, 238, 0.52);
     text-align: center;
-    max-width: min(78vw, 17rem);
+    max-width: min(74vw, 16rem);
     line-height: 1.2;
-    letter-spacing: 0.045em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     pointer-events: none;
   }
 
-  @keyframes rise {
+  .gate__screen-pulse {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--gate-x) var(--gate-y), rgba(255, 210, 146, 0.28), rgba(255, 210, 146, 0) 54%);
+    opacity: 0;
+    animation: scenePulse 1800ms cubic-bezier(0.22, 0.74, 0.25, 1) both;
+    pointer-events: none;
+  }
+
+  @keyframes activeRipple {
     0% {
-      background-position: 0 0, 0 0, 0 0;
-      opacity: 0.16;
-    }
-    50% {
-      opacity: 0.26;
+      transform: scale(0.78);
+      opacity: 0.36;
     }
     100% {
-      background-position: 0 -1.2rem, 0 -1.6rem, 0 -1.35rem;
-      opacity: 0.12;
+      transform: scale(1.42);
+      opacity: 0;
     }
   }
 
-  @keyframes snapPulse {
+  @keyframes gatePulse {
     0% {
       transform: translate(-50%, -50%) scale(1);
       filter: brightness(1);
     }
     45% {
       transform: translate(-50%, -50%) scale(1.08);
-      filter: brightness(1.3);
+      filter: brightness(1.34);
     }
     100% {
       transform: translate(-50%, -50%) scale(1);
@@ -231,10 +242,25 @@
     }
   }
 
+  @keyframes scenePulse {
+    0% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    26% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.8);
+    }
+  }
+
   @keyframes echoIn {
     0% {
       opacity: 0;
-      transform: translateX(-50%) translateY(0.32rem);
+      transform: translateX(-50%) translateY(0.35rem);
     }
     20% {
       opacity: 1;
@@ -247,9 +273,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .gate__particles,
     .gate--snap,
-    .gate__echo {
+    .gate__ripple,
+    .gate__echo,
+    .gate__screen-pulse {
       animation: none;
     }
   }

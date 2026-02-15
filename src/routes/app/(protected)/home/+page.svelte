@@ -317,18 +317,19 @@
   .home-root {
     min-height: 100vh;
     position: relative;
+    overflow: clip;
   }
 
   .home-shell {
     position: relative;
     z-index: 5;
-    margin: 0 auto;
+    margin: 0;
     width: 100%;
-    max-width: 62rem;
+    max-width: none;
     box-sizing: border-box;
-    padding: 0.75rem 0.72rem calc(7.9rem + env(safe-area-inset-bottom));
+    padding: 0 0 calc(7.9rem + env(safe-area-inset-bottom));
     display: grid;
-    gap: 0.6rem;
+    gap: 0;
   }
 
   .reward-toast {
@@ -369,8 +370,8 @@
 
   @media (min-width: 900px) {
     .home-shell {
-      padding: 1.05rem 1rem 4.6rem;
-      gap: 0.72rem;
+      padding: 0 0 4.6rem;
+      gap: 0;
     }
   }
 </style>
