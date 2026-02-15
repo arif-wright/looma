@@ -50,39 +50,55 @@
   .mood-seeds {
     position: absolute;
     inset: 0;
-    z-index: 7;
-    transition: opacity 260ms ease, transform 260ms ease;
+    z-index: 14;
+    transition: opacity 420ms cubic-bezier(0.24, 0.8, 0.34, 1), transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
   }
 
   .mood-seeds--fade {
     opacity: 0;
-    transform: scale(0.97);
+    transform: scale(0.98);
   }
 
   .mood-seeds__title {
     position: absolute;
     transform: translate(-50%, -50%);
     margin: 0;
-    color: rgba(224, 242, 254, 0.94);
-    font-size: 0.84rem;
-    font-weight: 600;
-    text-shadow: 0 0 14px rgba(56, 189, 248, 0.22);
+    color: rgba(237, 245, 255, 0.88);
+    font-size: 0.78rem;
+    font-weight: 480;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-shadow: 0 0 14px rgba(114, 206, 255, 0.2);
   }
 
   .mood {
     position: absolute;
     transform: translate(-50%, -50%);
     border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.36);
-    background: rgba(15, 23, 42, 0.72);
-    color: rgba(226, 232, 240, 0.95);
+    border: 1px solid rgba(178, 201, 228, 0.28);
+    background: rgba(13, 19, 40, 0.55);
+    color: rgba(233, 242, 254, 0.92);
     min-height: 2rem;
-    padding: 0 0.7rem;
-    font-size: 0.78rem;
+    padding: 0 0.72rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    backdrop-filter: blur(3px);
+    transition:
+      transform 320ms cubic-bezier(0.24, 0.8, 0.34, 1),
+      border-color 320ms cubic-bezier(0.24, 0.8, 0.34, 1),
+      background-color 320ms cubic-bezier(0.24, 0.8, 0.34, 1);
   }
 
   .mood--active {
-    border-color: rgba(45, 212, 191, 0.72);
-    box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.28);
+    border-color: rgba(131, 246, 219, 0.72);
+    background: rgba(14, 38, 48, 0.58);
+    box-shadow: 0 0 0 1px rgba(131, 246, 219, 0.24), 0 8px 22px rgba(131, 246, 219, 0.16);
+  }
+
+  .mood:hover,
+  .mood:focus-visible {
+    transform: translate(-50%, -50%) scale(1.04);
+    outline: none;
   }
 </style>

@@ -11,11 +11,12 @@
 
   const dispatch = createEventDispatcher<{ open: Record<string, never>; press: { clientX: number; clientY: number; pointerId: number } }>();
 
-  $: glowClass = status === 'Distant' ? 'orb--dim' : status === 'Resonant' ? 'orb--resonant' : 'orb--steady';
-  $: statusScale = status === 'Distant' ? 0.92 : status === 'Resonant' ? 1.04 : 1;
+  $: glowClass = status === 'Distant' ? 'orb--distant' : status === 'Resonant' ? 'orb--resonant' : 'orb--steady';
+  $: statusScale = status === 'Distant' ? 0.9 : status === 'Resonant' ? 1.03 : 1;
   $: baseScale = statusScale * scaleBoost;
-  $: statusSaturation = status === 'Distant' ? 0.68 : status === 'Resonant' ? 1.08 : 1;
+  $: statusSaturation = status === 'Distant' ? 0.58 : status === 'Resonant' ? 1.08 : 1;
   $: glowWarm = warmBoost || status === 'Resonant';
+  $: a11yLabel = `Open ${name ?? 'companion'} details. ${statusLine || status}.`;
 </script>
 
 <button
@@ -29,103 +30,168 @@
       pointerId: event.pointerId
     })}
   on:click={() => dispatch('open', {})}
-  aria-label="Open companion details"
+  aria-label={a11yLabel}
 >
+  <span class="orb__outer"></span>
+  <span class="orb__diffuse"></span>
+  <span class="orb__bloom"></span>
   <span class="orb__core"></span>
-  <span class="orb__ring"></span>
-  <span class="orb__name">{name ?? 'Companion'}</span>
-  <span class="orb__status">{statusLine || status}</span>
+  <span class="orb__sheen"></span>
 </button>
 
 <style>
   .orb {
+    --ease-orb: cubic-bezier(0.24, 0.8, 0.34, 1);
     position: absolute;
     transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
-    width: clamp(6.6rem, 27vw, 9rem);
+    width: clamp(7.9rem, 32vw, 9.95rem);
     aspect-ratio: 1/1;
     border-radius: 999px;
-    border: 1px solid rgba(125, 211, 252, 0.34);
-    background: radial-gradient(circle at 34% 30%, rgba(56, 189, 248, 0.36), rgba(2, 6, 23, 0.9) 62%);
-    color: rgba(224, 242, 254, 0.96);
-    display: grid;
-    place-content: center;
-    text-align: center;
-    gap: 0.16rem;
-    z-index: 8;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08), 0 18px 34px rgba(2, 6, 23, 0.45);
+    border: none;
+    background:
+      radial-gradient(circle at 31% 24%, rgba(196, 236, 255, 0.56), rgba(108, 203, 255, 0.18) 30%, rgba(8, 13, 32, 0.96) 68%),
+      linear-gradient(145deg, rgba(50, 110, 180, 0.5), rgba(11, 16, 34, 0.94));
+    z-index: 12;
     touch-action: none;
     filter: saturate(var(--orb-sat, 1));
+    box-shadow:
+      0 36px 58px rgba(2, 6, 20, 0.56),
+      0 0 50px rgba(126, 219, 255, 0.16),
+      inset 0 -16px 22px rgba(5, 10, 26, 0.52),
+      inset 0 10px 22px rgba(168, 224, 255, 0.2);
+    transition: filter 620ms var(--ease-orb), box-shadow 620ms var(--ease-orb);
   }
 
+  .orb__outer,
+  .orb__diffuse,
+  .orb__bloom,
   .orb__core,
-  .orb__ring {
+  .orb__sheen {
     position: absolute;
     border-radius: 999px;
     pointer-events: none;
   }
 
+  .orb__outer {
+    inset: -10%;
+    border: 1px solid rgba(132, 223, 255, 0.18);
+    box-shadow: 0 0 28px rgba(132, 223, 255, 0.22);
+    opacity: 0.7;
+  }
+
+  .orb__diffuse {
+    inset: -24%;
+    background: radial-gradient(circle, rgba(120, 213, 255, 0.22), rgba(120, 213, 255, 0) 68%);
+    filter: blur(12px);
+    opacity: 0.74;
+  }
+
+  .orb__bloom {
+    inset: -5%;
+    background: radial-gradient(circle at 36% 30%, rgba(184, 234, 255, 0.45), rgba(184, 234, 255, 0) 68%);
+    mix-blend-mode: screen;
+    opacity: 0.52;
+  }
+
   .orb__core {
-    inset: 18%;
-    border: 1px solid rgba(125, 211, 252, 0.35);
+    inset: 21%;
+    background:
+      radial-gradient(circle at 35% 34%, rgba(232, 248, 255, 0.72), rgba(98, 192, 255, 0.26) 48%, rgba(98, 192, 255, 0) 70%),
+      radial-gradient(circle at 65% 66%, rgba(35, 98, 170, 0.4), rgba(35, 98, 170, 0));
+    filter: blur(0.2px);
+    opacity: 0.85;
   }
 
-  .orb__ring {
-    inset: -7%;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-  }
-
-  .orb__name {
-    font-size: 0.84rem;
-    font-weight: 700;
-    z-index: 1;
-    line-height: 1.1;
-    padding: 0 0.35rem;
-  }
-
-  .orb__status {
-    font-size: 0.63rem;
-    color: rgba(186, 230, 253, 0.86);
-    letter-spacing: 0.03em;
-    z-index: 1;
-    line-height: 1.2;
-    padding: 0 0.45rem;
-  }
-
-  .orb--dim {
-    animation: pulseDim 5.2s ease-in-out infinite, distantDrift 7.6s ease-in-out infinite;
+  .orb__sheen {
+    inset: 7%;
+    background: conic-gradient(from 240deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
+    filter: blur(10px);
+    opacity: 0.2;
+    transform: rotate(0deg);
+    animation: orbShimmer 12.8s linear infinite;
   }
 
   .orb--steady {
-    animation: pulseSteady 3.1s ease-in-out infinite;
+    animation: orbBreath 10.2s cubic-bezier(0.37, 0, 0.2, 1) infinite;
   }
 
   .orb--resonant {
-    animation: shimmer 2.2s linear infinite;
+    animation: orbBreath 9.4s cubic-bezier(0.37, 0, 0.2, 1) infinite;
+  }
+
+  .orb--distant {
+    opacity: 0.84;
+    animation: orbBreathDistant 12.2s cubic-bezier(0.37, 0, 0.2, 1) infinite, orbDrift 13.8s cubic-bezier(0.37, 0, 0.2, 1) infinite;
   }
 
   .orb--warm {
-    border-color: rgba(251, 191, 36, 0.35);
-    background: radial-gradient(circle at 34% 30%, rgba(251, 191, 36, 0.22), rgba(2, 6, 23, 0.9) 62%);
+    background:
+      radial-gradient(circle at 31% 24%, rgba(255, 228, 178, 0.52), rgba(255, 175, 99, 0.2) 30%, rgba(11, 10, 24, 0.96) 68%),
+      linear-gradient(145deg, rgba(182, 118, 78, 0.44), rgba(14, 13, 32, 0.94));
+    box-shadow:
+      0 36px 58px rgba(8, 7, 20, 0.58),
+      0 0 58px rgba(255, 196, 132, 0.26),
+      inset 0 -16px 22px rgba(8, 6, 20, 0.54),
+      inset 0 10px 22px rgba(255, 205, 150, 0.22);
   }
 
-  @keyframes pulseDim {
-    0%,100% { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.04), 0 12px 22px rgba(2, 6, 23, 0.34); }
-    50% { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.08), 0 16px 30px rgba(2, 6, 23, 0.4); }
+  @media (min-width: 900px) {
+    .orb {
+      width: clamp(8.4rem, 20vw, 10rem);
+    }
   }
 
-  @keyframes pulseSteady {
-    0%,100% { transform: translate(-50%, -50%) scale(var(--orb-scale, 1)); }
-    50% { transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 1.025)); }
+  @keyframes orbBreath {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
+    }
+    48% {
+      transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 1.032));
+    }
   }
 
-  @keyframes shimmer {
-    0% { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12), 0 18px 36px rgba(2, 6, 23, 0.5); }
-    50% { box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.24), 0 22px 42px rgba(2, 6, 23, 0.58); }
-    100% { box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2), 0 20px 40px rgba(2, 6, 23, 0.54); }
+  @keyframes orbBreathDistant {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
+      filter: saturate(var(--orb-sat, 1)) brightness(0.9);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(calc(var(--orb-scale, 1) * 0.98));
+      filter: saturate(var(--orb-sat, 1)) brightness(0.84);
+    }
   }
 
-  @keyframes distantDrift {
-    0%,100% { transform: translate(-50%, -50%) scale(var(--orb-scale, 1)); }
-    50% { transform: translate(-47%, -53%) scale(var(--orb-scale, 1)); }
+  @keyframes orbDrift {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(var(--orb-scale, 1));
+    }
+    50% {
+      transform: translate(-47.5%, -51.7%) scale(calc(var(--orb-scale, 1) * 0.97));
+    }
+  }
+
+  @keyframes orbShimmer {
+    0% {
+      transform: rotate(0deg);
+      opacity: 0.16;
+    }
+    50% {
+      transform: rotate(180deg);
+      opacity: 0.26;
+    }
+    100% {
+      transform: rotate(360deg);
+      opacity: 0.16;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .orb,
+    .orb__sheen {
+      animation: none;
+    }
   }
 </style>

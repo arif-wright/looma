@@ -14,14 +14,6 @@
 
   export let data: PageData;
 
-  const moodCopy: Record<HomeMood, string> = {
-    calm: 'Steady arrival noted. Keep the bond in rhythm.',
-    heavy: 'You are carrying weight. Keep this gentle.',
-    curious: 'Curiosity registered. Follow one thread.',
-    energized: 'High activation detected. Channel it with intention.',
-    numb: 'Low signal is valid. Start with one tiny action.'
-  };
-
   const localDateKey = () => {
     const now = new Date();
     const shifted = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -72,6 +64,14 @@
         : companionStatus === 'Synced'
           ? `${activeCompanion?.name ?? 'Mirae'} is with you.`
           : `${activeCompanion?.name ?? 'Mirae'} is nearby.`;
+  $: sanctuarySecondaryLine =
+    companionStatus === 'Distant'
+      ? 'Bring her closer.'
+      : companionStatus === 'Resonant'
+        ? 'Stay in this warmth.'
+        : companionStatus === 'Synced'
+          ? 'Hold this closeness.'
+          : 'Enter the ritual.';
 
   let selectedMood: HomeMood | null =
     (typeof data.dailyCheckinToday?.mood === 'string' ? (data.dailyCheckinToday.mood as HomeMood) : null) ?? null;
@@ -83,8 +83,6 @@
   let ritualVariant: 'micro' | 'reconnect' = 'micro';
   let rewardToast: string | null = null;
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
-
-  $: attunementLine = selectedMood ? moodCopy[selectedMood] ?? null : null;
 
   $: homeState = {
     moodToday: hasCheckedInToday ? selectedMood : null,
@@ -253,6 +251,7 @@
       actionLabel={primaryLabel}
       actionIntent={primaryAction}
       companionStatusLine={companionStatusText}
+      statementSecondary={sanctuarySecondaryLine}
       {showMoodSeeds}
       {moodFading}
       {selectedMood}
@@ -265,10 +264,6 @@
       }}
       on:explore={(event) => track('explore_mode_toggle', { enabled: event.detail.enabled })}
     />
-
-    {#if attunementLine}
-      <p class="attunement">{attunementLine}</p>
-    {/if}
 
     {#if rewardToast}
       <div class="reward-toast" role="status">{rewardToast}</div>
@@ -331,16 +326,9 @@
     width: 100%;
     max-width: 62rem;
     box-sizing: border-box;
-    padding: 0.95rem 0.85rem calc(7.3rem + env(safe-area-inset-bottom));
+    padding: 0.75rem 0.72rem calc(7.9rem + env(safe-area-inset-bottom));
     display: grid;
-    gap: 0.72rem;
-  }
-
-  .attunement {
-    margin: 0;
-    text-align: center;
-    color: rgba(186, 230, 253, 0.94);
-    font-size: 0.88rem;
+    gap: 0.6rem;
   }
 
   .reward-toast {
@@ -381,8 +369,8 @@
 
   @media (min-width: 900px) {
     .home-shell {
-      padding: 1.25rem 1.2rem 4rem;
-      gap: 0.9rem;
+      padding: 1.05rem 1rem 4.6rem;
+      gap: 0.72rem;
     }
   }
 </style>

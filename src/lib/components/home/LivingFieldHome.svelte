@@ -12,6 +12,7 @@
   export let companionName: string | null = null;
   export let companionStatus: 'Distant' | 'Synced' | 'Resonant' | 'Steady' = 'Steady';
   export let companionStatusLine = 'Mirae feels far.';
+  export let statementSecondary = 'Bring her closer.';
   export let actionLabel = 'Do this now';
   export let actionIntent: PrimaryAction = 'MICRO_RITUAL';
   export let showMoodSeeds = false;
@@ -38,6 +39,7 @@
   let sceneEl: HTMLElement | null = null;
   let exploreMode = false;
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let intentTimer: ReturnType<typeof setTimeout> | null = null;
 
   let isMobile = false;
   let mediaQuery: MediaQueryList | null = null;
@@ -61,15 +63,20 @@
   let flickerOn = false;
   let flickerTimer: ReturnType<typeof setTimeout> | null = null;
   let reconnectFx = false;
-  let reconnectLine = '';
-  let rippleOn = false;
-  let rippleTimer: ReturnType<typeof setTimeout> | null = null;
+  let gatePulseCount = 0;
+  let intentActive = false;
+  let moodOverlayOpenPrev = false;
+
+  let parallaxX = 0;
+  let parallaxY = 0;
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
   const dist = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x1 - x2, y1 - y2);
 
+  $: gateY = clamp(gatePoint.y, isMobile ? 68 : 70, isMobile ? 75 : 77);
   $: gateActive = dist(orbX, orbY, gatePoint.x, gatePoint.y) < 8;
+  $: revealSeeds = exploreMode || intentActive || draggingOrb;
 
   $: seeds = (() => {
     if (!isMobile) return fieldConfig.constellations;
@@ -101,9 +108,8 @@
     return seed.relevance > current.relevance ? seed : current;
   }, null);
 
-  $: flickerPath = topSeed
-    ? `M ${baseOrb.x} ${baseOrb.y} Q ${(baseOrb.x + topSeed.x) / 2} ${Math.min(baseOrb.y, topSeed.y) - 4} ${topSeed.x} ${topSeed.y}`
-    : '';
+  $: sweepLength = topSeed ? Math.hypot(topSeed.x - baseOrb.x, topSeed.y - baseOrb.y) : 0;
+  $: sweepAngle = topSeed ? (Math.atan2(topSeed.y - baseOrb.y, topSeed.x - baseOrb.x) * 180) / Math.PI : 0;
 
   const lockScroll = () => {
     if (!browser) return;
@@ -121,12 +127,27 @@
     previousBodyTouch = null;
   };
 
+  const armIntentWindow = (windowMs = 8200) => {
+    intentActive = true;
+    if (intentTimer) clearTimeout(intentTimer);
+    intentTimer = setTimeout(() => {
+      if (!draggingOrb && !exploreMode) intentActive = false;
+      intentTimer = null;
+    }, windowMs);
+  };
+
   const beginLongPress = () => {
     if (draggingOrb) return;
+    armIntentWindow(9000);
     if (pressTimer) clearTimeout(pressTimer);
     pressTimer = setTimeout(() => {
       exploreMode = !exploreMode;
       dispatch('explore', { enabled: exploreMode });
+      if (exploreMode) {
+        intentActive = true;
+      } else {
+        armIntentWindow(7200);
+      }
       pressTimer = null;
     }, 560);
   };
@@ -138,33 +159,32 @@
   };
 
   const triggerPrimary = () => {
+    reconnectFx = true;
+    gatePulseCount += 1;
+
     if (actionIntent === 'RECONNECT_30') {
-      reconnectFx = true;
-      reconnectLine = "She's closer.";
-      rippleOn = true;
-      setTimeout(() => {
-        reconnectFx = false;
-        reconnectLine = '';
-      }, 900);
-      setTimeout(() => {
-        rippleOn = false;
-      }, 1100);
       setTimeout(() => {
         dispatch('primary', { intent: actionIntent });
-      }, 820);
+      }, 780);
     } else {
       dispatch('primary', { intent: actionIntent });
     }
+
+    setTimeout(() => {
+      reconnectFx = false;
+    }, 1080);
+
     if (browser) {
       showGateHint = false;
       window.localStorage.setItem(GATE_HINT_KEY, 'true');
     }
   };
 
-  const startOrbDrag = (event: CustomEvent<{ clientX: number; clientY: number; pointerId: number }>) => {
+  const startOrbDrag = (_event: CustomEvent<{ clientX: number; clientY: number; pointerId: number }>) => {
     draggingOrb = true;
     dragMoved = false;
     ignoreOpen = false;
+    armIntentWindow(10000);
     lockScroll();
 
     const handleMove = (moveEvent: PointerEvent) => {
@@ -184,7 +204,7 @@
     const handleUp = () => {
       if (draggingOrb && gateActive) {
         orbX = gatePoint.x;
-        orbY = gatePoint.y - 2;
+        orbY = gateY - 2;
         triggerPrimary();
       } else if (draggingOrb && dragMoved) {
         ignoreOpen = true;
@@ -193,6 +213,7 @@
       orbX = baseOrb.x;
       orbY = baseOrb.y;
       unlockScroll();
+      armIntentWindow(7600);
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
@@ -202,6 +223,7 @@
   };
 
   const handleOrbOpen = () => {
+    armIntentWindow(9000);
     if (ignoreOpen) {
       ignoreOpen = false;
       return;
@@ -212,36 +234,34 @@
   const startFlickerLoop = () => {
     if (!browser) return;
     const schedule = () => {
-      const nextDelay = 6000 + Math.round(Math.random() * 4000);
+      const nextDelay = 9000 + Math.round(Math.random() * 6500);
       flickerTimer = setTimeout(() => {
         flickerOn = true;
         setTimeout(() => {
           flickerOn = false;
           schedule();
-        }, 700);
+        }, 1400);
       }, nextDelay);
     };
     schedule();
   };
 
-  const startResonantRippleLoop = () => {
-    if (!browser) return;
-    const schedule = () => {
-      const nextDelay = 8000 + Math.round(Math.random() * 4000);
-      rippleTimer = setTimeout(() => {
-        if (companionStatus === 'Resonant') {
-          rippleOn = true;
-          setTimeout(() => {
-            rippleOn = false;
-            schedule();
-          }, 850);
-        } else {
-          schedule();
-        }
-      }, nextDelay);
-    };
-    schedule();
+  const handleParallax = (event: PointerEvent) => {
+    if (!sceneEl) return;
+    const rect = sceneEl.getBoundingClientRect();
+    const px = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+    const py = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+    parallaxX = clamp(px, -1, 1);
+    parallaxY = clamp(py, -1, 1);
   };
+
+  const resetParallax = () => {
+    parallaxX = 0;
+    parallaxY = 0;
+  };
+
+  $: if (showMoodSeeds && !moodOverlayOpenPrev) armIntentWindow(10000);
+  $: moodOverlayOpenPrev = showMoodSeeds;
 
   onMount(() => {
     if (!browser) return;
@@ -255,12 +275,11 @@
     mediaQuery.addEventListener('change', mediaHandler);
 
     startFlickerLoop();
-    startResonantRippleLoop();
 
     return () => {
       if (mediaQuery && mediaHandler) mediaQuery.removeEventListener('change', mediaHandler);
       if (flickerTimer) clearTimeout(flickerTimer);
-      if (rippleTimer) clearTimeout(rippleTimer);
+      if (intentTimer) clearTimeout(intentTimer);
       unlockScroll();
     };
   });
@@ -268,7 +287,7 @@
   onDestroy(() => {
     if (pressTimer) clearTimeout(pressTimer);
     if (flickerTimer) clearTimeout(flickerTimer);
-    if (rippleTimer) clearTimeout(rippleTimer);
+    if (intentTimer) clearTimeout(intentTimer);
     unlockScroll();
   });
 </script>
@@ -276,18 +295,26 @@
 <section
   bind:this={sceneEl}
   class={`living-field ${modeClass[fieldConfig.fieldMode]}`}
+  style={`--parallax-x:${parallaxX}; --parallax-y:${parallaxY};`}
   on:pointerdown={beginLongPress}
   on:pointerup={endLongPress}
   on:pointercancel={endLongPress}
+  on:pointermove={handleParallax}
+  on:pointerleave={resetParallax}
 >
-  <div class="living-field__mesh" aria-hidden="true"></div>
-  <div class="living-field__particles" aria-hidden="true"></div>
+  <div class="living-field__base" aria-hidden="true"></div>
+  <div class="living-field__chroma" aria-hidden="true"></div>
+  <div class="living-field__mist" aria-hidden="true"></div>
+  <div class="living-field__grain" aria-hidden="true"></div>
+  <div class="living-field__vignette" aria-hidden="true"></div>
 
-  <svg class="living-field__synapse" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    {#if topSeed}
-      <path d={flickerPath} class:flicker-on={flickerOn} />
-    {/if}
-  </svg>
+  {#if topSeed}
+    <div
+      class={`living-field__sweep ${flickerOn ? 'living-field__sweep--on' : ''}`}
+      style={`left:${baseOrb.x}%; top:${baseOrb.y}%; width:${sweepLength}%; --sweep-angle:${sweepAngle}deg;`}
+      aria-hidden="true"
+    ></div>
+  {/if}
 
   {#each seeds as seed}
     <ConstellationSeed
@@ -300,6 +327,7 @@
       x={seed.x}
       y={seed.y}
       {exploreMode}
+      visible={revealSeeds}
       {companionName}
       on:follow={(event) => dispatch('seed', event.detail)}
     />
@@ -311,10 +339,31 @@
     statusLine={companionStatusLine}
     x={orbX}
     y={orbY}
-    scaleBoost={reconnectFx ? 1.06 : 1}
+    scaleBoost={reconnectFx ? 1.04 : 1}
     warmBoost={reconnectFx}
     on:press={startOrbDrag}
     on:open={handleOrbOpen}
+  />
+
+  <div class="living-field__statement">
+    <p class="living-field__statement-primary">{companionStatusLine}</p>
+    <p class="living-field__statement-secondary">{statementSecondary}</p>
+  </div>
+
+  <ActionGate
+    label={actionLabel}
+    intent={actionIntent}
+    x={gatePoint.x}
+    y={gateY}
+    orbX={orbX}
+    orbY={orbY}
+    active={gateActive}
+    dragging={draggingOrb}
+    orbStatus={companionStatus}
+    showHint={showGateHint}
+    hint="Drag the orb into the light"
+    pulseCount={gatePulseCount}
+    on:activate={(event) => dispatch('primary', event.detail)}
   />
 
   <MoodSeeds
@@ -325,155 +374,155 @@
     fading={moodFading}
     on:select={(event) => dispatch('mood', event.detail)}
   />
-
-  <ActionGate
-    label={actionLabel}
-    intent={actionIntent}
-    x={gatePoint.x}
-    y={gatePoint.y}
-    orbX={orbX}
-    orbY={orbY}
-    active={gateActive}
-    dragging={draggingOrb}
-    orbStatus={companionStatus}
-    showHint={showGateHint}
-    hint={`Pull ${companionName ?? 'your companion'} into the glow to ${actionLabel.toLowerCase()}.`}
-    on:activate={(event) => dispatch('primary', event.detail)}
-  />
-
-  {#if reconnectLine}
-    <p class="living-field__reconnect-line">{reconnectLine}</p>
-  {/if}
-
-  {#if rippleOn}
-    <span class="living-field__ripple" style={`left:${baseOrb.x}%; top:${baseOrb.y}%;`}></span>
-  {/if}
 </section>
 
 <style>
   .living-field {
+    --ease-organic: cubic-bezier(0.23, 0.9, 0.32, 1);
     position: relative;
-    min-height: min(79vh, 43rem);
-    border-radius: 1.45rem;
-    border: 1px solid rgba(125, 211, 252, 0.24);
+    min-height: min(80vh, 44rem);
+    border-radius: 1.55rem;
     overflow: hidden;
-    background: radial-gradient(90rem 52rem at 10% -20%, rgba(56, 189, 248, 0.16), transparent 62%), #020617;
-    box-shadow: 0 30px 60px rgba(2, 6, 23, 0.44);
+    background: #03040b;
+    box-shadow: 0 40px 80px rgba(1, 3, 12, 0.52);
     user-select: none;
     touch-action: none;
+    isolation: isolate;
   }
 
-  .living-field__mesh {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
-    background-size: 1.1rem 1.1rem;
-    mask-image: radial-gradient(circle at center, black 30%, transparent 78%);
-    pointer-events: none;
-  }
-
-  .living-field__particles {
+  .living-field__base,
+  .living-field__chroma,
+  .living-field__mist,
+  .living-field__grain,
+  .living-field__vignette {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background-image:
-      radial-gradient(circle at 24% 18%, rgba(125, 211, 252, 0.2) 0.8px, transparent 1px),
-      radial-gradient(circle at 78% 36%, rgba(125, 211, 252, 0.18) 0.8px, transparent 1px),
-      radial-gradient(circle at 58% 82%, rgba(45, 212, 191, 0.2) 0.8px, transparent 1px);
-    background-size: 220px 220px, 240px 240px, 200px 200px;
-    animation: particleDrift 28s linear infinite;
   }
 
-  .living-field__synapse {
+  .living-field__base {
+    background:
+      radial-gradient(120% 95% at 50% -12%, rgba(18, 23, 48, 0.66), rgba(4, 6, 16, 0) 65%),
+      linear-gradient(180deg, rgba(5, 7, 18, 0.94), rgba(3, 4, 11, 0.98));
+    z-index: 0;
+  }
+
+  .living-field__chroma {
+    background:
+      radial-gradient(44% 36% at calc(24% + (var(--parallax-x) * 2.6%)) calc(14% + (var(--parallax-y) * 2.4%)), rgba(67, 220, 255, 0.16), rgba(67, 220, 255, 0) 80%),
+      radial-gradient(48% 42% at calc(70% - (var(--parallax-x) * 2.2%)) calc(24% - (var(--parallax-y) * 2.6%)), rgba(214, 98, 255, 0.14), rgba(214, 98, 255, 0) 76%),
+      radial-gradient(52% 36% at calc(56% + (var(--parallax-x) * 1.4%)) calc(70% + (var(--parallax-y) * 1.8%)), rgba(124, 96, 255, 0.14), rgba(124, 96, 255, 0) 80%);
+    mix-blend-mode: screen;
+    opacity: 0.85;
+    transform: translate3d(calc(var(--parallax-x) * -0.8rem), calc(var(--parallax-y) * -0.5rem), 0);
+    transition: transform 640ms var(--ease-organic);
+    z-index: 1;
+  }
+
+  .living-field__mist {
+    background:
+      radial-gradient(70% 60% at 50% 30%, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 76%),
+      radial-gradient(80% 44% at 50% 80%, rgba(120, 227, 255, 0.06), rgba(120, 227, 255, 0) 72%);
+    filter: blur(12px);
+    opacity: 0.72;
+    z-index: 2;
+  }
+
+  .living-field__grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+    opacity: 0.1;
+    mix-blend-mode: soft-light;
+    z-index: 3;
+  }
+
+  .living-field__vignette {
+    background: radial-gradient(130% 110% at 50% 42%, rgba(0, 0, 0, 0) 48%, rgba(2, 3, 9, 0.5) 100%);
+    z-index: 4;
+  }
+
+  .living-field__sweep {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    height: 0.72rem;
+    transform: translateY(-50%) rotate(var(--sweep-angle));
+    transform-origin: left center;
+    background: linear-gradient(90deg, rgba(132, 235, 255, 0.02), rgba(132, 235, 255, 0.24), rgba(132, 235, 255, 0));
+    filter: blur(7px);
+    opacity: 0.1;
+    z-index: 5;
+    transition: opacity 720ms var(--ease-organic);
     pointer-events: none;
   }
 
-  .living-field__synapse path {
-    stroke: rgba(56, 189, 248, 0.18);
-    stroke-width: 1.4;
-    fill: none;
-    transition: stroke 280ms ease;
+  .living-field__sweep--on {
+    opacity: 0.36;
   }
 
-  .living-field__synapse path.flicker-on {
-    stroke: rgba(56, 189, 248, 0.88);
-    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
-  }
-
-  .living-field__reconnect-line {
+  .living-field__statement {
     position: absolute;
     left: 50%;
-    top: 18%;
+    top: 60%;
     transform: translateX(-50%);
-    margin: 0;
-    color: rgba(252, 211, 77, 0.95);
-    font-size: 0.86rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    z-index: 10;
-    text-shadow: 0 0 12px rgba(251, 191, 36, 0.32);
-  }
-
-  .living-field__ripple {
-    position: absolute;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 999px;
-    border: 1px solid rgba(251, 191, 36, 0.46);
-    transform: translate(-50%, -50%);
-    z-index: 3;
+    width: min(84vw, 31rem);
+    display: grid;
+    gap: 0.5rem;
+    text-align: center;
+    z-index: 11;
     pointer-events: none;
-    animation: rippleOut 850ms ease-out;
   }
 
-  .mode-neutral { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.16), transparent 62%), #020617; }
-  .mode-support { background: radial-gradient(90rem 50rem at 12% -16%, rgba(192, 132, 252, 0.28), transparent 58%), #020617; }
-  .mode-settle { background: radial-gradient(90rem 50rem at 12% -16%, rgba(56, 189, 248, 0.2), transparent 62%), #020617; }
-  .mode-settle .living-field__particles { animation-duration: 42s; opacity: 0.65; }
-  .mode-explore {
-    background:
-      linear-gradient(115deg, rgba(14, 116, 144, 0.18), rgba(245, 158, 11, 0.14), rgba(14, 116, 144, 0.18)),
-      #020617;
-    background-size: 220% 220%;
-    animation: sweep 10s ease-in-out infinite;
+  .living-field__statement-primary {
+    margin: 0;
+    color: rgba(245, 249, 255, 0.98);
+    font-size: clamp(1.75rem, 5.8vw, 3.12rem);
+    line-height: 1.03;
+    letter-spacing: -0.015em;
+    font-weight: 560;
+    text-wrap: balance;
+    text-shadow: 0 8px 30px rgba(7, 10, 24, 0.72);
   }
-  .mode-activate { background: radial-gradient(90rem 50rem at 12% -16%, rgba(34, 211, 238, 0.24), transparent 60%), #020617; }
-  .mode-activate .living-field__particles { animation-duration: 14s; opacity: 1; }
-  .mode-recover { background: radial-gradient(90rem 50rem at 12% -16%, rgba(148, 163, 184, 0.17), transparent 62%), #020617; filter: saturate(0.75); }
+
+  .living-field__statement-secondary {
+    margin: 0;
+    color: rgba(198, 215, 237, 0.74);
+    font-size: clamp(0.76rem, 1.8vw, 0.94rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 450;
+  }
+
+  .mode-neutral .living-field__chroma { opacity: 0.78; }
+  .mode-support .living-field__chroma { filter: hue-rotate(18deg); opacity: 0.88; }
+  .mode-settle .living-field__mist { opacity: 0.6; }
+  .mode-explore .living-field__chroma { opacity: 1; filter: saturate(1.08); }
+  .mode-activate .living-field__chroma { opacity: 1; filter: saturate(1.16) hue-rotate(-8deg); }
+  .mode-recover .living-field__base { filter: saturate(0.82); }
 
   @media (max-width: 640px) {
     .living-field {
-      min-height: min(77vh, 39rem);
-      border-radius: 1.2rem;
+      min-height: min(79vh, 40rem);
+      border-radius: 1.26rem;
+    }
+
+    .living-field__statement {
+      top: 62%;
+      width: min(90vw, 26rem);
+      gap: 0.34rem;
+    }
+
+    .living-field__statement-secondary {
+      font-size: 0.69rem;
+      letter-spacing: 0.075em;
     }
   }
 
-  @keyframes particleDrift {
-    from { background-position: 0 0, 0 0, 0 0; }
-    to { background-position: 180px 120px, -160px 140px, 120px -170px; }
-  }
-
-  @keyframes sweep {
-    0%,100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  @keyframes rippleOut {
-    from {
-      width: 1rem;
-      height: 1rem;
-      opacity: 0.65;
+  @media (prefers-reduced-motion: reduce) {
+    .living-field__chroma {
+      transition: none;
+      transform: none;
     }
-    to {
-      width: 13rem;
-      height: 13rem;
-      opacity: 0;
+
+    .living-field__sweep {
+      transition: none;
     }
   }
 </style>

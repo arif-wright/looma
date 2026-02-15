@@ -10,65 +10,23 @@
   export let x = 50;
   export let y = 50;
   export let exploreMode = false;
+  export let visible = false;
   export let companionName: string | null = null;
 
   const dispatch = createEventDispatcher<{ follow: { id: string; href: string } }>();
 
-  $: brightness = Math.max(0.24, Math.min(1, relevance + (exploreMode ? 0.35 : 0)));
-  $: revealLabels = exploreMode;
+  $: brightness = Math.max(0.2, Math.min(1, relevance + (exploreMode ? 0.28 : 0)));
   $: dynamicLabel = id === 'companion' && companionName ? `Visit ${companionName}` : label;
-
-  let holdTimer: ReturnType<typeof setTimeout> | null = null;
-  let holdProgress = 0;
-  let holdInterval: ReturnType<typeof setInterval> | null = null;
-  let showHint = false;
-  let activatedFromHold = false;
-
-  const clearHold = () => {
-    if (holdTimer) clearTimeout(holdTimer);
-    if (holdInterval) clearInterval(holdInterval);
-    holdTimer = null;
-    holdInterval = null;
-    holdProgress = 0;
-    activatedFromHold = false;
-  };
-
-  const activate = () => {
-    if (activatedFromHold) {
-      clearHold();
-      return;
-    }
-    clearHold();
-    dispatch('follow', { id, href });
-  };
-
-  const startHold = () => {
-    showHint = true;
-    const startedAt = Date.now();
-    holdInterval = setInterval(() => {
-      holdProgress = Math.min(1, (Date.now() - startedAt) / 620);
-    }, 16);
-    holdTimer = setTimeout(() => {
-      activatedFromHold = true;
-      activate();
-    }, 620);
-  };
 </script>
 
 <button
   type="button"
-  class="seed"
+  class={`seed ${exploreMode ? 'seed--explore' : ''} ${visible ? 'seed--visible' : ''}`}
   style={`left:${x}%; top:${y}%; --seed-bright:${brightness};`}
-  on:pointerdown={startHold}
-  on:pointerup={clearHold}
-  on:pointerleave={clearHold}
-  on:click={activate}
-  aria-label={`Open ${label}`}
+  on:click={() => dispatch('follow', { id, href })}
+  aria-label={`Open ${dynamicLabel}`}
 >
   <span class="seed__dot">
-    {#if holdProgress > 0}
-      <span class="seed__progress" style={`--p:${holdProgress};`}></span>
-    {/if}
     <span class="seed__icon">
       {#if icon === 'warmth'}
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.65-7 10-7 10z"/></svg>
@@ -83,105 +41,110 @@
       {/if}
     </span>
   </span>
-  <span class="seed__meta {revealLabels ? 'seed__meta--on' : ''}">
+
+  <span class="seed__meta">
     <span class="seed__label">{dynamicLabel}</span>
     {#if description}
       <span class="seed__desc">{description}</span>
     {/if}
   </span>
-  {#if showHint && holdProgress < 1}
-    <span class="seed__hint">Pull to activate</span>
-  {/if}
 </button>
 
 <style>
   .seed {
     position: absolute;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.95);
     display: inline-flex;
     align-items: center;
-    gap: 0.34rem;
+    gap: 0.54rem;
     border: none;
     background: transparent;
     padding: 0;
-    color: rgba(226, 232, 240, calc(0.58 + var(--seed-bright) * 0.3));
-    z-index: 4;
-    transition: transform 140ms ease;
+    color: rgba(226, 232, 240, calc(0.5 + var(--seed-bright) * 0.32));
+    z-index: 8;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 640ms cubic-bezier(0.24, 0.8, 0.34, 1),
+      transform 640ms cubic-bezier(0.24, 0.8, 0.34, 1);
+  }
+
+  .seed--visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
   }
 
   .seed__dot {
-    width: 0.74rem;
-    height: 0.74rem;
+    width: 0.96rem;
+    height: 0.96rem;
     position: relative;
     border-radius: 999px;
-    background: rgba(125, 211, 252, calc(0.16 + var(--seed-bright) * 0.8));
-    box-shadow: 0 0 14px rgba(56, 189, 248, calc(0.18 + var(--seed-bright) * 0.42));
+    background: radial-gradient(circle at 36% 34%, rgba(205, 245, 255, 0.88), rgba(96, 206, 255, 0.8) 52%, rgba(96, 206, 255, 0.34));
+    box-shadow:
+      0 0 14px rgba(115, 221, 255, calc(0.12 + var(--seed-bright) * 0.36)),
+      0 0 34px rgba(115, 221, 255, calc(0.08 + var(--seed-bright) * 0.24));
     display: grid;
     place-items: center;
+    transition: transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
   }
 
   .seed__icon {
-    width: 0.68rem;
-    height: 0.68rem;
+    width: 0.62rem;
+    height: 0.62rem;
     display: inline-grid;
     place-items: center;
-    color: rgba(224, 242, 254, 0.92);
+    color: rgba(236, 248, 255, 0.92);
+    opacity: 0.7;
+    transition: opacity 360ms cubic-bezier(0.24, 0.8, 0.34, 1);
   }
 
   .seed__icon svg {
-    width: 0.68rem;
-    height: 0.68rem;
+    width: 0.62rem;
+    height: 0.62rem;
     fill: currentColor;
-  }
-
-  .seed__progress {
-    position: absolute;
-    inset: -0.2rem;
-    border-radius: 999px;
-    border: 2px solid rgba(45, 212, 191, 0.75);
-    opacity: calc(var(--p));
   }
 
   .seed__meta {
     display: grid;
-    gap: 0.06rem;
+    gap: 0.1rem;
     opacity: 0;
-    transform: translateY(1px);
-    transition: opacity 180ms ease, transform 180ms ease;
+    transform: translateY(0.22rem);
+    transition: opacity 420ms cubic-bezier(0.24, 0.8, 0.34, 1), transform 420ms cubic-bezier(0.24, 0.8, 0.34, 1);
+    pointer-events: none;
+    text-align: left;
   }
 
-  .seed__meta--on {
+  .seed--explore .seed__meta {
     opacity: 1;
     transform: translateY(0);
   }
 
+  .seed--explore .seed__icon {
+    opacity: 0.92;
+  }
+
   .seed__label {
     font-size: 0.72rem;
-    text-align: left;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.055em;
     text-transform: uppercase;
     line-height: 1;
+    color: rgba(234, 244, 255, 0.95);
   }
 
   .seed__desc {
-    font-size: 0.64rem;
-    color: rgba(148, 163, 184, 0.92);
+    font-size: 0.66rem;
+    color: rgba(167, 188, 214, 0.82);
+    max-width: 9.8rem;
+    line-height: 1.2;
   }
 
-  .seed:hover,
+  .seed:hover .seed__dot,
+  .seed:focus-visible .seed__dot {
+    transform: scale(1.08);
+  }
+
   .seed:focus-visible {
-    transform: translate(-50%, -50%) scale(1.04);
     outline: none;
-  }
-
-  .seed__hint {
-    position: absolute;
-    top: 1.2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.62rem;
-    color: rgba(186, 230, 253, 0.9);
-    white-space: nowrap;
-    opacity: 0.9;
   }
 </style>
