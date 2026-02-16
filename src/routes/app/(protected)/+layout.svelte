@@ -101,7 +101,7 @@
   $: isShop = currentPath.startsWith('/app/shop');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
-  $: hideCompanionDock = currentPath.startsWith('/app/companions');
+  $: hideCompanionDock = isHome || currentPath.startsWith('/app/companions');
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
