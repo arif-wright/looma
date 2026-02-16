@@ -30,15 +30,15 @@
   .quick-nav {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.6rem;
+    gap: var(--home-space-1, 0.6rem);
   }
 
   .quick-nav__item {
     min-height: 4.1rem;
     border: 1px solid rgba(158, 185, 218, 0.24);
-    border-radius: 0.9rem;
-    background: rgba(9, 15, 34, 0.56);
-    color: rgba(226, 239, 255, 0.95);
+    border-radius: var(--home-radius-lg, 0.9rem);
+    background: var(--home-surface-soft, rgba(9, 15, 34, 0.56));
+    color: var(--home-text-primary, rgba(226, 239, 255, 0.95));
     display: grid;
     justify-items: center;
     align-content: center;
@@ -47,6 +47,16 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     backdrop-filter: blur(4px);
+    font-family: var(--home-font-body, 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif);
+    transition: transform var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out), border-color var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out), background-color var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out);
+  }
+
+  .quick-nav__item:hover,
+  .quick-nav__item:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(183, 209, 239, 0.5);
+    background: rgba(14, 22, 45, 0.68);
+    outline: none;
   }
 
   .quick-nav__icon {
@@ -54,7 +64,7 @@
     height: 1.14rem;
     display: inline-grid;
     place-items: center;
-    color: rgba(215, 233, 255, 0.95);
+    color: var(--home-text-primary, rgba(215, 233, 255, 0.95));
   }
 
   .quick-nav__icon svg {

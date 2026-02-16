@@ -192,9 +192,26 @@
   }
 
   .home-root {
+    --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
+    --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
+
+    --home-bg-base: rgba(6, 11, 27, 0.98);
+    --home-bg-deep: rgba(4, 7, 19, 1);
+    --home-surface-soft: rgba(9, 15, 34, 0.56);
+    --home-text-primary: rgba(245, 250, 255, 0.98);
+    --home-text-secondary: rgba(189, 208, 232, 0.88);
+    --home-text-tertiary: rgba(186, 210, 237, 0.84);
+    --home-cta-start: rgba(86, 232, 220, 0.96);
+    --home-cta-end: rgba(119, 175, 255, 0.95);
+    --home-cta-text: rgba(6, 16, 35, 0.96);
+    --home-radius-sm: 0.56rem;
+    --home-radius-lg: 0.95rem;
+    --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.3);
+
     min-height: 100vh;
     position: relative;
     overflow: clip;
+    font-family: var(--home-font-body);
   }
 
   .home-shell {
@@ -221,7 +238,7 @@
     padding: 0.48rem 0.9rem;
     font-size: 0.8rem;
     font-weight: 700;
-    box-shadow: 0 14px 28px rgba(20, 184, 166, 0.3);
+    box-shadow: var(--home-shadow-soft);
   }
 
   .modal-copy {
@@ -231,17 +248,17 @@
 
   .modal-copy p {
     margin: 0;
-    color: rgba(226, 232, 240, 0.9);
+    color: var(--home-text-secondary);
     font-size: 0.9rem;
     line-height: 1.45;
   }
 
   .modal-copy button {
     min-height: 2.7rem;
-    border-radius: 0.76rem;
+    border-radius: var(--home-radius-lg);
     border: none;
-    background: linear-gradient(135deg, rgba(45, 212, 191, 0.95), rgba(56, 189, 248, 0.95));
-    color: rgba(7, 17, 36, 0.96);
+    background: linear-gradient(135deg, var(--home-cta-start), var(--home-cta-end));
+    color: var(--home-cta-text);
     font-weight: 700;
   }
 </style>

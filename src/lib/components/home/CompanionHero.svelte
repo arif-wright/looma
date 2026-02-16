@@ -38,18 +38,19 @@
   .hero {
     display: grid;
     gap: 0.8rem;
+    font-family: var(--home-font-body, 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif);
   }
 
   .hero__media {
     position: relative;
     min-height: clamp(14rem, 48vh, 19rem);
-    border-radius: 1.2rem;
+    border-radius: var(--home-radius-xl, 1.2rem);
     overflow: hidden;
     background:
-      radial-gradient(120% 90% at 16% 20%, rgba(89, 215, 255, 0.18), transparent 56%),
-      radial-gradient(120% 90% at 88% 88%, rgba(250, 182, 119, 0.12), transparent 60%),
+      radial-gradient(120% 90% at 16% 20%, var(--home-accent-cyan, rgba(89, 215, 255, 0.18)), transparent 56%),
+      radial-gradient(120% 90% at 88% 88%, var(--home-accent-warm, rgba(250, 182, 119, 0.12)), transparent 60%),
       linear-gradient(165deg, rgba(7, 12, 29, 0.95), rgba(4, 7, 20, 0.98));
-    box-shadow: 0 26px 50px rgba(1, 6, 19, 0.4);
+    box-shadow: 0 26px 50px rgba(1, 6, 19, 0.4), 0 0 0 1px rgba(145, 173, 214, 0.12) inset;
   }
 
   :global(.hero__model) {
@@ -75,10 +76,11 @@
 
   .hero__copy h2 {
     margin: 0;
+    font-family: var(--home-font-display, 'Sora', 'Avenir Next', 'Segoe UI', sans-serif);
     font-size: clamp(1.5rem, 5vw, 2.3rem);
     line-height: 1.04;
     letter-spacing: -0.01em;
-    color: rgba(246, 250, 255, 0.97);
+    color: var(--home-text-primary, rgba(246, 250, 255, 0.97));
     text-shadow: 0 8px 24px rgba(3, 8, 23, 0.7);
   }
 
@@ -87,6 +89,6 @@
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(196, 215, 238, 0.82);
+    color: var(--home-text-secondary, rgba(196, 215, 238, 0.82));
   }
 </style>

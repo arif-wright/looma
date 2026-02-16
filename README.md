@@ -2,6 +2,7 @@
 
 ## Landing & Home UX
 
+- Home UX source of truth checklist: `docs/home-experience-contract.md`
 - Authenticated visits to `/app` now run a resolver that looks at the player’s current mission, creature care needs, saved “Start on” preference, recent context, and A/B variant before issuing a redirect to the best surface. Direct requests to deeper routes (such as `/app/home`, `/app/u/...`, `/app/creatures`) bypass the resolver and render in place.
 - Canonical surfaces:
   - Mission carry-over (`/app/missions/{id}`) within the last 12 hours always wins.
