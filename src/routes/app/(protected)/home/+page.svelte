@@ -1,12 +1,10 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
   import CompanionSheet from '$lib/components/home/CompanionSheet.svelte';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
   import { logEvent } from '$lib/analytics';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
-  import type { QuickNavItem } from '$lib/components/home/quickNavTypes';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -63,20 +61,13 @@
 
   $: needsReconnectToday = closenessState === 'Distant' || !data.dailyCheckinToday;
 
-  const quickNavItems: QuickNavItem[] = [
-    { id: 'circles', label: 'Circles', href: '/app/circles' },
-    { id: 'messages', label: 'Messages', href: '/app/messages' },
-    { id: 'games', label: 'Games', href: '/app/games' },
-    { id: 'companion', label: 'Companion', href: '/app/companions' }
-  ];
-
   let companionSheetOpen = false;
   let reconnectModalOpen = false;
   let rewardToast: string | null = null;
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
 
   const track = (
-    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'home_quick_nav_click',
+    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet',
     meta: Record<string, unknown> = {}
   ) => {
     console.debug('[home]', kind, meta);
@@ -95,11 +86,6 @@
   const handlePrimaryReconnect = () => {
     track('primary_action_click', { intent: 'RECONNECT_30' });
     reconnectModalOpen = true;
-  };
-
-  const handleQuickNav = async (id: QuickNavItem['id'], href: string) => {
-    track('home_quick_nav_click', { id, href });
-    await goto(href);
   };
 
   const executeReconnect = () => {
@@ -127,19 +113,18 @@
     <HomeSanctuaryV1
       companionName={companionName}
       companionSpecies={companionSpecies}
+      companionAvatarUrl={activeCompanion?.avatar_url ?? null}
       {closenessState}
       {statusLine}
       {statusReason}
       needsReconnectToday={needsReconnectToday}
       primaryLabel="Reflect & Share"
       primaryCopy={`A quick check-in to bring ${companionName} closer.`}
-      {quickNavItems}
       on:primary={handlePrimaryReconnect}
       on:companion={() => {
         companionSheetOpen = true;
         track('orb_open_sheet', { companion: activeCompanion?.id ?? null });
       }}
-      on:navigate={(event) => handleQuickNav(event.detail.id, event.detail.href)}
     />
 
     {#if rewardToast}

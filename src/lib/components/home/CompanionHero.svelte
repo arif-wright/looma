@@ -1,18 +1,37 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+  import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import type { MuseVisualMood } from '$lib/companions/museVisuals';
+
   export let name = 'Mirae';
   export let species = 'Muse';
+  export let avatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
 
-  $: intensity = closenessState === 'Distant' ? '0.68' : closenessState === 'Resonant' ? '1.06' : '0.9';
+  const dispatch = createEventDispatcher<{ open: Record<string, never> }>();
+
+  $: intensity = closenessState === 'Distant' ? 0.68 : closenessState === 'Resonant' ? 1.06 : 0.9;
+  let visualMood: MuseVisualMood = 'calm';
+  $: visualMood = closenessState === 'Distant' ? 'low' : closenessState === 'Resonant' ? 'bright' : 'calm';
 </script>
 
-<section class="core" aria-label="Companion core" style={`--core-intensity:${intensity};`}>
+<section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
   <div class="core__halo"></div>
-  <div class="core__cloud" aria-hidden="true">
-    <span class="lobe lobe--a"></span>
-    <span class="lobe lobe--b"></span>
-    <span class="lobe lobe--c"></span>
-    <span class="core__inner"></span>
+  <div class="core__model-wrap">
+    <button class="core__model-button" type="button" on:click={() => dispatch('open', {})} aria-label={`Open ${name} details`}>
+      <MuseModel
+        class="core__model"
+        poster={avatarUrl ?? undefined}
+        visualMood={visualMood}
+        glowEnabled={true}
+        glowScale={intensity}
+        motionScale={intensity}
+        transparent={true}
+        autoplay={true}
+        eager={true}
+        minSize={0}
+      />
+    </button>
   </div>
   <h2>{name}</h2>
   <p>{species}</p>
@@ -21,74 +40,67 @@
 <style>
   .core {
     position: relative;
-    width: min(74vw, 22rem);
+    width: min(82vw, 28rem);
     margin: 0 auto;
     text-align: center;
-    padding-top: 1.2rem;
+    padding-top: 0.4rem;
   }
 
   .core__halo {
     position: absolute;
-    inset: 8% 14% auto;
-    height: 9rem;
+    inset: 8% 10% auto;
+    height: clamp(9rem, 26vw, 14rem);
     border-radius: 999px;
     background: radial-gradient(circle, rgba(255, 203, 148, calc(0.34 * var(--core-intensity))), rgba(255, 203, 148, 0) 72%);
-    filter: blur(22px);
+    filter: blur(28px);
     pointer-events: none;
     animation: haloBreath 10s ease-in-out infinite;
   }
 
-  .core__cloud {
+  .core__model-wrap {
     position: relative;
-    width: clamp(8.8rem, 30vw, 11rem);
-    aspect-ratio: 1.05 / 0.78;
+    width: clamp(12rem, 46vw, 20rem);
+    aspect-ratio: 1 / 1;
     margin: 0 auto;
-    filter: drop-shadow(0 0 24px rgba(255, 205, 144, calc(0.28 * var(--core-intensity))));
-    animation: cloudFloat 8.5s ease-in-out infinite;
+    filter: drop-shadow(0 20px 42px rgba(18, 14, 45, 0.42));
+    animation: modelFloat 9.2s ease-in-out infinite;
   }
 
-  .lobe,
-  .core__inner {
-    position: absolute;
-    border-radius: 999px;
-    background:
-      radial-gradient(circle at 35% 30%, rgba(255, 239, 212, 0.9), rgba(255, 198, 136, 0.62) 48%, rgba(192, 143, 255, 0.45) 86%);
-    box-shadow:
-      inset 0 -10px 20px rgba(84, 46, 128, 0.2),
-      0 0 18px rgba(255, 215, 169, 0.28);
+  .core__model-button {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
   }
 
-  .lobe--a {
-    left: 8%;
-    top: 22%;
-    width: 34%;
-    height: 56%;
+  .core__model-button:focus-visible {
+    outline: 2px solid rgba(231, 238, 252, 0.8);
+    outline-offset: 6px;
+    border-radius: 1.4rem;
   }
 
-  .lobe--b {
-    left: 29%;
-    top: 4%;
-    width: 42%;
-    height: 60%;
+  .core :global(.core__model.muse-shell) {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    border: none;
+    border-radius: 1.6rem;
+    background: radial-gradient(circle at 50% 42%, rgba(245, 234, 209, 0.16), rgba(28, 28, 58, 0.05) 66%, rgba(11, 12, 24, 0));
   }
 
-  .lobe--c {
-    right: 8%;
-    top: 24%;
-    width: 34%;
-    height: 54%;
+  .core :global(.core__model .muse-aura) {
+    opacity: calc(0.84 * var(--core-intensity));
   }
 
-  .core__inner {
-    left: 16%;
-    right: 16%;
-    bottom: 10%;
-    top: 34%;
-    border-radius: 45% 45% 52% 52%;
+  .core :global(.core__model .muse-viewer) {
+    border-radius: 1.6rem;
   }
 
   h2 {
-    margin: 0.9rem 0 0;
+    margin: 0.4rem 0 0;
     font-family: var(--home-font-display, 'Sora', 'Avenir Next', 'Segoe UI', sans-serif);
     font-size: clamp(2rem, 6.4vw, 3.25rem);
     line-height: 1;
@@ -98,16 +110,16 @@
   }
 
   p {
-    margin: 0.3rem 0 0;
+    margin: 0.2rem 0 0;
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.11em;
     color: rgba(221, 230, 244, 0.78);
   }
 
-  @keyframes cloudFloat {
+  @keyframes modelFloat {
     0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-4px) scale(1.015); }
+    50% { transform: translateY(-6px) scale(1.015); }
   }
 
   @keyframes haloBreath {

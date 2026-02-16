@@ -2,23 +2,20 @@
   import { browser } from '$app/environment';
   import { createEventDispatcher, onMount } from 'svelte';
   import CompanionHero from '$lib/components/home/CompanionHero.svelte';
-  import QuickNav from '$lib/components/home/QuickNav.svelte';
-  import type { QuickNavItem } from '$lib/components/home/quickNavTypes';
 
   export let companionName = 'Mirae';
   export let companionSpecies = 'Muse';
+  export let companionAvatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let statusLine = 'Mirae feels distant.';
   export let statusReason = "She hasn't heard from you today.";
   export let primaryLabel = 'Reconnect (30 sec)';
   export let primaryCopy = 'A quick check-in to bring Mirae closer.';
   export let needsReconnectToday = false;
-  export let quickNavItems: QuickNavItem[] = [];
 
   const dispatch = createEventDispatcher<{
     primary: Record<string, never>;
     companion: Record<string, never>;
-    navigate: { id: QuickNavItem['id']; href: string };
   }>();
 
   const ONBOARDING_KEY = 'looma:homeSanctuaryHintDismissed:v1';
@@ -71,7 +68,9 @@
       <CompanionHero
         name={companionName}
         species={companionSpecies}
+        avatarUrl={companionAvatarUrl}
         {closenessState}
+        on:open={() => dispatch('companion', {})}
       />
     </div>
 
@@ -91,18 +90,6 @@
     </section>
   </main>
 
-  <footer class="dock" aria-label="Primary navigation">
-    <QuickNav
-      items={quickNavItems}
-      on:navigate={(event) => {
-        if (event.detail.id === 'companion') {
-          dispatch('companion', {});
-          return;
-        }
-        dispatch('navigate', event.detail);
-      }}
-    />
-  </footer>
 </section>
 
 <style>
@@ -113,7 +100,7 @@
     position: relative;
     min-height: 100dvh;
     overflow: hidden;
-    padding: max(0.95rem, env(safe-area-inset-top)) 0.9rem calc(5.8rem + env(safe-area-inset-bottom));
+    padding: max(0.95rem, env(safe-area-inset-top)) 0.9rem calc(1.4rem + env(safe-area-inset-bottom));
     color: rgba(244, 244, 248, 0.96);
     font-family: var(--home-font-body);
     display: grid;
@@ -177,8 +164,7 @@
 
   .hud,
   .hint,
-  .stage,
-  .dock {
+  .stage {
     position: relative;
     z-index: 5;
   }
@@ -344,14 +330,10 @@
     font-size: 0.78rem;
   }
 
-  .dock {
-    align-self: end;
-  }
-
   @media (min-width: 900px) {
     .sanctuary {
       gap: 0.9rem;
-      padding: max(1.1rem, env(safe-area-inset-top)) 1.35rem calc(5.4rem + env(safe-area-inset-bottom));
+      padding: max(1.1rem, env(safe-area-inset-top)) 1.35rem calc(1.8rem + env(safe-area-inset-bottom));
     }
 
     .stage {
