@@ -40,40 +40,44 @@
   <div class="sanctuary__bg" aria-hidden="true"></div>
   <div class="sanctuary__noise" aria-hidden="true"></div>
 
-  {#if showHint}
-    <aside class="sanctuary__hint" role="status">
-      <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
-      <button type="button" on:click={dismissHint} aria-label="Dismiss hint">Dismiss</button>
-    </aside>
-  {/if}
+  <div class="hero-stage">
+    {#if showHint}
+      <aside class="sanctuary__hint" role="status">
+        <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
+        <button type="button" on:click={dismissHint} aria-label="Dismiss hint">Dismiss</button>
+      </aside>
+    {/if}
 
-  <CompanionHero
-    name={companionName}
-    species={companionSpecies}
-    avatarUrl={companionAvatarUrl}
-    {closenessState}
-  />
+    <CompanionHero
+      name={companionName}
+      species={companionSpecies}
+      avatarUrl={companionAvatarUrl}
+      {closenessState}
+    />
+  </div>
 
-  <section class="status">
-    <h1>{statusLine}</h1>
-    <p>{statusReason}</p>
-    <span class={`status__pill status__pill--${closenessState.toLowerCase()}`}>{closenessState}</span>
+  <section class="action-panel" aria-label="Companion actions">
+    <section class="status">
+      <h1>{statusLine}</h1>
+      <p>{statusReason}</p>
+      <span class={`status__pill status__pill--${closenessState.toLowerCase()}`}>{closenessState}</span>
+    </section>
+
+    <section class="primary">
+      <button type="button" class={`primary__button ${needsReconnectToday ? 'primary__button--pulse' : ''}`} on:click={() => dispatch('primary', {})}>
+        {primaryLabel}
+      </button>
+      <p>{primaryCopy}</p>
+    </section>
+
+    <QuickNav items={quickNavItems} on:navigate={(event) => {
+      if (event.detail.id === 'companion') {
+        dispatch('companion', {});
+        return;
+      }
+      dispatch('navigate', event.detail);
+    }} />
   </section>
-
-  <section class="primary">
-    <button type="button" class={`primary__button ${needsReconnectToday ? 'primary__button--pulse' : ''}`} on:click={() => dispatch('primary', {})}>
-      {primaryLabel}
-    </button>
-    <p>{primaryCopy}</p>
-  </section>
-
-  <QuickNav items={quickNavItems} on:navigate={(event) => {
-    if (event.detail.id === 'companion') {
-      dispatch('companion', {});
-      return;
-    }
-    dispatch('navigate', event.detail);
-  }} />
 </section>
 
 <style>
@@ -81,20 +85,20 @@
     --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
     --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
 
-    --home-bg-base: rgba(6, 11, 27, 0.98);
-    --home-bg-deep: rgba(4, 7, 19, 1);
-    --home-bg-glass: rgba(10, 17, 37, 0.82);
-    --home-surface-soft: rgba(9, 15, 34, 0.56);
+    --home-bg-base: rgba(7, 11, 28, 0.98);
+    --home-bg-deep: rgba(4, 8, 21, 1);
+    --home-bg-glass: rgba(11, 18, 40, 0.84);
+    --home-surface-soft: rgba(12, 20, 42, 0.62);
 
     --home-text-primary: rgba(245, 250, 255, 0.98);
-    --home-text-secondary: rgba(189, 208, 232, 0.88);
-    --home-text-tertiary: rgba(186, 210, 237, 0.84);
+    --home-text-secondary: rgba(188, 208, 232, 0.88);
+    --home-text-tertiary: rgba(177, 199, 226, 0.82);
 
-    --home-accent-cyan: rgba(96, 222, 255, 0.16);
-    --home-accent-warm: rgba(246, 184, 114, 0.12);
-    --home-cta-start: rgba(86, 232, 220, 0.96);
-    --home-cta-end: rgba(119, 175, 255, 0.95);
-    --home-cta-text: rgba(6, 16, 35, 0.96);
+    --home-accent-cyan: rgba(98, 220, 255, 0.2);
+    --home-accent-warm: rgba(246, 185, 114, 0.14);
+    --home-cta-start: rgba(94, 236, 223, 0.98);
+    --home-cta-end: rgba(124, 180, 255, 0.96);
+    --home-cta-text: rgba(7, 17, 36, 0.96);
 
     --home-state-distant-fg: rgba(201, 229, 252, 0.98);
     --home-state-distant-border: rgba(131, 201, 245, 0.56);
@@ -111,7 +115,8 @@
     --home-radius-lg: 0.95rem;
     --home-radius-xl: 1.2rem;
 
-    --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.3);
+    --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.22);
+    --home-shadow-panel: 0 -22px 38px rgba(2, 8, 23, 0.58);
     --home-shadow-cta: 0 16px 30px rgba(44, 153, 255, 0.28);
     --home-shadow-cta-hover: 0 20px 34px rgba(44, 153, 255, 0.35);
 
@@ -121,15 +126,12 @@
 
     --home-dur-fast: 180ms;
     --home-dur-med: 280ms;
-    --home-dur-slow: 420ms;
     --home-ease-out: cubic-bezier(0.16, 0.84, 0.32, 1);
 
     position: relative;
     min-height: 100dvh;
     display: grid;
-    grid-template-rows: auto auto auto auto;
-    gap: var(--home-space-3);
-    padding: 0.95rem 0.85rem calc(7.2rem + env(safe-area-inset-bottom));
+    grid-template-rows: minmax(18rem, 56dvh) 1fr;
     box-sizing: border-box;
     overflow: hidden;
     font-family: var(--home-font-body);
@@ -145,9 +147,9 @@
   .sanctuary__bg {
     z-index: 0;
     background:
-      radial-gradient(120% 88% at 10% 8%, var(--home-accent-cyan), transparent 58%),
-      radial-gradient(120% 90% at 86% 92%, var(--home-accent-warm), transparent 62%),
-      linear-gradient(170deg, var(--home-bg-base), var(--home-bg-deep) 62%);
+      radial-gradient(130% 90% at 8% 5%, var(--home-accent-cyan), transparent 60%),
+      radial-gradient(130% 100% at 86% 94%, var(--home-accent-warm), transparent 62%),
+      linear-gradient(172deg, var(--home-bg-base), var(--home-bg-deep) 64%);
     animation: drift 16s ease-in-out infinite alternate;
   }
 
@@ -158,12 +160,18 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.65'/%3E%3C/svg%3E");
   }
 
-  .sanctuary > :global(*) {
+  .hero-stage {
     position: relative;
     z-index: 2;
+    padding: 0.75rem 0.75rem 0;
   }
 
   .sanctuary__hint {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    top: 0.78rem;
+    z-index: 6;
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
@@ -192,6 +200,19 @@
     font-size: 0.66rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+
+  .action-panel {
+    position: relative;
+    z-index: 3;
+    margin-top: -0.9rem;
+    border-radius: 1.4rem 1.4rem 0 0;
+    background: linear-gradient(180deg, rgba(9, 15, 34, 0.92), rgba(8, 14, 30, 0.96));
+    border-top: 1px solid rgba(161, 188, 220, 0.2);
+    box-shadow: var(--home-shadow-panel);
+    padding: 1rem 0.9rem calc(7.1rem + env(safe-area-inset-bottom));
+    display: grid;
+    gap: 0.95rem;
   }
 
   .status h1 {
@@ -276,10 +297,18 @@
 
   @media (min-width: 900px) {
     .sanctuary {
-      max-width: 56rem;
+      grid-template-rows: minmax(20rem, 58dvh) 1fr;
+      max-width: 62rem;
       margin: 0 auto;
-      padding: 1.2rem 1.15rem 4.3rem;
-      gap: calc(var(--home-space-3) + 0.15rem);
+    }
+
+    .hero-stage {
+      padding: 1rem 1rem 0;
+    }
+
+    .action-panel {
+      padding: 1.2rem 1.2rem 4.3rem;
+      gap: 1rem;
     }
   }
 
