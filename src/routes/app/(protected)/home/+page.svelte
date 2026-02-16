@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
   import CompanionSheet from '$lib/components/home/CompanionSheet.svelte';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
@@ -121,22 +120,19 @@
   });
 </script>
 
-<div class="home-root bg-neuro">
-  <BackgroundStack />
-
+<div class="home-root">
   <main class="home-shell" aria-labelledby="home-title">
     <h1 id="home-title" class="sr-only">Companion Home</h1>
 
     <HomeSanctuaryV1
       companionName={companionName}
       companionSpecies={companionSpecies}
-      companionAvatarUrl={activeCompanion?.avatar_url ?? null}
       {closenessState}
       {statusLine}
       {statusReason}
       needsReconnectToday={needsReconnectToday}
-      primaryLabel="Reconnect (30 sec)"
-      primaryCopy="A quick check-in to bring Mirae closer."
+      primaryLabel="Reflect & Share"
+      primaryCopy={`A quick check-in to bring ${companionName} closer.`}
       {quickNavItems}
       on:primary={handlePrimaryReconnect}
       on:companion={() => {

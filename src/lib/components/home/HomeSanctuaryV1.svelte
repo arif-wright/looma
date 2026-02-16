@@ -7,7 +7,6 @@
 
   export let companionName = 'Mirae';
   export let companionSpecies = 'Muse';
-  export let companionAvatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let statusLine = 'Mirae feels distant.';
   export let statusReason = "She hasn't heard from you today.";
@@ -25,6 +24,13 @@
   const ONBOARDING_KEY = 'looma:homeSanctuaryHintDismissed:v1';
   let showHint = false;
 
+  $: supportiveLine =
+    closenessState === 'Distant'
+      ? "Take one slow breath. I'm here with you."
+      : closenessState === 'Resonant'
+        ? "You're in sync right now. Stay in this moment."
+        : "I'm listening. Share what's on your mind.";
+
   const dismissHint = () => {
     showHint = false;
     if (browser) window.localStorage.setItem(ONBOARDING_KEY, 'true');
@@ -37,288 +43,364 @@
 </script>
 
 <section class="sanctuary">
-  <div class="sanctuary__bg" aria-hidden="true"></div>
-  <div class="sanctuary__noise" aria-hidden="true"></div>
+  <div class="bg base" aria-hidden="true"></div>
+  <div class="bg chroma" aria-hidden="true"></div>
+  <div class="bg drift" aria-hidden="true"></div>
+  <div class="bg stars" aria-hidden="true"></div>
+  <div class="bg noise" aria-hidden="true"></div>
 
-  <div class="hero-stage">
-    {#if showHint}
-      <aside class="sanctuary__hint" role="status">
-        <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
-        <button type="button" on:click={dismissHint} aria-label="Dismiss hint">Dismiss</button>
-      </aside>
-    {/if}
+  <header class="hud">
+    <p class="mood-arc">
+      <span class="mood-arc__dot" aria-hidden="true"></span>
+      Mood Arc
+    </p>
+    <button class="user-chip" type="button" aria-label="Profile">
+      <span aria-hidden="true">You</span>
+    </button>
+  </header>
 
-    <CompanionHero
-      name={companionName}
-      species={companionSpecies}
-      avatarUrl={companionAvatarUrl}
-      {closenessState}
-    />
-  </div>
+  {#if showHint}
+    <aside class="hint" role="status">
+      <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
+      <button type="button" on:click={dismissHint} aria-label="Dismiss hint">Dismiss</button>
+    </aside>
+  {/if}
 
-  <section class="action-panel" aria-label="Companion actions">
-    <section class="status">
-      <h1>{statusLine}</h1>
-      <p>{statusReason}</p>
-      <span class={`status__pill status__pill--${closenessState.toLowerCase()}`}>{closenessState}</span>
+  <main class="stage" aria-label="Companion home">
+    <div class="hero-wrap">
+      <CompanionHero
+        name={companionName}
+        species={companionSpecies}
+        {closenessState}
+      />
+    </div>
+
+    <section class="dialogue" aria-live="polite">
+      <p class="bubble bubble--user">{statusReason}</p>
+      <p class="bubble bubble--companion">{supportiveLine}</p>
     </section>
 
-    <section class="primary">
-      <button type="button" class={`primary__button ${needsReconnectToday ? 'primary__button--pulse' : ''}`} on:click={() => dispatch('primary', {})}>
-        {primaryLabel}
-      </button>
+    <section class="focus">
+      <h1>{statusLine}</h1>
+      <button
+        type="button"
+        class={`reflect ${needsReconnectToday ? 'reflect--pulse' : ''}`}
+        on:click={() => dispatch('primary', {})}
+      >{primaryLabel}</button>
       <p>{primaryCopy}</p>
     </section>
+  </main>
 
-    <QuickNav items={quickNavItems} on:navigate={(event) => {
-      if (event.detail.id === 'companion') {
-        dispatch('companion', {});
-        return;
-      }
-      dispatch('navigate', event.detail);
-    }} />
-  </section>
+  <footer class="dock" aria-label="Primary navigation">
+    <QuickNav
+      items={quickNavItems}
+      on:navigate={(event) => {
+        if (event.detail.id === 'companion') {
+          dispatch('companion', {});
+          return;
+        }
+        dispatch('navigate', event.detail);
+      }}
+    />
+  </footer>
 </section>
 
 <style>
   .sanctuary {
-    --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
+    --home-font-display: 'Fraunces', 'Iowan Old Style', 'Times New Roman', serif;
     --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
-
-    --home-bg-base: rgba(7, 11, 28, 0.98);
-    --home-bg-deep: rgba(4, 8, 21, 1);
-    --home-bg-glass: rgba(11, 18, 40, 0.84);
-    --home-surface-soft: rgba(12, 20, 42, 0.62);
-
-    --home-text-primary: rgba(245, 250, 255, 0.98);
-    --home-text-secondary: rgba(188, 208, 232, 0.88);
-    --home-text-tertiary: rgba(177, 199, 226, 0.82);
-
-    --home-accent-cyan: rgba(98, 220, 255, 0.2);
-    --home-accent-warm: rgba(246, 185, 114, 0.14);
-    --home-cta-start: rgba(94, 236, 223, 0.98);
-    --home-cta-end: rgba(124, 180, 255, 0.96);
-    --home-cta-text: rgba(7, 17, 36, 0.96);
-
-    --home-state-distant-fg: rgba(201, 229, 252, 0.98);
-    --home-state-distant-border: rgba(131, 201, 245, 0.56);
-    --home-state-distant-bg: rgba(12, 37, 57, 0.66);
-    --home-state-near-fg: rgba(255, 233, 196, 0.97);
-    --home-state-near-border: rgba(255, 199, 125, 0.6);
-    --home-state-near-bg: rgba(67, 42, 11, 0.62);
-    --home-state-resonant-fg: rgba(206, 255, 228, 0.98);
-    --home-state-resonant-border: rgba(109, 233, 179, 0.56);
-    --home-state-resonant-bg: rgba(11, 48, 32, 0.62);
-
-    --home-radius-sm: 0.56rem;
-    --home-radius-md: 0.78rem;
-    --home-radius-lg: 0.95rem;
-    --home-radius-xl: 1.2rem;
-
-    --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.22);
-    --home-shadow-panel: 0 -22px 38px rgba(2, 8, 23, 0.58);
-    --home-shadow-cta: 0 16px 30px rgba(44, 153, 255, 0.28);
-    --home-shadow-cta-hover: 0 20px 34px rgba(44, 153, 255, 0.35);
-
-    --home-space-1: 0.5rem;
-    --home-space-2: 0.7rem;
-    --home-space-3: 1rem;
-
-    --home-dur-fast: 180ms;
-    --home-dur-med: 280ms;
-    --home-ease-out: cubic-bezier(0.16, 0.84, 0.32, 1);
 
     position: relative;
     min-height: 100dvh;
-    display: grid;
-    grid-template-rows: minmax(18rem, 56dvh) 1fr;
-    box-sizing: border-box;
     overflow: hidden;
+    padding: max(0.95rem, env(safe-area-inset-top)) 0.9rem calc(5.8rem + env(safe-area-inset-bottom));
+    color: rgba(244, 244, 248, 0.96);
     font-family: var(--home-font-body);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 0.8rem;
   }
 
-  .sanctuary__bg,
-  .sanctuary__noise {
+  .bg {
     position: absolute;
     inset: 0;
     pointer-events: none;
   }
 
-  .sanctuary__bg {
+  .base {
     z-index: 0;
     background:
-      radial-gradient(130% 90% at 8% 5%, var(--home-accent-cyan), transparent 60%),
-      radial-gradient(130% 100% at 86% 94%, var(--home-accent-warm), transparent 62%),
-      linear-gradient(172deg, var(--home-bg-base), var(--home-bg-deep) 64%);
-    animation: drift 16s ease-in-out infinite alternate;
+      radial-gradient(80% 65% at 85% 14%, rgba(140, 236, 236, 0.33), transparent 72%),
+      radial-gradient(80% 70% at 12% 90%, rgba(255, 189, 142, 0.36), transparent 74%),
+      linear-gradient(160deg, rgba(26, 42, 122, 0.98), rgba(47, 70, 153, 0.94) 36%, rgba(102, 79, 152, 0.88) 66%, rgba(218, 161, 127, 0.76));
   }
 
-  .sanctuary__noise {
+  .chroma {
     z-index: 1;
-    opacity: 0.08;
     mix-blend-mode: soft-light;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.65'/%3E%3C/svg%3E");
+    opacity: 0.46;
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(72, 220, 215, 0.42), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 177, 136, 0.42), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(92, 77, 178, 0.36), transparent 64%);
   }
 
-  .hero-stage {
-    position: relative;
+  .drift {
     z-index: 2;
-    padding: 0.75rem 0.75rem 0;
+    opacity: 0.38;
+    filter: blur(22px);
+    background:
+      radial-gradient(46% 30% at 30% 28%, rgba(91, 212, 202, 0.5), transparent 78%),
+      radial-gradient(42% 30% at 68% 54%, rgba(118, 97, 205, 0.4), transparent 72%),
+      radial-gradient(44% 32% at 56% 84%, rgba(253, 176, 121, 0.4), transparent 80%);
+    animation: cloudDrift 18s cubic-bezier(0.32, 0.03, 0.16, 0.99) infinite alternate;
   }
 
-  .sanctuary__hint {
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
-    top: 0.78rem;
-    z-index: 6;
+  .stars {
+    z-index: 3;
+    opacity: 0.26;
+    background-image:
+      radial-gradient(circle at 12% 21%, rgba(255, 244, 215, 0.55) 0.18rem, transparent 0.25rem),
+      radial-gradient(circle at 74% 31%, rgba(255, 243, 222, 0.48) 0.14rem, transparent 0.24rem),
+      radial-gradient(circle at 58% 83%, rgba(255, 238, 199, 0.44) 0.12rem, transparent 0.22rem),
+      radial-gradient(circle at 83% 66%, rgba(255, 241, 214, 0.42) 0.14rem, transparent 0.23rem),
+      radial-gradient(circle at 24% 72%, rgba(255, 247, 226, 0.38) 0.12rem, transparent 0.2rem);
+    filter: blur(0.7px);
+  }
+
+  .noise {
+    z-index: 4;
+    opacity: 0.08;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.76' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
+  }
+
+  .hud,
+  .hint,
+  .stage,
+  .dock {
+    position: relative;
+    z-index: 5;
+  }
+
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.2rem;
+  }
+
+  .mood-arc {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: rgba(234, 238, 246, 0.86);
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+  }
+
+  .mood-arc__dot {
+    width: 0.6rem;
+    aspect-ratio: 1;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(255, 196, 156, 1), rgba(132, 201, 224, 0.84));
+    box-shadow: 0 0 12px rgba(248, 193, 152, 0.55);
+  }
+
+  .user-chip {
+    border: 1px solid rgba(227, 234, 246, 0.3);
+    background: rgba(26, 31, 74, 0.32);
+    color: rgba(237, 242, 250, 0.9);
+    border-radius: 999px;
+    min-height: 2rem;
+    min-width: 2.7rem;
+    padding: 0 0.7rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    backdrop-filter: blur(10px);
+  }
+
+  .hint {
     display: grid;
     grid-template-columns: 1fr auto;
+    gap: 0.55rem;
     align-items: center;
-    gap: var(--home-space-2);
-    border: 1px solid rgba(144, 177, 214, 0.35);
-    border-radius: var(--home-radius-md);
+    border-radius: 0.9rem;
+    border: 1px solid rgba(223, 231, 246, 0.25);
+    background: rgba(20, 29, 72, 0.46);
+    backdrop-filter: blur(12px);
     padding: 0.62rem 0.72rem;
-    background: var(--home-bg-glass);
-    backdrop-filter: blur(4px);
   }
 
-  .sanctuary__hint p {
+  .hint p {
     margin: 0;
-    font-size: 0.74rem;
-    line-height: 1.25;
-    color: var(--home-text-primary);
+    font-size: 0.72rem;
+    line-height: 1.3;
+    color: rgba(236, 240, 247, 0.95);
   }
 
-  .sanctuary__hint button {
-    border: 1px solid rgba(149, 189, 233, 0.45);
-    border-radius: var(--home-radius-sm);
-    background: rgba(15, 24, 49, 0.86);
-    color: rgba(227, 239, 255, 0.92);
-    min-height: 2rem;
-    padding: 0 0.6rem;
-    font-size: 0.66rem;
+  .hint button {
+    min-height: 1.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(225, 233, 247, 0.38);
+    background: rgba(16, 24, 62, 0.7);
+    color: rgba(238, 242, 250, 0.9);
+    padding: 0 0.66rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
   }
 
-  .action-panel {
-    position: relative;
-    z-index: 3;
-    margin-top: -0.9rem;
-    border-radius: 1.4rem 1.4rem 0 0;
-    background: linear-gradient(180deg, rgba(9, 15, 34, 0.92), rgba(8, 14, 30, 0.96));
-    border-top: 1px solid rgba(161, 188, 220, 0.2);
-    box-shadow: var(--home-shadow-panel);
-    padding: 1rem 0.9rem calc(7.1rem + env(safe-area-inset-bottom));
+  .stage {
     display: grid;
-    gap: 0.95rem;
+    align-content: center;
+    justify-items: center;
+    gap: 1rem;
+    padding-top: 0.25rem;
   }
 
-  .status h1 {
+  .hero-wrap {
+    width: 100%;
+    display: grid;
+    justify-items: center;
+  }
+
+  .dialogue {
+    width: min(100%, 36rem);
+    display: grid;
+    gap: 0.64rem;
+  }
+
+  .bubble {
+    margin: 0;
+    max-width: min(82%, 24rem);
+    border: 1px solid rgba(224, 233, 247, 0.16);
+    border-radius: 1rem;
+    padding: 0.72rem 0.84rem;
+    font-size: 0.83rem;
+    line-height: 1.35;
+    backdrop-filter: blur(12px);
+  }
+
+  .bubble--user {
+    justify-self: start;
+    background: rgba(88, 175, 191, 0.3);
+    color: rgba(241, 248, 252, 0.92);
+  }
+
+  .bubble--companion {
+    justify-self: end;
+    background: rgba(118, 97, 173, 0.34);
+    color: rgba(244, 236, 250, 0.92);
+  }
+
+  .focus {
+    width: min(100%, 24rem);
+    display: grid;
+    justify-items: center;
+    gap: 0.46rem;
+    text-align: center;
+  }
+
+  .focus h1 {
     margin: 0;
     font-family: var(--home-font-display);
-    font-size: clamp(1.35rem, 4.4vw, 2.05rem);
-    line-height: 1.08;
-    letter-spacing: -0.01em;
-    color: var(--home-text-primary);
+    font-size: clamp(1.95rem, 6vw, 3.1rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    color: rgba(249, 245, 233, 0.98);
+    text-shadow: 0 8px 24px rgba(30, 26, 71, 0.34);
   }
 
-  .status p {
-    margin: 0.38rem 0 0;
-    color: var(--home-text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.35;
-  }
-
-  .status__pill {
-    display: inline-flex;
-    margin-top: 0.62rem;
-    padding: 0.25rem 0.56rem;
+  .reflect {
+    width: min(100%, 17.5rem);
+    min-height: 2.95rem;
+    border: 1px solid rgba(228, 237, 248, 0.34);
     border-radius: 999px;
-    font-size: 0.66rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    border: 1px solid transparent;
+    background: linear-gradient(145deg, rgba(29, 42, 101, 0.55), rgba(16, 26, 64, 0.76));
+    color: rgba(243, 247, 253, 0.95);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(14px);
+    transition: transform 220ms cubic-bezier(0.2, 0.82, 0.24, 1), border-color 220ms cubic-bezier(0.2, 0.82, 0.24, 1);
   }
 
-  .status__pill--distant {
-    color: var(--home-state-distant-fg);
-    border-color: var(--home-state-distant-border);
-    background: var(--home-state-distant-bg);
-  }
-
-  .status__pill--near {
-    color: var(--home-state-near-fg);
-    border-color: var(--home-state-near-border);
-    background: var(--home-state-near-bg);
-  }
-
-  .status__pill--resonant {
-    color: var(--home-state-resonant-fg);
-    border-color: var(--home-state-resonant-border);
-    background: var(--home-state-resonant-bg);
-  }
-
-  .primary {
-    display: grid;
-    gap: var(--home-space-1);
-  }
-
-  .primary__button {
-    min-height: 3.2rem;
-    border: none;
-    border-radius: var(--home-radius-lg);
-    background: linear-gradient(135deg, var(--home-cta-start), var(--home-cta-end));
-    color: var(--home-cta-text);
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    box-shadow: var(--home-shadow-cta);
-    transition: transform var(--home-dur-med) var(--home-ease-out), box-shadow var(--home-dur-med) var(--home-ease-out);
-  }
-
-  .primary__button:hover,
-  .primary__button:focus-visible {
+  .reflect:hover,
+  .reflect:focus-visible {
     transform: translateY(-1px);
-    box-shadow: var(--home-shadow-cta-hover);
+    border-color: rgba(241, 246, 253, 0.62);
     outline: none;
   }
 
-  .primary__button--pulse {
-    animation: ctaPulse 2.8s ease-in-out infinite;
+  .reflect--pulse {
+    animation: pulse 2.9s ease-in-out infinite;
   }
 
-  .primary p {
+  .focus p {
     margin: 0;
-    color: var(--home-text-tertiary);
-    font-size: 0.8rem;
+    color: rgba(233, 238, 247, 0.84);
+    font-size: 0.78rem;
+  }
+
+  .dock {
+    align-self: end;
   }
 
   @media (min-width: 900px) {
     .sanctuary {
-      grid-template-rows: minmax(20rem, 58dvh) 1fr;
-      max-width: 62rem;
-      margin: 0 auto;
+      gap: 0.9rem;
+      padding: max(1.1rem, env(safe-area-inset-top)) 1.35rem calc(5.4rem + env(safe-area-inset-bottom));
     }
 
-    .hero-stage {
-      padding: 1rem 1rem 0;
+    .stage {
+      gap: 1.3rem;
+      padding-top: 0.2rem;
     }
 
-    .action-panel {
-      padding: 1.2rem 1.2rem 4.3rem;
-      gap: 1rem;
+    .dialogue {
+      width: min(100%, 50rem);
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      align-items: end;
+    }
+
+    .bubble {
+      max-width: 100%;
+      font-size: 0.9rem;
+    }
+
+    .bubble--companion {
+      margin-top: 2.3rem;
+    }
+
+    .focus {
+      width: min(100%, 28rem);
+      gap: 0.58rem;
+    }
+
+    .focus h1 {
+      font-size: clamp(2.1rem, 4.2vw, 3.8rem);
     }
   }
 
-  @keyframes ctaPulse {
-    0%, 100% { transform: translateY(0); box-shadow: var(--home-shadow-cta); }
-    50% { transform: translateY(-1px); box-shadow: var(--home-shadow-cta-hover); }
+  @keyframes cloudDrift {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-2.5%, -2.2%, 0);
+    }
   }
 
-  @keyframes drift {
-    from { background-position: 0 0, 0 0, 0 0; }
-    to { background-position: 24px -20px, -20px 18px, 0 0; }
+  @keyframes pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 rgba(137, 198, 255, 0);
+    }
+    50% {
+      box-shadow: 0 0 0.95rem rgba(137, 198, 255, 0.38);
+    }
   }
 </style>

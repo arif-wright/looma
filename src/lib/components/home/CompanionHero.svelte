@@ -1,98 +1,117 @@
 <script lang="ts">
-  import MuseModel from '$lib/components/companion/MuseModel.svelte';
-
   export let name = 'Mirae';
   export let species = 'Muse';
-  export let avatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
 
-  const auraMap: Record<'Distant' | 'Near' | 'Resonant', 'cyan' | 'amber' | 'mint'> = {
-    Distant: 'cyan',
-    Near: 'amber',
-    Resonant: 'mint'
-  };
+  $: intensity = closenessState === 'Distant' ? '0.68' : closenessState === 'Resonant' ? '1.06' : '0.9';
 </script>
 
-<section class="hero" aria-label="Companion">
-  <div class="hero__media">
-    <MuseModel
-      class="hero__model"
-      poster={avatarUrl ?? '/avatar-fallback.png'}
-      cameraControls={false}
-      autoplay={true}
-      auraColor={auraMap[closenessState]}
-      glowIntensity={54}
-      motionScale={0.98}
-      minSize={240}
-    />
-    <div class="hero__veil" aria-hidden="true"></div>
+<section class="core" aria-label="Companion core" style={`--core-intensity:${intensity};`}>
+  <div class="core__halo"></div>
+  <div class="core__cloud" aria-hidden="true">
+    <span class="lobe lobe--a"></span>
+    <span class="lobe lobe--b"></span>
+    <span class="lobe lobe--c"></span>
+    <span class="core__inner"></span>
   </div>
-
-  <div class="hero__copy">
-    <h2>{name}</h2>
-    <p>{species}</p>
-  </div>
+  <h2>{name}</h2>
+  <p>{species}</p>
 </section>
 
 <style>
-  .hero {
+  .core {
     position: relative;
-    display: grid;
-    height: 100%;
-    font-family: var(--home-font-body, 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif);
+    width: min(74vw, 22rem);
+    margin: 0 auto;
+    text-align: center;
+    padding-top: 1.2rem;
   }
 
-  .hero__media {
+  .core__halo {
+    position: absolute;
+    inset: 8% 14% auto;
+    height: 9rem;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(255, 203, 148, calc(0.34 * var(--core-intensity))), rgba(255, 203, 148, 0) 72%);
+    filter: blur(22px);
+    pointer-events: none;
+    animation: haloBreath 10s ease-in-out infinite;
+  }
+
+  .core__cloud {
     position: relative;
-    height: 100%;
-    min-height: clamp(16rem, 52vh, 21rem);
-    border-radius: var(--home-radius-xl, 1.2rem);
-    overflow: hidden;
-    background:
-      radial-gradient(130% 100% at 18% 18%, var(--home-accent-cyan, rgba(89, 215, 255, 0.2)), transparent 58%),
-      radial-gradient(140% 100% at 88% 90%, var(--home-accent-warm, rgba(250, 182, 119, 0.16)), transparent 62%),
-      linear-gradient(165deg, rgba(9, 14, 32, 0.96), rgba(4, 7, 20, 0.98));
-    box-shadow: 0 22px 42px rgba(1, 6, 19, 0.35), 0 0 0 1px rgba(147, 176, 215, 0.14) inset;
+    width: clamp(8.8rem, 30vw, 11rem);
+    aspect-ratio: 1.05 / 0.78;
+    margin: 0 auto;
+    filter: drop-shadow(0 0 24px rgba(255, 205, 144, calc(0.28 * var(--core-intensity))));
+    animation: cloudFloat 8.5s ease-in-out infinite;
   }
 
-  :global(.hero__model) {
-    width: 100%;
-    height: 100%;
-    min-height: clamp(16rem, 52vh, 21rem);
-  }
-
-  .hero__veil {
+  .lobe,
+  .core__inner {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
+    border-radius: 999px;
     background:
-      radial-gradient(130% 82% at 50% 112%, rgba(3, 8, 23, 0.92), rgba(3, 8, 23, 0) 56%),
-      linear-gradient(180deg, rgba(3, 8, 23, 0) 62%, rgba(3, 8, 23, 0.3));
+      radial-gradient(circle at 35% 30%, rgba(255, 239, 212, 0.9), rgba(255, 198, 136, 0.62) 48%, rgba(192, 143, 255, 0.45) 86%);
+    box-shadow:
+      inset 0 -10px 20px rgba(84, 46, 128, 0.2),
+      0 0 18px rgba(255, 215, 169, 0.28);
   }
 
-  .hero__copy {
-    position: absolute;
-    left: 1rem;
-    bottom: 0.95rem;
-    z-index: 2;
-    pointer-events: none;
+  .lobe--a {
+    left: 8%;
+    top: 22%;
+    width: 34%;
+    height: 56%;
   }
 
-  .hero__copy h2 {
-    margin: 0;
+  .lobe--b {
+    left: 29%;
+    top: 4%;
+    width: 42%;
+    height: 60%;
+  }
+
+  .lobe--c {
+    right: 8%;
+    top: 24%;
+    width: 34%;
+    height: 54%;
+  }
+
+  .core__inner {
+    left: 16%;
+    right: 16%;
+    bottom: 10%;
+    top: 34%;
+    border-radius: 45% 45% 52% 52%;
+  }
+
+  h2 {
+    margin: 0.9rem 0 0;
     font-family: var(--home-font-display, 'Sora', 'Avenir Next', 'Segoe UI', sans-serif);
-    font-size: clamp(1.55rem, 5.2vw, 2.45rem);
-    line-height: 1.04;
-    letter-spacing: -0.012em;
-    color: var(--home-text-primary, rgba(246, 250, 255, 0.97));
-    text-shadow: 0 8px 24px rgba(3, 8, 23, 0.72);
+    font-size: clamp(2rem, 6.4vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: rgba(248, 243, 232, 0.96);
+    text-shadow: 0 8px 28px rgba(39, 31, 79, 0.36);
   }
 
-  .hero__copy p {
-    margin: 0.22rem 0 0;
-    font-size: 0.76rem;
-    letter-spacing: 0.09em;
+  p {
+    margin: 0.3rem 0 0;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    color: var(--home-text-secondary, rgba(196, 215, 238, 0.82));
+    letter-spacing: 0.11em;
+    color: rgba(221, 230, 244, 0.78);
+  }
+
+  @keyframes cloudFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-4px) scale(1.015); }
+  }
+
+  @keyframes haloBreath {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.08); opacity: 1; }
   }
 </style>

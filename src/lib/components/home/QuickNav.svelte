@@ -28,48 +28,52 @@
 
 <style>
   .quick-nav {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--home-space-1, 0.6rem);
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 0.44rem;
+    flex-wrap: nowrap;
   }
 
   .quick-nav__item {
-    min-height: 4.1rem;
-    border: 1px solid rgba(158, 185, 218, 0.24);
-    border-radius: var(--home-radius-lg, 0.9rem);
-    background: var(--home-surface-soft, rgba(9, 15, 34, 0.56));
-    color: var(--home-text-primary, rgba(226, 239, 255, 0.95));
+    min-width: 3.15rem;
+    min-height: 3.15rem;
+    border: 1px solid rgba(201, 212, 242, 0.26);
+    border-radius: 999px;
+    background: rgba(17, 22, 55, 0.48);
+    color: rgba(232, 237, 248, 0.9);
     display: grid;
     justify-items: center;
     align-content: center;
-    gap: 0.4rem;
-    font-size: 0.68rem;
+    gap: 0.22rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.53rem;
+    line-height: 1;
     letter-spacing: 0.04em;
-    text-transform: uppercase;
-    backdrop-filter: blur(4px);
-    font-family: var(--home-font-body, 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif);
-    transition: transform var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out), border-color var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out), background-color var(--home-dur-fast, 180ms) var(--home-ease-out, ease-out);
+    text-transform: capitalize;
+    backdrop-filter: blur(6px);
+    transition: transform 180ms ease-out, border-color 180ms ease-out, background-color 180ms ease-out;
   }
 
   .quick-nav__item:hover,
   .quick-nav__item:focus-visible {
     transform: translateY(-1px);
-    border-color: rgba(183, 209, 239, 0.5);
-    background: rgba(14, 22, 45, 0.68);
+    border-color: rgba(228, 234, 255, 0.48);
+    background: rgba(27, 33, 71, 0.62);
     outline: none;
   }
 
   .quick-nav__icon {
-    width: 1.14rem;
-    height: 1.14rem;
+    width: 1rem;
+    height: 1rem;
     display: inline-grid;
     place-items: center;
-    color: var(--home-text-primary, rgba(215, 233, 255, 0.95));
+    color: rgba(236, 240, 250, 0.94);
   }
 
   .quick-nav__icon svg {
-    width: 1.14rem;
-    height: 1.14rem;
+    width: 1rem;
+    height: 1rem;
     fill: currentColor;
   }
 </style>
