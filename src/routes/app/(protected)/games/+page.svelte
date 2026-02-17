@@ -364,6 +364,8 @@
   @media (max-width: 980px) {
     .games-shell {
       --games-pad-right-extra: 0px;
+      --games-pad-x: clamp(0.95rem, 4vw, 1.3rem);
+      border-radius: 1.08rem;
     }
   }
 
@@ -745,11 +747,12 @@
   @media (max-width: 768px) {
     .games-shell {
       padding-bottom: 6rem;
-      gap: 2rem;
+      gap: 1.5rem;
     }
 
     .games-hero {
       grid-template-columns: 1fr;
+      border-radius: 1rem;
     }
 
     .hero-card__footer {
@@ -757,6 +760,16 @@
       gap: 0.75rem;
     }
 
+    .games-rewards,
+    .games-grid-panel {
+      border-radius: 1rem;
+      padding: 1.3rem 1rem;
+    }
+
+    .hero-card {
+      border-radius: 1rem;
+      padding: 1.15rem;
+    }
   }
 
   @media (max-width: 1200px) {
@@ -768,6 +781,13 @@
   @media (prefers-reduced-motion: reduce) {
     .games-shell {
       transition: none;
+    }
+
+    .hero-primary,
+    .hero-secondary,
+    .hero-mini-links__chip,
+    .pager-btn {
+      transition: none !important;
     }
   }
 </style>

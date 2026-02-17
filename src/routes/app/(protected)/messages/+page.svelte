@@ -1249,7 +1249,7 @@
   .surface-error {
     position: absolute;
     left: 1rem;
-    bottom: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
     margin: 0;
     color: #fda4af;
     background: rgba(51, 65, 85, 0.88);
@@ -1329,6 +1329,42 @@
       min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
       grid-template-rows: minmax(17rem, 37vh) 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(.messenger-card) {
+      padding: 0.28rem;
+      border-radius: 1.05rem;
+    }
+
+    .messenger-shell {
+      border-radius: 0.95rem;
+      min-height: calc(100vh - 12.4rem);
+      grid-template-rows: minmax(14rem, 33vh) 1fr;
+    }
+
+    :global(.thread header) {
+      padding: 0.88rem 0.88rem 0.82rem;
+    }
+
+    :global(.thread__messages) {
+      padding: 0.85rem;
+      gap: 0.74rem;
+    }
+
+    .surface-error {
+      left: 0.7rem;
+      right: 0.7rem;
+      bottom: calc(0.7rem + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .thread-actions button,
+    .load-older {
+      transform: none !important;
     }
   }
 </style>

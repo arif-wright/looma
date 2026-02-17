@@ -19,6 +19,7 @@
 
   --san-shadow-soft: 0 12px 32px rgba(5, 11, 30, 0.32);
   --san-shadow-float: 0 18px 46px rgba(7, 14, 33, 0.45);
+  --san-focus-ring: 0 0 0 2px rgba(154, 206, 255, 0.42), 0 0 0 5px rgba(93, 161, 255, 0.2);
 
   --san-ease-slow: cubic-bezier(0.24, 0.08, 0.2, 1);
   --san-ease-out: cubic-bezier(0.2, 0.82, 0.24, 1);
@@ -63,3 +64,18 @@
   color: var(--san-text-secondary);
 }
 
+.sanctuary-page :focus-visible {
+  outline: none;
+  box-shadow: var(--san-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sanctuary-page *,
+  .sanctuary-page *::before,
+  .sanctuary-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

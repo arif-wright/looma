@@ -219,4 +219,27 @@ let editOpen = false;
   .text-muted {
     color: rgba(255, 255, 255, 0.65);
   }
+
+  @media (max-width: 900px) {
+    :global(.profile-shell) {
+      border-radius: 1.08rem;
+      padding-top: 0.75rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(.profile-shell) {
+      border-radius: 0.96rem;
+    }
+
+    :global(.profile-shell .panel) {
+      border-radius: 1rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.profile-shell .btn-ghost) {
+      transition: none !important;
+    }
+  }
 </style>

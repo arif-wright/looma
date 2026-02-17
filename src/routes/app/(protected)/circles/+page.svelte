@@ -322,7 +322,7 @@
   .error {
     position: absolute;
     left: 1rem;
-    bottom: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
     margin: 0;
     color: #fda4af;
     background: rgba(51, 65, 85, 0.9);
@@ -404,6 +404,35 @@
       min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
       grid-template-rows: minmax(17rem, 36vh) 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(.circles-card) {
+      padding: 0.28rem;
+      border-radius: 1.05rem;
+    }
+
+    .circles-shell {
+      border-radius: 0.95rem;
+      min-height: calc(100vh - 12.4rem);
+      grid-template-rows: minmax(14rem, 33vh) 1fr;
+    }
+
+    :global(.circle-detail header) {
+      padding: 0.9rem 0.86rem;
+    }
+
+    :global(.circle-detail .grid) {
+      padding: 0.86rem;
+      gap: 0.76rem;
+    }
+
+    .error {
+      left: 0.7rem;
+      right: 0.7rem;
+      bottom: calc(0.7rem + env(safe-area-inset-bottom));
+      text-align: center;
     }
   }
 </style>

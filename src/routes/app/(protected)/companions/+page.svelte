@@ -1499,6 +1499,12 @@
   }
 
   @media (max-width: 980px) {
+    .companions-page {
+      padding: 0.9rem 0.7rem calc(6rem + env(safe-area-inset-bottom));
+      gap: 1rem;
+      border-radius: 1.1rem;
+    }
+
     .companion-view {
       grid-template-columns: 1fr;
     }
@@ -1510,11 +1516,24 @@
 
   @media (max-width: 700px) {
     .companions-page {
-      padding-inline: 0.75rem;
+      padding-inline: 0.6rem;
+      border-radius: 1rem;
+    }
+
+    .companion-view,
+    .switcher,
+    .tabbed-list,
+    .bond-milestones-panel {
+      border-radius: 1rem;
+      padding: 0.9rem;
     }
 
     .header-pills {
       justify-content: flex-start;
+    }
+
+    .view-title-block h2 {
+      font-size: clamp(1.5rem, 8vw, 1.9rem);
     }
 
     .switcher-item,
@@ -1528,6 +1547,19 @@
       align-items: flex-start;
       flex-direction: row;
       flex-wrap: wrap;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pill,
+    .care-primary,
+    .inline-action {
+      transition: none !important;
+      transform: none !important;
+    }
+
+    .meter-fill {
+      transition: none !important;
     }
   }
 
