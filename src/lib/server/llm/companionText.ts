@@ -53,7 +53,28 @@ const extractResponseText = (payload: unknown): string | null => {
   const outputText = record.output_text;
   if (typeof outputText === 'string' && outputText.trim()) return outputText.trim();
   if (Array.isArray(outputText)) {
-    const joined = outputText.filter((part): part is string => typeof part === 'string').join(' ').trim();
+    const parts: string[] = [];
+    for (const part of outputText) {
+      if (typeof part === 'string' && part.trim()) {
+        parts.push(part.trim());
+        continue;
+      }
+      if (!part || typeof part !== 'object') continue;
+      const obj = part as Record<string, unknown>;
+      if (typeof obj.text === 'string' && obj.text.trim()) {
+        parts.push(obj.text.trim());
+        continue;
+      }
+      if (obj.text && typeof obj.text === 'object' && typeof (obj.text as Record<string, unknown>).value === 'string') {
+        const value = String((obj.text as Record<string, unknown>).value).trim();
+        if (value) parts.push(value);
+        continue;
+      }
+      if (typeof obj.value === 'string' && obj.value.trim()) {
+        parts.push(obj.value.trim());
+      }
+    }
+    const joined = parts.join(' ').trim();
     if (joined) return joined;
   }
 
@@ -68,11 +89,31 @@ const extractResponseText = (payload: unknown): string | null => {
       const text = block?.text;
       if (typeof text === 'string' && text.trim()) {
         parts.push(text.trim());
+        continue;
+      }
+      if (text && typeof text === 'object' && typeof (text as Record<string, unknown>).value === 'string') {
+        const value = String((text as Record<string, unknown>).value).trim();
+        if (value) {
+          parts.push(value);
+          continue;
+        }
+      }
+      if (typeof block?.value === 'string' && block.value.trim()) {
+        parts.push(block.value.trim());
       }
     }
   }
   const merged = parts.join(' ').trim();
   return merged || null;
+};
+
+const describePayloadShape = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') return 'non_object_payload';
+  const record = payload as Record<string, unknown>;
+  const keys = Object.keys(record).slice(0, 6).join(',');
+  const outputLen = Array.isArray(record.output) ? record.output.length : 0;
+  const outputTextType = Array.isArray(record.output_text) ? 'array' : typeof record.output_text;
+  return `keys:${keys}|output_len:${outputLen}|output_text:${outputTextType}`;
 };
 
 const getModelForIntensity = (intensity: CompanionTextIntensity) =>
@@ -287,7 +328,8 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
         debug: {
           status: 'failed',
           reason: 'parse_no_text',
-          model
+          model,
+          detail: describePayloadShape(payload)
         }
       };
     }
