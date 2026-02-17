@@ -209,6 +209,7 @@ const companionAgent: Agent = {
 
     const llmIntensity = classifyCompanionLlmIntensity({ event, context });
     let llmDebugReason: string | null = null;
+    let llmDebugDetail: string | null = null;
     if (llmIntensity) {
       const llmResult = await generateCompanionTextWithDebug({
         event,
@@ -216,6 +217,7 @@ const companionAgent: Agent = {
         intensity: llmIntensity
       });
       llmDebugReason = llmResult.debug.reason;
+      llmDebugDetail = llmResult.debug.detail ?? null;
       if (llmResult.text) {
         const reaction = {
           text: llmResult.text,
@@ -452,7 +454,9 @@ const companionAgent: Agent = {
       output: {
         reaction,
         mood: 'steady',
-        note: llmDebugReason ? `fallback_after_llm:${llmDebugReason}` : 'Muse acknowledges the event.'
+        note: llmDebugReason
+          ? `fallback_after_llm:${llmDebugReason}${llmDebugDetail ? `|${llmDebugDetail}` : ''}`
+          : 'Muse acknowledges the event.'
       }
     };
   }
