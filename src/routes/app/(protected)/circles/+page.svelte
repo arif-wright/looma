@@ -5,6 +5,9 @@
   import CircleDetail from '$lib/components/circles/CircleDetail.svelte';
   import CircleCreateModal from '$lib/components/circles/CircleCreateModal.svelte';
   import CircleJoinModal from '$lib/components/circles/CircleJoinModal.svelte';
+  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
+  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
   import type { CircleDetailPayload, CircleEventSummary, CircleSummary } from '$lib/components/circles/types';
 
   export let data;
@@ -205,52 +208,62 @@
   });
 </script>
 
-<div class="circles-shell">
-  <CircleList
-    {circles}
-    activeCircleId={activeCircleId}
-    on:select={async (event) => {
-      activeCircleId = event.detail.circleId;
-      try {
-        await loadDetail(event.detail.circleId);
-      } catch (err) {
-        errorMessage = err instanceof Error ? err.message : 'Failed to load circle.';
-      }
-    }}
-    on:create={() => {
-      showCreate = true;
-      createError = null;
-    }}
-    on:join={() => {
-      showJoin = true;
-      joinError = null;
-    }}
+<SanctuaryShell>
+  <SanctuaryHeader
+    eyebrow="Community"
+    title="Circles"
+    subtitle="Move between intimate groups built for support, reflection, and shared moments."
   />
 
-  <section class="detail-surface">
-    {#if loading}
-      <p class="state">Loading circles…</p>
-    {:else}
-      <CircleDetail
-        detail={activeDetail}
-        events={activeEvents}
-        {eventsLoading}
-        {currentUserId}
-        on:openChat={(event) => goto(`/app/messages?conversationId=${encodeURIComponent(event.detail.conversationId)}`)}
-        on:leave={onLeave}
-        on:announce={onAnnounce}
-        on:setRole={onSetRole}
-        on:kick={onKick}
-        on:createEvent={onCreateEvent}
-        on:viewAllEvents={(event) => goto(`/app/events?circleId=${encodeURIComponent(event.detail.circleId)}`)}
+  <GlassCard class="circles-card">
+    <div class="circles-shell">
+      <CircleList
+        {circles}
+        activeCircleId={activeCircleId}
+        on:select={async (event) => {
+          activeCircleId = event.detail.circleId;
+          try {
+            await loadDetail(event.detail.circleId);
+          } catch (err) {
+            errorMessage = err instanceof Error ? err.message : 'Failed to load circle.';
+          }
+        }}
+        on:create={() => {
+          showCreate = true;
+          createError = null;
+        }}
+        on:join={() => {
+          showJoin = true;
+          joinError = null;
+        }}
       />
-    {/if}
 
-    {#if errorMessage}
-      <p class="error" role="status">{errorMessage}</p>
-    {/if}
-  </section>
-</div>
+      <section class="detail-surface">
+        {#if loading}
+          <p class="state">Loading circles…</p>
+        {:else}
+          <CircleDetail
+            detail={activeDetail}
+            events={activeEvents}
+            {eventsLoading}
+            {currentUserId}
+            on:openChat={(event) => goto(`/app/messages?conversationId=${encodeURIComponent(event.detail.conversationId)}`)}
+            on:leave={onLeave}
+            on:announce={onAnnounce}
+            on:setRole={onSetRole}
+            on:kick={onKick}
+            on:createEvent={onCreateEvent}
+            on:viewAllEvents={(event) => goto(`/app/events?circleId=${encodeURIComponent(event.detail.circleId)}`)}
+          />
+        {/if}
+
+        {#if errorMessage}
+          <p class="error" role="status">{errorMessage}</p>
+        {/if}
+      </section>
+    </div>
+  </GlassCard>
+</SanctuaryShell>
 
 <CircleCreateModal
   open={showCreate}
@@ -273,9 +286,13 @@
 />
 
 <style>
+  :global(.circles-card) {
+    padding: 0.2rem;
+  }
+
   .circles-shell {
-    min-height: calc(100vh - 9rem);
-    margin: 1rem;
+    min-height: calc(100vh - 12.4rem);
+    margin: 0;
     border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 1rem;
     overflow: hidden;
@@ -311,8 +328,7 @@
 
   @media (max-width: 960px) {
     .circles-shell {
-      margin: 0.5rem 0.5rem 5.2rem;
-      min-height: calc(100vh - 7rem);
+      min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
       grid-template-rows: minmax(16rem, 34vh) 1fr;
     }

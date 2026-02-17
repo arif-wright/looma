@@ -1,5 +1,6 @@
 <script lang="ts">
   import '../app.css';
+  import '$lib/styles/sanctuary.css';
   import '$lib/theme/branding.css';
   import favicon from '$lib/assets/favicon.svg';
   import { currentProfile } from '$lib/stores/profile';

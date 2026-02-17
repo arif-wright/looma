@@ -14,6 +14,9 @@
   import type { BondAchievementStatus } from '$lib/companions/bond';
   import Modal from '$lib/components/ui/Modal.svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
+  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
@@ -654,16 +657,21 @@
   <title>Looma - Companions</title>
 </svelte:head>
 
-<main class="companions-page">
+<SanctuaryShell>
+<main class="companions-page sanctuary-card">
   <div class="hydration-flag" data-hydrated={hydrated ? 'true' : 'false'} aria-hidden="true"></div>
+  <SanctuaryHeader
+    eyebrow="Companion Presence"
+    title="Your Companions"
+    subtitle="One place to check in, care, and switch who stays by your side."
+  >
+    <svelte:fragment slot="actions">
+      <EmotionalChip tone="cool">Active: {activeCompanion ? activeCompanion.name : 'None'}</EmotionalChip>
+      <EmotionalChip tone="muted">Slots: {slotsUsed}/{maxSlots}</EmotionalChip>
+    </svelte:fragment>
+  </SanctuaryHeader>
   <header class="companions-header">
-    <div>
-      <h1>Your Companions</h1>
-      <p class="lede">One place to check in, care, and switch who stays by your side.</p>
-    </div>
     <div class="header-pills">
-      <span class="pill">Active: {activeCompanion ? activeCompanion.name : 'None'}</span>
-      <span class="pill">Slots: {slotsUsed}/{maxSlots}</span>
       <button type="button" class="pill pill-action" on:click={handleUnlockCta}>Unlock slot</button>
       <button type="button" class="pill pill-action" on:click={refreshRoster} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
@@ -933,6 +941,7 @@
     <BondMilestonesPanel milestones={bondMilestones} />
   </section>
 </main>
+</SanctuaryShell>
 
 <CompanionModal
   open={Boolean(selectedForCare)}
@@ -1040,18 +1049,6 @@
     justify-content: space-between;
     align-items: flex-start;
     flex-wrap: wrap;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.05;
-  }
-
-  .lede {
-    margin: 0.7rem 0 0;
-    color: rgba(221, 228, 255, 0.82);
-    max-width: 66ch;
   }
 
   .header-pills {

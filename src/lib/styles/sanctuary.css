@@ -1,0 +1,65 @@
+:root {
+  --san-font-body: 'Manrope', 'Inter', 'Segoe UI', sans-serif;
+  --san-font-display: 'Sora', 'Inter', 'Segoe UI', sans-serif;
+
+  --san-text-primary: rgba(243, 246, 252, 0.98);
+  --san-text-secondary: rgba(202, 216, 239, 0.86);
+  --san-text-muted: rgba(177, 194, 222, 0.72);
+
+  --san-surface-0: rgba(10, 18, 44, 0.34);
+  --san-surface-1: rgba(16, 27, 60, 0.52);
+  --san-surface-2: rgba(23, 35, 77, 0.6);
+  --san-border-soft: rgba(208, 221, 243, 0.2);
+  --san-border-strong: rgba(219, 230, 248, 0.34);
+
+  --san-radius-sm: 0.75rem;
+  --san-radius-md: 1rem;
+  --san-radius-lg: 1.25rem;
+  --san-radius-pill: 999px;
+
+  --san-shadow-soft: 0 12px 32px rgba(5, 11, 30, 0.32);
+  --san-shadow-float: 0 18px 46px rgba(7, 14, 33, 0.45);
+
+  --san-ease-slow: cubic-bezier(0.24, 0.08, 0.2, 1);
+  --san-ease-out: cubic-bezier(0.2, 0.82, 0.24, 1);
+
+  --san-bg-base:
+    radial-gradient(88% 60% at 84% 14%, rgba(139, 235, 233, 0.3), transparent 74%),
+    radial-gradient(84% 68% at 15% 94%, rgba(255, 183, 135, 0.28), transparent 76%),
+    linear-gradient(165deg, rgba(21, 37, 103, 0.95), rgba(45, 65, 148, 0.9) 38%, rgba(101, 80, 158, 0.86) 68%, rgba(212, 159, 129, 0.72));
+}
+
+.sanctuary-page {
+  font-family: var(--san-font-body);
+  color: var(--san-text-primary);
+}
+
+.sanctuary-card {
+  border-radius: var(--san-radius-lg);
+  border: 1px solid var(--san-border-soft);
+  background: linear-gradient(160deg, rgba(19, 30, 69, 0.58), rgba(10, 19, 45, 0.52));
+  backdrop-filter: blur(14px);
+  box-shadow: var(--san-shadow-soft);
+}
+
+.sanctuary-chip {
+  border-radius: var(--san-radius-pill);
+  border: 1px solid var(--san-border-soft);
+  background: rgba(40, 56, 108, 0.42);
+  color: var(--san-text-secondary);
+}
+
+.sanctuary-title {
+  margin: 0;
+  font-family: var(--san-font-display);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  color: var(--san-text-primary);
+}
+
+.sanctuary-subtitle {
+  margin: 0;
+  color: var(--san-text-secondary);
+}
+

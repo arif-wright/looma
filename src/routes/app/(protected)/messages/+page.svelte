@@ -8,6 +8,10 @@
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
+  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
+  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
@@ -1053,87 +1057,103 @@
   });
 </script>
 
-<div class="messenger-shell">
-  <ConversationList
-    conversations={filteredConversations}
-    {activeConversationId}
-    query={searchQuery}
-    on:select={(event) => handleSelectConversation(event.detail.conversationId)}
-    on:create={() => {
-      showStartModal = true;
-      startModalError = null;
-      void loadFriendOptions();
-    }}
-    on:query={(event) => {
-      searchQuery = event.detail.value;
-    }}
-  />
+<SanctuaryShell>
+  <SanctuaryHeader
+    eyebrow="Companion Dialogue"
+    title="Messages"
+    subtitle="Keep your conversations spacious, warm, and easy to follow."
+  >
+    <svelte:fragment slot="actions">
+      {#if presenceLabel}
+        <EmotionalChip tone="cool">{presenceLabel}</EmotionalChip>
+      {/if}
+    </svelte:fragment>
+  </SanctuaryHeader>
 
-  <section class="thread-panel">
-    {#if !activeConversationId}
-      <div class="thread-empty">
-        <p>Pick a conversation to start messaging.</p>
-      </div>
-    {:else}
-      <ChatThread
-        messages={messages}
-        reactionsByMessageId={reactionsByMessageId}
-        {currentUserId}
-        {viewerCanModerate}
-        {moderationByUserId}
-        blocked={activeConversation?.blocked ?? false}
-        loading={loadingConversations || loadingMessages}
-        title={threadTitle}
-        {presenceLabel}
-        {typingLabel}
-        {seenLabel}
-        on:report={handleReportMessage}
-        on:react={handleReactMessage}
-        on:edit={handleEditMessage}
-        on:delete={handleDeleteMessage}
-        on:openMedia={handleOpenMedia}
-      >
-        <svelte:fragment slot="composer">
-          {#if activeConversation?.peer?.id}
-            <div class="thread-actions">
-              <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
-            </div>
-          {/if}
-          <MessageComposer
-            conversationId={activeConversationId}
-            disabled={(activeConversation?.blocked ?? false) || sendLocked}
-            {sending}
-            editing={editingMessageId !== null}
-            editSeed={editingSeed}
-            on:send={handleSendMessage}
-            on:typing={handleComposerTyping}
-            on:cancelEdit={() => {
-              editingMessageId = null;
-              editingSeed = '';
-            }}
-          />
-        </svelte:fragment>
-      </ChatThread>
-    {/if}
+  <GlassCard class="messenger-card">
+    <div class="messenger-shell">
+      <ConversationList
+        conversations={filteredConversations}
+        {activeConversationId}
+        query={searchQuery}
+        on:select={(event) => handleSelectConversation(event.detail.conversationId)}
+        on:create={() => {
+          showStartModal = true;
+          startModalError = null;
+          void loadFriendOptions();
+        }}
+        on:query={(event) => {
+          searchQuery = event.detail.value;
+        }}
+      />
 
-    {#if nextCursor && activeConversationId}
-      <button
-        class="load-older"
-        type="button"
-        on:click={() => loadMessages(activeConversationId as string, true)}
-      >
-        Load older messages
-      </button>
-    {/if}
+      <section class="thread-panel">
+        {#if !activeConversationId}
+          <div class="thread-empty">
+            <p>Pick a conversation to start messaging.</p>
+          </div>
+        {:else}
+          <ChatThread
+            messages={messages}
+            reactionsByMessageId={reactionsByMessageId}
+            {currentUserId}
+            {viewerCanModerate}
+            {moderationByUserId}
+            blocked={activeConversation?.blocked ?? false}
+            loading={loadingConversations || loadingMessages}
+            title={threadTitle}
+            {presenceLabel}
+            {typingLabel}
+            {seenLabel}
+            on:report={handleReportMessage}
+            on:react={handleReactMessage}
+            on:edit={handleEditMessage}
+            on:delete={handleDeleteMessage}
+            on:openMedia={handleOpenMedia}
+          >
+            <svelte:fragment slot="composer">
+              {#if activeConversation?.peer?.id}
+                <div class="thread-actions">
+                  <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
+                </div>
+              {/if}
+              <MessageComposer
+                conversationId={activeConversationId}
+                disabled={(activeConversation?.blocked ?? false) || sendLocked}
+                {sending}
+                editing={editingMessageId !== null}
+                editSeed={editingSeed}
+                on:send={handleSendMessage}
+                on:typing={handleComposerTyping}
+                on:cancelEdit={() => {
+                  editingMessageId = null;
+                  editingSeed = '';
+                }}
+              />
+            </svelte:fragment>
+          </ChatThread>
+        {/if}
 
-    {#if errorMessage}
-      <p class="surface-error" role="status">{errorMessage}</p>
-    {/if}
-    {#if mediaViewerError}
-      <p class="surface-error" role="status">{mediaViewerError}</p>
-    {/if}
-  </section>
-</div>
+        {#if nextCursor && activeConversationId}
+          <button
+            class="load-older"
+            type="button"
+            on:click={() => loadMessages(activeConversationId as string, true)}
+          >
+            Load older messages
+          </button>
+        {/if}
+
+        {#if errorMessage}
+          <p class="surface-error" role="status">{errorMessage}</p>
+        {/if}
+        {#if mediaViewerError}
+          <p class="surface-error" role="status">{mediaViewerError}</p>
+        {/if}
+      </section>
+    </div>
+  </GlassCard>
+</SanctuaryShell>
 
 <StartChatModal
   open={showStartModal}
@@ -1160,9 +1180,13 @@
 />
 
 <style>
+  :global(.messenger-card) {
+    padding: 0.2rem;
+  }
+
   .messenger-shell {
-    min-height: calc(100vh - 9rem);
-    margin: 1rem;
+    min-height: calc(100vh - 12.4rem);
+    margin: 0;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 1rem;
     overflow: hidden;
@@ -1221,8 +1245,7 @@
 
   @media (max-width: 960px) {
     .messenger-shell {
-      margin: 0.5rem 0.5rem 5.2rem;
-      min-height: calc(100vh - 7rem);
+      min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
       grid-template-rows: minmax(16rem, 35vh) 1fr;
     }
