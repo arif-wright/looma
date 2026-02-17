@@ -100,11 +100,13 @@
 
 <style>
   .conversation-list {
-    border-right: 1px solid rgba(148, 163, 184, 0.18);
+    border-right: 1px solid rgba(191, 210, 238, 0.26);
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: rgba(15, 23, 42, 0.45);
+    background:
+      linear-gradient(182deg, rgba(18, 31, 70, 0.88), rgba(12, 21, 49, 0.9)),
+      radial-gradient(circle at 8% -8%, rgba(112, 188, 255, 0.14), transparent 48%);
   }
 
   .conversation-list__header {
@@ -116,17 +118,20 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
-    letter-spacing: 0.05em;
+    font-family: var(--san-font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.11em;
     text-transform: uppercase;
+    color: rgba(236, 243, 253, 0.92);
   }
 
   .conversation-list__header button {
-    border: 1px solid rgba(125, 211, 252, 0.45);
-    background: rgba(14, 116, 144, 0.3);
-    color: #e0f2fe;
+    border: 1px solid rgba(208, 225, 247, 0.42);
+    background: linear-gradient(130deg, rgba(94, 181, 255, 0.92), rgba(140, 120, 247, 0.92));
+    color: rgba(10, 20, 44, 0.95);
     border-radius: 999px;
-    padding: 0.35rem 0.85rem;
+    padding: 0.4rem 0.9rem;
+    font-weight: 700;
     cursor: pointer;
   }
 
@@ -136,10 +141,10 @@
 
   .conversation-list__search input {
     width: 100%;
-    border-radius: 0.75rem;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    background: rgba(15, 23, 42, 0.65);
-    color: #e2e8f0;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(194, 212, 238, 0.3);
+    background: rgba(15, 26, 56, 0.72);
+    color: rgba(235, 242, 252, 0.96);
     padding: 0.65rem 0.8rem;
   }
 
@@ -159,17 +164,18 @@
     width: 100%;
     text-align: left;
     border: none;
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
-    padding: 0.8rem 1rem;
+    border-top: 1px solid rgba(186, 204, 232, 0.15);
+    padding: 0.9rem 1rem;
     background: transparent;
-    color: #e2e8f0;
+    color: rgba(233, 241, 252, 0.95);
     cursor: pointer;
+    transition: background 220ms var(--san-ease-out);
   }
 
   li button:hover,
   li button:focus-visible,
   li button.active {
-    background: rgba(56, 189, 248, 0.16);
+    background: linear-gradient(105deg, rgba(97, 173, 255, 0.2), rgba(123, 118, 243, 0.16));
   }
 
   .conversation-list__row {
@@ -180,7 +186,7 @@
   }
 
   .conversation-list__meta {
-    color: rgba(203, 213, 225, 0.82);
+    color: rgba(201, 216, 238, 0.82);
     font-size: 0.84rem;
     margin-top: 0.35rem;
   }
@@ -193,7 +199,7 @@
 
   time {
     font-size: 0.74rem;
-    color: rgba(148, 163, 184, 0.95);
+    color: rgba(184, 202, 230, 0.84);
   }
 
   .name-row {
@@ -226,8 +232,8 @@
     min-width: 1.4rem;
     padding: 0.05rem 0.4rem;
     border-radius: 999px;
-    background: #38bdf8;
-    color: #082f49;
+    background: linear-gradient(130deg, rgba(97, 184, 255, 0.96), rgba(146, 126, 250, 0.92));
+    color: rgba(8, 20, 43, 0.95);
     font-weight: 700;
     text-align: center;
     font-size: 0.75rem;

@@ -105,27 +105,31 @@
     display: grid;
     grid-template-rows: auto 1fr auto auto;
     min-height: 0;
+    background: linear-gradient(180deg, rgba(10, 18, 42, 0.66), rgba(7, 12, 31, 0.6));
   }
 
   header {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    padding: 1rem;
-    background: rgba(15, 23, 42, 0.35);
+    border-bottom: 1px solid rgba(192, 211, 238, 0.24);
+    padding: 1.02rem;
+    background: linear-gradient(180deg, rgba(22, 35, 75, 0.6), rgba(14, 25, 54, 0.52));
   }
 
   h2 {
     margin: 0;
-    font-size: 1.05rem;
+    font-family: var(--san-font-display);
+    font-size: 1.18rem;
+    letter-spacing: -0.01em;
+    color: rgba(242, 248, 253, 0.98);
   }
 
   p {
     margin: 0.3rem 0 0;
-    color: rgba(253, 186, 116, 0.95);
+    color: rgba(238, 202, 157, 0.92);
     font-size: 0.85rem;
   }
 
   .presence {
-    color: rgba(186, 230, 253, 0.95);
+    color: rgba(194, 228, 252, 0.95);
   }
 
   .typing {
@@ -137,7 +141,7 @@
   .seen {
     margin: 0;
     padding: 0.2rem 1rem 0;
-    color: rgba(148, 163, 184, 0.94);
+    color: rgba(183, 201, 228, 0.92);
     font-size: 0.74rem;
     text-align: right;
   }
@@ -150,13 +154,14 @@
 
   .thread__messages {
     overflow: auto;
-    padding: 1rem;
+    padding: 1.04rem;
     display: flex;
     flex-direction: column;
-    gap: 0.72rem;
+    gap: 0.86rem;
     background:
-      radial-gradient(circle at 20% 0%, rgba(14, 116, 144, 0.14), transparent 55%),
-      rgba(2, 6, 23, 0.52);
+      radial-gradient(circle at 14% -8%, rgba(102, 178, 255, 0.14), transparent 45%),
+      radial-gradient(circle at 86% 106%, rgba(251, 169, 134, 0.09), transparent 35%),
+      rgba(8, 14, 34, 0.5);
   }
 
   .thread__line {
@@ -169,7 +174,7 @@
   }
 
   .thread__state {
-    color: rgba(148, 163, 184, 0.92);
+    color: rgba(186, 204, 231, 0.92);
     margin: 0;
   }
 </style>

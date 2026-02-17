@@ -43,11 +43,13 @@
 
 <style>
   .circle-list {
-    border-right: 1px solid rgba(148, 163, 184, 0.18);
+    border-right: 1px solid rgba(189, 209, 236, 0.24);
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: rgba(15, 23, 42, 0.45);
+    background:
+      linear-gradient(182deg, rgba(18, 30, 67, 0.88), rgba(12, 21, 49, 0.9)),
+      radial-gradient(circle at 8% -8%, rgba(102, 198, 188, 0.14), transparent 48%);
   }
 
   header {
@@ -60,9 +62,11 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-family: var(--san-font-display);
+    font-size: 0.95rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    color: rgba(236, 243, 253, 0.92);
   }
 
   .actions {
@@ -71,18 +75,18 @@
   }
 
   .actions button {
-    border: none;
+    border: 1px solid rgba(204, 225, 245, 0.4);
     border-radius: 999px;
-    padding: 0.35rem 0.75rem;
-    background: #22d3ee;
-    color: #083344;
+    padding: 0.4rem 0.84rem;
+    background: linear-gradient(130deg, rgba(95, 185, 255, 0.94), rgba(94, 225, 194, 0.92));
+    color: rgba(9, 22, 44, 0.95);
     font-weight: 700;
     cursor: pointer;
   }
 
   .actions button.ghost {
-    background: rgba(148, 163, 184, 0.2);
-    color: #e2e8f0;
+    background: rgba(34, 52, 98, 0.54);
+    color: rgba(236, 243, 252, 0.95);
   }
 
   ul {
@@ -96,24 +100,25 @@
     width: 100%;
     text-align: left;
     border: none;
-    border-top: 1px solid rgba(148, 163, 184, 0.13);
+    border-top: 1px solid rgba(184, 204, 232, 0.14);
     background: transparent;
-    color: #e2e8f0;
-    padding: 0.8rem 1rem;
+    color: rgba(235, 243, 252, 0.95);
+    padding: 0.9rem 1rem;
     cursor: pointer;
     display: grid;
     gap: 0.15rem;
+    transition: background 220ms var(--san-ease-out);
   }
 
   li button:hover,
   li button.active,
   li button:focus-visible {
-    background: rgba(56, 189, 248, 0.17);
+    background: linear-gradient(105deg, rgba(77, 188, 175, 0.2), rgba(90, 150, 242, 0.16));
   }
 
   span {
     font-size: 0.82rem;
-    color: rgba(186, 230, 253, 0.88);
+    color: rgba(191, 230, 242, 0.88);
   }
 
   .empty {

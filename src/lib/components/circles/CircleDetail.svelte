@@ -84,13 +84,13 @@
 
 <style>
   .circle-detail { min-height: 0; display: flex; flex-direction: column; }
-  .empty { display: grid; place-items: center; min-height: 100%; color: rgba(148, 163, 184, 0.9); }
-  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.35); }
-  h2 { margin: 0; font-size: 1.1rem; }
-  p { margin: 0.28rem 0 0; color: rgba(226, 232, 240, 0.92); }
-  small { display: block; margin-top: 0.3rem; color: rgba(148, 163, 184, 0.94); }
+  .empty { display: grid; place-items: center; min-height: 100%; color: rgba(184, 203, 230, 0.9); }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1.02rem; border-bottom: 1px solid rgba(189, 209, 236, 0.24); background: linear-gradient(180deg, rgba(22, 36, 77, 0.56), rgba(14, 26, 56, 0.46)); }
+  h2 { margin: 0; font-family: var(--san-font-display); font-size: 1.22rem; color: rgba(241, 247, 253, 0.98); }
+  p { margin: 0.28rem 0 0; color: rgba(222, 233, 246, 0.92); }
+  small { display: block; margin-top: 0.3rem; color: rgba(181, 201, 228, 0.9); }
   .actions { display: inline-flex; gap: 0.45rem; }
-  .actions button { border: none; border-radius: 0.66rem; background: #22d3ee; color: #083344; padding: 0.45rem 0.78rem; font-weight: 700; cursor: pointer; }
-  .actions button.ghost { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; }
-  .grid { padding: 1rem; display: grid; gap: 0.8rem; }
+  .actions button { border: 1px solid rgba(192, 212, 238, 0.34); border-radius: 0.9rem; background: linear-gradient(130deg, rgba(84, 176, 245, 0.92), rgba(113, 232, 207, 0.9)); color: rgba(8, 20, 43, 0.94); padding: 0.48rem 0.82rem; font-weight: 700; cursor: pointer; }
+  .actions button.ghost { background: rgba(32, 50, 96, 0.56); color: rgba(233, 240, 252, 0.95); }
+  .grid { padding: 1.04rem; display: grid; gap: 0.86rem; background: radial-gradient(circle at 86% 110%, rgba(252, 169, 133, 0.08), transparent 35%); }
 </style>
