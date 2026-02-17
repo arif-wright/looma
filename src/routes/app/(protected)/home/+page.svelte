@@ -16,7 +16,7 @@
   let dailyCheckinToday = data.dailyCheckinToday ?? null;
   let companionReply: string | null = null;
 
-  const activeAsInstance =
+  $: activeAsInstance =
     companionState
       ? ({
           id: companionState.id,
@@ -59,10 +59,10 @@
     !dailyCheckinToday
       ? `${companionName} hasn't heard from you today.`
       : (effective?.energy ?? companionState?.energy ?? 0) < 35
-        ? `${companionName} could use a gentle check-in right now.`
+        ? `${companionName} feels a little low-energy right now. Stay nearby.`
         : (data.notificationsUnread ?? 0) > 0
           ? 'You have new moments waiting together.'
-          : 'Your bond is steady right now.';
+          : `${companionName} heard from you today and feels closer.`;
 
   $: needsReconnectToday = closenessState === 'Distant' || !dailyCheckinToday;
 
@@ -169,10 +169,11 @@
         };
       }
 
+      const defaultReply = `Thank you for sharing that. I'm here with you.`;
       companionReply =
         typeof payload?.reaction?.text === 'string' && payload.reaction.text.trim().length > 0
           ? payload.reaction.text.trim()
-          : "I'm with you. Thank you for sharing that with me.";
+          : defaultReply;
 
       const deltaEnergy = payload?.deltas?.energy ?? 0;
       const deltaTrust = payload?.deltas?.trust ?? 0;

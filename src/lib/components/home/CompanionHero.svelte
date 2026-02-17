@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import type { MuseVisualMood } from '$lib/companions/museVisuals';
 
@@ -14,15 +15,11 @@
   let tiltX = 0;
   let tiltY = 0;
 
-  const handlePointerMove = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse') return;
-    const target = event.currentTarget as HTMLElement | null;
-    if (!target) return;
-    const rect = target.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    tiltY = x * 9;
-    tiltX = y * -7;
+  const updateTiltFromViewport = (clientX: number, clientY: number) => {
+    const x = clientX / Math.max(1, window.innerWidth) - 0.5;
+    const y = clientY / Math.max(1, window.innerHeight) - 0.5;
+    tiltY = x * 14;
+    tiltX = y * -10;
   };
 
   const resetTilt = () => {
@@ -44,6 +41,26 @@
           : closenessState === 'Resonant'
             ? 'bright'
             : 'calm';
+
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return;
+      updateTiltFromViewport(event.clientX, event.clientY);
+    };
+
+    const handleLeave = () => resetTilt();
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('mouseout', handleLeave);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mouseout', handleLeave);
+    };
+  });
 </script>
 
 <section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
@@ -54,7 +71,6 @@
         class="core__model-button"
         type="button"
         on:click={() => dispatch('open', {})}
-        on:pointermove={handlePointerMove}
         on:pointerleave={resetTilt}
         on:blur={resetTilt}
         aria-label={`Open ${name} details`}
@@ -110,8 +126,8 @@
   .core__model-track {
     width: 100%;
     height: 100%;
-    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
-    transition: transform 180ms ease-out;
+    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translate3d(calc(var(--tilt-y) * 0.12), calc(var(--tilt-x) * -0.1), 0);
+    transition: transform 120ms ease-out;
     will-change: transform;
   }
 

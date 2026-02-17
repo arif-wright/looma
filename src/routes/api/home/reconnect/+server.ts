@@ -111,22 +111,32 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  const rituals = await incrementCompanionRitual(supabase, userId, 'care_once', {
-    companionName: updatedCompanion.name
-  });
+  let rituals = null;
+  try {
+    rituals = await incrementCompanionRitual(supabase, userId, 'care_once', {
+      companionName: updatedCompanion.name
+    });
+  } catch (err) {
+    console.error('[home/reconnect] ritual increment failed', err);
+  }
 
-  const eventResponse = await ingestServerEvent(
-    event,
-    'companion.ritual.listen',
-    {
-      companionId: updatedCompanion.id,
-      companionName: updatedCompanion.name,
-      mood,
-      reflection,
-      reflectionChars: reflection.length
-    },
-    { ts: new Date().toISOString() }
-  );
+  let eventResponse: unknown = null;
+  try {
+    eventResponse = await ingestServerEvent(
+      event,
+      'companion.ritual.listen',
+      {
+        companionId: updatedCompanion.id,
+        companionName: updatedCompanion.name,
+        mood,
+        reflection,
+        reflectionChars: reflection.length
+      },
+      { ts: new Date().toISOString() }
+    );
+  } catch (err) {
+    console.error('[home/reconnect] event ingest failed', err);
+  }
 
   const reaction =
     eventResponse &&
