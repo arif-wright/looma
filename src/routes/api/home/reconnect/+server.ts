@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createSupabaseServerClient } from '$lib/server/supabase';
+import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/server/supabase';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 
@@ -17,6 +17,7 @@ export const POST: RequestHandler = async (event) => {
   if (!session) {
     return json({ error: 'unauthorized' }, { status: 401, headers: CACHE_HEADERS });
   }
+  const db = tryGetSupabaseAdminClient() ?? supabase;
 
   let payload: { companionId?: unknown; mood?: unknown; reflection?: unknown } = {};
   try {
@@ -46,7 +47,7 @@ export const POST: RequestHandler = async (event) => {
   const userId = session.user.id;
   const checkinDate = new Date().toISOString().slice(0, 10);
 
-  const { data: checkin, error: checkinError } = await supabase
+  const { data: checkin, error: checkinError } = await db
     .from('user_daily_checkins')
     .upsert(
       {
@@ -66,7 +67,7 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  const { data: companion, error: companionError } = await supabase
+  const { data: companion, error: companionError } = await db
     .from('companions')
     .select('id, owner_id, name, affection, trust, energy, mood, updated_at')
     .eq('id', companionId)
@@ -92,7 +93,7 @@ export const POST: RequestHandler = async (event) => {
   const nextAffection = clamp((companion.affection ?? 0) + affectionDelta);
   const nextEnergy = clamp((companion.energy ?? 0) + energyDelta);
 
-  const { data: updatedCompanion, error: updateCompanionError } = await supabase
+  const { data: updatedCompanion, error: updateCompanionError } = await db
     .from('companions')
     .update({
       trust: nextTrust,
@@ -113,7 +114,7 @@ export const POST: RequestHandler = async (event) => {
 
   let rituals = null;
   try {
-    rituals = await incrementCompanionRitual(supabase, userId, 'care_once', {
+    rituals = await incrementCompanionRitual(db, userId, 'care_once', {
       companionName: updatedCompanion.name
     });
   } catch (err) {
