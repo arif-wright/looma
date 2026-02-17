@@ -7,42 +7,47 @@
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
   import type { PageData } from './$types';
 
+  type HomeMood = 'calm' | 'heavy' | 'curious' | 'energized' | 'numb';
+
   export let data: PageData;
 
   const activeCompanion = data.activeCompanion ?? null;
+  let companionState = activeCompanion ? { ...activeCompanion } : null;
+  let dailyCheckinToday = data.dailyCheckinToday ?? null;
+  let companionReply: string | null = null;
 
   const activeAsInstance =
-    activeCompanion
+    companionState
       ? ({
-          id: activeCompanion.id,
-          name: activeCompanion.name,
-          species: activeCompanion.species ?? 'Muse',
+          id: companionState.id,
+          name: companionState.name,
+          species: companionState.species ?? 'Muse',
           rarity: 'common',
           level: 1,
           xp: 0,
-          affection: activeCompanion.affection ?? 0,
-          trust: activeCompanion.trust ?? 0,
-          energy: activeCompanion.energy ?? 0,
-          mood: activeCompanion.mood ?? 'steady',
-          avatar_url: activeCompanion.avatar_url ?? null,
+          affection: companionState.affection ?? 0,
+          trust: companionState.trust ?? 0,
+          energy: companionState.energy ?? 0,
+          mood: companionState.mood ?? 'steady',
+          avatar_url: companionState.avatar_url ?? null,
           created_at: new Date().toISOString(),
-          updated_at: activeCompanion.updated_at ?? new Date().toISOString(),
-          stats: activeCompanion.stats ?? null
+          updated_at: companionState.updated_at ?? new Date().toISOString(),
+          stats: companionState.stats ?? null
         } as any)
       : null;
 
   $: effective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance) : null;
 
   const deriveClosenessState = () => {
-    if (!activeCompanion) return 'Near' as const;
+    if (!companionState) return 'Near' as const;
     if (effective?.moodKey === 'distant') return 'Distant' as const;
     if (effective?.moodKey === 'radiant') return 'Resonant' as const;
     return 'Near' as const;
   };
 
   $: closenessState = deriveClosenessState();
-  $: companionName = activeCompanion?.name ?? 'Mirae';
-  $: companionSpecies = activeCompanion?.species ?? 'Muse';
+  $: companionName = companionState?.name ?? 'Mirae';
+  $: companionSpecies = companionState?.species ?? 'Muse';
   $: statusLine =
     closenessState === 'Distant'
       ? `${companionName} feels distant.`
@@ -51,57 +56,155 @@
         : `${companionName} is near.`;
 
   $: statusReason =
-    !data.dailyCheckinToday
+    !dailyCheckinToday
       ? `${companionName} hasn't heard from you today.`
-      : (effective?.energy ?? activeCompanion?.energy ?? 0) < 35
-        ? `${companionName} could use a quick check-in right now.`
+      : (effective?.energy ?? companionState?.energy ?? 0) < 35
+        ? `${companionName} could use a gentle check-in right now.`
         : (data.notificationsUnread ?? 0) > 0
           ? 'You have new moments waiting together.'
           : 'Your bond is steady right now.';
 
-  $: needsReconnectToday = closenessState === 'Distant' || !data.dailyCheckinToday;
+  $: needsReconnectToday = closenessState === 'Distant' || !dailyCheckinToday;
 
   let companionSheetOpen = false;
-  let reconnectModalOpen = false;
+  let checkinModalOpen = false;
   let rewardToast: string | null = null;
+  let checkinError: string | null = null;
+  let checkinLoading = false;
+  let selectedMood: HomeMood = 'calm';
+  let reflectionText = '';
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
+  let responseTimer: ReturnType<typeof setTimeout> | null = null;
+  let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
 
   const track = (
-    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet',
+    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'checkin_submit' | 'checkin_success' | 'checkin_error',
     meta: Record<string, unknown> = {}
   ) => {
     console.debug('[home]', kind, meta);
     void logEvent(kind, meta);
   };
 
-  const showReward = (copy = "You're connected. +8 XP · +5 Energy") => {
+  const showReward = (copy: string) => {
     rewardToast = copy;
     if (rewardTimer) clearTimeout(rewardTimer);
     rewardTimer = setTimeout(() => {
       rewardToast = null;
       rewardTimer = null;
-    }, 2200);
+    }, 2600);
   };
 
   const handlePrimaryReconnect = () => {
-    track('primary_action_click', { intent: 'RECONNECT_30' });
-    reconnectModalOpen = true;
+    track('primary_action_click', { intent: 'CHECKIN_REFLECT' });
+    checkinModalOpen = true;
+    checkinError = null;
+    modelActivity = 'composing';
   };
 
-  const executeReconnect = () => {
-    reconnectModalOpen = false;
-    showReward();
+  const closeCheckinModal = () => {
+    if (checkinLoading) return;
+    checkinModalOpen = false;
+    checkinError = null;
+    modelActivity = 'idle';
+  };
+
+  const submitCheckin = async () => {
+    if (!companionState?.id) {
+      checkinError = 'No active companion selected.';
+      return;
+    }
+    const reflection = reflectionText.trim();
+    if (reflection.length < 3) {
+      checkinError = 'Write at least a few words so Mirae can respond meaningfully.';
+      return;
+    }
+
+    checkinLoading = true;
+    checkinError = null;
+    modelActivity = 'responding';
+    track('checkin_submit', { mood: selectedMood, reflectionChars: reflection.length });
+
+    try {
+      const response = await fetch('/api/home/reconnect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          companionId: companionState.id,
+          mood: selectedMood,
+          reflection
+        })
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        checkin?: { id: string; mood: HomeMood; checkin_date: string; created_at: string } | null;
+        companion?: {
+          id: string;
+          trust: number;
+          affection: number;
+          energy: number;
+          mood: string;
+          updated_at: string;
+        } | null;
+        deltas?: { trust?: number; affection?: number; energy?: number } | null;
+        reaction?: { text?: string } | null;
+        message?: string;
+      } | null;
+
+      if (!response.ok) {
+        checkinError = payload?.message ?? 'Could not complete check-in right now.';
+        track('checkin_error', { status: response.status, mood: selectedMood });
+        modelActivity = 'composing';
+        return;
+      }
+
+      if (payload?.checkin) dailyCheckinToday = payload.checkin;
+      if (payload?.companion && companionState) {
+        companionState = {
+          ...companionState,
+          trust: payload.companion.trust,
+          affection: payload.companion.affection,
+          energy: payload.companion.energy,
+          mood: payload.companion.mood,
+          updated_at: payload.companion.updated_at
+        };
+      }
+
+      companionReply =
+        typeof payload?.reaction?.text === 'string' && payload.reaction.text.trim().length > 0
+          ? payload.reaction.text.trim()
+          : "I'm with you. Thank you for sharing that with me.";
+
+      const deltaEnergy = payload?.deltas?.energy ?? 0;
+      const deltaTrust = payload?.deltas?.trust ?? 0;
+      showReward(`You're connected. +${Math.max(0, deltaEnergy)} Energy · +${Math.max(0, deltaTrust)} Trust`);
+
+      reflectionText = '';
+      checkinModalOpen = false;
+      track('checkin_success', { mood: selectedMood, deltaEnergy, deltaTrust });
+
+      if (responseTimer) clearTimeout(responseTimer);
+      responseTimer = setTimeout(() => {
+        modelActivity = 'attending';
+      }, 2200);
+    } catch (error) {
+      checkinError = 'Network issue while saving your check-in.';
+      track('checkin_error', { mood: selectedMood, message: error instanceof Error ? error.message : String(error) });
+      modelActivity = 'composing';
+    } finally {
+      checkinLoading = false;
+    }
   };
 
   onMount(() => {
     track('home_view', {
-      companion: activeCompanion?.id ?? null,
+      companion: companionState?.id ?? null,
       closenessState,
-      hasMood: Boolean(data.dailyCheckinToday)
+      hasMood: Boolean(dailyCheckinToday)
     });
 
     return () => {
       if (rewardTimer) clearTimeout(rewardTimer);
+      if (responseTimer) clearTimeout(responseTimer);
     };
   });
 </script>
@@ -113,17 +216,20 @@
     <HomeSanctuaryV1
       companionName={companionName}
       companionSpecies={companionSpecies}
-      companionAvatarUrl={activeCompanion?.avatar_url ?? null}
+      companionAvatarUrl={companionState?.avatar_url ?? null}
       {closenessState}
       {statusLine}
       {statusReason}
-      needsReconnectToday={needsReconnectToday}
-      primaryLabel="Reflect & Share"
-      primaryCopy={`A quick check-in to bring ${companionName} closer.`}
+      {needsReconnectToday}
+      primaryLabel="Check in with Mirae"
+      primaryCopy="Share how you feel, hear her response, and strengthen your bond."
+      {companionReply}
+      {modelActivity}
       on:primary={handlePrimaryReconnect}
       on:companion={() => {
         companionSheetOpen = true;
-        track('orb_open_sheet', { companion: activeCompanion?.id ?? null });
+        modelActivity = 'attending';
+        track('orb_open_sheet', { companion: companionState?.id ?? null });
       }}
     />
 
@@ -135,27 +241,64 @@
 
 <CompanionSheet
   open={companionSheetOpen}
-  name={activeCompanion?.name ?? null}
+  name={companionState?.name ?? null}
   status={closenessState === 'Near' ? 'Synced' : closenessState}
-  bondTier={`Bond Tier ${activeCompanion?.bondLevel ?? 1}`}
-  evolutionTag={activeCompanion?.species ? `${activeCompanion.species} form` : 'Base form'}
-  imageUrl={activeCompanion?.avatar_url ?? null}
-  energy={effective?.energy ?? activeCompanion?.energy ?? 0}
+  bondTier={`Bond Tier ${companionState?.bondLevel ?? 1}`}
+  evolutionTag={companionState?.species ? `${companionState.species} form` : 'Base form'}
+  imageUrl={companionState?.avatar_url ?? null}
+  energy={effective?.energy ?? companionState?.energy ?? 0}
   onClose={() => {
     companionSheetOpen = false;
+    modelActivity = 'idle';
   }}
 />
 
-<BottomSheet
-  open={reconnectModalOpen}
-  title="Reconnect Ritual"
-  onClose={() => {
-    reconnectModalOpen = false;
-  }}
->
-  <section class="modal-copy">
-    <p>Take one soft breath and call {companionName} closer for 30 seconds.</p>
-    <button type="button" on:click={executeReconnect}>Done</button>
+<BottomSheet open={checkinModalOpen} title="Check in with Mirae" onClose={closeCheckinModal}>
+  <section class="checkin-sheet">
+    <p class="checkin-sheet__copy">How are you feeling right now?</p>
+
+    <div class="mood-row" role="radiogroup" aria-label="Mood">
+      {#each ['calm', 'heavy', 'curious', 'energized', 'numb'] as mood}
+        <button
+          type="button"
+          class={`mood-pill ${selectedMood === mood ? 'mood-pill--active' : ''}`}
+          role="radio"
+          aria-checked={selectedMood === mood}
+          on:click={() => {
+            selectedMood = mood as HomeMood;
+            modelActivity = 'composing';
+          }}
+        >
+          {mood}
+        </button>
+      {/each}
+    </div>
+
+    <label class="reflect-label" for="reflect-input">Tell her what this moment feels like.</label>
+    <textarea
+      id="reflect-input"
+      class="reflect-input"
+      rows="4"
+      maxlength="480"
+      bind:value={reflectionText}
+      placeholder="I feel..."
+      on:focus={() => {
+        modelActivity = 'composing';
+      }}
+      on:input={() => {
+        modelActivity = 'composing';
+      }}
+    ></textarea>
+
+    <p class="char-count">{reflectionText.trim().length}/480</p>
+
+    {#if checkinError}
+      <p class="checkin-error" role="alert">{checkinError}</p>
+    {/if}
+
+    <button type="button" class="submit-checkin" disabled={checkinLoading} on:click={submitCheckin}>
+      {checkinLoading ? 'Listening...' : 'Share with Mirae'}
+    </button>
   </section>
 </BottomSheet>
 
@@ -176,16 +319,10 @@
     --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
     --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
 
-    --home-bg-base: rgba(6, 11, 27, 0.98);
-    --home-bg-deep: rgba(4, 7, 19, 1);
-    --home-surface-soft: rgba(9, 15, 34, 0.56);
-    --home-text-primary: rgba(245, 250, 255, 0.98);
     --home-text-secondary: rgba(189, 208, 232, 0.88);
-    --home-text-tertiary: rgba(186, 210, 237, 0.84);
     --home-cta-start: rgba(86, 232, 220, 0.96);
     --home-cta-end: rgba(119, 175, 255, 0.95);
     --home-cta-text: rgba(6, 16, 35, 0.96);
-    --home-radius-sm: 0.56rem;
     --home-radius-lg: 0.95rem;
     --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.3);
 
@@ -222,24 +359,88 @@
     box-shadow: var(--home-shadow-soft);
   }
 
-  .modal-copy {
+  .checkin-sheet {
     display: grid;
-    gap: 0.7rem;
+    gap: 0.72rem;
   }
 
-  .modal-copy p {
+  .checkin-sheet__copy {
     margin: 0;
     color: var(--home-text-secondary);
     font-size: 0.9rem;
-    line-height: 1.45;
+    line-height: 1.4;
   }
 
-  .modal-copy button {
-    min-height: 2.7rem;
+  .mood-row {
+    display: flex;
+    gap: 0.42rem;
+    flex-wrap: wrap;
+  }
+
+  .mood-pill {
+    min-height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(173, 192, 222, 0.38);
+    background: rgba(15, 22, 46, 0.55);
+    color: rgba(228, 236, 247, 0.9);
+    text-transform: capitalize;
+    font-size: 0.76rem;
+    padding: 0 0.72rem;
+  }
+
+  .mood-pill--active {
+    border-color: rgba(148, 248, 225, 0.8);
+    background: rgba(19, 65, 90, 0.6);
+    color: rgba(228, 255, 248, 0.98);
+  }
+
+  .reflect-label {
+    font-size: 0.76rem;
+    letter-spacing: 0.03em;
+    color: rgba(215, 228, 245, 0.84);
+  }
+
+  .reflect-input {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(161, 185, 218, 0.4);
+    background: rgba(10, 18, 40, 0.62);
+    color: rgba(241, 246, 253, 0.94);
+    padding: 0.7rem 0.78rem;
+    resize: vertical;
+    font: inherit;
+  }
+
+  .reflect-input:focus-visible {
+    outline: 2px solid rgba(133, 212, 255, 0.8);
+    outline-offset: 2px;
+  }
+
+  .char-count {
+    margin: 0;
+    text-align: right;
+    color: rgba(194, 213, 235, 0.72);
+    font-size: 0.72rem;
+  }
+
+  .checkin-error {
+    margin: 0;
+    color: rgba(255, 184, 184, 0.95);
+    font-size: 0.8rem;
+  }
+
+  .submit-checkin {
+    min-height: 2.8rem;
     border-radius: var(--home-radius-lg);
     border: none;
     background: linear-gradient(135deg, var(--home-cta-start), var(--home-cta-end));
     color: var(--home-cta-text);
     font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .submit-checkin:disabled {
+    opacity: 0.75;
   }
 </style>

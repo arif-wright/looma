@@ -7,31 +7,72 @@
   export let species = 'Muse';
   export let avatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
+  export let activityState: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
 
   const dispatch = createEventDispatcher<{ open: Record<string, never> }>();
 
-  $: intensity = closenessState === 'Distant' ? 0.68 : closenessState === 'Resonant' ? 1.06 : 0.9;
+  let tiltX = 0;
+  let tiltY = 0;
+
+  const handlePointerMove = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    tiltY = x * 9;
+    tiltX = y * -7;
+  };
+
+  const resetTilt = () => {
+    tiltX = 0;
+    tiltY = 0;
+  };
+
+  $: baseIntensity = closenessState === 'Distant' ? 0.68 : closenessState === 'Resonant' ? 1.06 : 0.9;
+  $: activityBoost = activityState === 'responding' ? 0.3 : activityState === 'composing' ? 0.2 : activityState === 'attending' ? 0.1 : 0;
+  $: intensity = baseIntensity + activityBoost;
   let visualMood: MuseVisualMood = 'calm';
-  $: visualMood = closenessState === 'Distant' ? 'low' : closenessState === 'Resonant' ? 'bright' : 'calm';
+  $: visualMood =
+    activityState === 'responding'
+      ? 'bright'
+      : activityState === 'composing'
+        ? 'calm'
+        : closenessState === 'Distant'
+          ? 'low'
+          : closenessState === 'Resonant'
+            ? 'bright'
+            : 'calm';
 </script>
 
 <section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
   <div class="core__halo"></div>
-  <div class="core__model-wrap">
-    <button class="core__model-button" type="button" on:click={() => dispatch('open', {})} aria-label={`Open ${name} details`}>
-      <MuseModel
-        class="core__model"
-        poster={avatarUrl ?? undefined}
-        visualMood={visualMood}
-        glowEnabled={true}
-        glowScale={intensity}
-        motionScale={intensity}
-        transparent={true}
-        autoplay={true}
-        eager={true}
-        minSize={0}
-      />
-    </button>
+  <div class="core__model-wrap {activityState === 'responding' ? 'core__model-wrap--responding' : ''}">
+    <div class="core__model-track" style={`--tilt-x:${tiltX}deg; --tilt-y:${tiltY}deg;`}>
+      <button
+        class="core__model-button"
+        type="button"
+        on:click={() => dispatch('open', {})}
+        on:pointermove={handlePointerMove}
+        on:pointerleave={resetTilt}
+        on:blur={resetTilt}
+        aria-label={`Open ${name} details`}
+      >
+        <MuseModel
+          class="core__model"
+          poster={avatarUrl ?? undefined}
+          visualMood={visualMood}
+          glowEnabled={true}
+          glowScale={intensity}
+          motionScale={intensity}
+          transparent={true}
+          autoplay={true}
+          eager={true}
+          minSize={0}
+        />
+      </button>
+    </div>
   </div>
   <h2>{name}</h2>
   <p>{species}</p>
@@ -66,6 +107,18 @@
     animation: modelFloat 9.2s ease-in-out infinite;
   }
 
+  .core__model-track {
+    width: 100%;
+    height: 100%;
+    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+    transition: transform 180ms ease-out;
+    will-change: transform;
+  }
+
+  .core__model-wrap--responding {
+    filter: drop-shadow(0 24px 50px rgba(96, 179, 255, 0.42));
+  }
+
   .core__model-button {
     width: 100%;
     height: 100%;
@@ -92,7 +145,7 @@
   }
 
   .core :global(.core__model .muse-aura) {
-    opacity: calc(0.84 * var(--core-intensity));
+    opacity: calc(0.8 * var(--core-intensity));
   }
 
   .core :global(.core__model .muse-viewer) {

@@ -12,6 +12,8 @@
   export let primaryLabel = 'Reconnect (30 sec)';
   export let primaryCopy = 'A quick check-in to bring Mirae closer.';
   export let needsReconnectToday = false;
+  export let companionReply: string | null = null;
+  export let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
 
   const dispatch = createEventDispatcher<{
     primary: Record<string, never>;
@@ -22,11 +24,12 @@
   let showHint = false;
 
   $: supportiveLine =
-    closenessState === 'Distant'
+    (companionReply && companionReply.trim()) ||
+    (closenessState === 'Distant'
       ? "Take one slow breath. I'm here with you."
       : closenessState === 'Resonant'
         ? "You're in sync right now. Stay in this moment."
-        : "I'm listening. Share what's on your mind.";
+        : "I'm listening. Share what's on your mind.");
 
   const dismissHint = () => {
     showHint = false;
@@ -70,6 +73,7 @@
         species={companionSpecies}
         avatarUrl={companionAvatarUrl}
         {closenessState}
+        activityState={modelActivity}
         on:open={() => dispatch('companion', {})}
       />
     </div>
