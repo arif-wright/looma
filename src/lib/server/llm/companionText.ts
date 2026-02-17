@@ -82,9 +82,25 @@ const extractResponseText = (payload: unknown): string | null => {
   const parts: string[] = [];
   for (const item of output) {
     if (!item || typeof item !== 'object') continue;
-    const content = Array.isArray((item as Record<string, unknown>).content)
-      ? ((item as Record<string, unknown>).content as Array<Record<string, unknown>>)
+    const itemRecord = item as Record<string, unknown>;
+
+    // Some Responses payloads include non-message output blocks. If a summary exists, use it as a fallback.
+    const summary = Array.isArray(itemRecord.summary)
+      ? (itemRecord.summary as Array<Record<string, unknown>>)
       : [];
+    for (const block of summary) {
+      if (typeof block?.text === 'string' && block.text.trim()) {
+        parts.push(block.text.trim());
+        continue;
+      }
+      const blockText = block?.text;
+      if (blockText && typeof blockText === 'object' && typeof (blockText as Record<string, unknown>).value === 'string') {
+        const value = String((blockText as Record<string, unknown>).value).trim();
+        if (value) parts.push(value);
+      }
+    }
+
+    const content = Array.isArray(itemRecord.content) ? (itemRecord.content as Array<Record<string, unknown>>) : [];
     for (const block of content) {
       const text = block?.text;
       if (typeof text === 'string' && text.trim()) {
@@ -113,7 +129,14 @@ const describePayloadShape = (payload: unknown) => {
   const keys = Object.keys(record).slice(0, 6).join(',');
   const outputLen = Array.isArray(record.output) ? record.output.length : 0;
   const outputTextType = Array.isArray(record.output_text) ? 'array' : typeof record.output_text;
-  return `keys:${keys}|output_len:${outputLen}|output_text:${outputTextType}`;
+  const status = typeof record.status === 'string' ? record.status : typeof record.status;
+  const first = Array.isArray(record.output) && record.output[0] && typeof record.output[0] === 'object'
+    ? (record.output[0] as Record<string, unknown>)
+    : null;
+  const firstType = first && typeof first.type === 'string' ? first.type : typeof first?.type;
+  const firstKeys = first ? Object.keys(first).slice(0, 6).join(',') : 'none';
+  const contentLen = first && Array.isArray(first.content) ? first.content.length : 0;
+  return `keys:${keys}|status:${status}|output_len:${outputLen}|output_text:${outputTextType}|output0_type:${firstType}|output0_keys:${firstKeys}|content_len:${contentLen}`;
 };
 
 const getModelForIntensity = (intensity: CompanionTextIntensity) =>
@@ -285,6 +308,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
       },
       body: JSON.stringify({
         model,
+        reasoning: { effort: 'minimal' },
         max_output_tokens: caps.output,
         input: [
           { role: 'system', content: systemPrompt },
