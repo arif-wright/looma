@@ -535,8 +535,14 @@
       class="app-surface"
       style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
     >
-      <main class="app-main">
-        <slot />
+      <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--sanctuary'}`}>
+        {#if isHome}
+          <slot />
+        {:else}
+          <div class="route-shell">
+            <slot />
+          </div>
+        {/if}
       </main>
     </div>
   </div>
@@ -581,8 +587,14 @@
       />
     {/if}
 
-    <main class="app-main">
-      <slot />
+    <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--sanctuary'}`}>
+      {#if isHome}
+        <slot />
+      {:else}
+        <div class="route-shell">
+          <slot />
+        </div>
+      {/if}
     </main>
   </div>
 </div>
@@ -664,6 +676,24 @@
     width: 100%;
   }
 
+  .app-main--sanctuary {
+    padding: clamp(0.7rem, 2.2vw, 1.3rem) clamp(0.65rem, 2vw, 1.2rem) calc(5.6rem + env(safe-area-inset-bottom));
+  }
+
+  .route-shell {
+    width: min(100%, 1680px);
+    margin: 0 auto;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(196, 214, 241, 0.16);
+    background:
+      linear-gradient(162deg, rgba(17, 29, 66, 0.4), rgba(10, 18, 43, 0.36)),
+      radial-gradient(circle at 82% 0%, rgba(112, 188, 255, 0.08), transparent 48%);
+    box-shadow: 0 28px 56px rgba(6, 11, 28, 0.28);
+    backdrop-filter: blur(4px);
+    min-height: calc(100dvh - 8rem);
+    padding: clamp(0.2rem, 0.9vw, 0.55rem);
+  }
+
   .app-main :global(*) {
     min-width: 0;
   }
@@ -677,6 +707,16 @@
   @media (max-width: 960px) {
     .app-surface {
       grid-template-rows: auto 1fr;
+    }
+
+    .app-main--sanctuary {
+      padding: 0.5rem 0.4rem calc(5.2rem + env(safe-area-inset-bottom));
+    }
+
+    .route-shell {
+      border-radius: 1.05rem;
+      min-height: calc(100dvh - 7.2rem);
+      padding: 0.14rem;
     }
   }
 
