@@ -54,11 +54,13 @@
     const handleLeave = () => resetTilt();
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    window.addEventListener('mouseout', handleLeave);
+    window.addEventListener('pointerleave', handleLeave);
+    window.addEventListener('blur', handleLeave);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('mouseout', handleLeave);
+      window.removeEventListener('pointerleave', handleLeave);
+      window.removeEventListener('blur', handleLeave);
     };
   });
 </script>
@@ -66,7 +68,7 @@
 <section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
   <div class="core__halo"></div>
   <div class="core__model-wrap {activityState === 'responding' ? 'core__model-wrap--responding' : ''}">
-    <div class="core__model-track" style={`--tilt-x:${tiltX}deg; --tilt-y:${tiltY}deg;`}>
+    <div class="core__model-track" style={`--tilt-x:${tiltX}; --tilt-y:${tiltY};`}>
       <button
         class="core__model-button"
         type="button"
@@ -126,7 +128,11 @@
   .core__model-track {
     width: 100%;
     height: 100%;
-    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translate3d(calc(var(--tilt-y) * 0.12), calc(var(--tilt-x) * -0.1), 0);
+    transform:
+      perspective(900px)
+      rotateX(calc(var(--tilt-x) * 1deg))
+      rotateY(calc(var(--tilt-y) * 1deg))
+      translate3d(calc(var(--tilt-y) * 0.7px), calc(var(--tilt-x) * -0.5px), 0);
     transition: transform 120ms ease-out;
     will-change: transform;
   }
