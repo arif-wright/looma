@@ -178,6 +178,30 @@ let editOpen = false;
 <style>
   :global(.profile-shell) {
     padding-top: 1rem;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(197, 214, 241, 0.18);
+    background:
+      linear-gradient(162deg, rgba(17, 29, 66, 0.52), rgba(10, 18, 43, 0.48)),
+      radial-gradient(circle at 84% 2%, rgba(112, 188, 255, 0.1), transparent 52%);
+    box-shadow: 0 28px 54px rgba(6, 11, 28, 0.32);
+  }
+
+  :global(.profile-shell .panel) {
+    border-radius: 1.2rem;
+    border-color: rgba(196, 214, 241, 0.2);
+    background: linear-gradient(164deg, rgba(19, 31, 68, 0.62), rgba(12, 22, 50, 0.56));
+  }
+
+  :global(.profile-shell .panel-title) {
+    color: rgba(236, 243, 252, 0.9);
+    letter-spacing: 0.02em;
+  }
+
+  :global(.profile-shell .btn-ghost) {
+    border-radius: 0.9rem;
+    border-color: rgba(196, 214, 241, 0.28);
+    background: rgba(33, 50, 99, 0.44);
+    color: rgba(233, 241, 252, 0.95);
   }
 
   .companion-panel {

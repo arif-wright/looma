@@ -1181,20 +1181,25 @@
 
 <style>
   :global(.messenger-card) {
-    padding: 0.2rem;
+    padding: 0.35rem;
+    border-radius: 1.35rem;
+    border-color: rgba(210, 224, 247, 0.24);
+    background:
+      linear-gradient(164deg, rgba(20, 33, 72, 0.6), rgba(12, 20, 49, 0.52)),
+      radial-gradient(circle at 78% 0%, rgba(102, 184, 255, 0.14), transparent 58%);
   }
 
   .messenger-shell {
-    min-height: calc(100vh - 12.4rem);
+    min-height: calc(100vh - 12.8rem);
     margin: 0;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 1rem;
+    border: 1px solid rgba(196, 214, 241, 0.2);
+    border-radius: 1.15rem;
     overflow: hidden;
     display: grid;
     grid-template-columns: 340px 1fr;
     background:
-      linear-gradient(165deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.8)),
-      radial-gradient(circle at right top, rgba(8, 145, 178, 0.22), transparent 52%);
+      linear-gradient(166deg, rgba(13, 22, 53, 0.8), rgba(10, 16, 39, 0.85)),
+      radial-gradient(circle at 82% 5%, rgba(109, 181, 255, 0.15), transparent 52%);
   }
 
   .thread-panel {
@@ -1211,19 +1216,29 @@
   }
 
   .thread-actions {
-    padding: 0.6rem 0.85rem 0;
+    padding: 0.75rem 0.95rem 0;
     display: flex;
     justify-content: flex-end;
   }
 
   .thread-actions button,
   .load-older {
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 0.66rem;
-    background: rgba(15, 23, 42, 0.62);
-    color: #e2e8f0;
-    padding: 0.45rem 0.75rem;
+    border: 1px solid rgba(203, 217, 241, 0.28);
+    border-radius: 0.85rem;
+    background: rgba(30, 45, 93, 0.48);
+    color: rgba(234, 241, 252, 0.94);
+    padding: 0.5rem 0.88rem;
     cursor: pointer;
+    transition: border-color 220ms var(--san-ease-out), transform 220ms var(--san-ease-out);
+  }
+
+  .thread-actions button:hover,
+  .thread-actions button:focus-visible,
+  .load-older:hover,
+  .load-older:focus-visible {
+    border-color: rgba(228, 237, 250, 0.58);
+    transform: translateY(-1px);
+    outline: none;
   }
 
   .load-older {
@@ -1243,11 +1258,77 @@
     padding: 0.45rem 0.65rem;
   }
 
+  :global(.conversation-list) {
+    background: linear-gradient(180deg, rgba(19, 31, 68, 0.84), rgba(13, 22, 49, 0.88));
+    border-right: 1px solid rgba(196, 214, 241, 0.22);
+  }
+
+  :global(.conversation-list__header h2) {
+    font-family: var(--san-font-display);
+    font-size: 0.92rem;
+    letter-spacing: 0.12em;
+    color: rgba(235, 242, 252, 0.9);
+  }
+
+  :global(.conversation-list__header button) {
+    background: linear-gradient(130deg, rgba(101, 181, 255, 0.9), rgba(146, 121, 255, 0.9));
+    border-color: rgba(214, 230, 255, 0.45);
+    color: rgba(8, 18, 41, 0.94);
+  }
+
+  :global(.conversation-list__search input) {
+    border-radius: 0.95rem;
+    border-color: rgba(194, 212, 239, 0.28);
+    background: rgba(14, 24, 53, 0.68);
+  }
+
+  :global(.conversation-list__items li button) {
+    border-top-color: rgba(189, 207, 236, 0.14);
+    padding: 0.92rem 1rem;
+  }
+
+  :global(.conversation-list__items li button:hover),
+  :global(.conversation-list__items li button:focus-visible),
+  :global(.conversation-list__items li button.active) {
+    background: linear-gradient(105deg, rgba(92, 172, 255, 0.18), rgba(130, 120, 238, 0.16));
+  }
+
+  :global(.thread) {
+    grid-template-rows: auto 1fr auto auto;
+  }
+
+  :global(.thread header) {
+    border-bottom-color: rgba(193, 210, 238, 0.24);
+    background: linear-gradient(180deg, rgba(23, 35, 74, 0.58), rgba(15, 25, 56, 0.48));
+    padding: 1.05rem 1.05rem 0.95rem;
+  }
+
+  :global(.thread header h2) {
+    font-family: var(--san-font-display);
+    font-size: 1.18rem;
+    letter-spacing: -0.01em;
+    color: rgba(241, 246, 252, 0.98);
+  }
+
+  :global(.thread__messages) {
+    padding: 1.05rem;
+    gap: 0.88rem;
+    background:
+      radial-gradient(circle at 14% -6%, rgba(110, 184, 255, 0.12), transparent 48%),
+      radial-gradient(circle at 86% 102%, rgba(255, 174, 130, 0.11), transparent 42%),
+      rgba(7, 12, 31, 0.44);
+  }
+
+  :global(.composer) {
+    border-top: 1px solid rgba(193, 210, 238, 0.22);
+    background: rgba(10, 17, 42, 0.6);
+  }
+
   @media (max-width: 960px) {
     .messenger-shell {
       min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
-      grid-template-rows: minmax(16rem, 35vh) 1fr;
+      grid-template-rows: minmax(17rem, 37vh) 1fr;
     }
   }
 </style>

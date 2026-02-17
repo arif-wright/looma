@@ -287,20 +287,25 @@
 
 <style>
   :global(.circles-card) {
-    padding: 0.2rem;
+    padding: 0.35rem;
+    border-radius: 1.35rem;
+    border-color: rgba(208, 223, 245, 0.24);
+    background:
+      linear-gradient(164deg, rgba(20, 34, 74, 0.62), rgba(12, 22, 50, 0.52)),
+      radial-gradient(circle at 80% 8%, rgba(102, 193, 200, 0.13), transparent 56%);
   }
 
   .circles-shell {
-    min-height: calc(100vh - 12.4rem);
+    min-height: calc(100vh - 12.8rem);
     margin: 0;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    border-radius: 1rem;
+    border: 1px solid rgba(190, 211, 237, 0.2);
+    border-radius: 1.15rem;
     overflow: hidden;
     display: grid;
     grid-template-columns: 320px 1fr;
     background:
-      linear-gradient(164deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.82)),
-      radial-gradient(circle at right top, rgba(20, 184, 166, 0.2), transparent 55%);
+      linear-gradient(164deg, rgba(14, 23, 53, 0.78), rgba(9, 16, 40, 0.85)),
+      radial-gradient(circle at 84% 6%, rgba(85, 209, 191, 0.14), transparent 54%);
   }
 
   .detail-surface {
@@ -310,8 +315,8 @@
 
   .state {
     margin: 0;
-    padding: 1rem;
-    color: rgba(148, 163, 184, 0.94);
+    padding: 1.1rem;
+    color: rgba(200, 214, 237, 0.9);
   }
 
   .error {
@@ -326,11 +331,79 @@
     padding: 0.45rem 0.65rem;
   }
 
+  :global(.circle-list) {
+    background: linear-gradient(180deg, rgba(18, 31, 66, 0.84), rgba(11, 21, 47, 0.88));
+    border-right-color: rgba(185, 206, 233, 0.24);
+  }
+
+  :global(.circle-list header h2) {
+    font-family: var(--san-font-display);
+    font-size: 0.94rem;
+    letter-spacing: 0.1em;
+    color: rgba(236, 243, 252, 0.92);
+  }
+
+  :global(.circle-list .actions button) {
+    border-radius: 999px;
+    border: 1px solid rgba(202, 223, 244, 0.42);
+    padding: 0.42rem 0.88rem;
+    background: linear-gradient(130deg, rgba(98, 186, 255, 0.9), rgba(114, 233, 209, 0.9));
+    color: rgba(8, 18, 40, 0.94);
+  }
+
+  :global(.circle-list .actions button.ghost) {
+    background: rgba(38, 58, 108, 0.52);
+    color: rgba(234, 241, 252, 0.95);
+  }
+
+  :global(.circle-list ul li button) {
+    border-top-color: rgba(183, 202, 229, 0.14);
+    padding: 0.92rem 1rem;
+  }
+
+  :global(.circle-list ul li button:hover),
+  :global(.circle-list ul li button:focus-visible),
+  :global(.circle-list ul li button.active) {
+    background: linear-gradient(105deg, rgba(77, 188, 175, 0.18), rgba(90, 150, 242, 0.14));
+  }
+
+  :global(.circle-detail header) {
+    border-bottom-color: rgba(187, 208, 234, 0.24);
+    background: linear-gradient(180deg, rgba(22, 36, 77, 0.56), rgba(14, 26, 56, 0.46));
+    padding: 1.08rem 1.08rem 1rem;
+  }
+
+  :global(.circle-detail header h2) {
+    font-family: var(--san-font-display);
+    font-size: 1.22rem;
+    color: rgba(241, 247, 253, 0.98);
+  }
+
+  :global(.circle-detail .actions button) {
+    border-radius: 0.9rem;
+    border: 1px solid rgba(191, 211, 237, 0.34);
+    background: linear-gradient(130deg, rgba(84, 176, 245, 0.92), rgba(113, 232, 207, 0.9));
+    color: rgba(8, 20, 43, 0.94);
+  }
+
+  :global(.circle-detail .actions button.ghost) {
+    background: rgba(32, 50, 96, 0.56);
+    color: rgba(233, 240, 252, 0.95);
+  }
+
+  :global(.circle-detail .grid) {
+    padding: 1.08rem;
+    gap: 0.92rem;
+    background:
+      radial-gradient(circle at 86% 110%, rgba(252, 169, 133, 0.08), transparent 35%),
+      transparent;
+  }
+
   @media (max-width: 960px) {
     .circles-shell {
       min-height: calc(100vh - 13.2rem);
       grid-template-columns: 1fr;
-      grid-template-rows: minmax(16rem, 34vh) 1fr;
+      grid-template-rows: minmax(17rem, 36vh) 1fr;
     }
   }
 </style>

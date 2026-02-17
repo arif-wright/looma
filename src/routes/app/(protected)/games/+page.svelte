@@ -334,6 +334,7 @@
   :global(.games-shell-wrap) {
     position: relative;
     z-index: 1;
+    padding-inline: 0.65rem;
   }
 
   .games-shell {
@@ -352,6 +353,12 @@
     gap: 2.75rem;
     width: 100%;
     min-height: 100vh;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(197, 214, 241, 0.18);
+    background:
+      linear-gradient(162deg, rgba(18, 29, 66, 0.54), rgba(10, 18, 43, 0.5)),
+      radial-gradient(circle at 82% -6%, rgba(111, 187, 255, 0.1), transparent 50%);
+    box-shadow: 0 28px 54px rgba(6, 11, 28, 0.34);
   }
 
   @media (max-width: 980px) {
@@ -372,7 +379,7 @@
     background-position: center;
     background-repeat: no-repeat;
     padding: clamp(2.8rem, 5.5vw, 3.9rem) clamp(2.2rem, 4.4vw, 3.2rem);
-    border-radius: 1.75rem;
+    border-radius: 1.4rem;
     box-shadow: 0 32px 60px rgba(6, 9, 22, 0.48);
   }
 
@@ -566,7 +573,9 @@
     display: grid;
     gap: 1.25rem;
     padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
-    border-radius: 1.75rem;
+    border-radius: 1.32rem;
+    border: 1px solid rgba(197, 214, 241, 0.18);
+    background: linear-gradient(164deg, rgba(18, 30, 66, 0.6), rgba(11, 20, 48, 0.56));
   }
 
   .games-rewards header {
@@ -702,7 +711,9 @@
     display: grid;
     gap: 1.5rem;
     padding: 2.1rem clamp(1.6rem, 3vw, 2.3rem);
-    border-radius: 1.75rem;
+    border-radius: 1.32rem;
+    border: 1px solid rgba(197, 214, 241, 0.18);
+    background: linear-gradient(164deg, rgba(18, 30, 66, 0.58), rgba(11, 20, 48, 0.54));
   }
 
   .games-grid-panel__header {

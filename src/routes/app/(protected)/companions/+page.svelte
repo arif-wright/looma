@@ -1036,11 +1036,17 @@
 
 <style>
   .companions-page {
-    width: min(100%, 1500px);
+    width: min(100%, 1440px);
     margin: 0 auto;
-    padding: clamp(1rem, 2.2vw, 2rem);
+    padding: clamp(1.05rem, 2.4vw, 2.1rem);
     display: grid;
-    gap: 1.4rem;
+    gap: 1.55rem;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(200, 217, 242, 0.18);
+    background:
+      linear-gradient(165deg, rgba(17, 29, 67, 0.62), rgba(11, 20, 48, 0.56)),
+      radial-gradient(circle at 82% 2%, rgba(102, 180, 255, 0.1), transparent 50%);
+    box-shadow: 0 28px 54px rgba(5, 10, 28, 0.34);
   }
 
   .companions-header {
@@ -1054,21 +1060,29 @@
   .header-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.55rem;
+    gap: 0.62rem;
     justify-content: flex-end;
   }
 
   .pill {
-    border: 1px solid rgba(175, 217, 255, 0.32);
+    border: 1px solid rgba(202, 220, 244, 0.34);
     border-radius: 999px;
-    padding: 0.5rem 0.92rem;
-    font-size: 0.98rem;
-    background: rgba(8, 13, 34, 0.68);
+    padding: 0.54rem 0.96rem;
+    font-size: 0.92rem;
+    background: rgba(27, 41, 86, 0.5);
     color: rgba(244, 248, 255, 0.92);
+    transition: border-color 220ms var(--san-ease-out), transform 220ms var(--san-ease-out);
   }
 
   .pill-action {
     cursor: pointer;
+  }
+
+  .pill-action:hover,
+  .pill-action:focus-visible {
+    border-color: rgba(230, 238, 250, 0.58);
+    transform: translateY(-1px);
+    outline: none;
   }
 
   .switch-message {
@@ -1084,11 +1098,13 @@
   .switcher,
   .tabbed-list,
   .bond-milestones-panel {
-    border-radius: 24px;
-    border: 1px solid rgba(175, 217, 255, 0.2);
-    background: rgba(7, 11, 28, 0.78);
-    box-shadow: 0 22px 40px rgba(5, 7, 17, 0.32);
-    padding: clamp(1rem, 2vw, 1.4rem);
+    border-radius: 1.35rem;
+    border: 1px solid rgba(196, 215, 241, 0.22);
+    background:
+      linear-gradient(158deg, rgba(16, 27, 61, 0.72), rgba(10, 18, 43, 0.72)),
+      radial-gradient(circle at 80% -4%, rgba(100, 183, 255, 0.1), transparent 46%);
+    box-shadow: 0 18px 40px rgba(7, 13, 32, 0.34);
+    padding: clamp(1.05rem, 2.1vw, 1.45rem);
   }
 
   .companion-view {
@@ -1108,7 +1124,9 @@
 
   .view-title-block h2 {
     margin: 0.55rem 0 0;
-    font-size: clamp(1.7rem, 3vw, 2.2rem);
+    font-family: var(--san-font-display);
+    font-size: clamp(1.78rem, 3.1vw, 2.32rem);
+    letter-spacing: -0.015em;
   }
 
   .view-chips {
@@ -1120,10 +1138,10 @@
 
   .chip {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    padding: 0.26rem 0.72rem;
-    font-size: 0.86rem;
-    background: rgba(17, 24, 46, 0.7);
+    border: 1px solid rgba(207, 224, 246, 0.24);
+    padding: 0.28rem 0.72rem;
+    font-size: 0.8rem;
+    background: rgba(34, 50, 99, 0.44);
   }
 
   .chip--evolution {
@@ -1161,12 +1179,20 @@
   .care-primary {
     margin-top: 0.85rem;
     border-radius: 999px;
-    border: 1px solid rgba(89, 204, 255, 0.5);
-    background: linear-gradient(120deg, rgba(36, 96, 165, 0.62), rgba(61, 45, 127, 0.7));
-    color: rgba(247, 251, 255, 0.95);
-    padding: 0.62rem 1rem;
+    border: 1px solid rgba(199, 216, 241, 0.4);
+    background: linear-gradient(125deg, rgba(89, 176, 255, 0.86), rgba(131, 116, 246, 0.86));
+    color: rgba(8, 20, 42, 0.94);
+    padding: 0.66rem 1.05rem;
     font-weight: 600;
     cursor: pointer;
+    transition: transform 220ms var(--san-ease-out), box-shadow 220ms var(--san-ease-out);
+  }
+
+  .care-primary:hover,
+  .care-primary:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 30px rgba(100, 177, 255, 0.3);
+    outline: none;
   }
 
   .meter-stack {
@@ -1211,9 +1237,9 @@
   }
 
   .companion-view__model {
-    border-radius: 18px;
-    border: 1px solid rgba(180, 223, 255, 0.2);
-    background: radial-gradient(circle at center, rgba(62, 145, 255, 0.18), rgba(5, 8, 22, 0.82) 70%);
+    border-radius: 1.05rem;
+    border: 1px solid rgba(197, 216, 241, 0.22);
+    background: radial-gradient(circle at center, rgba(86, 165, 255, 0.18), rgba(8, 12, 31, 0.82) 72%);
     display: grid;
     place-items: center;
     min-height: 260px;
@@ -1246,9 +1272,9 @@
   }
 
   .switcher-item {
-    border-radius: 14px;
-    border: 1px solid rgba(177, 212, 255, 0.24);
-    background: rgba(13, 18, 40, 0.86);
+    border-radius: 0.96rem;
+    border: 1px solid rgba(193, 213, 240, 0.22);
+    background: rgba(18, 30, 66, 0.66);
     color: rgba(236, 242, 255, 0.95);
     padding: 0.75rem 0.85rem;
     display: flex;
@@ -1347,9 +1373,9 @@
   }
 
   .list-card {
-    border-radius: 14px;
-    border: 1px solid rgba(171, 214, 255, 0.24);
-    background: rgba(11, 16, 38, 0.84);
+    border-radius: 0.96rem;
+    border: 1px solid rgba(193, 212, 240, 0.22);
+    background: rgba(16, 27, 61, 0.64);
     color: rgba(237, 243, 255, 0.95);
     padding: 0.74rem 0.84rem;
     display: flex;
