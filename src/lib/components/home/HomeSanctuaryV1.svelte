@@ -5,7 +5,6 @@
   import CompanionHero from '$lib/components/home/CompanionHero.svelte';
 
   export let companionName = 'Mirae';
-  export let companionSpecies = 'Muse';
   export let companionAvatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let statusLine = 'Mirae feels distant.';
@@ -52,16 +51,6 @@
   <div class="bg stars" aria-hidden="true"></div>
   <div class="bg noise" aria-hidden="true"></div>
 
-  <header class="hud">
-    <p class="mood-arc">
-      <span class="mood-arc__dot" aria-hidden="true"></span>
-      Mood Arc
-    </p>
-    <button class="user-chip" type="button" aria-label="Profile">
-      <span aria-hidden="true">You</span>
-    </button>
-  </header>
-
   {#if showHint}
     <aside class="hint" role="status">
       <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
@@ -73,7 +62,6 @@
     <div class="hero-wrap">
       <CompanionHero
         name={companionName}
-        species={companionSpecies}
         avatarUrl={companionAvatarUrl}
         {closenessState}
         activityState={modelActivity}
@@ -117,8 +105,8 @@
     color: rgba(244, 244, 248, 0.96);
     font-family: var(--home-font-body);
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    gap: 0.8rem;
+    grid-template-rows: auto 1fr;
+    gap: 1rem;
   }
 
   .bg {
@@ -175,49 +163,10 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.76' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
   }
 
-  .hud,
   .hint,
   .stage {
     position: relative;
     z-index: 5;
-  }
-
-  .hud {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 0.2rem;
-  }
-
-  .mood-arc {
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: rgba(234, 238, 246, 0.86);
-    font-size: 0.74rem;
-    letter-spacing: 0.02em;
-  }
-
-  .mood-arc__dot {
-    width: 0.6rem;
-    aspect-ratio: 1;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(255, 196, 156, 1), rgba(132, 201, 224, 0.84));
-    box-shadow: 0 0 12px rgba(248, 193, 152, 0.55);
-  }
-
-  .user-chip {
-    border: 1px solid rgba(227, 234, 246, 0.3);
-    background: rgba(26, 31, 74, 0.32);
-    color: rgba(237, 242, 250, 0.9);
-    border-radius: 999px;
-    min-height: 2rem;
-    min-width: 2.7rem;
-    padding: 0 0.7rem;
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
-    backdrop-filter: blur(10px);
   }
 
   .hint {
@@ -253,22 +202,27 @@
 
   .stage {
     display: grid;
-    align-content: center;
+    grid-template-rows: minmax(14rem, auto) auto auto;
+    align-content: stretch;
     justify-items: center;
-    gap: 1rem;
-    padding-top: 0.25rem;
+    gap: clamp(1.1rem, 3vh, 2rem);
+    min-height: calc(100dvh - 5.5rem);
+    padding-top: clamp(0.5rem, 4vh, 2.4rem);
+    padding-bottom: clamp(1rem, 6vh, 3.8rem);
   }
 
   .hero-wrap {
     width: 100%;
     display: grid;
     justify-items: center;
+    align-self: start;
   }
 
   .dialogue {
     width: min(100%, 36rem);
     display: grid;
-    gap: 0.64rem;
+    gap: 0.82rem;
+    align-self: center;
   }
 
   .bubble {
@@ -313,8 +267,9 @@
     width: min(100%, 24rem);
     display: grid;
     justify-items: center;
-    gap: 0.46rem;
+    gap: 0.58rem;
     text-align: center;
+    align-self: end;
   }
 
   .focus h1 {
@@ -360,13 +315,15 @@
 
   @media (min-width: 900px) {
     .sanctuary {
-      gap: 0.9rem;
+      gap: 1.1rem;
       padding: max(1.1rem, env(safe-area-inset-top)) 1.35rem calc(1.8rem + env(safe-area-inset-bottom));
     }
 
     .stage {
-      gap: 1.3rem;
-      padding-top: 0.2rem;
+      gap: clamp(1.5rem, 3.8vh, 2.9rem);
+      min-height: calc(100dvh - 6.2rem);
+      padding-top: clamp(1rem, 8vh, 4.5rem);
+      padding-bottom: clamp(1.1rem, 8vh, 4.2rem);
     }
 
     .dialogue {

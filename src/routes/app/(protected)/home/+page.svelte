@@ -15,6 +15,7 @@
   const activeCompanion = data.activeCompanion ?? null;
   let companionState = activeCompanion ? { ...activeCompanion } : null;
   let dailyCheckinToday = data.dailyCheckinToday ?? null;
+  let latestDailyCheckin = data.latestDailyCheckin ?? null;
   let companionReply: string | null = null;
   let companionReplyDebug: string | null = null;
 
@@ -50,7 +51,6 @@
 
   $: closenessState = deriveClosenessState();
   $: companionName = companionState?.name ?? 'Mirae';
-  $: companionSpecies = companionState?.species ?? 'Muse';
   $: statusLine =
     closenessState === 'Distant'
       ? `${companionName} feels distant.`
@@ -58,16 +58,27 @@
         ? `${companionName} feels deeply connected.`
         : `${companionName} is near.`;
 
+  const isSameLocalDay = (dateA: Date, dateB: Date) =>
+    dateA.getFullYear() === dateB.getFullYear() && dateA.getMonth() === dateB.getMonth() && dateA.getDate() === dateB.getDate();
+
+  $: latestCheckinDate = latestDailyCheckin?.created_at ? new Date(latestDailyCheckin.created_at) : null;
+  $: checkinByDateField = Boolean(dailyCheckinToday);
+  $: checkinByTimestamp =
+    latestCheckinDate instanceof Date && !Number.isNaN(latestCheckinDate.getTime())
+      ? isSameLocalDay(latestCheckinDate, new Date())
+      : false;
+  $: hasRecentCheckin = checkinByDateField || checkinByTimestamp;
+
   $: statusReason =
-    !dailyCheckinToday
+    !hasRecentCheckin
       ? `${companionName} hasn't heard from you today.`
       : (effective?.energy ?? companionState?.energy ?? 0) < 35
         ? `${companionName} feels a little low-energy right now. Stay nearby.`
         : (data.notificationsUnread ?? 0) > 0
           ? 'You have new moments waiting together.'
-          : `${companionName} heard from you today and feels closer.`;
+          : `${companionName} heard from you recently and feels closer.`;
 
-  $: needsReconnectToday = closenessState === 'Distant' || !dailyCheckinToday;
+  $: needsReconnectToday = closenessState === 'Distant' || !hasRecentCheckin;
 
   let companionSheetOpen = false;
   let checkinModalOpen = false;
@@ -164,7 +175,10 @@
         return;
       }
 
-      if (payload?.checkin) dailyCheckinToday = payload.checkin;
+      if (payload?.checkin) {
+        dailyCheckinToday = payload.checkin;
+        latestDailyCheckin = payload.checkin;
+      }
       if (payload?.companion && companionState) {
         const existingStats = companionState.stats;
         const statsObj = Array.isArray(existingStats) ? (existingStats[0] ?? {}) : (existingStats ?? {});
@@ -242,7 +256,6 @@
 
     <HomeSanctuaryV1
       companionName={companionName}
-      companionSpecies={companionSpecies}
       companionAvatarUrl={companionState?.avatar_url ?? null}
       {closenessState}
       {statusLine}

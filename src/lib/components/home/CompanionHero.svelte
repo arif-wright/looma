@@ -6,7 +6,6 @@
   import type { MuseVisualMood } from '$lib/companions/museVisuals';
 
   export let name = 'Mirae';
-  export let species = 'Muse';
   export let avatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let activityState: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
@@ -131,8 +130,6 @@
       </button>
     </div>
   </div>
-  <h2>{name}</h2>
-  <p>{species}</p>
 </section>
 
 <style>
@@ -219,24 +216,6 @@
 
   .core :global(.core__model .muse-viewer) {
     border-radius: 1.6rem;
-  }
-
-  h2 {
-    margin: 0.4rem 0 0;
-    font-family: var(--home-font-display, 'Sora', 'Avenir Next', 'Segoe UI', sans-serif);
-    font-size: clamp(2rem, 6.4vw, 3.25rem);
-    line-height: 1;
-    letter-spacing: -0.02em;
-    color: rgba(248, 243, 232, 0.96);
-    text-shadow: 0 8px 28px rgba(39, 31, 79, 0.36);
-  }
-
-  p {
-    margin: 0.2rem 0 0;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.11em;
-    color: rgba(221, 230, 244, 0.78);
   }
 
   @keyframes modelFloat {
