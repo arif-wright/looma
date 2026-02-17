@@ -95,7 +95,7 @@
 
 <style>
   .sanctuary {
-    --home-font-display: 'Fraunces', 'Iowan Old Style', 'Times New Roman', serif;
+    --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
     --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
 
     position: relative;
