@@ -3,6 +3,9 @@
   import { onDestroy, onMount } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import GameGrid from '$lib/components/games/GameGrid.svelte';
+  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
+  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { games as gameCatalog } from '$lib/data/games';
   import {
     applyPlayerState,
@@ -178,12 +181,22 @@
 
 <div class="games-root bg-neuro" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
-  <main class="games-shell">
-    <section
-      class="games-hero"
-      style={heroBackground ? `background-image: ${heroBackground};` : undefined}
-      aria-label="Featured games"
-    >
+  <SanctuaryShell padded={false} class="games-shell-wrap">
+    <main class="games-shell">
+      <SanctuaryHeader
+        eyebrow="Ritual Play"
+        title="Games"
+        subtitle="Choose a short play ritual that supports energy, focus, and connection."
+      >
+        <svelte:fragment slot="actions">
+          <EmotionalChip tone="muted">{hasPlayedGames ? 'Returning player' : 'First session'}</EmotionalChip>
+        </svelte:fragment>
+      </SanctuaryHeader>
+      <section
+        class="games-hero"
+        style={heroBackground ? `background-image: ${heroBackground};` : undefined}
+        aria-label="Featured games"
+      >
       <div class="hero-copy">
         <p class="hero-kicker">{hasPlayedGames ? 'Pick up where you left off' : 'Ready when you are'}</p>
         <h1>
@@ -239,9 +252,9 @@
           </footer>
         </div>
       {/if}
-    </section>
+      </section>
 
-    <section class="games-rewards panel-glass" aria-label="Latest rewards">
+      <section class="games-rewards panel-glass" aria-label="Latest rewards">
       <header>
         <h2>Latest rewards</h2>
         <p>{hasPlayedGames ? 'Recent XP bursts and shard drops from your sessions.' : 'After your first session, rewards show up here.'}</p>
@@ -296,17 +309,18 @@
       {:else}
         <p class="rewards-empty">No games played yet. Your latest rewards will appear here.</p>
       {/if}
-    </section>
+      </section>
 
-    <section class="games-grid-panel panel-glass" aria-label="All games" data-testid="games-grid">
+      <section class="games-grid-panel panel-glass" aria-label="All games" data-testid="games-grid">
       <header class="games-grid-panel__header">
         <p class="games-grid-panel__kicker">Game library</p>
         <h2 class="games-grid-panel__title">All games</h2>
         <p class="games-grid-panel__lead">Browse the latest sims ready for playtesting.</p>
       </header>
       <GameGrid items={gridGames} aspect="16:9" />
-    </section>
-  </main>
+      </section>
+    </main>
+  </SanctuaryShell>
 </div>
 
 <style>
@@ -317,10 +331,13 @@
     overflow: hidden;
   }
 
+  :global(.games-shell-wrap) {
+    position: relative;
+    z-index: 1;
+  }
 
   .games-shell {
     position: relative;
-    z-index: 1;
     max-width: 1560px;
     box-sizing: border-box;
     margin: 0 auto;

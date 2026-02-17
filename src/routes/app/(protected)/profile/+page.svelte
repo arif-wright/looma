@@ -9,6 +9,9 @@
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
+  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
+  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
   import { currentProfile } from '$lib/stores/profile';
@@ -67,6 +70,7 @@ let editOpen = false;
   } else {
     featuredCompanionCard = null;
   }
+  $: profileTitle = data.isOwner ? 'Your Profile' : `${profile.display_name ?? profile.handle ?? 'Profile'}`;
 </script>
 
 <BackgroundStack class="profile-bg" />
@@ -87,69 +91,84 @@ let editOpen = false;
     on:edit={handleEdit}
   />
 
-  <main class="profile-grid mt-6">
-    <div class="profile-cols">
-      <div class="flex flex-col gap-4">
-        <ProfileSidebar
-          profile={profile}
-          stats={stats}
-          shards={data.walletShards ?? null}
-          featuredCompanion={data.featuredCompanion}
-          achievements={sidebarAchievements}
-          isOwner={data.isOwner}
-          companionHidden={data.companionHidden ?? false}
-          bondMilestones={data.bondMilestones ?? []}
-        />
-      </div>
-
-      <div class="space-y-4">
-        <SmartComposer avatarUrl={profile.avatar_url} on:posted={handleComposerPosted} />
-
-        {#if data.pinnedPost}
-          <section class="panel" aria-labelledby="pinned-heading">
-            <div class="flex items-center justify-between">
-              <h3 id="pinned-heading" class="panel-title m-0">Pinned</h3>
-              <span class="text-[10px] uppercase tracking-wide text-white/40">Profile</span>
-            </div>
-            <p class="mt-2 text-white/80 leading-relaxed">{data.pinnedPost?.body}</p>
-          </section>
+  <SanctuaryShell class="profile-shell">
+    <SanctuaryHeader
+      eyebrow="Identity"
+      title={profileTitle}
+      subtitle="Shape your presence, share reflections, and keep your companion context visible."
+    >
+      <svelte:fragment slot="actions">
+        <EmotionalChip tone="muted">{companionCount} companions</EmotionalChip>
+        {#if data.isOwner && bondGenesisEnabled}
+          <EmotionalChip tone="cool">Bond genesis on</EmotionalChip>
         {/if}
+      </svelte:fragment>
+    </SanctuaryHeader>
 
-        <section class="panel" id="overview">
-          <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
-        </section>
-
-        <section class="panel companion-panel" id="companions">
-          <ProfileHighlights
-            pinnedPost={data.pinnedPost}
-            companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
-            profileHandle={profile.handle}
+    <main class="profile-grid mt-6">
+      <div class="profile-cols">
+        <div class="flex flex-col gap-4">
+          <ProfileSidebar
+            profile={profile}
+            stats={stats}
+            shards={data.walletShards ?? null}
+            featuredCompanion={data.featuredCompanion}
+            achievements={sidebarAchievements}
+            isOwner={data.isOwner}
+            companionHidden={data.companionHidden ?? false}
+            bondMilestones={data.bondMilestones ?? []}
           />
-          <div class="featured-slot">
-            <h3 class="panel-title">Featured Companion</h3>
-            {#if featuredCompanionCard}
-              <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
-              <a class="btn-ghost mt-3 inline-flex w-full justify-center" href="/app/companions">Open care hub</a>
-            {:else}
-              <p class="text-muted">
-                Set an active companion from your <a class="underline" href="/app/companions">roster</a> to
-                highlight them here.
-              </p>
-            {/if}
-          </div>
-        </section>
+        </div>
 
-        <section id="activity" class="space-y-4">
-          <ProfileFeed
-            bind:this={feedRef}
-            authorIdentifier={profile.handle || profile.id}
-            initialItems={data.posts ?? []}
-            initialCursor={data.nextCursor}
-          />
-        </section>
+        <div class="space-y-4">
+          <SmartComposer avatarUrl={profile.avatar_url} on:posted={handleComposerPosted} />
+
+          {#if data.pinnedPost}
+            <section class="panel" aria-labelledby="pinned-heading">
+              <div class="flex items-center justify-between">
+                <h3 id="pinned-heading" class="panel-title m-0">Pinned</h3>
+                <span class="text-[10px] uppercase tracking-wide text-white/40">Profile</span>
+              </div>
+              <p class="mt-2 text-white/80 leading-relaxed">{data.pinnedPost?.body}</p>
+            </section>
+          {/if}
+
+          <section class="panel" id="overview">
+            <ProfileAbout bio={profile.bio} links={profile.links} pronouns={profile.pronouns} location={profile.location} />
+          </section>
+
+          <section class="panel companion-panel" id="companions">
+            <ProfileHighlights
+              pinnedPost={data.pinnedPost}
+              companion={data.featuredCompanion ? { name: data.featuredCompanion.name, mood: data.featuredCompanion.mood } : null}
+              profileHandle={profile.handle}
+            />
+            <div class="featured-slot">
+              <h3 class="panel-title">Featured Companion</h3>
+              {#if featuredCompanionCard}
+                <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
+                <a class="btn-ghost mt-3 inline-flex w-full justify-center" href="/app/companions">Open care hub</a>
+              {:else}
+                <p class="text-muted">
+                  Set an active companion from your <a class="underline" href="/app/companions">roster</a> to
+                  highlight them here.
+                </p>
+              {/if}
+            </div>
+          </section>
+
+          <section id="activity" class="space-y-4">
+            <ProfileFeed
+              bind:this={feedRef}
+              authorIdentifier={profile.handle || profile.id}
+              initialItems={data.posts ?? []}
+              initialCursor={data.nextCursor}
+            />
+          </section>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </SanctuaryShell>
 
   {#if data.isOwner}
     <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />
@@ -157,6 +176,10 @@ let editOpen = false;
 </div>
 
 <style>
+  :global(.profile-shell) {
+    padding-top: 1rem;
+  }
+
   .companion-panel {
     display: grid;
     gap: 1rem;
