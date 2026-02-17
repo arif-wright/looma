@@ -10,6 +10,19 @@ type GenerateCompanionTextArgs = {
   intensity: CompanionTextIntensity;
 };
 
+export type CompanionTextDebug = {
+  status: 'ok' | 'skipped' | 'failed';
+  reason: string;
+  model?: string;
+  httpStatus?: number;
+  detail?: string;
+};
+
+export type CompanionTextResult = {
+  text: string | null;
+  debug: CompanionTextDebug;
+};
+
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_LIGHT_MODEL = 'gpt-5-nano';
 const DEFAULT_PEAK_MODEL = 'gpt-5-mini';
@@ -184,15 +197,24 @@ export const classifyCompanionLlmIntensity = (args: {
 };
 
 export const generateCompanionText = async (args: GenerateCompanionTextArgs): Promise<string | null> => {
-  if (!LLM_ENABLED) return null;
+  const result = await generateCompanionTextWithDebug(args);
+  return result.text;
+};
+
+export const generateCompanionTextWithDebug = async (args: GenerateCompanionTextArgs): Promise<CompanionTextResult> => {
+  if (!LLM_ENABLED) return { text: null, debug: { status: 'skipped', reason: 'llm_disabled' } };
   const apiKey = privateEnv.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { text: null, debug: { status: 'skipped', reason: 'missing_api_key' } };
 
   const userId = args.event.meta?.userId ?? null;
   let intensity: CompanionTextIntensity = args.intensity;
+  let downgradedFromPeak = false;
   if (intensity === 'peak' && userId) {
     const allowed = await hasPeakBudget(userId);
-    if (!allowed) intensity = 'light';
+    if (!allowed) {
+      intensity = 'light';
+      downgradedFromPeak = true;
+    }
   }
 
   const caps = getTokenCaps(intensity);
@@ -234,20 +256,75 @@ export const generateCompanionText = async (args: GenerateCompanionTextArgs): Pr
       })
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const detail = (await res.text().catch(() => '')).trim().slice(0, 180);
+      return {
+        text: null,
+        debug: {
+          status: 'failed',
+          reason: `http_${res.status}`,
+          model,
+          httpStatus: res.status,
+          detail
+        }
+      };
+    }
     const payload = (await res.json().catch(() => null)) as unknown;
+    if (!payload || typeof payload !== 'object') {
+      return {
+        text: null,
+        debug: {
+          status: 'failed',
+          reason: 'invalid_json_payload',
+          model
+        }
+      };
+    }
     const text = extractResponseText(payload);
-    if (!text) return null;
+    if (!text) {
+      return {
+        text: null,
+        debug: {
+          status: 'failed',
+          reason: 'parse_no_text',
+          model
+        }
+      };
+    }
 
     const normalized = text.replace(/\s+/g, ' ');
     const cleaned = clampWords(clampText(normalized, caps.output), 18);
-    if (!cleaned) return null;
+    if (!cleaned) {
+      return {
+        text: null,
+        debug: {
+          status: 'failed',
+          reason: 'empty_after_cleanup',
+          model
+        }
+      };
+    }
 
     if (userId) {
       await logUsage({ userId, intensity, model, outputChars: cleaned.length });
     }
-    return cleaned;
-  } catch {
-    return null;
+    return {
+      text: cleaned,
+      debug: {
+        status: 'ok',
+        reason: downgradedFromPeak ? 'ok_peak_budget_downgraded' : 'ok',
+        model
+      }
+    };
+  } catch (err) {
+    return {
+      text: null,
+      debug: {
+        status: 'failed',
+        reason: 'network_error',
+        model,
+        detail: err instanceof Error ? err.message.slice(0, 180) : String(err).slice(0, 180)
+      }
+    };
   }
 };

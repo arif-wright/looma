@@ -6,7 +6,7 @@ import {
   type PersonaTone
 } from '$lib/companions/personaProfiles';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
-import { classifyCompanionLlmIntensity, generateCompanionText } from '$lib/server/llm/companionText';
+import { classifyCompanionLlmIntensity, generateCompanionTextWithDebug } from '$lib/server/llm/companionText';
 
 const preRunReactionTimestamps = new Map<string, number>();
 const WHISPER_LIBRARY = {
@@ -208,15 +208,17 @@ const companionAgent: Agent = {
         : 'your companion';
 
     const llmIntensity = classifyCompanionLlmIntensity({ event, context });
+    let llmDebugReason: string | null = null;
     if (llmIntensity) {
-      const llmText = await generateCompanionText({
+      const llmResult = await generateCompanionTextWithDebug({
         event,
         context,
         intensity: llmIntensity
       });
-      if (llmText) {
+      llmDebugReason = llmResult.debug.reason;
+      if (llmResult.text) {
         const reaction = {
-          text: llmText,
+          text: llmResult.text,
           kind: event.type,
           ttlMs: tuning.reactions.ttlMs,
           source: 'llm'
@@ -224,7 +226,11 @@ const companionAgent: Agent = {
         return {
           agentId: 'companion',
           handled: true,
-          output: { reaction, mood: 'steady', note: 'Muse generated an LLM reaction.' }
+          output: {
+            reaction,
+            mood: 'steady',
+            note: `Muse generated an LLM reaction (${llmResult.debug.reason}${llmResult.debug.model ? `:${llmResult.debug.model}` : ''}).`
+          }
         };
       }
     }
@@ -443,7 +449,11 @@ const companionAgent: Agent = {
     return {
       agentId: 'companion',
       handled: true,
-      output: { reaction, mood: 'steady', note: 'Muse acknowledges the event.' }
+      output: {
+        reaction,
+        mood: 'steady',
+        note: llmDebugReason ? `fallback_after_llm:${llmDebugReason}` : 'Muse acknowledges the event.'
+      }
     };
   }
 };
