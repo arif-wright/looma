@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { createEventDispatcher, onMount } from 'svelte';
+  import type { MuseAnimationName } from '$lib/companions/museAnimations';
   import CompanionHero from '$lib/components/home/CompanionHero.svelte';
 
   export let companionName = 'Mirae';
@@ -15,6 +16,7 @@
   export let companionReply: string | null = null;
   export let companionReplyDebug: string | null = null;
   export let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
+  export let modelAnimation: MuseAnimationName = 'Idle';
 
   const dispatch = createEventDispatcher<{
     primary: Record<string, never>;
@@ -75,6 +77,7 @@
         avatarUrl={companionAvatarUrl}
         {closenessState}
         activityState={modelActivity}
+        animationName={modelAnimation}
         on:open={() => dispatch('companion', {})}
       />
     </div>

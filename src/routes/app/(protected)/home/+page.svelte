@@ -5,6 +5,7 @@
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
   import { logEvent } from '$lib/analytics';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+  import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import type { PageData } from './$types';
 
   type HomeMood = 'calm' | 'heavy' | 'curious' | 'energized' | 'numb';
@@ -38,6 +39,7 @@
       : null;
 
   $: effective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance) : null;
+  $: museAnimation = pickMuseAnimationForMood(effective?.moodKey, { nowMs: nowTick, seed: companionState?.id ?? '' });
 
   const deriveClosenessState = () => {
     if (!companionState) return 'Near' as const;
@@ -76,7 +78,9 @@
   let reflectionText = '';
   let rewardTimer: ReturnType<typeof setTimeout> | null = null;
   let responseTimer: ReturnType<typeof setTimeout> | null = null;
+  let animationTickTimer: ReturnType<typeof setInterval> | null = null;
   let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
+  let nowTick = Date.now();
 
   const track = (
     kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'checkin_submit' | 'checkin_success' | 'checkin_error',
@@ -220,9 +224,14 @@
       hasMood: Boolean(dailyCheckinToday)
     });
 
+    animationTickTimer = setInterval(() => {
+      nowTick = Date.now();
+    }, 30_000);
+
     return () => {
       if (rewardTimer) clearTimeout(rewardTimer);
       if (responseTimer) clearTimeout(responseTimer);
+      if (animationTickTimer) clearInterval(animationTickTimer);
     };
   });
 </script>
@@ -244,6 +253,7 @@
       {companionReply}
       {companionReplyDebug}
       {modelActivity}
+      modelAnimation={museAnimation}
       on:primary={handlePrimaryReconnect}
       on:companion={() => {
         companionSheetOpen = true;

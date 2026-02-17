@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { onMount } from 'svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import type { MuseAnimationName } from '$lib/companions/museAnimations';
   import type { MuseVisualMood } from '$lib/companions/museVisuals';
 
   export let name = 'Mirae';
@@ -9,17 +10,29 @@
   export let avatarUrl: string | null = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let activityState: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
+  export let animationName: MuseAnimationName = 'Idle';
 
   const dispatch = createEventDispatcher<{ open: Record<string, never> }>();
 
   let tiltX = 0;
   let tiltY = 0;
+  let ambientX = 0;
+  let ambientY = 0;
+  let presenceBoost = 0;
+  let presenceDecayTimer: ReturnType<typeof setTimeout> | null = null;
+  let ambientTimer: ReturnType<typeof setInterval> | null = null;
 
   const updateTiltFromViewport = (clientX: number, clientY: number) => {
     const x = clientX / Math.max(1, window.innerWidth) - 0.5;
     const y = clientY / Math.max(1, window.innerHeight) - 0.5;
     tiltY = x * 14;
     tiltX = y * -10;
+    presenceBoost = 1;
+    if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
+    presenceDecayTimer = setTimeout(() => {
+      presenceBoost = 0;
+      presenceDecayTimer = null;
+    }, 1200);
   };
 
   const resetTilt = () => {
@@ -29,7 +42,7 @@
 
   $: baseIntensity = closenessState === 'Distant' ? 0.68 : closenessState === 'Resonant' ? 1.06 : 0.9;
   $: activityBoost = activityState === 'responding' ? 0.3 : activityState === 'composing' ? 0.2 : activityState === 'attending' ? 0.1 : 0;
-  $: intensity = baseIntensity + activityBoost;
+  $: intensity = Math.min(1.38, baseIntensity + activityBoost + presenceBoost * 0.14);
   let visualMood: MuseVisualMood = 'calm';
   $: visualMood =
     activityState === 'responding'
@@ -44,7 +57,18 @@
 
   onMount(() => {
     if (typeof window === 'undefined') return;
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    ambientTimer = setInterval(() => {
+      const max = closenessState === 'Distant' ? 1.8 : 2.6;
+      ambientX = (Math.random() - 0.5) * max;
+      ambientY = (Math.random() - 0.5) * max;
+    }, 2200);
+
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      return () => {
+        if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
+        if (ambientTimer) clearInterval(ambientTimer);
+      };
+    }
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') return;
@@ -61,25 +85,40 @@
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerleave', handleLeave);
       window.removeEventListener('blur', handleLeave);
+      if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
+      if (ambientTimer) clearInterval(ambientTimer);
     };
   });
 </script>
 
 <section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
   <div class="core__halo"></div>
+  <div class="core__halo core__halo--soft"></div>
   <div class="core__model-wrap {activityState === 'responding' ? 'core__model-wrap--responding' : ''}">
-    <div class="core__model-track" style={`--tilt-x:${tiltX}; --tilt-y:${tiltY};`}>
+    <div class="core__model-track" style={`--tilt-x:${tiltX}; --tilt-y:${tiltY}; --ambient-x:${ambientX}; --ambient-y:${ambientY};`}>
       <button
         class="core__model-button"
         type="button"
         on:click={() => dispatch('open', {})}
         on:pointerleave={resetTilt}
+        on:pointerenter={() => {
+          presenceBoost = 1;
+          if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
+          presenceDecayTimer = setTimeout(() => {
+            presenceBoost = 0;
+            presenceDecayTimer = null;
+          }, 900);
+        }}
+        on:pointerdown={() => {
+          presenceBoost = 1;
+        }}
         on:blur={resetTilt}
         aria-label={`Open ${name} details`}
       >
         <MuseModel
           class="core__model"
           poster={avatarUrl ?? undefined}
+          {animationName}
           visualMood={visualMood}
           glowEnabled={true}
           glowScale={intensity}
@@ -116,6 +155,14 @@
     animation: haloBreath 10s ease-in-out infinite;
   }
 
+  .core__halo--soft {
+    inset: 20% 16% auto;
+    height: clamp(10rem, 28vw, 15rem);
+    opacity: 0.58;
+    filter: blur(34px);
+    animation-duration: 13.5s;
+  }
+
   .core__model-wrap {
     position: relative;
     width: clamp(12rem, 46vw, 20rem);
@@ -132,8 +179,8 @@
       perspective(900px)
       rotateX(calc(var(--tilt-x) * 1deg))
       rotateY(calc(var(--tilt-y) * 1deg))
-      translate3d(calc(var(--tilt-y) * 0.7px), calc(var(--tilt-x) * -0.5px), 0);
-    transition: transform 120ms ease-out;
+      translate3d(calc(var(--tilt-y) * 0.7px + var(--ambient-x) * 1px), calc(var(--tilt-x) * -0.5px + var(--ambient-y) * 1px), 0);
+    transition: transform 260ms cubic-bezier(0.24, 0.08, 0.2, 1);
     will-change: transform;
   }
 
