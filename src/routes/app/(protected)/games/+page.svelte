@@ -3,8 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import GameGrid from '$lib/components/games/GameGrid.svelte';
-  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
-  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { games as gameCatalog } from '$lib/data/games';
   import {
@@ -181,17 +180,16 @@
 
 <div class="games-root bg-neuro" data-testid="games-hub">
   <BackgroundStack class="games-particles" />
-  <SanctuaryShell padded={false} class="games-shell-wrap">
+  <SanctuaryPageFrame
+    class="games-shell-wrap"
+    eyebrow="Ritual Play"
+    title="Games"
+    subtitle="Choose a short play ritual that supports energy, focus, and connection."
+  >
+    <svelte:fragment slot="actions">
+      <EmotionalChip tone="muted">{hasPlayedGames ? 'Returning player' : 'First session'}</EmotionalChip>
+    </svelte:fragment>
     <main class="games-shell">
-      <SanctuaryHeader
-        eyebrow="Ritual Play"
-        title="Games"
-        subtitle="Choose a short play ritual that supports energy, focus, and connection."
-      >
-        <svelte:fragment slot="actions">
-          <EmotionalChip tone="muted">{hasPlayedGames ? 'Returning player' : 'First session'}</EmotionalChip>
-        </svelte:fragment>
-      </SanctuaryHeader>
       <section
         class="games-hero"
         style={heroBackground ? `background-image: ${heroBackground};` : undefined}
@@ -320,7 +318,7 @@
       <GameGrid items={gridGames} aspect="16:9" />
       </section>
     </main>
-  </SanctuaryShell>
+  </SanctuaryPageFrame>
 </div>
 
 <style>

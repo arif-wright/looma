@@ -14,8 +14,7 @@
   import type { BondAchievementStatus } from '$lib/companions/bond';
   import Modal from '$lib/components/ui/Modal.svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
-  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
-  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
@@ -657,19 +656,17 @@
   <title>Looma - Companions</title>
 </svelte:head>
 
-<SanctuaryShell>
+<SanctuaryPageFrame
+  eyebrow="Companion Presence"
+  title="Your Companions"
+  subtitle="One place to check in, care, and switch who stays by your side."
+>
+  <svelte:fragment slot="actions">
+    <EmotionalChip tone="cool">Active: {activeCompanion ? activeCompanion.name : 'None'}</EmotionalChip>
+    <EmotionalChip tone="muted">Slots: {slotsUsed}/{maxSlots}</EmotionalChip>
+  </svelte:fragment>
 <main class="companions-page sanctuary-card">
   <div class="hydration-flag" data-hydrated={hydrated ? 'true' : 'false'} aria-hidden="true"></div>
-  <SanctuaryHeader
-    eyebrow="Companion Presence"
-    title="Your Companions"
-    subtitle="One place to check in, care, and switch who stays by your side."
-  >
-    <svelte:fragment slot="actions">
-      <EmotionalChip tone="cool">Active: {activeCompanion ? activeCompanion.name : 'None'}</EmotionalChip>
-      <EmotionalChip tone="muted">Slots: {slotsUsed}/{maxSlots}</EmotionalChip>
-    </svelte:fragment>
-  </SanctuaryHeader>
   <header class="companions-header">
     <div class="header-pills">
       <button type="button" class="pill pill-action" on:click={handleUnlockCta}>Unlock slot</button>
@@ -941,7 +938,7 @@
     <BondMilestonesPanel milestones={bondMilestones} />
   </section>
 </main>
-</SanctuaryShell>
+</SanctuaryPageFrame>
 
 <CompanionModal
   open={Boolean(selectedForCare)}

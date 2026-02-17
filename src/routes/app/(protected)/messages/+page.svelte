@@ -8,8 +8,7 @@
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
-  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
-  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
@@ -1057,18 +1056,16 @@
   });
 </script>
 
-<SanctuaryShell>
-  <SanctuaryHeader
-    eyebrow="Companion Dialogue"
-    title="Messages"
-    subtitle="Keep your conversations spacious, warm, and easy to follow."
-  >
-    <svelte:fragment slot="actions">
-      {#if presenceLabel}
-        <EmotionalChip tone="cool">{presenceLabel}</EmotionalChip>
-      {/if}
-    </svelte:fragment>
-  </SanctuaryHeader>
+<SanctuaryPageFrame
+  eyebrow="Companion Dialogue"
+  title="Messages"
+  subtitle="Keep your conversations spacious, warm, and easy to follow."
+>
+  <svelte:fragment slot="actions">
+    {#if presenceLabel}
+      <EmotionalChip tone="cool">{presenceLabel}</EmotionalChip>
+    {/if}
+  </svelte:fragment>
 
   <GlassCard class="messenger-card">
     <div class="messenger-shell">
@@ -1153,7 +1150,7 @@
       </section>
     </div>
   </GlassCard>
-</SanctuaryShell>
+</SanctuaryPageFrame>
 
 <StartChatModal
   open={showStartModal}

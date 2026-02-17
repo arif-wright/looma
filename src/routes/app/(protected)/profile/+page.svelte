@@ -1,6 +1,5 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
@@ -9,8 +8,7 @@
   import SmartComposer from '$lib/components/profile/SmartComposer.svelte';
   import CompanionCard from '$lib/components/companions/CompanionCard.svelte';
   import EditProfileModal from '$lib/components/profile/EditProfileModal.svelte';
-  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
-  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import type { PageData } from './$types';
   import type { PostRow } from '$lib/social/types';
@@ -73,8 +71,6 @@ let editOpen = false;
   $: profileTitle = data.isOwner ? 'Your Profile' : `${profile.display_name ?? profile.handle ?? 'Profile'}`;
 </script>
 
-<BackgroundStack class="profile-bg" />
-
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
   <ProfileHeader
     profile={profile}
@@ -91,19 +87,18 @@ let editOpen = false;
     on:edit={handleEdit}
   />
 
-  <SanctuaryShell class="profile-shell">
-    <SanctuaryHeader
-      eyebrow="Identity"
-      title={profileTitle}
-      subtitle="Shape your presence, share reflections, and keep your companion context visible."
-    >
-      <svelte:fragment slot="actions">
-        <EmotionalChip tone="muted">{companionCount} companions</EmotionalChip>
-        {#if data.isOwner && bondGenesisEnabled}
-          <EmotionalChip tone="cool">Bond genesis on</EmotionalChip>
-        {/if}
-      </svelte:fragment>
-    </SanctuaryHeader>
+  <SanctuaryPageFrame
+    class="profile-shell"
+    eyebrow="Identity"
+    title={profileTitle}
+    subtitle="Shape your presence, share reflections, and keep your companion context visible."
+  >
+    <svelte:fragment slot="actions">
+      <EmotionalChip tone="muted">{companionCount} companions</EmotionalChip>
+      {#if data.isOwner && bondGenesisEnabled}
+        <EmotionalChip tone="cool">Bond genesis on</EmotionalChip>
+      {/if}
+    </svelte:fragment>
 
     <main class="profile-grid mt-6">
       <div class="profile-cols">
@@ -168,7 +163,7 @@ let editOpen = false;
         </div>
       </div>
     </main>
-  </SanctuaryShell>
+  </SanctuaryPageFrame>
 
   {#if data.isOwner}
     <EditProfileModal bind:open={editOpen} {profile} on:profileUpdated={onProfileUpdated} onClose={() => (editOpen = false)} />

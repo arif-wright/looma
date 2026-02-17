@@ -5,8 +5,7 @@
   import CircleDetail from '$lib/components/circles/CircleDetail.svelte';
   import CircleCreateModal from '$lib/components/circles/CircleCreateModal.svelte';
   import CircleJoinModal from '$lib/components/circles/CircleJoinModal.svelte';
-  import SanctuaryShell from '$lib/components/ui/sanctuary/SanctuaryShell.svelte';
-  import SanctuaryHeader from '$lib/components/ui/sanctuary/SanctuaryHeader.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
   import type { CircleDetailPayload, CircleEventSummary, CircleSummary } from '$lib/components/circles/types';
 
@@ -208,12 +207,11 @@
   });
 </script>
 
-<SanctuaryShell>
-  <SanctuaryHeader
-    eyebrow="Community"
-    title="Circles"
-    subtitle="Move between intimate groups built for support, reflection, and shared moments."
-  />
+<SanctuaryPageFrame
+  eyebrow="Community"
+  title="Circles"
+  subtitle="Move between intimate groups built for support, reflection, and shared moments."
+>
 
   <GlassCard class="circles-card">
     <div class="circles-shell">
@@ -263,7 +261,7 @@
       </section>
     </div>
   </GlassCard>
-</SanctuaryShell>
+</SanctuaryPageFrame>
 
 <CircleCreateModal
   open={showCreate}
