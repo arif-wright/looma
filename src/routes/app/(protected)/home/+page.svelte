@@ -137,6 +137,7 @@
 
       const payload = (await response.json().catch(() => null)) as {
         checkin?: { id: string; mood: HomeMood; checkin_date: string; created_at: string } | null;
+        checkInAt?: string;
         companion?: {
           id: string;
           trust: number;
@@ -159,13 +160,22 @@
 
       if (payload?.checkin) dailyCheckinToday = payload.checkin;
       if (payload?.companion && companionState) {
+        const existingStats = companionState.stats;
+        const statsObj = Array.isArray(existingStats) ? (existingStats[0] ?? {}) : (existingStats ?? {});
+        const nextStats = {
+          ...statsObj,
+          played_at: payload.checkInAt ?? new Date().toISOString(),
+          last_passive_tick: payload.checkInAt ?? new Date().toISOString()
+        };
+
         companionState = {
           ...companionState,
           trust: payload.companion.trust,
           affection: payload.companion.affection,
           energy: payload.companion.energy,
           mood: payload.companion.mood,
-          updated_at: payload.companion.updated_at
+          updated_at: payload.companion.updated_at,
+          stats: Array.isArray(existingStats) ? [nextStats] : nextStats
         };
       }
 

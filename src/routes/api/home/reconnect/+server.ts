@@ -112,6 +112,22 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
+  const checkInAt = new Date().toISOString();
+  try {
+    await db
+      .from('companion_stats')
+      .upsert(
+        {
+          companion_id: updatedCompanion.id,
+          played_at: checkInAt,
+          last_passive_tick: checkInAt
+        },
+        { onConflict: 'companion_id', ignoreDuplicates: false }
+      );
+  } catch (err) {
+    console.error('[home/reconnect] companion stats upsert failed', err);
+  }
+
   let rituals = null;
   try {
     rituals = await incrementCompanionRitual(db, userId, 'care_once', {
@@ -152,6 +168,7 @@ export const POST: RequestHandler = async (event) => {
       ok: true,
       checkin,
       companion: updatedCompanion,
+      checkInAt,
       deltas: {
         trust: nextTrust - (companion.trust ?? 0),
         affection: nextAffection - (companion.affection ?? 0),

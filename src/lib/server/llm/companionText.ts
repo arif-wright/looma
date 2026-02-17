@@ -85,10 +85,14 @@ const buildContextSummary = (args: {
   context: Record<string, unknown> | null | undefined;
   intensity: CompanionTextIntensity;
 }) => {
+  const payload = (args.event.payload ?? {}) as Record<string, unknown>;
   const world = (args.context?.worldState as Record<string, unknown> | undefined) ?? {};
   const portable = (args.context?.portableState as Record<string, unknown> | undefined) ?? {};
   const companion = ((args.context?.companion as Record<string, unknown> | undefined)?.active ??
     {}) as Record<string, unknown>;
+  const reflectionRaw = readString(payload.reflection, '');
+  const reflectionExcerpt = clampWords(clampText(reflectionRaw, 120), 24);
+  const ritualMood = readString(payload.mood, '');
 
   const summary = {
     eventType: args.event.type,
@@ -102,7 +106,9 @@ const buildContextSummary = (args: {
       typeof world.lastSessionEnd === 'string' && world.lastSessionEnd
         ? Math.max(0, Math.floor((Date.parse(args.event.timestamp) - Date.parse(world.lastSessionEnd)) / (24 * 60 * 60 * 1000)))
         : 0,
-    preferredTone: readString(portable.tone, 'warm')
+    preferredTone: readString(portable.tone, 'warm'),
+    ritualMood: ritualMood || null,
+    reflectionExcerpt: reflectionExcerpt || null
   };
 
   return summary;
@@ -164,6 +170,8 @@ export const classifyCompanionLlmIntensity = (args: {
       : 0;
 
   if (type === 'companion.evolve' || type === 'bond.milestone') return 'peak';
+  if (type === 'companion.ritual.listen') return 'light';
+  if (type === 'companion.ritual.focus' || type === 'companion.ritual.celebrate') return 'light';
   if (type === 'mission.complete') {
     const payload = (args.event.payload ?? {}) as Record<string, unknown>;
     const milestone = payload.dailyStreakMilestone;
