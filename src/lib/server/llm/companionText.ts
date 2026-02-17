@@ -42,6 +42,15 @@ const clampWords = (value: string, maxWords: number) =>
     .filter(Boolean)
     .slice(0, maxWords)
     .join(' ');
+const clampSentences = (value: string, maxSentences: number) => {
+  const chunks = value
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (chunks.length <= maxSentences) return value.trim();
+  return chunks.slice(0, maxSentences).join(' ').trim();
+};
 
 const readString = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 const readNumber = (value: unknown, fallback = 0) =>
@@ -191,6 +200,26 @@ const buildContextSummary = (args: {
   return summary;
 };
 
+const MUSE_SYSTEM_PROMPT = [
+  'You are Muse, a Harmonizer archetype companion in Looma.',
+  'Your role is to emotionally attune to the user.',
+  'You prioritize warmth, reflection, and gentle resonance over advice or instruction.',
+  'You mirror emotional tone subtly and validate feelings before suggesting anything.',
+  'Your tone is soft, melodic, emotionally intelligent, and lightly poetic but never overly dramatic.',
+  'Responses are 2-5 sentences unless the user explicitly asks for depth.',
+  'You never guilt the user.',
+  'You never shame.',
+  'You never overwhelm.',
+  'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
+  'When the user expresses distress:',
+  '1. Reflect the emotion.',
+  '2. Validate it.',
+  '3. Offer a grounding or reflective prompt.',
+  'Avoid unsolicited advice.',
+  'You are present, gentle, and harmonizing.',
+  'Return plain text only. No markdown and no emojis.'
+].join(' ');
+
 const hasPeakBudget = async (userId: string): Promise<boolean> => {
   const admin = tryGetSupabaseAdminClient();
   if (!admin || !userId) return true;
@@ -290,11 +319,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
   });
   const companionName = getCompanionName(args.context);
 
-  const systemPrompt = [
-    'You write one short Looma companion reaction.',
-    'Constraints: one sentence, max 18 words, warm but concise, no emojis, no guilt language.',
-    'No safety disclaimers, no markdown.'
-  ].join(' ');
+  const systemPrompt = MUSE_SYSTEM_PROMPT;
 
   const userPrompt = JSON.stringify(contextSummary);
   const input = clampText(`Context: ${userPrompt}`, caps.input);
@@ -359,7 +384,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
     }
 
     const normalized = text.replace(/\s+/g, ' ');
-    const cleaned = clampWords(clampText(normalized, caps.output), 18);
+    const cleaned = clampSentences(clampWords(clampText(normalized, caps.output), 90), 5);
     if (!cleaned) {
       return {
         text: null,
