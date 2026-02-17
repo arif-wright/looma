@@ -13,6 +13,7 @@
   export let primaryCopy = 'A quick check-in to bring Mirae closer.';
   export let needsReconnectToday = false;
   export let companionReply: string | null = null;
+  export let companionReplyDebug: string | null = null;
   export let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
 
   const dispatch = createEventDispatcher<{
@@ -80,7 +81,12 @@
 
     <section class="dialogue" aria-live="polite">
       <p class="bubble bubble--user">{statusReason}</p>
-      <p class="bubble bubble--companion">{supportiveLine}</p>
+      <div class="bubble-group">
+        <p class="bubble bubble--companion">{supportiveLine}</p>
+        {#if companionReplyDebug}
+          <p class="reply-debug">{companionReplyDebug}</p>
+        {/if}
+      </div>
     </section>
 
     <section class="focus">
@@ -283,6 +289,21 @@
     justify-self: end;
     background: rgba(118, 97, 173, 0.34);
     color: rgba(244, 236, 250, 0.92);
+  }
+
+  .bubble-group {
+    justify-self: end;
+    display: grid;
+    gap: 0.25rem;
+    justify-items: end;
+  }
+
+  .reply-debug {
+    margin: 0;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(216, 230, 248, 0.72);
   }
 
   .focus {

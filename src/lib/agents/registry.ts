@@ -218,7 +218,8 @@ const companionAgent: Agent = {
         const reaction = {
           text: llmText,
           kind: event.type,
-          ttlMs: tuning.reactions.ttlMs
+          ttlMs: tuning.reactions.ttlMs,
+          source: 'llm'
         };
         return {
           agentId: 'companion',
@@ -431,7 +432,8 @@ const companionAgent: Agent = {
     const reaction = {
       text,
       kind: event.type,
-      ttlMs: tuning.reactions.ttlMs
+      ttlMs: tuning.reactions.ttlMs,
+      source: 'fallback'
     };
 
     if (dev) {

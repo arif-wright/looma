@@ -15,6 +15,7 @@
   let companionState = activeCompanion ? { ...activeCompanion } : null;
   let dailyCheckinToday = data.dailyCheckinToday ?? null;
   let companionReply: string | null = null;
+  let companionReplyDebug: string | null = null;
 
   $: activeAsInstance =
     companionState
@@ -148,6 +149,7 @@
         } | null;
         deltas?: { trust?: number; affection?: number; energy?: number } | null;
         reaction?: { text?: string } | null;
+        debug?: { responseSource?: string; responseNote?: string | null; traceId?: string | null } | null;
         message?: string;
       } | null;
 
@@ -184,6 +186,11 @@
         typeof payload?.reaction?.text === 'string' && payload.reaction.text.trim().length > 0
           ? payload.reaction.text.trim()
           : defaultReply;
+      if (payload?.debug?.responseSource) {
+        companionReplyDebug = `source: ${payload.debug.responseSource}${payload.debug.responseNote ? ` · ${payload.debug.responseNote}` : ''}`;
+      } else {
+        companionReplyDebug = 'source: unknown';
+      }
 
       const deltaEnergy = payload?.deltas?.energy ?? 0;
       const deltaTrust = payload?.deltas?.trust ?? 0;
@@ -235,6 +242,7 @@
       primaryLabel="Check in with Mirae"
       primaryCopy="Share how you feel, hear her response, and strengthen your bond."
       {companionReply}
+      {companionReplyDebug}
       {modelActivity}
       on:primary={handlePrimaryReconnect}
       on:companion={() => {

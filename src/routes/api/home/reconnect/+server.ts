@@ -162,6 +162,24 @@ export const POST: RequestHandler = async (event) => {
     typeof (eventResponse as Record<string, unknown>).output === 'object'
       ? ((eventResponse as Record<string, any>).output?.reaction ?? null)
       : null;
+  const reactionOutput =
+    eventResponse &&
+    typeof eventResponse === 'object' &&
+    (eventResponse as Record<string, unknown>).output &&
+    typeof (eventResponse as Record<string, unknown>).output === 'object'
+      ? ((eventResponse as Record<string, any>).output as Record<string, unknown>)
+      : null;
+  const responseSource =
+    reaction && typeof (reaction as Record<string, unknown>).source === 'string'
+      ? String((reaction as Record<string, unknown>).source)
+      : 'fallback';
+  const responseNote = reactionOutput && typeof reactionOutput.note === 'string' ? reactionOutput.note : null;
+  const traceId =
+    eventResponse &&
+    typeof eventResponse === 'object' &&
+    typeof (eventResponse as Record<string, unknown>).traceId === 'string'
+      ? String((eventResponse as Record<string, unknown>).traceId)
+      : null;
 
   return json(
     {
@@ -175,7 +193,12 @@ export const POST: RequestHandler = async (event) => {
         energy: nextEnergy - (companion.energy ?? 0)
       },
       rituals,
-      reaction
+      reaction,
+      debug: {
+        responseSource,
+        responseNote,
+        traceId
+      }
     },
     { headers: CACHE_HEADERS }
   );
