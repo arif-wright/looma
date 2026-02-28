@@ -8,7 +8,7 @@
 
   export let data: { next?: string | null };
 
-  const ACCENT_GRADIENT = 'linear-gradient(90deg, #9b5cff, #4df4ff)';
+  const ACCENT_GRADIENT = 'linear-gradient(125deg, #d4ad5c, #a6793d)';
   const supabase = createSupabaseBrowserClient();
   const schema = z.object({
     email: z.string().email('Enter a valid email address'),
@@ -113,8 +113,9 @@
 
 <article class="auth-card" style={`--accent-gradient: ${ACCENT_GRADIENT};`}>
   <header class="auth-card__header">
-    <h1>Looma remembers your light.</h1>
-    <p>Step back into your bond.</p>
+    <p class="auth-card__eyebrow">Begin sanctuary</p>
+    <h1>Start with one companion and let the rest of Looma grow around that bond.</h1>
+    <p>Create your account, step into the sanctuary, and begin building memory from the first check-in.</p>
   </header>
 
   <form class="auth-form" on:submit={handleSignup} aria-label="Email signup">
@@ -183,16 +184,16 @@
   .auth-card {
     width: min(520px, 100%);
     background:
-      linear-gradient(155deg, rgba(24, 30, 47, 0.18), rgba(8, 12, 26, 0.06));
-    border: 1px solid rgba(255, 255, 255, 0.24);
+      linear-gradient(155deg, rgba(29, 24, 17, 0.82), rgba(12, 15, 18, 0.7));
+    border: 1px solid rgba(214, 190, 141, 0.18);
     border-radius: 22px;
     padding: clamp(2.3rem, 3vw, 3rem);
     backdrop-filter: blur(38px) saturate(165%);
     box-shadow:
-      0 28px 70px rgba(3, 4, 12, 0.46),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+      0 28px 70px rgba(5, 8, 10, 0.42),
+      inset 0 0 0 1px rgba(255, 245, 224, 0.04);
     animation: fadeUp 620ms cubic-bezier(0.26, 0.78, 0.33, 0.99) both;
-    color: #f9f8ff;
+    color: #f8f1e3;
     position: relative;
     overflow: hidden;
   }
@@ -203,10 +204,10 @@
     inset: 1px;
     border-radius: inherit;
     background:
-      linear-gradient(115deg, rgba(255, 255, 255, 0.35), transparent 55%),
-      radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.2), transparent 55%),
-      radial-gradient(circle at 82% 80%, rgba(255, 255, 255, 0.16), transparent 58%);
-    opacity: 0.4;
+      linear-gradient(115deg, rgba(255, 244, 221, 0.14), transparent 55%),
+      radial-gradient(circle at 22% 20%, rgba(214, 190, 141, 0.14), transparent 55%),
+      radial-gradient(circle at 82% 80%, rgba(128, 175, 148, 0.12), transparent 58%);
+    opacity: 0.7;
     pointer-events: none;
     mix-blend-mode: screen;
   }
@@ -227,18 +228,27 @@
     margin-bottom: 2.25rem;
   }
 
+  .auth-card__eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.78);
+  }
+
   .auth-card__header h1 {
     margin: 0;
     font-size: clamp(1.9rem, 3vw, 2.4rem);
     font-weight: 600;
-    color: #fff;
+    color: #fff8ed;
     letter-spacing: -0.01em;
   }
 
   .auth-card__header p {
     margin: 0;
     font-size: 1rem;
-    color: rgba(211, 202, 255, 0.8);
+    color: rgba(226, 214, 191, 0.8);
   }
 
   .auth-form {
@@ -254,15 +264,15 @@
   .auth-field span {
     font-size: 0.9rem;
     font-weight: 500;
-    color: rgba(238, 235, 255, 0.78);
+    color: rgba(238, 228, 208, 0.8);
   }
 
   input {
     width: 100%;
     padding: 0.9rem 1rem;
     border-radius: 14px;
-    background: rgba(17, 19, 28, 0.28);
-    border: 1px solid rgba(157, 152, 255, 0.22);
+    background: rgba(16, 18, 19, 0.72);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     color: inherit;
     font-size: 1rem;
     transition:
@@ -272,16 +282,16 @@
   }
 
   input::placeholder {
-    color: rgba(204, 200, 236, 0.5);
+    color: rgba(205, 194, 172, 0.48);
   }
 
   input:focus-visible {
     outline: none;
-    border-color: rgba(157, 92, 255, 0.75);
+    border-color: rgba(214, 190, 141, 0.7);
     box-shadow:
-      0 0 0 2px rgba(157, 92, 255, 0.3),
-      0 15px 30px rgba(157, 92, 255, 0.18);
-    background: rgba(18, 20, 33, 0.42);
+      0 0 0 2px rgba(214, 190, 141, 0.22),
+      0 15px 30px rgba(166, 121, 61, 0.14);
+    background: rgba(19, 22, 24, 0.86);
   }
 
   .auth-error {
@@ -307,7 +317,7 @@
     border: none;
     font-size: 1rem;
     font-weight: 600;
-    color: #05060d;
+    color: #191109;
     background: var(--accent-gradient);
     cursor: pointer;
     transition:
@@ -324,8 +334,8 @@
   .auth-primary:not(:disabled):focus-visible {
     transform: translateY(-2px);
     box-shadow:
-      0 18px 40px rgba(77, 244, 255, 0.28),
-      0 8px 20px rgba(155, 92, 255, 0.33);
+      0 18px 40px rgba(214, 190, 141, 0.18),
+      0 8px 20px rgba(166, 121, 61, 0.24);
   }
 
   .auth-primary:not(:disabled):active {
@@ -340,7 +350,7 @@
     text-transform: uppercase;
     font-size: 0.7rem;
     letter-spacing: 0.32em;
-    color: rgba(218, 215, 255, 0.4);
+    color: rgba(214, 203, 180, 0.38);
   }
 
   .auth-divider::before,
@@ -348,11 +358,11 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(217, 217, 255, 0.12), transparent);
+    background: linear-gradient(90deg, rgba(214, 190, 141, 0.14), transparent);
   }
 
   .auth-divider::after {
-    background: linear-gradient(90deg, transparent, rgba(217, 217, 255, 0.12));
+    background: linear-gradient(90deg, transparent, rgba(214, 190, 141, 0.14));
   }
 
   .auth-oauth {
@@ -364,9 +374,9 @@
     width: 100%;
     padding: 0.85rem 1rem;
     border-radius: 12px;
-    border: 1px solid rgba(210, 208, 255, 0.14);
-    background: rgba(18, 20, 34, 0.55);
-    color: #f5f3ff;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(18, 20, 21, 0.7);
+    color: #f5ecda;
     font-weight: 500;
     cursor: pointer;
     transition:
@@ -377,9 +387,9 @@
 
   .auth-oauth__button:not(:disabled):hover,
   .auth-oauth__button:not(:disabled):focus-visible {
-    background: rgba(27, 30, 46, 0.78);
-    border-color: rgba(157, 92, 255, 0.45);
-    box-shadow: 0 12px 30px rgba(155, 92, 255, 0.25);
+    background: rgba(28, 24, 19, 0.84);
+    border-color: rgba(214, 190, 141, 0.34);
+    box-shadow: 0 12px 30px rgba(166, 121, 61, 0.18);
   }
 
   .auth-oauth__button:disabled {
@@ -390,11 +400,11 @@
   .auth-footnote {
     margin: 2.25rem 0 0;
     font-size: 0.95rem;
-    color: rgba(222, 219, 255, 0.7);
+    color: rgba(222, 211, 189, 0.72);
   }
 
   .auth-link {
-    color: #c3bbff;
+    color: #e6cb92;
     font-weight: 500;
   }
 
@@ -417,11 +427,11 @@
   @keyframes pulse {
     0% {
       transform: scale(0.99);
-      box-shadow: 0 0 0 0 rgba(157, 92, 255, 0.4);
+      box-shadow: 0 0 0 0 rgba(214, 190, 141, 0.34);
     }
     70% {
       transform: scale(1);
-      box-shadow: 0 0 0 16px rgba(157, 92, 255, 0);
+      box-shadow: 0 0 0 16px rgba(214, 190, 141, 0);
     }
     100% {
       transform: scale(1);

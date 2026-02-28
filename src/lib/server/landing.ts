@@ -52,7 +52,7 @@ export const surfaceToPath = (
   switch (surface) {
     case 'creatures': {
       const focus = payload?.creatureId;
-      return focus ? `/app/creatures?focus=${encodeURIComponent(String(focus))}` : '/app/creatures';
+      return focus ? `/app/companions?focus=${encodeURIComponent(String(focus))}` : '/app/companions';
     }
     case 'dashboard':
       return '/app/dashboard';
@@ -162,9 +162,7 @@ export const computeLanding = (
   if (prefs.start_on && prefs.start_on !== 'home') {
     surface = prefs.start_on;
   } else {
-    if (variant === 'A') surface = 'dashboard';
-    if (variant === 'B') surface = 'creatures';
-    if (variant === 'C') surface = 'home';
+    surface = 'home';
   }
 
   return {

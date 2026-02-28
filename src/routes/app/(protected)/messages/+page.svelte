@@ -37,6 +37,8 @@
   let viewerCanModerate = false;
   let nextCursor: string | null = null;
   let searchQuery = '';
+  let isCompactLayout = false;
+  let mobilePanel: 'list' | 'thread' = 'list';
 
   let loadingConversations = false;
   let loadingMessages = false;
@@ -66,6 +68,7 @@
   let activeMessagesChannel: RealtimeChannel | null = null;
   let conversationsChannel: RealtimeChannel | null = null;
   let presenceChannel: RealtimeChannel | null = null;
+  let teardownCompactLayoutListener: (() => void) | null = null;
 
   const byNewest = (a: MessengerConversation, b: MessengerConversation) => {
     const aTime = a.last_message_at ? Date.parse(a.last_message_at) : 0;
@@ -118,6 +121,8 @@
     activeConversationId
       ? conversations.find((conversation) => conversation.conversationId === activeConversationId) ?? null
       : null;
+  $: showConversationPanel = !isCompactLayout || mobilePanel === 'list' || !activeConversationId;
+  $: showThreadPanel = !isCompactLayout || (mobilePanel === 'thread' && Boolean(activeConversationId));
 
   $: threadTitle =
     activeConversation?.peer?.display_name ??
@@ -389,8 +394,12 @@
   };
 
   const handleSelectConversation = async (conversationId: string) => {
-    if (conversationId === activeConversationId) return;
+    if (conversationId === activeConversationId) {
+      mobilePanel = 'thread';
+      return;
+    }
     activeConversationId = conversationId;
+    mobilePanel = 'thread';
     editingMessageId = null;
     editingSeed = '';
     mediaViewerOpen = false;
@@ -400,6 +409,12 @@
     await loadMessages(conversationId, false);
     await markConversationRead(conversationId);
     await bindActiveMessagesRealtime();
+  };
+
+  const returnToInbox = () => {
+    mediaViewerOpen = false;
+    mediaViewerError = null;
+    mobilePanel = 'list';
   };
 
   const updateLocalMessage = (messageId: string, patch: Partial<MessengerMessage>) => {
@@ -1012,6 +1027,20 @@
     if (!browser) return;
     supabaseClient = supabaseBrowser();
     const initialConversationHint = new URL(window.location.href).searchParams.get('conversationId');
+    const mediaQuery = window.matchMedia('(max-width: 720px)');
+    const syncCompactLayout = () => {
+      isCompactLayout = mediaQuery.matches;
+      if (!mediaQuery.matches) {
+        mobilePanel = 'thread';
+        return;
+      }
+      mobilePanel = activeConversationId ? 'thread' : 'list';
+    };
+    syncCompactLayout();
+    mediaQuery.addEventListener('change', syncCompactLayout);
+    teardownCompactLayoutListener = () => {
+      mediaQuery.removeEventListener('change', syncCompactLayout);
+    };
 
     await loadConversations(false);
     await loadFriendOptions();
@@ -1053,6 +1082,10 @@
       void supabaseClient.removeChannel(presenceChannel);
       presenceChannel = null;
     }
+    if (teardownCompactLayoutListener) {
+      teardownCompactLayoutListener();
+      teardownCompactLayoutListener = null;
+    }
   });
 </script>
 
@@ -1069,85 +1102,125 @@
 
   <GlassCard class="messenger-card">
     <div class="messenger-shell">
-      <ConversationList
-        conversations={filteredConversations}
-        {activeConversationId}
-        query={searchQuery}
-        on:select={(event) => handleSelectConversation(event.detail.conversationId)}
-        on:create={() => {
-          showStartModal = true;
-          startModalError = null;
-          void loadFriendOptions();
-        }}
-        on:query={(event) => {
-          searchQuery = event.detail.value;
-        }}
-      />
+      {#if showConversationPanel}
+        <section class="conversation-panel">
+          {#if isCompactLayout}
+            <div class="mobile-inbox-intro">
+              <div>
+                <p class="mobile-inbox-intro__eyebrow">Inbox</p>
+                <h2>Keep the weave close</h2>
+                <p>Reply quickly, start a new conversation, and keep your closest threads easy to reach.</p>
+              </div>
+              <div class="mobile-inbox-intro__meta">
+                <span>{filteredConversations.length} thread{filteredConversations.length === 1 ? '' : 's'}</span>
+                {#if data.notificationsUnread}
+                  <span>{data.notificationsUnread} unread</span>
+                {/if}
+              </div>
+            </div>
+          {/if}
 
-      <section class="thread-panel">
-        {#if !activeConversationId}
-          <div class="thread-empty">
-            <p>Pick a conversation to start messaging.</p>
-          </div>
-        {:else}
-          <ChatThread
-            messages={messages}
-            reactionsByMessageId={reactionsByMessageId}
-            {currentUserId}
-            {viewerCanModerate}
-            {moderationByUserId}
-            blocked={activeConversation?.blocked ?? false}
-            loading={loadingConversations || loadingMessages}
-            title={threadTitle}
-            {presenceLabel}
-            {typingLabel}
-            {seenLabel}
-            on:report={handleReportMessage}
-            on:react={handleReactMessage}
-            on:edit={handleEditMessage}
-            on:delete={handleDeleteMessage}
-            on:openMedia={handleOpenMedia}
-          >
-            <svelte:fragment slot="composer">
-              {#if activeConversation?.peer?.id}
-                <div class="thread-actions">
-                  <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
-                </div>
-              {/if}
-              <MessageComposer
-                conversationId={activeConversationId}
-                disabled={(activeConversation?.blocked ?? false) || sendLocked}
-                {sending}
-                editing={editingMessageId !== null}
-                editSeed={editingSeed}
-                on:send={handleSendMessage}
-                on:typing={handleComposerTyping}
-                on:cancelEdit={() => {
-                  editingMessageId = null;
-                  editingSeed = '';
-                }}
-              />
-            </svelte:fragment>
-          </ChatThread>
-        {/if}
+          <ConversationList
+            conversations={filteredConversations}
+            {activeConversationId}
+            query={searchQuery}
+            on:select={(event) => handleSelectConversation(event.detail.conversationId)}
+            on:create={() => {
+              showStartModal = true;
+              startModalError = null;
+              void loadFriendOptions();
+            }}
+            on:query={(event) => {
+              searchQuery = event.detail.value;
+            }}
+          />
+        </section>
+      {/if}
 
-        {#if nextCursor && activeConversationId}
-          <button
-            class="load-older"
-            type="button"
-            on:click={() => loadMessages(activeConversationId as string, true)}
-          >
-            Load older messages
-          </button>
-        {/if}
+      {#if showThreadPanel}
+        <section class="thread-panel">
+          {#if isCompactLayout && activeConversationId}
+            <div class="mobile-thread-bar">
+              <button type="button" class="mobile-thread-bar__back" on:click={returnToInbox}>
+                Back
+              </button>
+              <div class="mobile-thread-bar__body">
+                <strong>{threadTitle}</strong>
+                {#if typingLabel}
+                  <span>{typingLabel}</span>
+                {:else if presenceLabel}
+                  <span>{presenceLabel}</span>
+                {:else}
+                  <span>Conversation</span>
+                {/if}
+              </div>
+            </div>
+          {/if}
 
-        {#if errorMessage}
-          <p class="surface-error" role="status">{errorMessage}</p>
-        {/if}
-        {#if mediaViewerError}
-          <p class="surface-error" role="status">{mediaViewerError}</p>
-        {/if}
-      </section>
+          {#if !activeConversationId}
+            <div class="thread-empty">
+              <p>Pick a conversation to start messaging.</p>
+            </div>
+          {:else}
+            <ChatThread
+              messages={messages}
+              reactionsByMessageId={reactionsByMessageId}
+              {currentUserId}
+              {viewerCanModerate}
+              {moderationByUserId}
+              blocked={activeConversation?.blocked ?? false}
+              loading={loadingConversations || loadingMessages}
+              title={threadTitle}
+              {presenceLabel}
+              {typingLabel}
+              {seenLabel}
+              on:report={handleReportMessage}
+              on:react={handleReactMessage}
+              on:edit={handleEditMessage}
+              on:delete={handleDeleteMessage}
+              on:openMedia={handleOpenMedia}
+            >
+              <svelte:fragment slot="composer">
+                {#if activeConversation?.peer?.id}
+                  <div class="thread-actions">
+                    <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
+                  </div>
+                {/if}
+                <MessageComposer
+                  conversationId={activeConversationId}
+                  disabled={(activeConversation?.blocked ?? false) || sendLocked}
+                  {sending}
+                  editing={editingMessageId !== null}
+                  editSeed={editingSeed}
+                  on:send={handleSendMessage}
+                  on:typing={handleComposerTyping}
+                  on:cancelEdit={() => {
+                    editingMessageId = null;
+                    editingSeed = '';
+                  }}
+                />
+              </svelte:fragment>
+            </ChatThread>
+          {/if}
+
+          {#if nextCursor && activeConversationId}
+            <button
+              class="load-older"
+              type="button"
+              on:click={() => loadMessages(activeConversationId as string, true)}
+            >
+              Load older messages
+            </button>
+          {/if}
+
+          {#if errorMessage}
+            <p class="surface-error" role="status">{errorMessage}</p>
+          {/if}
+          {#if mediaViewerError}
+            <p class="surface-error" role="status">{mediaViewerError}</p>
+          {/if}
+        </section>
+      {/if}
     </div>
   </GlassCard>
 </SanctuaryPageFrame>
@@ -1199,11 +1272,25 @@
       radial-gradient(circle at 82% 5%, rgba(109, 181, 255, 0.15), transparent 52%);
   }
 
+  .conversation-panel {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .mobile-inbox-intro {
+    display: none;
+  }
+
   .thread-panel {
     min-height: 0;
     display: grid;
     grid-template-rows: 1fr auto;
     position: relative;
+  }
+
+  .mobile-thread-bar {
+    display: none;
   }
 
   .thread-empty {
@@ -1338,16 +1425,128 @@
     .messenger-shell {
       border-radius: 0.95rem;
       min-height: calc(100vh - 12.4rem);
-      grid-template-rows: minmax(14rem, 33vh) 1fr;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .conversation-panel,
+    .thread-panel {
+      min-height: calc(100vh - 13.6rem);
+    }
+
+    .mobile-inbox-intro {
+      display: grid;
+      gap: 0.6rem;
+      padding: 0.95rem 0.95rem 0.75rem;
+      border-bottom: 1px solid rgba(212, 190, 139, 0.14);
+      background:
+        radial-gradient(circle at top left, rgba(208, 170, 92, 0.14), transparent 40%),
+        linear-gradient(180deg, rgba(18, 24, 30, 0.94), rgba(10, 14, 18, 0.9));
+    }
+
+    .mobile-inbox-intro h2 {
+      margin: 0.12rem 0 0;
+      font-family: var(--san-font-display);
+      font-size: 1.2rem;
+      color: rgba(247, 239, 224, 0.98);
+    }
+
+    .mobile-inbox-intro p {
+      margin: 0;
+      color: rgba(225, 214, 194, 0.8);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .mobile-inbox-intro__eyebrow {
+      display: inline-flex;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(219, 189, 129, 0.78);
+    }
+
+    .mobile-inbox-intro__meta {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .mobile-inbox-intro__meta span {
+      border-radius: 999px;
+      border: 1px solid rgba(214, 193, 148, 0.18);
+      background: rgba(217, 189, 126, 0.08);
+      color: rgba(244, 232, 205, 0.88);
+      padding: 0.28rem 0.58rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .mobile-thread-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.72rem;
+      padding: 0.82rem 0.82rem 0.74rem;
+      border-bottom: 1px solid rgba(212, 190, 139, 0.14);
+      background:
+        radial-gradient(circle at top left, rgba(208, 170, 92, 0.12), transparent 38%),
+        linear-gradient(180deg, rgba(18, 24, 30, 0.96), rgba(10, 14, 18, 0.92));
+    }
+
+    .mobile-thread-bar__back {
+      min-height: 2.3rem;
+      padding: 0 0.8rem;
+      border-radius: 999px;
+      border: 1px solid rgba(219, 189, 129, 0.24);
+      background: rgba(217, 189, 126, 0.1);
+      color: rgba(249, 240, 221, 0.96);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .mobile-thread-bar__body {
+      min-width: 0;
+      display: grid;
+      gap: 0.15rem;
+    }
+
+    .mobile-thread-bar__body strong,
+    .mobile-thread-bar__body span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-thread-bar__body strong {
+      color: rgba(249, 242, 230, 0.98);
+      font-size: 0.94rem;
+    }
+
+    .mobile-thread-bar__body span {
+      color: rgba(208, 194, 167, 0.78);
+      font-size: 0.76rem;
     }
 
     :global(.thread header) {
-      padding: 0.88rem 0.88rem 0.82rem;
+      display: none;
     }
 
     :global(.thread__messages) {
       padding: 0.85rem;
       gap: 0.74rem;
+    }
+
+    :global(.conversation-list) {
+      border-right: 0;
+      background:
+        linear-gradient(180deg, rgba(18, 24, 30, 0.94), rgba(10, 14, 18, 0.98)),
+        radial-gradient(circle at 18% -4%, rgba(213, 173, 89, 0.12), transparent 46%);
+    }
+
+    :global(.conversation-list__header) {
+      padding-top: 0.85rem;
     }
 
     .surface-error {

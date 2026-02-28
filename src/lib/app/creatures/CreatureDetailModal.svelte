@@ -200,7 +200,7 @@
 
           <div class="pt-3 flex justify-end items-center gap-4 border-t border-white/5 mt-6">
             <a class="text-sm font-medium text-violet-300 hover:text-violet-200 transition"
-               href={`/app/creatures/${creature.id}`}>
+               href={`/app/companions?focus=${creature.id}`}>
                Open full page →
             </a>
             <button

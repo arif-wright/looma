@@ -109,7 +109,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="lean-search__icon" aria-hidden="true">
           <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" />
         </svg>
-        <input type="search" placeholder="Search Looma" aria-label="Search Looma" />
+        <input type="search" placeholder="Search the weave" aria-label="Search Looma" />
       </label>
     </div>
 
@@ -214,9 +214,9 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(11, 14, 19, 0.92);
+    background: rgba(18, 15, 21, 0.88);
     backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(240, 222, 193, 0.08);
     padding-top: env(safe-area-inset-top, 0px);
     overflow: visible;
   }
@@ -259,8 +259,8 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(94, 242, 255, 0.85), rgba(155, 92, 255, 0.85));
-    box-shadow: 0 8px 18px rgba(94, 242, 255, 0.35);
+    background: linear-gradient(135deg, rgba(112, 221, 194, 0.92), rgba(240, 180, 112, 0.88));
+    box-shadow: 0 8px 18px rgba(240, 180, 112, 0.2);
   }
 
   .lean-logo__word {
@@ -268,7 +268,7 @@
     font-size: 0.82rem;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(248, 250, 255, 0.78);
+    color: rgba(249, 243, 236, 0.8);
     font-weight: 600;
   }
 
@@ -285,9 +285,9 @@
     padding: 0 0.85rem;
     height: 2.1rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(22, 27, 40, 0.85);
-    color: rgba(248, 250, 255, 0.75);
+    border: 1px solid rgba(240, 222, 193, 0.1);
+    background: rgba(31, 25, 34, 0.82);
+    color: rgba(249, 243, 236, 0.78);
   }
 
   .lean-search input {
@@ -299,7 +299,7 @@
   }
 
   .lean-search input::placeholder {
-    color: rgba(248, 250, 255, 0.55);
+    color: rgba(249, 243, 236, 0.44);
   }
 
   .lean-search input:focus-visible {
@@ -307,8 +307,8 @@
   }
 
   .lean-search:focus-within {
-    border-color: rgba(94, 242, 255, 0.45);
-    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.2);
+    border-color: rgba(112, 221, 194, 0.36);
+    box-shadow: 0 0 0 2px rgba(112, 221, 194, 0.16);
   }
 
   .lean-search__icon {

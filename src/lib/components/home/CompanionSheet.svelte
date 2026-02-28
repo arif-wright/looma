@@ -2,6 +2,7 @@
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 
   export let open = false;
+  export let companionId: string | null = null;
   export let name: string | null = null;
   export let status = 'Steady';
   export let bondTier = 'Tier 1';
@@ -30,7 +31,10 @@
       <div><span>Energy</span><strong>{Math.round(energy)}</strong></div>
     </div>
 
-    <a class="cta" href="/app/companions">Visit companion</a>
+    <div class="actions">
+      <a class="cta cta--ghost" href={companionId ? `/app/memory?companion=${encodeURIComponent(companionId)}` : '/app/memory'}>Open journal</a>
+      <a class="cta" href="/app/companions">Visit companion</a>
+    </div>
   </section>
 </BottomSheet>
 
@@ -113,6 +117,11 @@
     font-size: 1rem;
   }
 
+  .actions {
+    display: grid;
+    gap: 0.55rem;
+  }
+
   .cta {
     min-height: 2.7rem;
     border-radius: 0.8rem;
@@ -122,5 +131,11 @@
     font-weight: 700;
     color: rgba(7, 17, 36, 0.95);
     background: linear-gradient(135deg, rgba(45, 212, 191, 0.95), rgba(56, 189, 248, 0.95));
+  }
+
+  .cta--ghost {
+    color: rgba(226, 232, 240, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(15, 23, 42, 0.64);
   }
 </style>

@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import PortableStatePanel from '$lib/components/profile/PortableStatePanel.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { PORTABLE_STATE_VERSION, type PortableState } from '$lib/types/portableState';
   import {
     MEMORY_SUMMARY_ITEM_KEY,
@@ -247,6 +249,17 @@
     return entry?.value ?? null;
   };
 
+  $: companionDisplaySummary = [
+    companionVisible ? 'visible' : 'hidden',
+    companionMotion ? 'motion on' : 'motion paused',
+    companionTransparent ? 'transparent stage' : 'solid stage'
+  ].join(' · ');
+
+  $: memoryModeSummary = memoryPaused ? 'Memory paused' : 'Memory active';
+  $: adaptationModeSummary = emotionalAdaptationPaused ? 'Adaptation paused' : 'Adaptation active';
+  $: presenceModeSummary = presenceVisible ? 'Presence visible' : 'Presence hidden';
+  $: trustSummary = accountStanding === 'limited' ? 'Temporary limits active' : 'No current limits';
+
   const copyPortabilityExport = async () => {
     if (!portableExportJson || !portabilityEnabled) return;
     try {
@@ -439,15 +452,44 @@
   <title>Looma — Preferences</title>
 </svelte:head>
 
-<main class="preferences-page">
-  <header class="preferences-header">
-    <div>
-      <h1>Preferences</h1>
-      <p class="lede">Companion display, transparency, and memory.</p>
-    </div>
-  </header>
+<SanctuaryPageFrame
+  eyebrow="Sanctuary Controls"
+  title="Preferences"
+  subtitle="Shape how Looma appears, remembers, and shares your presence."
+>
+  <svelte:fragment slot="actions">
+    <EmotionalChip tone="muted">{memoryModeSummary}</EmotionalChip>
+    <EmotionalChip tone={accountStanding === 'limited' ? 'warm' : 'cool'}>{trustSummary}</EmotionalChip>
+  </svelte:fragment>
 
-  <section class="panel preferences-panel" aria-labelledby="companion-heading">
+  <main class="preferences-page">
+    <header class="preferences-header panel preferences-hero">
+      <div>
+        <p class="eyebrow">Control room</p>
+        <h1>Set the tone of your sanctuary.</h1>
+        <p class="lede">Companion display, privacy, memory, and the shape of what Looma carries forward.</p>
+      </div>
+
+      <div class="preferences-pulse">
+        <article class="pulse-card">
+          <span class="pulse-card__label">Companion display</span>
+          <strong>{companionDisplaySummary}</strong>
+          <span>Adjust how your companion shows up across the app.</span>
+        </article>
+        <article class="pulse-card">
+          <span class="pulse-card__label">Memory</span>
+          <strong>{memoryModeSummary}</strong>
+          <span>{adaptationModeSummary}</span>
+        </article>
+        <article class="pulse-card">
+          <span class="pulse-card__label">Presence</span>
+          <strong>{presenceModeSummary}</strong>
+          <span>{trustSummary}</span>
+        </article>
+      </div>
+    </header>
+
+    <section class="panel preferences-panel" aria-labelledby="companion-heading">
     <div class="panel-title-row">
       <h2 id="companion-heading" class="panel-title">Companion Display</h2>
     </div>
@@ -498,9 +540,9 @@
         </label>
       </div>
     {/if}
-  </section>
+    </section>
 
-  <section class="panel preferences-panel" aria-labelledby="presence-heading">
+    <section class="panel preferences-panel" aria-labelledby="presence-heading">
     <div class="panel-title-row">
       <h2 id="presence-heading" class="panel-title">Presence &amp; Activity</h2>
     </div>
@@ -534,16 +576,16 @@
         <p>No temporary social limits are active.</p>
       {/if}
     </article>
-  </section>
+    </section>
 
-  <section class="preferences-group" aria-labelledby="transparency-heading">
+    <section class="preferences-group" aria-labelledby="transparency-heading">
     <div class="panel-title-row">
       <h2 id="transparency-heading" class="panel-title">Transparency &amp; Memory</h2>
     </div>
     <PortableStatePanel />
-  </section>
+    </section>
 
-  <section class="preferences-panel memory-summary-panel" aria-labelledby="memory-summary-heading">
+    <section class="panel preferences-panel memory-summary-panel" aria-labelledby="memory-summary-heading">
     <div class="panel-title-row">
       <h2 id="memory-summary-heading" class="panel-title">Memory Summary</h2>
     </div>
@@ -581,9 +623,9 @@
         {memoryPaused ? 'Resume updates' : 'Pause updates'}
       </button>
     </div>
-  </section>
+    </section>
 
-  <section class="preferences-panel memory-summary-panel" aria-labelledby="muse-understands-heading">
+    <section class="panel preferences-panel memory-summary-panel" aria-labelledby="muse-understands-heading">
     <div class="panel-title-row">
       <h2 id="muse-understands-heading" class="panel-title">What Muse Understands</h2>
     </div>
@@ -628,9 +670,9 @@
         Reset Muse state
       </button>
     </div>
-  </section>
+    </section>
 
-  <section class="preferences-panel portability-panel" aria-labelledby="portability-heading">
+    <section class="panel preferences-panel portability-panel" aria-labelledby="portability-heading">
     <div class="panel-title-row">
       <h2 id="portability-heading" class="panel-title">Portability Export</h2>
     </div>
@@ -694,37 +736,95 @@
 
       <pre class="portability-json">{portableExportJson}</pre>
     {/if}
-  </section>
-</main>
+    </section>
+  </main>
+</SanctuaryPageFrame>
 
 <style>
   .preferences-page {
-    padding: clamp(1.25rem, 3vw, 2.25rem);
+    padding: clamp(1rem, 2.6vw, 1.6rem) 0 calc(6rem + env(safe-area-inset-bottom));
     display: grid;
-    gap: 1.75rem;
-    width: min(100%, 1560px);
+    gap: 1rem;
+    width: min(100%, 1120px);
     box-sizing: border-box;
     margin: 0 auto;
-    /* Bias the layout left a bit to make room for the companion dock on the right. */
-    padding-right: calc(clamp(1.25rem, 3vw, 2.25rem) + 3.25rem);
   }
 
   @media (max-width: 980px) {
     .preferences-page {
-      padding-right: clamp(1.25rem, 3vw, 2.25rem);
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
     }
   }
 
   .preferences-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1.5rem;
+    display: grid;
+    gap: 0.95rem;
+  }
+
+  .preferences-hero {
+    padding: 1rem;
+    background:
+      linear-gradient(160deg, rgba(24, 20, 15, 0.78), rgba(12, 16, 19, 0.88)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.14), transparent 42%);
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.78);
+  }
+
+  .preferences-header h1 {
+    margin: 0.15rem 0 0;
+    font-family: var(--san-font-display);
+    font-size: clamp(1.6rem, 4vw, 2.35rem);
+    line-height: 1.04;
+    color: rgba(249, 243, 230, 0.98);
   }
 
   .lede {
     margin: 0.35rem 0 0;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(223, 211, 188, 0.78);
+  }
+
+  .preferences-pulse {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .pulse-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(180deg, rgba(31, 25, 17, 0.64), rgba(15, 18, 20, 0.88)),
+      radial-gradient(circle at top, rgba(214, 190, 141, 0.08), transparent 56%);
+    padding: 0.85rem;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .pulse-card__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.72);
+  }
+
+  .pulse-card strong {
+    color: rgba(248, 241, 227, 0.98);
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+
+  .pulse-card span:last-child {
+    color: rgba(219, 208, 185, 0.74);
+    font-size: 0.8rem;
+    line-height: 1.4;
   }
 
   .panel-title-row {
@@ -736,9 +836,11 @@
 
   .preferences-panel {
     border-radius: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     padding: 1.25rem;
-    background: rgba(8, 10, 18, 0.85);
+    background:
+      linear-gradient(160deg, rgba(20, 18, 15, 0.88), rgba(11, 14, 16, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.08), transparent 40%);
   }
 
   .toggle-grid {
@@ -749,12 +851,12 @@
   .standing-card {
     margin-top: 0.9rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(10, 14, 26, 0.6);
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background: rgba(31, 25, 17, 0.56);
     padding: 0.85rem;
     display: grid;
     gap: 0.4rem;
-    color: rgba(255, 255, 255, 0.84);
+    color: rgba(245, 238, 225, 0.86);
   }
 
   .standing-card ul {
@@ -762,13 +864,13 @@
     padding-left: 1rem;
     display: grid;
     gap: 0.2rem;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(220, 209, 184, 0.74);
     font-size: 0.84rem;
   }
 
   .standing-card p {
     margin: 0;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(220, 209, 184, 0.74);
     font-size: 0.84rem;
   }
 
@@ -779,9 +881,9 @@
     align-items: flex-start;
     padding: 0.75rem;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(10, 14, 26, 0.6);
-    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background: rgba(31, 25, 17, 0.56);
+    color: rgba(245, 238, 225, 0.9);
   }
 
   .toggle-card input {
@@ -797,12 +899,12 @@
     display: block;
     margin-top: 0.2rem;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(220, 209, 184, 0.7);
   }
 
   .status-text {
     margin: 0;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(220, 209, 184, 0.76);
   }
 
   .status-text--error {
@@ -821,7 +923,7 @@
 
   .memory-summary-copy {
     margin: 0;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(223, 211, 188, 0.78);
     font-size: 0.88rem;
   }
 
@@ -830,13 +932,13 @@
     padding-left: 1.1rem;
     display: grid;
     gap: 0.35rem;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(245, 238, 225, 0.88);
   }
 
   .memory-summary-timestamp {
     margin: 0;
     font-size: 0.76rem;
-    color: rgba(255, 255, 255, 0.58);
+    color: rgba(198, 184, 154, 0.64);
   }
 
   .memory-summary-actions {
@@ -852,10 +954,10 @@
 
   .portability-disabled {
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(214, 190, 141, 0.14);
     background: rgba(20, 16, 12, 0.6);
     padding: 0.9rem;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(245, 238, 225, 0.86);
   }
 
   .portability-disabled p {
@@ -870,8 +972,8 @@
 
   .portability-card {
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(10, 14, 26, 0.6);
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background: rgba(31, 25, 17, 0.56);
     padding: 0.85rem;
   }
 
@@ -883,7 +985,7 @@
   .portability-card ul {
     margin: 0;
     padding-left: 1rem;
-    color: rgba(255, 255, 255, 0.74);
+    color: rgba(220, 209, 184, 0.74);
     font-size: 0.86rem;
     display: grid;
     gap: 0.22rem;
@@ -903,7 +1005,7 @@
     display: grid;
     gap: 0.15rem;
     font-size: 0.84rem;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(220, 209, 184, 0.74);
   }
 
   .portability-actions {
@@ -917,11 +1019,27 @@
     max-height: 280px;
     overflow: auto;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(7, 10, 18, 0.88);
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background: rgba(13, 16, 18, 0.92);
     padding: 0.85rem;
     font-size: 0.78rem;
     line-height: 1.45;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(241, 234, 220, 0.86);
+  }
+
+  @media (max-width: 760px) {
+    .preferences-pulse {
+      grid-template-columns: 1fr;
+    }
+
+    .preferences-panel {
+      padding: 1rem;
+    }
+
+    .memory-summary-actions,
+    .portability-actions {
+      display: grid;
+      justify-items: stretch;
+    }
   }
 </style>

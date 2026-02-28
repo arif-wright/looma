@@ -4,7 +4,9 @@ test.describe('Marketing homepage', () => {
   test('shows hero and CTA', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Looma remembers you.' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 1, name: /A relationship platform for the companion you return to every day/i })
+    ).toBeVisible();
     await expect(page.getByRole('link', { name: 'Begin your bond' })).toBeVisible();
   });
 
@@ -17,8 +19,8 @@ test.describe('Marketing homepage', () => {
   test('sections render for features, how it works, and footer', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { level: 2, name: 'A world that learns you back' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'The Bond System' })).toBeVisible();
-    await expect(page.locator('footer')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'A companion-first home' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Three small returns make the platform work.' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: /Start with one companion/i })).toBeVisible();
   });
 });

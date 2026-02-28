@@ -183,7 +183,7 @@
               <h3>Nova</h3>
               <p>Energy synced. Mood: serene. Ready for a shared mission.</p>
             </div>
-            <button type="button" class="companion__cta" on:click={() => handleShortcut('/app/creatures')}>
+            <button type="button" class="companion__cta" on:click={() => handleShortcut('/app/companions')}>
               Adopt a companion
             </button>
           </div>

@@ -85,15 +85,15 @@
   </form>
 
   <section class="list">
-    <h2>My creatures</h2>
+    <h2>My companions</h2>
 
     {#if creatures.length === 0}
-      <p>You have not bonded with any creatures yet.</p>
+      <p>You have not bonded with any companions yet.</p>
     {:else}
       <ul>
         {#each creatures as creature}
           <li>
-            <a class="item-link" href={"/app/creatures/" + creature.id}>
+            <a class="item-link" href={"/app/companions?focus=" + creature.id}>
               <strong>{creature.species_name}</strong>
               <span class="rarity">{creature.species_rarity}</span>
               {#if creature.nickname}

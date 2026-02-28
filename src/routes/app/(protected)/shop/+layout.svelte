@@ -1,11 +1,14 @@
 <script lang="ts">
-  import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
 </script>
 
-<div class="shop-root bg-neuro">
-  <BackgroundStack class="shop-bg" />
+<SanctuaryPageFrame
+  eyebrow="Marketplace"
+  title="Shop"
+  subtitle="Spend shards on cosmetics and collectibles without leaving the sanctuary tone of the app."
+>
   <div class="shop-shell">
-    <header class="shop-head panel-glass" aria-label="Marketplace navigation">
+    <header class="shop-head" aria-label="Marketplace navigation">
       <nav class="shop-nav" aria-label="Shop sections">
         <span class="nav-chip active">Shop</span>
         <span class="nav-chip">Creatures</span>
@@ -26,7 +29,7 @@
       <slot />
     </main>
   </div>
-</div>
+</SanctuaryPageFrame>
 
 <style>
   .sr-only {
@@ -41,22 +44,13 @@
     border: 0;
   }
 
-  .shop-root {
-    position: relative;
-    min-height: 100vh;
-    color: #fff;
-    overflow: hidden;
-  }
-
   .shop-shell {
-    position: relative;
-    z-index: 1;
-    max-width: 1680px;
+    max-width: 80rem;
     width: 100%;
     margin: 0 auto;
     display: grid;
-    gap: 2rem;
-    padding: clamp(2.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 2.75rem) 5rem;
+    gap: 1rem;
+    padding: 1rem 0 calc(6rem + env(safe-area-inset-bottom));
   }
 
   .shop-head {
@@ -65,7 +59,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
-    padding: 1.4rem clamp(1.2rem, 2.8vw, 1.9rem);
+    padding: 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(160deg, rgba(24, 20, 15, 0.78), rgba(12, 16, 19, 0.88)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.14), transparent 42%);
   }
 
   .shop-nav {
@@ -80,19 +79,19 @@
     justify-content: center;
     padding: 0.55rem 1.3rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(8, 12, 28, 0.6);
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background: rgba(43, 33, 20, 0.22);
     font-size: 0.85rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(248, 250, 255, 0.78);
+    color: rgba(245, 238, 225, 0.82);
   }
 
   .nav-chip.active {
-    background: linear-gradient(120deg, rgba(94, 242, 255, 0.95), rgba(155, 92, 255, 0.95));
+    background: linear-gradient(125deg, rgba(212, 173, 92, 0.94), rgba(166, 121, 61, 0.92));
     border-color: transparent;
-    color: rgba(8, 10, 22, 0.88);
-    box-shadow: 0 18px 32px rgba(94, 242, 255, 0.35);
+    color: rgba(22, 16, 9, 0.96);
+    box-shadow: 0 18px 32px rgba(166, 121, 61, 0.24);
   }
 
   .search-field {
@@ -103,19 +102,19 @@
     width: clamp(220px, 22vw, 320px);
     padding: 0.65rem 1.2rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(8, 12, 28, 0.6);
-    color: rgba(248, 250, 255, 0.9);
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(18, 20, 21, 0.72);
+    color: rgba(245, 238, 225, 0.9);
   }
 
   .search-input::placeholder {
-    color: rgba(226, 232, 240, 0.58);
+    color: rgba(205, 194, 172, 0.48);
   }
 
   .search-input:focus-visible {
     outline: none;
-    border-color: rgba(94, 242, 255, 0.8);
-    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.3);
+    border-color: rgba(214, 190, 141, 0.72);
+    box-shadow: 0 0 0 2px rgba(214, 190, 141, 0.2);
   }
 
   .shop-main {

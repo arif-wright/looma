@@ -13,7 +13,7 @@
     { href: '/app/friends', label: 'Friends', icon: '🫂' },
     { href: '/app/circles', label: 'Circles', icon: '⭕' },
     { href: '/app/events', label: 'Events', icon: '🗓️' },
-    { href: '/app/creatures', label: 'Creatures', icon: '🐾' },
+    { href: '/app/companions', label: 'Companions', icon: '🐾' },
     { href: '/app/missions', label: 'Missions', icon: '🎯' },
     { href: '/app/shop', label: 'Shop', icon: '🛒' },
     { href: '/app/companions', label: 'Companions', icon: '🤝' },

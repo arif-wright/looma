@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
+  import HomeSecondaryStack from '$lib/components/home/HomeSecondaryStack.svelte';
   import CompanionSheet from '$lib/components/home/CompanionSheet.svelte';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
   import { logEvent } from '$lib/analytics';
@@ -51,6 +52,10 @@
 
   $: closenessState = deriveClosenessState();
   $: companionName = companionState?.name ?? 'Mirae';
+  $: primaryLabel = `Check in with ${companionName}`;
+  $: primaryCopy = `Share how you feel, hear ${companionName}'s response, and strengthen your bond.`;
+  $: primaryMission = data.missions?.[0] ?? null;
+  $: journalHref = companionState?.id ? `/app/memory?companion=${companionState.id}` : '/app/memory';
   $: statusLine =
     closenessState === 'Distant'
       ? `${companionName} feels distant.`
@@ -261,8 +266,8 @@
       {statusLine}
       {statusReason}
       {needsReconnectToday}
-      primaryLabel="Check in with Mirae"
-      primaryCopy="Share how you feel, hear her response, and strengthen your bond."
+      {primaryLabel}
+      {primaryCopy}
       {companionReply}
       {companionReplyDebug}
       {modelActivity}
@@ -279,10 +284,29 @@
       <div class="reward-toast" role="status">{rewardToast}</div>
     {/if}
   </main>
+
+  <section class="home-secondary" aria-label="Sanctuary shortcuts">
+    <HomeSecondaryStack
+      feedPreview={data.feed?.[0] ?? null}
+      {journalHref}
+      journalSummary={data.memorySummary?.summary_text ?? null}
+      journalUpdatedAt={data.memorySummary?.last_built_at ?? null}
+      missionTitle={primaryMission?.title ?? null}
+      missionSummary={primaryMission?.summary ?? null}
+      missionHref={primaryMission?.id ? `/app/missions/${primaryMission.id}` : '/app/missions'}
+      messagesHref="/app/messages"
+      circlesHref="/app/circles"
+      notificationsUnread={data.notificationsUnread ?? 0}
+      companionHref="/app/companions"
+      {companionName}
+      needsCheckin={needsReconnectToday}
+    />
+  </section>
 </div>
 
 <CompanionSheet
   open={companionSheetOpen}
+  companionId={companionState?.id ?? null}
   name={companionState?.name ?? null}
   status={closenessState === 'Near' ? 'Synced' : closenessState}
   bondTier={`Bond Tier ${companionState?.bondLevel ?? 1}`}
@@ -401,6 +425,12 @@
     box-shadow: var(--home-shadow-soft);
   }
 
+  .home-secondary {
+    position: relative;
+    z-index: 6;
+    padding: 0.95rem 0.95rem calc(7rem + env(safe-area-inset-bottom));
+  }
+
   .checkin-sheet {
     display: grid;
     gap: 0.72rem;
@@ -484,5 +514,14 @@
 
   .submit-checkin:disabled {
     opacity: 0.75;
+  }
+
+  @media (min-width: 720px) {
+    .home-secondary {
+      width: min(34rem, calc(100vw - 2rem));
+      margin: 0 auto;
+      padding-left: 0;
+      padding-right: 0;
+    }
   }
 </style>

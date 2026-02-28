@@ -1,474 +1,279 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { onDestroy, onMount } from 'svelte';
-  import { browser } from '$app/environment';
-  import { createSupabaseBrowserClient } from '$lib/supabase/client';
-  import type { AuthChangeEvent } from '@supabase/supabase-js';
-  import PlayerSummary from '$lib/app/dashboard/PlayerSummary.svelte';
-  import StatsPanel from '$lib/app/dashboard/StatsPanel.svelte';
-  import CreaturesSnapshot from '$lib/app/dashboard/CreaturesSnapshot.svelte';
-  import MissionsOverview from '$lib/app/dashboard/MissionsOverview.svelte';
-  import AchievementsPanel from '$lib/app/dashboard/AchievementsPanel.svelte';
-  import ActivityFeed from '$lib/app/dashboard/ActivityFeed.svelte';
-  import SocialFeedPanel from '$lib/app/dashboard/SocialFeedPanel.svelte';
-  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
-  import { fetchCreatureById } from '$lib/data/creatures';
-  import type { CreatureRow } from '$lib/data/creatures';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
+  import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import type { PageData } from './$types';
 
-  export let data: { stats?: any } | undefined;
+  export let data: PageData;
 
-  let sidebarOpen = false;
-  let isDesktop = false;
-  let reduceMotion = false;
-  let creatureModalOpen = false;
-  let creatureModalData: CreatureRow | null = null;
+  const formatWhen = (iso: string | null | undefined) => {
+    if (!iso) return '';
+    const ts = Date.parse(iso);
+    if (!Number.isFinite(ts)) return '';
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date(ts));
+  };
 
-  const navItems = [
-    { label: 'Dashboard', href: '/app/dashboard', active: true },
-    { label: 'Profile', href: '/app/profile', disabled: true },
-    { label: 'Creatures', href: '/app/creatures', disabled: true },
-    { label: 'Missions', href: '/app/missions', disabled: true }
+  const activeCompanion = data.activeCompanion ?? null;
+  const needsCheckin = !data.latestCheckinToday;
+  const primaryHref = data.activeMission?.missionId
+    ? `/app/missions/${data.activeMission.missionId}`
+    : activeCompanion?.id
+      ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}`
+      : '/app/home';
+  const primaryLabel = data.activeMission?.missionId
+    ? 'Continue active mission'
+    : needsCheckin
+      ? 'Check in at Sanctuary'
+      : 'Open your journal';
+  const primaryCopy = data.activeMission?.title
+    ? data.activeMission.title
+    : needsCheckin
+      ? `${activeCompanion?.name ?? 'Your companion'} is waiting to hear from you today.`
+      : 'Review what Looma is carrying forward from your recent play and rituals.';
+
+  const quickLinks = [
+    { href: '/app/home', label: 'Sanctuary', description: 'Reconnect with your companion.' },
+    { href: '/app/memory', label: 'Journal', description: 'See remembered threads.' },
+    { href: '/app/missions', label: 'Missions', description: 'Pick your next thread.' },
+    { href: '/app/messages', label: 'Messages', description: 'Answer your conversations.' },
+    { href: '/app/circles', label: 'Circles', description: 'Stay close to your people.' },
+    { href: '/app/games', label: 'Play', description: 'Use play to keep momentum up.' }
   ];
-
-  function disableLink(node: HTMLAnchorElement, disabled?: boolean) {
-    const apply = (isDisabled?: boolean) => {
-      if (isDisabled) {
-        node.setAttribute('aria-disabled', 'true');
-        node.setAttribute('tabindex', '-1');
-      } else {
-        node.removeAttribute('aria-disabled');
-        node.removeAttribute('tabindex');
-      }
-    };
-
-    apply(disabled);
-
-    return {
-      update(value?: boolean) {
-        apply(value);
-      },
-      destroy() {
-        node.removeAttribute('aria-disabled');
-        node.removeAttribute('tabindex');
-      }
-    };
-  }
-
-  function toggleSidebar() {
-    if (isDesktop) return;
-    sidebarOpen = !sidebarOpen;
-  }
-
-  onMount(() => {
-    const supabase = createSupabaseBrowserClient();
-
-    const handleSession = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) {
-        goto('/app/auth?next=' + encodeURIComponent('/app/dashboard'));
-      }
-    };
-
-    handleSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent) => {
-        const { data, error } = await supabase.auth.getUser();
-        if (error || !data.user) {
-          goto('/app/auth?next=' + encodeURIComponent('/app/dashboard'));
-        }
-      }
-    );
-
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    const updateLayout = () => {
-      const wasDesktop = isDesktop;
-      isDesktop = mq.matches;
-      if (isDesktop) {
-        sidebarOpen = true;
-      } else if (wasDesktop && !mq.matches) {
-        sidebarOpen = false;
-      }
-    };
-
-    const updateMotion = () => {
-      reduceMotion = reduceMq.matches;
-    };
-
-    updateLayout();
-    updateMotion();
-
-    mq.addEventListener('change', updateLayout);
-    reduceMq.addEventListener('change', updateMotion);
-
-    const cleanup = () => {
-      listener?.subscription?.unsubscribe();
-      mq.removeEventListener('change', updateLayout);
-      reduceMq.removeEventListener('change', updateMotion);
-    };
-
-    onDestroy(cleanup);
-  });
-
-  function handleNavClick(event: MouseEvent, disabled?: boolean) {
-    if (!disabled) return;
-    event.preventDefault();
-  }
-
-  async function handleOpenCreature(event: CustomEvent<{ id: string }>) {
-    creatureModalOpen = true;
-    creatureModalData = null;
-    try {
-      creatureModalData = await fetchCreatureById(event.detail.id);
-    } catch (err) {
-      console.error('Failed to fetch creature detail', err);
-    }
-  }
-
-  function closeCreatureModal() {
-    creatureModalOpen = false;
-  }
 </script>
 
 <svelte:head>
-  <title>Looma — Dashboard</title>
+  <title>Looma - Journey</title>
 </svelte:head>
 
-<div class="dashboard-shell transform-none" class:sidebar-open={sidebarOpen} data-reduce-motion={reduceMotion}>
-  <button
-    type="button"
-    class="sidebar-toggle"
-    on:click={toggleSidebar}
-    aria-controls="app-sidebar"
-    aria-expanded={sidebarOpen}
+<div class="journey-root">
+  <SanctuaryPageFrame
+    eyebrow="Journey"
+    title="Today in Looma"
+    subtitle="A mobile-first snapshot of what matters right now: bond, missions, memory, and momentum."
   >
-    <span class="sr-only">Toggle navigation</span>
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4 6h16M4 12h16M4 18h16"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
-  </button>
+    <svelte:fragment slot="actions">
+      {#if activeCompanion}
+        <EmotionalChip tone="warm">{activeCompanion.name}</EmotionalChip>
+      {/if}
+    </svelte:fragment>
 
-  {#if sidebarOpen && !isDesktop}
-    <div class="sidebar-overlay" role="presentation" on:click={() => (sidebarOpen = false)}></div>
-  {/if}
+    <div class="journey-shell">
+      <GlassCard class="journey-card journey-card--hero">
+        <div class="hero-copy">
+          <p class="eyebrow">What wants your attention</p>
+          <h2>{primaryLabel}</h2>
+          <p>{primaryCopy}</p>
+        </div>
+        <a class="journey-primary" href={primaryHref}>{primaryLabel}</a>
+      </GlassCard>
 
-  <aside
-    id="app-sidebar"
-    class="sidebar"
-    class:open={sidebarOpen}
-    role="navigation"
-    aria-label="App navigation"
-  >
-    <div class="sidebar-inner">
-      <p class="sidebar-title">App</p>
-      <ul class="sidebar-nav">
-        {#each navItems as item}
-          <li>
-            <a
-              href={item.href}
-              use:disableLink={item.disabled}
-              class="nav-link"
-              class:active={item.active}
-              class:disabled={item.disabled}
-              aria-current={item.active ? 'page' : undefined}
-              on:click={(event) => handleNavClick(event, item.disabled)}
-            >
-              {item.label}
+      <div class="journey-grid">
+        <GlassCard class="journey-card">
+          <p class="eyebrow">Companion state</p>
+          <h2>{activeCompanion?.name ?? 'No active companion yet'}</h2>
+          <p class="support-copy">
+            {#if activeCompanion}
+              Mood: {activeCompanion.mood ?? 'steady'} · Energy: {activeCompanion.energy ?? 0}
+            {:else}
+              Start in Sanctuary to choose or wake your companion.
+            {/if}
+          </p>
+          <div class="button-row">
+            <a class="btn btn--ghost" href="/app/home">Open Sanctuary</a>
+            {#if activeCompanion?.id}
+              <a class="btn btn--ghost" href={`/app/memory?companion=${encodeURIComponent(activeCompanion.id)}`}>Open Journal</a>
+            {/if}
+          </div>
+        </GlassCard>
+
+        <GlassCard class="journey-card">
+          <p class="eyebrow">Today</p>
+          <h2>{data.latestCheckinToday ? 'You checked in today' : 'No check-in yet today'}</h2>
+          <p class="support-copy">
+            {#if data.latestCheckinToday}
+              Last mood: {data.latestCheckinToday.mood} · {formatWhen(data.latestCheckinToday.created_at)}
+            {:else}
+              A quick reflection keeps the relationship loop alive.
+            {/if}
+          </p>
+        </GlassCard>
+
+        <GlassCard class="journey-card">
+          <p class="eyebrow">Mission thread</p>
+          <h2>{data.activeMission?.title ?? 'No active mission'}</h2>
+          <p class="support-copy">
+            {#if data.activeMission}
+              Started {formatWhen(data.activeMission.startedAt)} · {data.activeMission.missionType ?? 'action'} mission
+            {:else}
+              Choose a mission when you want a clearer sense of direction.
+            {/if}
+          </p>
+          <a class="btn btn--ghost" href={data.activeMission?.missionId ? `/app/missions/${data.activeMission.missionId}` : '/app/missions'}>
+            {data.activeMission ? 'Continue mission' : 'Browse missions'}
+          </a>
+        </GlassCard>
+
+        <GlassCard class="journey-card">
+          <p class="eyebrow">Recent play</p>
+          <h2>{data.recentGame?.name ?? 'No recent game session'}</h2>
+          <p class="support-copy">
+            {#if data.recentGame}
+              Score {data.recentGame.score?.toLocaleString?.() ?? data.recentGame.score ?? 0} · {formatWhen(data.recentGame.completedAt)}
+            {:else}
+              Play is optional, but it helps keep energy and rhythm moving.
+            {/if}
+          </p>
+          <a class="btn btn--ghost" href="/app/games">Open Play</a>
+        </GlassCard>
+      </div>
+
+      {#if data.memorySummary?.summary_text}
+        <GlassCard class="journey-card">
+          <p class="eyebrow">Memory pulse</p>
+          <h2>What Looma is remembering</h2>
+          <p class="memory-copy">{data.memorySummary.summary_text}</p>
+          {#if data.memorySummary.highlights_json?.length}
+            <div class="chip-row">
+              {#each data.memorySummary.highlights_json as item}
+                <span>{item}</span>
+              {/each}
+            </div>
+          {/if}
+        </GlassCard>
+      {/if}
+
+      <GlassCard class="journey-card">
+        <p class="eyebrow">Go somewhere fast</p>
+        <h2>Core spaces</h2>
+        <div class="quick-grid">
+          {#each quickLinks as link}
+            <a class="quick-link" href={link.href}>
+              <strong>{link.label}</strong>
+              <span>{link.description}</span>
             </a>
-          </li>
-        {/each}
-      </ul>
+          {/each}
+        </div>
+      </GlassCard>
     </div>
-  </aside>
-
-  <div class="dashboard-main">
-    <header class="dashboard-header" aria-label="Dashboard overview">
-      <div class="breadcrumb" aria-label="Breadcrumb">
-        <a href="/app">App</a>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">Dashboard</span>
-      </div>
-      <div class="header-actions">
-        <a class="btn-secondary ghost-action" href="/app/games">Play mini-game</a>
-        <button class="btn-secondary ghost-action" type="button">New draft</button>
-        <button class="btn-primary" type="button">Record encounter</button>
-      </div>
-    </header>
-
-    <main class="panels" aria-labelledby="dashboard-heading">
-      <h1 id="dashboard-heading" class="sr-only">Dashboard</h1>
-      <section class="panels-grid">
-        <PlayerSummary />
-        {#if data?.stats !== undefined}
-          <StatsPanel stats={data.stats} />
-        {:else}
-          <StatsPanel stats={null} />
-        {/if}
-        <CreaturesSnapshot on:open-creature={handleOpenCreature} />
-        <MissionsOverview />
-        <AchievementsPanel />
-        <SocialFeedPanel />
-        <ActivityFeed />
-      </section>
-    </main>
-  </div>
+  </SanctuaryPageFrame>
 </div>
 
-{#if browser}
-  {#if browser}
-    <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
-    <button
-      type="button"
-      class="fixed bottom-4 right-4 text-xs underline opacity-70 hover:opacity-100"
-      on:click={() => {
-        creatureModalData = {
-          id: 'debug-0000',
-          name: 'Debug Creature',
-          bonded: true,
-          alignment: 'Neutral',
-          traits: ['Playtest'],
-          species: { id: 'spec-debug', key: 'debug', name: 'Debug Species', description: 'Temporary modal test entry.' }
-        } as CreatureRow;
-        creatureModalOpen = true;
-      }}
-    >
-      Open test modal
-    </button>
-  {/if}
-{/if}
-
 <style>
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .dashboard-shell {
-    position: relative;
+  .journey-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    min-height: calc(100vh - 4rem);
+    gap: 0.95rem;
   }
 
-  .sidebar-toggle {
-    position: fixed;
-    left: 1rem;
-    top: 1rem;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    border: 1px solid rgba(233, 195, 255, 0.28);
-    background: rgba(10, 16, 36, 0.65);
-    color: rgba(233, 195, 255, 0.92);
-    cursor: pointer;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  .journey-grid,
+  .quick-grid {
+    display: grid;
+    gap: 0.8rem;
   }
 
-  .sidebar-toggle svg {
-    pointer-events: none;
+  :global(.journey-card) {
+    display: grid;
+    gap: 0.8rem;
   }
 
-  .sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(6, 9, 24, 0.55);
-    backdrop-filter: blur(3px);
-    z-index: 15;
+  :global(.journey-card--hero) {
+    background:
+      linear-gradient(145deg, rgba(112, 221, 194, 0.08), rgba(240, 180, 112, 0.08)),
+      rgba(255, 248, 240, 0.04);
   }
 
-  .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: min(78vw, 280px);
-    background: rgba(10, 16, 36, 0.85);
-    border-right: 1px solid rgba(233, 195, 255, 0.16);
-    padding: 1.5rem 1.25rem;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    z-index: 20;
-    display: flex;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .sidebar-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    width: 100%;
-  }
-
-  .sidebar-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.15em;
+  .eyebrow {
+    margin: 0;
+    font-size: 0.74rem;
     text-transform: uppercase;
-    color: rgba(233, 195, 255, 0.65);
+    letter-spacing: 0.12em;
+    color: rgba(220, 203, 184, 0.76);
+  }
+
+  h2,
+  p,
+  strong,
+  span {
     margin: 0;
   }
 
-  .sidebar-nav {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 0.75rem;
+  h2,
+  .quick-link strong {
+    color: rgba(248, 241, 235, 0.98);
   }
 
-  .nav-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.65rem 0.75rem;
-    border-radius: 12px;
-    color: rgba(231, 230, 255, 0.8);
+  .hero-copy,
+  .support-copy,
+  .memory-copy,
+  .quick-link span {
+    color: rgba(219, 208, 196, 0.84);
+    line-height: 1.48;
+  }
+
+  .journey-primary,
+  .btn {
+    min-height: 2.85rem;
+    border-radius: 0.95rem;
+    display: inline-grid;
+    place-items: center;
     text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease;
+    font-weight: 700;
+    text-align: center;
   }
 
-  .nav-link:hover,
-  .nav-link:focus-visible {
-    background: rgba(233, 195, 255, 0.14);
-    color: #ffffff;
+  .journey-primary {
+    background: linear-gradient(135deg, rgba(112, 221, 194, 0.96), rgba(240, 180, 112, 0.92));
+    color: rgba(19, 16, 18, 0.96);
   }
 
-  .nav-link.active {
-    background: linear-gradient(120deg, rgba(160, 107, 255, 0.38), rgba(90, 224, 199, 0.25));
-    color: #ffffff;
-    border: 1px solid rgba(233, 195, 255, 0.4);
+  .button-row {
+    display: grid;
+    gap: 0.55rem;
   }
 
-  .nav-link.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .btn {
+    border: 1px solid rgba(236, 216, 193, 0.1);
+    background: rgba(255, 246, 230, 0.05);
+    color: rgba(248, 241, 235, 0.94);
   }
 
-  .dashboard-main {
-    margin-left: 0;
-    padding: clamp(88px, 12vw, 120px) clamp(24px, 6vw, 64px) clamp(64px, 5vw, 96px);
-    display: flex;
-    flex-direction: column;
-    gap: 2.5rem;
-    width: min(100%, 1700px);
-    box-sizing: border-box;
-    margin-inline: auto;
-  }
-
-  .dashboard-header {
+  .chip-row {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .breadcrumb {
-    display: inline-flex;
-    align-items: center;
     gap: 0.5rem;
-    font-size: 0.9rem;
-    color: rgba(233, 195, 255, 0.8);
   }
 
-  .breadcrumb a {
-    color: rgba(233, 195, 255, 0.92);
+  .chip-row span {
+    border-radius: 999px;
+    padding: 0.35rem 0.65rem;
+    background: rgba(255, 246, 230, 0.05);
+    border: 1px solid rgba(236, 216, 193, 0.08);
+    font-size: 0.76rem;
+    color: rgba(240, 228, 214, 0.86);
+  }
+
+  .quick-link {
+    display: grid;
+    gap: 0.22rem;
+    padding: 0.9rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(236, 216, 193, 0.1);
+    background: rgba(255, 248, 240, 0.04);
     text-decoration: none;
   }
 
-  .breadcrumb span[aria-current='page'] {
-    color: #ffffff;
-    font-weight: 600;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .ghost-action {
-    border: 1px solid rgba(233, 195, 255, 0.22);
-  }
-
-  .panels {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .panels-grid {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    .dashboard-shell {
-      grid-template-columns: 260px 1fr;
-    }
-
-    .sidebar-toggle {
-      display: none;
-    }
-
-    .sidebar {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      transform: none;
-      border-right: 1px solid rgba(233, 195, 255, 0.18);
-    }
-
-    .dashboard-main {
-      margin-left: 0;
-      padding-top: clamp(64px, 8vw, 96px);
-    }
-
-    .panels-grid {
+  @media (min-width: 760px) {
+    .journey-grid,
+    .quick-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
 
-  @media (min-width: 1500px) {
-    .panels-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      align-items: start;
-    }
-  }
-
-  @media (max-width: 767px) {
-    .dashboard-main {
-      padding-inline: clamp(18px, 5vw, 36px);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .sidebar,
-    .sidebar-toggle,
-    .nav-link,
-    .dashboard-header,
-    .panels-grid {
-      transition-duration: 0.01ms !important;
+    .button-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>
