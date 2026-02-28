@@ -7,13 +7,14 @@
   import type { PageData } from './$types';
 
   export let data: PageData;
-  type TimelineFilter = 'all' | 'memory' | 'care' | 'checkin' | 'mission' | 'game';
+  type TimelineFilter = 'all' | 'memory' | 'care' | 'checkin' | 'mission' | 'game' | 'social';
   type DateWindow = 'all' | '7d' | '30d';
 
   let statusMessage: string | null = null;
   let statusTone: 'default' | 'success' | 'error' = 'default';
   let rebuilding = false;
   let clearing = false;
+  let ritualActing = false;
   let activeFilter: TimelineFilter = 'all';
   let activeWindow: DateWindow = 'all';
   let query = '';
@@ -45,6 +46,7 @@
     { key: 'care', label: 'Care' },
     { key: 'mission', label: 'Missions' },
     { key: 'game', label: 'Games' },
+    { key: 'social', label: 'Social' },
     { key: 'checkin', label: 'Check-ins' },
     { key: 'memory', label: 'Snapshots' }
   ];
@@ -87,6 +89,38 @@
     }
   };
 
+  const runGuidedRitual = async () => {
+    if (!data.selectedCompanionId || !data.ritualGuide || ritualActing) return;
+    ritualActing = true;
+    setStatus(`${data.ritualGuide.title}…`);
+    try {
+      const res = await fetch('/api/companions/rituals/act', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          companionId: data.selectedCompanionId,
+          ritualKey: data.ritualGuide.ritualKey
+        })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        setStatus(payload?.message ?? 'Could not run that ritual right now.', 'error');
+        return;
+      }
+      await refreshRoute();
+      setStatus(
+        payload?.reaction?.text
+          ? `Ritual complete. ${payload.reaction.text}`
+          : 'Ritual complete.',
+        'success'
+      );
+    } catch {
+      setStatus('Could not run that ritual right now.', 'error');
+    } finally {
+      ritualActing = false;
+    }
+  };
+
   $: searchableTimeline = activeFilter === 'all' ? data.timeline : data.timeline.filter((item) => item.kind === activeFilter);
   $: windowedTimeline = searchableTimeline.filter((item) => withinWindow(item.occurredAt, activeWindow));
   $: normalizedQuery = query.trim().toLowerCase();
@@ -99,6 +133,24 @@
 
   $: milestoneCards = (() => {
     const cards: Array<{ id: string; label: string; title: string; body: string }> = [];
+    for (const milestone of data.chapterMilestones ?? []) {
+      cards.push({
+        id: milestone.id,
+        label: milestone.label,
+        title: milestone.title,
+        body: milestone.body
+      });
+      if (cards.length >= 4) return cards.slice(0, 4);
+    }
+    const noticedMoment = data.timeline.find((item) => item.meta === 'Noticed by companion');
+    if (noticedMoment) {
+      cards.push({
+        id: noticedMoment.id,
+        label: 'Companion insight',
+        title: noticedMoment.title,
+        body: noticedMoment.body
+      });
+    }
     if (data.summary?.summary_text) {
       cards.push({
         id: 'summary',
@@ -123,6 +175,15 @@
         label: 'Care moment',
         title: careMoment.title,
         body: careMoment.body
+      });
+    }
+    const socialMoment = data.timeline.find((item) => item.kind === 'social');
+    if (socialMoment) {
+      cards.push({
+        id: socialMoment.id,
+        label: 'Shared moment',
+        title: socialMoment.title,
+        body: socialMoment.body
       });
     }
     for (const highlight of data.summary?.highlights_json ?? []) {
@@ -353,6 +414,106 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
+              <p class="eyebrow">Daily arc</p>
+              <h2>{data.dailyArc?.title ?? 'Guide the bond through the day'}</h2>
+            </div>
+          </div>
+
+          {#if data.dailyArc}
+            <p class="meta-line">{data.dailyArc.progressLabel}</p>
+            <p class="summary-text summary-text--compact">{data.dailyArc.body}</p>
+            <div class="arc-grid">
+              {#each data.dailyArc.steps as step}
+                <a class={`arc-card ${step.complete ? 'arc-card--done' : ''}`} href={step.href}>
+                  <span class="arc-card__label">{step.label}</span>
+                  <strong>{step.title}</strong>
+                  <p>{step.body}</p>
+                </a>
+              {/each}
+            </div>
+          {:else}
+            <p class="empty-copy">A daily companion arc will appear here once this companion has more recent activity.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">End of day</p>
+              <h2>{data.dailyArcRecap?.title ?? 'Let the day settle'}</h2>
+            </div>
+          </div>
+
+          {#if data.dailyArcRecap}
+            <p class="summary-text summary-text--compact">{data.dailyArcRecap.body}</p>
+            <p class="meta-line">Unlocked {formatWhen(data.dailyArcRecap.unlockedAt)}</p>
+          {:else}
+            <p class="empty-copy">Recap cards unlock once this companion’s daily arc is mostly complete.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Weekly chapter</p>
+              <h2>{data.weeklyArc?.title ?? 'See the shape of the week'}</h2>
+            </div>
+          </div>
+
+          {#if data.weeklyArc}
+            <p class="summary-text summary-text--compact">{data.weeklyArc.body}</p>
+            <p class="meta-line">{data.weeklyArc.progressLabel}</p>
+          {:else}
+            <p class="empty-copy">A weekly chapter will appear once this companion has enough recent activity.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Keepsakes</p>
+              <h2>Chapter rewards</h2>
+            </div>
+          </div>
+
+          {#if data.chapterRewards?.length > 0}
+            <div class="milestone-grid">
+              {#each data.chapterRewards as reward}
+                <article class="milestone-card">
+                  <span class="milestone-card__label">Keepsake</span>
+                  <h3>{reward.title}</h3>
+                  <p>{reward.body}</p>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <p class="empty-copy">Chapter keepsakes unlock as the relationship moves through stronger weekly arcs.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Companion guidance</p>
+              <h2>{data.ritualGuide?.title ?? 'A gentle next step'}</h2>
+            </div>
+          </div>
+
+          {#if data.ritualGuide}
+            <p class="summary-text summary-text--compact">{data.ritualGuide.body}</p>
+            <div class="action-row">
+              <button type="button" class="btn btn--primary" disabled={ritualActing} on:click={runGuidedRitual}>
+                {ritualActing ? 'Beginning…' : data.ritualGuide.ctaLabel}
+              </button>
+            </div>
+          {:else}
+            <p class="empty-copy">Guided rituals will appear here once this companion shows a clearer pattern.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
               <p class="eyebrow">Weekly pulse</p>
               <h2>This week around {data.selectedCompanion?.name ?? 'your companion'}</h2>
             </div>
@@ -371,6 +532,10 @@
               <div>
                 <span>Games</span>
                 <strong>{formatCount(data.weeklyPulse.gameMoments, 'session')}</strong>
+              </div>
+              <div>
+                <span>Social</span>
+                <strong>{formatCount(data.weeklyPulse.socialMoments, 'moment')}</strong>
               </div>
               <div>
                 <span>Check-ins</span>
@@ -611,6 +776,10 @@
     color: rgba(241, 245, 249, 0.96);
   }
 
+  .summary-text--compact {
+    font-size: 0.95rem;
+  }
+
   .highlight-list {
     display: flex;
     gap: 0.55rem;
@@ -722,6 +891,11 @@
     box-shadow: 0 0 0 6px rgba(244, 114, 182, 0.14);
   }
 
+  .timeline-dot--social {
+    background: rgba(251, 146, 60, 0.94);
+    box-shadow: 0 0 0 6px rgba(251, 146, 60, 0.14);
+  }
+
   .timeline-copy {
     display: grid;
     gap: 0.28rem;
@@ -755,6 +929,45 @@
   .milestone-grid {
     display: grid;
     gap: 0.75rem;
+  }
+
+  .arc-grid {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .arc-card {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.9rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.35);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .arc-card--done {
+    border-color: rgba(74, 222, 128, 0.18);
+    background: rgba(20, 83, 45, 0.2);
+  }
+
+  .arc-card__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(125, 211, 252, 0.82);
+  }
+
+  .arc-card strong {
+    font-size: 0.98rem;
+    color: rgba(241, 245, 249, 0.98);
+  }
+
+  .arc-card p {
+    color: rgba(226, 232, 240, 0.88);
+    line-height: 1.45;
   }
 
   .milestone-card {

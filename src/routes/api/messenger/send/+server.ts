@@ -25,6 +25,7 @@ import {
   type MessageAttachmentInput,
   type MessageAttachmentRow
 } from '$lib/server/messenger/media';
+import { appendJournalEntryForActiveCompanion } from '$lib/server/companions/journal';
 
 type SendPayload = {
   conversationId?: string;
@@ -312,6 +313,26 @@ export const POST: RequestHandler = async (event) => {
     .update({ last_read_at: inserted.created_at })
     .eq('conversation_id', conversationId)
     .eq('user_id', session.user.id);
+
+  try {
+    const socialBody =
+      messageBody ||
+      (previewFromAttachments ? `${previewFromAttachments} shared in conversation.` : 'You sent a message.');
+    await appendJournalEntryForActiveCompanion(supabase, {
+      ownerId: session.user.id,
+      sourceType: 'message',
+      sourceId: inserted.id,
+      title: conversationType === 'group' ? 'Sent a circle message' : 'Shared a direct moment',
+      body: socialBody,
+      meta: {
+        conversationId,
+        conversationType,
+        hasAttachments: attachments.length > 0
+      }
+    });
+  } catch (journalError) {
+    console.error('[messenger/send] companion journal entry failed', journalError);
+  }
 
   return json(
     {

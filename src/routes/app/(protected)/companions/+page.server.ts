@@ -95,6 +95,11 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       .select('key, name, description, color, seed')
       .order('name', { ascending: true })
   ]);
+  const chapterRewardsResult = await supabase
+    .from('companion_chapter_rewards')
+    .select('companion_id, reward_key, reward_title, reward_body, reward_tone, unlocked_at')
+    .eq('owner_id', userId)
+    .order('unlocked_at', { ascending: false });
 
   let evolutionStagesByCompanionId: Record<string, string> = {};
   try {
@@ -166,6 +171,30 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const rituals = await getCompanionRituals(supabase, userId);
   const discoverCatalog = buildCompanionDiscoverCatalog((archetypesResult.data ?? []) as CompanionArchetypeRow[]);
   const archetypeMetadataByCompanionId = buildCompanionArchetypeMetadataByCompanionId(companions);
+  const chapterRewardsByCompanionId = ((chapterRewardsResult.data ?? []) as Array<Record<string, unknown>>).reduce<
+    Record<
+      string,
+      Array<{
+        rewardKey: string;
+        title: string;
+        body: string;
+        tone: string | null;
+        unlockedAt: string | null;
+      }>
+    >
+  >((acc, row) => {
+    const companionId = typeof row.companion_id === 'string' ? row.companion_id : '';
+    if (!companionId) return acc;
+    acc[companionId] ??= [];
+    acc[companionId].push({
+      rewardKey: typeof row.reward_key === 'string' ? row.reward_key : 'keepsake',
+      title: typeof row.reward_title === 'string' ? row.reward_title : 'Companion keepsake',
+      body: typeof row.reward_body === 'string' ? row.reward_body : '',
+      tone: typeof row.reward_tone === 'string' ? row.reward_tone : null,
+      unlockedAt: typeof row.unlocked_at === 'string' ? row.unlocked_at : null
+    });
+    return acc;
+  }, {});
 
   return {
     companions,
@@ -177,6 +206,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     bondMilestones,
     rituals,
     evolutionStagesByCompanionId,
-    archetypeMetadataByCompanionId
+    archetypeMetadataByCompanionId,
+    chapterRewardsByCompanionId
   };
 };

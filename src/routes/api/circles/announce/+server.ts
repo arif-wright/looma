@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { CIRCLES_CACHE_HEADERS, cleanText, isUuid } from '$lib/server/circles';
+import { appendJournalEntryForActiveCompanion } from '$lib/server/companions/journal';
 
 type AnnouncePayload = {
   circleId?: string;
@@ -65,6 +66,22 @@ export const POST: RequestHandler = async (event) => {
 
   if (error) {
     return json({ error: error.message }, { status: 400, headers: CIRCLES_CACHE_HEADERS });
+  }
+
+  try {
+    await appendJournalEntryForActiveCompanion(supabase, {
+      ownerId: session.user.id,
+      sourceType: 'circle_announcement',
+      sourceId: data?.id ?? null,
+      title: title || 'Shared a circle update',
+      body: content,
+      meta: {
+        circleId,
+        pinned
+      }
+    });
+  } catch (journalError) {
+    console.error('[circles/announce] companion journal entry failed', journalError);
   }
 
   return json({ ok: true, announcementId: data?.id ?? null }, { headers: CIRCLES_CACHE_HEADERS });

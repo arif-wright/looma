@@ -6,6 +6,7 @@ import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
+import { appendJournalEntryForActiveCompanion } from '$lib/server/companions/journal';
 
 const parseLimit = (value: string | null, fallback = 20) => {
   if (!value) return fallback;
@@ -144,6 +145,7 @@ export const POST: RequestHandler = async (event) => {
   });
 
   let ritualUpdate = null;
+  let activeCompanionId: string | null = null;
   try {
     const { data: activeCompanion } = await supabase
       .from('companions')
@@ -152,12 +154,29 @@ export const POST: RequestHandler = async (event) => {
       .eq('is_active', true)
       .maybeSingle();
     if (activeCompanion?.id) {
+      activeCompanionId = activeCompanion.id;
       ritualUpdate = await incrementCompanionRitual(supabase, user.id, 'post_with_companion', {
         companionName: activeCompanion.name ?? null
       });
     }
   } catch (err) {
     console.error('[posts] ritual increment failed', err);
+  }
+
+  try {
+    await appendJournalEntryForActiveCompanion(supabase, {
+      ownerId: user.id,
+      sourceType: 'post',
+      sourceId: inserted?.id ?? null,
+      title: 'Shared a companion moment',
+      body,
+      meta: {
+        postId: inserted?.id ?? null,
+        activeCompanionId
+      }
+    });
+  } catch (err) {
+    console.error('[posts] companion journal entry failed', err);
   }
 
   return json({ item: response, rituals: ritualUpdate });

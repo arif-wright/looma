@@ -17,6 +17,7 @@ export type CompanionMemorySummary = {
       missionCompletions: number;
       gameCompletions: number;
       missionStarts: number;
+      socialMoments: number;
     };
   };
   last_built_at: string;
@@ -68,6 +69,7 @@ const buildSentenceSummary = (args: {
   streakDays: number;
   missionCompletions: number;
   gameCompletions: number;
+  socialMoments: number;
   stageLabel: string;
   lastActiveIso: string | null;
 }): string => {
@@ -80,7 +82,9 @@ const buildSentenceSummary = (args: {
       : 'Daily streak momentum is currently reset, with room to rebuild gently.'
   );
   sentences.push(
-    args.gameCompletions > args.missionCompletions
+    args.socialMoments > Math.max(args.gameCompletions, args.missionCompletions) && args.socialMoments > 0
+      ? `Recent activity leans toward shared social moments (${args.socialMoments}) over games (${args.gameCompletions}) and missions (${args.missionCompletions}).`
+      : args.gameCompletions > args.missionCompletions
       ? `Recent activity leans toward games (${args.gameCompletions}) over missions (${args.missionCompletions}).`
       : `Recent activity leans toward missions (${args.missionCompletions}) with ${args.gameCompletions} game completions.`
   );
@@ -105,7 +109,7 @@ export const buildCompanionMemorySummary = async (
   const fromIso = toIso(from);
   const toIsoNow = toIso(now);
 
-  const [emotionalRes, missionCompletionsRes, missionStartsRes, gameCompletionsRes, preferencesRes, companionRes] =
+  const [emotionalRes, missionCompletionsRes, missionStartsRes, gameCompletionsRes, socialMomentsRes, preferencesRes, companionRes] =
     await Promise.all([
       client
         .from('companion_emotional_state')
@@ -131,6 +135,13 @@ export const buildCompanionMemorySummary = async (
         .eq('status', 'completed')
         .gte('completed_at', fromIso),
       client
+        .from('companion_journal_entries')
+        .select('id', { head: true, count: 'exact' })
+        .eq('owner_id', userId)
+        .eq('companion_id', companionId)
+        .in('source_type', ['post', 'message', 'circle_announcement'])
+        .gte('created_at', fromIso),
+      client
         .from('user_preferences')
         .select('portable_state')
         .eq('user_id', userId)
@@ -147,6 +158,7 @@ export const buildCompanionMemorySummary = async (
   const missionCompletions = missionCompletionsRes.count ?? 0;
   const missionStarts = missionStartsRes.count ?? 0;
   const gameCompletions = gameCompletionsRes.count ?? 0;
+  const socialMoments = socialMomentsRes.count ?? 0;
   const portableState =
     preferencesRes.data && typeof preferencesRes.data.portable_state === 'object' && preferencesRes.data.portable_state
       ? (preferencesRes.data.portable_state as Record<string, unknown>)
@@ -207,6 +219,8 @@ export const buildCompanionMemorySummary = async (
   if (tone === 'direct') highlights.push('Prefers direct tone');
   if (gameCompletions > missionCompletions && gameCompletions > 0) {
     highlights.push('Most active in games');
+  } else if (socialMoments > Math.max(gameCompletions, missionCompletions) && socialMoments > 0) {
+    highlights.push('Most active in shared moments');
   }
   if (lastMilestoneAt) {
     highlights.push(`Recent milestone: ${new Date(lastMilestoneAt).toLocaleDateString()}`);
@@ -226,6 +240,7 @@ export const buildCompanionMemorySummary = async (
     streakDays,
     missionCompletions,
     gameCompletions,
+    socialMoments,
     stageLabel: stage.label,
     lastActiveIso
   });
@@ -240,7 +255,8 @@ export const buildCompanionMemorySummary = async (
       counts: {
         missionCompletions,
         gameCompletions,
-        missionStarts
+        missionStarts,
+        socialMoments
       }
     },
     last_built_at: toIsoNow

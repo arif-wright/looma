@@ -4,8 +4,12 @@
   import type { MuseAnimationName } from '$lib/companions/museAnimations';
   import CompanionHero from '$lib/components/home/CompanionHero.svelte';
 
+  type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
+  type KeepsakeTheme = { tone: KeepsakeTone; title: string } | null;
+
   export let companionName = 'Mirae';
   export let companionAvatarUrl: string | null = null;
+  export let keepsakeTheme: KeepsakeTheme = null;
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let statusLine = 'Mirae feels distant.';
   export let statusReason = "She hasn't heard from you today.";
@@ -32,6 +36,8 @@
       : closenessState === 'Resonant'
         ? "You're in sync right now. Stay in this moment."
         : "I'm listening. Share what's on your mind.");
+  $: sanctuaryTone = keepsakeTheme?.tone ?? 'bond';
+  $: auraLabel = keepsakeTheme ? `Keepsake aura: ${keepsakeTheme.title}` : null;
 
   const dismissHint = () => {
     showHint = false;
@@ -44,7 +50,7 @@
   });
 </script>
 
-<section class="sanctuary">
+<section class="sanctuary" data-keepsake-tone={sanctuaryTone}>
   <div class="bg base" aria-hidden="true"></div>
   <div class="bg chroma" aria-hidden="true"></div>
   <div class="bg drift" aria-hidden="true"></div>
@@ -60,6 +66,12 @@
 
   <main class="stage" aria-label="Companion home">
     <div class="hero-wrap">
+      {#if auraLabel}
+        <div class="keepsake-aura" role="status">
+          <span class="keepsake-aura__label">Keepsake aura</span>
+          <strong>{keepsakeTheme?.title}</strong>
+        </div>
+      {/if}
       <CompanionHero
         name={companionName}
         avatarUrl={companionAvatarUrl}
@@ -123,6 +135,41 @@
       linear-gradient(160deg, rgba(26, 42, 122, 0.98), rgba(47, 70, 153, 0.94) 36%, rgba(102, 79, 152, 0.88) 66%, rgba(218, 161, 127, 0.76));
   }
 
+  .sanctuary[data-keepsake-tone='care'] .base {
+    background:
+      radial-gradient(78% 62% at 85% 14%, rgba(157, 233, 207, 0.34), transparent 72%),
+      radial-gradient(76% 68% at 12% 88%, rgba(241, 197, 122, 0.34), transparent 74%),
+      linear-gradient(160deg, rgba(17, 39, 56, 0.98), rgba(22, 69, 82, 0.94) 36%, rgba(63, 102, 112, 0.88) 66%, rgba(205, 156, 91, 0.78));
+  }
+
+  .sanctuary[data-keepsake-tone='social'] .base {
+    background:
+      radial-gradient(80% 65% at 85% 14%, rgba(255, 176, 148, 0.34), transparent 72%),
+      radial-gradient(78% 70% at 12% 90%, rgba(238, 202, 125, 0.32), transparent 74%),
+      linear-gradient(160deg, rgba(62, 27, 48, 0.98), rgba(113, 49, 71, 0.94) 36%, rgba(166, 90, 79, 0.88) 66%, rgba(229, 176, 110, 0.76));
+  }
+
+  .sanctuary[data-keepsake-tone='mission'] .base {
+    background:
+      radial-gradient(76% 60% at 85% 14%, rgba(243, 205, 112, 0.3), transparent 72%),
+      radial-gradient(82% 70% at 12% 90%, rgba(119, 155, 212, 0.28), transparent 74%),
+      linear-gradient(160deg, rgba(21, 29, 52, 0.98), rgba(49, 69, 116, 0.94) 36%, rgba(104, 94, 117, 0.88) 66%, rgba(214, 168, 99, 0.78));
+  }
+
+  .sanctuary[data-keepsake-tone='play'] .base {
+    background:
+      radial-gradient(80% 65% at 85% 14%, rgba(126, 228, 236, 0.34), transparent 72%),
+      radial-gradient(78% 70% at 12% 90%, rgba(255, 180, 135, 0.34), transparent 74%),
+      linear-gradient(160deg, rgba(24, 46, 76, 0.98), rgba(44, 91, 117, 0.94) 36%, rgba(121, 104, 159, 0.88) 66%, rgba(246, 165, 105, 0.76));
+  }
+
+  .sanctuary[data-keepsake-tone='bond'] .base {
+    background:
+      radial-gradient(80% 65% at 85% 14%, rgba(245, 229, 171, 0.28), transparent 72%),
+      radial-gradient(80% 70% at 12% 90%, rgba(255, 194, 146, 0.32), transparent 74%),
+      linear-gradient(160deg, rgba(34, 35, 84, 0.98), rgba(63, 60, 130, 0.94) 36%, rgba(126, 92, 145, 0.88) 66%, rgba(231, 187, 125, 0.76));
+  }
+
   .chroma {
     z-index: 1;
     mix-blend-mode: soft-light;
@@ -131,6 +178,41 @@
       radial-gradient(65% 50% at 20% 24%, rgba(72, 220, 215, 0.42), transparent 72%),
       radial-gradient(60% 48% at 74% 74%, rgba(255, 177, 136, 0.42), transparent 68%),
       radial-gradient(50% 40% at 52% 44%, rgba(92, 77, 178, 0.36), transparent 64%);
+  }
+
+  .sanctuary[data-keepsake-tone='care'] .chroma {
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(104, 229, 193, 0.4), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 209, 144, 0.32), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(87, 149, 160, 0.28), transparent 64%);
+  }
+
+  .sanctuary[data-keepsake-tone='social'] .chroma {
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(255, 168, 140, 0.42), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 210, 139, 0.34), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(187, 101, 120, 0.28), transparent 64%);
+  }
+
+  .sanctuary[data-keepsake-tone='mission'] .chroma {
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(245, 202, 102, 0.32), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(154, 176, 245, 0.3), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(101, 122, 184, 0.26), transparent 64%);
+  }
+
+  .sanctuary[data-keepsake-tone='play'] .chroma {
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(99, 231, 220, 0.42), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 186, 140, 0.38), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(121, 111, 205, 0.28), transparent 64%);
+  }
+
+  .sanctuary[data-keepsake-tone='bond'] .chroma {
+    background:
+      radial-gradient(65% 50% at 20% 24%, rgba(255, 230, 162, 0.3), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 188, 142, 0.34), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(151, 116, 196, 0.26), transparent 64%);
   }
 
   .drift {
@@ -216,6 +298,32 @@
     display: grid;
     justify-items: center;
     align-self: start;
+    gap: 0.9rem;
+  }
+
+  .keepsake-aura {
+    width: min(100%, 18rem);
+    border-radius: 999px;
+    border: 1px solid rgba(244, 237, 214, 0.24);
+    background: rgba(18, 23, 57, 0.38);
+    backdrop-filter: blur(12px);
+    padding: 0.5rem 0.8rem;
+    display: grid;
+    gap: 0.08rem;
+    text-align: center;
+    box-shadow: 0 12px 28px rgba(16, 21, 51, 0.24);
+  }
+
+  .keepsake-aura__label {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(240, 230, 199, 0.72);
+  }
+
+  .keepsake-aura strong {
+    font-size: 0.82rem;
+    color: rgba(252, 248, 238, 0.96);
   }
 
   .dialogue {

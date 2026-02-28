@@ -262,6 +262,7 @@
     <HomeSanctuaryV1
       companionName={companionName}
       companionAvatarUrl={companionState?.avatar_url ?? null}
+      keepsakeTheme={data.keepsakeTheme ?? null}
       {closenessState}
       {statusLine}
       {statusReason}
@@ -303,6 +304,12 @@
       rituals={data.rituals ?? []}
       hasDailyCheckin={hasRecentCheckin}
       journalMoments={data.journalMoments ?? []}
+      sanctuaryNudge={data.sanctuaryNudge ?? null}
+      dailyArc={data.dailyArc ?? null}
+      dailyArcRecap={data.dailyArcRecap ?? null}
+      weeklyArc={data.weeklyArc ?? null}
+      chapterMilestones={data.chapterMilestones ?? []}
+      chapterRewards={data.chapterRewards ?? []}
     />
   </section>
 </div>

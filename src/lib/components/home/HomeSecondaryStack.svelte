@@ -9,6 +9,56 @@
     href: string;
   };
 
+  type SanctuaryNudge = {
+    title: string;
+    body: string;
+    ctaLabel: string;
+    href: string;
+  };
+
+  type DailyArc = {
+    title: string;
+    body: string;
+    progressLabel: string;
+    nextStepId: 'arrive' | 'ritual' | 'express' | 'remember' | null;
+    steps: Array<{
+      id: 'arrive' | 'ritual' | 'express' | 'remember';
+      label: string;
+      title: string;
+      body: string;
+      href: string;
+      complete: boolean;
+    }>;
+  };
+
+  type DailyArcRecap = {
+    title: string;
+    body: string;
+    unlockedAt: string | null;
+  };
+
+  type WeeklyArc = {
+    title: string;
+    body: string;
+    emphasis: 'care' | 'social' | 'mission' | 'play' | 'quiet';
+    progressLabel: string;
+  };
+
+  type ChapterMilestone = {
+    id: string;
+    label: string;
+    title: string;
+    body: string;
+  };
+
+  type ChapterReward = {
+    rewardKey: string;
+    title: string;
+    body: string;
+    tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+    unlockedAt: string | null;
+  };
+
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
   export let journalSummary: string | null = null;
@@ -25,6 +75,12 @@
   export let rituals: CompanionRitual[] = [];
   export let hasDailyCheckin = false;
   export let journalMoments: JournalMoment[] = [];
+  export let sanctuaryNudge: SanctuaryNudge | null = null;
+  export let dailyArc: DailyArc | null = null;
+  export let dailyArcRecap: DailyArcRecap | null = null;
+  export let weeklyArc: WeeklyArc | null = null;
+  export let chapterMilestones: ChapterMilestone[] = [];
+  export let chapterRewards: ChapterReward[] = [];
 
   const ritualSummary = (list: CompanionRitual[]) => {
     const total = Array.isArray(list) ? list.length : 0;
@@ -51,11 +107,12 @@
         ? 'Keep the sanctuary warm'
         : 'Start your daily sanctuary';
   $: sanctuaryCopy =
-    hasDailyCheckin
+    sanctuaryNudge?.body ??
+    (hasDailyCheckin
       ? daily.next
         ? `${daily.completed}/${daily.total} rituals complete. Next: ${daily.next.title}.`
         : 'You checked in and completed today’s rituals. Come back any time for another small moment.'
-      : `${companionName} is still waiting to hear from you today.`;
+      : `${companionName} is still waiting to hear from you today.`);
 </script>
 
 <section class="secondary-stack" aria-label="Home actions">
@@ -63,15 +120,41 @@
     <div class="focus-card__eyebrow">Daily sanctuary</div>
     <div class="focus-card__row">
       <div>
-        <h2>{sanctuaryState}</h2>
+        <h2>{sanctuaryNudge?.title ?? sanctuaryState}</h2>
         <p>{sanctuaryCopy}</p>
       </div>
-      <a class="focus-card__link" href={companionHref}>{hasDailyCheckin ? 'Continue' : 'Begin'}</a>
+      <a class="focus-card__link" href={sanctuaryNudge?.href ?? companionHref}>
+        {sanctuaryNudge?.ctaLabel ?? (hasDailyCheckin ? 'Continue' : 'Begin')}
+      </a>
     </div>
     <div class="sanctuary-progress" aria-label="Daily sanctuary progress">
       <span>{hasDailyCheckin ? 'Check-in complete' : 'Check-in waiting'}</span>
       <span>{daily.completed}/{daily.total || 0} rituals</span>
     </div>
+    {#if dailyArc}
+      <div class="arc-card" aria-label="Daily companion arc">
+        <div class="arc-card__head">
+          <strong>{dailyArc.title}</strong>
+          <span>{dailyArc.progressLabel}</span>
+        </div>
+        <p>{dailyArc.body}</p>
+        <div class="arc-steps">
+          {#each dailyArc.steps as step}
+            <a class={`arc-step ${step.complete ? 'arc-step--done' : ''}`} href={step.href}>
+              <span class="arc-step__label">{step.label}</span>
+              <strong>{step.title}</strong>
+            </a>
+          {/each}
+        </div>
+      </div>
+    {/if}
+    {#if dailyArcRecap}
+      <div class="recap-card" aria-label="Daily recap">
+        <span class="moment-pill__label">Recap</span>
+        <strong>{dailyArcRecap.title}</strong>
+        <p>{dailyArcRecap.body}</p>
+      </div>
+    {/if}
   </article>
 
   <article class="focus-card focus-card--journal">
@@ -94,6 +177,33 @@
           <a class="moment-pill" href={moment.href}>
             <span class="moment-pill__label">{moment.label}</span>
             <strong>{moment.body}</strong>
+          </a>
+        {/each}
+      </div>
+    {/if}
+    {#if weeklyArc}
+      <div class="recap-card recap-card--weekly" aria-label="Weekly companion chapter">
+        <span class="moment-pill__label">Weekly chapter</span>
+        <strong>{weeklyArc.title}</strong>
+        <p>{weeklyArc.body}</p>
+      </div>
+    {/if}
+    {#if chapterMilestones.length > 0}
+      <div class="chapter-strip" aria-label="Chapter milestones">
+        {#each chapterMilestones.slice(0, 2) as milestone}
+          <a class="moment-pill" href={journalHref}>
+            <span class="moment-pill__label">{milestone.label}</span>
+            <strong>{milestone.title}</strong>
+          </a>
+        {/each}
+      </div>
+    {/if}
+    {#if chapterRewards.length > 0}
+      <div class="chapter-strip" aria-label="Chapter rewards">
+        {#each chapterRewards.slice(0, 1) as reward}
+          <a class="moment-pill" href={journalHref}>
+            <span class="moment-pill__label">Keepsake</span>
+            <strong>{reward.title}</strong>
           </a>
         {/each}
       </div>
@@ -223,6 +333,98 @@
     margin-top: 0.8rem;
     display: grid;
     gap: 0.55rem;
+  }
+
+  .arc-card {
+    margin-top: 0.85rem;
+    display: grid;
+    gap: 0.65rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(212, 190, 139, 0.12);
+  }
+
+  .arc-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
+
+  .arc-card__head strong {
+    font-size: 0.87rem;
+    color: rgba(250, 243, 229, 0.96);
+  }
+
+  .arc-card__head span {
+    font-size: 0.74rem;
+    color: rgba(193, 178, 149, 0.78);
+  }
+
+  .arc-steps {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .arc-step {
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(212, 190, 139, 0.12);
+    background: rgba(217, 189, 126, 0.06);
+    display: grid;
+    gap: 0.16rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .arc-step--done {
+    background: rgba(130, 196, 150, 0.11);
+    border-color: rgba(130, 196, 150, 0.2);
+  }
+
+  .arc-step__label {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.72);
+  }
+
+  .arc-step strong {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    color: rgba(236, 228, 211, 0.92);
+  }
+
+  .recap-card {
+    margin-top: 0.8rem;
+    padding: 0.85rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 190, 139, 0.14);
+    background: rgba(217, 189, 126, 0.08);
+    display: grid;
+    gap: 0.28rem;
+  }
+
+  .recap-card--weekly {
+    margin-top: 0.7rem;
+  }
+
+  .chapter-strip {
+    margin-top: 0.65rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .recap-card strong {
+    font-size: 0.86rem;
+    color: rgba(250, 243, 229, 0.96);
+  }
+
+  .recap-card p {
+    margin: 0;
+    color: rgba(224, 216, 200, 0.82);
+    font-size: 0.82rem;
+    line-height: 1.45;
   }
 
   .moment-pill {

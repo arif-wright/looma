@@ -9,6 +9,7 @@ import { computeEffectiveEnergyMax } from '$lib/player/energy';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
+  type RecentJournalMomentBundle,
   type PortableStateBundle
 } from '$lib/types/contextBundle';
 
@@ -85,6 +86,13 @@ const extractPortableState = (portableState: unknown) => {
   };
 };
 
+const clipJournalBody = (value: string | null | undefined, limit = 160) => {
+  const normalized = value?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!normalized) return '';
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit - 1).trimEnd()}…`;
+};
+
 export const getContextBundle = async (event: RequestEvent, args: ContextBundleArgs = {}): Promise<ContextBundle> => {
   const { supabase, session } = await createSupabaseServerClient(event);
   const resolvedUserId = args.userId ?? session?.user?.id ?? null;
@@ -136,6 +144,10 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
         reactionsEnabled: null,
         lastContext: { context: null, trigger: null },
         lastContextPayload: {}
+      },
+      recentJournal: {
+        moments: [],
+        socialCount7d: 0
       }
     };
   }
@@ -184,12 +196,62 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
   const companionRoster = portableExtracted.companions.roster;
   const activeCompanionFromPortable =
     companionRoster.find((entry) => entry.id === portableExtracted.companions.activeId) ?? companionRoster[0] ?? null;
+  let recentJournalMoments: RecentJournalMomentBundle[] = [];
+  let socialCount7d = 0;
   const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
   const baseEnergyMax = stats?.energy_max ?? null;
   const effectiveEnergyMax =
     typeof baseEnergyMax === 'number'
       ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
       : baseEnergyMax;
+
+  if (consentFlags.memory && companionBond?.companionId) {
+    const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const [journalRes, socialCountRes] = await Promise.all([
+      supabase
+        .from('companion_journal_entries')
+        .select('id, title, body, source_type, created_at')
+        .eq('owner_id', resolvedUserId)
+        .eq('companion_id', companionBond.companionId)
+        .order('created_at', { ascending: false })
+        .limit(3),
+      supabase
+        .from('companion_journal_entries')
+        .select('id', { head: true, count: 'exact' })
+        .eq('owner_id', resolvedUserId)
+        .eq('companion_id', companionBond.companionId)
+        .in('source_type', ['post', 'message', 'circle_announcement'])
+        .gte('created_at', weekAgoIso)
+    ]);
+
+    if (journalRes.error && journalRes.error.code !== 'PGRST116') {
+      console.error('[context bundle] companion journal query failed', journalRes.error);
+    } else {
+      recentJournalMoments = ((journalRes.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+        const sourceType =
+          row.source_type === 'post' ||
+          row.source_type === 'message' ||
+          row.source_type === 'circle_announcement' ||
+          row.source_type === 'system'
+            ? row.source_type
+            : 'system';
+        return {
+          id: String(row.id ?? ''),
+          title: typeof row.title === 'string' && row.title.trim() ? row.title.trim() : 'Companion moment',
+          body: clipJournalBody(typeof row.body === 'string' ? row.body : ''),
+          sourceType,
+          createdAt: typeof row.created_at === 'string' ? row.created_at : now.toISOString(),
+          social: sourceType === 'post' || sourceType === 'message' || sourceType === 'circle_announcement'
+        } satisfies RecentJournalMomentBundle;
+      });
+    }
+
+    if (socialCountRes.error && socialCountRes.error.code !== 'PGRST116') {
+      console.error('[context bundle] companion journal social count failed', socialCountRes.error);
+    } else {
+      socialCount7d = socialCountRes.count ?? 0;
+    }
+  }
 
   return {
     version: CONTEXT_BUNDLE_VERSION,
@@ -249,6 +311,10 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       lastContextPayload: consentFlags.memory
         ? sanitizePortablePayload(prefsRes.data?.last_context_payload)
         : {}
+    },
+    recentJournal: {
+      moments: recentJournalMoments,
+      socialCount7d
     }
   } satisfies ContextBundle;
 };

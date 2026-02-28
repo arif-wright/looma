@@ -10,6 +10,15 @@ import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
 import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
 import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
+import {
+  deriveChapterMilestones,
+  deriveChapterRewards,
+  deriveCompanionPatternNotice,
+  deriveDailyCompanionArc,
+  deriveWeeklyCompanionArc,
+  syncDailyCompanionArcProgress,
+  unlockChapterRewards
+} from '$lib/server/companions/journal';
 import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
@@ -69,6 +78,26 @@ type JournalMoment = {
   body: string;
   href: string;
 };
+
+type SanctuaryNudge = {
+  title: string;
+  body: string;
+  ctaLabel: string;
+  href: string;
+};
+
+type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
+
+type KeepsakeTheme = {
+  tone: KeepsakeTone;
+  title: string;
+};
+
+type DailyArc = ReturnType<typeof deriveDailyCompanionArc>;
+type DailyArcRecap = Awaited<ReturnType<typeof syncDailyCompanionArcProgress>>['recap'];
+type WeeklyArc = ReturnType<typeof deriveWeeklyCompanionArc>;
+type ChapterMilestones = ReturnType<typeof deriveChapterMilestones>;
+type ChapterRewards = Awaited<ReturnType<typeof unlockChapterRewards>>;
 
 const DEFAULT_ENDCAP = {
   title: 'Welcome back',
@@ -151,6 +180,61 @@ const buildJournalMoments = (args: {
   return moments.slice(0, 3);
 };
 
+const buildSanctuaryNudge = (args: {
+  activeCompanion: ActiveCompanionSnapshot | null;
+  journalMoments: JournalMoment[];
+  latestDailyCheckin: DailyCheckin | null;
+  rituals: CompanionRitual[];
+}) => {
+  const { activeCompanion, journalMoments, latestDailyCheckin, rituals } = args;
+  const companionName = activeCompanion?.name ?? 'your companion';
+  const completed = rituals.filter((entry) => entry.status === 'completed').length;
+  const socialMoment = journalMoments.find((entry) => entry.label === 'Social');
+  const checkinHref = '/app/messages';
+
+  if (socialMoment) {
+    return {
+      title: 'Carry the shared thread forward',
+      body: `${companionName} has been shaped by recent shared moments. Send one more gentle note or reply.`,
+      ctaLabel: 'Send a note',
+      href: checkinHref
+    } satisfies SanctuaryNudge;
+  }
+
+  if (latestDailyCheckin && completed === 0) {
+    return {
+      title: 'Turn your check-in into a ritual',
+      body: `You already checked in today. Follow it with one small ritual so ${companionName} feels the continuity.`,
+      ctaLabel: 'Visit companion',
+      href: '/app/companions'
+    } satisfies SanctuaryNudge;
+  }
+
+  return {
+    title: 'Begin with a small ritual',
+    body: `${companionName} responds best to small repeated care. Start with a check-in, then keep the sanctuary warm.`,
+    ctaLabel: 'Open sanctuary',
+    href: '/app/companions'
+  } satisfies SanctuaryNudge;
+};
+
+const buildKeepsakeTheme = (chapterRewards: ChapterRewards): KeepsakeTheme | null => {
+  const latestReward = chapterRewards.find((reward) =>
+    reward.tone === 'care' ||
+    reward.tone === 'social' ||
+    reward.tone === 'mission' ||
+    reward.tone === 'play' ||
+    reward.tone === 'bond'
+  );
+
+  if (!latestReward) return null;
+
+  return {
+    tone: latestReward.tone,
+    title: latestReward.title
+  };
+};
+
 const upsertMissionAssignment = async (args: {
   supabase: SupabaseClient;
   period: 'daily' | 'weekly';
@@ -220,7 +304,13 @@ export const load: PageServerLoad = async (event) => {
     dailyCheckinToday: null as DailyCheckin | null,
     latestDailyCheckin: null as DailyCheckin | null,
     memorySummary: null as MemorySummary | null,
-    journalMoments: [] as JournalMoment[]
+    journalMoments: [] as JournalMoment[],
+    sanctuaryNudge: null as SanctuaryNudge | null,
+    dailyArc: null as DailyArc | null,
+    dailyArcRecap: null as DailyArcRecap,
+    weeklyArc: null as WeeklyArc | null,
+    chapterMilestones: [] as ChapterMilestones,
+    chapterRewards: [] as ChapterRewards
   };
 
   try {
@@ -573,6 +663,136 @@ export const load: PageServerLoad = async (event) => {
       latestDailyCheckin,
       rituals
     });
+    if (userId && activeCompanion?.id) {
+      const [socialEntries, systemEntries] = await Promise.all([
+        supabase
+        .from('companion_journal_entries')
+        .select('id, title, body, source_type, created_at')
+        .eq('owner_id', userId)
+        .eq('companion_id', activeCompanion.id)
+        .in('source_type', ['post', 'message', 'circle_announcement'])
+        .order('created_at', { ascending: false })
+        .limit(1),
+        supabase
+          .from('companion_journal_entries')
+          .select('id, title, body, source_type, created_at')
+          .eq('owner_id', userId)
+          .eq('companion_id', activeCompanion.id)
+          .eq('source_type', 'system')
+          .order('created_at', { ascending: false })
+          .limit(1)
+      ]);
+      if (!socialEntries.error) {
+        const latestSocial = (socialEntries.data ?? [])[0] as Record<string, unknown> | undefined;
+        if (latestSocial) {
+          journalMoments.unshift({
+            id: `social-${String(latestSocial.id ?? 'recent')}`,
+            label: 'Social',
+            body: clipMomentBody(
+              typeof latestSocial.body === 'string' && latestSocial.body.trim().length
+                ? latestSocial.body
+                : typeof latestSocial.title === 'string'
+                  ? latestSocial.title
+                  : 'A shared moment reached your companion.'
+            ),
+            href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
+          });
+        }
+      }
+      const latestNotice =
+        !systemEntries.error ? ((systemEntries.data ?? [])[0] as Record<string, unknown> | undefined) : undefined;
+      if (latestNotice) {
+          journalMoments.unshift({
+            id: `notice-${String(latestNotice.id ?? 'recent')}`,
+            label: 'Noticed',
+            body: clipMomentBody(
+              typeof latestNotice.body === 'string' && latestNotice.body.trim().length
+                ? latestNotice.body
+                : typeof latestNotice.title === 'string'
+                  ? latestNotice.title
+                  : `${activeCompanion.name ?? 'Your companion'} noticed a new pattern.`
+            ),
+            href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
+          });
+      } else {
+        const derivedNotice = deriveCompanionPatternNotice({
+          companionName: activeCompanion.name ?? null,
+          careMoments: rituals.filter((entry) => entry.status === 'completed').length,
+          missionMoments: missionSuggestions.length,
+          gameMoments: 0,
+          socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
+          checkins: latestDailyCheckin ? 1 : 0
+        });
+        if (derivedNotice) {
+        journalMoments.unshift({
+            id: `notice-derived-${derivedNotice.patternKey}`,
+            label: 'Noticed',
+            body: clipMomentBody(derivedNotice.body),
+            href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
+          });
+        }
+      }
+    }
+    const sanctuaryNudge = buildSanctuaryNudge({
+      activeCompanion,
+      journalMoments,
+      latestDailyCheckin,
+      rituals
+    });
+    const weeklyArc = deriveWeeklyCompanionArc({
+      companionName: activeCompanion?.name ?? null,
+      careMoments: rituals.filter((entry) => entry.status === 'completed').length,
+      missionMoments: missionSuggestions.length,
+      gameMoments: 0,
+      socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
+      checkins: latestDailyCheckin ? 1 : 0
+    });
+    const chapterMilestones = deriveChapterMilestones({
+      companionName: activeCompanion?.name ?? null,
+      bondLevel: Math.max(0, Math.floor(activeCompanion?.bondLevel ?? 0)),
+      trust: activeCompanion?.trust ?? 0,
+      affection: activeCompanion?.affection ?? 0,
+      weeklyArc,
+      patternNotice: deriveCompanionPatternNotice({
+        companionName: activeCompanion?.name ?? null,
+        careMoments: rituals.filter((entry) => entry.status === 'completed').length,
+        missionMoments: missionSuggestions.length,
+        gameMoments: 0,
+        socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
+        checkins: latestDailyCheckin ? 1 : 0
+      })
+    });
+    const chapterRewards =
+      userId && activeCompanion?.id
+        ? await unlockChapterRewards(supabase, {
+            ownerId: userId,
+            companionId: activeCompanion.id,
+            rewards: deriveChapterRewards({
+              companionName: activeCompanion.name ?? null,
+              milestones: chapterMilestones,
+              weeklyArc,
+              trust: activeCompanion.trust ?? 0,
+              affection: activeCompanion.affection ?? 0
+            })
+          })
+        : [];
+    const dailyArc = deriveDailyCompanionArc({
+      companionName: activeCompanion?.name ?? null,
+      hasDailyCheckin: Boolean(dailyCheckinToday || latestDailyCheckin),
+      rituals,
+      hasSocialMoment: journalMoments.some((entry) => entry.label === 'Social'),
+      hasJournalMoment: journalMoments.length > 0
+    });
+    const dailyArcRecap =
+      userId && activeCompanion?.id
+        ? (await syncDailyCompanionArcProgress(supabase, {
+            ownerId: userId,
+            companionId: activeCompanion.id,
+            companionName: activeCompanion.name ?? null,
+            arc: dailyArc
+          })).recap
+        : null;
+    const keepsakeTheme = buildKeepsakeTheme(chapterRewards);
 
     return {
       stats,
@@ -595,7 +815,14 @@ export const load: PageServerLoad = async (event) => {
       dailyCheckinToday,
       latestDailyCheckin,
       memorySummary,
-      journalMoments
+      journalMoments: journalMoments.slice(0, 3),
+      sanctuaryNudge,
+      dailyArc,
+      dailyArcRecap,
+      weeklyArc,
+      chapterMilestones,
+      chapterRewards,
+      keepsakeTheme
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

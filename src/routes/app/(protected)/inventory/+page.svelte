@@ -15,9 +15,23 @@
     };
   };
 
-  export let data: { items: InventoryRow[]; error?: string | null };
+  type CompanionRewardRow = {
+    reward_key: string;
+    reward_title: string;
+    reward_body: string;
+    reward_tone?: string | null;
+    unlocked_at: string;
+    companion?: {
+      id: string;
+      name: string;
+      species?: string | null;
+    } | null;
+  };
+
+  export let data: { items: InventoryRow[]; companionRewards: CompanionRewardRow[]; error?: string | null };
 
   const items = Array.isArray(data?.items) ? data.items : [];
+  const companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
   const error = data?.error ?? null;
 
   const formatDate = (value: string) => {
@@ -55,6 +69,7 @@
     Object.entries(rarityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
   $: latestAcquiredAt = items[0]?.acquired_at ?? null;
+  $: latestRewardAt = companionRewards[0]?.unlocked_at ?? null;
 </script>
 
 <SanctuaryPageFrame
@@ -63,7 +78,7 @@
   subtitle="Keep your owned cosmetics, boosts, and unlocks visible without breaking the sanctuary flow."
 >
   <svelte:fragment slot="actions">
-    <EmotionalChip tone="warm">{items.length} owned</EmotionalChip>
+    <EmotionalChip tone="warm">{items.length + companionRewards.length} owned</EmotionalChip>
     <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : 'Empty vault'}</EmotionalChip>
   </svelte:fragment>
 
@@ -71,7 +86,7 @@
     <section class="inventory-pulse" aria-label="Inventory pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
-        <h2>{items.length === 0 ? 'Nothing stored yet' : `${items.length} keepsakes in your vault`}</h2>
+        <h2>{items.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + companionRewards.length} keepsakes in your vault`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
             Inventory could not be loaded right now. Your owned items are still safe.
@@ -86,8 +101,16 @@
       <div class="inventory-pulse__stats">
         <article class="stat-card">
           <span class="stat-card__label">Latest addition</span>
-          <strong>{latestAcquiredAt ? formatDate(latestAcquiredAt) : 'No purchases yet'}</strong>
-          <span>{latestAcquiredAt ? 'Most recent item arrival.' : 'Your first unlock will appear here.'}</span>
+          <strong>{latestRewardAt ? formatDate(latestRewardAt) : latestAcquiredAt ? formatDate(latestAcquiredAt) : 'No unlocks yet'}</strong>
+          <span>
+            {#if latestRewardAt}
+              Most recent companion keepsake unlock.
+            {:else if latestAcquiredAt}
+              Most recent item arrival.
+            {:else}
+              Your first unlock will appear here.
+            {/if}
+          </span>
         </article>
         <article class="stat-card">
           <span class="stat-card__label">Top category</span>
@@ -107,7 +130,7 @@
         <h3>Inventory unavailable</h3>
         <p>Failed to load inventory: {error}</p>
       </section>
-    {:else if !items.length}
+    {:else if !items.length && !companionRewards.length}
       <section class="inventory-state" aria-live="polite">
         <h3>Your vault is quiet</h3>
         <p>No items owned yet. Explore the shop to pick up your first cosmetic, utility item, or bundle.</p>
@@ -131,6 +154,45 @@
           </div>
         </article>
       </section>
+
+      {#if companionRewards.length > 0}
+        <section class="inventory-overview" aria-label="Companion keepsakes">
+          <article class="overview-card">
+            <span class="overview-card__label">Companion keepsakes</span>
+            <div class="overview-card__chips">
+              {#each companionRewards.slice(0, 4) as reward}
+                <span class="overview-chip">{reward.companion?.name ?? 'Companion'} · {reward.reward_title}</span>
+              {/each}
+            </div>
+          </article>
+        </section>
+
+        <section class="inventory-grid" aria-label="Companion keepsakes">
+          {#each companionRewards as reward}
+            <article class="inventory-card" aria-label={`${reward.reward_title} companion keepsake`}>
+              <div class="inventory-media">
+                <div class="inventory-media__placeholder" aria-hidden="true">
+                  {(reward.companion?.name ?? reward.reward_title).slice(0, 1)}
+                </div>
+                <span class="inventory-rarity">{titleCase(reward.reward_tone)}</span>
+              </div>
+
+              <div class="inventory-body">
+                <div class="inventory-body__heading">
+                  <div>
+                    <h3>{reward.reward_title}</h3>
+                    <p class="subtitle">{reward.companion?.name ?? 'Companion'} · {reward.companion?.species ?? 'Muse'}</p>
+                  </div>
+                  <span class="inventory-type">Keepsake</span>
+                </div>
+
+                <p class="subtitle">{reward.reward_body}</p>
+                <p class="meta">Unlocked {formatDate(reward.unlocked_at)}</p>
+              </div>
+            </article>
+          {/each}
+        </section>
+      {/if}
 
       <section class="inventory-grid" aria-label="Owned items">
         {#each items as row}

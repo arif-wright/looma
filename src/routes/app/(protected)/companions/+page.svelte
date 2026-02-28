@@ -60,6 +60,16 @@
     note?: string | null;
   };
 
+  type ChapterReward = {
+    rewardKey: string;
+    title: string;
+    body: string;
+    tone: string | null;
+    unlockedAt: string | null;
+  };
+
+  type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
+
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
   const LOW_ENERGY_THRESHOLD = 25;
@@ -185,6 +195,7 @@
   applyRitualUpdate(rituals);
 
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
+  const chapterRewardsByCompanionId = (data.chapterRewardsByCompanionId ?? {}) as Record<string, ChapterReward[]>;
   let maxSlots = data.maxSlots ?? 3;
   const companionState = createCompanionRosterState(sortBySlot((data.companions ?? []) as Companion[]), data.activeCompanionId ?? null);
   let rosterState = get(companionState);
@@ -554,6 +565,16 @@
   $: activeCompanionJournalHref =
     activeCompanion?.id ? `/app/memory?companion=${activeCompanion.id}` : '/app/memory';
   $: activeCompanionSanctuaryHref = '/app/home';
+  $: activeChapterRewards = activeCompanion?.id ? chapterRewardsByCompanionId[activeCompanion.id] ?? [] : [];
+  $: activeKeepsake = activeChapterRewards[0] ?? null;
+  $: activeKeepsakeTone =
+    activeKeepsake?.tone === 'care' ||
+    activeKeepsake?.tone === 'social' ||
+    activeKeepsake?.tone === 'mission' ||
+    activeKeepsake?.tone === 'play' ||
+    activeKeepsake?.tone === 'bond'
+      ? (activeKeepsake.tone as KeepsakeTone)
+      : 'bond';
   $: activeCareStatus = activeCompanion
     ? needsAttention(activeCompanion)
       ? 'Needs a gentle check-in'
@@ -699,7 +720,7 @@
     <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
   {/if}
 
-  <section class="companion-view" aria-labelledby="companion-view-heading">
+  <section class="companion-view" aria-labelledby="companion-view-heading" data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}>
     <div class="companion-view__content">
       <p class="eyebrow">Companion View</p>
       {#if activeCompanion}
@@ -709,6 +730,9 @@
             <div class="view-chips">
               <span class="chip">Active</span>
               <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
+              {#if activeKeepsake}
+                <span class={`chip chip--keepsake chip--${activeKeepsakeTone}`}>{activeKeepsake.title}</span>
+              {/if}
               {#if activeCompanionRenderHook}
                 <span class="chip chip--hook">Hook {activeCompanionRenderHook}</span>
               {/if}
@@ -751,6 +775,33 @@
           </button>
           <a class="secondary-link" href={activeCompanionJournalHref}>Open journal</a>
           <a class="secondary-link" href={activeCompanionSanctuaryHref}>Go to sanctuary</a>
+        </div>
+
+        <div class="active-keepsakes" aria-label="Active companion keepsakes" data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}>
+          <div class="panel-title-row">
+            <h2>Keepsakes</h2>
+            <p>{activeChapterRewards.length > 0 ? 'Earned through your recent companion chapters.' : 'Chapter keepsakes will gather here as the bond deepens.'}</p>
+          </div>
+          {#if activeChapterRewards.length > 0}
+            <div class="switcher-grid">
+              {#each activeChapterRewards as reward (reward.rewardKey)}
+                <article class="switcher-item">
+                  <div class="switcher-item__head">
+                    <div>
+                      <strong>{reward.title}</strong>
+                      <span>{reward.tone ?? 'bond'} keepsake</span>
+                    </div>
+                  </div>
+                  <p class="switcher-item__meta">{reward.body}</p>
+                  <span class="switcher-item__time">
+                    {reward.unlockedAt ? `Unlocked ${formatElapsed(reward.unlockedAt)}` : 'Unlocked recently'}
+                  </span>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <p class="empty-copy">No keepsakes unlocked for this companion yet.</p>
+          {/if}
         </div>
 
         <div class="meter-stack" aria-label="Companion instance stats">
@@ -1180,6 +1231,36 @@
     align-items: stretch;
   }
 
+  .companion-view[data-keepsake-tone='care'] {
+    background:
+      linear-gradient(158deg, rgba(16, 28, 31, 0.92), rgba(10, 18, 20, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(118, 198, 160, 0.18), transparent 46%);
+  }
+
+  .companion-view[data-keepsake-tone='social'] {
+    background:
+      linear-gradient(158deg, rgba(35, 24, 28, 0.92), rgba(18, 13, 15, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(220, 150, 115, 0.2), transparent 46%);
+  }
+
+  .companion-view[data-keepsake-tone='mission'] {
+    background:
+      linear-gradient(158deg, rgba(19, 23, 33, 0.92), rgba(10, 14, 18, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(221, 180, 93, 0.18), transparent 46%);
+  }
+
+  .companion-view[data-keepsake-tone='play'] {
+    background:
+      linear-gradient(158deg, rgba(18, 27, 34, 0.92), rgba(10, 15, 19, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(121, 208, 214, 0.18), transparent 46%);
+  }
+
+  .companion-view[data-keepsake-tone='bond'] {
+    background:
+      linear-gradient(158deg, rgba(24, 23, 33, 0.92), rgba(11, 13, 18, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(214, 190, 141, 0.16), transparent 46%);
+  }
+
   .eyebrow {
     margin: 0;
     text-transform: uppercase;
@@ -1220,6 +1301,36 @@
     border-color: rgba(128, 175, 148, 0.34);
     background: rgba(128, 175, 148, 0.12);
     color: rgba(221, 237, 224, 0.95);
+  }
+
+  .chip--keepsake {
+    color: rgba(250, 244, 226, 0.96);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+
+  .chip--care {
+    border-color: rgba(132, 214, 179, 0.42);
+    background: rgba(82, 156, 126, 0.16);
+  }
+
+  .chip--social {
+    border-color: rgba(233, 162, 122, 0.42);
+    background: rgba(175, 91, 69, 0.16);
+  }
+
+  .chip--mission {
+    border-color: rgba(222, 186, 103, 0.44);
+    background: rgba(165, 122, 53, 0.16);
+  }
+
+  .chip--play {
+    border-color: rgba(124, 220, 224, 0.42);
+    background: rgba(79, 154, 179, 0.16);
+  }
+
+  .chip--bond {
+    border-color: rgba(214, 190, 141, 0.42);
+    background: rgba(214, 190, 141, 0.12);
   }
 
   .time-context {
@@ -1370,6 +1481,26 @@
     min-height: 260px;
   }
 
+  .companion-view[data-keepsake-tone='care'] .companion-view__model {
+    background: radial-gradient(circle at center, rgba(119, 204, 168, 0.2), rgba(8, 12, 18, 0.9) 72%);
+  }
+
+  .companion-view[data-keepsake-tone='social'] .companion-view__model {
+    background: radial-gradient(circle at center, rgba(227, 152, 120, 0.22), rgba(8, 12, 18, 0.9) 72%);
+  }
+
+  .companion-view[data-keepsake-tone='mission'] .companion-view__model {
+    background: radial-gradient(circle at center, rgba(219, 178, 88, 0.2), rgba(8, 12, 18, 0.9) 72%);
+  }
+
+  .companion-view[data-keepsake-tone='play'] .companion-view__model {
+    background: radial-gradient(circle at center, rgba(117, 216, 223, 0.22), rgba(8, 12, 18, 0.9) 72%);
+  }
+
+  .companion-view[data-keepsake-tone='bond'] .companion-view__model {
+    background: radial-gradient(circle at center, rgba(214, 190, 141, 0.18), rgba(8, 12, 18, 0.9) 72%);
+  }
+
   .panel-title-row {
     display: flex;
     justify-content: space-between;
@@ -1436,6 +1567,31 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 0.7rem;
+  }
+
+  .active-keepsakes[data-keepsake-tone='care'] .switcher-item {
+    border-color: rgba(132, 214, 179, 0.22);
+    background: rgba(18, 35, 31, 0.62);
+  }
+
+  .active-keepsakes[data-keepsake-tone='social'] .switcher-item {
+    border-color: rgba(233, 162, 122, 0.22);
+    background: rgba(39, 24, 22, 0.62);
+  }
+
+  .active-keepsakes[data-keepsake-tone='mission'] .switcher-item {
+    border-color: rgba(222, 186, 103, 0.22);
+    background: rgba(36, 28, 17, 0.62);
+  }
+
+  .active-keepsakes[data-keepsake-tone='play'] .switcher-item {
+    border-color: rgba(124, 220, 224, 0.22);
+    background: rgba(18, 31, 39, 0.62);
+  }
+
+  .active-keepsakes[data-keepsake-tone='bond'] .switcher-item {
+    border-color: rgba(214, 190, 141, 0.22);
+    background: rgba(24, 20, 15, 0.62);
   }
 
   .switcher-item {

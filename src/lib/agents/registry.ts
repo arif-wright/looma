@@ -59,6 +59,21 @@ const clampInteger = (value: unknown, fallback = 0) => {
   return Math.max(0, Math.floor(value));
 };
 
+const recentJournalMoments = (context: Record<string, any>) =>
+  Array.isArray(context?.recentJournal?.moments) ? (context.recentJournal.moments as Array<Record<string, unknown>>) : [];
+
+const socialSignal = (context: Record<string, any>) => {
+  const moments = recentJournalMoments(context);
+  const latestSocial = moments.find((entry) => {
+    const source = typeof entry.sourceType === 'string' ? entry.sourceType : '';
+    return source === 'post' || source === 'message' || source === 'circle_announcement';
+  }) ?? null;
+  return {
+    recentSocialCount: clampInteger(context?.recentJournal?.socialCount7d, 0),
+    latestSocialTitle: typeof latestSocial?.title === 'string' ? latestSocial.title : null
+  };
+};
+
 const simpleHash = (input: string) => {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -187,6 +202,7 @@ const companionAgent: Agent = {
 
     const activeCompanion =
       (context?.companion?.active as { id?: unknown; archetype?: unknown; name?: unknown } | null | undefined) ?? null;
+    const journalSignal = socialSignal(context);
     const profile = resolveCompanionPersonaProfile(activeCompanion);
     const requestedTone = String(context?.portableState?.tone ?? '').toLowerCase();
     const tone: PersonaTone = requestedTone === 'direct' || requestedTone === 'warm' ? requestedTone : profile.toneDefault;
@@ -263,7 +279,9 @@ const companionAgent: Agent = {
         `${greeting}. Want to continue?`,
         `${greeting}. ${closer}.`,
         `${greeting}. Pick up where you left off.`,
-        `${greeting}. ${focusCue}.`
+        journalSignal.recentSocialCount > 0
+          ? `${greeting}. I can still feel the thread from what you shared.`
+          : `${greeting}. ${focusCue}.`
       ];
       const direct = ['Welcome back.', 'Back again. Continue.', `${focusCue}.`, `Return confirmed. ${closer}.`];
       text = pick(tone === 'direct' ? direct : warm, 'session.return:text');
@@ -404,7 +422,9 @@ const companionAgent: Agent = {
       const warm = [
         `I am listening. Take your time.`,
         `Quiet moment together.`,
-        `${companionName} is here with you.`,
+        journalSignal.latestSocialTitle
+          ? `${companionName} is still carrying ${journalSignal.latestSocialTitle.toLowerCase()}.`
+          : `${companionName} is here with you.`,
         `Breath in, breath out.`
       ];
       const direct = ['Listening.', 'I hear you.', 'Quiet check-in logged.', 'Steady and present.'];

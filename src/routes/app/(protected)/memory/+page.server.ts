@@ -3,6 +3,17 @@ import {
   deriveEmotionalStateFromCompanionStats,
   type EmotionalStateSnapshot
 } from '$lib/server/emotionalState';
+import {
+  deriveChapterMilestones,
+  deriveChapterRewards,
+  deriveCompanionPatternNotice,
+  deriveDailyCompanionArc,
+  deriveRitualGuideFromPattern,
+  deriveWeeklyCompanionArc,
+  ensureCompanionPatternNotice,
+  syncDailyCompanionArcProgress,
+  unlockChapterRewards
+} from '$lib/server/companions/journal';
 
 type CompanionRow = {
   id: string;
@@ -111,11 +122,23 @@ type GameTitleRow = {
 
 type TimelineItem = {
   id: string;
-  kind: 'memory' | 'care' | 'checkin' | 'mission' | 'game';
+  kind: 'memory' | 'care' | 'checkin' | 'mission' | 'game' | 'social';
   title: string;
   body: string;
   occurredAt: string;
   meta?: string | null;
+};
+
+type JournalEntryRow = {
+  id: string;
+  source_type: string | null;
+  title: string | null;
+  body: string | null;
+  created_at: string;
+  meta_json: {
+    conversationType?: string;
+    circleId?: string;
+  } | null;
 };
 
 const COMPANION_SELECT =
@@ -137,6 +160,13 @@ const formatDuration = (durationMs: number | null | undefined) => {
 const formatDelta = (value: number | null | undefined, label: string) => {
   if (typeof value !== 'number' || value === 0) return null;
   return `${value > 0 ? '+' : ''}${value} ${label}`;
+};
+
+const clipText = (value: string | null | undefined, limit = 180) => {
+  const normalized = value?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!normalized) return '';
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit - 1).trimEnd()}…`;
 };
 
 const toStamp = (value: string | null | undefined) => {
@@ -240,8 +270,9 @@ const buildWeeklyPulse = (args: {
   gameRows: GameSessionRow[];
   checkins: CheckinRow[];
   summary: MemorySummaryRow | null;
+  socialMoments: number;
 }) => {
-  const { careRows, missionRows, gameRows, checkins, summary } = args;
+  const { careRows, missionRows, gameRows, checkins, summary, socialMoments } = args;
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const careMoments = careRows.filter((row) => (toStamp(row.created_at) ?? 0) >= weekAgo).length;
   const missionMoments = missionRows.filter((row) => (toStamp(row.completed_at ?? row.started_at) ?? 0) >= weekAgo).length;
@@ -250,13 +281,15 @@ const buildWeeklyPulse = (args: {
   const counts = [
     { key: 'care', count: careMoments, label: 'care' },
     { key: 'missions', count: missionMoments, label: 'missions' },
-    { key: 'games', count: gameMoments, label: 'games' }
+    { key: 'games', count: gameMoments, label: 'games' },
+    { key: 'social', count: socialMoments, label: 'social' }
   ].sort((a, b) => b.count - a.count);
 
   return {
     careMoments,
     missionMoments,
     gameMoments,
+    socialMoments,
     recentCheckins,
     dominantLabel: counts[0]?.count ? counts[0].label : 'quiet',
     summaryWindowDays: summary?.source_window_json?.windowDays ?? null
@@ -274,6 +307,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       selectedCompanion: null,
       summary: null,
       emotionalState: null,
+      ritualGuide: null,
+      dailyArc: null,
+      dailyArcRecap: null,
+      weeklyArc: null,
+      chapterMilestones: [],
+      chapterRewards: [],
       timeline: [] as TimelineItem[]
     };
   }
@@ -302,6 +341,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       summary: null,
       emotionalState: null,
       relationshipPulse: null,
+      ritualGuide: null,
+      dailyArc: null,
+      dailyArcRecap: null,
+      weeklyArc: null,
+      chapterMilestones: [],
+      chapterRewards: [],
       weeklyPulse: null,
       timeline: [] as TimelineItem[]
     };
@@ -309,7 +354,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   const selectedCompanionId = selectedCompanion.id;
 
-  const [summaryRes, emotionalRes, careRes, checkinsRes, missionRes, gameRes] = await Promise.all([
+  const [summaryRes, emotionalRes, careRes, checkinsRes, missionRes, gameRes, journalEntriesRes] = await Promise.all([
     supabase
       .from('companion_memory_summary')
       .select('summary_text, highlights_json, last_built_at, source_window_json')
@@ -349,7 +394,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
-      .limit(10)
+      .limit(10),
+    supabase
+      .from('companion_journal_entries')
+      .select('id, source_type, title, body, created_at, meta_json')
+      .eq('owner_id', userId)
+      .eq('companion_id', selectedCompanionId)
+      .order('created_at', { ascending: false })
+      .limit(12)
   ]);
 
   const missionRows = (missionRes.data ?? []) as MissionSessionRow[];
@@ -474,6 +526,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
+  for (const row of (journalEntriesRes.data ?? []) as JournalEntryRow[]) {
+    const body = clipText(row.body ?? 'A companion moment was captured.');
+    const isSocial =
+      row.source_type === 'message' || row.source_type === 'circle_announcement' || row.source_type === 'post';
+    const sourceLabel =
+      row.source_type === 'message'
+        ? row.meta_json?.conversationType === 'circle'
+          ? 'Circle message'
+          : 'Message'
+        : row.source_type === 'circle_announcement'
+          ? 'Circle'
+          : row.source_type === 'post'
+            ? 'Post'
+            : 'Moment';
+    timeline.push({
+      id: `social-${row.id}`,
+      kind: isSocial ? 'social' : 'memory',
+      title: row.title?.trim() || 'Shared moment',
+      body,
+      occurredAt: row.created_at,
+      meta: sourceLabel
+    });
+  }
+
   timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 
   const careRows = (careRes.data ?? []) as CareEventRow[];
@@ -492,8 +568,82 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     missionRows,
     gameRows,
     checkins: checkinRows,
-    summary
+    summary,
+    socialMoments: timeline.filter((item) => item.kind === 'social' && (toStamp(item.occurredAt) ?? 0) >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .length
   });
+  const patternNotice = deriveCompanionPatternNotice({
+    companionName: selectedCompanion.name,
+    careMoments: careRows.length,
+    missionMoments: missionRows.filter((row) => row.status === 'completed').length,
+    gameMoments: gameRows.length,
+    socialMoments: timeline.filter((item) => item.kind === 'social').length,
+    checkins: checkinRows.length
+  });
+  const hasStoredPatternNotice = ((journalEntriesRes.data ?? []) as JournalEntryRow[]).some(
+    (row) => row.source_type === 'system'
+  );
+  const ritualGuide = deriveRitualGuideFromPattern(patternNotice, selectedCompanion.name);
+  const dailyArc = deriveDailyCompanionArc({
+    companionName: selectedCompanion.name,
+    hasDailyCheckin: checkinRows.length > 0,
+    rituals: [],
+    hasSocialMoment: timeline.some((item) => item.kind === 'social'),
+    hasJournalMoment: Boolean(summary?.summary_text || timeline.length > 0)
+  });
+  const weeklyArc = deriveWeeklyCompanionArc({
+    companionName: selectedCompanion.name,
+    careMoments: weeklyPulse.careMoments,
+    missionMoments: weeklyPulse.missionMoments,
+    gameMoments: weeklyPulse.gameMoments,
+    socialMoments: weeklyPulse.socialMoments,
+    checkins: weeklyPulse.recentCheckins
+  });
+  const selectedStats = normalizeStats(selectedCompanion.stats);
+  const chapterMilestones = deriveChapterMilestones({
+    companionName: selectedCompanion.name,
+    bondLevel: Math.max(0, Math.floor(selectedStats?.bond_level ?? 0)),
+    trust: selectedCompanion.trust ?? 0,
+    affection: selectedCompanion.affection ?? 0,
+    weeklyArc,
+    patternNotice
+  });
+  const chapterRewards = await unlockChapterRewards(supabase, {
+    ownerId: userId,
+    companionId: selectedCompanionId,
+    rewards: deriveChapterRewards({
+      companionName: selectedCompanion.name,
+      milestones: chapterMilestones,
+      weeklyArc,
+      trust: selectedCompanion.trust ?? 0,
+      affection: selectedCompanion.affection ?? 0
+    })
+  });
+  const dailyArcRecap = (
+    await syncDailyCompanionArcProgress(supabase, {
+      ownerId: userId,
+      companionId: selectedCompanionId,
+      companionName: selectedCompanion.name,
+      arc: dailyArc
+    })
+  ).recap;
+  void ensureCompanionPatternNotice(supabase, {
+    ownerId: userId,
+    companionId: selectedCompanionId,
+    notice: patternNotice
+  });
+
+  if (patternNotice && !hasStoredPatternNotice) {
+    timeline.push({
+      id: `noticed-${patternNotice.patternKey}`,
+      kind: 'memory',
+      title: patternNotice.title,
+      body: patternNotice.body,
+      occurredAt: new Date().toISOString(),
+      meta: 'Noticed by companion'
+    });
+    timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+  }
 
   return {
     companions,
@@ -502,6 +652,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     summary,
     emotionalState,
     relationshipPulse,
+    ritualGuide,
+    dailyArc,
+    dailyArcRecap,
+    weeklyArc,
+    chapterMilestones,
+    chapterRewards,
     weeklyPulse,
     timeline: timeline.slice(0, 30)
   };

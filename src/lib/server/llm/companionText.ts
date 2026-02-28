@@ -176,9 +176,21 @@ const buildContextSummary = (args: {
   const portable = (args.context?.portableState as Record<string, unknown> | undefined) ?? {};
   const companion = ((args.context?.companion as Record<string, unknown> | undefined)?.active ??
     {}) as Record<string, unknown>;
+  const recentJournalBundle = (args.context?.recentJournal as Record<string, unknown> | undefined) ?? {};
   const reflectionRaw = readString(payload.reflection, '');
   const reflectionExcerpt = clampWords(clampText(reflectionRaw, 120), 24);
   const ritualMood = readString(payload.mood, '');
+  const recentJournal = Array.isArray(recentJournalBundle.moments)
+    ? (recentJournalBundle.moments as Array<Record<string, unknown>>)
+    : [];
+  const recentJournalSummary = recentJournal
+    .slice(0, 2)
+    .map((entry) => ({
+      sourceType: readString(entry.sourceType, 'system'),
+      title: readString(entry.title, ''),
+      body: clampWords(clampText(readString(entry.body, ''), 80), 18)
+    }))
+    .filter((entry) => entry.title || entry.body);
 
   const summary = {
     eventType: args.event.type,
@@ -194,7 +206,9 @@ const buildContextSummary = (args: {
         : 0,
     preferredTone: readString(portable.tone, 'warm'),
     ritualMood: ritualMood || null,
-    reflectionExcerpt: reflectionExcerpt || null
+    reflectionExcerpt: reflectionExcerpt || null,
+    recentJournalSummary,
+    recentSocialCount7d: readNumber(recentJournalBundle.socialCount7d, 0)
   };
 
   return summary;
@@ -211,6 +225,7 @@ const MUSE_SYSTEM_PROMPT = [
   'You never shame.',
   'You never overwhelm.',
   'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
+  'If recent shared moments or conversations are in context, you may softly reference that the bond is being carried through shared expression.',
   'When the user expresses distress:',
   '1. Reflect the emotion.',
   '2. Validate it.',

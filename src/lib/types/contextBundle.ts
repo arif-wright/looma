@@ -67,6 +67,15 @@ export type PortableStateBundle = {
   lastContextPayload: Record<string, string | number | boolean | null>;
 };
 
+export type RecentJournalMomentBundle = {
+  id: string;
+  title: string;
+  body: string;
+  sourceType: 'post' | 'message' | 'circle_announcement' | 'system';
+  createdAt: string;
+  social: boolean;
+};
+
 export type ContextBundle = {
   version: ContextBundleVersion;
   generatedAt: string;
@@ -75,4 +84,8 @@ export type ContextBundle = {
   companion: CompanionBundle;
   worldState: WorldStateBundle;
   portableState: PortableStateBundle;
+  recentJournal: {
+    moments: RecentJournalMomentBundle[];
+    socialCount7d: number;
+  };
 };
