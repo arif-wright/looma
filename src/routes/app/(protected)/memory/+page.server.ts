@@ -1,4 +1,8 @@
 import type { PageServerLoad } from './$types';
+import {
+  deriveEmotionalStateFromCompanionStats,
+  type EmotionalStateSnapshot
+} from '$lib/server/emotionalState';
 
 type CompanionRow = {
   id: string;
@@ -225,7 +229,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   );
 
   const summary = (summaryRes.data as MemorySummaryRow | null) ?? null;
-  const emotionalState = (emotionalRes.data as EmotionalStateRow | null) ?? null;
+  const emotionalRow = (emotionalRes.data as EmotionalStateRow | null) ?? null;
+  const emotionalState: EmotionalStateSnapshot =
+    emotionalRow
+      ? {
+          mood: emotionalRow.mood === 'luminous' || emotionalRow.mood === 'dim' ? emotionalRow.mood : 'steady',
+          trust: emotionalRow.trust ?? 0,
+          bond: emotionalRow.bond ?? 0,
+          streakMomentum: emotionalRow.streak_momentum ?? 0,
+          volatility: emotionalRow.volatility ?? 0,
+          recentTone: emotionalRow.recent_tone ?? null,
+          lastMilestoneAt: emotionalRow.last_milestone_at ?? null
+        }
+      : deriveEmotionalStateFromCompanionStats({
+          affection: selectedCompanion.affection,
+          trust: selectedCompanion.trust,
+          energy: selectedCompanion.energy,
+          mood: selectedCompanion.mood
+        });
 
   const timeline: TimelineItem[] = [];
 

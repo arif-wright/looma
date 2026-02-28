@@ -41,6 +41,13 @@ export type EmotionalStateEvent = {
   };
 };
 
+export type CompanionEmotionalSeed = {
+  affection?: number | null;
+  trust?: number | null;
+  energy?: number | null;
+  mood?: string | null;
+};
+
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
 
@@ -62,6 +69,44 @@ const deriveMood = (state: EmotionalStateSnapshot): CompanionMood => {
 
 const deriveTone = (mood: CompanionMood): string =>
   mood === 'luminous' ? 'uplifted' : mood === 'dim' ? 'reserved' : 'calm';
+
+const deriveMoodFromCompanionStats = (seed: CompanionEmotionalSeed): CompanionMood => {
+  const affection = Number(seed.affection ?? 0);
+  const trust = Number(seed.trust ?? 0);
+  const energy = Number(seed.energy ?? 0);
+  const mood = (seed.mood ?? '').trim().toLowerCase();
+
+  if (mood === 'luminous' || mood === 'happy') return 'luminous';
+  if (mood === 'dim' || mood === 'stressed' || mood === 'low_energy' || mood === 'tired') return 'dim';
+  if (energy >= 60 && affection >= 70 && trust >= 60) return 'luminous';
+  if (energy <= 20 || (affection <= 30 && trust <= 30)) return 'dim';
+  return 'steady';
+};
+
+export const deriveEmotionalStateFromCompanionStats = (
+  seed: CompanionEmotionalSeed,
+  base?: EmotionalStateSnapshot | null
+): EmotionalStateSnapshot => {
+  const trust = round3(clamp01(Number(seed.trust ?? 0) / 100));
+  const bond = round3(clamp01(((Number(seed.affection ?? 0) + Number(seed.trust ?? 0)) / 2) / 100));
+  const energy = clamp01(Number(seed.energy ?? 0) / 100);
+  const streakMomentum = typeof base?.streakMomentum === 'number' ? base.streakMomentum : round3(energy * 0.6);
+  const volatility =
+    typeof base?.volatility === 'number'
+      ? base.volatility
+      : round3(clamp01(1 - ((trust + energy) / 2)));
+
+  return normalizePatch(
+    {
+      trust,
+      bond,
+      streakMomentum,
+      volatility,
+      mood: deriveMoodFromCompanionStats(seed)
+    },
+    base ?? toSnapshot(null)
+  );
+};
 
 const normalizePatch = (input: EmotionalStatePatch, base: EmotionalStateSnapshot): EmotionalStateSnapshot => {
   const next: EmotionalStateSnapshot = {
@@ -177,6 +222,17 @@ export const updateEmotionalState = async (
   }
 
   return next;
+};
+
+export const syncEmotionalStateFromCompanionStats = async (
+  userId: string,
+  companionId: string,
+  seed: CompanionEmotionalSeed,
+  client: SupabaseClient = supabaseAdmin
+): Promise<EmotionalStateSnapshot> => {
+  const current = await getEmotionalState(userId, companionId, client);
+  const next = deriveEmotionalStateFromCompanionStats(seed, current);
+  return updateEmotionalState(userId, companionId, next, client);
 };
 
 export const applyEventToEmotionalState = async (

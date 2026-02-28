@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabase';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
 import { resolveMuseEvolutionStage } from '$lib/companions/evolution';
+import { deriveEmotionalStateFromCompanionStats, type EmotionalStateSnapshot } from '$lib/server/emotionalState';
 
 type SummaryHighlight = string;
 
@@ -136,7 +137,7 @@ export const buildCompanionMemorySummary = async (
         .maybeSingle(),
       client
         .from('companions')
-        .select('updated_at')
+        .select('updated_at, affection, trust, energy, mood')
         .eq('owner_id', userId)
         .eq('id', companionId)
         .maybeSingle()
@@ -169,9 +170,33 @@ export const buildCompanionMemorySummary = async (
     unlockedCosmetics: targetCompanion?.cosmeticsUnlocked ?? []
   });
 
-  const mood = emotional?.mood === 'luminous' || emotional?.mood === 'dim' ? emotional.mood : 'steady';
-  const trust = safeNum(emotional?.trust, 0);
-  const bond = safeNum(emotional?.bond, 0);
+  const companionSeed =
+    companionRes.data && typeof companionRes.data === 'object'
+      ? {
+          affection: ((companionRes.data as Record<string, unknown>).affection as number | null | undefined) ?? null,
+          trust: ((companionRes.data as Record<string, unknown>).trust as number | null | undefined) ?? null,
+          energy: ((companionRes.data as Record<string, unknown>).energy as number | null | undefined) ?? null,
+          mood: ((companionRes.data as Record<string, unknown>).mood as string | null | undefined) ?? null
+        }
+      : null;
+  const emotionalBase: EmotionalStateSnapshot | null = emotional
+    ? {
+        mood: emotional.mood === 'luminous' || emotional.mood === 'dim' ? emotional.mood : 'steady',
+        trust: safeNum(emotional.trust, 0),
+        bond: safeNum(emotional.bond, 0),
+        streakMomentum: safeNum(emotional.streak_momentum, 0),
+        volatility: safeNum(emotional.volatility, 0),
+        recentTone: emotional.recent_tone ?? null,
+        lastMilestoneAt: emotional.last_milestone_at ?? null
+      }
+    : null;
+  const derivedEmotional = companionSeed
+    ? deriveEmotionalStateFromCompanionStats(companionSeed, emotionalBase)
+    : emotionalBase;
+
+  const mood = derivedEmotional?.mood === 'luminous' || derivedEmotional?.mood === 'dim' ? derivedEmotional.mood : 'steady';
+  const trust = safeNum(derivedEmotional?.trust, 0);
+  const bond = safeNum(derivedEmotional?.bond, 0);
   const lastMilestoneAt = emotional?.last_milestone_at ?? null;
   const lastActiveIso = typeof companionRes.data?.updated_at === 'string' ? companionRes.data.updated_at : null;
 

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { walletGrant } from '$lib/server/econ/index';
 import type { CompanionRitual, CompanionRitualKey, CompanionRitualUpdate } from '$lib/companions/rituals';
 import { COMPANION_RITUALS, mapRitualRow, ritualDefinitionMap } from '$lib/companions/rituals';
+import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
 
 const table = 'companion_rituals';
 
@@ -60,7 +61,7 @@ const awardAffection = async (
   if (!affectionDelta && !trustDelta) return;
   const { data: active } = await client
     .from('companions')
-    .select('id, affection, trust')
+    .select('id, affection, trust, energy, mood')
     .eq('owner_id', userId)
     .eq('is_active', true)
     .order('updated_at', { ascending: false })
@@ -73,6 +74,17 @@ const awardAffection = async (
     .from('companions')
     .update({ affection: nextAffection, trust: nextTrust })
     .eq('id', active.id);
+  await syncEmotionalStateFromCompanionStats(
+    userId,
+    active.id,
+    {
+      affection: nextAffection,
+      trust: nextTrust,
+      energy: active.energy ?? 0,
+      mood: active.mood ?? null
+    },
+    client
+  );
 };
 
 export const incrementCompanionRitual = async (

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
+import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
 
 type CareAction = 'feed' | 'play' | 'groom';
 type CompanionStatsRow = {
@@ -150,6 +151,17 @@ export const POST: RequestHandler = async (event) => {
 
   if (eventError) {
     console.error('[companion care] failed to insert event', eventError);
+  }
+
+  try {
+    await syncEmotionalStateFromCompanionStats(
+      session.user.id,
+      companion.id,
+      { affection, trust, energy, mood },
+      supabase
+    );
+  } catch (err) {
+    console.error('[companion care] failed to sync emotional state', err);
   }
 
   let bondLevel = stats.bond_level ?? 0;

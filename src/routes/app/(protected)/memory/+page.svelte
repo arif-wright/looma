@@ -218,7 +218,7 @@
               </div>
               <div>
                 <span>Tone</span>
-                <strong>{data.emotionalState.recent_tone ?? 'Unknown'}</strong>
+                <strong>{data.emotionalState.recentTone ?? 'Unknown'}</strong>
               </div>
             </div>
           {:else}
