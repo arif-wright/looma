@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { CreatureView, Rarity } from '$lib/types/creatures';
+import type { CompanionView, Rarity } from '$lib/types/companions';
 import { updateUserContext } from '$lib/server/userContext';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 
@@ -40,21 +40,21 @@ export const GET: RequestHandler = async ({ locals }) => {
     return jsonError(500, error.message);
   }
 
-  const creatures: CreatureView[] = ((data ?? []) as unknown as CreatureRow[]).map((item) => {
+  const companions: CompanionView[] = ((data ?? []) as unknown as CreatureRow[]).map((item) => {
     const species = asSpecies(item.species);
     return {
-    id: item.id,
-    owner_id: item.owner_id,
-    species_id: item.species_id,
-    nickname: item.nickname,
-    bond_level: item.bond_level,
-    created_at: item.created_at,
-    species_name: species?.name ?? 'Unknown',
-    species_rarity: (species?.rarity ?? 'common') as Rarity
-  };
+      id: item.id,
+      owner_id: item.owner_id,
+      species_id: item.species_id,
+      nickname: item.nickname,
+      bond_level: item.bond_level,
+      created_at: item.created_at,
+      species_name: species?.name ?? 'Unknown',
+      species_rarity: (species?.rarity ?? 'common') as Rarity
+    };
   });
 
-  return json({ ok: true, creatures });
+  return json({ ok: true, companions, creatures: companions });
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -103,11 +103,11 @@ export const POST: RequestHandler = async (event) => {
     .single();
 
   if (insertError || !data) {
-    return jsonError(500, insertError?.message ?? 'Failed to create creature');
+    return jsonError(500, insertError?.message ?? 'Failed to create companion');
   }
 
   const insertedSpecies = asSpecies(data.species);
-  const creature: CreatureView = {
+  const companion: CompanionView = {
     id: data.id,
     owner_id: data.owner_id,
     species_id: data.species_id,
@@ -120,21 +120,23 @@ export const POST: RequestHandler = async (event) => {
 
   await updateUserContext(
     event,
-    'creature',
+    'companion',
     {
-      creatureId: creature.id,
+      companionId: companion.id,
+      creatureId: companion.id,
       interaction: 'adopt'
     },
     'care'
   );
 
   await recordAnalyticsEvent(locals.supabase, user.id, 'pet_interaction', {
-    surface: 'creatures',
+    surface: 'companions',
     payload: {
-      creatureId: creature.id,
+      companionId: companion.id,
+      creatureId: companion.id,
       action: 'adopt'
     }
   });
 
-  return json({ ok: true, creature });
+  return json({ ok: true, companion, creature: companion });
 };

@@ -132,8 +132,10 @@ export const computeLanding = (
           reason: 'context'
         };
       }
-      case 'creature': {
+      case 'creature':
+      case 'companion': {
         const creatureId =
+          contextPayload?.companionId ??
           contextPayload?.creatureId ??
           contextPayload?.creature_id ??
           contextPayload?.id ??

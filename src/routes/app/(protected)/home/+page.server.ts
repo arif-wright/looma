@@ -411,7 +411,7 @@ export const load: PageServerLoad = async (event) => {
         : creatureMoments[0]
         ? {
             title: 'Check on your companion',
-            description: 'Spend a moment with your favourite creature before you go.',
+            description: 'Spend a moment with your closest companion before you go.',
             href: `/app/companions?focus=${creatureMoments[0].id}`
           }
         : DEFAULT_ENDCAP;
