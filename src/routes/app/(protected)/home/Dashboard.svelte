@@ -99,7 +99,7 @@
 <div class="dashboard">
   <div class="dashboard__backdrop" aria-hidden="true"></div>
   <main class="dashboard__shell" aria-labelledby="dashboard-heading">
-    <h1 id="dashboard-heading" class="sr-only">Looma dashboard</h1>
+    <h1 id="dashboard-heading" class="sr-only">Looma sanctuary overview</h1>
     <div class="dashboard__grid">
       <aside class="sidebar sidebar--left" aria-label="Primary navigation">
         <div class="sidebar__section">

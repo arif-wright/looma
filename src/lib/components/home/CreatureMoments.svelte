@@ -32,7 +32,7 @@
 
 {#if items.length === 0}
   <div class="empty">
-    <p>No creatures yet.</p>
+    <p>No companions yet.</p>
     <a href="/app/companions">Adopt a companion</a>
   </div>
 {:else}
