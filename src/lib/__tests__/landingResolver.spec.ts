@@ -23,7 +23,7 @@ describe('surfaceToPath', () => {
   });
 
   it('falls back to base path when payload missing', () => {
-    expect(surfaceToPath('creatures')).toBe('/app/creatures');
+    expect(surfaceToPath('creatures')).toBe('/app/companions');
   });
 });
 
@@ -59,7 +59,7 @@ describe('computeLanding', () => {
   it('uses care due when no mission', () => {
     const decision = computeLanding(basePrefs(), 'C', null, { creatureId: 'creature-1' }, null);
     expect(decision.surface).toBe('creatures');
-    expect(decision.target).toBe('/app/creatures?focus=creature-1');
+    expect(decision.target).toBe('/app/companions?focus=creature-1');
     expect(decision.reason).toBe('care');
   });
 
@@ -84,18 +84,18 @@ describe('computeLanding', () => {
     expect(decision.reason).toBe('context');
   });
 
-  it('respects explicit start preference', () => {
+  it('normalizes legacy dashboard start preference to home', () => {
     const prefs = basePrefs({ start_on: 'dashboard' });
     const decision = computeLanding(prefs, 'C', null, null, null);
-    expect(decision.surface).toBe('dashboard');
-    expect(decision.target).toBe('/app/dashboard');
+    expect(decision.surface).toBe('home');
+    expect(decision.target).toBe('/app/home');
     expect(decision.reason).toBe('preference');
   });
 
   it('falls back to variant when no other signals', () => {
     const prefs = basePrefs({ ab_variant: 'B' });
     const decision = computeLanding(prefs, 'B', null, null, null);
-    expect(decision.surface).toBe('creatures');
+    expect(decision.surface).toBe('home');
     expect(decision.reason).toBe('variant');
   });
 });

@@ -1,9 +1,9 @@
 <script lang="ts">
   export let data: any;
-  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
+  import CompanionDetailModal from '$lib/app/companions/CompanionDetailModal.svelte';
   let open = true;
 </script>
 
 <div class="container py-6">
-  <CreatureDetailModal {open} creature={data.creature} on:close={() => history.back()} />
+  <CompanionDetailModal {open} creature={data.creature} on:close={() => history.back()} />
 </div>

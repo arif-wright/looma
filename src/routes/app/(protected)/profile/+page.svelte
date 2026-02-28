@@ -69,6 +69,15 @@ let editOpen = false;
     featuredCompanionCard = null;
   }
   $: profileTitle = data.isOwner ? 'Your Profile' : `${profile.display_name ?? profile.handle ?? 'Profile'}`;
+  $: latestAchievement =
+    Array.isArray(profile?.achievements) && profile.achievements.length > 0 ? profile.achievements[0] : null;
+  $: activeCompanionName = featuredCompanionCard?.name ?? 'No featured companion';
+  $: activeCompanionMood = featuredCompanionCard?.mood ?? 'Quiet';
+  $: companionBondText = featuredCompanionCard
+    ? `Affection ${featuredCompanionCard.affection ?? 0} · Trust ${featuredCompanionCard.trust ?? 0}`
+    : 'Choose a featured companion to make your profile feel alive.';
+  $: levelValue = stats?.level ?? profile?.level ?? 1;
+  $: energyValue = stats?.energy ?? null;
 </script>
 
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
@@ -101,6 +110,47 @@ let editOpen = false;
     </svelte:fragment>
 
     <main class="profile-grid mt-6">
+      <section class="profile-pulse panel" aria-label="Profile pulse">
+        <div class="profile-pulse__intro">
+          <p class="profile-pulse__eyebrow">Profile pulse</p>
+          <h2>{profile.display_name ?? profile.handle ?? 'Your Looma identity'}</h2>
+          <p>
+            Your profile should feel like a living companion space, not just a bio card. Keep your bond, reflections,
+            and current energy visible.
+          </p>
+        </div>
+
+        <div class="profile-pulse__cards">
+          <article class="pulse-tile">
+            <span class="pulse-tile__label">Featured companion</span>
+            <strong>{activeCompanionName}</strong>
+            <span>{activeCompanionMood}</span>
+            <p>{companionBondText}</p>
+          </article>
+
+          <article class="pulse-tile">
+            <span class="pulse-tile__label">Current level</span>
+            <strong>Level {levelValue}</strong>
+            <span>{energyValue == null ? 'Energy hidden' : `${energyValue} energy available`}</span>
+            <p>Shape your presence through rituals, missions, and daily check-ins.</p>
+          </article>
+
+          <article class="pulse-tile">
+            <span class="pulse-tile__label">Latest milestone</span>
+            <strong>{latestAchievement?.title ?? 'No recent achievements yet'}</strong>
+            <span>{latestAchievement?.when_label ?? 'Play, connect, and care to unlock your first milestone.'}</span>
+            <p>Your visible progress helps the whole profile feel inhabited.</p>
+          </article>
+        </div>
+
+        <div class="profile-pulse__actions" aria-label="Profile shortcuts">
+          <a class="pulse-action pulse-action--primary" href="/app/companions">Open companions</a>
+          <a class="pulse-action" href="/app/memory">Open journal</a>
+          <a class="pulse-action" href="/app/home">Go to sanctuary</a>
+          <a class="pulse-action" href="/app/settings">Settings</a>
+        </div>
+      </section>
+
       <div class="profile-cols">
         <div class="flex flex-col gap-4">
           <ProfileSidebar
@@ -174,29 +224,131 @@ let editOpen = false;
   :global(.profile-shell) {
     padding-top: 1rem;
     border-radius: 1.4rem;
-    border: 1px solid rgba(197, 214, 241, 0.18);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     background:
-      linear-gradient(162deg, rgba(17, 29, 66, 0.52), rgba(10, 18, 43, 0.48)),
-      radial-gradient(circle at 84% 2%, rgba(112, 188, 255, 0.1), transparent 52%);
-    box-shadow: 0 28px 54px rgba(6, 11, 28, 0.32);
+      linear-gradient(162deg, rgba(18, 24, 31, 0.7), rgba(10, 14, 18, 0.76)),
+      radial-gradient(circle at 84% 2%, rgba(214, 190, 141, 0.12), transparent 52%);
+    box-shadow: 0 28px 54px rgba(6, 11, 20, 0.32);
   }
 
   :global(.profile-shell .panel) {
     border-radius: 1.2rem;
-    border-color: rgba(196, 214, 241, 0.2);
-    background: linear-gradient(164deg, rgba(19, 31, 68, 0.62), rgba(12, 22, 50, 0.56));
+    border-color: rgba(214, 190, 141, 0.16);
+    background: linear-gradient(164deg, rgba(24, 20, 15, 0.72), rgba(14, 17, 19, 0.78));
   }
 
   :global(.profile-shell .panel-title) {
-    color: rgba(236, 243, 252, 0.9);
+    color: rgba(245, 238, 225, 0.92);
     letter-spacing: 0.02em;
   }
 
   :global(.profile-shell .btn-ghost) {
     border-radius: 0.9rem;
-    border-color: rgba(196, 214, 241, 0.28);
-    background: rgba(33, 50, 99, 0.44);
-    color: rgba(233, 241, 252, 0.95);
+    border-color: rgba(214, 190, 141, 0.18);
+    background: rgba(43, 33, 20, 0.24);
+    color: rgba(245, 238, 225, 0.95);
+  }
+
+  .profile-pulse {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    background:
+      linear-gradient(165deg, rgba(24, 20, 15, 0.76), rgba(14, 17, 19, 0.86)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 46%);
+  }
+
+  .profile-pulse__intro h2 {
+    margin: 0.18rem 0 0;
+    font-family: var(--san-font-display);
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: rgba(249, 243, 230, 0.98);
+  }
+
+  .profile-pulse__intro p:last-child {
+    margin: 0.5rem 0 0;
+    color: rgba(221, 209, 185, 0.82);
+    line-height: 1.5;
+  }
+
+  .profile-pulse__eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.78);
+  }
+
+  .profile-pulse__cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .pulse-tile {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(180deg, rgba(31, 25, 17, 0.64), rgba(15, 18, 20, 0.88)),
+      radial-gradient(circle at top, rgba(214, 190, 141, 0.08), transparent 56%);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .pulse-tile__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.74);
+  }
+
+  .pulse-tile strong {
+    color: rgba(248, 241, 227, 0.98);
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .pulse-tile span:not(.pulse-tile__label) {
+    color: rgba(228, 217, 194, 0.82);
+    font-size: 0.82rem;
+  }
+
+  .pulse-tile p {
+    margin: 0.2rem 0 0;
+    color: rgba(208, 196, 171, 0.72);
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  .profile-pulse__actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+
+  .pulse-action {
+    min-height: 2.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(43, 33, 20, 0.24);
+    color: rgba(245, 238, 225, 0.95);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .pulse-action--primary {
+    background: linear-gradient(125deg, rgba(212, 173, 92, 0.92), rgba(166, 121, 61, 0.92));
+    border-color: rgba(214, 190, 141, 0.34);
+    color: rgba(23, 17, 10, 0.96);
   }
 
   .companion-panel {
@@ -205,20 +357,28 @@ let editOpen = false;
   }
 
   .featured-slot {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     border-radius: 20px;
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(43, 33, 20, 0.18);
   }
 
   .text-muted {
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(214, 203, 180, 0.72);
   }
 
   @media (max-width: 900px) {
     :global(.profile-shell) {
       border-radius: 1.08rem;
       padding-top: 0.75rem;
+    }
+
+    .profile-pulse__cards {
+      grid-template-columns: 1fr;
+    }
+
+    .profile-pulse__actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -229,6 +389,19 @@ let editOpen = false;
 
     :global(.profile-shell .panel) {
       border-radius: 1rem;
+    }
+
+    .profile-pulse {
+      gap: 0.85rem;
+    }
+
+    .profile-pulse__actions {
+      grid-template-columns: 1fr;
+    }
+
+    .pulse-action {
+      min-height: 2.9rem;
+      width: 100%;
     }
   }
 

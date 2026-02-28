@@ -99,7 +99,7 @@
 <div class="dashboard">
   <div class="dashboard__backdrop" aria-hidden="true"></div>
   <main class="dashboard__shell" aria-labelledby="dashboard-heading">
-    <h1 id="dashboard-heading" class="sr-only">Looma dashboard</h1>
+    <h1 id="dashboard-heading" class="sr-only">Looma sanctuary overview</h1>
     <div class="dashboard__grid">
       <aside class="sidebar sidebar--left" aria-label="Primary navigation">
         <div class="sidebar__section">
@@ -183,7 +183,7 @@
               <h3>Nova</h3>
               <p>Energy synced. Mood: serene. Ready for a shared mission.</p>
             </div>
-            <button type="button" class="companion__cta" on:click={() => handleShortcut('/app/creatures')}>
+            <button type="button" class="companion__cta" on:click={() => handleShortcut('/app/companions')}>
               Adopt a companion
             </button>
           </div>

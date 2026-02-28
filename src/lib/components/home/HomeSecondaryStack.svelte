@@ -1,163 +1,182 @@
 <script lang="ts">
   import type { FeedItem } from '$lib/social/types';
-  import QuickPostPanel from '$lib/components/home/QuickPostPanel.svelte';
 
   export let feedPreview: FeedItem | null = null;
-  export let signalsHref = '/app/circles';
-  export let upcomingLabel = 'No events scheduled this week.';
-  export let upcomingHref = '/app/events';
-  export let quickMissionTitle: string | null = null;
-  export let quickMissionSummary: string | null = null;
-  export let quickMissionHref = '/app/games/arpg';
-  export let alwaysExpanded = false;
+  export let journalHref = '/app/memory';
+  export let journalSummary: string | null = null;
+  export let journalUpdatedAt: string | null = null;
+  export let missionTitle: string | null = null;
+  export let missionSummary: string | null = null;
+  export let missionHref = '/app/missions';
+  export let messagesHref = '/app/messages';
+  export let circlesHref = '/app/circles';
+  export let notificationsUnread = 0;
+  export let companionHref = '/app/companions';
+  export let companionName = 'your companion';
+  export let needsCheckin = false;
 
-  let expanded = alwaysExpanded;
-
-  $: if (alwaysExpanded) {
-    expanded = true;
-  }
-
-  const formatTime = (iso: string) => {
+  const formatDate = (iso: string | null) => {
+    if (!iso) return null;
     const ts = Date.parse(iso);
-    if (!Number.isFinite(ts)) return '';
+    if (!Number.isFinite(ts)) return null;
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
+
+  $: journalDate = formatDate(journalUpdatedAt);
+  $: circleAuthor = feedPreview?.author_name ?? feedPreview?.display_name ?? 'Someone close';
+  $: circlePreview = feedPreview?.body || feedPreview?.text || 'A new signal is waiting in your circle.';
 </script>
 
-<section class="secondary card" aria-label="Secondary content">
-  {#if !alwaysExpanded}
-    <button
-      type="button"
-      class="secondary__toggle"
-      aria-expanded={expanded}
-      on:click={() => {
-        expanded = !expanded;
-      }}
-    >
-      {expanded ? 'See less' : 'See more'}
-    </button>
-  {/if}
-
-  {#if expanded}
-    <div class="secondary__stack">
-      <article class="mini">
-        <header>
-          <h3>Signals from your circle</h3>
-          <a href={signalsHref}>See all</a>
-        </header>
-
-        {#if feedPreview}
-          <p class="mini__body">{feedPreview.body || feedPreview.text || 'A new update is waiting for you.'}</p>
-          <p class="mini__meta">
-            {feedPreview.author_name ?? feedPreview.display_name ?? 'Someone'}
-            {#if feedPreview.created_at}
-              · {formatTime(feedPreview.created_at)}
-            {/if}
-          </p>
-          <a class="mini__action" href={`/p/${feedPreview.id}`}>Reply</a>
-        {:else}
-          <p class="mini__body">No new circle signals right now.</p>
-        {/if}
-      </article>
-
-      <article class="mini">
-        <header>
-          <h3>Upcoming</h3>
-          <a href={upcomingHref}>View schedule</a>
-        </header>
-        <p class="mini__body">{upcomingLabel}</p>
-      </article>
-
-      <article class="mini">
-        <header>
-          <h3>Quick mission</h3>
-          <a href={quickMissionHref}>Open</a>
-        </header>
-        <p class="mini__body">{quickMissionTitle ?? 'Start a short mission to build momentum.'}</p>
-        {#if quickMissionSummary}
-          <p class="mini__meta">{quickMissionSummary}</p>
-        {/if}
-      </article>
-
-      <article class="mini">
-        <header>
-          <h3>Send a kind note</h3>
-          <span class="mini__label">Social</span>
-        </header>
-        <QuickPostPanel placeholder="Send a kind note (280)" />
-      </article>
+<section class="secondary-stack" aria-label="Home actions">
+  <article class="focus-card focus-card--journal">
+    <div class="focus-card__eyebrow">Journal</div>
+    <div class="focus-card__row">
+      <div>
+        <h2>Remember what {companionName} is holding</h2>
+        <p>
+          {journalSummary ?? `Open your journal to revisit moments, moods, and small shifts in your bond.`}
+        </p>
+      </div>
+      <a class="focus-card__link" href={journalHref}>Open</a>
     </div>
-  {/if}
+    {#if journalDate}
+      <p class="focus-card__meta">Updated {journalDate}</p>
+    {/if}
+  </article>
+
+  <div class="shortcut-row" aria-label="Quick actions">
+    <a class="shortcut" href={missionHref}>
+      <span class="shortcut__label">Mission</span>
+      <strong>{missionTitle ?? 'Pick up today’s path'}</strong>
+      <span>{missionSummary ?? 'A short action to deepen your rhythm with Looma.'}</span>
+    </a>
+
+    <a class="shortcut" href={messagesHref}>
+      <span class="shortcut__label">Messages</span>
+      <strong>{notificationsUnread > 0 ? `${notificationsUnread} new moments` : 'Stay in touch'}</strong>
+      <span>{notificationsUnread > 0 ? 'Your conversations are waiting.' : 'Check your threads and replies.'}</span>
+    </a>
+  </div>
+
+  <div class="shortcut-row" aria-label="Connection actions">
+    <a class="shortcut" href={circlesHref}>
+      <span class="shortcut__label">Circles</span>
+      <strong>{feedPreview ? `${circleAuthor} shared something` : 'Quiet for now'}</strong>
+      <span>{circlePreview}</span>
+    </a>
+
+    <a class="shortcut" href={companionHref}>
+      <span class="shortcut__label">Companions</span>
+      <strong>{needsCheckin ? `${companionName} needs you` : `Care for ${companionName}`}</strong>
+      <span>{needsCheckin ? 'Return for a check-in, care, or a quick ritual.' : 'Visit your sanctuary and shape the bond.'}</span>
+    </a>
+  </div>
 </section>
 
 <style>
-  .card {
-    border-radius: 1.2rem;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(8, 14, 28, 0.68);
-    padding: 0.85rem;
-  }
-
-  .secondary__toggle {
-    width: 100%;
-    min-height: 2.6rem;
-    border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.72);
-    color: rgba(226, 232, 240, 0.93);
-    font-size: 0.87rem;
-    font-weight: 600;
-  }
-
-  .secondary__stack {
-    margin-top: 0.8rem;
+  .secondary-stack {
     display: grid;
-    gap: 0.65rem;
+    gap: 0.9rem;
   }
 
-  .mini {
-    border-radius: 0.95rem;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(15, 23, 42, 0.56);
-    padding: 0.8rem;
+  .focus-card,
+  .shortcut {
+    border-radius: 1.3rem;
+    border: 1px solid rgba(212, 190, 139, 0.16);
+    background:
+      linear-gradient(180deg, rgba(21, 29, 31, 0.92), rgba(11, 16, 18, 0.96)),
+      radial-gradient(circle at top, rgba(193, 156, 73, 0.12), transparent 52%);
+    color: rgba(244, 237, 223, 0.96);
+    text-decoration: none;
+    box-shadow: 0 18px 30px rgba(5, 8, 10, 0.26);
   }
 
-  header {
+  .focus-card {
+    padding: 1rem;
+  }
+
+  .focus-card__eyebrow,
+  .shortcut__label {
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.76);
+  }
+
+  .focus-card__row {
+    margin-top: 0.45rem;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 0.6rem;
+    gap: 0.9rem;
   }
 
-  h3 {
+  h2 {
     margin: 0;
-    font-size: 0.92rem;
-    color: rgba(248, 250, 252, 0.96);
+    font-size: 1rem;
+    line-height: 1.2;
   }
 
-  a,
-  .mini__label {
-    color: rgba(125, 211, 252, 0.95);
-    font-size: 0.8rem;
-    font-weight: 600;
+  .focus-card p,
+  .shortcut span,
+  .shortcut strong {
+    margin: 0;
+  }
+
+  .focus-card p,
+  .shortcut > span:last-child {
+    color: rgba(224, 216, 200, 0.82);
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .focus-card__link {
+    flex-shrink: 0;
+    min-height: 2.2rem;
+    padding: 0 0.9rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(217, 189, 126, 0.15);
+    border: 1px solid rgba(217, 189, 126, 0.28);
+    color: rgba(253, 245, 228, 0.96);
+    font-size: 0.82rem;
+    font-weight: 700;
     text-decoration: none;
   }
 
-  .mini__body {
-    margin: 0.48rem 0 0;
-    color: rgba(226, 232, 240, 0.92);
-    font-size: 0.86rem;
-    line-height: 1.4;
+  .focus-card__meta {
+    margin-top: 0.6rem;
+    color: rgba(193, 178, 149, 0.72);
+    font-size: 0.75rem;
   }
 
-  .mini__meta {
-    margin: 0.35rem 0 0;
-    color: rgba(148, 163, 184, 0.92);
-    font-size: 0.78rem;
+  .shortcut-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
 
-  .mini__action {
-    margin-top: 0.5rem;
-    display: inline-flex;
+  .shortcut {
+    min-height: 8.8rem;
+    padding: 0.92rem;
+    display: grid;
+    align-content: start;
+    gap: 0.45rem;
+  }
+
+  .shortcut strong {
+    font-size: 0.95rem;
+    line-height: 1.25;
+    color: rgba(250, 243, 229, 0.98);
+  }
+
+  @media (max-width: 359px) {
+    .shortcut-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

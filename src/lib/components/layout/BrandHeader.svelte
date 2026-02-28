@@ -23,15 +23,15 @@
 <header class="app-header" data-testid="brand-header">
   <div class="app-header__inner">
     <div class="header-left">
-      <div class="logo-lockup" role="img" aria-label="Looma sigil">
+      <div class="logo-lockup" role="img" aria-label="Looma sanctuary sigil">
         <span class="logo-dot" aria-hidden="true"></span>
         <span class="logo-text">Looma</span>
       </div>
-      <label class="search-omnibox panel-glass" role="search" aria-label="Search Kinforge">
+      <label class="search-omnibox panel-glass" role="search" aria-label="Search Looma">
         <span class="search-icon" aria-hidden="true">
           <Search aria-hidden="true" />
         </span>
-        <input type="search" placeholder="Search Kinforge…" aria-label="Search Kinforge" />
+        <input type="search" placeholder="Search companions, people, and rituals" aria-label="Search Looma" />
       </label>
     </div>
     <div class="header-nav">
@@ -71,7 +71,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(8, 12, 24, 0.85), rgba(24, 7, 33, 0.78));
+    background: linear-gradient(135deg, rgba(16, 13, 18, 0.9), rgba(29, 22, 31, 0.82));
     opacity: 0.94;
     z-index: -1;
   }
@@ -104,24 +104,24 @@
     gap: 0.4rem;
     padding: 0.35rem 0.65rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 10px 26px rgba(5, 7, 18, 0.6);
+    border: 1px solid rgba(240, 222, 193, 0.14);
+    background: rgba(255, 246, 230, 0.04);
+    box-shadow: 0 10px 26px rgba(11, 8, 11, 0.44);
   }
 
   .logo-dot {
     width: 22px;
     height: 22px;
     border-radius: 999px;
-    background: radial-gradient(circle at 30% 30%, rgba(94, 242, 255, 0.9), rgba(155, 92, 255, 0.5));
-    box-shadow: 0 0 24px rgba(94, 242, 255, 0.6);
+    background: radial-gradient(circle at 30% 30%, rgba(112, 221, 194, 0.92), rgba(240, 180, 112, 0.72));
+    box-shadow: 0 0 24px rgba(240, 180, 112, 0.28);
   }
 
   .logo-text {
     font-size: 0.8rem;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: rgba(248, 250, 255, 0.8);
+    color: rgba(250, 242, 230, 0.82);
   }
 
   .search-omnibox {
@@ -132,9 +132,9 @@
     padding: 0 0.85rem;
     height: 2.35rem;
     width: clamp(12rem, 30vw, 22rem);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(8, 12, 28, 0.55);
-    color: rgba(244, 247, 255, 0.85);
+    border: 1px solid rgba(240, 222, 193, 0.12);
+    background: rgba(24, 20, 28, 0.62);
+    color: rgba(249, 243, 236, 0.88);
   }
 
   .search-omnibox input {
@@ -146,7 +146,7 @@
   }
 
   .search-omnibox input::placeholder {
-    color: rgba(244, 247, 255, 0.45);
+    color: rgba(249, 243, 236, 0.44);
   }
 
   .search-omnibox input:focus-visible {
@@ -154,13 +154,13 @@
   }
 
   .search-omnibox:focus-within {
-    border-color: rgba(94, 242, 255, 0.5);
-    box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.35), 0 12px 28px rgba(5, 7, 18, 0.45);
+    border-color: rgba(112, 221, 194, 0.44);
+    box-shadow: 0 0 0 1px rgba(112, 221, 194, 0.28), 0 12px 28px rgba(11, 8, 11, 0.36);
   }
 
   .search-icon {
     display: inline-flex;
-    color: rgba(244, 247, 255, 0.5);
+    color: rgba(249, 243, 236, 0.5);
   }
 
   .search-icon :global(svg) {

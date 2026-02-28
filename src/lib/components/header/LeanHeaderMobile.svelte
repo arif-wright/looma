@@ -95,7 +95,7 @@
         id="m-search"
         type="search"
         bind:value={search}
-        placeholder="Search Looma"
+        placeholder="Search the weave"
         class="search-input"
         on:focus={() => (showExpanded = true)}
         on:blur={() => (showExpanded = false)}
@@ -176,8 +176,8 @@
     top: 0;
     z-index: 60;
     backdrop-filter: blur(14px);
-    background: rgba(6, 8, 18, 0.72);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(18, 15, 21, 0.82);
+    border-bottom: 1px solid rgba(240, 222, 193, 0.08);
     padding: env(safe-area-inset-top, 0px) 0 0;
   }
 
@@ -208,7 +208,7 @@
   .icon-btn:focus-visible,
   .chip:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(94, 242, 255, 0.45);
+    box-shadow: 0 0 0 2px rgba(112, 221, 194, 0.32);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -223,8 +223,8 @@
     width: 18px;
     height: 18px;
     border-radius: 5px;
-    background: linear-gradient(135deg, rgba(94, 242, 255, 0.9), rgba(155, 92, 255, 0.9));
-    box-shadow: 0 8px 18px rgba(94, 242, 255, 0.35);
+    background: linear-gradient(135deg, rgba(112, 221, 194, 0.92), rgba(240, 180, 112, 0.88));
+    box-shadow: 0 8px 18px rgba(240, 180, 112, 0.22);
   }
 
   .search-wrap {
@@ -236,16 +236,16 @@
 
   .search-input {
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(240, 222, 193, 0.1);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 246, 230, 0.05);
+    color: rgba(249, 243, 236, 0.9);
     padding: 0.4rem 0.9rem;
     font-size: 0.9rem;
   }
 
   .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(249, 243, 236, 0.42);
   }
 
   .chip {
@@ -253,11 +253,11 @@
     align-items: center;
     gap: 0.35rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(240, 222, 193, 0.1);
+    background: rgba(255, 246, 230, 0.05);
     padding: 0.3rem 0.65rem;
     font-size: 0.78rem;
-    color: rgba(248, 250, 255, 0.95);
+    color: rgba(249, 243, 236, 0.96);
     text-decoration: none;
   }
 
@@ -265,8 +265,8 @@
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: rgba(94, 242, 255, 0.9);
-    box-shadow: 0 0 12px rgba(94, 242, 255, 0.8);
+    background: rgba(240, 180, 112, 0.92);
+    box-shadow: 0 0 12px rgba(240, 180, 112, 0.42);
   }
 
   .account-menu {
@@ -282,9 +282,9 @@
     min-width: 180px;
     padding: 0.5rem;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(8, 12, 20, 0.92);
-    box-shadow: 0 16px 40px rgba(5, 7, 18, 0.5);
+    border: 1px solid rgba(240, 222, 193, 0.1);
+    background: rgba(21, 18, 24, 0.94);
+    box-shadow: 0 16px 40px rgba(8, 7, 10, 0.42);
     z-index: 20;
   }
 
@@ -299,7 +299,7 @@
     border-radius: 10px;
     border: 1px solid transparent;
     background: transparent;
-    color: rgba(248, 250, 255, 0.85);
+    color: rgba(249, 243, 236, 0.88);
     font-size: 0.85rem;
     text-align: left;
   }
@@ -308,8 +308,8 @@
   .account-menu__dropdown a:focus-visible,
   .account-menu__dropdown button:hover,
   .account-menu__dropdown button:focus-visible {
-    border-color: rgba(94, 242, 255, 0.4);
-    background: rgba(94, 242, 255, 0.08);
+    border-color: rgba(112, 221, 194, 0.34);
+    background: rgba(112, 221, 194, 0.08);
     outline: none;
   }
 

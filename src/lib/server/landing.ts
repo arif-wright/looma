@@ -32,6 +32,12 @@ export type LandingDecision = {
 
 const APP_ROOT = '/app';
 
+const normalizePreferredSurface = (surface: PreferenceRow['start_on'] | string | null | undefined) => {
+  if (surface === 'dashboard') return 'home' as const;
+  if (surface === 'creatures') return 'creatures' as const;
+  return 'home' as const;
+};
+
 export const shouldResolveLanding = (
   normalizedPath: string,
   forceHome: boolean
@@ -52,10 +58,10 @@ export const surfaceToPath = (
   switch (surface) {
     case 'creatures': {
       const focus = payload?.creatureId;
-      return focus ? `/app/creatures?focus=${encodeURIComponent(String(focus))}` : '/app/creatures';
+      return focus ? `/app/companions?focus=${encodeURIComponent(String(focus))}` : '/app/companions';
     }
     case 'dashboard':
-      return '/app/dashboard';
+      return '/app/home';
     case 'mission': {
       const missionId = payload?.missionId;
       return missionId ? `/app/missions/${encodeURIComponent(String(missionId))}` : '/app/missions';
@@ -132,8 +138,10 @@ export const computeLanding = (
           reason: 'context'
         };
       }
-      case 'creature': {
+      case 'creature':
+      case 'companion': {
         const creatureId =
+          contextPayload?.companionId ??
           contextPayload?.creatureId ??
           contextPayload?.creature_id ??
           contextPayload?.id ??
@@ -147,8 +155,8 @@ export const computeLanding = (
       }
       case 'dashboard':
         return {
-          surface: 'dashboard',
-          target: surfaceToPath('dashboard'),
+          surface: 'home',
+          target: surfaceToPath('home'),
           variant,
           reason: 'context'
         };
@@ -157,14 +165,12 @@ export const computeLanding = (
     }
   }
 
-  let surface: 'home' | 'creatures' | 'dashboard' = 'home';
+  let surface: 'home' | 'creatures' = 'home';
 
   if (prefs.start_on && prefs.start_on !== 'home') {
-    surface = prefs.start_on;
+    surface = normalizePreferredSurface(prefs.start_on);
   } else {
-    if (variant === 'A') surface = 'dashboard';
-    if (variant === 'B') surface = 'creatures';
-    if (variant === 'C') surface = 'home';
+    surface = 'home';
   }
 
   return {

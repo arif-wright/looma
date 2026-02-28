@@ -20,13 +20,13 @@
       : null;
   const targetType =
     target && typeof target.type === 'string'
-      ? (target.type as 'mission' | 'creature' | string)
+      ? (target.type as 'mission' | 'creature' | 'companion' | string)
       : null;
 
   const ctaLabel =
     targetType === 'mission'
       ? '🚀 Join Mission'
-      : targetType === 'creature'
+      : targetType === 'creature' || targetType === 'companion'
       ? '🐾 Visit Companion'
       : null;
 

@@ -40,7 +40,7 @@
       </header>
 
       {#if companions.length === 0}
-        <p class="empty">No companions yet. Hatch or bond with a creature to feature it here.</p>
+        <p class="empty">No companions yet. Hatch or bond with a companion to feature it here.</p>
       {:else}
         <ul class="companion-grid">
           {#each companions as companion, index (companion.id)}

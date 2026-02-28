@@ -1,14 +1,14 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
-  import type { CreatureView, Species } from "$lib/types/creatures";
+  import type { CompanionView, Species } from "$lib/types/companions";
 
-  export let data: { creatures: CreatureView[]; species: Species[] };
+  export let data: { creatures: CompanionView[]; species: Species[] };
 
   let speciesId = "";
   let nickname = "";
   let errorMessage: string | null = null;
   let isSubmitting = false;
-  let creatures: CreatureView[] = data.creatures;
+  let creatures: CompanionView[] = data.creatures;
   let species: Species[] = data.species;
 
   async function createCreature(event: Event) {
@@ -16,7 +16,7 @@
     errorMessage = null;
 
     if (!speciesId) {
-      errorMessage = "Select a species before creating a creature.";
+      errorMessage = "Select a species before welcoming a companion.";
       return;
     }
 
@@ -28,7 +28,7 @@
         body.nickname = nickname.trim();
       }
 
-      const response = await fetch("/api/creatures", {
+      const response = await fetch("/api/companions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -36,7 +36,7 @@
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.ok) {
-        errorMessage = payload?.error ?? "Failed to create creature.";
+        errorMessage = payload?.error ?? "Failed to create companion.";
         return;
       }
 
@@ -54,8 +54,8 @@
 
 <section class="creatures">
   <header>
-    <h1>Creatures</h1>
-    <p>Track your bonded companions. All data stays server-side via Supabase RLS.</p>
+    <h1>Companions</h1>
+    <p>Track your bonded companions while the underlying data stays protected by Supabase RLS.</p>
   </header>
   <form class="create-form" on:submit={createCreature}>
     <label>
@@ -76,7 +76,7 @@
     </label>
 
     <button type="submit" disabled={isSubmitting}>
-      {#if isSubmitting}Creating...{:else}Create Creature{/if}
+      {#if isSubmitting}Welcoming...{:else}Welcome companion{/if}
     </button>
 
     {#if errorMessage}
@@ -85,15 +85,15 @@
   </form>
 
   <section class="list">
-    <h2>My creatures</h2>
+    <h2>My companions</h2>
 
     {#if creatures.length === 0}
-      <p>You have not bonded with any creatures yet.</p>
+      <p>You have not bonded with any companions yet.</p>
     {:else}
       <ul>
         {#each creatures as creature}
           <li>
-            <a class="item-link" href={"/app/creatures/" + creature.id}>
+            <a class="item-link" href={"/app/companions?focus=" + creature.id}>
               <strong>{creature.species_name}</strong>
               <span class="rarity">{creature.species_rarity}</span>
               {#if creature.nickname}

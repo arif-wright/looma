@@ -551,6 +551,25 @@
     ownedInstances.map((instance) => [instance.id, computeCompanionEffectiveState(instance, new Date(nowTick))] as const)
   );
   $: relationshipState = relationshipCopy(activeCompanion);
+  $: activeCompanionJournalHref =
+    activeCompanion?.id ? `/app/memory?companion=${activeCompanion.id}` : '/app/memory';
+  $: activeCompanionSanctuaryHref = '/app/home';
+  $: activeCareStatus = activeCompanion
+    ? needsAttention(activeCompanion)
+      ? 'Needs a gentle check-in'
+      : (activeEffective?.energy ?? activeCompanion.energy ?? 0) <= LOW_ENERGY_THRESHOLD
+        ? 'Energy is running low'
+        : 'Bond is steady'
+    : 'Waiting for your first companion';
+  $: activeCareCadence = activeCompanion
+    ? activeEffective?.msSinceCheckIn == null
+      ? formatElapsed(lastInteractionAt(activeCompanion))
+      : formatLastCareLabel(activeEffective.msSinceCheckIn)
+    : 'Not yet';
+  $: activeMoodLabel = activeCompanion
+    ? activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label
+    : 'Quiet';
+  $: activeBondLabel = activeCompanion ? `Bond Lv ${getBondLevel(activeCompanion)}` : 'Bond unavailable';
 
   $: ownedArchetypeTokens = new Set(
     ownedInstances.flatMap((instance) => [normalizeToken(instance.species), normalizeToken(cleanArchetype(instance.species))])
@@ -708,9 +727,31 @@
           <p>{relationshipState.body}</p>
         </div>
 
-        <button type="button" class="care-primary" on:click={() => openCareModal(activeCompanion)}>
-          Check in with {activeCompanion.name}
-        </button>
+        <div class="pulse-grid" aria-label="Active companion pulse">
+          <article class="pulse-card">
+            <span class="pulse-card__label">Care state</span>
+            <strong>{activeCareStatus}</strong>
+            <span>{activeMoodLabel}</span>
+          </article>
+          <article class="pulse-card">
+            <span class="pulse-card__label">Last moment</span>
+            <strong>{activeCareCadence}</strong>
+            <span>Come back often to keep the bond warm.</span>
+          </article>
+          <article class="pulse-card">
+            <span class="pulse-card__label">Bond strength</span>
+            <strong>{activeBondLabel}</strong>
+            <span>{activeEffective?.energy ?? activeCompanion.energy ?? 0} energy available right now</span>
+          </article>
+        </div>
+
+        <div class="view-actions" aria-label="Active companion actions">
+          <button type="button" class="care-primary" on:click={() => openCareModal(activeCompanion)}>
+            Check in with {activeCompanion.name}
+          </button>
+          <a class="secondary-link" href={activeCompanionJournalHref}>Open journal</a>
+          <a class="secondary-link" href={activeCompanionSanctuaryHref}>Go to sanctuary</a>
+        </div>
 
         <div class="meter-stack" aria-label="Companion instance stats">
           <div class="meter-row">
@@ -770,6 +811,33 @@
       {/if}
     </div>
   </section>
+
+  {#if ownedInstances.length > 0}
+    <section class="mobile-switch-rail" aria-label="Quick companion switching">
+      <div class="panel-title-row">
+        <h2>Quick switch</h2>
+        <p>Swipe through your active roster and tap to bring one closer.</p>
+      </div>
+
+      <div class="mobile-switch-rail__track">
+        {#each ownedInstances as instance (instance.id)}
+          <button
+            type="button"
+            class={`mobile-switch-pill ${activeCompanion?.id === instance.id ? 'is-active' : ''}`}
+            disabled={setActiveBusyId !== null}
+            on:click={() => {
+              void activateCompanion(instance.id);
+            }}
+          >
+            <span class="mobile-switch-pill__name">{instance.name}</span>
+            <span class="mobile-switch-pill__meta">
+              {effectiveById.get(instance.id)?.moodLabel ?? getCompanionMoodMeta(instance.mood).label}
+            </span>
+          </button>
+        {/each}
+      </div>
+    </section>
+  {/if}
 
   <section class="switcher" aria-label="Companion switcher">
     <div class="panel-title-row">
@@ -1039,11 +1107,11 @@
     display: grid;
     gap: 1.55rem;
     border-radius: 1.4rem;
-    border: 1px solid rgba(200, 217, 242, 0.18);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     background:
-      linear-gradient(165deg, rgba(17, 29, 67, 0.62), rgba(11, 20, 48, 0.56)),
-      radial-gradient(circle at 82% 2%, rgba(102, 180, 255, 0.1), transparent 50%);
-    box-shadow: 0 28px 54px rgba(5, 10, 28, 0.34);
+      linear-gradient(165deg, rgba(18, 24, 31, 0.74), rgba(9, 13, 18, 0.88)),
+      radial-gradient(circle at 82% 2%, rgba(210, 173, 97, 0.12), transparent 50%);
+    box-shadow: 0 28px 54px rgba(5, 10, 18, 0.34);
   }
 
   .companions-header {
@@ -1085,22 +1153,23 @@
   .switch-message {
     margin: 0;
     border-radius: 16px;
-    border: 1px solid rgba(91, 206, 255, 0.35);
-    background: rgba(15, 29, 58, 0.68);
+    border: 1px solid rgba(214, 190, 141, 0.26);
+    background: rgba(31, 25, 17, 0.58);
     padding: 0.72rem 0.95rem;
-    color: rgba(229, 245, 255, 0.92);
+    color: rgba(244, 234, 214, 0.92);
   }
 
   .companion-view,
+  .mobile-switch-rail,
   .switcher,
   .tabbed-list,
   .bond-milestones-panel {
     border-radius: 1.35rem;
-    border: 1px solid rgba(196, 215, 241, 0.22);
+    border: 1px solid rgba(214, 190, 141, 0.16);
     background:
-      linear-gradient(158deg, rgba(16, 27, 61, 0.72), rgba(10, 18, 43, 0.72)),
-      radial-gradient(circle at 80% -4%, rgba(100, 183, 255, 0.1), transparent 46%);
-    box-shadow: 0 18px 40px rgba(7, 13, 32, 0.34);
+      linear-gradient(158deg, rgba(18, 24, 31, 0.92), rgba(10, 14, 18, 0.92)),
+      radial-gradient(circle at 80% -4%, rgba(210, 173, 97, 0.12), transparent 46%);
+    box-shadow: 0 18px 40px rgba(7, 13, 24, 0.34);
     padding: clamp(1.05rem, 2.1vw, 1.45rem);
   }
 
@@ -1115,7 +1184,7 @@
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: rgba(205, 216, 255, 0.74);
+    color: rgba(215, 191, 143, 0.74);
     font-size: 0.82rem;
   }
 
@@ -1135,27 +1204,27 @@
 
   .chip {
     border-radius: 999px;
-    border: 1px solid rgba(207, 224, 246, 0.24);
+    border: 1px solid rgba(214, 190, 141, 0.22);
     padding: 0.28rem 0.72rem;
     font-size: 0.8rem;
-    background: rgba(34, 50, 99, 0.44);
+    background: rgba(52, 40, 20, 0.28);
   }
 
   .chip--evolution {
-    border-color: rgba(94, 242, 255, 0.42);
-    background: rgba(94, 242, 255, 0.12);
-    color: rgba(199, 248, 255, 0.96);
+    border-color: rgba(214, 190, 141, 0.42);
+    background: rgba(214, 190, 141, 0.12);
+    color: rgba(248, 238, 214, 0.96);
   }
 
   .chip--hook {
-    border-color: rgba(186, 157, 255, 0.42);
-    background: rgba(186, 157, 255, 0.1);
-    color: rgba(232, 220, 255, 0.95);
+    border-color: rgba(128, 175, 148, 0.34);
+    background: rgba(128, 175, 148, 0.12);
+    color: rgba(221, 237, 224, 0.95);
   }
 
   .time-context {
     margin: 0.7rem 0 0;
-    color: rgba(204, 216, 255, 0.78);
+    color: rgba(223, 209, 179, 0.78);
   }
 
   .relationship-copy {
@@ -1165,20 +1234,64 @@
   .relationship-copy__title {
     margin: 0;
     font-weight: 600;
-    color: rgba(241, 247, 255, 0.96);
+    color: rgba(247, 241, 228, 0.96);
   }
 
   .relationship-copy p {
     margin: 0.25rem 0 0;
-    color: rgba(210, 221, 255, 0.84);
+    color: rgba(223, 215, 200, 0.84);
+  }
+
+  .pulse-grid {
+    margin-top: 0.95rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.68rem;
+  }
+
+  .pulse-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(180deg, rgba(29, 24, 17, 0.62), rgba(12, 16, 19, 0.86)),
+      radial-gradient(circle at top, rgba(214, 190, 141, 0.08), transparent 55%);
+    padding: 0.82rem;
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .pulse-card__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.72);
+  }
+
+  .pulse-card strong {
+    color: rgba(248, 241, 227, 0.98);
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+
+  .pulse-card span:last-child {
+    color: rgba(219, 208, 185, 0.76);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .view-actions {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.62rem;
   }
 
   .care-primary {
-    margin-top: 0.85rem;
     border-radius: 999px;
-    border: 1px solid rgba(199, 216, 241, 0.4);
-    background: linear-gradient(125deg, rgba(89, 176, 255, 0.86), rgba(131, 116, 246, 0.86));
-    color: rgba(8, 20, 42, 0.94);
+    border: 1px solid rgba(214, 190, 141, 0.34);
+    background: linear-gradient(125deg, rgba(212, 173, 92, 0.92), rgba(166, 121, 61, 0.92));
+    color: rgba(23, 17, 10, 0.96);
     padding: 0.66rem 1.05rem;
     font-weight: 600;
     cursor: pointer;
@@ -1188,8 +1301,23 @@
   .care-primary:hover,
   .care-primary:focus-visible {
     transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(100, 177, 255, 0.3);
+    box-shadow: 0 12px 30px rgba(212, 173, 92, 0.24);
     outline: none;
+  }
+
+  .secondary-link {
+    min-height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(43, 33, 20, 0.24);
+    color: rgba(244, 235, 217, 0.94);
+    padding: 0 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
   }
 
   .meter-stack {
@@ -1235,8 +1363,8 @@
 
   .companion-view__model {
     border-radius: 1.05rem;
-    border: 1px solid rgba(197, 216, 241, 0.22);
-    background: radial-gradient(circle at center, rgba(86, 165, 255, 0.18), rgba(8, 12, 31, 0.82) 72%);
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: radial-gradient(circle at center, rgba(214, 190, 141, 0.14), rgba(8, 12, 18, 0.9) 72%);
     display: grid;
     place-items: center;
     min-height: 260px;
@@ -1258,7 +1386,49 @@
 
   .panel-title-row p {
     margin: 0;
-    color: rgba(195, 208, 255, 0.72);
+    color: rgba(221, 208, 183, 0.72);
+  }
+
+  .mobile-switch-rail__track {
+    margin-top: 0.8rem;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(9rem, 1fr);
+    gap: 0.65rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .mobile-switch-pill {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(180deg, rgba(29, 24, 17, 0.62), rgba(12, 16, 19, 0.84)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 55%);
+    color: rgba(245, 238, 224, 0.96);
+    min-height: 4.6rem;
+    padding: 0.8rem;
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    text-align: left;
+    scroll-snap-align: start;
+  }
+
+  .mobile-switch-pill.is-active {
+    border-color: rgba(214, 190, 141, 0.42);
+    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
+  }
+
+  .mobile-switch-pill__name {
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .mobile-switch-pill__meta {
+    color: rgba(219, 208, 185, 0.74);
+    font-size: 0.78rem;
   }
 
   .switcher-grid {
@@ -1270,9 +1440,9 @@
 
   .switcher-item {
     border-radius: 0.96rem;
-    border: 1px solid rgba(193, 213, 240, 0.22);
-    background: rgba(18, 30, 66, 0.66);
-    color: rgba(236, 242, 255, 0.95);
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(24, 20, 15, 0.62);
+    color: rgba(243, 237, 226, 0.95);
     padding: 0.75rem 0.85rem;
     display: flex;
     justify-content: space-between;
@@ -1282,8 +1452,8 @@
   }
 
   .switcher-item.is-active {
-    border-color: rgba(92, 205, 255, 0.82);
-    box-shadow: 0 0 0 1px rgba(92, 205, 255, 0.35);
+    border-color: rgba(214, 190, 141, 0.52);
+    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
   }
 
   .switcher-item__name {
@@ -1294,7 +1464,7 @@
   .switcher-item__meta {
     margin: 0.2rem 0 0;
     font-size: 0.86rem;
-    color: rgba(190, 207, 255, 0.75);
+    color: rgba(219, 208, 185, 0.75);
   }
 
   .switcher-item__right {
@@ -1307,10 +1477,10 @@
   .status-chip,
   .mood-chip {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(214, 190, 141, 0.18);
     padding: 0.2rem 0.64rem;
     font-size: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(43, 33, 20, 0.24);
     white-space: nowrap;
   }
 
@@ -1319,14 +1489,14 @@
     gap: 0.4rem;
     border-radius: 999px;
     padding: 0.25rem;
-    background: rgba(8, 12, 31, 0.85);
-    border: 1px solid rgba(179, 213, 255, 0.25);
+    background: rgba(15, 18, 20, 0.95);
+    border: 1px solid rgba(214, 190, 141, 0.18);
   }
 
   .tab {
     border: 0;
     background: transparent;
-    color: rgba(210, 223, 255, 0.9);
+    color: rgba(234, 225, 206, 0.9);
     border-radius: 999px;
     padding: 0.46rem 0.9rem;
     cursor: pointer;
@@ -1334,8 +1504,8 @@
   }
 
   .tab.is-active {
-    background: rgba(91, 206, 255, 0.26);
-    color: rgba(246, 250, 255, 0.96);
+    background: rgba(214, 190, 141, 0.16);
+    color: rgba(251, 244, 229, 0.96);
   }
 
   .filters-grid {
@@ -1351,15 +1521,15 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(197, 210, 255, 0.74);
+    color: rgba(214, 198, 164, 0.74);
   }
 
   .filter-field input,
   .filter-field select {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    background: rgba(12, 16, 36, 0.86);
-    color: rgba(240, 245, 255, 0.94);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(15, 18, 20, 0.96);
+    color: rgba(245, 239, 227, 0.94);
     padding: 0.48rem 0.82rem;
   }
 
@@ -1371,9 +1541,9 @@
 
   .list-card {
     border-radius: 0.96rem;
-    border: 1px solid rgba(193, 212, 240, 0.22);
-    background: rgba(16, 27, 61, 0.64);
-    color: rgba(237, 243, 255, 0.95);
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(24, 20, 15, 0.62);
+    color: rgba(245, 239, 227, 0.95);
     padding: 0.74rem 0.84rem;
     display: flex;
     justify-content: space-between;
@@ -1382,8 +1552,8 @@
   }
 
   .list-card.is-active {
-    border-color: rgba(91, 206, 255, 0.84);
-    box-shadow: 0 0 0 1px rgba(91, 206, 255, 0.35);
+    border-color: rgba(214, 190, 141, 0.5);
+    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
   }
 
   .list-card h3 {
@@ -1393,7 +1563,7 @@
 
   .list-card p {
     margin: 0.2rem 0 0;
-    color: rgba(196, 209, 255, 0.79);
+    color: rgba(223, 211, 188, 0.79);
     font-size: 0.88rem;
   }
 
@@ -1406,9 +1576,9 @@
 
   .inline-action {
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(241, 247, 255, 0.94);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(43, 33, 20, 0.24);
+    color: rgba(246, 239, 225, 0.94);
     padding: 0.33rem 0.76rem;
     cursor: pointer;
     font-size: 0.82rem;
@@ -1425,7 +1595,7 @@
   }
 
   .discover-card--locked {
-    border-color: rgba(255, 209, 142, 0.36);
+    border-color: rgba(214, 190, 141, 0.3);
     background: rgba(42, 33, 20, 0.65);
   }
 
@@ -1440,19 +1610,19 @@
   .discover-meta {
     margin-top: 0.35rem;
     font-size: 0.8rem;
-    color: rgba(199, 209, 236, 0.84);
+    color: rgba(214, 203, 180, 0.84);
   }
 
   .empty-copy {
     margin: 0.8rem 0 0;
-    color: rgba(195, 210, 255, 0.75);
+    color: rgba(214, 203, 180, 0.75);
   }
 
   .discover-modal__eyebrow {
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    color: rgba(202, 215, 255, 0.76);
+    color: rgba(215, 191, 143, 0.76);
     font-size: 0.78rem;
   }
 
@@ -1461,33 +1631,34 @@
   }
 
   .discover-modal p {
-    color: rgba(219, 229, 255, 0.84);
+    color: rgba(223, 215, 200, 0.84);
   }
 
   .discover-modal__hint {
     border-radius: 12px;
-    border: 1px solid rgba(184, 214, 255, 0.28);
-    background: rgba(20, 31, 58, 0.5);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(24, 20, 15, 0.56);
     padding: 0.66rem 0.76rem;
   }
 
   .error-banner {
     margin: 0;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(31, 39, 66, 0.72);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(24, 20, 15, 0.72);
     border-radius: 12px;
     padding: 0.7rem 0.85rem;
   }
 
   .toast {
     position: fixed;
-    bottom: 1.15rem;
-    right: 1rem;
+    left: 50%;
+    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
     border-radius: 999px;
     padding: 0.48rem 0.84rem;
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    background: rgba(11, 16, 36, 0.92);
-    color: rgba(240, 246, 255, 0.95);
+    border: 1px solid rgba(214, 190, 141, 0.22);
+    background: rgba(16, 18, 19, 0.96);
+    color: rgba(244, 239, 229, 0.95);
     z-index: 80;
   }
 
@@ -1509,6 +1680,10 @@
     .companion-view__model {
       min-height: 220px;
     }
+
+    .pulse-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: 700px) {
@@ -1518,6 +1693,7 @@
     }
 
     .companion-view,
+    .mobile-switch-rail,
     .switcher,
     .tabbed-list,
     .bond-milestones-panel {
@@ -1531,6 +1707,25 @@
 
     .view-title-block h2 {
       font-size: clamp(1.5rem, 8vw, 1.9rem);
+    }
+
+    .view-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .care-primary {
+      grid-column: 1 / -1;
+      min-height: 2.9rem;
+    }
+
+    .secondary-link {
+      min-height: 2.7rem;
+      width: 100%;
+    }
+
+    .mobile-switch-rail__track {
+      grid-auto-columns: minmax(10rem, 74vw);
     }
 
     .switcher-item,

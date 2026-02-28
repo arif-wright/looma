@@ -32,8 +32,8 @@
 
 {#if items.length === 0}
   <div class="empty">
-    <p>No creatures yet.</p>
-    <a href="/app/creatures">Adopt a companion</a>
+    <p>No companions yet.</p>
+    <a href="/app/companions">Adopt a companion</a>
   </div>
 {:else}
   <ul class="creature-grid">

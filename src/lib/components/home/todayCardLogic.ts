@@ -48,7 +48,7 @@ export function computeTodayCardState(input: TodayCardInputs): TodayCardComputed
   let secondary: string;
   switch (ctaState) {
     case 'reward':
-      secondary = 'Rewards boost your creature bond.';
+      secondary = 'Rewards strengthen your companion bond.';
       break;
     case 'retry':
       secondary = `Shake off ${failName} and go again.`;

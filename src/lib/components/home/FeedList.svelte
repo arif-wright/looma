@@ -4,7 +4,7 @@
   import { supabaseBrowser } from '$lib/supabaseClient';
   import FeedItem from './FeedItem.svelte';
   import MissionModal from '$lib/app/missions/MissionModal.svelte';
-  import CreatureDetailModal from '$lib/app/creatures/CreatureDetailModal.svelte';
+  import CompanionDetailModal from '$lib/app/companions/CompanionDetailModal.svelte';
   import { fetchMissionById, type MissionRow } from '$lib/data/missions';
   import { fetchCreatureById, type CreatureRow } from '$lib/data/creatures';
   import type { FeedItem as FeedItemType } from '$lib/social/types';
@@ -230,7 +230,7 @@
         const mission = await fetchMissionById(targetId);
         missionModalData = mission;
         missionModalOpen = mission !== null;
-      } else if (targetType === 'creature') {
+      } else if (targetType === 'creature' || targetType === 'companion') {
         persistContext('social', { targetType, targetId });
         sendAnalytics('feed_click_deeplink', {
           surface: 'home',
@@ -344,7 +344,7 @@
     on:refreshSessions={refreshMissionSessions}
   />
 
-  <CreatureDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
+  <CompanionDetailModal open={creatureModalOpen} creature={creatureModalData} on:close={closeCreatureModal} />
 </section>
 
 <style>

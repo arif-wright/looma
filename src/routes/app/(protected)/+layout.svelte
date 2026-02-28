@@ -7,7 +7,7 @@
   import { logout } from '$lib/auth/logout';
   import { page } from '$app/stores';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-  import { Gamepad2, ShoppingBag, MessageCircle, MessageSquare, Trophy, UserRound, PawPrint, Users, UsersRound, CalendarDays } from 'lucide-svelte';
+  import { Gamepad2, House, MessageSquare, UserRound, PawPrint, UsersRound, BookOpen } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
   import { FLAGS } from '$lib/config/flags';
   import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
@@ -109,10 +109,8 @@
   $: walletCurrency = 'SHARDS';
 
   $: iconNavItems = [
-    { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
-    { href: '/app/shop', label: 'Shop', icon: ShoppingBag, analyticsKey: 'shop' },
-    { href: '/app/companions', label: 'Companions', icon: PawPrint, analyticsKey: 'companions' },
-    { href: '/app/home', label: 'Feed', icon: MessageCircle, analyticsKey: 'feed' },
+    { href: '/app/home', label: 'Sanctuary', icon: House, analyticsKey: 'sanctuary' },
+    { href: '/app/memory', label: 'Journal', icon: BookOpen, analyticsKey: 'memory' },
     {
       href: '/app/messages',
       label: 'Messages',
@@ -120,10 +118,9 @@
       analyticsKey: 'messages',
       badgeCount: messageUnread
     },
-    { href: '/app/friends', label: 'Friends', icon: Users, analyticsKey: 'friends' },
     { href: '/app/circles', label: 'Circles', icon: UsersRound, analyticsKey: 'circles' },
-    { href: '/app/events', label: 'Events', icon: CalendarDays, analyticsKey: 'events' },
-    { href: '/app/dashboard', label: 'Achievements', icon: Trophy, analyticsKey: 'achievements' },
+    { href: '/app/games', label: 'Play', icon: Gamepad2, analyticsKey: 'games' },
+    { href: '/app/companions', label: 'Companions', icon: PawPrint, analyticsKey: 'companions' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ] satisfies IconNavItem[];
 
@@ -625,7 +622,7 @@
   .app-shell {
     min-height: 100vh;
     min-height: 100vh;
-    background: var(--brand-navy, #050712);
+    background: var(--brand-obsidian, #100d12);
     overflow-x: clip;
   }
 
@@ -637,19 +634,25 @@
     display: grid;
     grid-template-rows: auto 1fr;
     min-height: 100vh;
-    background: radial-gradient(
-        circle at 24% 12%,
-        hsl(var(--ambient-hue) 92% 66% / var(--ambient-intensity)),
-        transparent 56%
+    background:
+      radial-gradient(
+        circle at 18% 10%,
+        hsl(var(--ambient-hue) 70% 68% / calc(var(--ambient-intensity) * 0.9)),
+        transparent 50%
       ),
       radial-gradient(
-        circle at 76% 88%,
-        hsl(var(--ambient-secondary-hue) 88% 62% / calc(var(--ambient-intensity) * 0.72)),
-        transparent 48%
+        circle at 84% 14%,
+        rgba(240, 180, 112, calc(var(--ambient-intensity) * 0.72)),
+        transparent 38%
       ),
-      radial-gradient(circle at top, rgba(155, 92, 255, calc(var(--ambient-intensity) * 0.8)), transparent 55%),
-      radial-gradient(circle at bottom, rgba(94, 242, 255, calc(var(--ambient-intensity) * 0.45)), transparent 45%),
-      var(--brand-navy, #050712);
+      radial-gradient(
+        circle at 74% 86%,
+        hsl(var(--ambient-secondary-hue) 62% 62% / calc(var(--ambient-intensity) * 0.66)),
+        transparent 42%
+      ),
+      radial-gradient(circle at bottom, rgba(93, 164, 142, calc(var(--ambient-intensity) * 0.38)), transparent 48%),
+      linear-gradient(180deg, rgba(24, 19, 28, 0.96), rgba(15, 13, 20, 0.985)),
+      var(--brand-obsidian, #100d12);
     transition: background 360ms ease;
     background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
     overflow-x: clip;
@@ -663,7 +666,7 @@
     right: 0;
     top: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--ambientAccent), transparent);
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ambientAccent) 70%, #f0b470), transparent);
     opacity: calc(var(--ambientIntensity) * 0.85);
     pointer-events: none;
   }
@@ -684,12 +687,13 @@
     width: min(100%, 1680px);
     margin: 0 auto;
     border-radius: 1.4rem;
-    border: 1px solid rgba(196, 214, 241, 0.16);
+    border: 1px solid rgba(231, 214, 193, 0.14);
     background:
-      linear-gradient(162deg, rgba(17, 29, 66, 0.4), rgba(10, 18, 43, 0.36)),
-      radial-gradient(circle at 82% 0%, rgba(112, 188, 255, 0.08), transparent 48%);
-    box-shadow: 0 28px 56px rgba(6, 11, 28, 0.28);
-    backdrop-filter: blur(4px);
+      linear-gradient(162deg, rgba(33, 25, 36, 0.72), rgba(20, 17, 26, 0.72)),
+      radial-gradient(circle at 82% 0%, rgba(240, 180, 112, 0.08), transparent 44%),
+      radial-gradient(circle at 18% 100%, rgba(104, 180, 167, 0.08), transparent 40%);
+    box-shadow: 0 30px 80px rgba(9, 8, 12, 0.34);
+    backdrop-filter: blur(10px);
     min-height: calc(100dvh - 8rem);
     padding: clamp(0.2rem, 0.9vw, 0.55rem);
   }

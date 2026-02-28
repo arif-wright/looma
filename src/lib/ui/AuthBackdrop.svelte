@@ -25,10 +25,10 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 22% 18%, rgba(148, 70, 231, 0.32), transparent 45%),
-      radial-gradient(circle at 78% 16%, rgba(73, 255, 255, 0.24), transparent 52%),
-      radial-gradient(circle at 50% 80%, rgba(55, 120, 255, 0.18), transparent 58%),
-      linear-gradient(160deg, rgba(12, 10, 24, 0.96), rgba(9, 15, 28, 0.92));
+      radial-gradient(circle at 22% 18%, rgba(214, 190, 141, 0.24), transparent 45%),
+      radial-gradient(circle at 78% 16%, rgba(128, 175, 148, 0.16), transparent 52%),
+      radial-gradient(circle at 50% 80%, rgba(104, 87, 58, 0.14), transparent 58%),
+      linear-gradient(160deg, rgba(14, 11, 8, 0.96), rgba(10, 14, 16, 0.92));
     background-size: 180% 180%, 200% 200%, 220% 220%, 100% 100%;
     z-index: 0;
     animation:
@@ -39,7 +39,7 @@
   .auth-backdrop__threads {
     position: absolute;
     inset: 0;
-    opacity: 0.35;
+    opacity: 0.24;
     mix-blend-mode: screen;
     transform: scale(1.05);
     z-index: 1;
@@ -73,14 +73,14 @@
   .auth-backdrop__glow--top {
     top: -20vw;
     left: -15vw;
-    background: radial-gradient(circle, rgba(155, 92, 255, 0.7), transparent 60%);
+    background: radial-gradient(circle, rgba(214, 190, 141, 0.46), transparent 60%);
     animation: floatTop 36s ease-in-out infinite alternate;
   }
 
   .auth-backdrop__glow--bottom {
     bottom: -25vw;
     right: -18vw;
-    background: radial-gradient(circle, rgba(77, 244, 255, 0.65), transparent 65%);
+    background: radial-gradient(circle, rgba(128, 175, 148, 0.36), transparent 65%);
     animation: floatBottom 44s ease-in-out infinite alternate;
   }
 

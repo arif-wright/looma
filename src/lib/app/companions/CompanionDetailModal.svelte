@@ -99,7 +99,7 @@
     <button
       type="button"
       class="fixed inset-0 z-[2147483646] bg-black/60 backdrop-blur-md transition-opacity"
-      aria-label="Close creature detail"
+      aria-label="Close companion detail"
       on:click={onClose}
       on:keydown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -130,7 +130,7 @@
         <!-- LEFT: Hero image -->
         <div class="relative group rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-800/60 to-slate-900/50 shadow-xl">
           <div class="aspect-[4/3] grid place-items-center text-sm text-white/70">
-            [ Creature Art Placeholder ]
+            [ Companion Art Placeholder ]
           </div>
           <div
             class={`absolute inset-0 rounded-xl pointer-events-none blur-2xl opacity-60 transition bg-gradient-to-tr ${accent.glow} group-hover:opacity-90`}
@@ -200,7 +200,7 @@
 
           <div class="pt-3 flex justify-end items-center gap-4 border-t border-white/5 mt-6">
             <a class="text-sm font-medium text-violet-300 hover:text-violet-200 transition"
-               href={`/app/creatures/${creature.id}`}>
+               href={`/app/companions?focus=${creature.id}`}>
                Open full page →
             </a>
             <button

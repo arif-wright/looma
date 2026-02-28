@@ -95,8 +95,8 @@
   .brand-icon-button.active:hover,
   .brand-icon-button.active:focus-visible {
     color: #fff;
-    background: rgba(255, 255, 255, 0.16);
-    box-shadow: 0 0 0 1px rgba(94, 242, 255, 0.45), 0 12px 26px rgba(94, 242, 255, 0.25);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 1px rgba(112, 221, 194, 0.3), 0 12px 26px rgba(240, 180, 112, 0.16);
   }
 
   nav > div {

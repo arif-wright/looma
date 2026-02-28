@@ -57,6 +57,12 @@ type DailyCheckin = {
   created_at: string;
 };
 
+type MemorySummary = {
+  summary_text: string | null;
+  highlights_json: unknown;
+  last_built_at: string | null;
+};
+
 const DEFAULT_ENDCAP = {
   title: 'Welcome back',
   description: 'Explore your community for a quick boost.',
@@ -130,7 +136,8 @@ export const load: PageServerLoad = async (event) => {
     rituals: [] as CompanionRitual[],
     activeCompanion: parentActiveCompanion,
     dailyCheckinToday: null as DailyCheckin | null,
-    latestDailyCheckin: null as DailyCheckin | null
+    latestDailyCheckin: null as DailyCheckin | null,
+    memorySummary: null as MemorySummary | null
   };
 
   try {
@@ -404,8 +411,8 @@ export const load: PageServerLoad = async (event) => {
         : creatureMoments[0]
         ? {
             title: 'Check on your companion',
-            description: 'Spend a moment with your favourite creature before you go.',
-            href: `/app/creatures?focus=${creatureMoments[0].id}`
+            description: 'Spend a moment with your closest companion before you go.',
+            href: `/app/companions?focus=${creatureMoments[0].id}`
           }
         : DEFAULT_ENDCAP;
 
@@ -456,6 +463,27 @@ export const load: PageServerLoad = async (event) => {
     const activeCompanion =
       parentActiveCompanion ?? (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null);
 
+    let memorySummary: MemorySummary | null = null;
+    if (userId && activeCompanion?.id) {
+      try {
+        const { data, error } = await supabase
+          .from('companion_memory_summary')
+          .select('summary_text, highlights_json, last_built_at')
+          .eq('user_id', userId)
+          .eq('companion_id', activeCompanion.id)
+          .maybeSingle();
+        if (error) {
+          throw error;
+        }
+        memorySummary = (data as MemorySummary | null) ?? null;
+      } catch (err) {
+        diagnostics.push('memory_summary_query_failed');
+        reportHomeLoadIssue('memory_summary_query_failed', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+
     return {
       stats,
       feed: feedItems,
@@ -475,7 +503,8 @@ export const load: PageServerLoad = async (event) => {
       rituals,
       activeCompanion,
       dailyCheckinToday,
-      latestDailyCheckin
+      latestDailyCheckin,
+      memorySummary
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

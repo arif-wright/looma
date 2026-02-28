@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '$lib/supabase/server';
 import { recordAnalyticsEvent } from './analytics';
 import { getConsentFlags } from '$lib/server/consent';
 
-export type UserContext = 'feed' | 'mission' | 'creature' | 'dashboard';
+export type UserContext = 'feed' | 'mission' | 'creature' | 'companion' | 'dashboard';
 export type ContextTrigger =
   | 'mission_click'
   | 'social'
@@ -16,8 +16,9 @@ export type ContextTrigger =
 const CONTEXT_TO_SURFACE: Record<UserContext, string> = {
   feed: 'home',
   mission: 'mission',
-  creature: 'creatures',
-  dashboard: 'dashboard'
+  creature: 'companions',
+  companion: 'companions',
+  dashboard: 'home'
 };
 
 const parseLandingCookie = (value: string | undefined | null) => {

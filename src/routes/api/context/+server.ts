@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateUserContext, type UserContext } from '$lib/server/userContext';
 
-const allowedContexts: UserContext[] = ['feed', 'mission', 'creature', 'dashboard'];
+const allowedContexts: UserContext[] = ['feed', 'mission', 'creature', 'companion', 'dashboard'];
 
 export const POST: RequestHandler = async (event) => {
   let payload: unknown;

@@ -12,7 +12,7 @@
   let loading = true;
   let error: string | null = null;
   let rows: Row[] = [];
-  const dispatch = createEventDispatcher<{ 'open-creature': { id: string } }>();
+  const dispatch = createEventDispatcher<{ 'open-companion': { id: string } }>();
 
   async function loadData() {
     loading = true;
@@ -41,8 +41,8 @@
 
       rows = (data as Row[]) ?? [];
     } catch (err) {
-      console.error('CreaturesSnapshot load error:', err);
-      error = err instanceof Error ? err.message : 'Failed to load creatures';
+      console.error('CompanionSnapshot load error:', err);
+      error = err instanceof Error ? err.message : 'Failed to load companions';
     } finally {
       loading = false;
     }
@@ -51,33 +51,33 @@
   onMount(loadData);
 
   function openDetail(id: string) {
-    dispatch('open-creature', { id });
+    dispatch('open-companion', { id });
   }
 </script>
 
-<PanelFrame title="Creatures Snapshot" {loading}>
+<PanelFrame title="Companion Snapshot" {loading}>
   {#if error}
     <div class="error-banner">
       <span>{error}</span>
       <button type="button" class="retry-button" on:click={loadData}>Retry</button>
     </div>
   {:else if rows.length === 0}
-    <div class="empty-state">No bonded creatures yet.</div>
+    <div class="empty-state">No bonded companions yet.</div>
   {:else}
-    <ul class="creature-list" aria-live="polite">
+    <ul class="companion-list" aria-live="polite">
       {#each rows as row}
         <li>
           <button
             type="button"
-            class="creature-card"
+            class="companion-card"
             on:click={() => openDetail(row.id)}
           >
-            <div class="creature-avatar" aria-hidden="true">
+            <div class="companion-avatar" aria-hidden="true">
               <span class="spark">✨</span>
             </div>
-            <div class="creature-text">
-              <div class="creature-name" title={row.name ?? 'Unnamed'}>{row.name ?? 'Unnamed'}</div>
-              <div class="creature-species" title={row.species?.name ?? 'Unknown species'}>
+            <div class="companion-text">
+              <div class="companion-name" title={row.name ?? 'Unnamed'}>{row.name ?? 'Unnamed'}</div>
+              <div class="companion-species" title={row.species?.name ?? 'Unknown species'}>
                 {row.species?.name ?? 'Unknown species'}
               </div>
             </div>
@@ -124,7 +124,7 @@
     font-size: 0.9rem;
   }
 
-  .creature-list {
+  .companion-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -132,7 +132,7 @@
     gap: 0.85rem;
   }
 
-  .creature-card {
+  .companion-card {
     width: 100%;
     display: flex;
     align-items: center;
@@ -146,14 +146,14 @@
     text-align: left;
   }
 
-  .creature-card:hover,
-  .creature-card:focus-visible {
+  .companion-card:hover,
+  .companion-card:focus-visible {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(233, 195, 255, 0.12);
     transform: translateY(-1px);
   }
 
-  .creature-avatar {
+  .companion-avatar {
     height: 2.5rem;
     width: 2.5rem;
     border-radius: 999px;
@@ -164,8 +164,8 @@
     transition: transform 0.2s ease;
   }
 
-  .creature-card:hover .creature-avatar,
-  .creature-card:focus-visible .creature-avatar {
+  .companion-card:hover .companion-avatar,
+  .companion-card:focus-visible .companion-avatar {
     transform: scale(1.05);
   }
 
@@ -173,13 +173,13 @@
     font-size: 1.2rem;
   }
 
-  .creature-text {
+  .companion-text {
     min-width: 0;
     display: grid;
     gap: 0.2rem;
   }
 
-  .creature-name {
+  .companion-name {
     font-size: 0.95rem;
     font-weight: 600;
     color: rgba(235, 238, 255, 0.92);
@@ -188,7 +188,7 @@
     white-space: nowrap;
   }
 
-  .creature-species {
+  .companion-species {
     font-size: 0.8rem;
     opacity: 0.75;
     overflow: hidden;
@@ -219,7 +219,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .creature-card,
+    .companion-card,
     .skeleton-row {
       transition: none;
       animation: none;
