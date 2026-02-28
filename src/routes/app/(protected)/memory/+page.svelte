@@ -7,11 +7,16 @@
   import type { PageData } from './$types';
 
   export let data: PageData;
+  type TimelineFilter = 'all' | 'memory' | 'care' | 'checkin' | 'mission' | 'game';
+  type DateWindow = 'all' | '7d' | '30d';
 
   let statusMessage: string | null = null;
   let statusTone: 'default' | 'success' | 'error' = 'default';
   let rebuilding = false;
   let clearing = false;
+  let activeFilter: TimelineFilter = 'all';
+  let activeWindow: DateWindow = 'all';
+  let query = '';
 
   const formatWhen = (iso: string | null | undefined) => {
     if (!iso) return '';
@@ -30,10 +35,107 @@
     return `${Math.round(value * 100)}%`;
   };
 
+  const formatCount = (value: number | null | undefined, label: string) => {
+    const count = typeof value === 'number' ? value : 0;
+    return `${count} ${label}${count === 1 ? '' : 's'}`;
+  };
+
+  const filterOptions: Array<{ key: TimelineFilter; label: string }> = [
+    { key: 'all', label: 'All' },
+    { key: 'care', label: 'Care' },
+    { key: 'mission', label: 'Missions' },
+    { key: 'game', label: 'Games' },
+    { key: 'checkin', label: 'Check-ins' },
+    { key: 'memory', label: 'Snapshots' }
+  ];
+
+  const windowOptions: Array<{ key: DateWindow; label: string }> = [
+    { key: 'all', label: 'All time' },
+    { key: '7d', label: 'Last 7d' },
+    { key: '30d', label: 'Last 30d' }
+  ];
+
   const setStatus = (message: string, tone: 'default' | 'success' | 'error' = 'default') => {
     statusMessage = message;
     statusTone = tone;
   };
+
+  const withinWindow = (iso: string, window: DateWindow) => {
+    if (window === 'all') return true;
+    const ts = Date.parse(iso);
+    if (!Number.isFinite(ts)) return false;
+    const days = window === '7d' ? 7 : 30;
+    return ts >= Date.now() - days * 24 * 60 * 60 * 1000;
+  };
+
+  const shareMoment = async (title: string, body: string) => {
+    const text = `${title}\n\n${body}`;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title, text });
+        setStatus('Moment shared.', 'success');
+        return;
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setStatus('Moment copied to clipboard.', 'success');
+        return;
+      }
+      setStatus('Sharing is not available on this device.', 'error');
+    } catch {
+      setStatus('Could not share this moment right now.', 'error');
+    }
+  };
+
+  $: searchableTimeline = activeFilter === 'all' ? data.timeline : data.timeline.filter((item) => item.kind === activeFilter);
+  $: windowedTimeline = searchableTimeline.filter((item) => withinWindow(item.occurredAt, activeWindow));
+  $: normalizedQuery = query.trim().toLowerCase();
+  $: filteredTimeline =
+    normalizedQuery.length === 0
+      ? windowedTimeline
+      : windowedTimeline.filter((item) =>
+          `${item.title} ${item.body} ${item.meta ?? ''}`.toLowerCase().includes(normalizedQuery)
+        );
+
+  $: milestoneCards = (() => {
+    const cards: Array<{ id: string; label: string; title: string; body: string }> = [];
+    if (data.summary?.summary_text) {
+      cards.push({
+        id: 'summary',
+        label: 'Memory snapshot',
+        title: `${data.selectedCompanion?.name ?? 'Your companion'} memory pulse`,
+        body: data.summary.summary_text
+      });
+    }
+    const missionMoment = data.timeline.find((item) => item.kind === 'mission');
+    if (missionMoment) {
+      cards.push({
+        id: missionMoment.id,
+        label: 'Mission milestone',
+        title: missionMoment.title,
+        body: missionMoment.body
+      });
+    }
+    const careMoment = data.timeline.find((item) => item.kind === 'care');
+    if (careMoment) {
+      cards.push({
+        id: careMoment.id,
+        label: 'Care moment',
+        title: careMoment.title,
+        body: careMoment.body
+      });
+    }
+    for (const highlight of data.summary?.highlights_json ?? []) {
+      if (cards.length >= 4) break;
+      cards.push({
+        id: `highlight-${highlight}`,
+        label: 'Journal highlight',
+        title: `${data.selectedCompanion?.name ?? 'Companion'} highlight`,
+        body: String(highlight)
+      });
+    }
+    return cards.slice(0, 4);
+  })();
 
   const selectCompanion = async (companionId: string) => {
     const next = new URL($page.url);
@@ -227,17 +329,139 @@
         </GlassCard>
       </div>
 
+      <div class="memory-grid">
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Why this feels this way</p>
+              <h2>{data.relationshipPulse?.headline ?? 'Relationship pulse'}</h2>
+            </div>
+          </div>
+
+          {#if data.relationshipPulse}
+            <p class="meta-line">{data.relationshipPulse.lastCareLabel}</p>
+            <ul class="reason-list">
+              {#each data.relationshipPulse.reasons as reason}
+                <li>{reason}</li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="empty-copy">Relationship signals will appear here once this companion has more recent activity.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Weekly pulse</p>
+              <h2>This week around {data.selectedCompanion?.name ?? 'your companion'}</h2>
+            </div>
+          </div>
+
+          {#if data.weeklyPulse}
+            <div class="stats-grid stats-grid--pulse">
+              <div>
+                <span>Care</span>
+                <strong>{formatCount(data.weeklyPulse.careMoments, 'moment')}</strong>
+              </div>
+              <div>
+                <span>Missions</span>
+                <strong>{formatCount(data.weeklyPulse.missionMoments, 'session')}</strong>
+              </div>
+              <div>
+                <span>Games</span>
+                <strong>{formatCount(data.weeklyPulse.gameMoments, 'session')}</strong>
+              </div>
+              <div>
+                <span>Check-ins</span>
+                <strong>{formatCount(data.weeklyPulse.recentCheckins, 'check-in')}</strong>
+              </div>
+            </div>
+            <p class="meta-line">
+              Dominant rhythm: {data.weeklyPulse.dominantLabel}
+              {#if data.weeklyPulse.summaryWindowDays}
+                · memory window {data.weeklyPulse.summaryWindowDays}d
+              {/if}
+            </p>
+          {:else}
+            <p class="empty-copy">Weekly activity summaries will appear here once more moments are logged.</p>
+          {/if}
+        </GlassCard>
+      </div>
+
+      <GlassCard class="memory-card">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">Carry a moment with you</p>
+            <h2>Shareable journal cards</h2>
+          </div>
+        </div>
+
+        {#if milestoneCards.length > 0}
+          <div class="milestone-grid">
+            {#each milestoneCards as card}
+              <article class="milestone-card">
+                <span class="milestone-card__label">{card.label}</span>
+                <h3>{card.title}</h3>
+                <p>{card.body}</p>
+                <button type="button" class="filter-chip" on:click={() => shareMoment(card.title, card.body)}>
+                  Share moment
+                </button>
+              </article>
+            {/each}
+          </div>
+        {:else}
+          <p class="empty-copy">Shareable journal cards will appear once this companion has a few remembered moments.</p>
+        {/if}
+      </GlassCard>
+
       <GlassCard class="memory-card">
         <div class="card-head">
           <div>
             <p class="eyebrow">Timeline</p>
             <h2>Recent moments</h2>
           </div>
+          <div class="filter-row" role="tablist" aria-label="Timeline filters">
+            {#each filterOptions as option}
+              <button
+                type="button"
+                class:selected={activeFilter === option.key}
+                class="filter-chip"
+                on:click={() => {
+                  activeFilter = option.key;
+                }}
+              >
+                {option.label}
+              </button>
+            {/each}
+          </div>
         </div>
 
-        {#if data.timeline.length > 0}
+        <div class="timeline-toolbar">
+          <label class="search-field">
+            <span class="search-field__label">Search journal</span>
+            <input type="search" bind:value={query} placeholder="Search moments, notes, and summaries" />
+          </label>
+
+          <div class="filter-row" role="tablist" aria-label="Date range filters">
+            {#each windowOptions as option}
+              <button
+                type="button"
+                class:selected={activeWindow === option.key}
+                class="filter-chip"
+                on:click={() => {
+                  activeWindow = option.key;
+                }}
+              >
+                {option.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        {#if filteredTimeline.length > 0}
           <ol class="timeline">
-            {#each data.timeline as item}
+            {#each filteredTimeline as item}
               <li class="timeline-item">
                 <div class={`timeline-dot timeline-dot--${item.kind}`}></div>
                 <div class="timeline-copy">
@@ -254,7 +478,11 @@
             {/each}
           </ol>
         {:else}
-          <p class="empty-copy">No recent companion moments were found yet.</p>
+          <p class="empty-copy">
+            {activeFilter === 'all'
+              ? 'No recent companion moments were found yet.'
+              : `No ${activeFilter} moments were found in this journal yet.`}
+          </p>
         {/if}
       </GlassCard>
     </div>
@@ -420,6 +648,10 @@
     gap: 0.75rem;
   }
 
+  .stats-grid--pulse strong {
+    font-size: 0.95rem;
+  }
+
   .stats-grid div {
     display: grid;
     gap: 0.2rem;
@@ -520,10 +752,116 @@
     line-height: 1.45;
   }
 
+  .milestone-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .milestone-card {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.95rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background:
+      linear-gradient(160deg, rgba(20, 30, 45, 0.58), rgba(16, 19, 28, 0.88)),
+      radial-gradient(circle at top left, rgba(103, 232, 249, 0.1), transparent 48%);
+  }
+
+  .milestone-card__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(125, 211, 252, 0.82);
+  }
+
+  .milestone-card h3 {
+    font-size: 1rem;
+    color: rgba(241, 245, 249, 0.98);
+  }
+
+  .milestone-card p {
+    color: rgba(226, 232, 240, 0.9);
+    line-height: 1.5;
+  }
+
+  .reason-list {
+    display: grid;
+    gap: 0.7rem;
+    margin: 0;
+    padding-left: 1.1rem;
+    color: rgba(226, 232, 240, 0.9);
+  }
+
+  .reason-list li {
+    line-height: 1.5;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .timeline-toolbar {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .search-field {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .search-field__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(148, 163, 184, 0.92);
+  }
+
+  .search-field input {
+    min-height: 2.9rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.38);
+    color: rgba(241, 245, 249, 0.96);
+    padding: 0 0.95rem;
+    font-size: 0.95rem;
+  }
+
+  .filter-chip {
+    min-height: 2.3rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.42);
+    color: rgba(226, 232, 240, 0.92);
+    padding: 0 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .filter-chip.selected {
+    border-color: rgba(103, 232, 249, 0.45);
+    background: rgba(8, 47, 73, 0.56);
+    color: rgba(224, 242, 254, 0.98);
+  }
+
   @media (min-width: 960px) {
     .memory-grid {
       grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
       align-items: start;
+    }
+
+    .timeline-toolbar {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+
+    .milestone-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>

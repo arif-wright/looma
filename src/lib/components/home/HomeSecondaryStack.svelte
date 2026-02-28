@@ -1,5 +1,13 @@
 <script lang="ts">
   import type { FeedItem } from '$lib/social/types';
+  import type { CompanionRitual } from '$lib/companions/rituals';
+
+  type JournalMoment = {
+    id: string;
+    label: string;
+    body: string;
+    href: string;
+  };
 
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
@@ -14,6 +22,16 @@
   export let companionHref = '/app/companions';
   export let companionName = 'your companion';
   export let needsCheckin = false;
+  export let rituals: CompanionRitual[] = [];
+  export let hasDailyCheckin = false;
+  export let journalMoments: JournalMoment[] = [];
+
+  const ritualSummary = (list: CompanionRitual[]) => {
+    const total = Array.isArray(list) ? list.length : 0;
+    const completed = list.filter((entry) => entry.status === 'completed').length;
+    const next = list.find((entry) => entry.status !== 'completed') ?? null;
+    return { total, completed, next };
+  };
 
   const formatDate = (iso: string | null) => {
     if (!iso) return null;
@@ -25,9 +43,37 @@
   $: journalDate = formatDate(journalUpdatedAt);
   $: circleAuthor = feedPreview?.author_name ?? feedPreview?.display_name ?? 'Someone close';
   $: circlePreview = feedPreview?.body || feedPreview?.text || 'A new signal is waiting in your circle.';
+  $: daily = ritualSummary(rituals);
+  $: sanctuaryState =
+    hasDailyCheckin && daily.completed === daily.total && daily.total > 0
+      ? 'Sanctuary complete'
+      : hasDailyCheckin
+        ? 'Keep the sanctuary warm'
+        : 'Start your daily sanctuary';
+  $: sanctuaryCopy =
+    hasDailyCheckin
+      ? daily.next
+        ? `${daily.completed}/${daily.total} rituals complete. Next: ${daily.next.title}.`
+        : 'You checked in and completed today’s rituals. Come back any time for another small moment.'
+      : `${companionName} is still waiting to hear from you today.`;
 </script>
 
 <section class="secondary-stack" aria-label="Home actions">
+  <article class="focus-card focus-card--ritual">
+    <div class="focus-card__eyebrow">Daily sanctuary</div>
+    <div class="focus-card__row">
+      <div>
+        <h2>{sanctuaryState}</h2>
+        <p>{sanctuaryCopy}</p>
+      </div>
+      <a class="focus-card__link" href={companionHref}>{hasDailyCheckin ? 'Continue' : 'Begin'}</a>
+    </div>
+    <div class="sanctuary-progress" aria-label="Daily sanctuary progress">
+      <span>{hasDailyCheckin ? 'Check-in complete' : 'Check-in waiting'}</span>
+      <span>{daily.completed}/{daily.total || 0} rituals</span>
+    </div>
+  </article>
+
   <article class="focus-card focus-card--journal">
     <div class="focus-card__eyebrow">Journal</div>
     <div class="focus-card__row">
@@ -41,6 +87,16 @@
     </div>
     {#if journalDate}
       <p class="focus-card__meta">Updated {journalDate}</p>
+    {/if}
+    {#if journalMoments.length > 0}
+      <div class="moment-strip" aria-label="Recent journal moments">
+        {#each journalMoments as moment}
+          <a class="moment-pill" href={moment.href}>
+            <span class="moment-pill__label">{moment.label}</span>
+            <strong>{moment.body}</strong>
+          </a>
+        {/each}
+      </div>
     {/if}
   </article>
 
@@ -152,6 +208,47 @@
     margin-top: 0.6rem;
     color: rgba(193, 178, 149, 0.72);
     font-size: 0.75rem;
+  }
+
+  .sanctuary-progress {
+    margin-top: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: rgba(193, 178, 149, 0.78);
+    font-size: 0.75rem;
+  }
+
+  .moment-strip {
+    margin-top: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .moment-pill {
+    padding: 0.72rem 0.78rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 190, 139, 0.12);
+    background: rgba(217, 189, 126, 0.08);
+    display: grid;
+    gap: 0.2rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .moment-pill__label {
+    display: inline-flex;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.72);
+  }
+
+  .moment-pill strong {
+    font-size: 0.81rem;
+    line-height: 1.35;
+    color: rgba(236, 228, 211, 0.9);
   }
 
   .shortcut-row {

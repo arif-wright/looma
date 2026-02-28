@@ -300,6 +300,9 @@
       companionHref="/app/companions"
       {companionName}
       needsCheckin={needsReconnectToday}
+      rituals={data.rituals ?? []}
+      hasDailyCheckin={hasRecentCheckin}
+      journalMoments={data.journalMoments ?? []}
     />
   </section>
 </div>

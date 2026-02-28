@@ -15,6 +15,26 @@ type CompanionRow = {
   trust: number | null;
   energy: number | null;
   mood: string | null;
+  stats:
+    | {
+        fed_at?: string | null;
+        played_at?: string | null;
+        groomed_at?: string | null;
+        last_passive_tick?: string | null;
+        care_streak?: number | null;
+        bond_level?: number | null;
+        bond_score?: number | null;
+      }
+    | {
+        fed_at?: string | null;
+        played_at?: string | null;
+        groomed_at?: string | null;
+        last_passive_tick?: string | null;
+        care_streak?: number | null;
+        bond_level?: number | null;
+        bond_score?: number | null;
+      }[]
+    | null;
 };
 
 type MemorySummaryRow = {
@@ -99,7 +119,7 @@ type TimelineItem = {
 };
 
 const COMPANION_SELECT =
-  'id, name, species, avatar_url, is_active, updated_at, affection, trust, energy, mood';
+  'id, name, species, avatar_url, is_active, updated_at, affection, trust, energy, mood, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, care_streak, bond_level, bond_score)';
 
 const formatMood = (value: string | null | undefined) => {
   if (!value) return 'Steady';
@@ -117,6 +137,130 @@ const formatDuration = (durationMs: number | null | undefined) => {
 const formatDelta = (value: number | null | undefined, label: string) => {
   if (typeof value !== 'number' || value === 0) return null;
   return `${value > 0 ? '+' : ''}${value} ${label}`;
+};
+
+const toStamp = (value: string | null | undefined) => {
+  if (!value) return null;
+  const stamp = Date.parse(value);
+  return Number.isNaN(stamp) ? null : stamp;
+};
+
+const pickLatestIso = (values: Array<string | null | undefined>) => {
+  let latest: string | null = null;
+  let latestStamp = -Infinity;
+  for (const value of values) {
+    const stamp = toStamp(value);
+    if (stamp === null) continue;
+    if (stamp > latestStamp) {
+      latestStamp = stamp;
+      latest = value ?? null;
+    }
+  }
+  return latest;
+};
+
+const formatElapsedLabel = (iso: string | null | undefined) => {
+  const stamp = toStamp(iso);
+  if (stamp === null) return 'No recent care logged';
+  const elapsedMs = Math.max(0, Date.now() - stamp);
+  if (elapsedMs < 60 * 60 * 1000) return 'Cared for within the hour';
+  if (elapsedMs < 24 * 60 * 60 * 1000) return 'Cared for today';
+  const days = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+  if (days === 1) return 'Last care was yesterday';
+  if (days < 7) return `Last care was ${days} days ago`;
+  return 'Care has gone quiet for over a week';
+};
+
+const normalizeStats = (value: CompanionRow['stats']) => (Array.isArray(value) ? value[0] ?? null : value ?? null);
+
+const buildRelationshipReasons = (args: {
+  companion: CompanionRow;
+  emotionalState: EmotionalStateSnapshot;
+  summary: MemorySummaryRow | null;
+  careRows: CareEventRow[];
+  missionRows: MissionSessionRow[];
+  gameRows: GameSessionRow[];
+  checkins: CheckinRow[];
+}) => {
+  const { companion, emotionalState, summary, careRows, missionRows, gameRows, checkins } = args;
+  const reasons: string[] = [];
+  const stats = normalizeStats(companion.stats);
+  const lastCareAt = pickLatestIso([stats?.fed_at, stats?.played_at, stats?.groomed_at, careRows[0]?.created_at ?? null]);
+  const affection = companion.affection ?? 0;
+  const trust = companion.trust ?? 0;
+  const energy = companion.energy ?? 0;
+  const completedMissions = missionRows.filter((row) => row.status === 'completed').length;
+  const completedGames = gameRows.length;
+
+  if (energy <= 20) {
+    reasons.push('Energy is low, so this companion is reading as more fragile and quiet.');
+  } else if (energy >= 70) {
+    reasons.push('Energy is high, which supports a brighter and more responsive presence.');
+  }
+
+  if (trust >= 70 && affection >= 70) {
+    reasons.push('Trust and affection are both strong, so the relationship feels settled rather than uncertain.');
+  } else if (trust <= 35 || affection <= 35) {
+    reasons.push('Trust or affection is still rebuilding, so the bond reads as less secure.');
+  }
+
+  if (emotionalState.streakMomentum >= 0.55) {
+    reasons.push('Recent consistency is reinforcing the emotional state, not just one isolated action.');
+  }
+
+  if (completedGames > completedMissions && completedGames > 0) {
+    reasons.push('Recent momentum is coming more from play sessions than from missions.');
+  } else if (completedMissions > 0) {
+    reasons.push('Mission progress is currently doing more of the relationship-shaping work.');
+  }
+
+  if (checkins.length > 0) {
+    reasons.push(`Your latest check-in was ${formatMood(checkins[0]?.mood)}.`);
+  }
+
+  if (!summary?.last_built_at) {
+    reasons.push('This journal summary is still new, so it may be missing older context until more events accumulate.');
+  }
+
+  return {
+    headline:
+      emotionalState.mood === 'luminous'
+        ? `${companion.name} feels bright and connected`
+        : emotionalState.mood === 'dim'
+        ? `${companion.name} feels more withdrawn right now`
+        : `${companion.name} feels steady right now`,
+    reasons: reasons.slice(0, 4),
+    lastCareLabel: formatElapsedLabel(lastCareAt)
+  };
+};
+
+const buildWeeklyPulse = (args: {
+  careRows: CareEventRow[];
+  missionRows: MissionSessionRow[];
+  gameRows: GameSessionRow[];
+  checkins: CheckinRow[];
+  summary: MemorySummaryRow | null;
+}) => {
+  const { careRows, missionRows, gameRows, checkins, summary } = args;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const careMoments = careRows.filter((row) => (toStamp(row.created_at) ?? 0) >= weekAgo).length;
+  const missionMoments = missionRows.filter((row) => (toStamp(row.completed_at ?? row.started_at) ?? 0) >= weekAgo).length;
+  const gameMoments = gameRows.filter((row) => (toStamp(row.completed_at ?? row.started_at) ?? 0) >= weekAgo).length;
+  const recentCheckins = checkins.filter((row) => (toStamp(row.created_at) ?? 0) >= weekAgo).length;
+  const counts = [
+    { key: 'care', count: careMoments, label: 'care' },
+    { key: 'missions', count: missionMoments, label: 'missions' },
+    { key: 'games', count: gameMoments, label: 'games' }
+  ].sort((a, b) => b.count - a.count);
+
+  return {
+    careMoments,
+    missionMoments,
+    gameMoments,
+    recentCheckins,
+    dominantLabel: counts[0]?.count ? counts[0].label : 'quiet',
+    summaryWindowDays: summary?.source_window_json?.windowDays ?? null
+  };
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -157,6 +301,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       selectedCompanion: null,
       summary: null,
       emotionalState: null,
+      relationshipPulse: null,
+      weeklyPulse: null,
       timeline: [] as TimelineItem[]
     };
   }
@@ -330,12 +476,33 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 
+  const careRows = (careRes.data ?? []) as CareEventRow[];
+  const checkinRows = (checkinsRes.data ?? []) as CheckinRow[];
+  const relationshipPulse = buildRelationshipReasons({
+    companion: selectedCompanion,
+    emotionalState,
+    summary,
+    careRows,
+    missionRows,
+    gameRows,
+    checkins: checkinRows
+  });
+  const weeklyPulse = buildWeeklyPulse({
+    careRows,
+    missionRows,
+    gameRows,
+    checkins: checkinRows,
+    summary
+  });
+
   return {
     companions,
     selectedCompanionId,
     selectedCompanion,
     summary,
     emotionalState,
+    relationshipPulse,
+    weeklyPulse,
     timeline: timeline.slice(0, 30)
   };
 };

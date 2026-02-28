@@ -63,10 +63,92 @@ type MemorySummary = {
   last_built_at: string | null;
 };
 
+type JournalMoment = {
+  id: string;
+  label: string;
+  body: string;
+  href: string;
+};
+
 const DEFAULT_ENDCAP = {
   title: 'Welcome back',
   description: 'Explore your community for a quick boost.',
   href: '/app/home'
+};
+
+const clipMomentBody = (value: string, limit = 108) => {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit - 1).trimEnd()}…`;
+};
+
+const formatCheckinMood = (value: DailyCheckin['mood']) => {
+  switch (value) {
+    case 'heavy':
+      return 'Heavy';
+    case 'curious':
+      return 'Curious';
+    case 'energized':
+      return 'Energized';
+    case 'numb':
+      return 'Numb';
+    case 'calm':
+    default:
+      return 'Calm';
+  }
+};
+
+const extractMemoryHighlights = (value: unknown) => {
+  if (!Array.isArray(value)) return [] as string[];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+};
+
+const buildJournalMoments = (args: {
+  activeCompanion: ActiveCompanionSnapshot | null;
+  memorySummary: MemorySummary | null;
+  latestDailyCheckin: DailyCheckin | null;
+  rituals: CompanionRitual[];
+}) => {
+  const { activeCompanion, memorySummary, latestDailyCheckin, rituals } = args;
+  const journalHref = activeCompanion?.id
+    ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}`
+    : '/app/memory';
+  const moments: JournalMoment[] = [];
+  const pushMoment = (moment: JournalMoment) => {
+    if (moments.some((entry) => entry.id === moment.id)) return;
+    moments.push(moment);
+  };
+
+  const highlights = extractMemoryHighlights(memorySummary?.highlights_json).slice(0, 2);
+  highlights.forEach((highlight, index) => {
+    pushMoment({
+      id: `highlight-${index}`,
+      label: 'Memory',
+      body: clipMomentBody(highlight),
+      href: journalHref
+    });
+  });
+
+  if (latestDailyCheckin) {
+    pushMoment({
+      id: `checkin-${latestDailyCheckin.id}`,
+      label: 'Check-in',
+      body: `You last arrived feeling ${formatCheckinMood(latestDailyCheckin.mood).toLowerCase()}.`,
+      href: journalHref
+    });
+  }
+
+  const completedRitual = rituals.find((entry) => entry.status === 'completed');
+  if (completedRitual) {
+    pushMoment({
+      id: `ritual-${completedRitual.key}`,
+      label: 'Ritual',
+      body: `${completedRitual.title} helped keep the sanctuary warm.`,
+      href: journalHref
+    });
+  }
+
+  return moments.slice(0, 3);
 };
 
 const upsertMissionAssignment = async (args: {
@@ -137,7 +219,8 @@ export const load: PageServerLoad = async (event) => {
     activeCompanion: parentActiveCompanion,
     dailyCheckinToday: null as DailyCheckin | null,
     latestDailyCheckin: null as DailyCheckin | null,
-    memorySummary: null as MemorySummary | null
+    memorySummary: null as MemorySummary | null,
+    journalMoments: [] as JournalMoment[]
   };
 
   try {
@@ -484,6 +567,13 @@ export const load: PageServerLoad = async (event) => {
       }
     }
 
+    const journalMoments = buildJournalMoments({
+      activeCompanion,
+      memorySummary,
+      latestDailyCheckin,
+      rituals
+    });
+
     return {
       stats,
       feed: feedItems,
@@ -504,7 +594,8 @@ export const load: PageServerLoad = async (event) => {
       activeCompanion,
       dailyCheckinToday,
       latestDailyCheckin,
-      memorySummary
+      memorySummary,
+      journalMoments
     };
   } catch (err) {
     diagnostics.push('home_load_failed');
