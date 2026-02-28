@@ -6,6 +6,8 @@
   import SubNav from '$lib/components/admin/SubNav.svelte';
   import type { NavItem } from '$lib/components/admin/types';
   import Sparkline from '$lib/components/admin/Sparkline.svelte';
+  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
+  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { pushCompanionReaction } from '$lib/stores/companionReactions';
   import type { PageData } from './$types';
@@ -49,6 +51,9 @@
     companionHealth && companionHealth.totalCompanions > 0 ? avgBondDisplay.toFixed(1) : '—';
   $: avgRitualsText =
     companionHealth && avgRitualsDisplay > 0 ? avgRitualsDisplay.toFixed(1) : '0.0';
+  $: openReportCount = Number(metrics.reportOpenCount ?? 0);
+  $: maintenanceLabel = maintenance.enabled ? 'Maintenance on' : 'Maintenance off';
+  $: totalProfilesLabel = `${numberFormatter.format(metrics.profileCount)} profiles`;
 
   let shortcutPrimed = false;
   let shortcutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -125,31 +130,62 @@
   });
 </script>
 
-<div class="admin-shell">
-  <aside class="admin-rail">
-    <SubNav items={subNavItems} />
-  </aside>
+<SanctuaryPageFrame
+  eyebrow="Control"
+  title="Admin hub"
+  subtitle="Monitor platform health, revenue, moderation, and companion systems without leaving the sanctuary language."
+>
+  <svelte:fragment slot="actions">
+    <EmotionalChip tone="warm">{maintenanceLabel}</EmotionalChip>
+    <EmotionalChip tone="muted">{openReportCount} open reports</EmotionalChip>
+  </svelte:fragment>
 
-  <section class="admin-main">
-    <header class="admin-header">
-      <div>
-        <p class="eyebrow">Control Center</p>
-        <h1>Admin Hub</h1>
-      </div>
-      <div class="header-actions">
-        <a href="/app/admin/shop">Shop Admin</a>
-        <a href="/app/admin/reports">Reports</a>
-        <a href="/app/admin/moderation">Moderation</a>
-        {#if flags.isAdmin}
-          <a href="/app/admin/roles">Roles</a>
-        {/if}
-        {#if flags.isSuper}
-          <a href="/app/dev/traces">Event Traces</a>
-        {/if}
-      </div>
-    </header>
+  <div class="admin-shell">
+    <aside class="admin-rail">
+      <SubNav items={subNavItems} />
+    </aside>
 
-    <div class="admin-grid">
+    <section class="admin-main">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">Control room</p>
+          <h1>Operations at a glance</h1>
+          <p class="header-copy">
+            Track platform pulse, intervene quickly, and keep the product stable without dropping into a separate internal visual system.
+          </p>
+        </div>
+        <div class="header-actions">
+          <a href="/app/admin/shop">Shop Admin</a>
+          <a href="/app/admin/reports">Reports</a>
+          <a href="/app/admin/moderation">Moderation</a>
+          {#if flags.isAdmin}
+            <a href="/app/admin/roles">Roles</a>
+          {/if}
+          {#if flags.isSuper}
+            <a href="/app/dev/traces">Event Traces</a>
+          {/if}
+        </div>
+      </header>
+
+      <section class="admin-pulse" aria-label="Admin pulse">
+        <article class="pulse-card">
+          <span class="pulse-card__label">Population</span>
+          <strong>{totalProfilesLabel}</strong>
+          <span>Current account footprint with live engagement metrics below.</span>
+        </article>
+        <article class="pulse-card">
+          <span class="pulse-card__label">Moderation</span>
+          <strong>{openReportCount} active reports</strong>
+          <span>Items needing direct review before they become trust debt.</span>
+        </article>
+        <article class="pulse-card">
+          <span class="pulse-card__label">Companion system</span>
+          <strong>{companionHealth ? `${numberFormatter.format(companionHealth.totalCompanions)} companions` : 'No pulse yet'}</strong>
+          <span>Bond health, passive ticks, and ritual load stay visible here.</span>
+        </article>
+      </section>
+
+      <div class="admin-grid">
       <AdminCard className="span-4">
         <p class="label">Users</p>
         <p class="value">{numberFormatter.format(metrics.profileCount)}</p>
@@ -441,16 +477,17 @@
           <p class="hint">No reports at the moment.</p>
         {/if}
       </AdminCard>
-    </div>
-  </section>
-</div>
+      </div>
+    </section>
+  </div>
+</SanctuaryPageFrame>
 
 <style>
   .admin-shell {
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
     gap: 2rem;
-    padding: 2rem clamp(1rem, 5vw, 3rem) 4rem;
+    padding: 1rem 0 calc(6rem + env(safe-area-inset-bottom));
   }
 
   @media (max-width: 1023px) {
@@ -468,6 +505,7 @@
   .admin-main {
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
   }
 
   .admin-header {
@@ -476,37 +514,79 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 2rem;
-    position: sticky;
-    top: 1rem;
-    z-index: 5;
-    backdrop-filter: blur(12px);
+    margin-bottom: 1rem;
   }
 
   .admin-header h1 {
-    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-family: var(--san-font-display);
+    font-size: clamp(1.95rem, 5vw, 2.8rem);
     margin: 0;
   }
 
   .eyebrow {
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(215, 191, 143, 0.78);
     margin-bottom: 0.2rem;
+  }
+
+  .header-copy {
+    margin: 0.45rem 0 0;
+    max-width: 42rem;
+    color: rgba(223, 211, 188, 0.78);
+    line-height: 1.55;
   }
 
   .header-actions {
     display: flex;
     gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .header-actions a {
-    padding: 0.5rem 1rem;
+    padding: 0.7rem 1rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(255, 255, 255, 0.04);
     text-decoration: none;
+    color: rgba(244, 236, 223, 0.92);
+    font-weight: 600;
+  }
+
+  .admin-pulse {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .pulse-card {
+    border-radius: 1.1rem;
+    border: 1px solid rgba(214, 190, 141, 0.14);
+    background:
+      linear-gradient(180deg, rgba(30, 24, 17, 0.66), rgba(13, 16, 19, 0.9)),
+      radial-gradient(circle at top, rgba(214, 190, 141, 0.08), transparent 58%);
+    padding: 0.95rem;
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .pulse-card__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(215, 191, 143, 0.78);
+  }
+
+  .pulse-card strong {
+    color: rgba(249, 243, 230, 0.98);
+    font-size: 1rem;
+  }
+
+  .pulse-card span:last-child {
+    color: rgba(223, 211, 188, 0.74);
+    line-height: 1.45;
   }
 
   .admin-grid {
@@ -553,6 +633,12 @@
     :global(.span-6),
     :global(.span-7) {
       grid-column: span 12;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .admin-pulse {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 

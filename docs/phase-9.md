@@ -1,5 +1,9 @@
 # Phase 9a – Dashboard Shell
 
+# Phase 9 Notes
+
+Historical note: this document describes an older dashboard-first phase. The current canonical product model is defined in `docs/product-surface-contract.md`, where `/app/home` is the primary surface and `/app/dashboard` is secondary.
+
 The `/app/dashboard` route now renders the Phase 9a shell. The page is composed of:
 
 - a fixed background stack (video → color overlay → particles → scrim)

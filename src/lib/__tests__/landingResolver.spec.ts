@@ -84,11 +84,11 @@ describe('computeLanding', () => {
     expect(decision.reason).toBe('context');
   });
 
-  it('respects explicit start preference', () => {
+  it('normalizes legacy dashboard start preference to home', () => {
     const prefs = basePrefs({ start_on: 'dashboard' });
     const decision = computeLanding(prefs, 'C', null, null, null);
-    expect(decision.surface).toBe('dashboard');
-    expect(decision.target).toBe('/app/dashboard');
+    expect(decision.surface).toBe('home');
+    expect(decision.target).toBe('/app/home');
     expect(decision.reason).toBe('preference');
   });
 

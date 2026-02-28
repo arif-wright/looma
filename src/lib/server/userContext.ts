@@ -18,7 +18,7 @@ const CONTEXT_TO_SURFACE: Record<UserContext, string> = {
   mission: 'mission',
   creature: 'companions',
   companion: 'companions',
-  dashboard: 'dashboard'
+  dashboard: 'home'
 };
 
 const parseLandingCookie = (value: string | undefined | null) => {

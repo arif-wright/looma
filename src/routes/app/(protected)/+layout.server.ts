@@ -102,7 +102,7 @@ const computeNavActivity = (prefs: PreferenceRow): Record<string, number> => {
       activity['/app/home'] = 1;
       break;
     case 'dashboard':
-      activity['/app/dashboard'] = 1;
+      activity['/app/home'] = 1;
       break;
     default:
       break;
