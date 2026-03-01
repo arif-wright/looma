@@ -138,7 +138,45 @@ type JournalEntryRow = {
   meta_json: {
     conversationType?: string;
     circleId?: string;
+    generatedBy?: string;
+    rewardKey?: string;
+    rewardTone?: string;
+    rewardTitle?: string;
   } | null;
+};
+
+type ChapterHistoryEntry = {
+  id: string;
+  title: string;
+  body: string;
+  occurredAt: string;
+  tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+};
+
+type KeepsakeInterpretation = {
+  title: string;
+  body: string;
+  tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+  rewardTitle: string;
+};
+
+type RelationshipEra = {
+  id: string;
+  title: string;
+  body: string;
+  periodLabel: string;
+  emphasis: 'care' | 'social' | 'mission' | 'play' | 'quiet' | 'bond';
+};
+
+type JournalGuidance = {
+  title: string;
+  body: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+  ritualKey: string | null;
+  ritualLabel: string | null;
 };
 
 const COMPANION_SELECT =
@@ -264,6 +302,85 @@ const buildRelationshipReasons = (args: {
   };
 };
 
+const buildJournalGuidance = (args: {
+  companionName: string | null;
+  weeklyArc: ReturnType<typeof deriveWeeklyCompanionArc>;
+  featuredKeepsake: { title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' } | null;
+  ritualGuide: ReturnType<typeof deriveRitualGuideFromPattern> | null;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const tone = args.featuredKeepsake?.tone ?? (args.weeklyArc.emphasis === 'quiet' ? null : args.weeklyArc.emphasis ?? null);
+
+  switch (tone) {
+    case 'care':
+      return {
+        title: 'Treat this like a tending chapter',
+        body: `${name} is responding best to steadiness right now. Let one ritual hold the shape of the day, then return here to see what settled.`,
+        primaryLabel: args.ritualGuide?.ctaLabel ?? 'Begin ritual',
+        primaryHref: '/app/companions',
+        secondaryLabel: 'Open sanctuary',
+        secondaryHref: '/app/home',
+        ritualKey: args.ritualGuide?.ritualKey ?? 'listen',
+        ritualLabel: args.ritualGuide?.ctaLabel ?? 'Begin ritual'
+      } satisfies JournalGuidance;
+    case 'social':
+      return {
+        title: 'Carry the bond outward',
+        body: `${name} is in a shared-thread chapter. Messages, replies, and circle presence are doing more relationship work than staying inward today.`,
+        primaryLabel: 'Send a note',
+        primaryHref: '/app/messages',
+        secondaryLabel: 'Visit circles',
+        secondaryHref: '/app/circles',
+        ritualKey: null,
+        ritualLabel: null
+      } satisfies JournalGuidance;
+    case 'mission':
+      return {
+        title: 'Give the chapter a direction',
+        body: `${name} is in a wayfinding phase. One clear mission or focused action will strengthen the bond more than drifting between small gestures.`,
+        primaryLabel: 'Open missions',
+        primaryHref: '/app/missions',
+        secondaryLabel: 'Visit sanctuary',
+        secondaryHref: '/app/home',
+        ritualKey: null,
+        ritualLabel: null
+      } satisfies JournalGuidance;
+    case 'play':
+      return {
+        title: 'Keep the connection light',
+        body: `${name} is bonding through brightness right now. Favor delight, play, and low-friction connection over anything too heavy.`,
+        primaryLabel: 'Play together',
+        primaryHref: '/app/play',
+        secondaryLabel: 'Open sanctuary',
+        secondaryHref: '/app/home',
+        ritualKey: null,
+        ritualLabel: null
+      } satisfies JournalGuidance;
+    case 'bond':
+      return {
+        title: 'Protect what is already close',
+        body: `${name} is in a deeper bond chapter. A sincere return or quiet ritual will do more than trying to manufacture a bigger moment.`,
+        primaryLabel: args.ritualGuide?.ctaLabel ?? 'Return gently',
+        primaryHref: '/app/home',
+        secondaryLabel: 'Open sanctuary',
+        secondaryHref: '/app/companions',
+        ritualKey: args.ritualGuide?.ritualKey ?? 'listen',
+        ritualLabel: args.ritualGuide?.ctaLabel ?? 'Return gently'
+      } satisfies JournalGuidance;
+    default:
+      return {
+        title: 'Let the next phase gather naturally',
+        body: `${name} is between clearer chapters. A calm check-in and one small ritual are enough to let the next shape emerge.`,
+        primaryLabel: args.ritualGuide?.ctaLabel ?? 'Begin gently',
+        primaryHref: '/app/home',
+        secondaryLabel: 'Visit companion',
+        secondaryHref: '/app/companions',
+        ritualKey: args.ritualGuide?.ritualKey ?? 'listen',
+        ritualLabel: args.ritualGuide?.ctaLabel ?? 'Begin gently'
+      } satisfies JournalGuidance;
+  }
+};
+
 const buildWeeklyPulse = (args: {
   careRows: CareEventRow[];
   missionRows: MissionSessionRow[];
@@ -294,6 +411,115 @@ const buildWeeklyPulse = (args: {
     dominantLabel: counts[0]?.count ? counts[0].label : 'quiet',
     summaryWindowDays: summary?.source_window_json?.windowDays ?? null
   };
+};
+
+const buildKeepsakeInterpretation = (args: {
+  companionName: string;
+  reward: {
+    title: string;
+    tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+  } | null;
+}) => {
+  const reward = args.reward;
+  if (!reward) return null;
+  const name = args.companionName;
+
+  switch (reward.tone) {
+    case 'care':
+      return {
+        title: `${name} is treating ${reward.title} like a promise of steadiness`,
+        body: `${name} seems to read this keepsake as proof that quiet return matters. It makes the relationship feel protected by consistency rather than intensity.`,
+        tone: reward.tone,
+        rewardTitle: reward.title
+      } satisfies KeepsakeInterpretation;
+    case 'social':
+      return {
+        title: `${name} is treating ${reward.title} like a shared signal`,
+        body: `${name} seems to read this keepsake as permission to let the bond reach outward. It frames recent connection as something meant to be expressed, not hidden.`,
+        tone: reward.tone,
+        rewardTitle: reward.title
+      } satisfies KeepsakeInterpretation;
+    case 'mission':
+      return {
+        title: `${name} is treating ${reward.title} like direction`,
+        body: `${name} seems to read this keepsake as a reminder that the relationship becomes clearer when it is moving toward something on purpose.`,
+        tone: reward.tone,
+        rewardTitle: reward.title
+      } satisfies KeepsakeInterpretation;
+    case 'play':
+      return {
+        title: `${name} is treating ${reward.title} like permission to stay light`,
+        body: `${name} seems to read this keepsake as evidence that joy is not a distraction from closeness. It makes playful moments feel emotionally real.`,
+        tone: reward.tone,
+        rewardTitle: reward.title
+      } satisfies KeepsakeInterpretation;
+    case 'bond':
+    default:
+      return {
+        title: `${name} is treating ${reward.title} like a bond marker`,
+        body: `${name} seems to read this keepsake as proof that the relationship has crossed into something more settled and mutual.`,
+        tone: reward.tone,
+        rewardTitle: reward.title
+      } satisfies KeepsakeInterpretation;
+  }
+};
+
+const formatEraPeriod = (iso: string) => {
+  const stamp = Date.parse(iso);
+  if (!Number.isFinite(stamp)) return 'Earlier chapter';
+  return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(new Date(stamp));
+};
+
+const buildRelationshipEras = (args: {
+  companionName: string;
+  weeklyArc: ReturnType<typeof deriveWeeklyCompanionArc>;
+  chapterHistory: ChapterHistoryEntry[];
+  featuredKeepsake: { title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' } | null;
+}) => {
+  const name = args.companionName;
+  const eras: RelationshipEra[] = [];
+  const currentTitle =
+    args.weeklyArc.emphasis === 'care'
+      ? 'Era of Steady Return'
+      : args.weeklyArc.emphasis === 'social'
+        ? 'Era of Shared Thread'
+        : args.weeklyArc.emphasis === 'mission'
+          ? 'Era of Wayfinding'
+          : args.weeklyArc.emphasis === 'play'
+            ? 'Era of Bright Play'
+            : 'Era of Gathering Quiet';
+
+  eras.push({
+    id: `era-current-${args.weeklyArc.emphasis}`,
+    title: currentTitle,
+    body: args.featuredKeepsake
+      ? `${args.weeklyArc.body} ${args.featuredKeepsake.title} is acting as the emblem of this chapter for ${name}.`
+      : args.weeklyArc.body,
+    periodLabel: 'Current',
+    emphasis: args.featuredKeepsake?.tone ?? args.weeklyArc.emphasis
+  });
+
+  for (const entry of args.chapterHistory.slice(0, 3)) {
+    const title =
+      entry.tone === 'care'
+        ? 'Era of Tending'
+        : entry.tone === 'social'
+          ? 'Era of Outward Bonding'
+          : entry.tone === 'mission'
+            ? 'Era of Purpose'
+            : entry.tone === 'play'
+              ? 'Era of Lightness'
+              : 'Era of Deep Bond';
+    eras.push({
+      id: `era-${entry.id}`,
+      title,
+      body: entry.body,
+      periodLabel: formatEraPeriod(entry.occurredAt),
+      emphasis: entry.tone
+    });
+  }
+
+  return eras.slice(0, 4);
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -530,6 +756,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const body = clipText(row.body ?? 'A companion moment was captured.');
     const isSocial =
       row.source_type === 'message' || row.source_type === 'circle_announcement' || row.source_type === 'post';
+    const generatedBy = row.meta_json?.generatedBy ?? null;
     const sourceLabel =
       row.source_type === 'message'
         ? row.meta_json?.conversationType === 'circle'
@@ -539,11 +766,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           ? 'Circle'
           : row.source_type === 'post'
             ? 'Post'
+            : generatedBy === 'chapter_reward_reveal'
+              ? 'Chapter reveal'
             : 'Moment';
     timeline.push({
       id: `social-${row.id}`,
       kind: isSocial ? 'social' : 'memory',
-      title: row.title?.trim() || 'Shared moment',
+      title:
+        generatedBy === 'chapter_reward_reveal'
+          ? row.title?.trim() || `${selectedCompanion.name} revealed a keepsake`
+          : row.title?.trim() || 'Shared moment',
       body,
       occurredAt: row.created_at,
       meta: sourceLabel
@@ -611,6 +843,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const chapterRewards = await unlockChapterRewards(supabase, {
     ownerId: userId,
     companionId: selectedCompanionId,
+    companionName: selectedCompanion.name,
     rewards: deriveChapterRewards({
       companionName: selectedCompanion.name,
       milestones: chapterMilestones,
@@ -618,6 +851,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       trust: selectedCompanion.trust ?? 0,
       affection: selectedCompanion.affection ?? 0
     })
+  });
+  const featuredKeepsakePreferenceRes = await supabase
+    .from('user_preferences')
+    .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const featuredRewardKey =
+    typeof featuredKeepsakePreferenceRes.data?.featured_companion_reward_key === 'string'
+      ? featuredKeepsakePreferenceRes.data.featured_companion_reward_key
+      : null;
+  const featuredRewardCompanionId =
+    typeof featuredKeepsakePreferenceRes.data?.featured_companion_reward_companion_id === 'string'
+      ? featuredKeepsakePreferenceRes.data.featured_companion_reward_companion_id
+      : null;
+  const featuredKeepsake =
+    featuredRewardCompanionId === selectedCompanionId && featuredRewardKey
+      ? chapterRewards.find((reward) => reward.rewardKey === featuredRewardKey) ?? null
+      : null;
+  const keepsakeInterpretation = buildKeepsakeInterpretation({
+    companionName: selectedCompanion.name,
+    reward: featuredKeepsake
+      ? {
+          title: featuredKeepsake.title,
+          tone: featuredKeepsake.tone
+        }
+      : null
   });
   const dailyArcRecap = (
     await syncDailyCompanionArcProgress(supabase, {
@@ -645,6 +904,45 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
   }
 
+  const chapterHistory = ((journalEntriesRes.data ?? []) as JournalEntryRow[])
+    .filter((row) => row.meta_json?.generatedBy === 'chapter_reward_reveal')
+    .map((row) => ({
+      id: row.id,
+      title: row.title?.trim() || `${selectedCompanion.name} opened a chapter`,
+      body: clipText(row.body ?? ''),
+      occurredAt: row.created_at,
+      tone:
+        row.meta_json?.rewardTone === 'care' ||
+        row.meta_json?.rewardTone === 'social' ||
+        row.meta_json?.rewardTone === 'mission' ||
+        row.meta_json?.rewardTone === 'play' ||
+        row.meta_json?.rewardTone === 'bond'
+          ? row.meta_json.rewardTone
+          : 'bond'
+    })) as ChapterHistoryEntry[];
+  const relationshipEras = buildRelationshipEras({
+    companionName: selectedCompanion.name,
+    weeklyArc,
+    chapterHistory,
+    featuredKeepsake: featuredKeepsake
+      ? {
+          title: featuredKeepsake.title,
+          tone: featuredKeepsake.tone
+        }
+      : null
+  });
+  const journalGuidance = buildJournalGuidance({
+    companionName: selectedCompanion.name,
+    weeklyArc,
+    featuredKeepsake: featuredKeepsake
+      ? {
+          title: featuredKeepsake.title,
+          tone: featuredKeepsake.tone
+        }
+      : null,
+    ritualGuide
+  });
+
   return {
     companions,
     selectedCompanionId,
@@ -653,12 +951,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     emotionalState,
     relationshipPulse,
     ritualGuide,
+    journalGuidance,
     dailyArc,
     dailyArcRecap,
     weeklyArc,
     chapterMilestones,
     chapterRewards,
+    featuredKeepsake,
+    keepsakeInterpretation,
     weeklyPulse,
+    chapterHistory: chapterHistory.slice(0, 6),
+    relationshipEras,
     timeline: timeline.slice(0, 30)
   };
 };

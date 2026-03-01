@@ -82,6 +82,19 @@
         <div class={`banner banner--${banner.tone}`}>{banner.text}</div>
       {/if}
 
+      <GlassCard class={`mission-panel mission-panel--chapter mission-panel--${data.missionChapterFrame.tone}`}>
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">{data.missionChapterFrame.eyebrow}</p>
+            <h2>{data.missionChapterFrame.title}</h2>
+          </div>
+          <EmotionalChip tone="muted">
+            {data.missionChapterFrame.preferredTypes[0] ?? 'identity'}
+          </EmotionalChip>
+        </div>
+        <p class="chapter-copy">{data.missionChapterFrame.body}</p>
+      </GlassCard>
+
       {#if data.activeMissions.length > 0}
         <GlassCard class="mission-panel">
           <div class="panel-head">
@@ -193,6 +206,48 @@
   .mission-panel {
     display: grid;
     gap: 0.9rem;
+  }
+
+  .mission-panel--chapter {
+    border: 1px solid rgba(236, 216, 193, 0.08);
+    background:
+      linear-gradient(180deg, rgba(30, 24, 18, 0.78), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 56%);
+  }
+
+  .mission-panel--care {
+    background:
+      linear-gradient(180deg, rgba(18, 35, 31, 0.82), rgba(11, 18, 20, 0.92)),
+      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 56%);
+  }
+
+  .mission-panel--social {
+    background:
+      linear-gradient(180deg, rgba(42, 26, 25, 0.82), rgba(16, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 56%);
+  }
+
+  .mission-panel--mission {
+    background:
+      linear-gradient(180deg, rgba(38, 30, 19, 0.82), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 56%);
+  }
+
+  .mission-panel--play {
+    background:
+      linear-gradient(180deg, rgba(18, 30, 37, 0.82), rgba(11, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 56%);
+  }
+
+  .mission-panel--bond {
+    background:
+      linear-gradient(180deg, rgba(34, 28, 24, 0.82), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
+  }
+
+  .chapter-copy {
+    color: rgba(232, 222, 210, 0.86);
+    line-height: 1.5;
   }
 
   .panel-head {

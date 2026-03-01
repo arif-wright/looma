@@ -9,6 +9,9 @@
   export let evolutionTag = 'Base form';
   export let imageUrl: string | null = null;
   export let energy = 0;
+  export let eraTitle: string | null = null;
+  export let eraBody: string | null = null;
+  export let eraTone: 'care' | 'social' | 'mission' | 'play' | 'bond' | 'quiet' = 'quiet';
   export let onClose: () => void = () => {};
 </script>
 
@@ -30,6 +33,16 @@
       <div><span>Link</span><strong>{status}</strong></div>
       <div><span>Energy</span><strong>{Math.round(energy)}</strong></div>
     </div>
+
+    {#if eraTitle}
+      <div class={`era era--${eraTone}`}>
+        <span class="era__label">Current era</span>
+        <strong>{eraTitle}</strong>
+        {#if eraBody}
+          <p>{eraBody}</p>
+        {/if}
+      </div>
+    {/if}
 
     <div class="actions">
       <a class="cta cta--ghost" href={companionId ? `/app/memory?companion=${encodeURIComponent(companionId)}` : '/app/memory'}>Open journal</a>
@@ -115,6 +128,65 @@
   .stats strong {
     color: rgba(240, 249, 255, 0.96);
     font-size: 1rem;
+  }
+
+  .era {
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.58);
+    padding: 0.72rem 0.78rem;
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .era__label {
+    color: rgba(186, 230, 253, 0.74);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .era strong {
+    color: rgba(248, 250, 252, 0.97);
+    font-size: 0.9rem;
+    line-height: 1.3;
+  }
+
+  .era p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.86);
+    line-height: 1.45;
+    font-size: 0.82rem;
+  }
+
+  .era--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.46);
+  }
+
+  .era--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.46);
+  }
+
+  .era--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.46);
+  }
+
+  .era--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.46);
+  }
+
+  .era--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.46);
+  }
+
+  .era--quiet {
+    border-color: rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.58);
   }
 
   .actions {

@@ -78,6 +78,11 @@ export type CompanionChapterReward = {
   tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
 };
 
+export type CompanionChapterReveal = {
+  title: string;
+  body: string;
+};
+
 const clip = (value: string, limit = 280) => {
   const normalized = value.replace(/\s+/g, ' ').trim();
   if (normalized.length <= limit) return normalized;
@@ -630,15 +635,67 @@ export const deriveChapterRewards = (args: {
   return rewards.slice(0, 3);
 };
 
+export const deriveChapterRewardReveal = (args: {
+  companionName: string | null;
+  reward: CompanionChapterReward;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+
+  switch (args.reward.tone) {
+    case 'care':
+      return {
+        title: `${name} revealed ${args.reward.title}`,
+        body: `${name} gathered this keepsake out of repeated return. It marks a chapter where steadiness mattered more than intensity.`
+      } satisfies CompanionChapterReveal;
+    case 'social':
+      return {
+        title: `${name} revealed ${args.reward.title}`,
+        body: `${name} gathered this keepsake from shared expression. It marks a chapter where the bond kept reaching outward into messages, posts, and circles.`
+      } satisfies CompanionChapterReveal;
+    case 'mission':
+      return {
+        title: `${name} revealed ${args.reward.title}`,
+        body: `${name} gathered this keepsake from momentum and direction. It marks a chapter where purpose gave the relationship a clearer path.`
+      } satisfies CompanionChapterReveal;
+    case 'play':
+      return {
+        title: `${name} revealed ${args.reward.title}`,
+        body: `${name} gathered this keepsake from joy. It marks a chapter where lightness and play carried more of the bond than effort alone.`
+      } satisfies CompanionChapterReveal;
+    case 'bond':
+    default:
+      return {
+        title: `${name} revealed ${args.reward.title}`,
+        body: `${name} gathered this keepsake from a deepened bond. It marks a chapter where trust and affection settled into something more mutual.`
+      } satisfies CompanionChapterReveal;
+  }
+};
+
 export const unlockChapterRewards = async (
   client: SupabaseClient,
   args: {
     ownerId: string;
     companionId: string;
+    companionName?: string | null;
     rewards: CompanionChapterReward[];
   }
 ) => {
   if (!args.rewards.length) return [];
+  const { data: existingRewards, error: existingRewardsError } = await client
+    .from('companion_chapter_rewards')
+    .select('reward_key')
+    .eq('owner_id', args.ownerId)
+    .eq('companion_id', args.companionId);
+
+  if (existingRewardsError) {
+    console.error('[companion-journal] chapter reward existing read failed', existingRewardsError);
+  }
+
+  const existingRewardKeys = new Set(
+    ((existingRewards ?? []) as Array<Record<string, unknown>>)
+      .map((row) => (typeof row.reward_key === 'string' ? row.reward_key : null))
+      .filter((value): value is string => Boolean(value))
+  );
   const rows = args.rewards.map((reward) => ({
     owner_id: args.ownerId,
     companion_id: args.companionId,
@@ -669,8 +726,7 @@ export const unlockChapterRewards = async (
     console.error('[companion-journal] chapter reward read failed', readError);
     return [];
   }
-
-  return (data ?? []).map((row) => ({
+  const mappedRewards = (data ?? []).map((row) => ({
     rewardKey: String(row.reward_key ?? ''),
     title: String(row.reward_title ?? 'Companion keepsake'),
     body: String(row.reward_body ?? ''),
@@ -684,4 +740,48 @@ export const unlockChapterRewards = async (
         : 'bond',
     unlockedAt: typeof row.unlocked_at === 'string' ? row.unlocked_at : null
   }));
+
+  const newRewards = args.rewards.filter((reward) => !existingRewardKeys.has(reward.rewardKey));
+  for (const reward of newRewards) {
+    const reveal = deriveChapterRewardReveal({
+      companionName: args.companionName ?? null,
+      reward
+    });
+    const { data: existingReveal, error: existingRevealError } = await client
+      .from('companion_journal_entries')
+      .select('id')
+      .eq('owner_id', args.ownerId)
+      .eq('companion_id', args.companionId)
+      .eq('source_type', 'system')
+      .contains('meta_json', { generatedBy: 'chapter_reward_reveal', rewardKey: reward.rewardKey })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingRevealError && existingRevealError.code !== 'PGRST116') {
+      console.error('[companion-journal] chapter reveal lookup failed', existingRevealError);
+      continue;
+    }
+
+    if (existingReveal?.id) continue;
+
+    const { error: revealInsertError } = await client.from('companion_journal_entries').insert({
+      owner_id: args.ownerId,
+      companion_id: args.companionId,
+      source_type: 'system',
+      title: reveal.title,
+      body: reveal.body,
+      meta_json: {
+        generatedBy: 'chapter_reward_reveal',
+        rewardKey: reward.rewardKey,
+        rewardTone: reward.tone,
+        rewardTitle: reward.title
+      }
+    });
+
+    if (revealInsertError) {
+      console.error('[companion-journal] chapter reveal insert failed', revealInsertError);
+    }
+  }
+
+  return mappedRewards;
 };

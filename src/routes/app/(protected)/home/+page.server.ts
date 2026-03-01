@@ -86,11 +86,38 @@ type SanctuaryNudge = {
   href: string;
 };
 
+type ChapterRevealMoment = {
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  rewardTitle: string | null;
+  tone: KeepsakeTone | null;
+};
+
+type EraAction = {
+  title: string;
+  body: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+};
+
 type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
 
 type KeepsakeTheme = {
   tone: KeepsakeTone;
   title: string;
+};
+
+type SanctuaryShelfReward = {
+  rewardKey: string;
+  title: string;
+  body: string;
+  tone: KeepsakeTone;
+  unlockedAt: string | null;
+  featured: boolean;
 };
 
 type DailyArc = ReturnType<typeof deriveDailyCompanionArc>;
@@ -235,6 +262,233 @@ const buildKeepsakeTheme = (chapterRewards: ChapterRewards): KeepsakeTheme | nul
   };
 };
 
+const applyKeepsakeToSanctuaryNudge = (args: {
+  nudge: SanctuaryNudge;
+  keepsakeTheme: KeepsakeTheme | null;
+  companionName: string | null;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const theme = args.keepsakeTheme;
+  if (!theme) return args.nudge;
+
+  switch (theme.tone) {
+    case 'care':
+      return {
+        ...args.nudge,
+        title: `${theme.title} is asking for steadiness`,
+        body: `${name} is in a care-shaped chapter right now. Start gently and let the sanctuary feel tended instead of rushed.`
+      } satisfies SanctuaryNudge;
+    case 'social':
+      return {
+        ...args.nudge,
+        title: `${theme.title} wants the shared thread carried forward`,
+        body: `${name} is responding to outward expression. A note, reply, or small shared gesture will land better than a quiet reset right now.`
+      } satisfies SanctuaryNudge;
+    case 'mission':
+      return {
+        ...args.nudge,
+        title: `${theme.title} is pointing the day somewhere`,
+        body: `${name} is feeling purpose more than drift. Let today's sanctuary move toward one clear action instead of scattering.`
+      } satisfies SanctuaryNudge;
+    case 'play':
+      return {
+        ...args.nudge,
+        title: `${theme.title} is keeping the day light`,
+        body: `${name} is bonding through brightness right now. Choose a ritual or interaction that feels playful rather than heavy.`
+      } satisfies SanctuaryNudge;
+    case 'bond':
+    default:
+      return {
+        ...args.nudge,
+        title: `${theme.title} is holding the bond close`,
+        body: `${name} is in a deeper bond chapter. A small sincere return will do more than a dramatic gesture today.`
+      } satisfies SanctuaryNudge;
+  }
+};
+
+const applyKeepsakeToDailyRecap = (args: {
+  recap: DailyArcRecap | null;
+  keepsakeTheme: KeepsakeTheme | null;
+  companionName: string | null;
+}) => {
+  if (!args.recap || !args.keepsakeTheme) return args.recap;
+  const name = args.companionName?.trim() || 'your companion';
+
+  switch (args.keepsakeTheme.tone) {
+    case 'care':
+      return {
+        ...args.recap,
+        title: `${name}'s care chapter is settling in`,
+        body: `${args.recap.body} ${args.keepsakeTheme.title} made the whole day read as steady care.`
+      } satisfies DailyArcRecap;
+    case 'social':
+      return {
+        ...args.recap,
+        title: `${name}'s shared thread is settling in`,
+        body: `${args.recap.body} ${args.keepsakeTheme.title} turned the day toward connection beyond the sanctuary.`
+      } satisfies DailyArcRecap;
+    case 'mission':
+      return {
+        ...args.recap,
+        title: `${name}'s purposeful chapter is settling in`,
+        body: `${args.recap.body} ${args.keepsakeTheme.title} gave the bond a stronger sense of direction.`
+      } satisfies DailyArcRecap;
+    case 'play':
+      return {
+        ...args.recap,
+        title: `${name}'s bright chapter is settling in`,
+        body: `${args.recap.body} ${args.keepsakeTheme.title} kept the relationship feeling lighter and more alive.`
+      } satisfies DailyArcRecap;
+    case 'bond':
+    default:
+      return {
+        ...args.recap,
+        title: `${name}'s bond chapter is settling in`,
+        body: `${args.recap.body} ${args.keepsakeTheme.title} made the closeness of the day feel more explicit.`
+      } satisfies DailyArcRecap;
+  }
+};
+
+const buildEraAction = (args: {
+  companionName: string | null;
+  keepsakeTheme: KeepsakeTheme | null;
+  weeklyArc: WeeklyArc | null;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const tone = args.keepsakeTheme?.tone ?? (args.weeklyArc?.emphasis === 'quiet' ? null : args.weeklyArc?.emphasis ?? null);
+
+  switch (tone) {
+    case 'care':
+      return {
+        title: 'Treat this like a tending day',
+        body: `${name} is responding best to small repeated care right now. Favor rituals and quiet return over novelty.`,
+        primaryLabel: 'Start a ritual',
+        primaryHref: '/app/companions',
+        secondaryLabel: 'Open journal',
+        secondaryHref: '/app/memory'
+      } satisfies EraAction;
+    case 'social':
+      return {
+        title: 'Carry the bond outward',
+        body: `${name} is in a shared-thread chapter. Messages, replies, and circle presence will land better than solitude today.`,
+        primaryLabel: 'Send a note',
+        primaryHref: '/app/messages',
+        secondaryLabel: 'Visit circles',
+        secondaryHref: '/app/circles'
+      } satisfies EraAction;
+    case 'mission':
+      return {
+        title: 'Give the bond a direction',
+        body: `${name} is in a wayfinding chapter. One clear mission or focused action will strengthen the relationship more than drifting.`,
+        primaryLabel: 'Open missions',
+        primaryHref: '/app/missions',
+        secondaryLabel: 'Visit companion',
+        secondaryHref: '/app/companions'
+      } satisfies EraAction;
+    case 'play':
+      return {
+        title: 'Keep things bright and light',
+        body: `${name} is bonding through lightness right now. Choose play, delight, and low-friction connection over intensity.`,
+        primaryLabel: 'Play together',
+        primaryHref: '/app/play',
+        secondaryLabel: 'Celebrate ritual',
+        secondaryHref: '/app/companions'
+      } satisfies EraAction;
+    case 'bond':
+      return {
+        title: 'Protect the closeness that is already here',
+        body: `${name} is in a deep bond chapter. A sincere check-in or journal return will do more than chasing a bigger moment.`,
+        primaryLabel: 'Check in',
+        primaryHref: '/app/home',
+        secondaryLabel: 'Open journal',
+        secondaryHref: '/app/memory'
+      } satisfies EraAction;
+    default:
+      return {
+        title: 'Let the next phase gather naturally',
+        body: `${name} is between clearer chapters. A calm check-in and one small ritual are enough to let the next shape emerge.`,
+        primaryLabel: 'Begin gently',
+        primaryHref: '/app/companions',
+        secondaryLabel: 'Open sanctuary',
+        secondaryHref: '/app/home'
+      } satisfies EraAction;
+  }
+};
+
+const resolveFeaturedKeepsakeTheme = async (args: {
+  supabase: SupabaseClient;
+  userId: string | null;
+  activeCompanionId: string | null;
+  chapterRewards: ChapterRewards;
+}) => {
+  if (!args.userId || !args.activeCompanionId || !args.chapterRewards.length) {
+    return buildKeepsakeTheme(args.chapterRewards);
+  }
+
+  const { data, error } = await args.supabase
+    .from('user_preferences')
+    .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+    .eq('user_id', args.userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[home] featured keepsake preference lookup failed', error);
+    return buildKeepsakeTheme(args.chapterRewards);
+  }
+
+  const featuredRewardKey =
+    typeof data?.featured_companion_reward_key === 'string' ? data.featured_companion_reward_key : null;
+  const featuredCompanionId =
+    typeof data?.featured_companion_reward_companion_id === 'string' ? data.featured_companion_reward_companion_id : null;
+
+  if (featuredCompanionId !== args.activeCompanionId || !featuredRewardKey) {
+    return buildKeepsakeTheme(args.chapterRewards);
+  }
+
+  const featuredReward = args.chapterRewards.find((reward) => reward.rewardKey === featuredRewardKey);
+  return featuredReward ? buildKeepsakeTheme([featuredReward]) : buildKeepsakeTheme(args.chapterRewards);
+};
+
+const resolveSanctuaryShelfRewards = async (args: {
+  supabase: SupabaseClient;
+  userId: string | null;
+  activeCompanionId: string | null;
+  chapterRewards: ChapterRewards;
+}) => {
+  const rewards = args.chapterRewards.slice(0, 6);
+  if (!args.userId || !args.activeCompanionId || !rewards.length) {
+    return rewards.slice(0, 3).map((reward) => ({ ...reward, featured: false })) as SanctuaryShelfReward[];
+  }
+
+  const { data, error } = await args.supabase
+    .from('user_preferences')
+    .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+    .eq('user_id', args.userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[home] sanctuary shelf preference lookup failed', error);
+  }
+
+  const featuredRewardKey =
+    typeof data?.featured_companion_reward_key === 'string' ? data.featured_companion_reward_key : null;
+  const featuredCompanionId =
+    typeof data?.featured_companion_reward_companion_id === 'string' ? data.featured_companion_reward_companion_id : null;
+
+  const orderedRewards =
+    featuredCompanionId === args.activeCompanionId && featuredRewardKey
+      ? [
+          ...rewards.filter((reward) => reward.rewardKey === featuredRewardKey),
+          ...rewards.filter((reward) => reward.rewardKey !== featuredRewardKey)
+        ]
+      : rewards;
+
+  return orderedRewards.slice(0, 3).map((reward) => ({
+    ...reward,
+    featured: featuredCompanionId === args.activeCompanionId && featuredRewardKey === reward.rewardKey
+  })) as SanctuaryShelfReward[];
+};
+
 const upsertMissionAssignment = async (args: {
   supabase: SupabaseClient;
   period: 'daily' | 'weekly';
@@ -305,6 +559,7 @@ export const load: PageServerLoad = async (event) => {
     latestDailyCheckin: null as DailyCheckin | null,
     memorySummary: null as MemorySummary | null,
     journalMoments: [] as JournalMoment[],
+    chapterReveal: null as ChapterRevealMoment | null,
     sanctuaryNudge: null as SanctuaryNudge | null,
     dailyArc: null as DailyArc | null,
     dailyArcRecap: null as DailyArcRecap,
@@ -663,6 +918,7 @@ export const load: PageServerLoad = async (event) => {
       latestDailyCheckin,
       rituals
     });
+    let chapterReveal: ChapterRevealMoment | null = null;
     if (userId && activeCompanion?.id) {
       const [socialEntries, systemEntries] = await Promise.all([
         supabase
@@ -675,7 +931,7 @@ export const load: PageServerLoad = async (event) => {
         .limit(1),
         supabase
           .from('companion_journal_entries')
-          .select('id, title, body, source_type, created_at')
+          .select('id, title, body, source_type, created_at, meta_json')
           .eq('owner_id', userId)
           .eq('companion_id', activeCompanion.id)
           .eq('source_type', 'system')
@@ -702,18 +958,53 @@ export const load: PageServerLoad = async (event) => {
       const latestNotice =
         !systemEntries.error ? ((systemEntries.data ?? [])[0] as Record<string, unknown> | undefined) : undefined;
       if (latestNotice) {
-          journalMoments.unshift({
-            id: `notice-${String(latestNotice.id ?? 'recent')}`,
-            label: 'Noticed',
+        const generatedBy =
+          latestNotice.meta_json && typeof latestNotice.meta_json === 'object'
+            ? String((latestNotice.meta_json as Record<string, unknown>).generatedBy ?? '')
+            : '';
+        if (generatedBy === 'chapter_reward_reveal') {
+          const meta =
+            latestNotice.meta_json && typeof latestNotice.meta_json === 'object'
+              ? (latestNotice.meta_json as Record<string, unknown>)
+              : null;
+          const revealTone =
+            meta?.rewardTone === 'care' ||
+            meta?.rewardTone === 'social' ||
+            meta?.rewardTone === 'mission' ||
+            meta?.rewardTone === 'play' ||
+            meta?.rewardTone === 'bond'
+              ? meta.rewardTone
+              : null;
+          chapterReveal = {
+            id: `reveal-${String(latestNotice.id ?? 'recent')}`,
+            title:
+              typeof latestNotice.title === 'string' && latestNotice.title.trim().length
+                ? latestNotice.title
+                : `${activeCompanion.name ?? 'Your companion'} opened a new chapter`,
             body: clipMomentBody(
               typeof latestNotice.body === 'string' && latestNotice.body.trim().length
                 ? latestNotice.body
-                : typeof latestNotice.title === 'string'
-                  ? latestNotice.title
-                  : `${activeCompanion.name ?? 'Your companion'} noticed a new pattern.`
+                : `${activeCompanion.name ?? 'Your companion'} revealed a new keepsake.`
             ),
-            href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
-          });
+            href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory',
+            rewardTitle: typeof meta?.rewardTitle === 'string' ? meta.rewardTitle : null,
+            tone: revealTone
+          };
+        }
+        journalMoments.unshift({
+          id: `${generatedBy === 'chapter_reward_reveal' ? 'reveal' : 'notice'}-${String(latestNotice.id ?? 'recent')}`,
+          label: generatedBy === 'chapter_reward_reveal' ? 'Reveal' : 'Noticed',
+          body: clipMomentBody(
+            typeof latestNotice.body === 'string' && latestNotice.body.trim().length
+              ? latestNotice.body
+              : typeof latestNotice.title === 'string'
+                ? latestNotice.title
+                : generatedBy === 'chapter_reward_reveal'
+                  ? `${activeCompanion.name ?? 'Your companion'} revealed a new keepsake.`
+                  : `${activeCompanion.name ?? 'Your companion'} noticed a new pattern.`
+          ),
+          href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
+        });
       } else {
         const derivedNotice = deriveCompanionPatternNotice({
           companionName: activeCompanion.name ?? null,
@@ -733,7 +1024,7 @@ export const load: PageServerLoad = async (event) => {
         }
       }
     }
-    const sanctuaryNudge = buildSanctuaryNudge({
+    const baseSanctuaryNudge = buildSanctuaryNudge({
       activeCompanion,
       journalMoments,
       latestDailyCheckin,
@@ -767,6 +1058,7 @@ export const load: PageServerLoad = async (event) => {
         ? await unlockChapterRewards(supabase, {
             ownerId: userId,
             companionId: activeCompanion.id,
+            companionName: activeCompanion.name ?? null,
             rewards: deriveChapterRewards({
               companionName: activeCompanion.name ?? null,
               milestones: chapterMilestones,
@@ -792,7 +1084,33 @@ export const load: PageServerLoad = async (event) => {
             arc: dailyArc
           })).recap
         : null;
-    const keepsakeTheme = buildKeepsakeTheme(chapterRewards);
+    const keepsakeTheme = await resolveFeaturedKeepsakeTheme({
+      supabase,
+      userId,
+      activeCompanionId: activeCompanion?.id ?? null,
+      chapterRewards
+    });
+    const sanctuaryNudge = applyKeepsakeToSanctuaryNudge({
+      nudge: baseSanctuaryNudge,
+      keepsakeTheme,
+      companionName: activeCompanion?.name ?? null
+    });
+    const sanctuaryShelfRewards = await resolveSanctuaryShelfRewards({
+      supabase,
+      userId,
+      activeCompanionId: activeCompanion?.id ?? null,
+      chapterRewards
+    });
+    const eraAction = buildEraAction({
+      companionName: activeCompanion?.name ?? null,
+      keepsakeTheme,
+      weeklyArc
+    });
+    const flavoredDailyArcRecap = applyKeepsakeToDailyRecap({
+      recap: dailyArcRecap,
+      keepsakeTheme,
+      companionName: activeCompanion?.name ?? null
+    });
 
     return {
       stats,
@@ -816,13 +1134,16 @@ export const load: PageServerLoad = async (event) => {
       latestDailyCheckin,
       memorySummary,
       journalMoments: journalMoments.slice(0, 3),
+      chapterReveal,
       sanctuaryNudge,
       dailyArc,
-      dailyArcRecap,
+      dailyArcRecap: flavoredDailyArcRecap,
       weeklyArc,
       chapterMilestones,
       chapterRewards,
-      keepsakeTheme
+      keepsakeTheme,
+      sanctuaryShelfRewards,
+      eraAction
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

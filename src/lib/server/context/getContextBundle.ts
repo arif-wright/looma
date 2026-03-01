@@ -9,6 +9,7 @@ import { computeEffectiveEnergyMax } from '$lib/player/energy';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
+  type FeaturedKeepsakeBundle,
   type RecentJournalMomentBundle,
   type PortableStateBundle
 } from '$lib/types/contextBundle';
@@ -147,7 +148,8 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       },
       recentJournal: {
         moments: [],
-        socialCount7d: 0
+        socialCount7d: 0,
+        featuredKeepsake: null
       }
     };
   }
@@ -198,6 +200,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
     companionRoster.find((entry) => entry.id === portableExtracted.companions.activeId) ?? companionRoster[0] ?? null;
   let recentJournalMoments: RecentJournalMomentBundle[] = [];
   let socialCount7d = 0;
+  let featuredKeepsake: FeaturedKeepsakeBundle | null = null;
   const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
   const baseEnergyMax = stats?.energy_max ?? null;
   const effectiveEnergyMax =
@@ -207,7 +210,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
 
   if (consentFlags.memory && companionBond?.companionId) {
     const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const [journalRes, socialCountRes] = await Promise.all([
+    const [journalRes, socialCountRes, featuredPrefRes] = await Promise.all([
       supabase
         .from('companion_journal_entries')
         .select('id, title, body, source_type, created_at')
@@ -221,7 +224,12 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
         .eq('owner_id', resolvedUserId)
         .eq('companion_id', companionBond.companionId)
         .in('source_type', ['post', 'message', 'circle_announcement'])
-        .gte('created_at', weekAgoIso)
+        .gte('created_at', weekAgoIso),
+      supabase
+        .from('user_preferences')
+        .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+        .eq('user_id', resolvedUserId)
+        .maybeSingle()
     ]);
 
     if (journalRes.error && journalRes.error.code !== 'PGRST116') {
@@ -250,6 +258,43 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       console.error('[context bundle] companion journal social count failed', socialCountRes.error);
     } else {
       socialCount7d = socialCountRes.count ?? 0;
+    }
+
+    const featuredRewardKey =
+      typeof featuredPrefRes.data?.featured_companion_reward_key === 'string'
+        ? featuredPrefRes.data.featured_companion_reward_key
+        : null;
+    const featuredRewardCompanionId =
+      typeof featuredPrefRes.data?.featured_companion_reward_companion_id === 'string'
+        ? featuredPrefRes.data.featured_companion_reward_companion_id
+        : null;
+
+    if (featuredRewardKey && featuredRewardCompanionId === companionBond.companionId) {
+      const { data: rewardRow, error: rewardError } = await supabase
+        .from('companion_chapter_rewards')
+        .select('reward_key, reward_title, reward_tone, companion_id')
+        .eq('owner_id', resolvedUserId)
+        .eq('companion_id', companionBond.companionId)
+        .eq('reward_key', featuredRewardKey)
+        .maybeSingle();
+
+      if (rewardError && rewardError.code !== 'PGRST116') {
+        console.error('[context bundle] featured keepsake lookup failed', rewardError);
+      } else if (rewardRow) {
+        featuredKeepsake = {
+          rewardKey: String(rewardRow.reward_key ?? ''),
+          title: String(rewardRow.reward_title ?? 'Companion keepsake'),
+          tone:
+            rewardRow.reward_tone === 'care' ||
+            rewardRow.reward_tone === 'social' ||
+            rewardRow.reward_tone === 'mission' ||
+            rewardRow.reward_tone === 'play' ||
+            rewardRow.reward_tone === 'bond'
+              ? rewardRow.reward_tone
+              : 'bond',
+          companionId: String(rewardRow.companion_id ?? companionBond.companionId)
+        };
+      }
     }
   }
 
@@ -314,7 +359,8 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
     },
     recentJournal: {
       moments: recentJournalMoments,
-      socialCount7d
+      socialCount7d,
+      featuredKeepsake
     }
   } satisfies ContextBundle;
 };

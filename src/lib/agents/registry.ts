@@ -74,6 +74,24 @@ const socialSignal = (context: Record<string, any>) => {
   };
 };
 
+const keepsakeSignal = (context: Record<string, any>) => {
+  const raw =
+    context?.recentJournal?.featuredKeepsake && typeof context.recentJournal.featuredKeepsake === 'object'
+      ? (context.recentJournal.featuredKeepsake as Record<string, unknown>)
+      : null;
+  return {
+    title: typeof raw?.title === 'string' ? raw.title : null,
+    tone:
+      raw?.tone === 'care' ||
+      raw?.tone === 'social' ||
+      raw?.tone === 'mission' ||
+      raw?.tone === 'play' ||
+      raw?.tone === 'bond'
+        ? raw.tone
+        : null
+  };
+};
+
 const simpleHash = (input: string) => {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -203,6 +221,7 @@ const companionAgent: Agent = {
     const activeCompanion =
       (context?.companion?.active as { id?: unknown; archetype?: unknown; name?: unknown } | null | undefined) ?? null;
     const journalSignal = socialSignal(context);
+    const shelfSignal = keepsakeSignal(context);
     const profile = resolveCompanionPersonaProfile(activeCompanion);
     const requestedTone = String(context?.portableState?.tone ?? '').toLowerCase();
     const tone: PersonaTone = requestedTone === 'direct' || requestedTone === 'warm' ? requestedTone : profile.toneDefault;
@@ -259,7 +278,8 @@ const companionAgent: Agent = {
         `${greeting}. ${closer}.`,
         `${greeting}. ${focusCue}.`,
         `${greeting}. Ready for your next step?`,
-        `${greeting}. ${affirmation}.`
+        `${greeting}. ${affirmation}.`,
+        shelfSignal.title ? `${greeting}. ${shelfSignal.title} is still shaping the room between you.` : `${greeting}. ${closer}.`
       ];
       const direct = [
         `${greeting}. Ready.`,
@@ -281,7 +301,9 @@ const companionAgent: Agent = {
         `${greeting}. Pick up where you left off.`,
         journalSignal.recentSocialCount > 0
           ? `${greeting}. I can still feel the thread from what you shared.`
-          : `${greeting}. ${focusCue}.`
+          : shelfSignal.title
+            ? `${greeting}. ${shelfSignal.title} still feels close.`
+            : `${greeting}. ${focusCue}.`
       ];
       const direct = ['Welcome back.', 'Back again. Continue.', `${focusCue}.`, `Return confirmed. ${closer}.`];
       text = pick(tone === 'direct' ? direct : warm, 'session.return:text');
@@ -424,7 +446,9 @@ const companionAgent: Agent = {
         `Quiet moment together.`,
         journalSignal.latestSocialTitle
           ? `${companionName} is still carrying ${journalSignal.latestSocialTitle.toLowerCase()}.`
-          : `${companionName} is here with you.`,
+          : shelfSignal.title
+            ? `${companionName} is still holding ${shelfSignal.title.toLowerCase()} close.`
+            : `${companionName} is here with you.`,
         `Breath in, breath out.`
       ];
       const direct = ['Listening.', 'I hear you.', 'Quiet check-in logged.', 'Steady and present.'];
@@ -433,7 +457,9 @@ const companionAgent: Agent = {
       const warm = [
         `Focus set. We move one step at a time.`,
         `Focused mode is up. ${focusCue}.`,
-        `${companionName} is locked in with you.`,
+        shelfSignal.tone === 'mission'
+          ? `${companionName} is following the direction ${shelfSignal.title ?? 'you set'} gave the day.`
+          : `${companionName} is locked in with you.`,
         `We can keep this clean and calm.`
       ];
       const direct = ['Focus set.', 'Focused mode active.', `${focusCue}.`, 'Hold form.'];
@@ -442,7 +468,9 @@ const companionAgent: Agent = {
       const warm = [
         `Nice moment. Let it land.`,
         `Celebrate this one. ${affirmation}.`,
-        `${companionName} is celebrating with you.`,
+        shelfSignal.tone === 'play' || shelfSignal.tone === 'social'
+          ? `${companionName} can feel ${shelfSignal.title ?? 'this chapter'} brightening the moment.`
+          : `${companionName} is celebrating with you.`,
         `Good work. Keep this feeling.`
       ];
       const direct = ['Win logged. Nice.', 'Celebrate complete.', `${affirmation}.`, 'Solid result.'];

@@ -73,11 +73,61 @@ let editOpen = false;
     Array.isArray(profile?.achievements) && profile.achievements.length > 0 ? profile.achievements[0] : null;
   $: activeCompanionName = featuredCompanionCard?.name ?? 'No featured companion';
   $: activeCompanionMood = featuredCompanionCard?.mood ?? 'Quiet';
+  $: featuredKeepsake = data.featuredKeepsake ?? null;
+  $: featuredCompanionRewards = data.featuredCompanionRewards ?? [];
+  $: keepsakeShelfItems = [
+    ...featuredCompanionRewards.filter((reward) => reward.rewardKey === featuredKeepsake?.rewardKey),
+    ...featuredCompanionRewards.filter((reward) => reward.rewardKey !== featuredKeepsake?.rewardKey)
+  ].slice(0, 3);
   $: companionBondText = featuredCompanionCard
     ? `Affection ${featuredCompanionCard.affection ?? 0} · Trust ${featuredCompanionCard.trust ?? 0}`
     : 'Choose a featured companion to make your profile feel alive.';
   $: levelValue = stats?.level ?? profile?.level ?? 1;
   $: energyValue = stats?.energy ?? null;
+  let keepsakeSaving = false;
+  let keepsakeError: string | null = null;
+
+  const setFeaturedKeepsake = async (rewardKey: string, companionId: string) => {
+    keepsakeSaving = true;
+    keepsakeError = null;
+    try {
+      const response = await fetch('/api/profile/featured-keepsake', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rewardKey, companionId })
+      });
+      if (!response.ok) {
+        keepsakeError = 'Could not feature that keepsake right now.';
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      keepsakeError = 'Could not feature that keepsake right now.';
+    } finally {
+      keepsakeSaving = false;
+    }
+  };
+
+  const clearFeaturedKeepsake = async () => {
+    keepsakeSaving = true;
+    keepsakeError = null;
+    try {
+      const response = await fetch('/api/profile/featured-keepsake', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ clear: true })
+      });
+      if (!response.ok) {
+        keepsakeError = 'Could not clear the featured keepsake right now.';
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      keepsakeError = 'Could not clear the featured keepsake right now.';
+    } finally {
+      keepsakeSaving = false;
+    }
+  };
 </script>
 
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
@@ -126,6 +176,12 @@ let editOpen = false;
             <strong>{activeCompanionName}</strong>
             <span>{activeCompanionMood}</span>
             <p>{companionBondText}</p>
+            {#if featuredKeepsake}
+              <div class={`keepsake-badge keepsake-badge--${featuredKeepsake.tone ?? 'bond'}`}>
+                <span>Featured keepsake</span>
+                <strong>{featuredKeepsake.title}</strong>
+              </div>
+            {/if}
           </article>
 
           <article class="pulse-tile">
@@ -149,6 +205,23 @@ let editOpen = false;
           <a class="pulse-action" href="/app/home">Go to sanctuary</a>
           <a class="pulse-action" href="/app/settings">Settings</a>
         </div>
+
+        {#if keepsakeShelfItems.length > 0}
+          <div class="profile-shelf" aria-label="Featured keepsake shelf">
+            <div class="profile-shelf__head">
+              <h3>Keepsake shelf</h3>
+              <span>{featuredKeepsake ? 'Curated for your profile' : 'Recent companion keepsakes'}</span>
+            </div>
+            <div class="profile-shelf__grid">
+              {#each keepsakeShelfItems as reward (reward.rewardKey)}
+                <div class={`profile-shelf__item profile-shelf__item--${reward.tone ?? 'bond'} ${featuredKeepsake?.rewardKey === reward.rewardKey ? 'is-featured' : ''}`}>
+                  <span class="profile-shelf__label">{featuredKeepsake?.rewardKey === reward.rewardKey ? 'Featured' : 'Shelf'}</span>
+                  <strong>{reward.title}</strong>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </section>
 
       <div class="profile-cols">
@@ -193,6 +266,49 @@ let editOpen = false;
               {#if featuredCompanionCard}
                 <CompanionCard companion={featuredCompanionCard} showActions={false} compact={true} />
                 <a class="btn-ghost mt-3 inline-flex w-full justify-center" href="/app/companions">Open care hub</a>
+                <div class="featured-keepsake-panel">
+                  <div class="featured-keepsake-panel__head">
+                    <h4>Featured keepsake</h4>
+                    {#if featuredKeepsake}
+                      <button class="keepsake-action keepsake-action--ghost" type="button" disabled={keepsakeSaving} on:click={clearFeaturedKeepsake}>
+                        Clear
+                      </button>
+                    {/if}
+                  </div>
+                  {#if featuredKeepsake}
+                    <div class={`keepsake-card keepsake-card--${featuredKeepsake.tone ?? 'bond'}`}>
+                      <strong>{featuredKeepsake.title}</strong>
+                      <p>{featuredKeepsake.body}</p>
+                    </div>
+                  {:else}
+                    <p class="text-muted">Choose one keepsake from this companion to carry onto your profile and sanctuary.</p>
+                  {/if}
+
+                  {#if featuredCompanionRewards.length > 0}
+                    <div class="keepsake-list">
+                      {#each featuredCompanionRewards as reward (reward.rewardKey)}
+                        <article class={`keepsake-list__item keepsake-list__item--${reward.tone ?? 'bond'}`}>
+                          <div>
+                            <strong>{reward.title}</strong>
+                            <p>{reward.body}</p>
+                          </div>
+                          <button
+                            class="keepsake-action"
+                            type="button"
+                            disabled={keepsakeSaving || featuredKeepsake?.rewardKey === reward.rewardKey}
+                            on:click={() => setFeaturedKeepsake(reward.rewardKey, reward.companionId)}
+                          >
+                            {featuredKeepsake?.rewardKey === reward.rewardKey ? 'Featured' : 'Feature'}
+                          </button>
+                        </article>
+                      {/each}
+                    </div>
+                  {/if}
+
+                  {#if keepsakeError}
+                    <p class="keepsake-error" role="alert">{keepsakeError}</p>
+                  {/if}
+                </div>
               {:else}
                 <p class="text-muted">
                   Set an active companion from your <a class="underline" href="/app/companions">roster</a> to
@@ -323,10 +439,225 @@ let editOpen = false;
     line-height: 1.45;
   }
 
+  .keepsake-badge {
+    margin-top: 0.55rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(214, 190, 141, 0.22);
+    padding: 0.62rem 0.72rem;
+    display: grid;
+    gap: 0.08rem;
+    background: rgba(35, 29, 22, 0.42);
+  }
+
+  .keepsake-badge span {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.62rem;
+    color: rgba(232, 219, 187, 0.72);
+  }
+
+  .keepsake-badge strong {
+    font-size: 0.86rem;
+    color: rgba(248, 241, 227, 0.98);
+  }
+
+  .keepsake-badge--care,
+  .keepsake-card--care,
+  .keepsake-list__item--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.48);
+  }
+
+  .keepsake-badge--social,
+  .keepsake-card--social,
+  .keepsake-list__item--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.48);
+  }
+
+  .keepsake-badge--mission,
+  .keepsake-card--mission,
+  .keepsake-list__item--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.48);
+  }
+
+  .keepsake-badge--play,
+  .keepsake-card--play,
+  .keepsake-list__item--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.48);
+  }
+
+  .keepsake-badge--bond,
+  .keepsake-card--bond,
+  .keepsake-list__item--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.48);
+  }
+
+  .featured-keepsake-panel {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .featured-keepsake-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .featured-keepsake-panel__head h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(248, 241, 227, 0.94);
+  }
+
+  .keepsake-card,
+  .keepsake-list__item {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    padding: 0.8rem 0.9rem;
+  }
+
+  .keepsake-card strong,
+  .keepsake-list__item strong {
+    color: rgba(248, 241, 227, 0.96);
+    font-size: 0.92rem;
+  }
+
+  .keepsake-card p,
+  .keepsake-list__item p {
+    margin: 0.28rem 0 0;
+    color: rgba(224, 214, 192, 0.8);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .keepsake-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .keepsake-list__item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.9rem;
+    align-items: start;
+  }
+
+  .keepsake-action {
+    min-width: 5.6rem;
+    min-height: 2.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.22);
+    background: rgba(214, 190, 141, 0.12);
+    color: rgba(248, 241, 227, 0.94);
+    font-weight: 600;
+  }
+
+  .keepsake-action--ghost {
+    min-width: auto;
+    padding: 0 0.85rem;
+    background: rgba(43, 33, 20, 0.24);
+  }
+
+  .keepsake-action:disabled {
+    opacity: 0.72;
+  }
+
+  .keepsake-error {
+    margin: 0;
+    color: rgba(255, 184, 184, 0.94);
+    font-size: 0.82rem;
+  }
+
   .profile-pulse__actions {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.7rem;
+  }
+
+  .profile-shelf {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .profile-shelf__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .profile-shelf__head h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(248, 241, 227, 0.94);
+  }
+
+  .profile-shelf__head span {
+    color: rgba(221, 209, 185, 0.72);
+    font-size: 0.8rem;
+  }
+
+  .profile-shelf__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .profile-shelf__item {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    padding: 0.8rem;
+    display: grid;
+    gap: 0.12rem;
+  }
+
+  .profile-shelf__item.is-featured {
+    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.24);
+  }
+
+  .profile-shelf__label {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.62rem;
+    color: rgba(232, 219, 187, 0.72);
+  }
+
+  .profile-shelf__item strong {
+    font-size: 0.86rem;
+    color: rgba(248, 241, 227, 0.98);
+    line-height: 1.35;
+  }
+
+  .profile-shelf__item--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.48);
+  }
+
+  .profile-shelf__item--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.48);
+  }
+
+  .profile-shelf__item--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.48);
+  }
+
+  .profile-shelf__item--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.48);
+  }
+
+  .profile-shelf__item--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.48);
   }
 
   .pulse-action {
@@ -380,6 +711,10 @@ let editOpen = false;
     .profile-pulse__actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .profile-shelf__grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: 640px) {
@@ -397,6 +732,14 @@ let editOpen = false;
 
     .profile-pulse__actions {
       grid-template-columns: 1fr;
+    }
+
+    .keepsake-list__item {
+      flex-direction: column;
+    }
+
+    .keepsake-action {
+      width: 100%;
     }
 
     .pulse-action {

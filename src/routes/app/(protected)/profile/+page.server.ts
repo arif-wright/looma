@@ -81,6 +81,15 @@ type AchievementRow = {
   } | null;
 };
 
+type ChapterRewardRow = {
+  reward_key: string;
+  reward_title: string;
+  reward_body: string;
+  reward_tone: string | null;
+  unlocked_at: string | null;
+  companion_id: string;
+};
+
 const PROFILE_COLUMNS =
   'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
@@ -334,6 +343,7 @@ export const load: PageServerLoad = async (event) => {
     statsResult,
     walletResult,
     companion,
+    featuredKeepsakePrefs,
     posts,
     pinned,
     achievements,
@@ -351,6 +361,11 @@ export const load: PageServerLoad = async (event) => {
       .maybeSingle(),
     supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle(),
     fetchFeaturedCompanion(supabase, profileRow.id),
+    supabase
+      .from('user_preferences')
+      .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+      .eq('user_id', user.id)
+      .maybeSingle(),
     fetchPosts(supabase, user.id, true),
     fetchPinnedPreview(supabase, user.id, true),
     fetchRecentAchievements(supabase, user.id),
@@ -375,6 +390,9 @@ export const load: PageServerLoad = async (event) => {
   if (walletResult.error) {
     console.error('[profile] wallet lookup failed', walletResult.error);
   }
+  if (featuredKeepsakePrefs.error && featuredKeepsakePrefs.error.code !== 'PGRST116') {
+    console.error('[profile] featured keepsake preference lookup failed', featuredKeepsakePrefs.error);
+  }
   if (companionCountResult.error) {
     console.error('[profile] companion count lookup failed', companionCountResult.error);
   }
@@ -395,6 +413,40 @@ export const load: PageServerLoad = async (event) => {
   const isFollowing = privacyStatus?.isFollowing ?? false;
   const requested = privacyStatus?.requested ?? false;
   const gated = false;
+
+  const featuredCompanionRewardsResult = companion
+    ? await supabase
+        .from('companion_chapter_rewards')
+        .select('reward_key, reward_title, reward_body, reward_tone, unlocked_at, companion_id')
+        .eq('owner_id', user.id)
+        .eq('companion_id', companion.id)
+        .order('unlocked_at', { ascending: false })
+    : { data: [], error: null };
+
+  if (featuredCompanionRewardsResult.error) {
+    console.error('[profile] featured companion rewards lookup failed', featuredCompanionRewardsResult.error);
+  }
+
+  const featuredRewardKey =
+    typeof featuredKeepsakePrefs.data?.featured_companion_reward_key === 'string'
+      ? featuredKeepsakePrefs.data.featured_companion_reward_key
+      : null;
+  const featuredRewardCompanionId =
+    typeof featuredKeepsakePrefs.data?.featured_companion_reward_companion_id === 'string'
+      ? featuredKeepsakePrefs.data.featured_companion_reward_companion_id
+      : null;
+  const featuredCompanionRewards = ((featuredCompanionRewardsResult.data ?? []) as ChapterRewardRow[]).map((row) => ({
+    rewardKey: row.reward_key,
+    title: row.reward_title,
+    body: row.reward_body,
+    tone: row.reward_tone,
+    unlockedAt: row.unlocked_at,
+    companionId: row.companion_id
+  }));
+  const featuredKeepsake =
+    featuredCompanionRewards.find(
+      (reward) => reward.rewardKey === featuredRewardKey && reward.companionId === featuredRewardCompanionId
+    ) ?? null;
 
   const { data: reqs, error: reqError } = await service
     .from('follow_requests')
@@ -464,6 +516,8 @@ export const load: PageServerLoad = async (event) => {
     requested,
     gated,
     featuredCompanion: companion,
+    featuredCompanionRewards,
+    featuredKeepsake,
     posts: posts.items,
     nextCursor: posts.nextCursor,
     pinnedPost: pinned,

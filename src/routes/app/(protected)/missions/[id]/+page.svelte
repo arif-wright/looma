@@ -112,6 +112,12 @@
         <div class={`banner banner--${banner.tone}`}>{banner.text}</div>
       {/if}
 
+      <GlassCard class={`detail-card detail-card--chapter detail-card--${data.missionChapterFrame.tone}`}>
+        <p class="eyebrow">Current chapter</p>
+        <h2>{data.missionChapterFrame.title}</h2>
+        <p class="support-copy">{data.missionChapterFrame.body}</p>
+      </GlassCard>
+
       <GlassCard class="detail-card">
         <div class="hero-meta">
           <div class="meta-group">
@@ -186,6 +192,43 @@
   .detail-card {
     display: grid;
     gap: 0.9rem;
+  }
+
+  .detail-card--chapter {
+    border: 1px solid rgba(236, 216, 193, 0.08);
+    background:
+      linear-gradient(180deg, rgba(30, 24, 18, 0.78), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 56%);
+  }
+
+  .detail-card--care {
+    background:
+      linear-gradient(180deg, rgba(18, 35, 31, 0.82), rgba(11, 18, 20, 0.92)),
+      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 56%);
+  }
+
+  .detail-card--social {
+    background:
+      linear-gradient(180deg, rgba(42, 26, 25, 0.82), rgba(16, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 56%);
+  }
+
+  .detail-card--mission {
+    background:
+      linear-gradient(180deg, rgba(38, 30, 19, 0.82), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 56%);
+  }
+
+  .detail-card--play {
+    background:
+      linear-gradient(180deg, rgba(18, 30, 37, 0.82), rgba(11, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 56%);
+  }
+
+  .detail-card--bond {
+    background:
+      linear-gradient(180deg, rgba(34, 28, 24, 0.82), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
   }
 
   .hero-meta {

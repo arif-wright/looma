@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import type { FeedItem } from '$lib/social/types';
   import type { CompanionRitual } from '$lib/companions/rituals';
 
@@ -59,10 +60,31 @@
     unlockedAt: string | null;
   };
 
+  type SanctuaryShelfReward = ChapterReward & {
+    featured: boolean;
+  };
+
+  type ChapterReveal = {
+    id: string;
+    title: string;
+    body: string;
+    href: string;
+  };
+
+  type EraAction = {
+    title: string;
+    body: string;
+    primaryLabel: string;
+    primaryHref: string;
+    secondaryLabel: string;
+    secondaryHref: string;
+  };
+
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
   export let journalSummary: string | null = null;
   export let journalUpdatedAt: string | null = null;
+  export let chapterReveal: ChapterReveal | null = null;
   export let missionTitle: string | null = null;
   export let missionSummary: string | null = null;
   export let missionHref = '/app/missions';
@@ -76,11 +98,13 @@
   export let hasDailyCheckin = false;
   export let journalMoments: JournalMoment[] = [];
   export let sanctuaryNudge: SanctuaryNudge | null = null;
+  export let eraAction: EraAction | null = null;
   export let dailyArc: DailyArc | null = null;
   export let dailyArcRecap: DailyArcRecap | null = null;
   export let weeklyArc: WeeklyArc | null = null;
   export let chapterMilestones: ChapterMilestone[] = [];
   export let chapterRewards: ChapterReward[] = [];
+  export let sanctuaryShelfRewards: SanctuaryShelfReward[] = [];
 
   const ritualSummary = (list: CompanionRitual[]) => {
     const total = Array.isArray(list) ? list.length : 0;
@@ -113,9 +137,49 @@
         ? `${daily.completed}/${daily.total} rituals complete. Next: ${daily.next.title}.`
         : 'You checked in and completed today’s rituals. Come back any time for another small moment.'
       : `${companionName} is still waiting to hear from you today.`);
+  $: shelfLead = sanctuaryShelfRewards[0] ?? null;
+  let revealSeenId = '';
+  let revealDismissed = false;
+
+  $: if (browser) {
+    const currentRevealId = chapterReveal?.id ?? '';
+    if (!currentRevealId) {
+      revealSeenId = '';
+      revealDismissed = false;
+    } else if (currentRevealId !== revealSeenId) {
+      revealSeenId = currentRevealId;
+      revealDismissed = window.localStorage.getItem(`looma:chapterRevealDismissed:${currentRevealId}`) === 'true';
+    }
+  }
+
+  const dismissChapterReveal = () => {
+    if (!chapterReveal) return;
+    revealDismissed = true;
+    if (!browser) return;
+    window.localStorage.setItem(`looma:chapterRevealDismissed:${chapterReveal.id}`, 'true');
+  };
 </script>
 
 <section class="secondary-stack" aria-label="Home actions">
+  {#if chapterReveal && !revealDismissed}
+    <article class="focus-card focus-card--reveal" aria-label="Chapter opened">
+      <div class="chapter-reveal__head">
+        <div>
+          <span class="focus-card__eyebrow">Chapter opened</span>
+          <h2>{chapterReveal.title}</h2>
+        </div>
+        <button type="button" class="chapter-reveal__dismiss" on:click={dismissChapterReveal} aria-label="Dismiss chapter reveal">
+          Later
+        </button>
+      </div>
+      <p>{chapterReveal.body}</p>
+      <div class="chapter-reveal__actions">
+        <a class="focus-card__link" href={chapterReveal.href}>Open journal</a>
+        <a class="focus-card__link focus-card__link--ghost" href={companionHref}>Visit companion</a>
+      </div>
+    </article>
+  {/if}
+
   <article class="focus-card focus-card--ritual">
     <div class="focus-card__eyebrow">Daily sanctuary</div>
     <div class="focus-card__row">
@@ -156,6 +220,50 @@
       </div>
     {/if}
   </article>
+
+  {#if eraAction}
+    <article class="focus-card focus-card--era" aria-label="Era guidance">
+      <div class="focus-card__eyebrow">Era guidance</div>
+      <div class="focus-card__row">
+        <div>
+          <h2>{eraAction.title}</h2>
+          <p>{eraAction.body}</p>
+        </div>
+        <a class="focus-card__link" href={eraAction.primaryHref}>{eraAction.primaryLabel}</a>
+      </div>
+      <div class="chapter-reveal__actions">
+        <a class="focus-card__link focus-card__link--ghost" href={eraAction.secondaryHref}>
+          {eraAction.secondaryLabel}
+        </a>
+      </div>
+    </article>
+  {/if}
+
+  {#if sanctuaryShelfRewards.length > 0}
+    <article class="focus-card focus-card--shelf">
+      <div class="focus-card__eyebrow">Sanctuary shelf</div>
+      <div class="focus-card__row">
+        <div>
+          <h2>{shelfLead?.featured ? 'Your featured keepsake is shaping today' : `${companionName}'s keepsakes are gathering meaning`}</h2>
+          <p>
+            {shelfLead?.featured
+              ? `${shelfLead.title} is leading the atmosphere of your sanctuary right now.`
+              : `Recent companion keepsakes are starting to shape the feel of your daily space.`}
+          </p>
+        </div>
+        <a class="focus-card__link" href={companionHref}>Curate</a>
+      </div>
+      <div class="shelf-grid" aria-label="Sanctuary shelf keepsakes">
+        {#each sanctuaryShelfRewards as reward (reward.rewardKey)}
+          <a class={`shelf-item shelf-item--${reward.tone} ${reward.featured ? 'is-featured' : ''}`} href={companionHref}>
+            <span class="shelf-item__label">{reward.featured ? 'Featured' : 'Artifact'}</span>
+            <strong>{reward.title}</strong>
+            <p>{reward.body}</p>
+          </a>
+        {/each}
+      </div>
+    </article>
+  {/if}
 
   <article class="focus-card focus-card--journal">
     <div class="focus-card__eyebrow">Journal</div>
@@ -320,6 +428,114 @@
     font-size: 0.75rem;
   }
 
+  .focus-card--reveal {
+    border-color: rgba(217, 189, 126, 0.28);
+    background:
+      linear-gradient(180deg, rgba(34, 27, 19, 0.94), rgba(15, 18, 20, 0.98)),
+      radial-gradient(circle at top left, rgba(217, 189, 126, 0.18), transparent 48%);
+  }
+
+  .focus-card--era {
+    border-color: rgba(217, 189, 126, 0.2);
+    background:
+      linear-gradient(180deg, rgba(27, 24, 19, 0.94), rgba(12, 16, 18, 0.98)),
+      radial-gradient(circle at top left, rgba(193, 156, 73, 0.14), transparent 52%);
+  }
+
+  .chapter-reveal__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .chapter-reveal__dismiss {
+    min-height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 189, 126, 0.18);
+    background: rgba(217, 189, 126, 0.08);
+    color: rgba(253, 245, 228, 0.88);
+    padding: 0 0.78rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .chapter-reveal__actions {
+    margin-top: 0.85rem;
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .focus-card__link--ghost {
+    background: rgba(217, 189, 126, 0.08);
+  }
+
+  .shelf-grid {
+    margin-top: 0.85rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .shelf-item {
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 190, 139, 0.14);
+    background: rgba(217, 189, 126, 0.06);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.82rem;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .shelf-item.is-featured {
+    box-shadow: 0 0 0 1px rgba(212, 190, 139, 0.2);
+  }
+
+  .shelf-item__label {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.72);
+  }
+
+  .shelf-item strong {
+    font-size: 0.84rem;
+    line-height: 1.3;
+    color: rgba(250, 243, 229, 0.96);
+  }
+
+  .shelf-item p {
+    color: rgba(224, 216, 200, 0.76);
+    font-size: 0.78rem;
+  }
+
+  .shelf-item--care {
+    border-color: rgba(132, 214, 179, 0.22);
+    background: rgba(21, 41, 36, 0.44);
+  }
+
+  .shelf-item--social {
+    border-color: rgba(233, 162, 122, 0.22);
+    background: rgba(45, 27, 24, 0.44);
+  }
+
+  .shelf-item--mission {
+    border-color: rgba(222, 186, 103, 0.22);
+    background: rgba(43, 33, 20, 0.44);
+  }
+
+  .shelf-item--play {
+    border-color: rgba(124, 220, 224, 0.22);
+    background: rgba(20, 36, 45, 0.44);
+  }
+
+  .shelf-item--bond {
+    border-color: rgba(214, 190, 141, 0.22);
+    background: rgba(35, 29, 22, 0.44);
+  }
+
   .sanctuary-progress {
     margin-top: 0.7rem;
     display: flex;
@@ -473,7 +689,17 @@
     color: rgba(250, 243, 229, 0.98);
   }
 
+  @media (min-width: 720px) {
+    .shelf-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
   @media (max-width: 359px) {
+    .chapter-reveal__actions {
+      display: grid;
+    }
+
     .shortcut-row {
       grid-template-columns: 1fr;
     }

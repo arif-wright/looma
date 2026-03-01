@@ -9,6 +9,30 @@
   export let data: PageData;
   type TimelineFilter = 'all' | 'memory' | 'care' | 'checkin' | 'mission' | 'game' | 'social';
   type DateWindow = 'all' | '7d' | '30d';
+  type ChapterHistoryEntry = {
+    id: string;
+    title: string;
+    body: string;
+    occurredAt: string;
+    tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+  };
+  type RelationshipEra = {
+    id: string;
+    title: string;
+    body: string;
+    periodLabel: string;
+    emphasis: 'care' | 'social' | 'mission' | 'play' | 'quiet' | 'bond';
+  };
+  type JournalGuidance = {
+    title: string;
+    body: string;
+    primaryLabel: string;
+    primaryHref: string;
+    secondaryLabel: string;
+    secondaryHref: string;
+    ritualKey: string | null;
+    ritualLabel: string | null;
+  };
 
   let statusMessage: string | null = null;
   let statusTone: 'default' | 'success' | 'error' = 'default';
@@ -89,17 +113,17 @@
     }
   };
 
-  const runGuidedRitual = async () => {
-    if (!data.selectedCompanionId || !data.ritualGuide || ritualActing) return;
+  const runGuidedRitual = async (guidance: JournalGuidance | null) => {
+    if (!data.selectedCompanionId || !guidance?.ritualKey || ritualActing) return;
     ritualActing = true;
-    setStatus(`${data.ritualGuide.title}…`);
+    setStatus(`${guidance.title}…`);
     try {
       const res = await fetch('/api/companions/rituals/act', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           companionId: data.selectedCompanionId,
-          ritualKey: data.ritualGuide.ritualKey
+          ritualKey: guidance.ritualKey
         })
       });
       const payload = await res.json().catch(() => null);
@@ -124,6 +148,9 @@
   $: searchableTimeline = activeFilter === 'all' ? data.timeline : data.timeline.filter((item) => item.kind === activeFilter);
   $: windowedTimeline = searchableTimeline.filter((item) => withinWindow(item.occurredAt, activeWindow));
   $: normalizedQuery = query.trim().toLowerCase();
+  $: chapterHistory = ((data.chapterHistory ?? []) as ChapterHistoryEntry[]).slice(0, 6);
+  $: relationshipEras = ((data.relationshipEras ?? []) as RelationshipEra[]).slice(0, 4);
+  $: journalGuidance = (data.journalGuidance ?? null) as JournalGuidance | null;
   $: filteredTimeline =
     normalizedQuery.length === 0
       ? windowedTimeline
@@ -141,6 +168,15 @@
         body: milestone.body
       });
       if (cards.length >= 4) return cards.slice(0, 4);
+    }
+    const revealMoment = data.timeline.find((item) => item.meta === 'Chapter reveal');
+    if (revealMoment) {
+      cards.push({
+        id: revealMoment.id,
+        label: 'Chapter reveal',
+        title: revealMoment.title,
+        body: revealMoment.body
+      });
     }
     const noticedMoment = data.timeline.find((item) => item.meta === 'Noticed by companion');
     if (noticedMoment) {
@@ -471,6 +507,25 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
+              <p class="eyebrow">Shelf interpretation</p>
+              <h2>{data.keepsakeInterpretation?.title ?? 'What a keepsake means right now'}</h2>
+            </div>
+          </div>
+
+          {#if data.keepsakeInterpretation}
+            <div class={`keepsake-interpretation keepsake-interpretation--${data.keepsakeInterpretation.tone}`}>
+              <span class="milestone-card__label">Featured keepsake</span>
+              <strong>{data.keepsakeInterpretation.rewardTitle}</strong>
+              <p class="summary-text summary-text--compact">{data.keepsakeInterpretation.body}</p>
+            </div>
+          {:else}
+            <p class="empty-copy">Feature a keepsake on Profile or Companions to let this journal explain what it means in the relationship.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
               <p class="eyebrow">Keepsakes</p>
               <h2>Chapter rewards</h2>
             </div>
@@ -494,17 +549,81 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
-              <p class="eyebrow">Companion guidance</p>
-              <h2>{data.ritualGuide?.title ?? 'A gentle next step'}</h2>
+              <p class="eyebrow">Relationship eras</p>
+              <h2>The bond over time</h2>
             </div>
           </div>
 
-          {#if data.ritualGuide}
-            <p class="summary-text summary-text--compact">{data.ritualGuide.body}</p>
+          {#if relationshipEras.length > 0}
+            <div class="era-grid">
+              {#each relationshipEras as era}
+                <article class={`era-card era-card--${era.emphasis}`}>
+                  <div class="era-card__head">
+                    <strong>{era.title}</strong>
+                    <span>{era.periodLabel}</span>
+                  </div>
+                  <p>{era.body}</p>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <p class="empty-copy">Relationship eras will appear once this companion has moved through a few clearer chapters.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Chapter history</p>
+              <h2>Past openings</h2>
+            </div>
+          </div>
+
+          {#if chapterHistory.length > 0}
+            <div class="chapter-history">
+              {#each chapterHistory as entry}
+                <article class="chapter-history__item">
+                  <div class="chapter-history__head">
+                    <strong>{entry.title}</strong>
+                    <span>{formatWhen(entry.occurredAt)}</span>
+                  </div>
+                  <p>{entry.body}</p>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <p class="empty-copy">Past chapter openings will collect here as new keepsakes are revealed.</p>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
+              <p class="eyebrow">Companion guidance</p>
+              <h2>{journalGuidance?.title ?? 'A gentle next step'}</h2>
+            </div>
+          </div>
+
+          {#if journalGuidance}
+            <p class="summary-text summary-text--compact">{journalGuidance.body}</p>
             <div class="action-row">
-              <button type="button" class="btn btn--primary" disabled={ritualActing} on:click={runGuidedRitual}>
-                {ritualActing ? 'Beginning…' : data.ritualGuide.ctaLabel}
-              </button>
+              {#if journalGuidance.ritualKey}
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  disabled={ritualActing}
+                  on:click={() => runGuidedRitual(journalGuidance)}
+                >
+                  {ritualActing ? 'Beginning…' : journalGuidance.ritualLabel ?? journalGuidance.primaryLabel}
+                </button>
+              {:else}
+                <a class="btn btn--primary btn--link" href={journalGuidance.primaryHref}>
+                  {journalGuidance.primaryLabel}
+                </a>
+              {/if}
+              <a class="btn btn--ghost btn--link" href={journalGuidance.secondaryHref}>
+                {journalGuidance.secondaryLabel}
+              </a>
             </div>
           {:else}
             <p class="empty-copy">Guided rituals will appear here once this companion shows a clearer pattern.</p>
@@ -997,6 +1116,148 @@
   .milestone-card p {
     color: rgba(226, 232, 240, 0.9);
     line-height: 1.5;
+  }
+
+  .chapter-history {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .era-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .era-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    padding: 0.95rem;
+    display: grid;
+    gap: 0.32rem;
+    background: rgba(15, 23, 42, 0.32);
+  }
+
+  .era-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
+
+  .era-card__head strong {
+    color: rgba(241, 245, 249, 0.97);
+    font-size: 0.95rem;
+  }
+
+  .era-card__head span {
+    color: rgba(148, 163, 184, 0.82);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .era-card p {
+    color: rgba(226, 232, 240, 0.88);
+    line-height: 1.5;
+  }
+
+  .era-card--care {
+    border-color: rgba(132, 214, 179, 0.2);
+    background: rgba(21, 41, 36, 0.42);
+  }
+
+  .era-card--social {
+    border-color: rgba(233, 162, 122, 0.2);
+    background: rgba(45, 27, 24, 0.42);
+  }
+
+  .era-card--mission {
+    border-color: rgba(222, 186, 103, 0.2);
+    background: rgba(43, 33, 20, 0.42);
+  }
+
+  .era-card--play {
+    border-color: rgba(124, 220, 224, 0.2);
+    background: rgba(20, 36, 45, 0.42);
+  }
+
+  .era-card--quiet {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(18, 24, 38, 0.42);
+  }
+
+  .era-card--bond {
+    border-color: rgba(214, 190, 141, 0.2);
+    background: rgba(35, 29, 22, 0.42);
+  }
+
+  .chapter-history__item {
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.32);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.28rem;
+  }
+
+  .chapter-history__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
+
+  .chapter-history__head strong {
+    color: rgba(241, 245, 249, 0.97);
+    font-size: 0.92rem;
+  }
+
+  .chapter-history__head span {
+    color: rgba(148, 163, 184, 0.82);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .chapter-history__item p {
+    color: rgba(226, 232, 240, 0.88);
+    line-height: 1.5;
+  }
+
+  .keepsake-interpretation {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.95rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .keepsake-interpretation strong {
+    font-size: 0.98rem;
+    color: rgba(241, 245, 249, 0.98);
+  }
+
+  .keepsake-interpretation--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.48);
+  }
+
+  .keepsake-interpretation--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.48);
+  }
+
+  .keepsake-interpretation--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.48);
+  }
+
+  .keepsake-interpretation--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.48);
+  }
+
+  .keepsake-interpretation--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.48);
   }
 
   .reason-list {

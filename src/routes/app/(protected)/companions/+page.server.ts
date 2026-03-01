@@ -100,6 +100,19 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     .select('companion_id, reward_key, reward_title, reward_body, reward_tone, unlocked_at')
     .eq('owner_id', userId)
     .order('unlocked_at', { ascending: false });
+  const chapterRevealHistoryResult = await supabase
+    .from('companion_journal_entries')
+    .select('companion_id, id, title, body, created_at, meta_json')
+    .eq('owner_id', userId)
+    .eq('source_type', 'system')
+    .contains('meta_json', { generatedBy: 'chapter_reward_reveal' })
+    .order('created_at', { ascending: false })
+    .limit(24);
+  const featuredKeepsakePreferenceResult = await supabase
+    .from('user_preferences')
+    .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+    .eq('user_id', userId)
+    .maybeSingle();
 
   let evolutionStagesByCompanionId: Record<string, string> = {};
   try {
@@ -195,6 +208,30 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     });
     return acc;
   }, {});
+  const chapterRevealHistoryByCompanionId = ((chapterRevealHistoryResult.data ?? []) as Array<Record<string, unknown>>).reduce<
+    Record<string, Array<{ id: string; title: string; body: string; createdAt: string | null }>>
+  >((acc, row) => {
+    const companionId = typeof row.companion_id === 'string' ? row.companion_id : '';
+    if (!companionId) return acc;
+    acc[companionId] ??= [];
+    acc[companionId].push({
+      id: typeof row.id === 'string' ? row.id : `reveal-${acc[companionId].length}`,
+      title: typeof row.title === 'string' ? row.title : 'Chapter opened',
+      body: typeof row.body === 'string' ? row.body : '',
+      createdAt: typeof row.created_at === 'string' ? row.created_at : null
+    });
+    return acc;
+  }, {});
+  const featuredKeepsakePreference = {
+    rewardKey:
+      typeof featuredKeepsakePreferenceResult.data?.featured_companion_reward_key === 'string'
+        ? featuredKeepsakePreferenceResult.data.featured_companion_reward_key
+        : null,
+    companionId:
+      typeof featuredKeepsakePreferenceResult.data?.featured_companion_reward_companion_id === 'string'
+        ? featuredKeepsakePreferenceResult.data.featured_companion_reward_companion_id
+        : null
+  };
 
   return {
     companions,
@@ -207,6 +244,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     rituals,
     evolutionStagesByCompanionId,
     archetypeMetadataByCompanionId,
-    chapterRewardsByCompanionId
+    chapterRewardsByCompanionId,
+    chapterRevealHistoryByCompanionId,
+    featuredKeepsakePreference
   };
 };

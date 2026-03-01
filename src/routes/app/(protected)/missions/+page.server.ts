@@ -14,12 +14,103 @@ type MissionCard = MissionDefinition & {
   created_at?: string | null;
 };
 
+type MissionThreadType = 'identity' | 'action' | 'world';
+type MissionChapterTone = 'care' | 'social' | 'mission' | 'play' | 'bond' | 'quiet';
+
+type MissionChapterFrame = {
+  tone: MissionChapterTone;
+  eyebrow: string;
+  title: string;
+  body: string;
+  preferredTypes: MissionThreadType[];
+};
+
 const byCreatedDesc = (a: MissionCard, b: MissionCard) =>
   Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? '');
+
+const missionTypeRank = (preferredTypes: MissionThreadType[], missionType: MissionThreadType) => {
+  const matchIndex = preferredTypes.findIndex((entry) => entry === missionType);
+  return matchIndex === -1 ? preferredTypes.length : matchIndex;
+};
+
+const deriveMissionChapterFrame = (args: {
+  companionName: string | null;
+  reward:
+    | {
+        title: string;
+        tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+      }
+    | null;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const rewardTitle = args.reward?.title;
+
+  switch (args.reward?.tone) {
+    case 'care':
+      return {
+        tone: 'care',
+        eyebrow: 'Care chapter',
+        title: `${name} needs a steady thread`,
+        body: rewardTitle
+          ? `${rewardTitle} is shaping the relationship toward consistency. Identity and gentle action missions will land best right now.`
+          : `${name} is responding to steadiness. Identity and gentle action missions will land best right now.`,
+        preferredTypes: ['identity', 'action']
+      } satisfies MissionChapterFrame;
+    case 'social':
+      return {
+        tone: 'social',
+        eyebrow: 'Shared thread',
+        title: `${name} is carrying the bond outward`,
+        body: rewardTitle
+          ? `${rewardTitle} is turning this chapter toward expression and connection. Identity and world missions fit better than solitary grind right now.`
+          : `${name} is in a socially expressive chapter. Identity and world missions fit better than solitary grind right now.`,
+        preferredTypes: ['identity', 'world']
+      } satisfies MissionChapterFrame;
+    case 'mission':
+      return {
+        tone: 'mission',
+        eyebrow: 'Wayfinding chapter',
+        title: `${name} wants direction`,
+        body: rewardTitle
+          ? `${rewardTitle} is sharpening the bond toward purpose. World and action missions should sit at the front of the day.`
+          : `${name} is in a wayfinding phase. World and action missions should sit at the front of the day.`,
+        preferredTypes: ['world', 'action']
+      } satisfies MissionChapterFrame;
+    case 'play':
+      return {
+        tone: 'play',
+        eyebrow: 'Bright play',
+        title: `${name} is bonding through lightness`,
+        body: rewardTitle
+          ? `${rewardTitle} is keeping the chapter playful. Action missions and lighter identity threads will land better than heavy world-building today.`
+          : `${name} is in a playful chapter. Action missions and lighter identity threads will land better than heavy world-building today.`,
+        preferredTypes: ['action', 'identity']
+      } satisfies MissionChapterFrame;
+    case 'bond':
+      return {
+        tone: 'bond',
+        eyebrow: 'Deep bond',
+        title: `${name} is asking for sincerity`,
+        body: rewardTitle
+          ? `${rewardTitle} is pulling the relationship inward. Identity missions will usually feel more true than outward proving threads right now.`
+          : `${name} is in a deeper bond chapter. Identity missions will usually feel more true than outward proving threads right now.`,
+        preferredTypes: ['identity', 'action']
+      } satisfies MissionChapterFrame;
+    default:
+      return {
+        tone: 'quiet',
+        eyebrow: 'Open chapter',
+        title: 'Let the next thread gather naturally',
+        body: `${name} is between clearer phases. Start with the mission that feels easiest to return to and let momentum build from there.`,
+        preferredTypes: ['identity', 'action', 'world']
+      } satisfies MissionChapterFrame;
+  }
+};
 
 export const load: PageServerLoad = async (event) => {
   const parent = await event.parent();
   const { supabase, user } = await requireUserServer(event);
+  const activeCompanion = parent.activeCompanion ?? null;
 
   const [stats, availableRes, activeRes, recentRes] = await Promise.all([
     getPlayerStats(event, supabase),
@@ -80,6 +171,76 @@ export const load: PageServerLoad = async (event) => {
 
   const activeMissionIds = new Set(activeSessions.map((row) => row.mission_id));
 
+  let chapterReward:
+    | {
+        title: string;
+        tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+      }
+    | null = null;
+
+  if (activeCompanion?.id) {
+    const [preferenceRes, rewardsRes] = await Promise.all([
+      supabase
+        .from('user_preferences')
+        .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('companion_chapter_rewards')
+        .select('reward_key, reward_title, reward_tone, unlocked_at')
+        .eq('owner_id', user.id)
+        .eq('companion_id', activeCompanion.id)
+        .order('unlocked_at', { ascending: false })
+        .limit(6)
+    ]);
+
+    const featuredRewardKey =
+      typeof preferenceRes.data?.featured_companion_reward_key === 'string'
+        ? preferenceRes.data.featured_companion_reward_key
+        : null;
+    const featuredCompanionId =
+      typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
+        ? preferenceRes.data.featured_companion_reward_companion_id
+        : null;
+
+    const rewardRows = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).flatMap((row) => {
+      const tone = row.reward_tone;
+      if (
+        tone !== 'care' &&
+        tone !== 'social' &&
+        tone !== 'mission' &&
+        tone !== 'play' &&
+        tone !== 'bond'
+      ) {
+        return [];
+      }
+      return [
+        {
+          key: typeof row.reward_key === 'string' ? row.reward_key : 'reward',
+          title: typeof row.reward_title === 'string' ? row.reward_title : 'Companion keepsake',
+          tone
+        }
+      ];
+    }) as Array<{ key: string; title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' }>;
+
+    chapterReward =
+      (featuredCompanionId === activeCompanion.id && featuredRewardKey
+        ? rewardRows.find((row) => row.key === featuredRewardKey) ?? null
+        : null) ??
+      rewardRows[0] ??
+      null;
+  }
+
+  const missionChapterFrame = deriveMissionChapterFrame({
+    companionName: activeCompanion?.name ?? null,
+    reward: chapterReward
+      ? {
+          title: chapterReward.title,
+          tone: chapterReward.tone
+        }
+      : null
+  });
+
   const activeMissions = activeSessions
     .map((session) => {
       const mission = missionById.get(session.mission_id);
@@ -90,7 +251,14 @@ export const load: PageServerLoad = async (event) => {
 
   const availableMissions = Array.from(missionById.values())
     .filter((mission) => !activeMissionIds.has(mission.id) && mission.status === 'available')
-    .sort(byCreatedDesc)
+    .sort((a, b) => {
+      const typeA = (a.type === 'identity' || a.type === 'action' || a.type === 'world' ? a.type : 'identity') as MissionThreadType;
+      const typeB = (b.type === 'identity' || b.type === 'action' || b.type === 'world' ? b.type : 'identity') as MissionThreadType;
+      const rankA = missionTypeRank(missionChapterFrame.preferredTypes, typeA);
+      const rankB = missionTypeRank(missionChapterFrame.preferredTypes, typeB);
+      if (rankA !== rankB) return rankA - rankB;
+      return byCreatedDesc(a, b);
+    })
     .slice(0, 18);
 
   const recentCompletions = recentSessions
@@ -103,7 +271,8 @@ export const load: PageServerLoad = async (event) => {
 
   return {
     stats: stats ?? null,
-    activeCompanion: parent.activeCompanion ?? null,
+    activeCompanion,
+    missionChapterFrame,
     activeMissions,
     availableMissions,
     recentCompletions

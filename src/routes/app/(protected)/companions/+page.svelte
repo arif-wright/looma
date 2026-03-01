@@ -69,6 +69,21 @@
   };
 
   type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
+  type EraView = {
+    title: string;
+    body: string;
+    label: string;
+    tone: KeepsakeTone | 'quiet';
+  };
+
+  type EraAction = {
+    title: string;
+    body: string;
+    primaryLabel: string;
+    primaryHref: string;
+    secondaryLabel: string;
+    secondaryHref: string;
+  };
 
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
@@ -196,6 +211,14 @@
 
   const bondMilestones = (data.bondMilestones ?? []) as BondAchievementStatus[];
   const chapterRewardsByCompanionId = (data.chapterRewardsByCompanionId ?? {}) as Record<string, ChapterReward[]>;
+  const chapterRevealHistoryByCompanionId = (data.chapterRevealHistoryByCompanionId ?? {}) as Record<
+    string,
+    Array<{ id: string; title: string; body: string; createdAt: string | null }>
+  >;
+  const featuredKeepsakePreference = (data.featuredKeepsakePreference ?? {
+    rewardKey: null,
+    companionId: null
+  }) as { rewardKey: string | null; companionId: string | null };
   let maxSlots = data.maxSlots ?? 3;
   const companionState = createCompanionRosterState(sortBySlot((data.companions ?? []) as Companion[]), data.activeCompanionId ?? null);
   let rosterState = get(companionState);
@@ -566,6 +589,24 @@
     activeCompanion?.id ? `/app/memory?companion=${activeCompanion.id}` : '/app/memory';
   $: activeCompanionSanctuaryHref = '/app/home';
   $: activeChapterRewards = activeCompanion?.id ? chapterRewardsByCompanionId[activeCompanion.id] ?? [] : [];
+  $: activeChapterHistory = activeCompanion?.id ? chapterRevealHistoryByCompanionId[activeCompanion.id] ?? [] : [];
+  $: activeShelfRewards =
+    activeChapterRewards.length > 0
+      ? [
+          ...activeChapterRewards.filter(
+            (reward) =>
+              reward.rewardKey === featuredKeepsakePreference.rewardKey &&
+              activeCompanion?.id === featuredKeepsakePreference.companionId
+          ),
+          ...activeChapterRewards.filter(
+            (reward) =>
+              !(
+                reward.rewardKey === featuredKeepsakePreference.rewardKey &&
+                activeCompanion?.id === featuredKeepsakePreference.companionId
+              )
+          )
+        ].slice(0, 3)
+      : [];
   $: activeKeepsake = activeChapterRewards[0] ?? null;
   $: activeKeepsakeTone =
     activeKeepsake?.tone === 'care' ||
@@ -591,6 +632,167 @@
     ? activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label
     : 'Quiet';
   $: activeBondLabel = activeCompanion ? `Bond Lv ${getBondLevel(activeCompanion)}` : 'Bond unavailable';
+  $: activeEra = (() => {
+    if (!activeCompanion) {
+      return {
+        title: 'First era waiting',
+        body: 'Spend a few days together and the relationship will start resolving into clearer eras.',
+        label: 'Quiet',
+        tone: 'quiet'
+      } satisfies EraView;
+    }
+    const latestReveal = activeChapterHistory[0] ?? null;
+    if (activeKeepsakeTone === 'care') {
+      return {
+        title: 'Era of Steady Return',
+        body: latestReveal?.body ?? `${activeCompanion.name} is in a chapter shaped by consistency, tending, and small faithful returns.`,
+        label: 'Care era',
+        tone: 'care'
+      } satisfies EraView;
+    }
+    if (activeKeepsakeTone === 'social') {
+      return {
+        title: 'Era of Shared Thread',
+        body: latestReveal?.body ?? `${activeCompanion.name} is in a chapter where closeness keeps reaching outward through messages, posts, and shared moments.`,
+        label: 'Social era',
+        tone: 'social'
+      } satisfies EraView;
+    }
+    if (activeKeepsakeTone === 'mission') {
+      return {
+        title: 'Era of Wayfinding',
+        body: latestReveal?.body ?? `${activeCompanion.name} is in a chapter where purpose and direction are giving the relationship a clearer path.`,
+        label: 'Mission era',
+        tone: 'mission'
+      } satisfies EraView;
+    }
+    if (activeKeepsakeTone === 'play') {
+      return {
+        title: 'Era of Bright Play',
+        body: latestReveal?.body ?? `${activeCompanion.name} is in a chapter where joy and lightness are carrying more of the bond.`,
+        label: 'Play era',
+        tone: 'play'
+      } satisfies EraView;
+    }
+    if (activeKeepsakeTone === 'bond') {
+      return {
+        title: 'Era of Deep Bond',
+        body: latestReveal?.body ?? `${activeCompanion.name} is in a chapter where trust and affection feel more settled and mutual.`,
+        label: 'Bond era',
+        tone: 'bond'
+      } satisfies EraView;
+    }
+    return {
+      title: 'Era of Gathering Quiet',
+      body: `${activeCompanion.name} is still gathering enough moments for the next clearer phase to emerge.`,
+      label: 'Quiet',
+      tone: 'quiet'
+    } satisfies EraView;
+  })();
+  $: activeEraAction = (() => {
+    if (!activeCompanion) {
+      return {
+        title: 'Begin with one small return',
+        body: 'Your first few check-ins will give the relationship enough shape for clearer guidance to emerge.',
+        primaryLabel: 'Go to sanctuary',
+        primaryHref: '/app/home',
+        secondaryLabel: 'Open journal',
+        secondaryHref: '/app/memory'
+      } satisfies EraAction;
+    }
+
+    switch (activeEra.tone) {
+      case 'care':
+        return {
+          title: 'Treat this as a tending chapter',
+          body: `${activeCompanion.name} responds best to steadiness right now. Feed the bond with one ritual, then let the quiet hold.`,
+          primaryLabel: 'Start a ritual',
+          primaryHref: activeCompanionSanctuaryHref,
+          secondaryLabel: 'Open journal',
+          secondaryHref: activeCompanionJournalHref
+        } satisfies EraAction;
+      case 'social':
+        return {
+          title: 'Carry the bond outward',
+          body: `${activeCompanion.name} is leaning toward shared-thread moments. A message or circle interaction will land better than staying inward.`,
+          primaryLabel: 'Send a note',
+          primaryHref: '/app/messages',
+          secondaryLabel: 'Visit circles',
+          secondaryHref: '/app/circles'
+        } satisfies EraAction;
+      case 'mission':
+        return {
+          title: 'Give the chapter a direction',
+          body: `${activeCompanion.name} is ready for one clear path. A focused mission will strengthen this phase more than drifting.`,
+          primaryLabel: 'Open missions',
+          primaryHref: '/app/missions',
+          secondaryLabel: 'Visit sanctuary',
+          secondaryHref: activeCompanionSanctuaryHref
+        } satisfies EraAction;
+      case 'play':
+        return {
+          title: 'Keep the connection light',
+          body: `${activeCompanion.name} is bonding through brightness. Choose delight, play, or celebration over anything too heavy.`,
+          primaryLabel: 'Play together',
+          primaryHref: '/app/play',
+          secondaryLabel: 'Open journal',
+          secondaryHref: activeCompanionJournalHref
+        } satisfies EraAction;
+      case 'bond':
+        return {
+          title: 'Protect what is already close',
+          body: `${activeCompanion.name} is in a deep bond phase. A sincere check-in or return to the journal matters more than a bigger gesture.`,
+          primaryLabel: `Check in with ${activeCompanion.name}`,
+          primaryHref: activeCompanionSanctuaryHref,
+          secondaryLabel: 'Open journal',
+          secondaryHref: activeCompanionJournalHref
+        } satisfies EraAction;
+      case 'quiet':
+      default:
+        return {
+          title: 'Let the next phase gather gently',
+          body: `${activeCompanion.name} is between clearer chapters. One calm visit and one small act of care are enough.`,
+          primaryLabel: 'Visit sanctuary',
+          primaryHref: activeCompanionSanctuaryHref,
+          secondaryLabel: 'Open journal',
+          secondaryHref: activeCompanionJournalHref
+        } satisfies EraAction;
+    }
+  })();
+  let keepsakeSaving = false;
+  let keepsakeError: string | null = null;
+
+  const isFeaturedKeepsake = (reward: ChapterReward) =>
+    Boolean(
+      activeCompanion?.id &&
+        featuredKeepsakePreference.companionId === activeCompanion.id &&
+        featuredKeepsakePreference.rewardKey === reward.rewardKey
+    );
+
+  const featureKeepsake = async (reward: ChapterReward) => {
+    if (!activeCompanion?.id) return;
+    keepsakeSaving = true;
+    keepsakeError = null;
+    try {
+      const response = await fetch('/api/profile/featured-keepsake', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          rewardKey: reward.rewardKey,
+          companionId: activeCompanion.id
+        })
+      });
+      if (!response.ok) {
+        keepsakeError = 'Could not feature that keepsake right now.';
+        return;
+      }
+      await refreshRoster();
+    } catch {
+      keepsakeError = 'Could not feature that keepsake right now.';
+    } finally {
+      keepsakeSaving = false;
+    }
+  };
 
   $: ownedArchetypeTokens = new Set(
     ownedInstances.flatMap((instance) => [normalizeToken(instance.species), normalizeToken(cleanArchetype(instance.species))])
@@ -751,6 +953,24 @@
           <p>{relationshipState.body}</p>
         </div>
 
+        <div class={`era-panel era-panel--${activeEra.tone}`}>
+          <span class="era-panel__label">{activeEra.label}</span>
+          <strong>{activeEra.title}</strong>
+          <p>{activeEra.body}</p>
+        </div>
+
+        <div class={`era-action era-action--${activeEra.tone}`}>
+          <span class="era-action__label">Era guidance</span>
+          <strong>{activeEraAction.title}</strong>
+          <p>{activeEraAction.body}</p>
+          <div class="era-action__links">
+            <a class="era-action__link" href={activeEraAction.primaryHref}>{activeEraAction.primaryLabel}</a>
+            <a class="era-action__link era-action__link--ghost" href={activeEraAction.secondaryHref}>
+              {activeEraAction.secondaryLabel}
+            </a>
+          </div>
+        </div>
+
         <div class="pulse-grid" aria-label="Active companion pulse">
           <article class="pulse-card">
             <span class="pulse-card__label">Care state</span>
@@ -782,6 +1002,26 @@
             <h2>Keepsakes</h2>
             <p>{activeChapterRewards.length > 0 ? 'Earned through your recent companion chapters.' : 'Chapter keepsakes will gather here as the bond deepens.'}</p>
           </div>
+          {#if activeChapterHistory.length > 0}
+            <div class="chapter-history-strip" aria-label="Recent chapter openings">
+              {#each activeChapterHistory.slice(0, 3) as entry (entry.id)}
+                <article class="chapter-history-strip__item">
+                  <strong>{entry.title}</strong>
+                  <span>{entry.createdAt ? formatElapsed(entry.createdAt) : 'Recently opened'}</span>
+                </article>
+              {/each}
+            </div>
+          {/if}
+          {#if activeShelfRewards.length > 0}
+            <div class="keepsake-shelf" aria-label="Companion keepsake shelf">
+              {#each activeShelfRewards as reward (reward.rewardKey)}
+                <div class={`keepsake-shelf__item keepsake-shelf__item--${reward.tone ?? 'bond'} ${isFeaturedKeepsake(reward) ? 'is-featured' : ''}`}>
+                  <span class="keepsake-shelf__label">{isFeaturedKeepsake(reward) ? 'Featured' : 'Shelf'}</span>
+                  <strong>{reward.title}</strong>
+                </div>
+              {/each}
+            </div>
+          {/if}
           {#if activeChapterRewards.length > 0}
             <div class="switcher-grid">
               {#each activeChapterRewards as reward (reward.rewardKey)}
@@ -791,14 +1031,32 @@
                       <strong>{reward.title}</strong>
                       <span>{reward.tone ?? 'bond'} keepsake</span>
                     </div>
+                    {#if isFeaturedKeepsake(reward)}
+                      <span class="status-chip status-chip--active">Featured</span>
+                    {/if}
                   </div>
                   <p class="switcher-item__meta">{reward.body}</p>
-                  <span class="switcher-item__time">
-                    {reward.unlockedAt ? `Unlocked ${formatElapsed(reward.unlockedAt)}` : 'Unlocked recently'}
-                  </span>
+                  <div class="switcher-item__foot">
+                    <span class="switcher-item__time">
+                      {reward.unlockedAt ? `Unlocked ${formatElapsed(reward.unlockedAt)}` : 'Unlocked recently'}
+                    </span>
+                    <button
+                      type="button"
+                      class="keepsake-feature"
+                      disabled={keepsakeSaving || isFeaturedKeepsake(reward)}
+                      on:click={() => {
+                        void featureKeepsake(reward);
+                      }}
+                    >
+                      {isFeaturedKeepsake(reward) ? 'Featured' : 'Feature on profile'}
+                    </button>
+                  </div>
                 </article>
               {/each}
             </div>
+            {#if keepsakeError}
+              <p class="empty-copy" role="alert">{keepsakeError}</p>
+            {/if}
           {:else}
             <p class="empty-copy">No keepsakes unlocked for this companion yet.</p>
           {/if}
@@ -1353,6 +1611,148 @@
     color: rgba(223, 215, 200, 0.84);
   }
 
+  .era-panel {
+    margin-top: 0.85rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.22rem;
+    background: rgba(28, 22, 16, 0.5);
+  }
+
+  .era-panel__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(225, 210, 176, 0.74);
+  }
+
+  .era-panel strong {
+    color: rgba(248, 241, 227, 0.97);
+    font-size: 0.98rem;
+    line-height: 1.3;
+  }
+
+  .era-panel p {
+    margin: 0;
+    color: rgba(224, 214, 192, 0.82);
+    line-height: 1.5;
+  }
+
+  .era-panel--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.46);
+  }
+
+  .era-panel--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.46);
+  }
+
+  .era-panel--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.46);
+  }
+
+  .era-panel--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.46);
+  }
+
+  .era-panel--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.46);
+  }
+
+  .era-panel--quiet {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(18, 24, 38, 0.42);
+  }
+
+  .era-action {
+    margin-top: 0.7rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.3rem;
+    background:
+      linear-gradient(180deg, rgba(24, 20, 15, 0.74), rgba(11, 15, 18, 0.9)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.08), transparent 54%);
+  }
+
+  .era-action__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(225, 210, 176, 0.74);
+  }
+
+  .era-action strong {
+    color: rgba(248, 241, 227, 0.97);
+    font-size: 0.96rem;
+    line-height: 1.3;
+  }
+
+  .era-action p {
+    margin: 0;
+    color: rgba(224, 214, 192, 0.82);
+    line-height: 1.5;
+  }
+
+  .era-action__links {
+    margin-top: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .era-action__link {
+    min-height: 2.2rem;
+    padding: 0 0.92rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(214, 190, 141, 0.24);
+    background: rgba(214, 190, 141, 0.14);
+    color: rgba(251, 244, 229, 0.96);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .era-action__link--ghost {
+    background: rgba(214, 190, 141, 0.06);
+  }
+
+  .era-action--care {
+    border-color: rgba(132, 214, 179, 0.22);
+  }
+
+  .era-action--social {
+    border-color: rgba(233, 162, 122, 0.22);
+  }
+
+  .era-action--mission {
+    border-color: rgba(222, 186, 103, 0.22);
+  }
+
+  .era-action--play {
+    border-color: rgba(124, 220, 224, 0.22);
+  }
+
+  .era-action--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+  }
+
+  .era-action--quiet {
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
   .pulse-grid {
     margin-top: 0.95rem;
     display: grid;
@@ -1520,6 +1920,90 @@
     color: rgba(221, 208, 183, 0.72);
   }
 
+  .keepsake-shelf {
+    margin-top: 0.8rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .chapter-history-strip {
+    margin-top: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .chapter-history-strip__item {
+    border-radius: 0.95rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(24, 20, 15, 0.42);
+    padding: 0.75rem 0.8rem;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .chapter-history-strip__item strong {
+    color: rgba(248, 241, 227, 0.96);
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .chapter-history-strip__item span {
+    color: rgba(221, 208, 183, 0.72);
+    font-size: 0.75rem;
+  }
+
+  .keepsake-shelf__item {
+    border-radius: 0.95rem;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    padding: 0.72rem;
+    display: grid;
+    gap: 0.12rem;
+    background: rgba(24, 20, 15, 0.5);
+  }
+
+  .keepsake-shelf__item.is-featured {
+    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.24);
+  }
+
+  .keepsake-shelf__label {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(225, 210, 176, 0.72);
+  }
+
+  .keepsake-shelf__item strong {
+    color: rgba(248, 241, 227, 0.96);
+    font-size: 0.84rem;
+    line-height: 1.3;
+  }
+
+  .keepsake-shelf__item--care {
+    border-color: rgba(132, 214, 179, 0.24);
+    background: rgba(21, 41, 36, 0.48);
+  }
+
+  .keepsake-shelf__item--social {
+    border-color: rgba(233, 162, 122, 0.24);
+    background: rgba(45, 27, 24, 0.48);
+  }
+
+  .keepsake-shelf__item--mission {
+    border-color: rgba(222, 186, 103, 0.24);
+    background: rgba(43, 33, 20, 0.48);
+  }
+
+  .keepsake-shelf__item--play {
+    border-color: rgba(124, 220, 224, 0.24);
+    background: rgba(20, 36, 45, 0.48);
+  }
+
+  .keepsake-shelf__item--bond {
+    border-color: rgba(214, 190, 141, 0.24);
+    background: rgba(35, 29, 22, 0.48);
+  }
+
   .mobile-switch-rail__track {
     margin-top: 0.8rem;
     display: grid;
@@ -1621,6 +2105,36 @@
     margin: 0.2rem 0 0;
     font-size: 0.86rem;
     color: rgba(219, 208, 185, 0.75);
+  }
+
+  .switcher-item__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .switcher-item__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.65rem;
+  }
+
+  .keepsake-feature {
+    min-height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.2);
+    background: rgba(214, 190, 141, 0.12);
+    color: rgba(248, 241, 227, 0.94);
+    padding: 0 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .keepsake-feature:disabled {
+    opacity: 0.7;
   }
 
   .switcher-item__right {
@@ -1840,6 +2354,10 @@
     .pulse-grid {
       grid-template-columns: 1fr;
     }
+
+    .keepsake-shelf {
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: 700px) {
@@ -1873,6 +2391,15 @@
     .care-primary {
       grid-column: 1 / -1;
       min-height: 2.9rem;
+    }
+
+    .switcher-item__foot {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .keepsake-feature {
+      width: 100%;
     }
 
     .secondary-link {

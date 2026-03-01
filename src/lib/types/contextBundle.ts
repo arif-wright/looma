@@ -76,6 +76,13 @@ export type RecentJournalMomentBundle = {
   social: boolean;
 };
 
+export type FeaturedKeepsakeBundle = {
+  rewardKey: string;
+  title: string;
+  tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+  companionId: string;
+};
+
 export type ContextBundle = {
   version: ContextBundleVersion;
   generatedAt: string;
@@ -87,5 +94,6 @@ export type ContextBundle = {
   recentJournal: {
     moments: RecentJournalMomentBundle[];
     socialCount7d: number;
+    featuredKeepsake: FeaturedKeepsakeBundle | null;
   };
 };

@@ -1100,6 +1100,21 @@
     {/if}
   </svelte:fragment>
 
+  <GlassCard class={`message-chapter-card message-chapter-card--${data.messageChapterFrame?.tone ?? 'quiet'}`}>
+    <div class="message-chapter-card__head">
+      <div>
+        <p class="message-chapter-card__eyebrow">Current chapter</p>
+        <h2>{data.messageChapterFrame?.title ?? 'Keep the weave close'}</h2>
+      </div>
+      {#if data.activeCompanion?.name}
+        <EmotionalChip tone="muted">{data.activeCompanion.name}</EmotionalChip>
+      {/if}
+    </div>
+    <p class="message-chapter-card__body">
+      {data.messageChapterFrame?.body ?? 'Let the next conversation gather naturally.'}
+    </p>
+  </GlassCard>
+
   <GlassCard class="messenger-card">
     <div class="messenger-shell">
       {#if showConversationPanel}
@@ -1108,8 +1123,11 @@
             <div class="mobile-inbox-intro">
               <div>
                 <p class="mobile-inbox-intro__eyebrow">Inbox</p>
-                <h2>Keep the weave close</h2>
-                <p>Reply quickly, start a new conversation, and keep your closest threads easy to reach.</p>
+                <h2>{data.messageChapterFrame?.inboxTitle ?? 'Keep the weave close'}</h2>
+                <p>
+                  {data.messageChapterFrame?.inboxBody ??
+                    'Reply quickly, start a new conversation, and keep your closest threads easy to reach.'}
+                </p>
               </div>
               <div class="mobile-inbox-intro__meta">
                 <span>{filteredConversations.length} thread{filteredConversations.length === 1 ? '' : 's'}</span>
@@ -1151,7 +1169,7 @@
                 {:else if presenceLabel}
                   <span>{presenceLabel}</span>
                 {:else}
-                  <span>Conversation</span>
+                  <span>{data.messageChapterFrame?.threadHint ?? 'Conversation'}</span>
                 {/if}
               </div>
             </div>
@@ -1250,6 +1268,72 @@
 />
 
 <style>
+  :global(.message-chapter-card) {
+    margin-bottom: 0.85rem;
+    border-radius: 1.15rem;
+    border: 1px solid rgba(212, 190, 139, 0.14);
+    background:
+      linear-gradient(180deg, rgba(24, 29, 41, 0.86), rgba(12, 16, 24, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 56%);
+  }
+
+  .message-chapter-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .message-chapter-card__eyebrow {
+    margin: 0 0 0.28rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(220, 203, 184, 0.76);
+  }
+
+  :global(.message-chapter-card h2) {
+    margin: 0;
+    font-size: clamp(1.04rem, 0.98rem + 0.4vw, 1.28rem);
+    color: rgba(248, 241, 235, 0.98);
+  }
+
+  .message-chapter-card__body {
+    margin: 0.6rem 0 0;
+    color: rgba(223, 215, 200, 0.84);
+    line-height: 1.5;
+  }
+
+  :global(.message-chapter-card--care) {
+    background:
+      linear-gradient(180deg, rgba(18, 35, 31, 0.86), rgba(11, 18, 20, 0.92)),
+      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 56%);
+  }
+
+  :global(.message-chapter-card--social) {
+    background:
+      linear-gradient(180deg, rgba(42, 26, 25, 0.86), rgba(16, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 56%);
+  }
+
+  :global(.message-chapter-card--mission) {
+    background:
+      linear-gradient(180deg, rgba(38, 30, 19, 0.86), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 56%);
+  }
+
+  :global(.message-chapter-card--play) {
+    background:
+      linear-gradient(180deg, rgba(18, 30, 37, 0.86), rgba(11, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 56%);
+  }
+
+  :global(.message-chapter-card--bond) {
+    background:
+      linear-gradient(180deg, rgba(34, 28, 24, 0.86), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
+  }
+
   :global(.messenger-card) {
     padding: 0.35rem;
     border-radius: 1.35rem;

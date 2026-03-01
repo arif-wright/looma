@@ -183,6 +183,10 @@ const buildContextSummary = (args: {
   const recentJournal = Array.isArray(recentJournalBundle.moments)
     ? (recentJournalBundle.moments as Array<Record<string, unknown>>)
     : [];
+  const featuredKeepsakeRaw =
+    recentJournalBundle.featuredKeepsake && typeof recentJournalBundle.featuredKeepsake === 'object'
+      ? (recentJournalBundle.featuredKeepsake as Record<string, unknown>)
+      : null;
   const recentJournalSummary = recentJournal
     .slice(0, 2)
     .map((entry) => ({
@@ -208,7 +212,13 @@ const buildContextSummary = (args: {
     ritualMood: ritualMood || null,
     reflectionExcerpt: reflectionExcerpt || null,
     recentJournalSummary,
-    recentSocialCount7d: readNumber(recentJournalBundle.socialCount7d, 0)
+    recentSocialCount7d: readNumber(recentJournalBundle.socialCount7d, 0),
+    featuredKeepsake: featuredKeepsakeRaw
+      ? {
+          title: readString(featuredKeepsakeRaw.title, ''),
+          tone: readString(featuredKeepsakeRaw.tone, 'bond')
+        }
+      : null
   };
 
   return summary;
@@ -226,6 +236,7 @@ const MUSE_SYSTEM_PROMPT = [
   'You never overwhelm.',
   'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
   'If recent shared moments or conversations are in context, you may softly reference that the bond is being carried through shared expression.',
+  'If a featured keepsake is in context, you may softly reference it as a symbol of the current relationship chapter.',
   'When the user expresses distress:',
   '1. Reflect the emotion.',
   '2. Validate it.',

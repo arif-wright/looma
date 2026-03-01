@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
   import HomeSecondaryStack from '$lib/components/home/HomeSecondaryStack.svelte';
@@ -10,6 +11,7 @@
   import type { PageData } from './$types';
 
   type HomeMood = 'calm' | 'heavy' | 'curious' | 'energized' | 'numb';
+  type CompanionEraTone = 'care' | 'social' | 'mission' | 'play' | 'bond' | 'quiet';
 
   export let data: PageData;
 
@@ -56,6 +58,43 @@
   $: primaryCopy = `Share how you feel, hear ${companionName}'s response, and strengthen your bond.`;
   $: primaryMission = data.missions?.[0] ?? null;
   $: journalHref = companionState?.id ? `/app/memory?companion=${companionState.id}` : '/app/memory';
+  $: companionEraTitle =
+    data.weeklyArc?.emphasis === 'care'
+      ? 'Era of Steady Return'
+      : data.weeklyArc?.emphasis === 'social'
+        ? 'Era of Shared Thread'
+        : data.weeklyArc?.emphasis === 'mission'
+          ? 'Era of Wayfinding'
+          : data.weeklyArc?.emphasis === 'play'
+            ? 'Era of Bright Play'
+            : data.keepsakeTheme?.tone === 'bond'
+              ? 'Era of Deep Bond'
+              : 'Era of Gathering Quiet';
+  $: companionEraBody =
+    data.weeklyArc?.body ??
+    (data.keepsakeTheme?.title
+      ? `${data.keepsakeTheme.title} is currently shaping how ${companionName} reads the relationship.`
+      : `${companionName} is still gathering enough recent moments for the next clearer phase to emerge.`);
+  $: companionEraTone = (() => {
+    if (
+      data.keepsakeTheme?.tone === 'care' ||
+      data.keepsakeTheme?.tone === 'social' ||
+      data.keepsakeTheme?.tone === 'mission' ||
+      data.keepsakeTheme?.tone === 'play' ||
+      data.keepsakeTheme?.tone === 'bond'
+    ) {
+      return data.keepsakeTheme.tone;
+    }
+    if (
+      data.weeklyArc?.emphasis === 'care' ||
+      data.weeklyArc?.emphasis === 'social' ||
+      data.weeklyArc?.emphasis === 'mission' ||
+      data.weeklyArc?.emphasis === 'play'
+    ) {
+      return data.weeklyArc.emphasis;
+    }
+    return 'quiet';
+  })() as CompanionEraTone;
   $: statusLine =
     closenessState === 'Distant'
       ? `${companionName} feels distant.`
@@ -87,6 +126,7 @@
 
   let companionSheetOpen = false;
   let checkinModalOpen = false;
+  let chapterRevealOpen = false;
   let rewardToast: string | null = null;
   let checkinError: string | null = null;
   let checkinLoading = false;
@@ -97,6 +137,7 @@
   let animationTickTimer: ReturnType<typeof setInterval> | null = null;
   let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
   let nowTick = Date.now();
+  let chapterRevealSeenId = '';
 
   const track = (
     kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'checkin_submit' | 'checkin_success' | 'checkin_error',
@@ -253,6 +294,25 @@
       if (animationTickTimer) clearInterval(animationTickTimer);
     };
   });
+
+  $: currentChapterReveal = data.chapterReveal ?? null;
+  $: if (browser) {
+    const revealId = currentChapterReveal?.id ?? '';
+    if (!revealId) {
+      chapterRevealSeenId = '';
+      chapterRevealOpen = false;
+    } else if (revealId !== chapterRevealSeenId) {
+      chapterRevealSeenId = revealId;
+      const seen = window.localStorage.getItem(`looma:chapterRevealSceneSeen:${revealId}`) === 'true';
+      chapterRevealOpen = !seen;
+    }
+  }
+
+  const closeChapterReveal = () => {
+    chapterRevealOpen = false;
+    if (!browser || !currentChapterReveal?.id) return;
+    window.localStorage.setItem(`looma:chapterRevealSceneSeen:${currentChapterReveal.id}`, 'true');
+  };
 </script>
 
 <div class="home-root">
@@ -292,6 +352,7 @@
       {journalHref}
       journalSummary={data.memorySummary?.summary_text ?? null}
       journalUpdatedAt={data.memorySummary?.last_built_at ?? null}
+      chapterReveal={data.chapterReveal ?? null}
       missionTitle={primaryMission?.title ?? null}
       missionSummary={primaryMission?.summary ?? null}
       missionHref={primaryMission?.id ? `/app/missions/${primaryMission.id}` : '/app/missions'}
@@ -310,6 +371,8 @@
       weeklyArc={data.weeklyArc ?? null}
       chapterMilestones={data.chapterMilestones ?? []}
       chapterRewards={data.chapterRewards ?? []}
+      sanctuaryShelfRewards={data.sanctuaryShelfRewards ?? []}
+      eraAction={data.eraAction ?? null}
     />
   </section>
 </div>
@@ -323,6 +386,9 @@
   evolutionTag={companionState?.species ? `${companionState.species} form` : 'Base form'}
   imageUrl={companionState?.avatar_url ?? null}
   energy={effective?.energy ?? companionState?.energy ?? 0}
+  eraTitle={companionEraTitle}
+  eraBody={companionEraBody}
+  eraTone={companionEraTone}
   onClose={() => {
     companionSheetOpen = false;
     modelActivity = 'idle';
@@ -376,6 +442,31 @@
       {checkinLoading ? 'Listening...' : 'Share with Mirae'}
     </button>
   </section>
+</BottomSheet>
+
+<BottomSheet open={chapterRevealOpen} title="Chapter opened" onClose={closeChapterReveal}>
+  {#if currentChapterReveal}
+    <section class={`chapter-sheet chapter-sheet--${currentChapterReveal.tone ?? 'bond'}`}>
+      <div class="chapter-sheet__halo" aria-hidden="true"></div>
+      <p class="chapter-sheet__eyebrow">Companion reveal</p>
+      <h3>{currentChapterReveal.title}</h3>
+      {#if currentChapterReveal.rewardTitle}
+        <div class="chapter-sheet__keepsake">
+          <span>Keepsake</span>
+          <strong>{currentChapterReveal.rewardTitle}</strong>
+        </div>
+      {/if}
+      <p class="chapter-sheet__body">{currentChapterReveal.body}</p>
+      <div class="chapter-sheet__actions">
+        <a class="chapter-sheet__action chapter-sheet__action--primary" href={currentChapterReveal.href} on:click={closeChapterReveal}>
+          Open journal
+        </a>
+        <a class="chapter-sheet__action" href="/app/companions" on:click={closeChapterReveal}>
+          Visit companion
+        </a>
+      </div>
+    </section>
+  {/if}
 </BottomSheet>
 
 <style>
@@ -524,6 +615,128 @@
 
   .submit-checkin:disabled {
     opacity: 0.75;
+  }
+
+  .chapter-sheet {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.2rem;
+    border: 1px solid rgba(214, 190, 141, 0.2);
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    background:
+      linear-gradient(160deg, rgba(21, 25, 42, 0.9), rgba(10, 14, 24, 0.94)),
+      radial-gradient(circle at top center, rgba(214, 190, 141, 0.16), transparent 52%);
+  }
+
+  .chapter-sheet__halo {
+    position: absolute;
+    inset: -10% 8% auto 8%;
+    height: 8rem;
+    border-radius: 999px;
+    filter: blur(24px);
+    opacity: 0.55;
+    background: rgba(214, 190, 141, 0.24);
+    pointer-events: none;
+  }
+
+  .chapter-sheet--care .chapter-sheet__halo {
+    background: rgba(132, 214, 179, 0.28);
+  }
+
+  .chapter-sheet--social .chapter-sheet__halo {
+    background: rgba(233, 162, 122, 0.28);
+  }
+
+  .chapter-sheet--mission .chapter-sheet__halo {
+    background: rgba(222, 186, 103, 0.28);
+  }
+
+  .chapter-sheet--play .chapter-sheet__halo {
+    background: rgba(124, 220, 224, 0.28);
+  }
+
+  .chapter-sheet--bond .chapter-sheet__halo {
+    background: rgba(214, 190, 141, 0.28);
+  }
+
+  .chapter-sheet__eyebrow,
+  .chapter-sheet h3,
+  .chapter-sheet__keepsake,
+  .chapter-sheet__body,
+  .chapter-sheet__actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .chapter-sheet__eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(224, 231, 255, 0.72);
+  }
+
+  .chapter-sheet h3 {
+    margin: 0;
+    font-family: var(--home-font-display);
+    font-size: 1.3rem;
+    line-height: 1.12;
+    color: rgba(249, 245, 233, 0.98);
+  }
+
+  .chapter-sheet__keepsake {
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.8rem 0.9rem;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .chapter-sheet__keepsake span {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(224, 231, 255, 0.68);
+  }
+
+  .chapter-sheet__keepsake strong {
+    color: rgba(248, 241, 227, 0.98);
+    font-size: 0.95rem;
+  }
+
+  .chapter-sheet__body {
+    margin: 0;
+    color: rgba(228, 236, 247, 0.9);
+    line-height: 1.55;
+    font-size: 0.94rem;
+  }
+
+  .chapter-sheet__actions {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .chapter-sheet__action {
+    min-height: 2.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(243, 247, 253, 0.95);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .chapter-sheet__action--primary {
+    background: linear-gradient(135deg, rgba(217, 189, 126, 0.92), rgba(176, 130, 70, 0.94));
+    color: rgba(23, 17, 10, 0.96);
+    border-color: transparent;
   }
 
   @media (min-width: 720px) {
