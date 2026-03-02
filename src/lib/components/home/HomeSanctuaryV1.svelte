@@ -59,6 +59,7 @@
   let roamTimer: number | null = null;
   let pauseTimer: number | null = null;
   let habitatBehavior: HabitatBehavior = 'arriving';
+  let inspectFocusLabel: string | null = null;
 
   const habitatAnchors: HabitatAnchor[] = [
     { id: 'left_perch', x: 28, y: 15, label: 'left perch' },
@@ -133,7 +134,7 @@
       : habitatBehavior === 'arriving'
         ? `${companionName} is floating back toward the center stone.`
         : habitatBehavior === 'inspecting'
-          ? `${companionName} pauses to look around the ${activeAnchor.label}.`
+          ? `${companionName} pauses to inspect ${inspectFocusLabel ?? activeAnchor.label}.`
           : habitatBehavior === 'resting'
             ? `${companionName} is resting in the ${activeAnchor.label}.`
             : `${companionName} is drifting through the ${activeAnchor.label}.`;
@@ -184,6 +185,8 @@
       label: habitatObject.label,
       body: habitatObject.body
     };
+    inspectFocusLabel = habitatObject.label;
+    habitatBehavior = 'inspecting';
   };
 
   const clearSceneInteraction = () => {
@@ -211,10 +214,19 @@
 
   const settleAtAnchor = (anchor: HabitatAnchor) => {
     habitatBehavior = anchor.id === 'forward_pause' ? 'inspecting' : 'resting';
+    inspectFocusLabel =
+      anchor.id === 'forward_pause'
+        ? habitatObject.label
+        : anchor.id === 'left_perch'
+          ? 'the left perch'
+          : anchor.id === 'right_grass'
+            ? 'the grass edge'
+            : 'the center stone';
     if (!browser) return;
     if (pauseTimer) window.clearTimeout(pauseTimer);
     pauseTimer = window.setTimeout(() => {
       habitatBehavior = 'resting';
+      inspectFocusLabel = null;
       scheduleNextRoam(closenessState === 'Distant' ? 4200 : 2800);
     }, anchor.id === 'forward_pause' ? 1800 : 1200);
   };
@@ -344,6 +356,13 @@
           traveling={isRoaming}
           on:open={() => dispatch('companion', {})}
         />
+
+        {#if habitatBehavior === 'inspecting'}
+          <div class="scene__inspect-badge" role="status">
+            <span>Inspecting</span>
+            <strong>{inspectFocusLabel ?? activeAnchor.label}</strong>
+          </div>
+        {/if}
 
         <div class="scene__caption">
           <strong>{stagePrompt}</strong>
@@ -927,6 +946,30 @@
     background: rgba(12, 17, 19, 0.42);
     border: 1px solid rgba(243, 231, 205, 0.1);
     backdrop-filter: blur(10px);
+  }
+
+  .scene__inspect-badge {
+    display: inline-grid;
+    gap: 0.08rem;
+    justify-items: center;
+    padding: 0.55rem 0.78rem;
+    border-radius: 999px;
+    border: 1px solid rgba(243, 231, 205, 0.14);
+    background: rgba(12, 16, 19, 0.52);
+    backdrop-filter: blur(10px);
+  }
+
+  .scene__inspect-badge span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(231, 207, 152, 0.76);
+  }
+
+  .scene__inspect-badge strong {
+    font-size: 0.78rem;
+    color: rgba(248, 242, 228, 0.96);
   }
 
   .scene__caption strong {
