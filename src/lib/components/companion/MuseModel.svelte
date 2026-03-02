@@ -26,6 +26,7 @@
   export let visualMood: MuseVisualMood = 'calm';
   export let preserveDrawingBuffer = false;
   export let eager = false;
+  export let framed = true;
   // `minSize` exists because some surfaces (like modal portraits) need a tiny model view.
   // Default preserves existing layouts that assumed a minimum 180px panel.
   export let minSize: string | number = 180;
@@ -401,6 +402,7 @@
 <div
   class={`muse-shell ${className}`}
   class:muse-shell--floating={hoverAmplitudePx > 0}
+  class:muse-shell--frameless={!framed}
   style={`--muse-size: ${normalizeSize(size)}; --muse-min-size: ${normalizeSize(minSize)}; --muse-background: ${transparent ? 'transparent' : background}; --muse-aura-rgb:${auraRgb}; --muse-aura-tint-rgb:${auraTintRgb}; --muse-aura-opacity:${auraOpacity}; --muse-aura-blur:${auraBlurPx}px; --muse-hover-amplitude:${hoverAmplitudePx}px;`}
   bind:this={container}
 >
@@ -489,6 +491,17 @@
     overflow: hidden;
     display: grid;
     place-items: center;
+  }
+
+  .muse-shell--frameless {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .muse-shell--frameless .muse-aura {
+    inset: 8%;
   }
 
   .muse-shell--floating {

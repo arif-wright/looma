@@ -60,6 +60,9 @@
   let pauseTimer: number | null = null;
   let habitatBehavior: HabitatBehavior = 'arriving';
   let inspectFocusLabel: string | null = null;
+  let tappedCompanion = false;
+  let tapResetTimer: number | null = null;
+  let stageAnimation: MuseAnimationName = 'Idle';
 
   const habitatAnchors: HabitatAnchor[] = [
     { id: 'left_perch', x: 28, y: 15, label: 'left perch' },
@@ -131,13 +134,31 @@
   $: stagePrompt =
     needsReconnectToday
       ? `${companionName} looks ready for a return.`
+      : tappedCompanion
+        ? `${companionName} brightens and leans toward you.`
       : habitatBehavior === 'arriving'
         ? `${companionName} is floating back toward the center stone.`
         : habitatBehavior === 'inspecting'
           ? `${companionName} pauses to inspect ${inspectFocusLabel ?? activeAnchor.label}.`
           : habitatBehavior === 'resting'
-            ? `${companionName} is resting in the ${activeAnchor.label}.`
+        ? `${companionName} is resting in the ${activeAnchor.label}.`
             : `${companionName} is drifting through the ${activeAnchor.label}.`;
+  $: stageAnimation =
+    tappedCompanion
+      ? 'PetReact'
+      : habitatBehavior === 'inspecting'
+        ? 'Curious'
+        : habitatBehavior === 'arriving' || isRoaming
+          ? closenessState === 'Resonant'
+            ? 'Happy'
+            : 'Curious'
+          : habitatBehavior === 'resting'
+            ? closenessState === 'Distant'
+              ? 'Sleep'
+              : modelAnimation === 'Celebrate'
+                ? 'Happy'
+                : 'Idle'
+            : modelAnimation;
   $: habitatObject =
     sanctuaryTone === 'care'
       ? {
@@ -196,8 +217,10 @@
   const clearTimers = () => {
     if (roamTimer) window.clearTimeout(roamTimer);
     if (pauseTimer) window.clearTimeout(pauseTimer);
+    if (tapResetTimer) window.clearTimeout(tapResetTimer);
     roamTimer = null;
     pauseTimer = null;
+    tapResetTimer = null;
   };
 
   const scheduleNextRoam = (delayMs: number, mode: 'arrive_center' | 'cycle' = 'cycle') => {
@@ -254,6 +277,20 @@
         settleAtAnchor(nextAnchor);
       }, 1600);
     }
+  };
+
+  const reactToCompanionTap = () => {
+    tappedCompanion = true;
+    habitatBehavior = 'inspecting';
+    inspectFocusLabel = 'you';
+    if (tapResetTimer) window.clearTimeout(tapResetTimer);
+    tapResetTimer = window.setTimeout(() => {
+      tappedCompanion = false;
+      inspectFocusLabel = null;
+      if (!isRoaming) {
+        habitatBehavior = 'resting';
+      }
+    }, 1400);
   };
 
   onMount(() => {
@@ -351,15 +388,17 @@
           avatarUrl={companionAvatarUrl}
           {closenessState}
           activityState={modelActivity}
-          animationName={modelAnimation}
+          animationName={stageAnimation}
           {facing}
           traveling={isRoaming}
+          tapped={tappedCompanion}
+          on:tap={reactToCompanionTap}
           on:open={() => dispatch('companion', {})}
         />
 
         {#if habitatBehavior === 'inspecting'}
           <div class="scene__inspect-badge" role="status">
-            <span>Inspecting</span>
+            <span>{tappedCompanion ? 'Reacting' : 'Inspecting'}</span>
             <strong>{inspectFocusLabel ?? activeAnchor.label}</strong>
           </div>
         {/if}
