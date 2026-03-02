@@ -111,6 +111,8 @@ type KeepsakeTheme = {
   title: string;
 };
 
+type PremiumSanctuaryStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
+
 type SanctuaryShelfReward = {
   rewardKey: string;
   title: string;
@@ -118,6 +120,14 @@ type SanctuaryShelfReward = {
   tone: KeepsakeTone;
   unlockedAt: string | null;
   featured: boolean;
+};
+
+type ChapterPath = {
+  id: string;
+  label: string;
+  title: string;
+  body: string;
+  href: string;
 };
 
 type DailyArc = ReturnType<typeof deriveDailyCompanionArc>;
@@ -415,6 +425,95 @@ const buildEraAction = (args: {
   }
 };
 
+const buildChapterPaths = (args: {
+  companionName: string | null;
+  keepsakeTheme: KeepsakeTheme | null;
+  weeklyArc: WeeklyArc | null;
+  notificationsUnread: number;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const tone = args.keepsakeTheme?.tone ?? (args.weeklyArc?.emphasis === 'quiet' ? null : args.weeklyArc?.emphasis ?? null);
+  const paths: ChapterPath[] = [];
+  const push = (path: ChapterPath) => {
+    if (paths.some((entry) => entry.id === path.id)) return;
+    paths.push(path);
+  };
+
+  if (tone === 'social') {
+    push({
+      id: 'messages',
+      label: 'Shared thread',
+      title: 'Reply while the thread is warm',
+      body: `${name} is in a social chapter. Keep the conversation moving while it still feels alive.`,
+      href: '/app/messages'
+    });
+    push({
+      id: 'circles',
+      label: 'Community',
+      title: 'Carry the mood into circles',
+      body: 'A small announcement, reply, or check-in can keep the wider weave feeling active.',
+      href: '/app/circles'
+    });
+  } else if (tone === 'mission') {
+    push({
+      id: 'missions',
+      label: 'Direction',
+      title: 'Choose the clearest next thread',
+      body: `${name} is responding to purpose right now. Let one mission carry the day forward.`,
+      href: '/app/missions'
+    });
+    push({
+      id: 'journal',
+      label: 'Meaning',
+      title: 'See what this chapter is aiming toward',
+      body: 'Your journal will show how the relationship has been shifting toward direction and momentum.',
+      href: '/app/memory'
+    });
+  } else if (tone === 'play') {
+    push({
+      id: 'play',
+      label: 'Lightness',
+      title: 'Keep the chapter bright',
+      body: `${name} is bonding through lightness. Choose delight over pressure for the next step.`,
+      href: '/app/play'
+    });
+    push({
+      id: 'companions',
+      label: 'Ritual',
+      title: 'Celebrate the good energy',
+      body: 'A quick return to your companion can keep the bright rhythm from fading.',
+      href: '/app/companions'
+    });
+  } else if (tone === 'care' || tone === 'bond' || tone === null) {
+    push({
+      id: 'companions',
+      label: 'Care',
+      title: 'Return to the sanctuary gently',
+      body: `${name} is asking for steadiness more than novelty. One small act of care is enough.`,
+      href: '/app/companions'
+    });
+    push({
+      id: 'journal',
+      label: 'Memory',
+      title: 'See what your companion is holding',
+      body: 'The journal will tell you what is settling into memory from this phase of the bond.',
+      href: '/app/memory'
+    });
+  }
+
+  if (args.notificationsUnread > 0) {
+    push({
+      id: 'notifications',
+      label: 'Signals',
+      title: `${args.notificationsUnread} signal${args.notificationsUnread === 1 ? '' : 's'} worth checking`,
+      body: 'Only the strongest nudges should surface here. Clear them and keep the rest of the day quiet.',
+      href: '/app/notifications'
+    });
+  }
+
+  return paths.slice(0, 3);
+};
+
 const resolveFeaturedKeepsakeTheme = async (args: {
   supabase: SupabaseClient;
   userId: string | null;
@@ -487,6 +586,28 @@ const resolveSanctuaryShelfRewards = async (args: {
     ...reward,
     featured: featuredCompanionId === args.activeCompanionId && featuredRewardKey === reward.rewardKey
   })) as SanctuaryShelfReward[];
+};
+
+const resolvePremiumSanctuaryStyle = async (args: {
+  supabase: SupabaseClient;
+  userId: string | null;
+  subscriptionActive: boolean;
+}) => {
+  if (!args.userId || !args.subscriptionActive) return null;
+  const { data, error } = await args.supabase
+    .from('user_preferences')
+    .select('premium_sanctuary_style')
+    .eq('user_id', args.userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[home] premium sanctuary style lookup failed', error);
+    return null;
+  }
+
+  return typeof data?.premium_sanctuary_style === 'string'
+    ? (data.premium_sanctuary_style as PremiumSanctuaryStyle)
+    : null;
 };
 
 const upsertMissionAssignment = async (args: {
@@ -1075,21 +1196,33 @@ export const load: PageServerLoad = async (event) => {
       hasSocialMoment: journalMoments.some((entry) => entry.label === 'Social'),
       hasJournalMoment: journalMoments.length > 0
     });
-    const dailyArcRecap =
-      userId && activeCompanion?.id
-        ? (await syncDailyCompanionArcProgress(supabase, {
-            ownerId: userId,
-            companionId: activeCompanion.id,
-            companionName: activeCompanion.name ?? null,
-            arc: dailyArc
-          })).recap
-        : null;
     const keepsakeTheme = await resolveFeaturedKeepsakeTheme({
       supabase,
       userId,
       activeCompanionId: activeCompanion?.id ?? null,
       chapterRewards
     });
+    const premiumSanctuaryStyle = await resolvePremiumSanctuaryStyle({
+      supabase,
+      userId,
+      subscriptionActive: Boolean(parent.subscription?.active)
+    });
+    const dailyArcRecap =
+      userId && activeCompanion?.id
+        ? (await syncDailyCompanionArcProgress(supabase, {
+            ownerId: userId,
+            companionId: activeCompanion.id,
+            companionName: activeCompanion.name ?? null,
+            arc: dailyArc,
+            premiumStyle: premiumSanctuaryStyle,
+            chapter: keepsakeTheme
+              ? {
+                  title: keepsakeTheme.title,
+                  tone: keepsakeTheme.tone
+                }
+              : null
+          })).recap
+        : null;
     const sanctuaryNudge = applyKeepsakeToSanctuaryNudge({
       nudge: baseSanctuaryNudge,
       keepsakeTheme,
@@ -1110,6 +1243,12 @@ export const load: PageServerLoad = async (event) => {
       recap: dailyArcRecap,
       keepsakeTheme,
       companionName: activeCompanion?.name ?? null
+    });
+    const chapterPaths = buildChapterPaths({
+      companionName: activeCompanion?.name ?? null,
+      keepsakeTheme,
+      weeklyArc,
+      notificationsUnread: parent.notificationsUnread ?? 0
     });
 
     return {
@@ -1142,8 +1281,10 @@ export const load: PageServerLoad = async (event) => {
       chapterMilestones,
       chapterRewards,
       keepsakeTheme,
+      premiumSanctuaryStyle,
       sanctuaryShelfRewards,
-      eraAction
+      eraAction,
+      chapterPaths
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

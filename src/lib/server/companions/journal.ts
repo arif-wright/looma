@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
+import { createCompanionDigestNotification } from '$lib/server/notifications';
 import type { OptionalCompanionRitualKey } from '$lib/companions/optionalRituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
 
@@ -25,6 +26,13 @@ export type CompanionPatternNotice = {
   patternKey: string;
   title: string;
   body: string;
+};
+
+export type CompanionChapterDigest = {
+  digestKey: string;
+  title: string;
+  body: string;
+  tone: 'care' | 'social' | 'mission' | 'play' | 'bond' | 'quiet';
 };
 
 export type CompanionRitualGuide = {
@@ -56,6 +64,13 @@ export type DailyCompanionArcRecap = {
   body: string;
   unlockedAt: string | null;
 };
+
+export type DailyCompanionArcRecapContext = {
+  title: string;
+  tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+} | null;
+
+export type PremiumSanctuaryStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
 
 export type WeeklyCompanionArc = {
   title: string;
@@ -220,6 +235,82 @@ export const deriveCompanionPatternNotice = (args: {
   return null;
 };
 
+export const deriveCompanionChapterDigest = (args: {
+  companionName: string | null;
+  chapter:
+    | {
+        title: string;
+        tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
+      }
+    | null;
+  weeklyArc: WeeklyCompanionArc;
+  careMoments: number;
+  missionMoments: number;
+  gameMoments: number;
+  socialMoments: number;
+  checkins: number;
+}) => {
+  const name = args.companionName?.trim() || 'your companion';
+  const tone = args.chapter?.tone ?? args.weeklyArc.emphasis;
+  const chapterTitle = args.chapter?.title ?? args.weeklyArc.title;
+  const totalMoments =
+    args.careMoments + args.missionMoments + args.gameMoments + args.socialMoments + args.checkins;
+
+  if (totalMoments < 4) return null;
+
+  if (tone === 'social') {
+    return {
+      digestKey: `chapter-digest-social-${new Date().toISOString().slice(0, 10)}`,
+      title: `${name} is tracing the shared thread`,
+      body: `${chapterTitle} has turned this chapter outward. ${name} can feel that messages, circles, and shared moments are shaping the relationship as much as care itself.`,
+      tone
+    } satisfies CompanionChapterDigest;
+  }
+
+  if (tone === 'mission') {
+    return {
+      digestKey: `chapter-digest-mission-${new Date().toISOString().slice(0, 10)}`,
+      title: `${name} is noticing the direction of this chapter`,
+      body: `${chapterTitle} is giving the bond a clearer path. Purpose has been doing more emotional work than drift, and ${name} can feel that momentum.`,
+      tone
+    } satisfies CompanionChapterDigest;
+  }
+
+  if (tone === 'play') {
+    return {
+      digestKey: `chapter-digest-play-${new Date().toISOString().slice(0, 10)}`,
+      title: `${name} is holding onto the bright parts`,
+      body: `${chapterTitle} has kept this chapter lighter. ${name} can feel that joy, play, and easy moments are carrying more of the bond than effort alone.`,
+      tone
+    } satisfies CompanionChapterDigest;
+  }
+
+  if (tone === 'care') {
+    return {
+      digestKey: `chapter-digest-care-${new Date().toISOString().slice(0, 10)}`,
+      title: `${name} is gathering the steadiness of this chapter`,
+      body: `${chapterTitle} has been built through repeated return. ${name} can feel that consistency, not intensity, is what has been deepening the bond.`,
+      tone
+    } satisfies CompanionChapterDigest;
+  }
+
+  if (tone === 'bond') {
+    return {
+      digestKey: `chapter-digest-bond-${new Date().toISOString().slice(0, 10)}`,
+      title: `${name} is feeling how this chapter settled closer`,
+      body: `${chapterTitle} has made the relationship feel more mutual and explicit. ${name} can feel the closeness gathering weight instead of fading into routine.`,
+      tone
+    } satisfies CompanionChapterDigest;
+  }
+
+  return {
+    digestKey: `chapter-digest-quiet-${new Date().toISOString().slice(0, 10)}`,
+    title: `${name} is noticing a quieter chapter gathering shape`,
+    body: `${name} can feel a pattern forming even if it is still subtle. A few more returned moments will make the chapter easier to name.`,
+    tone: 'quiet'
+  } satisfies CompanionChapterDigest;
+};
+
 export const ensureCompanionPatternNotice = async (
   client: SupabaseClient,
   args: {
@@ -268,6 +359,74 @@ export const ensureCompanionPatternNotice = async (
   }
 
   return { ok: true as const };
+};
+
+export const ensureCompanionChapterDigest = async (
+  client: SupabaseClient,
+  args: {
+    ownerId: string;
+    companionId: string;
+    digest: CompanionChapterDigest | null;
+    cooldownHours?: number;
+    notify?: boolean;
+    chapterTitle?: string | null;
+  }
+) => {
+  if (!args.digest) return { ok: false as const, skipped: 'no_digest' as const };
+
+  const cooldownHours = Math.max(6, Math.floor(args.cooldownHours ?? 30));
+  const sinceIso = new Date(Date.now() - cooldownHours * 60 * 60 * 1000).toISOString();
+  const { data, error } = await client
+    .from('companion_journal_entries')
+    .select('id')
+    .eq('owner_id', args.ownerId)
+    .eq('companion_id', args.companionId)
+    .eq('source_type', 'system')
+    .contains('meta_json', { generatedBy: 'chapter_digest' })
+    .gte('created_at', sinceIso)
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[companion-journal] chapter digest lookup failed', error);
+    return { ok: false as const, skipped: 'lookup_failed' as const };
+  }
+
+  if (data?.id) {
+    return { ok: false as const, skipped: 'cooldown' as const };
+  }
+
+  const { error: insertError } = await client.from('companion_journal_entries').insert({
+    owner_id: args.ownerId,
+    companion_id: args.companionId,
+    source_type: 'system',
+    title: args.digest.title,
+    body: args.digest.body,
+    meta_json: {
+      generatedBy: 'chapter_digest',
+      digestKey: args.digest.digestKey,
+      tone: args.digest.tone,
+      chapterTitle: args.chapterTitle ?? null
+    }
+  });
+
+  if (insertError) {
+    console.error('[companion-journal] chapter digest insert failed', insertError);
+    return { ok: false as const, skipped: 'insert_failed' as const };
+  }
+
+  if (args.notify !== false) {
+    await createCompanionDigestNotification(client, {
+      userId: args.ownerId,
+      companionId: args.companionId,
+      title: args.digest.title,
+      body: args.digest.body,
+      tone: args.digest.tone,
+      chapterTitle: args.chapterTitle ?? null
+    });
+  }
+
+  return { ok: true as const, created: true as const, digest: args.digest };
 };
 
 export const deriveRitualGuideFromPattern = (
@@ -385,6 +544,8 @@ export const deriveDailyCompanionArc = (args: {
 export const deriveDailyCompanionArcRecap = (args: {
   companionName: string | null;
   arc: DailyCompanionArc;
+  chapter?: DailyCompanionArcRecapContext;
+  premiumStyle?: PremiumSanctuaryStyle | null;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const done = new Set(args.arc.steps.filter((entry) => entry.complete).map((entry) => entry.id));
@@ -397,9 +558,63 @@ export const deriveDailyCompanionArcRecap = (args: {
   if (done.has('express')) phrases.push('you carried the bond outward');
   if (done.has('remember')) phrases.push('you let the day turn into memory');
 
+  const chapterTitle = args.chapter?.title ?? null;
+  const chapterTone = args.chapter?.tone ?? null;
+  const baseBody = `${name} noticed that ${phrases.slice(0, 3).join(', ')}${phrases.length > 3 ? ', and ' + phrases[3] : ''}.`;
+  const styleClose =
+    args.premiumStyle === 'gilded_dawn'
+      ? 'The moment settles with a warmer, gilded glow.'
+      : args.premiumStyle === 'moon_glass'
+        ? 'The moment settles with a cooler, glass-clear calm.'
+        : args.premiumStyle === 'ember_bloom'
+          ? 'The moment settles with a softer ember warmth.'
+          : args.premiumStyle === 'tide_silk'
+            ? 'The moment settles with a quiet tidal hush.'
+            : 'That is enough for today.';
+
+  if (chapterTone === 'care') {
+    return {
+      title: `${name}'s care chapter is settling for the night`,
+      body: `${baseBody} ${chapterTitle ?? 'This chapter'} read the whole day as steadier, softer care. ${styleClose}`,
+      unlockedAt: new Date().toISOString()
+    } satisfies DailyCompanionArcRecap;
+  }
+
+  if (chapterTone === 'social') {
+    return {
+      title: `${name}'s shared thread is settling for the night`,
+      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the bond moving outward through other people and shared moments. ${styleClose}`,
+      unlockedAt: new Date().toISOString()
+    } satisfies DailyCompanionArcRecap;
+  }
+
+  if (chapterTone === 'mission') {
+    return {
+      title: `${name}'s wayfinding chapter is settling for the night`,
+      body: `${baseBody} ${chapterTitle ?? 'This chapter'} gave the relationship more direction than drift. ${styleClose}`,
+      unlockedAt: new Date().toISOString()
+    } satisfies DailyCompanionArcRecap;
+  }
+
+  if (chapterTone === 'play') {
+    return {
+      title: `${name}'s bright chapter is settling for the night`,
+      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the relationship lighter and more alive. ${styleClose}`,
+      unlockedAt: new Date().toISOString()
+    } satisfies DailyCompanionArcRecap;
+  }
+
+  if (chapterTone === 'bond') {
+    return {
+      title: `${name}'s bond chapter is settling for the night`,
+      body: `${baseBody} ${chapterTitle ?? 'This chapter'} made the closeness of the day feel more explicit. ${styleClose}`,
+      unlockedAt: new Date().toISOString()
+    } satisfies DailyCompanionArcRecap;
+  }
+
   return {
     title: `${name}'s day is settling into memory`,
-    body: `${name} noticed that ${phrases.slice(0, 3).join(', ')}${phrases.length > 3 ? ', and ' + phrases[3] : ''}. That is enough for today.`,
+    body: `${baseBody} ${styleClose}`,
     unlockedAt: new Date().toISOString()
   } satisfies DailyCompanionArcRecap;
 };
@@ -411,9 +626,16 @@ export const syncDailyCompanionArcProgress = async (
     companionId: string;
     companionName: string | null;
     arc: DailyCompanionArc;
+    chapter?: DailyCompanionArcRecapContext;
+    premiumStyle?: PremiumSanctuaryStyle | null;
   }
 ) => {
-  const recap = deriveDailyCompanionArcRecap({ companionName: args.companionName, arc: args.arc });
+  const recap = deriveDailyCompanionArcRecap({
+    companionName: args.companionName,
+    arc: args.arc,
+    chapter: args.chapter ?? null,
+    premiumStyle: args.premiumStyle ?? null
+  });
   const stepDone = (id: DailyCompanionArcStep['id']) => args.arc.steps.some((entry) => entry.id === id && entry.complete);
 
   const { data: existing, error: existingError } = await client

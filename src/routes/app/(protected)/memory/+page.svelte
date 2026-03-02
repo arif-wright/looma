@@ -149,8 +149,19 @@
   $: windowedTimeline = searchableTimeline.filter((item) => withinWindow(item.occurredAt, activeWindow));
   $: normalizedQuery = query.trim().toLowerCase();
   $: chapterHistory = ((data.chapterHistory ?? []) as ChapterHistoryEntry[]).slice(0, 6);
-  $: relationshipEras = ((data.relationshipEras ?? []) as RelationshipEra[]).slice(0, 4);
+  $: relationshipEras = ((data.relationshipEras ?? []) as RelationshipEra[]).slice(0, data.subscription?.active ? 6 : 4);
   $: journalGuidance = (data.journalGuidance ?? null) as JournalGuidance | null;
+  $: premiumChapterInsight = (data.premiumChapterInsight ?? null) as
+    | { title: string; body: string; highlights: string[] }
+    | null;
+  $: subscriptionActive = Boolean(data.subscription?.active);
+  $: premiumSanctuaryStyle = data.premiumSanctuaryStyle ?? null;
+  $: archivePreview = data.premiumArchivePreview ?? {
+    archivedMoments: 0,
+    archivedOpenings: 0,
+    timelineLimit: 30,
+    chapterHistoryLimit: 6
+  };
   $: filteredTimeline =
     normalizedQuery.length === 0
       ? windowedTimeline
@@ -176,6 +187,15 @@
         label: 'Chapter reveal',
         title: revealMoment.title,
         body: revealMoment.body
+      });
+    }
+    const digestMoment = data.timeline.find((item) => item.meta === 'Chapter digest');
+    if (digestMoment) {
+      cards.push({
+        id: digestMoment.id,
+        label: 'Chapter digest',
+        title: digestMoment.title,
+        body: digestMoment.body
       });
     }
     const noticedMoment = data.timeline.find((item) => item.meta === 'Noticed by companion');
@@ -306,7 +326,7 @@
   <title>Looma - Memory</title>
 </svelte:head>
 
-<div class="memory-root">
+<div class="memory-root" data-premium-style={premiumSanctuaryStyle ?? 'default'}>
   <SanctuaryPageFrame
     eyebrow="Companion Journal"
     title="Memory"
@@ -507,6 +527,53 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
+              <p class="eyebrow">Chapter depth</p>
+              <h2>{subscriptionActive ? premiumChapterInsight?.title ?? 'Deeper chapter reading' : 'Sanctuary+ insight'}</h2>
+            </div>
+            {#if subscriptionActive}
+              <div class="premium-depth-badges">
+                <EmotionalChip tone="warm">Subscriber depth</EmotionalChip>
+                {#if premiumSanctuaryStyle}
+                  <EmotionalChip tone="cool">{premiumSanctuaryStyle.replace(/_/g, ' ')}</EmotionalChip>
+                {/if}
+              </div>
+            {:else}
+              <EmotionalChip tone="muted">Preview</EmotionalChip>
+            {/if}
+          </div>
+
+          {#if subscriptionActive && premiumChapterInsight}
+            <p class="summary-text summary-text--compact">{premiumChapterInsight.body}</p>
+            <div class={`chapter-depth-list chapter-depth-list--${premiumSanctuaryStyle ?? 'default'}`}>
+              {#each premiumChapterInsight.highlights as highlight}
+                <article class="chapter-depth-item">
+                  <span></span>
+                  <p>{highlight}</p>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <p class="summary-text summary-text--compact">
+              Sanctuary+ expands your journal depth with longer timeline access, more chapter openings, and a deeper reading of what is actually shaping the bond week to week.
+            </p>
+            <div class="action-row">
+              <a class="btn btn--primary btn--link" href="/app/wallet">
+                Unlock Sanctuary+
+              </a>
+              <span class="meta-line">
+                {#if archivePreview.archivedMoments > 0 || archivePreview.archivedOpenings > 0}
+                  {archivePreview.archivedMoments} older moments and {archivePreview.archivedOpenings} extra openings are waiting in the archive.
+                {:else}
+                  Premium depth will grow as this companion collects more history.
+                {/if}
+              </span>
+            </div>
+          {/if}
+        </GlassCard>
+
+        <GlassCard class="memory-card">
+          <div class="card-head">
+            <div>
               <p class="eyebrow">Shelf interpretation</p>
               <h2>{data.keepsakeInterpretation?.title ?? 'What a keepsake means right now'}</h2>
             </div>
@@ -593,6 +660,12 @@
             </div>
           {:else}
             <p class="empty-copy">Past chapter openings will collect here as new keepsakes are revealed.</p>
+          {/if}
+
+          {#if !subscriptionActive && archivePreview.archivedOpenings > 0}
+            <p class="meta-line">
+              Sanctuary+ reveals {archivePreview.archivedOpenings} older chapter openings beyond this preview.
+            </p>
           {/if}
         </GlassCard>
 
@@ -761,6 +834,12 @@
               </li>
             {/each}
           </ol>
+          {#if !subscriptionActive && archivePreview.archivedMoments > 0}
+            <div class="timeline-upgrade">
+              <p>Sanctuary+ unlocks {archivePreview.archivedMoments} older journal moments for this companion.</p>
+              <a class="btn btn--ghost btn--link" href="/app/wallet">See premium depth</a>
+            </div>
+          {/if}
         {:else}
           <p class="empty-copy">
             {activeFilter === 'all'
@@ -1043,6 +1122,103 @@
   .timeline-copy p {
     color: rgba(226, 232, 240, 0.9);
     line-height: 1.45;
+  }
+
+  .chapter-depth-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .premium-depth-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  .chapter-depth-list--gilded_dawn .chapter-depth-item {
+    border-color: rgba(255, 229, 174, 0.2);
+    background: linear-gradient(145deg, rgba(255, 238, 196, 0.08), rgba(15, 23, 42, 0.35));
+  }
+
+  .chapter-depth-list--moon_glass .chapter-depth-item {
+    border-color: rgba(212, 228, 255, 0.2);
+    background: linear-gradient(145deg, rgba(219, 232, 255, 0.06), rgba(15, 23, 42, 0.35));
+  }
+
+  .chapter-depth-list--ember_bloom .chapter-depth-item {
+    border-color: rgba(255, 196, 164, 0.2);
+    background: linear-gradient(145deg, rgba(255, 214, 190, 0.06), rgba(15, 23, 42, 0.35));
+  }
+
+  .chapter-depth-list--tide_silk .chapter-depth-item {
+    border-color: rgba(190, 236, 232, 0.2);
+    background: linear-gradient(145deg, rgba(205, 240, 236, 0.05), rgba(15, 23, 42, 0.35));
+  }
+
+  .chapter-depth-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    padding: 0.8rem 0.9rem;
+    border-radius: 1rem;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .chapter-depth-item span {
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-top: 0.38rem;
+    border-radius: 999px;
+    background: rgba(214, 190, 141, 0.88);
+    box-shadow: 0 0 0 0.35rem rgba(214, 190, 141, 0.1);
+  }
+
+  .chapter-depth-item p {
+    margin: 0;
+    color: rgba(233, 224, 206, 0.84);
+    line-height: 1.5;
+  }
+
+  .timeline-upgrade {
+    margin-top: 0.95rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background: linear-gradient(135deg, rgba(214, 190, 141, 0.08), rgba(255, 255, 255, 0.02));
+    padding: 0.9rem 1rem;
+  }
+
+  .timeline-upgrade p {
+    margin: 0;
+    color: rgba(236, 228, 212, 0.82);
+    line-height: 1.45;
+  }
+
+  .memory-root[data-premium-style='gilded_dawn'] .timeline-upgrade,
+  .memory-root[data-premium-style='gilded_dawn'] .chapter-history__item {
+    box-shadow: inset 0 0 0 1px rgba(255, 228, 170, 0.05);
+  }
+
+  .memory-root[data-premium-style='moon_glass'] .timeline-upgrade,
+  .memory-root[data-premium-style='moon_glass'] .chapter-history__item {
+    box-shadow: inset 0 0 0 1px rgba(212, 228, 255, 0.05);
+  }
+
+  .memory-root[data-premium-style='ember_bloom'] .timeline-upgrade,
+  .memory-root[data-premium-style='ember_bloom'] .chapter-history__item {
+    box-shadow: inset 0 0 0 1px rgba(255, 196, 164, 0.05);
+  }
+
+  .memory-root[data-premium-style='tide_silk'] .timeline-upgrade,
+  .memory-root[data-premium-style='tide_silk'] .chapter-history__item {
+    box-shadow: inset 0 0 0 1px rgba(190, 236, 232, 0.05);
   }
 
   .milestone-grid {

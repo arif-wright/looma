@@ -16,6 +16,7 @@ import { normalizePortableCompanions } from '$lib/server/context/portableCompani
 import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
 import { isMuseCompanion, resolveMuseEvolutionStage } from '$lib/companions/evolution';
 import { alphaGate } from '$lib/server/alphaGate';
+import { isSubscriptionActive } from '$lib/subscriptions';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
 
@@ -432,6 +433,16 @@ export const load: LayoutServerLoad = async (event) => {
     ? await getAdminFlags(user.email ?? null, user.id)
     : { isAdmin: false, isFinance: false, isSuper: false };
 
+  const { data: subscriptionRow, error: subscriptionError } = await supabase
+    .from('user_subscriptions')
+    .select('tier, status, ends_at, renewal_at, source')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (subscriptionError) {
+    console.error('[layout] user_subscriptions lookup failed', subscriptionError);
+  }
+
   return {
     user,
     preferences,
@@ -444,6 +455,20 @@ export const load: LayoutServerLoad = async (event) => {
     wallet: {
       shards: walletRow?.shards ?? null
     },
+    subscription: subscriptionRow
+      ? {
+          tier: subscriptionRow.tier,
+          status: subscriptionRow.status,
+          ends_at: subscriptionRow.ends_at,
+          renewal_at: subscriptionRow.renewal_at,
+          source: subscriptionRow.source,
+          active: isSubscriptionActive({
+            subscription_active: false,
+            subscription_status: subscriptionRow.status,
+            subscription_ends_at: subscriptionRow.ends_at
+          })
+        }
+      : null,
     activeCompanion,
     portableActiveCompanion,
     isAdmin: adminFlags.isAdmin,

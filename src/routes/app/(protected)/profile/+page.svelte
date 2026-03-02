@@ -75,6 +75,8 @@ let editOpen = false;
   $: activeCompanionMood = featuredCompanionCard?.mood ?? 'Quiet';
   $: featuredKeepsake = data.featuredKeepsake ?? null;
   $: featuredCompanionRewards = data.featuredCompanionRewards ?? [];
+  $: subscriptionActive = Boolean(data.subscription?.active);
+  $: premiumSanctuaryStyle = data.premiumSanctuaryStyle ?? null;
   $: keepsakeShelfItems = [
     ...featuredCompanionRewards.filter((reward) => reward.rewardKey === featuredKeepsake?.rewardKey),
     ...featuredCompanionRewards.filter((reward) => reward.rewardKey !== featuredKeepsake?.rewardKey)
@@ -86,6 +88,15 @@ let editOpen = false;
   $: energyValue = stats?.energy ?? null;
   let keepsakeSaving = false;
   let keepsakeError: string | null = null;
+  let premiumStyleSaving = false;
+  let premiumStyleError: string | null = null;
+
+  const premiumStyles = [
+    { key: 'gilded_dawn', label: 'Gilded Dawn', body: 'Warm gold light and steadier sanctuary glow.' },
+    { key: 'moon_glass', label: 'Moon Glass', body: 'Cool pearl haze and quieter reflective atmosphere.' },
+    { key: 'ember_bloom', label: 'Ember Bloom', body: 'A softer ember wash for more intimate chapter moods.' },
+    { key: 'tide_silk', label: 'Tide Silk', body: 'A sea-lit premium sheen that leans airy and fluid.' }
+  ] as const;
 
   const setFeaturedKeepsake = async (rewardKey: string, companionId: string) => {
     keepsakeSaving = true;
@@ -128,6 +139,27 @@ let editOpen = false;
       keepsakeSaving = false;
     }
   };
+
+  const setPremiumStyle = async (style: string | null) => {
+    premiumStyleSaving = true;
+    premiumStyleError = null;
+    try {
+      const response = await fetch('/api/profile/premium-style', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(style ? { style } : { clear: true })
+      });
+      if (!response.ok) {
+        premiumStyleError = 'Could not update sanctuary style right now.';
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      premiumStyleError = 'Could not update sanctuary style right now.';
+    } finally {
+      premiumStyleSaving = false;
+    }
+  };
 </script>
 
 <div class="relative z-10 min-h-screen safe-bottom pb-safe md:pb-8">
@@ -168,6 +200,12 @@ let editOpen = false;
             Your profile should feel like a living companion space, not just a bio card. Keep your bond, reflections,
             and current energy visible.
           </p>
+          {#if subscriptionActive && premiumSanctuaryStyle}
+            <div class="profile-premium-style">
+              <span>Sanctuary+</span>
+              <strong>{premiumSanctuaryStyle.replace(/_/g, ' ')}</strong>
+            </div>
+          {/if}
         </div>
 
         <div class="profile-pulse__cards">
@@ -222,6 +260,44 @@ let editOpen = false;
             </div>
           </div>
         {/if}
+
+        <div class="profile-shelf profile-shelf--premium" aria-label="Premium sanctuary style">
+          <div class="profile-shelf__head">
+            <h3>Sanctuary style</h3>
+            <span>{subscriptionActive ? 'Choose how premium atmosphere reads on Home.' : 'Subscriber expression'}</span>
+          </div>
+          {#if subscriptionActive}
+            <div class="profile-shelf__grid profile-shelf__grid--premium">
+              {#each premiumStyles as style}
+                <button
+                  type="button"
+                  class={`profile-shelf__item profile-shelf__item--premium ${premiumSanctuaryStyle === style.key ? 'is-featured' : ''}`}
+                  disabled={premiumStyleSaving}
+                  on:click={() => setPremiumStyle(style.key)}
+                >
+                  <span class="profile-shelf__label">{premiumSanctuaryStyle === style.key ? 'Active' : 'Premium'}</span>
+                  <strong>{style.label}</strong>
+                  <p>{style.body}</p>
+                </button>
+              {/each}
+            </div>
+            <div class="profile-pulse__actions">
+              <button class="pulse-action" type="button" disabled={premiumStyleSaving} on:click={() => setPremiumStyle(null)}>
+                Clear style
+              </button>
+            </div>
+          {:else}
+            <p class="text-muted">
+              Sanctuary+ lets you choose a richer atmosphere for your Home sanctuary while keeping the bond loop free.
+            </p>
+            <div class="profile-pulse__actions">
+              <a class="pulse-action pulse-action--primary" href="/app/wallet">Unlock Sanctuary+</a>
+            </div>
+          {/if}
+          {#if premiumStyleError}
+            <p class="keepsake-error" role="alert">{premiumStyleError}</p>
+          {/if}
+        </div>
       </section>
 
       <div class="profile-cols">
@@ -635,6 +711,13 @@ let editOpen = false;
     line-height: 1.35;
   }
 
+  .profile-shelf__item p {
+    margin: 0.2rem 0 0;
+    color: rgba(221, 208, 183, 0.76);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
   .profile-shelf__item--care {
     border-color: rgba(132, 214, 179, 0.24);
     background: rgba(21, 41, 36, 0.48);
@@ -658,6 +741,51 @@ let editOpen = false;
   .profile-shelf__item--bond {
     border-color: rgba(214, 190, 141, 0.24);
     background: rgba(35, 29, 22, 0.48);
+  }
+
+  .profile-shelf__grid--premium {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .profile-shelf__item--premium {
+    text-align: left;
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease;
+    background:
+      linear-gradient(145deg, rgba(255, 242, 210, 0.08), rgba(23, 28, 36, 0.58)),
+      radial-gradient(circle at top right, rgba(255, 232, 179, 0.12), transparent 46%);
+  }
+
+  .profile-shelf__item--premium:hover,
+  .profile-shelf__item--premium:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(255, 229, 174, 0.32);
+    outline: none;
+  }
+
+  .profile-premium-style {
+    margin-top: 0.9rem;
+    display: inline-grid;
+    gap: 0.08rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 229, 174, 0.24);
+    padding: 0.45rem 0.8rem;
+    background:
+      linear-gradient(145deg, rgba(255, 242, 210, 0.08), rgba(23, 28, 36, 0.42)),
+      radial-gradient(circle at top right, rgba(255, 232, 179, 0.12), transparent 46%);
+  }
+
+  .profile-premium-style span {
+    color: rgba(248, 226, 186, 0.72);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .profile-premium-style strong {
+    color: rgba(255, 246, 228, 0.96);
+    font-size: 0.84rem;
+    text-transform: capitalize;
   }
 
   .pulse-action {

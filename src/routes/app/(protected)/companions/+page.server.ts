@@ -110,7 +110,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     .limit(24);
   const featuredKeepsakePreferenceResult = await supabase
     .from('user_preferences')
-    .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+    .select(
+      'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+    )
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -230,6 +232,10 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     companionId:
       typeof featuredKeepsakePreferenceResult.data?.featured_companion_reward_companion_id === 'string'
         ? featuredKeepsakePreferenceResult.data.featured_companion_reward_companion_id
+        : null,
+    premiumStyle:
+      typeof featuredKeepsakePreferenceResult.data?.premium_sanctuary_style === 'string'
+        ? featuredKeepsakePreferenceResult.data.premium_sanctuary_style
         : null
   };
 

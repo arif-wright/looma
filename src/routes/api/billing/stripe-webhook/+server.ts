@@ -1,6 +1,10 @@
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { getStripe, serviceClient } from '$lib/server/billing';
+import {
+  revokeStripeSubscription,
+  syncStripeSubscription
+} from '$lib/server/subscriptions';
 
 export const POST: RequestHandler = async ({ request }) => {
   const signature = request.headers.get('stripe-signature');
@@ -61,6 +65,70 @@ export const POST: RequestHandler = async ({ request }) => {
       if (error) {
         console.error('[stripe-webhook] credit_wallet error', error);
         return new Response(`RPC error: ${error.message}`, { status: 400 });
+      }
+    }
+
+    if (userId && session.mode === 'subscription') {
+      const { error } = await syncStripeSubscription(supabase as any, {
+        userId,
+        tier: session.metadata?.tier ?? null,
+        status: 'active',
+        stripeCustomerId: session.customer ?? null,
+        stripeSubscriptionId: session.subscription ?? null,
+        metadata: {
+          checkout_session_id: session.id
+        }
+      });
+
+      if (error) {
+        console.error('[stripe-webhook] sync subscription from checkout failed', error);
+        return new Response(`Subscription sync error: ${error.message}`, { status: 400 });
+      }
+    }
+  }
+
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as any;
+    const userId = subscription.metadata?.user_id as string | undefined;
+    if (userId) {
+      const { error } = await syncStripeSubscription(supabase as any, {
+        userId,
+        tier: subscription.metadata?.tier ?? null,
+        status: subscription.status,
+        stripeCustomerId: subscription.customer ?? null,
+        stripeSubscriptionId: subscription.id ?? null,
+        startedAt: subscription.start_date ?? subscription.created ?? null,
+        endsAt: subscription.cancel_at ?? subscription.current_period_end ?? null,
+        renewalAt: subscription.current_period_end ?? null,
+        metadata: {
+          stripe_status: subscription.status ?? null
+        }
+      });
+
+      if (error) {
+        console.error('[stripe-webhook] sync subscription update failed', error);
+        return new Response(`Subscription update error: ${error.message}`, { status: 400 });
+      }
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as any;
+    const userId = subscription.metadata?.user_id as string | undefined;
+    if (userId) {
+      const { error } = await revokeStripeSubscription(supabase as any, {
+        userId,
+        stripeCustomerId: subscription.customer ?? null,
+        stripeSubscriptionId: subscription.id ?? null,
+        endsAt: subscription.ended_at ?? subscription.cancel_at ?? subscription.current_period_end ?? null,
+        metadata: {
+          stripe_status: subscription.status ?? null
+        }
+      });
+
+      if (error) {
+        console.error('[stripe-webhook] revoke subscription failed', error);
+        return new Response(`Subscription revoke error: ${error.message}`, { status: 400 });
       }
     }
   }

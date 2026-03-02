@@ -3,6 +3,11 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { createCompanionNudgeNotification } from '$lib/server/notifications';
+import {
+  deriveCompanionChapterDigest,
+  deriveWeeklyCompanionArc,
+  ensureCompanionChapterDigest
+} from '$lib/server/companions/journal';
 
 type TickRow = {
   companion_id: string;
@@ -174,7 +179,8 @@ export const POST: RequestHandler = async (event) => {
   try {
     const companionIds = Array.from(statsMap.keys());
     if (companionIds.length > 0) {
-      const [metaResult, recentNudgesResult] = await Promise.all([
+      const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const [metaResult, recentNudgesResult, recentCareResult, recentSocialResult, recentCheckinsResult, recentMissionResult, recentGameResult, preferenceRes, rewardsRes] = await Promise.all([
         supabase
           .from('companions')
           .select('id,name,mood,energy,stats:companion_stats(fed_at,played_at,groomed_at)')
@@ -186,6 +192,48 @@ export const POST: RequestHandler = async (event) => {
           .eq('user_id', playerId)
           .eq('kind', 'companion_nudge')
           .gte('created_at', new Date(Date.now() - NUDGE_DEDUP_HOURS * 60 * 60 * 1000).toISOString())
+        ,
+        supabase
+          .from('companion_care_events')
+          .select('companion_id, created_at')
+          .eq('owner_id', playerId)
+          .in('companion_id', companionIds)
+          .gte('created_at', weekAgoIso),
+        supabase
+          .from('companion_journal_entries')
+          .select('companion_id, source_type, created_at')
+          .eq('owner_id', playerId)
+          .in('companion_id', companionIds)
+          .in('source_type', ['post', 'message', 'circle_announcement'])
+          .gte('created_at', weekAgoIso),
+        supabase
+          .from('user_daily_checkins')
+          .select('id')
+          .eq('user_id', playerId)
+          .gte('created_at', weekAgoIso),
+        supabase
+          .from('mission_sessions')
+          .select('id, started_at, completed_at, status')
+          .eq('user_id', playerId)
+          .in('status', ['active', 'completed'])
+          .or(`started_at.gte.${weekAgoIso},completed_at.gte.${weekAgoIso}`),
+        supabase
+          .from('game_sessions')
+          .select('id, started_at, completed_at')
+          .eq('user_id', playerId)
+          .eq('status', 'completed')
+          .or(`started_at.gte.${weekAgoIso},completed_at.gte.${weekAgoIso}`),
+        supabase
+          .from('user_preferences')
+          .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+          .eq('user_id', playerId)
+          .maybeSingle(),
+        supabase
+          .from('companion_chapter_rewards')
+          .select('companion_id, reward_key, reward_title, reward_tone, unlocked_at')
+          .eq('owner_id', playerId)
+          .in('companion_id', companionIds)
+          .order('unlocked_at', { ascending: false })
       ]);
 
       if (metaResult.error) {
@@ -193,6 +241,27 @@ export const POST: RequestHandler = async (event) => {
       }
       if (recentNudgesResult.error) {
         console.error('[companions/tick] recent nudge lookup failed', recentNudgesResult.error);
+      }
+      if (recentCareResult.error) {
+        console.error('[companions/tick] recent care lookup failed', recentCareResult.error);
+      }
+      if (recentSocialResult.error) {
+        console.error('[companions/tick] recent social lookup failed', recentSocialResult.error);
+      }
+      if (recentCheckinsResult.error) {
+        console.error('[companions/tick] recent checkins lookup failed', recentCheckinsResult.error);
+      }
+      if (recentMissionResult.error) {
+        console.error('[companions/tick] recent mission lookup failed', recentMissionResult.error);
+      }
+      if (recentGameResult.error) {
+        console.error('[companions/tick] recent game lookup failed', recentGameResult.error);
+      }
+      if (preferenceRes.error && preferenceRes.error.code !== 'PGRST116') {
+        console.error('[companions/tick] featured keepsake lookup failed', preferenceRes.error);
+      }
+      if (rewardsRes.error) {
+        console.error('[companions/tick] chapter rewards lookup failed', rewardsRes.error);
       }
 
       const dedupe = new Set<string>();
@@ -206,6 +275,57 @@ export const POST: RequestHandler = async (event) => {
           dedupe.add(`${companionId}:${reason}`);
         }
       });
+
+      const recentCareCounts = new Map<string, number>();
+      ((recentCareResult.data ?? []) as Array<Record<string, unknown>>).forEach((row) => {
+        const companionId = typeof row.companion_id === 'string' ? row.companion_id : null;
+        if (!companionId) return;
+        recentCareCounts.set(companionId, (recentCareCounts.get(companionId) ?? 0) + 1);
+      });
+
+      const recentSocialCounts = new Map<string, number>();
+      ((recentSocialResult.data ?? []) as Array<Record<string, unknown>>).forEach((row) => {
+        const companionId = typeof row.companion_id === 'string' ? row.companion_id : null;
+        if (!companionId) return;
+        recentSocialCounts.set(companionId, (recentSocialCounts.get(companionId) ?? 0) + 1);
+      });
+
+      const recentCheckins = Array.isArray(recentCheckinsResult.data) ? recentCheckinsResult.data.length : 0;
+      const recentMissions = Array.isArray(recentMissionResult.data) ? recentMissionResult.data.length : 0;
+      const recentGames = Array.isArray(recentGameResult.data) ? recentGameResult.data.length : 0;
+
+      const featuredRewardKey =
+        typeof preferenceRes.data?.featured_companion_reward_key === 'string'
+          ? preferenceRes.data.featured_companion_reward_key
+          : null;
+      const featuredCompanionId =
+        typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
+          ? preferenceRes.data.featured_companion_reward_companion_id
+          : null;
+
+      const rewardsByCompanionId = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).reduce<
+        Record<string, Array<{ key: string; title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' }>>
+      >((acc, row) => {
+        const companionId = typeof row.companion_id === 'string' ? row.companion_id : '';
+        const tone = row.reward_tone;
+        if (
+          !companionId ||
+          (tone !== 'care' &&
+            tone !== 'social' &&
+            tone !== 'mission' &&
+            tone !== 'play' &&
+            tone !== 'bond')
+        ) {
+          return acc;
+        }
+        acc[companionId] ??= [];
+        acc[companionId].push({
+          key: typeof row.reward_key === 'string' ? row.reward_key : 'reward',
+          title: typeof row.reward_title === 'string' ? row.reward_title : 'Companion keepsake',
+          tone
+        });
+        return acc;
+      }, {});
 
       const dueCutoff = Date.now() - CARE_STALE_HOURS * 60 * 60 * 1000;
       for (const companion of (metaResult.data ?? []) as CompanionMetaRow[]) {
@@ -236,6 +356,43 @@ export const POST: RequestHandler = async (event) => {
             energy
           });
         }
+
+        const chapterRewards = rewardsByCompanionId[companion.id] ?? [];
+        const chapter =
+          (featuredCompanionId === companion.id && featuredRewardKey
+            ? chapterRewards.find((reward) => reward.key === featuredRewardKey) ?? null
+            : null) ??
+          chapterRewards[0] ??
+          null;
+        const weeklyArc = deriveWeeklyCompanionArc({
+          companionName: companion.name,
+          careMoments: recentCareCounts.get(companion.id) ?? 0,
+          missionMoments: recentMissions,
+          gameMoments: recentGames,
+          socialMoments: recentSocialCounts.get(companion.id) ?? 0,
+          checkins: recentCheckins
+        });
+        const digest = deriveCompanionChapterDigest({
+          companionName: companion.name,
+          chapter: chapter
+            ? {
+                title: chapter.title,
+                tone: chapter.tone
+              }
+            : null,
+          weeklyArc,
+          careMoments: recentCareCounts.get(companion.id) ?? 0,
+          missionMoments: recentMissions,
+          gameMoments: recentGames,
+          socialMoments: recentSocialCounts.get(companion.id) ?? 0,
+          checkins: recentCheckins
+        });
+        await ensureCompanionChapterDigest(supabase, {
+          ownerId: playerId,
+          companionId: companion.id,
+          digest,
+          chapterTitle: chapter?.title ?? weeklyArc.title
+        });
       }
     }
   } catch (err) {

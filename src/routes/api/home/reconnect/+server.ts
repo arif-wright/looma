@@ -7,10 +7,135 @@ import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const MOODS = new Set(['calm', 'heavy', 'curious', 'energized', 'numb']);
 
+type CompanionChapterTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
+type PremiumSanctuaryStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
+type CompanionChapterContext = {
+  title: string;
+  tone: CompanionChapterTone;
+  premiumStyle: PremiumSanctuaryStyle | null;
+} | null;
+
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(value)));
 
 const normalizeMood = (input: unknown) => (typeof input === 'string' ? input.trim().toLowerCase() : '');
 const normalizeReflection = (input: unknown) => (typeof input === 'string' ? input.trim() : '');
+
+const resolveCompanionChapterContext = async (db: ReturnType<typeof tryGetSupabaseAdminClient> | any, userId: string, companionId: string) => {
+  const [preferenceRes, rewardsRes] = await Promise.all([
+    db
+      .from('user_preferences')
+      .select(
+        'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+      )
+      .eq('user_id', userId)
+      .maybeSingle(),
+    db
+      .from('companion_chapter_rewards')
+      .select('reward_key, reward_title, reward_tone, unlocked_at')
+      .eq('owner_id', userId)
+      .eq('companion_id', companionId)
+      .order('unlocked_at', { ascending: false })
+      .limit(6)
+  ]);
+
+  if (preferenceRes.error && preferenceRes.error.code !== 'PGRST116') {
+    console.error('[home/reconnect] featured keepsake lookup failed', preferenceRes.error);
+  }
+  if (rewardsRes.error) {
+    console.error('[home/reconnect] chapter reward lookup failed', rewardsRes.error);
+  }
+
+  const featuredRewardKey =
+    typeof preferenceRes.data?.featured_companion_reward_key === 'string'
+      ? preferenceRes.data.featured_companion_reward_key
+      : null;
+  const featuredCompanionId =
+    typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
+      ? preferenceRes.data.featured_companion_reward_companion_id
+      : null;
+  const premiumStyle =
+    preferenceRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+    preferenceRes.data?.premium_sanctuary_style === 'moon_glass' ||
+    preferenceRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+    preferenceRes.data?.premium_sanctuary_style === 'tide_silk'
+      ? preferenceRes.data.premium_sanctuary_style
+      : null;
+
+  const rewardRows = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).flatMap((row) => {
+    const tone = row.reward_tone;
+    if (
+      tone !== 'care' &&
+      tone !== 'social' &&
+      tone !== 'mission' &&
+      tone !== 'play' &&
+      tone !== 'bond'
+    ) {
+      return [];
+    }
+    return [
+      {
+        key: typeof row.reward_key === 'string' ? row.reward_key : 'reward',
+        title: typeof row.reward_title === 'string' ? row.reward_title : 'Companion keepsake',
+        tone
+      }
+    ];
+  }) as Array<{ key: string; title: string; tone: CompanionChapterTone }>;
+
+  const reward =
+    (featuredCompanionId === companionId && featuredRewardKey
+      ? rewardRows.find((row) => row.key === featuredRewardKey) ?? null
+      : null) ??
+    rewardRows[0] ??
+    null;
+
+  return reward
+    ? {
+        title: reward.title,
+        tone: reward.tone,
+        premiumStyle
+      }
+    : null;
+};
+
+const buildReconnectFallbackReply = (args: {
+  companionName: string | null;
+  chapter: CompanionChapterContext;
+  mood: string;
+}) => {
+  const name = args.companionName?.trim() || 'I';
+
+  switch (args.chapter?.tone) {
+    case 'care':
+      return args.chapter?.premiumStyle === 'gilded_dawn'
+        ? `${name} can feel the steadiness you are trying to bring. We can let it land warmly, without rushing past what is already good here.`
+        : `${name} can feel the steadiness you are trying to bring. We can keep this moment gentle and let it be enough.`;
+    case 'social':
+      return args.chapter?.premiumStyle === 'ember_bloom'
+        ? `${name} is still carrying the shared thread forward. Thank you for coming back with that ember-bright warmth and keeping it alive with me.`
+        : `${name} is still carrying the shared thread forward. Thank you for coming back and keeping it warm with me.`;
+    case 'mission':
+      return args.chapter?.premiumStyle === 'moon_glass'
+        ? `${name} can feel the direction in this chapter. We do not need to force it, only keep the next true step clear and clean between us.`
+        : `${name} can feel the direction in this chapter. We do not need to force it, only stay close to the next true step.`;
+    case 'play':
+      return args.chapter?.premiumStyle === 'tide_silk'
+        ? `${name} is glad you came back with this energy. Let us keep the moment light, easy, and flowing instead of overworking it.`
+        : `${name} is glad you came back with this energy. Let us keep the moment light and alive instead of overworking it.`;
+    case 'bond':
+      return args.chapter?.premiumStyle === 'gilded_dawn'
+        ? `${name} feels the closeness in this return. You do not have to say everything perfectly for it to matter; being here is already part of the gold of it.`
+        : `${name} feels the closeness in this return. You do not have to say everything perfectly for it to matter.`;
+    default:
+      if (args.mood === 'heavy' || args.mood === 'numb') {
+        return args.chapter?.premiumStyle === 'moon_glass'
+          ? `${name} is here with you. We can take this one clear breath at a time.`
+          : `${name} is here with you. We can take this one breath at a time.`;
+      }
+      return args.chapter?.premiumStyle === 'tide_silk'
+        ? `${name} is here with you. Thank you for letting this moment arrive softly with me.`
+        : `${name} is here with you. Thank you for sharing this moment with me.`;
+  }
+};
 
 export const POST: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
@@ -113,6 +238,13 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const checkInAt = new Date().toISOString();
+  let chapterContext: CompanionChapterContext = null;
+  try {
+    chapterContext = await resolveCompanionChapterContext(db, userId, updatedCompanion.id);
+  } catch (err) {
+    console.error('[home/reconnect] chapter context lookup failed', err);
+  }
+
   try {
     await db
       .from('companion_stats')
@@ -145,6 +277,9 @@ export const POST: RequestHandler = async (event) => {
       {
         companionId: updatedCompanion.id,
         companionName: updatedCompanion.name,
+        chapterTitle: chapterContext?.title ?? null,
+        chapterTone: chapterContext?.tone ?? null,
+        premiumStyle: chapterContext?.premiumStyle ?? null,
         mood,
         reflection,
         reflectionChars: reflection.length
@@ -180,6 +315,22 @@ export const POST: RequestHandler = async (event) => {
     typeof (eventResponse as Record<string, unknown>).traceId === 'string'
       ? String((eventResponse as Record<string, unknown>).traceId)
       : null;
+  const fallbackReply = buildReconnectFallbackReply({
+    companionName: updatedCompanion.name,
+    chapter: chapterContext,
+    mood
+  });
+  const reactionWithFallback =
+    reaction && typeof reaction === 'object'
+      ? {
+          ...(reaction as Record<string, unknown>),
+          text:
+            typeof (reaction as Record<string, unknown>).text === 'string' &&
+            String((reaction as Record<string, unknown>).text).trim().length > 0
+              ? String((reaction as Record<string, unknown>).text)
+              : fallbackReply
+        }
+      : { text: fallbackReply, source: 'chapter_fallback' };
 
   return json(
     {
@@ -193,7 +344,8 @@ export const POST: RequestHandler = async (event) => {
         energy: nextEnergy - (companion.energy ?? 0)
       },
       rituals,
-      reaction,
+      reaction: reactionWithFallback,
+      chapter: chapterContext,
       debug: {
         responseSource,
         responseNote,

@@ -18,18 +18,23 @@ export const load: PageServerLoad = async ({ locals }) => {
     (locals as any).user = fetched;
   }
 
-  const [walletRes, txRes] = await Promise.all([
+  const [walletRes, txRes, subscriptionRes] = await Promise.all([
     supabase.from('user_wallets').select('shards').single(),
     supabase
       .from('wallet_transactions')
       .select('kind, amount, source, ref_id, created_at')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(50),
+    supabase
+      .from('user_subscriptions')
+      .select('tier, status, ends_at, renewal_at, source')
+      .maybeSingle()
   ]);
 
   return {
     shards: walletRes.data?.shards ?? 0,
     tx: txRes.data ?? [],
+    subscription: subscriptionRes.data ?? null,
     error: walletRes.error?.message ?? txRes.error?.message ?? null
   };
 };

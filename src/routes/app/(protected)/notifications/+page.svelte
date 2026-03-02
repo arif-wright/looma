@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import type { PageData } from './$types';
+
+  export let data: PageData;
 
   type NotificationRow = {
     id: string;
@@ -13,9 +16,12 @@
     metadata: Record<string, unknown> | null;
   };
 
+  type PremiumNotificationStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
+
   let items: NotificationRow[] = [];
   let loading = false;
   let errorMessage: string | null = null;
+  $: premiumStyle = (data.premiumNotificationStyle ?? null) as PremiumNotificationStyle;
   $: unreadCount = items.filter((item) => !item.read).length;
 
   const load = async () => {
@@ -69,6 +75,10 @@
     }
 
     if (item.kind === 'companion_nudge') {
+      const title = typeof meta.title === 'string' ? meta.title : null;
+      const body = typeof meta.body === 'string' ? meta.body : null;
+      if (title && body) return `${title} ${body}`;
+      if (title) return title;
       return 'Your companion has an update.';
     }
 
@@ -78,6 +88,30 @@
 
     return 'You have a new notification.';
   };
+
+  const styleLabel = (style: PremiumNotificationStyle) => {
+    switch (style) {
+      case 'gilded_dawn':
+        return 'Gilded Dawn';
+      case 'moon_glass':
+        return 'Moon Glass';
+      case 'ember_bloom':
+        return 'Ember Bloom';
+      case 'tide_silk':
+        return 'Tide Silk';
+      default:
+        return null;
+    }
+  };
+
+  const notificationStyle = (item: NotificationRow) => {
+    const style = item.metadata?.premiumStyle;
+    return style === 'gilded_dawn' || style === 'moon_glass' || style === 'ember_bloom' || style === 'tide_silk'
+      ? style
+      : null;
+  };
+
+  const isDigest = (item: NotificationRow) => item.metadata?.digest === true;
 
   const formatTime = (iso: string) => {
     const ts = Date.parse(iso);
@@ -100,7 +134,24 @@
     <EmotionalChip tone="cool">{items.length} total</EmotionalChip>
   </svelte:fragment>
 
-  <section class="notifications-page" aria-label="Notifications inbox">
+  <section class="notifications-page" aria-label="Notifications inbox" data-premium-style={premiumStyle ?? 'default'}>
+    <header class={`notifications-chapter panel notifications-chapter--${data.notificationChapterFrame?.tone ?? 'quiet'}`}>
+      <div>
+        <p class="eyebrow">Current chapter</p>
+        <h2>{data.notificationChapterFrame?.title ?? 'Only worth-keeping signals should surface'}</h2>
+        <p class="lede">
+          {data.notificationChapterFrame?.body ??
+            'Let this inbox stay quiet until something truly deserves your attention.'}
+        </p>
+      </div>
+      {#if premiumStyle}
+        <div class="premium-style-badge">
+          <span>Sanctuary+</span>
+          <strong>{styleLabel(premiumStyle)}</strong>
+        </div>
+      {/if}
+    </header>
+
     <header class="notifications-hero panel">
       <div>
         <p class="eyebrow">Inbox pulse</p>
@@ -124,8 +175,16 @@
     {:else}
       <ul>
         {#each items as item}
-          <li class:unread={!item.read}>
+          <li class:unread={!item.read} data-premium-style={notificationStyle(item) ?? 'default'}>
             <div>
+              <div class="notification-row-head">
+                {#if isDigest(item)}
+                  <span class="notification-kind-badge">Chapter digest</span>
+                {/if}
+                {#if notificationStyle(item)}
+                  <span class="notification-kind-badge notification-kind-badge--premium">{styleLabel(notificationStyle(item))}</span>
+                {/if}
+              </div>
               <p class="desc">{describe(item)}</p>
               <small>{formatTime(item.created_at)}</small>
             </div>
@@ -148,6 +207,26 @@
     gap: 1rem;
   }
 
+  .notifications-page[data-premium-style='gilded_dawn'] .notifications-hero,
+  .notifications-page[data-premium-style='gilded_dawn'] .notifications-chapter {
+    box-shadow: inset 0 0 0 1px rgba(255, 228, 170, 0.06), 0 0 42px rgba(255, 223, 161, 0.05);
+  }
+
+  .notifications-page[data-premium-style='moon_glass'] .notifications-hero,
+  .notifications-page[data-premium-style='moon_glass'] .notifications-chapter {
+    box-shadow: inset 0 0 0 1px rgba(212, 228, 255, 0.06), 0 0 42px rgba(210, 226, 255, 0.05);
+  }
+
+  .notifications-page[data-premium-style='ember_bloom'] .notifications-hero,
+  .notifications-page[data-premium-style='ember_bloom'] .notifications-chapter {
+    box-shadow: inset 0 0 0 1px rgba(255, 196, 164, 0.06), 0 0 42px rgba(255, 192, 152, 0.05);
+  }
+
+  .notifications-page[data-premium-style='tide_silk'] .notifications-hero,
+  .notifications-page[data-premium-style='tide_silk'] .notifications-chapter {
+    box-shadow: inset 0 0 0 1px rgba(190, 236, 232, 0.06), 0 0 42px rgba(176, 228, 224, 0.05);
+  }
+
   .notifications-hero {
     border-radius: 1.25rem;
     border: 1px solid rgba(214, 190, 141, 0.16);
@@ -157,6 +236,69 @@
     padding: 1rem;
     display: grid;
     gap: 0.9rem;
+  }
+
+  .notifications-chapter {
+    border-radius: 1.25rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    background:
+      linear-gradient(160deg, rgba(24, 20, 15, 0.78), rgba(12, 16, 19, 0.88)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.14), transparent 42%);
+    padding: 1rem;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .premium-style-badge {
+    display: inline-grid;
+    justify-self: start;
+    gap: 0.08rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 229, 174, 0.26);
+    padding: 0.48rem 0.8rem;
+    background: rgba(255, 241, 210, 0.08);
+  }
+
+  .premium-style-badge span {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(248, 226, 186, 0.72);
+  }
+
+  .premium-style-badge strong {
+    color: rgba(255, 246, 228, 0.96);
+    font-size: 0.82rem;
+  }
+
+  .notifications-chapter--care {
+    background:
+      linear-gradient(160deg, rgba(18, 35, 31, 0.82), rgba(11, 18, 20, 0.9)),
+      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 42%);
+  }
+
+  .notifications-chapter--social {
+    background:
+      linear-gradient(160deg, rgba(42, 26, 25, 0.82), rgba(16, 17, 21, 0.9)),
+      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 42%);
+  }
+
+  .notifications-chapter--mission {
+    background:
+      linear-gradient(160deg, rgba(38, 30, 19, 0.82), rgba(14, 18, 21, 0.9)),
+      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 42%);
+  }
+
+  .notifications-chapter--play {
+    background:
+      linear-gradient(160deg, rgba(18, 30, 37, 0.82), rgba(11, 17, 21, 0.9)),
+      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 42%);
+  }
+
+  .notifications-chapter--bond {
+    background:
+      linear-gradient(160deg, rgba(34, 28, 24, 0.82), rgba(14, 18, 21, 0.9)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 42%);
   }
 
   .eyebrow {
@@ -220,6 +362,38 @@
     background: rgba(21, 18, 15, 0.72);
   }
   li.unread { border-color: rgba(214, 190, 141, 0.32); background: rgba(43, 33, 20, 0.28); }
+  li[data-premium-style='gilded_dawn'] {
+    box-shadow: inset 0 0 0 1px rgba(255, 228, 170, 0.06);
+  }
+  li[data-premium-style='moon_glass'] {
+    box-shadow: inset 0 0 0 1px rgba(212, 228, 255, 0.06);
+  }
+  li[data-premium-style='ember_bloom'] {
+    box-shadow: inset 0 0 0 1px rgba(255, 196, 164, 0.06);
+  }
+  li[data-premium-style='tide_silk'] {
+    box-shadow: inset 0 0 0 1px rgba(190, 236, 232, 0.06);
+  }
+  .notification-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+  }
+  .notification-kind-badge {
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(244, 232, 209, 0.78);
+    background: rgba(214, 190, 141, 0.12);
+    border: 1px solid rgba(214, 190, 141, 0.18);
+  }
+  .notification-kind-badge--premium {
+    border-color: rgba(255, 229, 174, 0.24);
+    background: rgba(255, 241, 210, 0.08);
+  }
   .desc { margin:0; color: rgba(245, 238, 225, 0.94); line-height: 1.45; }
   small { color: rgba(198, 184, 154, 0.88); }
   .empty-panel {

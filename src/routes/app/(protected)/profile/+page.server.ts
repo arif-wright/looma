@@ -11,6 +11,7 @@ import { env as publicEnv } from '$env/dynamic/public';
 import { env as privateEnv } from '$env/dynamic/private';
 import { getPersonaSummary } from '$lib/server/persona';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
+import { isSubscriptionActive } from '$lib/subscriptions';
 
 const getServiceClient = () => {
   const url = publicEnv.PUBLIC_SUPABASE_URL;
@@ -344,6 +345,7 @@ export const load: PageServerLoad = async (event) => {
     walletResult,
     companion,
     featuredKeepsakePrefs,
+    subscriptionResult,
     posts,
     pinned,
     achievements,
@@ -363,7 +365,12 @@ export const load: PageServerLoad = async (event) => {
     fetchFeaturedCompanion(supabase, profileRow.id),
     supabase
       .from('user_preferences')
-      .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+      .select('featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('user_subscriptions')
+      .select('tier, status, ends_at, renewal_at, source')
       .eq('user_id', user.id)
       .maybeSingle(),
     fetchPosts(supabase, user.id, true),
@@ -392,6 +399,9 @@ export const load: PageServerLoad = async (event) => {
   }
   if (featuredKeepsakePrefs.error && featuredKeepsakePrefs.error.code !== 'PGRST116') {
     console.error('[profile] featured keepsake preference lookup failed', featuredKeepsakePrefs.error);
+  }
+  if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') {
+    console.error('[profile] subscription lookup failed', subscriptionResult.error);
   }
   if (companionCountResult.error) {
     console.error('[profile] companion count lookup failed', companionCountResult.error);
@@ -447,6 +457,19 @@ export const load: PageServerLoad = async (event) => {
     featuredCompanionRewards.find(
       (reward) => reward.rewardKey === featuredRewardKey && reward.companionId === featuredRewardCompanionId
     ) ?? null;
+  const subscription = subscriptionResult.data
+    ? {
+        tier: subscriptionResult.data.tier,
+        status: subscriptionResult.data.status,
+        ends_at: subscriptionResult.data.ends_at,
+        renewal_at: subscriptionResult.data.renewal_at,
+        source: subscriptionResult.data.source,
+        active: isSubscriptionActive({
+          subscription_status: subscriptionResult.data.status,
+          subscription_ends_at: subscriptionResult.data.ends_at
+        })
+      }
+    : null;
 
   const { data: reqs, error: reqError } = await service
     .from('follow_requests')
@@ -518,6 +541,11 @@ export const load: PageServerLoad = async (event) => {
     featuredCompanion: companion,
     featuredCompanionRewards,
     featuredKeepsake,
+    subscription,
+    premiumSanctuaryStyle:
+      typeof featuredKeepsakePrefs.data?.premium_sanctuary_style === 'string'
+        ? featuredKeepsakePrefs.data.premium_sanctuary_style
+        : null,
     posts: posts.items,
     nextCursor: posts.nextCursor,
     pinnedPost: pinned,

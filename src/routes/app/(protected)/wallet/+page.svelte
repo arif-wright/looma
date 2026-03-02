@@ -12,8 +12,9 @@
   import { celebrateWalletCredit } from '$lib/ux/confetti';
   import InlineToast from '$lib/components/ui/InlineToast.svelte';
   import { walletBalance, walletTx, formatShards, setWalletBalance } from '$lib/stores/economy';
+  import { formatSubscriptionStatus, formatSubscriptionTier, isSubscriptionActive } from '$lib/subscriptions';
 
-  export let data: { shards: number; tx: any[] };
+  export let data: { shards: number; tx: any[]; subscription?: any };
 
   let toastShow = false;
   let toastMsg = '';
@@ -70,6 +71,29 @@
 
     window.location.href = out.url;
   }
+
+  async function buySubscription() {
+    const res = await fetch('/api/billing/create-checkout-session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'subscription', tier: 'sanctuary_plus' })
+    });
+
+    const out = await res.json().catch(() => null);
+    if (!res.ok || !out?.url) {
+      alert(out?.error ?? 'Failed to start subscription checkout');
+      return;
+    }
+
+    window.location.href = out.url;
+  }
+
+  $: subscription = data.subscription ?? null;
+  $: subscriptionActive = isSubscriptionActive({
+    subscription_active: false,
+    subscription_status: subscription?.status ?? null,
+    subscription_ends_at: subscription?.ends_at ?? null
+  });
 </script>
 
 <div class="wallet-root">
@@ -105,6 +129,50 @@
             <strong>{txList.length} events</strong>
             <span>Credits, rewards, and spends stay visible.</span>
           </article>
+        </div>
+      </section>
+
+      <section class="wallet-pulse panel" aria-label="Subscription pulse">
+        <div>
+          <p class="wallet-pulse__eyebrow">Sanctuary+</p>
+          <h2>{subscriptionActive ? formatSubscriptionTier(subscription?.tier) : 'Unlock deeper sanctuary perks'}</h2>
+          <p class="wallet-pulse__lede">
+            Keep the bond loop free. Use premium for smoother progression, richer chapter depth, and a more expressive sanctuary.
+          </p>
+        </div>
+
+        <div class="wallet-pulse__stats">
+          <article class="pulse-card">
+            <span class="pulse-card__label">Status</span>
+            <strong>{subscription ? formatSubscriptionStatus(subscription.status) : 'not active'}</strong>
+            <span>
+              {#if subscriptionActive}
+                Renews or ends {subscription?.renewal_at ? new Date(subscription.renewal_at).toLocaleDateString() : 'later'}.
+              {:else}
+                Faster momentum recovery and premium chapter depth live here.
+              {/if}
+            </span>
+          </article>
+          <article class="pulse-card">
+            <span class="pulse-card__label">Includes</span>
+            <strong>Depth + expression</strong>
+            <span>Premium memory depth, sanctuary presentation, and smoother optional progression.</span>
+          </article>
+        </div>
+
+        <div class="wallet-subscription-actions">
+          {#if subscriptionActive}
+            <div class="wallet-subscription-state">
+              <span class="wallet-subscription-badge">Active</span>
+              <span>
+                {formatSubscriptionTier(subscription?.tier)} via {subscription?.source ?? 'subscription'}
+              </span>
+            </div>
+          {:else}
+            <button class="wallet-subscribe-button" type="button" on:click={buySubscription}>
+              Start Sanctuary+
+            </button>
+          {/if}
         </div>
       </section>
 
@@ -237,6 +305,45 @@
     display: grid;
     gap: 1.25rem;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .wallet-subscription-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .wallet-subscription-state {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: center;
+    color: rgba(240, 232, 214, 0.88);
+    font-size: 0.92rem;
+  }
+
+  .wallet-subscription-badge {
+    border-radius: 999px;
+    padding: 0.26rem 0.65rem;
+    border: 1px solid rgba(214, 190, 141, 0.28);
+    background: rgba(214, 190, 141, 0.14);
+    color: rgba(250, 242, 226, 0.96);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .wallet-subscribe-button {
+    border: 1px solid rgba(214, 190, 141, 0.36);
+    background:
+      linear-gradient(135deg, rgba(214, 190, 141, 0.2), rgba(196, 157, 84, 0.16)),
+      rgba(18, 20, 22, 0.72);
+    color: rgba(252, 247, 238, 0.98);
+    border-radius: 999px;
+    padding: 0.82rem 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   @media (max-width: 640px) {

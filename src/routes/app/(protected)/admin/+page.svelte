@@ -241,7 +241,7 @@
             <p class="label">Players</p>
             <p class="value">QA tools</p>
           </div>
-          <p class="hint">Grant licenses, QA tools</p>
+          <p class="hint">Grant licenses, subscriptions, QA tools</p>
           <a class="inline-flex text-sm font-medium text-emerald-300 hover:text-emerald-200" href="/app/admin/players">
             Open Players
           </a>

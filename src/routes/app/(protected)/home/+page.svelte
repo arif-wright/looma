@@ -95,6 +95,20 @@
     }
     return 'quiet';
   })() as CompanionEraTone;
+  $: subscriptionActive = Boolean(data.subscription?.active);
+  $: premiumStyle = data.premiumSanctuaryStyle ?? null;
+  $: premiumAccentLabel =
+    premiumStyle === 'gilded_dawn'
+      ? 'Gilded Dawn is warming the sanctuary.'
+      : premiumStyle === 'moon_glass'
+        ? 'Moon Glass is softening the sanctuary light.'
+        : premiumStyle === 'ember_bloom'
+          ? 'Ember Bloom is drawing the sanctuary inward.'
+          : premiumStyle === 'tide_silk'
+            ? 'Tide Silk is making the sanctuary feel fluid and airy.'
+            : data.keepsakeTheme?.title
+              ? `${data.keepsakeTheme.title} is deepening the sanctuary atmosphere.`
+              : `${companionName}'s sanctuary is carrying a richer premium glow.`;
   $: statusLine =
     closenessState === 'Distant'
       ? `${companionName} feels distant.`
@@ -323,6 +337,9 @@
       companionName={companionName}
       companionAvatarUrl={companionState?.avatar_url ?? null}
       keepsakeTheme={data.keepsakeTheme ?? null}
+      {subscriptionActive}
+      premiumAccentLabel={premiumAccentLabel}
+      premiumStyle={premiumStyle}
       {closenessState}
       {statusLine}
       {statusReason}
@@ -373,6 +390,8 @@
       chapterRewards={data.chapterRewards ?? []}
       sanctuaryShelfRewards={data.sanctuaryShelfRewards ?? []}
       eraAction={data.eraAction ?? null}
+      chapterPaths={data.chapterPaths ?? []}
+      {premiumStyle}
     />
   </section>
 </div>

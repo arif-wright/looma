@@ -217,8 +217,11 @@
   >;
   const featuredKeepsakePreference = (data.featuredKeepsakePreference ?? {
     rewardKey: null,
-    companionId: null
-  }) as { rewardKey: string | null; companionId: string | null };
+    companionId: null,
+    premiumStyle: null
+  }) as { rewardKey: string | null; companionId: string | null; premiumStyle: string | null };
+  const subscriptionActive = Boolean(data.subscription?.active);
+  const premiumStyle = subscriptionActive ? featuredKeepsakePreference.premiumStyle : null;
   let maxSlots = data.maxSlots ?? 3;
   const companionState = createCompanionRosterState(sortBySlot((data.companions ?? []) as Companion[]), data.activeCompanionId ?? null);
   let rosterState = get(companionState);
@@ -922,7 +925,13 @@
     <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
   {/if}
 
-  <section class="companion-view" aria-labelledby="companion-view-heading" data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}>
+  <section
+    class="companion-view"
+    aria-labelledby="companion-view-heading"
+    data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}
+    data-premium={subscriptionActive ? 'true' : 'false'}
+    data-premium-style={premiumStyle ?? 'default'}
+  >
     <div class="companion-view__content">
       <p class="eyebrow">Companion View</p>
       {#if activeCompanion}
@@ -940,6 +949,9 @@
               {/if}
               {#if activeCompanionEvolutionStage}
                 <span class="chip chip--evolution">Evolution {activeCompanionEvolutionStage}</span>
+              {/if}
+              {#if subscriptionActive}
+                <span class="chip chip--premium">Sanctuary+</span>
               {/if}
               <span class="chip">{activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label}</span>
             </div>
@@ -971,6 +983,19 @@
           </div>
         </div>
 
+        {#if subscriptionActive}
+          <div class={`premium-presence premium-presence--${activeKeepsakeTone ?? 'bond'}`}>
+            <span class="premium-presence__label">Sanctuary+ presence</span>
+            <strong>{activeCompanion.name}'s shelf is carrying extra depth</strong>
+            <p>
+              Premium atmosphere is extending this companion’s keepsake tone through the shelf, model glow, and sanctuary framing without changing the core bond loop.
+            </p>
+            {#if premiumStyle}
+              <span class="premium-presence__style">{premiumStyle.replace(/_/g, ' ')}</span>
+            {/if}
+          </div>
+        {/if}
+
         <div class="pulse-grid" aria-label="Active companion pulse">
           <article class="pulse-card">
             <span class="pulse-card__label">Care state</span>
@@ -997,7 +1022,12 @@
           <a class="secondary-link" href={activeCompanionSanctuaryHref}>Go to sanctuary</a>
         </div>
 
-        <div class="active-keepsakes" aria-label="Active companion keepsakes" data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}>
+        <div
+          class="active-keepsakes"
+          aria-label="Active companion keepsakes"
+          data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}
+          data-premium={subscriptionActive ? 'true' : 'false'}
+        >
           <div class="panel-title-row">
             <h2>Keepsakes</h2>
             <p>{activeChapterRewards.length > 0 ? 'Earned through your recent companion chapters.' : 'Chapter keepsakes will gather here as the bond deepens.'}</p>
@@ -1591,6 +1621,13 @@
     background: rgba(214, 190, 141, 0.12);
   }
 
+  .chip--premium {
+    border-color: rgba(255, 228, 170, 0.42);
+    background: rgba(255, 236, 198, 0.12);
+    color: rgba(255, 246, 228, 0.98);
+    box-shadow: 0 0 0 1px rgba(255, 242, 214, 0.05) inset;
+  }
+
   .time-context {
     margin: 0.7rem 0 0;
     color: rgba(223, 209, 179, 0.78);
@@ -1753,6 +1790,53 @@
     border-color: rgba(148, 163, 184, 0.2);
   }
 
+  .premium-presence {
+    margin-top: 0.7rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 231, 182, 0.22);
+    padding: 0.92rem;
+    display: grid;
+    gap: 0.24rem;
+    background:
+      linear-gradient(145deg, rgba(255, 239, 204, 0.08), rgba(18, 24, 31, 0.5)),
+      radial-gradient(circle at top right, rgba(255, 235, 188, 0.14), transparent 48%);
+  }
+
+  .premium-presence__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(249, 229, 188, 0.78);
+  }
+
+  .premium-presence strong {
+    color: rgba(255, 247, 230, 0.97);
+    font-size: 0.98rem;
+    line-height: 1.3;
+  }
+
+  .premium-presence p {
+    margin: 0;
+    color: rgba(232, 220, 197, 0.84);
+    line-height: 1.52;
+  }
+
+  .premium-presence__style {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 0.2rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 235, 188, 0.18);
+    background: rgba(255, 239, 204, 0.08);
+    color: rgba(249, 229, 188, 0.84);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .pulse-grid {
     margin-top: 0.95rem;
     display: grid;
@@ -1901,6 +1985,75 @@
     background: radial-gradient(circle at center, rgba(214, 190, 141, 0.18), rgba(8, 12, 18, 0.9) 72%);
   }
 
+  .companion-view[data-premium='true'] {
+    box-shadow:
+      0 18px 40px rgba(7, 13, 24, 0.34),
+      0 0 0 1px rgba(255, 232, 186, 0.08) inset,
+      0 0 46px rgba(255, 227, 169, 0.08);
+  }
+
+  .companion-view[data-premium='true'] .companion-view__model {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 233, 186, 0.08),
+      0 0 52px rgba(255, 227, 169, 0.1);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] {
+    box-shadow:
+      0 18px 42px rgba(58, 38, 12, 0.34),
+      0 0 0 1px rgba(255, 229, 172, 0.1) inset,
+      0 0 56px rgba(255, 219, 136, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] .companion-view__model,
+  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] .premium-presence {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 229, 172, 0.08),
+      0 0 56px rgba(255, 219, 136, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='moon_glass'] {
+    box-shadow:
+      0 18px 42px rgba(15, 34, 58, 0.34),
+      0 0 0 1px rgba(183, 220, 238, 0.1) inset,
+      0 0 56px rgba(168, 205, 224, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='moon_glass'] .companion-view__model,
+  .companion-view[data-premium='true'][data-premium-style='moon_glass'] .premium-presence {
+    box-shadow:
+      inset 0 0 0 1px rgba(183, 220, 238, 0.08),
+      0 0 56px rgba(168, 205, 224, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] {
+    box-shadow:
+      0 18px 42px rgba(68, 24, 18, 0.34),
+      0 0 0 1px rgba(241, 170, 144, 0.1) inset,
+      0 0 56px rgba(236, 145, 113, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] .companion-view__model,
+  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] .premium-presence {
+    box-shadow:
+      inset 0 0 0 1px rgba(241, 170, 144, 0.08),
+      0 0 56px rgba(236, 145, 113, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='tide_silk'] {
+    box-shadow:
+      0 18px 42px rgba(10, 48, 50, 0.34),
+      0 0 0 1px rgba(145, 226, 220, 0.1) inset,
+      0 0 56px rgba(122, 202, 196, 0.12);
+  }
+
+  .companion-view[data-premium='true'][data-premium-style='tide_silk'] .companion-view__model,
+  .companion-view[data-premium='true'][data-premium-style='tide_silk'] .premium-presence {
+    box-shadow:
+      inset 0 0 0 1px rgba(145, 226, 220, 0.08),
+      0 0 56px rgba(122, 202, 196, 0.12);
+  }
+
   .panel-title-row {
     display: flex;
     justify-content: space-between;
@@ -1964,6 +2117,12 @@
 
   .keepsake-shelf__item.is-featured {
     box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.24);
+  }
+
+  .active-keepsakes[data-premium='true'] .keepsake-shelf__item.is-featured {
+    box-shadow:
+      0 0 0 1px rgba(255, 230, 176, 0.3),
+      0 0 28px rgba(255, 222, 154, 0.08);
   }
 
   .keepsake-shelf__label {

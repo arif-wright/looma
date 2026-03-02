@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env } from '$env/dynamic/private';
+export { subscriptionCatalog } from '$lib/server/subscriptions';
 
 let stripeClient: Stripe | null = null;
 

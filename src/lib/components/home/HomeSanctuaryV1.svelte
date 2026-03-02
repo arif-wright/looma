@@ -20,6 +20,10 @@
   export let companionReplyDebug: string | null = null;
   export let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
   export let modelAnimation: MuseAnimationName = 'Idle';
+  export let subscriptionActive = false;
+  export let subscriptionLabel = 'Sanctuary+';
+  export let premiumAccentLabel: string | null = null;
+  export let premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
 
   const dispatch = createEventDispatcher<{
     primary: Record<string, never>;
@@ -38,6 +42,7 @@
         : "I'm listening. Share what's on your mind.");
   $: sanctuaryTone = keepsakeTheme?.tone ?? 'bond';
   $: auraLabel = keepsakeTheme ? `Keepsake aura: ${keepsakeTheme.title}` : null;
+  $: premiumLabel = subscriptionActive ? premiumAccentLabel ?? `${subscriptionLabel} resonance` : null;
 
   const dismissHint = () => {
     showHint = false;
@@ -50,10 +55,16 @@
   });
 </script>
 
-<section class="sanctuary" data-keepsake-tone={sanctuaryTone}>
+<section
+  class="sanctuary"
+  data-keepsake-tone={sanctuaryTone}
+  data-premium={subscriptionActive ? 'true' : 'false'}
+  data-premium-style={premiumStyle ?? 'default'}
+>
   <div class="bg base" aria-hidden="true"></div>
   <div class="bg chroma" aria-hidden="true"></div>
   <div class="bg drift" aria-hidden="true"></div>
+  <div class="bg premium" aria-hidden="true"></div>
   <div class="bg stars" aria-hidden="true"></div>
   <div class="bg noise" aria-hidden="true"></div>
 
@@ -66,6 +77,12 @@
 
   <main class="stage" aria-label="Companion home">
     <div class="hero-wrap">
+      {#if premiumLabel}
+        <div class="premium-aura" role="status">
+          <span class="premium-aura__label">{subscriptionLabel}</span>
+          <strong>{premiumLabel}</strong>
+        </div>
+      {/if}
       {#if auraLabel}
         <div class="keepsake-aura" role="status">
           <span class="keepsake-aura__label">Keepsake aura</span>
@@ -226,6 +243,48 @@
     animation: cloudDrift 18s cubic-bezier(0.32, 0.03, 0.16, 0.99) infinite alternate;
   }
 
+  .premium {
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 220ms ease;
+    background:
+      radial-gradient(42% 34% at 18% 18%, rgba(255, 244, 200, 0.22), transparent 78%),
+      radial-gradient(44% 36% at 84% 28%, rgba(255, 226, 168, 0.18), transparent 76%),
+      radial-gradient(36% 30% at 50% 82%, rgba(255, 239, 197, 0.14), transparent 74%);
+  }
+
+  .sanctuary[data-premium='true'] .premium {
+    opacity: 1;
+  }
+
+  .sanctuary[data-premium-style='gilded_dawn'] .premium {
+    background:
+      radial-gradient(42% 34% at 18% 18%, rgba(255, 236, 176, 0.3), transparent 78%),
+      radial-gradient(44% 36% at 84% 28%, rgba(255, 206, 140, 0.22), transparent 76%),
+      radial-gradient(36% 30% at 50% 82%, rgba(255, 245, 205, 0.16), transparent 74%);
+  }
+
+  .sanctuary[data-premium-style='moon_glass'] .premium {
+    background:
+      radial-gradient(42% 34% at 18% 18%, rgba(224, 236, 255, 0.22), transparent 78%),
+      radial-gradient(44% 36% at 84% 28%, rgba(208, 222, 255, 0.18), transparent 76%),
+      radial-gradient(36% 30% at 50% 82%, rgba(240, 244, 255, 0.14), transparent 74%);
+  }
+
+  .sanctuary[data-premium-style='ember_bloom'] .premium {
+    background:
+      radial-gradient(42% 34% at 18% 18%, rgba(255, 214, 176, 0.24), transparent 78%),
+      radial-gradient(44% 36% at 84% 28%, rgba(255, 168, 140, 0.18), transparent 76%),
+      radial-gradient(36% 30% at 50% 82%, rgba(255, 229, 196, 0.14), transparent 74%);
+  }
+
+  .sanctuary[data-premium-style='tide_silk'] .premium {
+    background:
+      radial-gradient(42% 34% at 18% 18%, rgba(193, 237, 233, 0.24), transparent 78%),
+      radial-gradient(44% 36% at 84% 28%, rgba(168, 222, 228, 0.18), transparent 76%),
+      radial-gradient(36% 30% at 50% 82%, rgba(210, 245, 241, 0.13), transparent 74%);
+  }
+
   .stars {
     z-index: 3;
     opacity: 0.26;
@@ -299,6 +358,33 @@
     justify-items: center;
     align-self: start;
     gap: 0.9rem;
+  }
+
+  .premium-aura {
+    width: min(100%, 20rem);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 231, 182, 0.28);
+    background:
+      linear-gradient(135deg, rgba(255, 238, 196, 0.18), rgba(255, 255, 255, 0.06)),
+      rgba(17, 24, 39, 0.42);
+    backdrop-filter: blur(16px);
+    padding: 0.54rem 0.9rem;
+    display: grid;
+    gap: 0.12rem;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(11, 17, 32, 0.24);
+  }
+
+  .premium-aura__label {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 236, 200, 0.74);
+  }
+
+  .premium-aura strong {
+    font-size: 0.84rem;
+    color: rgba(255, 248, 232, 0.96);
   }
 
   .keepsake-aura {

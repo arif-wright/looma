@@ -3,14 +3,18 @@ import {
   deriveEmotionalStateFromCompanionStats,
   type EmotionalStateSnapshot
 } from '$lib/server/emotionalState';
+import { isSubscriptionActive } from '$lib/subscriptions';
 import {
   deriveChapterMilestones,
   deriveChapterRewards,
+  deriveCompanionChapterDigest,
   deriveCompanionPatternNotice,
   deriveDailyCompanionArc,
   deriveRitualGuideFromPattern,
   deriveWeeklyCompanionArc,
+  ensureCompanionChapterDigest,
   ensureCompanionPatternNotice,
+  type PremiumSanctuaryStyle,
   syncDailyCompanionArcProgress,
   unlockChapterRewards
 } from '$lib/server/companions/journal';
@@ -177,6 +181,12 @@ type JournalGuidance = {
   secondaryHref: string;
   ritualKey: string | null;
   ritualLabel: string | null;
+};
+
+type PremiumChapterInsight = {
+  title: string;
+  body: string;
+  highlights: string[];
 };
 
 const COMPANION_SELECT =
@@ -381,6 +391,39 @@ const buildJournalGuidance = (args: {
   }
 };
 
+const buildPremiumChapterInsight = (args: {
+  companionName: string;
+  weeklyArc: ReturnType<typeof deriveWeeklyCompanionArc>;
+  relationshipPulse: ReturnType<typeof buildRelationshipReasons>;
+  weeklyPulse: ReturnType<typeof buildWeeklyPulse>;
+  chapterHistory: ChapterHistoryEntry[];
+  featuredKeepsake: { title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' } | null;
+}): PremiumChapterInsight => {
+  const name = args.companionName.trim() || 'Your companion';
+  const highlights: string[] = [];
+
+  for (const reason of args.relationshipPulse.reasons.slice(0, 2)) {
+    highlights.push(reason);
+  }
+
+  highlights.push(`This week leaned ${args.weeklyPulse.dominantLabel.toLowerCase()} across ${args.weeklyArc.progressLabel.toLowerCase()}.`);
+
+  if (args.featuredKeepsake) {
+    highlights.push(`${args.featuredKeepsake.title} is acting as the visible emblem of this chapter.`);
+  } else if (args.chapterHistory[0]) {
+    highlights.push(`The latest opening, ${args.chapterHistory[0].title}, is still shaping the tone of the bond.`);
+  }
+
+  return {
+    title: `${name}'s deeper chapter reading`,
+    body:
+      args.weeklyArc.emphasis === 'quiet'
+        ? `${name} is in a quieter phase. The signal is less about volume and more about consistency, small returns, and whether the bond is holding shape without pressure.`
+        : `${name} is in a ${args.weeklyArc.emphasis} chapter right now. The deeper pattern is not just what happened most recently, but what kind of rhythm keeps reappearing across the week.`,
+    highlights: highlights.slice(0, 4)
+  };
+};
+
 const buildWeeklyPulse = (args: {
   careRows: CareEventRow[];
   missionRows: MissionSessionRow[];
@@ -580,7 +623,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   const selectedCompanionId = selectedCompanion.id;
 
-  const [summaryRes, emotionalRes, careRes, checkinsRes, missionRes, gameRes, journalEntriesRes] = await Promise.all([
+  const [summaryRes, emotionalRes, careRes, checkinsRes, missionRes, gameRes, journalEntriesRes, subscriptionRes, premiumStyleRes] = await Promise.all([
     supabase
       .from('companion_memory_summary')
       .select('summary_text, highlights_json, last_built_at, source_window_json')
@@ -599,13 +642,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('owner_id', userId)
       .eq('companion_id', selectedCompanionId)
       .order('created_at', { ascending: false })
-      .limit(10),
+      .limit(24),
     supabase
       .from('user_daily_checkins')
       .select('id, mood, checkin_date, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(10),
+      .limit(24),
     supabase
       .from('mission_sessions')
       .select('id, mission_id, mission_type, status, started_at, completed_at')
@@ -613,22 +656,55 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .in('status', ['active', 'completed'])
       .order('completed_at', { ascending: false, nullsFirst: false })
       .order('started_at', { ascending: false })
-      .limit(10),
+      .limit(24),
     supabase
       .from('game_sessions')
       .select('id, game_id, status, score, duration_ms, completed_at, started_at')
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
-      .limit(10),
+      .limit(24),
     supabase
       .from('companion_journal_entries')
       .select('id, source_type, title, body, created_at, meta_json')
       .eq('owner_id', userId)
       .eq('companion_id', selectedCompanionId)
       .order('created_at', { ascending: false })
-      .limit(12)
+      .limit(60),
+    supabase
+      .from('user_subscriptions')
+      .select('tier, status, ends_at, renewal_at, source')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('user_preferences')
+      .select('premium_sanctuary_style')
+      .eq('user_id', userId)
+      .maybeSingle()
   ]);
+
+  const subscription = subscriptionRes.data
+    ? {
+        tier: subscriptionRes.data.tier,
+        status: subscriptionRes.data.status,
+        ends_at: subscriptionRes.data.ends_at,
+        renewal_at: subscriptionRes.data.renewal_at,
+        source: subscriptionRes.data.source,
+        active: isSubscriptionActive({
+          subscription_status: subscriptionRes.data.status,
+          subscription_ends_at: subscriptionRes.data.ends_at
+        })
+      }
+    : null;
+  const isSubscriber = Boolean(subscription?.active);
+  const premiumSanctuaryStyle =
+    isSubscriber &&
+    (premiumStyleRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+      premiumStyleRes.data?.premium_sanctuary_style === 'moon_glass' ||
+      premiumStyleRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+      premiumStyleRes.data?.premium_sanctuary_style === 'tide_silk')
+      ? (premiumStyleRes.data.premium_sanctuary_style as PremiumSanctuaryStyle)
+      : null;
 
   const missionRows = (missionRes.data ?? []) as MissionSessionRow[];
   const missionIds = missionRows
@@ -883,9 +959,37 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       ownerId: userId,
       companionId: selectedCompanionId,
       companionName: selectedCompanion.name,
-      arc: dailyArc
+      arc: dailyArc,
+      premiumStyle: premiumSanctuaryStyle,
+      chapter: featuredKeepsake
+        ? {
+            title: featuredKeepsake.title,
+            tone: featuredKeepsake.tone
+          }
+        : null
     })
   ).recap;
+  const chapterDigest = deriveCompanionChapterDigest({
+    companionName: selectedCompanion.name,
+    chapter: featuredKeepsake
+      ? {
+          title: featuredKeepsake.title,
+          tone: featuredKeepsake.tone
+        }
+      : null,
+    weeklyArc,
+    careMoments: weeklyPulse.careMoments,
+    missionMoments: weeklyPulse.missionMoments,
+    gameMoments: weeklyPulse.gameMoments,
+    socialMoments: weeklyPulse.socialMoments,
+    checkins: weeklyPulse.recentCheckins
+  });
+  const chapterDigestResult = await ensureCompanionChapterDigest(supabase, {
+    ownerId: userId,
+    companionId: selectedCompanionId,
+    digest: chapterDigest,
+    chapterTitle: featuredKeepsake?.title ?? weeklyArc.title
+  });
   void ensureCompanionPatternNotice(supabase, {
     ownerId: userId,
     companionId: selectedCompanionId,
@@ -900,6 +1004,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       body: patternNotice.body,
       occurredAt: new Date().toISOString(),
       meta: 'Noticed by companion'
+    });
+    timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+  }
+
+  if (chapterDigestResult.ok && chapterDigestResult.created && chapterDigestResult.digest) {
+    timeline.push({
+      id: `digest-${chapterDigestResult.digest.digestKey}`,
+      kind: 'memory',
+      title: chapterDigestResult.digest.title,
+      body: chapterDigestResult.digest.body,
+      occurredAt: new Date().toISOString(),
+      meta: 'Chapter digest'
     });
     timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
   }
@@ -942,6 +1058,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       : null,
     ritualGuide
   });
+  const premiumChapterInsight = buildPremiumChapterInsight({
+    companionName: selectedCompanion.name,
+    weeklyArc,
+    relationshipPulse,
+    weeklyPulse,
+    chapterHistory,
+    featuredKeepsake: featuredKeepsake
+      ? {
+          title: featuredKeepsake.title,
+          tone: featuredKeepsake.tone
+        }
+      : null
+  });
+  const timelineLimit = isSubscriber ? 90 : 30;
+  const chapterHistoryLimit = isSubscriber ? 18 : 6;
+  const relationshipEraLimit = isSubscriber ? 6 : 4;
+  const archivedMoments = Math.max(0, timeline.length - timelineLimit);
+  const archivedOpenings = Math.max(0, chapterHistory.length - chapterHistoryLimit);
 
   return {
     companions,
@@ -957,11 +1091,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     weeklyArc,
     chapterMilestones,
     chapterRewards,
+    subscription,
+    premiumSanctuaryStyle,
+    premiumChapterInsight,
     featuredKeepsake,
     keepsakeInterpretation,
     weeklyPulse,
-    chapterHistory: chapterHistory.slice(0, 6),
-    relationshipEras,
-    timeline: timeline.slice(0, 30)
+    chapterHistory: chapterHistory.slice(0, chapterHistoryLimit),
+    relationshipEras: relationshipEras.slice(0, relationshipEraLimit),
+    timeline: timeline.slice(0, timelineLimit),
+    premiumArchivePreview: {
+      archivedMoments,
+      archivedOpenings,
+      timelineLimit,
+      chapterHistoryLimit
+    }
   };
 };

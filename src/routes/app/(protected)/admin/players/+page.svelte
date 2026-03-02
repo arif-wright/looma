@@ -5,20 +5,41 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { logEvent } from '$lib/analytics';
+  import {
+    DEFAULT_SUBSCRIPTION_TIER,
+    formatSubscriptionStatus,
+    formatSubscriptionTier,
+    type SubscriptionTier
+  } from '$lib/subscriptions';
   import { onDestroy, tick } from 'svelte';
 
   export let data: PageData;
 
   type Player = PageData['players'][number];
-  type PlayerSort = 'newest' | 'oldest' | 'slots_desc' | 'slots_asc' | 'licenses_desc' | 'licenses_asc';
+  type PlayerSort =
+    | 'newest'
+    | 'oldest'
+    | 'slots_desc'
+    | 'slots_asc'
+    | 'licenses_desc'
+    | 'licenses_asc'
+    | 'subscribers_desc'
+    | 'subscribers_asc';
 
   let search = data.q ?? '';
   let sort: PlayerSort = (data.sort as PlayerSort) ?? 'newest';
   let grantOpen = false;
+  let subscriptionOpen = false;
   let selectedPlayer: Player | null = null;
   let qty = 1;
   let status = '';
   let errorMessage = '';
+  let subscriptionTier: SubscriptionTier = DEFAULT_SUBSCRIPTION_TIER;
+  let subscriptionDays = 30;
+  let subscriptionNote = '';
+  let subscriptionReason = '';
+  let subscriptionStatusMessage = '';
+  let subscriptionErrorMessage = '';
   let modalEl: HTMLDivElement | null = null;
   let firstFocusable: HTMLElement | null = null;
   let lastFocusable: HTMLElement | null = null;
@@ -26,7 +47,7 @@
   let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   const refreshFocusables = async () => {
-    if (!grantOpen) return;
+    if (!grantOpen && !subscriptionOpen) return;
     await tick();
     if (!modalEl) return;
     const focusables = Array.from(
@@ -37,7 +58,7 @@
     firstFocusable?.focus();
   };
 
-  $: if (grantOpen) {
+  $: if (grantOpen || subscriptionOpen) {
     void refreshFocusables();
   } else if (browser && previousFocus) {
     previousFocus.focus();
@@ -82,6 +103,7 @@
 
   function openGrant(player: Player) {
     selectedPlayer = player;
+    subscriptionOpen = false;
     qty = 1;
     status = '';
     errorMessage = '';
@@ -100,6 +122,32 @@
     qty = 1;
   }
 
+  function openSubscription(player: Player) {
+    selectedPlayer = player;
+    grantOpen = false;
+    subscriptionTier = DEFAULT_SUBSCRIPTION_TIER;
+    subscriptionDays = 30;
+    subscriptionNote = '';
+    subscriptionReason = '';
+    subscriptionStatusMessage = '';
+    subscriptionErrorMessage = '';
+    subscriptionOpen = true;
+    if (browser) {
+      previousFocus = document.activeElement as HTMLElement | null;
+      logEvent('admin_grant_subscription_open', { target: player.id });
+    }
+  }
+
+  function closeSubscription() {
+    subscriptionOpen = false;
+    subscriptionStatusMessage = '';
+    subscriptionErrorMessage = '';
+    subscriptionNote = '';
+    subscriptionReason = '';
+    subscriptionDays = 30;
+    selectedPlayer = null;
+  }
+
   function goToCompanions(player: Player) {
     if (browser) {
       logEvent('admin_view_player_companions', { playerId: player.id });
@@ -115,10 +163,11 @@
   }
 
   const handleModalKeydown = (event: KeyboardEvent) => {
-    if (!grantOpen) return;
+    if (!grantOpen && !subscriptionOpen) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeGrant();
+      if (grantOpen) closeGrant();
+      if (subscriptionOpen) closeSubscription();
       return;
     }
     if (event.key !== 'Tab' || !firstFocusable || !lastFocusable) return;
@@ -149,6 +198,42 @@
     };
   };
 
+  const handleSubscriptionEnhance = ({ update }: any) => {
+    subscriptionStatusMessage = '';
+    subscriptionErrorMessage = '';
+    return async ({ result }: any) => {
+      if (result.type === 'success') {
+        subscriptionStatusMessage = 'Subscription updated';
+        subscriptionErrorMessage = '';
+        if (browser) {
+          logEvent('admin_grant_subscription_submit', { days: subscriptionDays, tier: subscriptionTier });
+        }
+      } else if (result.type === 'failure') {
+        subscriptionStatusMessage = '';
+        subscriptionErrorMessage = (result.data as any)?.error ?? 'Unable to update subscription';
+      }
+      await update(result);
+    };
+  };
+
+  const handleRevokeEnhance = ({ update }: any) => {
+    subscriptionStatusMessage = '';
+    subscriptionErrorMessage = '';
+    return async ({ result }: any) => {
+      if (result.type === 'success') {
+        subscriptionStatusMessage = 'Subscription revoked';
+        subscriptionErrorMessage = '';
+        if (browser) {
+          logEvent('admin_revoke_subscription_submit', { playerId: selectedPlayer?.id ?? null });
+        }
+      } else if (result.type === 'failure') {
+        subscriptionStatusMessage = '';
+        subscriptionErrorMessage = (result.data as any)?.error ?? 'Unable to revoke subscription';
+      }
+      await update(result);
+    };
+  };
+
   const showingStart = data.total === 0 ? 0 : (data.page - 1) * data.pageSize + 1;
   const showingEnd = data.total === 0 ? 0 : Math.min(data.total, data.page * data.pageSize);
 
@@ -162,7 +247,7 @@
     <div>
       <p class="text-sm text-white/50">Super Admin</p>
       <h1 class="text-xl font-semibold">Players</h1>
-      <p class="text-sm text-white/60">Grant slot licenses or look up accounts</p>
+      <p class="text-sm text-white/60">Grant slot licenses, manage subscriptions, or look up accounts</p>
     </div>
     <div class="ml-auto flex flex-1 flex-wrap items-center justify-end gap-3">
       <input
@@ -185,6 +270,8 @@
         <option value="slots_asc">Fewest slots</option>
         <option value="licenses_desc">Most licenses</option>
         <option value="licenses_asc">Fewest licenses</option>
+        <option value="subscribers_desc">Subscribers first</option>
+        <option value="subscribers_asc">Non-subscribers first</option>
       </select>
     </div>
   </header>
@@ -198,6 +285,7 @@
             <th class="px-4 py-3 font-semibold">Name / Handle</th>
             <th class="px-4 py-3 font-semibold">Max slots</th>
             <th class="px-4 py-3 font-semibold">Slot licenses</th>
+            <th class="px-4 py-3 font-semibold">Subscription</th>
             <th class="px-4 py-3 font-semibold">Created</th>
             <th class="px-4 py-3 font-semibold text-right">Actions</th>
           </tr>
@@ -205,7 +293,7 @@
         <tbody class="divide-y divide-white/10 text-white/80">
           {#if data.players.length === 0}
             <tr>
-              <td colspan="6" class="px-4 py-6 text-center text-sm text-white/60">No players found.</td>
+              <td colspan="7" class="px-4 py-6 text-center text-sm text-white/60">No players found.</td>
             </tr>
           {:else}
             {#each data.players as player (player.id)}
@@ -222,6 +310,19 @@
                 </td>
                 <td class="px-4 py-3 font-semibold">{player.max_slots}</td>
                 <td class="px-4 py-3 font-semibold">{player.slot_license_count}</td>
+                <td class="px-4 py-3">
+                  {#if player.subscription_active}
+                    <div class="font-medium text-emerald-200">{formatSubscriptionTier(player.subscription_tier)}</div>
+                    <div class="text-xs text-white/50">
+                      Active until {player.subscription_ends_at ? new Date(player.subscription_ends_at).toLocaleDateString() : 'open'}
+                    </div>
+                  {:else if player.subscription_tier}
+                    <div class="font-medium text-white/70">{formatSubscriptionTier(player.subscription_tier)}</div>
+                    <div class="text-xs text-white/40">{formatSubscriptionStatus(player.subscription_status)}</div>
+                  {:else}
+                    <span class="text-sm text-white/40">None</span>
+                  {/if}
+                </td>
                 <td class="px-4 py-3 text-sm text-white/60">
                   {new Date(player.created_at).toLocaleString()}
                 </td>
@@ -232,7 +333,14 @@
                       type="button"
                       on:click={() => openGrant(player)}
                     >
-                      Grant
+                      License
+                    </button>
+                    <button
+                      class="rounded-xl bg-amber-500/15 px-3 py-1.5 text-xs text-amber-100 ring-1 ring-amber-400/40 hover:bg-amber-500/25"
+                      type="button"
+                      on:click={() => openSubscription(player)}
+                    >
+                      Subscription
                     </button>
                     <button
                       class="rounded-xl bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-100 ring-1 ring-emerald-400/40 hover:bg-emerald-500/25"
@@ -274,6 +382,18 @@
           <div class="text-xs text-white/60">
             Slot licenses: <span class="font-semibold">{player.slot_license_count}</span>
           </div>
+          <div class="text-xs text-white/60">
+            Subscription:
+            <span class="font-semibold">
+              {#if player.subscription_active}
+                {formatSubscriptionTier(player.subscription_tier)}
+              {:else if player.subscription_tier}
+                {formatSubscriptionTier(player.subscription_tier)} ({formatSubscriptionStatus(player.subscription_status)})
+              {:else}
+                None
+              {/if}
+            </span>
+          </div>
           <div class="text-[11px] text-white/40">
             Created: {new Date(player.created_at).toLocaleString()}
           </div>
@@ -283,7 +403,14 @@
               type="button"
               on:click={() => openGrant(player)}
             >
-              Grant
+              License
+            </button>
+            <button
+              class="rounded-xl bg-amber-500/15 px-3 py-1.5 text-xs text-amber-100 ring-1 ring-amber-400/40 hover:bg-amber-500/25"
+              type="button"
+              on:click={() => openSubscription(player)}
+            >
+              Subscription
             </button>
             <button
               class="rounded-xl bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-100 ring-1 ring-emerald-400/40 hover:bg-emerald-500/25"
@@ -403,6 +530,132 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+{/if}
+
+{#if subscriptionOpen && selectedPlayer}
+  <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4">
+    <div
+      class="w-full max-w-md rounded-2xl bg-slate-900 text-white ring-1 ring-white/15 p-6 shadow-2xl"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="subscription-modal-title"
+      bind:this={modalEl}
+      tabindex="-1"
+      on:keydown={handleModalKeydown}
+    >
+      <div class="space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-white/40">Grant subscription</p>
+            <h2 id="subscription-modal-title" class="text-lg font-semibold">
+              {selectedPlayer.email ?? selectedPlayer.display_name ?? 'Player'}
+            </h2>
+            <p class="text-xs text-white/50 break-all">{selectedPlayer.id}</p>
+          </div>
+          <button
+            type="button"
+            class="text-white/60 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+            on:click={closeSubscription}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {#if selectedPlayer.subscription_active}
+          <div class="rounded-2xl bg-emerald-500/10 p-3 ring-1 ring-emerald-400/30 text-sm text-emerald-50">
+            <p class="font-medium">{formatSubscriptionTier(selectedPlayer.subscription_tier)} is active</p>
+            <p class="text-emerald-100/80">
+              Ends {selectedPlayer.subscription_ends_at ? new Date(selectedPlayer.subscription_ends_at).toLocaleString() : 'open-ended'}
+            </p>
+          </div>
+        {/if}
+
+        <form method="POST" action="?/grantSubscription" use:enhance={handleSubscriptionEnhance} class="space-y-4">
+          <input type="hidden" name="userId" value={selectedPlayer.id} />
+
+          <label class="block">
+            <span class="text-sm text-white/70">Tier</span>
+            <select
+              name="tier"
+              bind:value={subscriptionTier}
+              class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 ring-1 ring-white/15"
+            >
+              <option value="sanctuary_plus">Sanctuary+</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="text-sm text-white/70">Duration in days</span>
+            <input
+              name="durationDays"
+              type="number"
+              min="1"
+              max="3650"
+              bind:value={subscriptionDays}
+              class="mt-1 w-32 rounded-xl px-3 py-2 bg-white/10 ring-1 ring-white/15 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+            />
+          </label>
+
+          <label class="block">
+            <span class="text-sm text-white/70">Admin note</span>
+            <textarea
+              name="note"
+              bind:value={subscriptionNote}
+              rows="3"
+              class="mt-1 w-full rounded-xl px-3 py-2 bg-white/10 ring-1 ring-white/15 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+              placeholder="Support grant, QA access, promo, or recovery note"
+            ></textarea>
+          </label>
+
+          {#if subscriptionErrorMessage}
+            <p class="text-sm text-rose-300">{subscriptionErrorMessage}</p>
+          {/if}
+          {#if subscriptionStatusMessage}
+            <p class="text-sm text-emerald-300">{subscriptionStatusMessage}</p>
+          {/if}
+
+          <div class="flex gap-3 pt-2">
+            <button
+              class="px-4 py-2 rounded-xl bg-amber-500/15 text-amber-50 ring-1 ring-amber-400/35 hover:bg-amber-500/25 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+              type="submit"
+            >
+              Save subscription
+            </button>
+            <button
+              class="px-4 py-2 rounded-xl ring-1 ring-white/15 hover:bg-white/10 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+              type="button"
+              on:click={closeSubscription}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        {#if selectedPlayer.subscription_tier}
+          <form method="POST" action="?/revokeSubscription" use:enhance={handleRevokeEnhance} class="space-y-3 border-t border-white/10 pt-4">
+            <input type="hidden" name="userId" value={selectedPlayer.id} />
+            <label class="block">
+              <span class="text-sm text-white/70">Revocation note</span>
+              <input
+                name="reason"
+                type="text"
+                bind:value={subscriptionReason}
+                class="mt-1 w-full rounded-xl px-3 py-2 bg-white/10 ring-1 ring-white/15 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+                placeholder="Optional reason"
+              />
+            </label>
+            <button
+              class="px-4 py-2 rounded-xl bg-rose-500/15 text-rose-50 ring-1 ring-rose-400/35 hover:bg-rose-500/25 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white"
+              type="submit"
+            >
+              Revoke subscription
+            </button>
+          </form>
+        {/if}
+      </div>
     </div>
   </div>
 {/if}

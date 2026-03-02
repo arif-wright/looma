@@ -80,6 +80,14 @@
     secondaryHref: string;
   };
 
+  type ChapterPath = {
+    id: string;
+    label: string;
+    title: string;
+    body: string;
+    href: string;
+  };
+
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
   export let journalSummary: string | null = null;
@@ -99,12 +107,14 @@
   export let journalMoments: JournalMoment[] = [];
   export let sanctuaryNudge: SanctuaryNudge | null = null;
   export let eraAction: EraAction | null = null;
+  export let chapterPaths: ChapterPath[] = [];
   export let dailyArc: DailyArc | null = null;
   export let dailyArcRecap: DailyArcRecap | null = null;
   export let weeklyArc: WeeklyArc | null = null;
   export let chapterMilestones: ChapterMilestone[] = [];
   export let chapterRewards: ChapterReward[] = [];
   export let sanctuaryShelfRewards: SanctuaryShelfReward[] = [];
+  export let premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
 
   const ritualSummary = (list: CompanionRitual[]) => {
     const total = Array.isArray(list) ? list.length : 0;
@@ -160,7 +170,7 @@
   };
 </script>
 
-<section class="secondary-stack" aria-label="Home actions">
+<section class="secondary-stack" aria-label="Home actions" data-premium-style={premiumStyle ?? 'default'}>
   {#if chapterReveal && !revealDismissed}
     <article class="focus-card focus-card--reveal" aria-label="Chapter opened">
       <div class="chapter-reveal__head">
@@ -235,6 +245,21 @@
         <a class="focus-card__link focus-card__link--ghost" href={eraAction.secondaryHref}>
           {eraAction.secondaryLabel}
         </a>
+      </div>
+    </article>
+  {/if}
+
+  {#if chapterPaths.length > 0}
+    <article class="focus-card focus-card--paths" aria-label="Chapter paths">
+      <div class="focus-card__eyebrow">Chapter paths</div>
+      <div class="path-grid">
+        {#each chapterPaths as path (path.id)}
+          <a class="path-item" href={path.href}>
+            <span class="path-item__label">{path.label}</span>
+            <strong>{path.title}</strong>
+            <p>{path.body}</p>
+          </a>
+        {/each}
       </div>
     </article>
   {/if}
@@ -442,6 +467,49 @@
       radial-gradient(circle at top left, rgba(193, 156, 73, 0.14), transparent 52%);
   }
 
+  .focus-card--paths {
+    border-color: rgba(214, 190, 141, 0.18);
+    background:
+      linear-gradient(180deg, rgba(24, 22, 18, 0.94), rgba(12, 16, 18, 0.98)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 52%);
+  }
+
+  .path-grid {
+    margin-top: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .path-item {
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 190, 139, 0.12);
+    background: rgba(217, 189, 126, 0.06);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.82rem;
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .path-item__label {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.72);
+  }
+
+  .path-item strong {
+    font-size: 0.84rem;
+    line-height: 1.3;
+    color: rgba(250, 243, 229, 0.96);
+  }
+
+  .path-item p {
+    color: rgba(224, 216, 200, 0.76);
+    font-size: 0.78rem;
+  }
+
   .chapter-reveal__head {
     display: flex;
     justify-content: space-between;
@@ -641,6 +709,70 @@
     color: rgba(224, 216, 200, 0.82);
     font-size: 0.82rem;
     line-height: 1.45;
+  }
+
+  .secondary-stack[data-premium-style='gilded_dawn'] .focus-card--reveal,
+  .secondary-stack[data-premium-style='gilded_dawn'] .recap-card {
+    border-color: rgba(227, 196, 120, 0.3);
+    box-shadow: 0 18px 36px rgba(88, 58, 10, 0.18);
+  }
+
+  .secondary-stack[data-premium-style='gilded_dawn'] .focus-card--reveal {
+    background:
+      linear-gradient(180deg, rgba(43, 31, 18, 0.95), rgba(18, 17, 15, 0.98)),
+      radial-gradient(circle at top left, rgba(227, 196, 120, 0.2), transparent 48%);
+  }
+
+  .secondary-stack[data-premium-style='gilded_dawn'] .recap-card {
+    background: rgba(227, 196, 120, 0.11);
+  }
+
+  .secondary-stack[data-premium-style='moon_glass'] .focus-card--reveal,
+  .secondary-stack[data-premium-style='moon_glass'] .recap-card {
+    border-color: rgba(168, 205, 224, 0.28);
+    box-shadow: 0 18px 36px rgba(20, 40, 62, 0.16);
+  }
+
+  .secondary-stack[data-premium-style='moon_glass'] .focus-card--reveal {
+    background:
+      linear-gradient(180deg, rgba(24, 31, 42, 0.95), rgba(11, 17, 24, 0.98)),
+      radial-gradient(circle at top left, rgba(168, 205, 224, 0.18), transparent 48%);
+  }
+
+  .secondary-stack[data-premium-style='moon_glass'] .recap-card {
+    background: rgba(168, 205, 224, 0.1);
+  }
+
+  .secondary-stack[data-premium-style='ember_bloom'] .focus-card--reveal,
+  .secondary-stack[data-premium-style='ember_bloom'] .recap-card {
+    border-color: rgba(236, 145, 113, 0.3);
+    box-shadow: 0 18px 36px rgba(73, 24, 14, 0.18);
+  }
+
+  .secondary-stack[data-premium-style='ember_bloom'] .focus-card--reveal {
+    background:
+      linear-gradient(180deg, rgba(44, 23, 20, 0.95), rgba(20, 14, 14, 0.98)),
+      radial-gradient(circle at top left, rgba(236, 145, 113, 0.2), transparent 48%);
+  }
+
+  .secondary-stack[data-premium-style='ember_bloom'] .recap-card {
+    background: rgba(236, 145, 113, 0.1);
+  }
+
+  .secondary-stack[data-premium-style='tide_silk'] .focus-card--reveal,
+  .secondary-stack[data-premium-style='tide_silk'] .recap-card {
+    border-color: rgba(122, 202, 196, 0.28);
+    box-shadow: 0 18px 36px rgba(12, 57, 56, 0.16);
+  }
+
+  .secondary-stack[data-premium-style='tide_silk'] .focus-card--reveal {
+    background:
+      linear-gradient(180deg, rgba(19, 37, 38, 0.95), rgba(12, 18, 20, 0.98)),
+      radial-gradient(circle at top left, rgba(122, 202, 196, 0.18), transparent 48%);
+  }
+
+  .secondary-stack[data-premium-style='tide_silk'] .recap-card {
+    background: rgba(122, 202, 196, 0.1);
   }
 
   .moment-pill {

@@ -212,6 +212,14 @@
   title="Circles"
   subtitle="Move between intimate groups built for support, reflection, and shared moments."
 >
+  <GlassCard class={`circle-chapter-card circle-chapter-card--${data.circleChapterFrame?.tone ?? 'quiet'}`}>
+    <p class="circle-chapter-card__eyebrow">Current chapter</p>
+    <h2>{data.circleChapterFrame?.title ?? 'Let the next shared thread gather naturally'}</h2>
+    <p class="circle-chapter-card__body">
+      {data.circleChapterFrame?.body ??
+        'Stay near the circles that feel easiest to return to and let the next communal rhythm emerge.'}
+    </p>
+  </GlassCard>
 
   <GlassCard class="circles-card">
     <div class="circles-shell">
@@ -239,6 +247,16 @@
       <section class="detail-surface">
         {#if loading}
           <p class="state">Loading circles…</p>
+        {:else if !activeDetail}
+          <div class="detail-empty">
+            <p class="detail-empty__eyebrow">Shared space</p>
+            <h2>{data.circleChapterFrame?.detailHint ?? 'Choose a circle when you want a little shared presence.'}</h2>
+            <p>
+              {circles.length > 0
+                ? 'Select one of your circles to open announcements, events, and the member thread.'
+                : 'Create or join a circle to start building a shared thread around your companion chapter.'}
+            </p>
+          </div>
         {:else}
           <CircleDetail
             detail={activeDetail}
@@ -284,6 +302,65 @@
 />
 
 <style>
+  :global(.circle-chapter-card) {
+    margin-bottom: 0.85rem;
+    border-radius: 1.15rem;
+    border: 1px solid rgba(212, 190, 139, 0.14);
+    background:
+      linear-gradient(180deg, rgba(24, 29, 41, 0.86), rgba(12, 16, 24, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 56%);
+  }
+
+  .circle-chapter-card__eyebrow {
+    margin: 0 0 0.28rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(220, 203, 184, 0.76);
+  }
+
+  :global(.circle-chapter-card h2) {
+    margin: 0;
+    font-size: clamp(1.04rem, 0.98rem + 0.4vw, 1.28rem);
+    color: rgba(248, 241, 235, 0.98);
+  }
+
+  .circle-chapter-card__body {
+    margin: 0.6rem 0 0;
+    color: rgba(223, 215, 200, 0.84);
+    line-height: 1.5;
+  }
+
+  :global(.circle-chapter-card--care) {
+    background:
+      linear-gradient(180deg, rgba(18, 35, 31, 0.86), rgba(11, 18, 20, 0.92)),
+      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 56%);
+  }
+
+  :global(.circle-chapter-card--social) {
+    background:
+      linear-gradient(180deg, rgba(42, 26, 25, 0.86), rgba(16, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 56%);
+  }
+
+  :global(.circle-chapter-card--mission) {
+    background:
+      linear-gradient(180deg, rgba(38, 30, 19, 0.86), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 56%);
+  }
+
+  :global(.circle-chapter-card--play) {
+    background:
+      linear-gradient(180deg, rgba(18, 30, 37, 0.86), rgba(11, 17, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 56%);
+  }
+
+  :global(.circle-chapter-card--bond) {
+    background:
+      linear-gradient(180deg, rgba(34, 28, 24, 0.86), rgba(14, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
+  }
+
   :global(.circles-card) {
     padding: 0.35rem;
     border-radius: 1.35rem;
@@ -315,6 +392,33 @@
     margin: 0;
     padding: 1.1rem;
     color: rgba(200, 214, 237, 0.9);
+  }
+
+  .detail-empty {
+    min-height: 100%;
+    display: grid;
+    align-content: center;
+    gap: 0.35rem;
+    padding: 1.25rem;
+    color: rgba(208, 221, 241, 0.9);
+  }
+
+  .detail-empty__eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(212, 190, 139, 0.72);
+  }
+
+  .detail-empty h2,
+  .detail-empty p {
+    margin: 0;
+  }
+
+  .detail-empty h2 {
+    font-size: clamp(1.04rem, 0.98rem + 0.36vw, 1.24rem);
+    color: rgba(245, 240, 232, 0.97);
   }
 
   .error {
