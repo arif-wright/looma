@@ -146,19 +146,11 @@
   $: stageAnimation =
     tappedCompanion
       ? 'PetReact'
-      : habitatBehavior === 'inspecting'
-        ? 'Curious'
-        : habitatBehavior === 'arriving' || isRoaming
-          ? closenessState === 'Resonant'
-            ? 'Happy'
-            : 'Curious'
-          : habitatBehavior === 'resting'
-            ? closenessState === 'Distant'
-              ? 'Sleep'
-              : modelAnimation === 'Celebrate'
-                ? 'Happy'
-                : 'Idle'
-            : modelAnimation;
+      : modelActivity === 'responding'
+        ? 'Happy'
+        : modelAnimation === 'Celebrate'
+          ? 'Happy'
+          : 'Idle';
   $: habitatObject =
     sanctuaryTone === 'care'
       ? {
