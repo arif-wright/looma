@@ -3,9 +3,12 @@ import type { RequestHandler } from './$types';
 import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/server/supabase';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
+import { consumeApiRateLimit } from '$lib/server/rateLimit';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const MOODS = new Set(['calm', 'heavy', 'curious', 'energized', 'numb']);
+const RECONNECT_RATE_LIMIT_WINDOW_SECONDS = 5 * 60;
+const RECONNECT_RATE_LIMIT_PER_WINDOW = 12;
 
 type CompanionChapterTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
 type PremiumSanctuaryStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
@@ -170,6 +173,29 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const userId = session.user.id;
+  try {
+    const rateLimit = await consumeApiRateLimit({
+      supabase,
+      bucket: 'home_reconnect',
+      key: userId,
+      limit: RECONNECT_RATE_LIMIT_PER_WINDOW,
+      windowSeconds: RECONNECT_RATE_LIMIT_WINDOW_SECONDS
+    });
+
+    if (!rateLimit.allowed) {
+      return json(
+        {
+          error: 'rate_limited',
+          message: 'You are checking in too quickly. Give your companion a moment and try again.',
+          retryAfter: rateLimit.retry_after_seconds
+        },
+        { status: 429, headers: CACHE_HEADERS }
+      );
+    }
+  } catch (err) {
+    console.error('[home/reconnect] rate limit check failed', err);
+  }
+
   const checkinDate = new Date().toISOString().slice(0, 10);
 
   const { data: checkin, error: checkinError } = await db

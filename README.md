@@ -1,5 +1,11 @@
 # Looma Application
 
+Looma is a mobile-first modern virtual companion platform. The easiest way to explain it is:
+
+- Tamagotchi for daily attachment and care loops
+- Neopets for progression, collectibles, and return habits
+- a persistent relationship journal so the companion remembers and evolves over time
+
 ## Landing & Home UX
 
 - Home UX source of truth checklist: `docs/home-experience-contract.md`

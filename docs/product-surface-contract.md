@@ -4,9 +4,11 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
 
 ## Product Truth
 
-- Looma is a mobile-first companion sanctuary.
+- Looma is a mobile-first modern virtual companion product.
 - The core of the product is the relationship between the user and their companion.
-- Social, missions, play, and economy exist to deepen that relationship, not compete with it.
+- Social, missions, play, economy, and memory exist to deepen that relationship, not compete with it.
+- The category anchor is closer to Tamagotchi and Neopets than to therapy, journaling, or chat utility apps.
+- Memory is the differentiator, not the category.
 
 ## Canonical Protected Surfaces
 

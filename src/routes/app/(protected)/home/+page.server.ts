@@ -22,6 +22,7 @@ import {
 import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
+import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
 
 type MissionSummary = {
   id: string;
@@ -128,6 +129,13 @@ type ChapterPath = {
   title: string;
   body: string;
   href: string;
+};
+
+type MomentumSummary = {
+  current: number | null;
+  max: number | null;
+  baseMax: number | null;
+  subscriptionBonus: number;
 };
 
 type DailyArc = ReturnType<typeof deriveDailyCompanionArc>;
@@ -686,7 +694,8 @@ export const load: PageServerLoad = async (event) => {
     dailyArcRecap: null as DailyArcRecap,
     weeklyArc: null as WeeklyArc | null,
     chapterMilestones: [] as ChapterMilestones,
-    chapterRewards: [] as ChapterRewards
+    chapterRewards: [] as ChapterRewards,
+    momentum: null as MomentumSummary | null
   };
 
   try {
@@ -1250,6 +1259,17 @@ export const load: PageServerLoad = async (event) => {
       weeklyArc,
       notificationsUnread: parent.notificationsUnread ?? 0
     });
+    const subscriptionActive = Boolean(parent.subscription?.active);
+    const subscriptionMomentumBonus = getSubscriptionMomentumBonus(subscriptionActive);
+    const momentum =
+      stats && typeof stats.energy === 'number' && typeof stats.energy_max === 'number'
+        ? {
+            current: stats.energy,
+            max: computeEffectiveMomentumMax(stats.energy_max, 0, subscriptionActive),
+            baseMax: stats.energy_max,
+            subscriptionBonus: subscriptionMomentumBonus
+          }
+        : null;
 
     return {
       stats,
@@ -1284,7 +1304,8 @@ export const load: PageServerLoad = async (event) => {
       premiumSanctuaryStyle,
       sanctuaryShelfRewards,
       eraAction,
-      chapterPaths
+      chapterPaths,
+      momentum
     };
   } catch (err) {
     diagnostics.push('home_load_failed');

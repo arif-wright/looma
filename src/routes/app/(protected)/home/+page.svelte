@@ -391,6 +391,7 @@
       sanctuaryShelfRewards={data.sanctuaryShelfRewards ?? []}
       eraAction={data.eraAction ?? null}
       chapterPaths={data.chapterPaths ?? []}
+      momentum={data.momentum ?? null}
       {premiumStyle}
     />
   </section>

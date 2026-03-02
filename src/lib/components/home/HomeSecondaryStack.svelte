@@ -88,6 +88,13 @@
     href: string;
   };
 
+  type MomentumSummary = {
+    current: number | null;
+    max: number | null;
+    baseMax: number | null;
+    subscriptionBonus: number;
+  };
+
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
   export let journalSummary: string | null = null;
@@ -115,6 +122,7 @@
   export let chapterRewards: ChapterReward[] = [];
   export let sanctuaryShelfRewards: SanctuaryShelfReward[] = [];
   export let premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
+  export let momentum: MomentumSummary | null = null;
 
   const ritualSummary = (list: CompanionRitual[]) => {
     const total = Array.isArray(list) ? list.length : 0;
@@ -148,6 +156,15 @@
         : 'You checked in and completed today’s rituals. Come back any time for another small moment.'
       : `${companionName} is still waiting to hear from you today.`);
   $: shelfLead = sanctuaryShelfRewards[0] ?? null;
+  $: momentumCurrent = typeof momentum?.current === 'number' ? momentum.current : null;
+  $: momentumMax = typeof momentum?.max === 'number' ? momentum.max : null;
+  $: momentumBaseMax = typeof momentum?.baseMax === 'number' ? momentum.baseMax : null;
+  $: momentumLabel =
+    momentumCurrent != null && momentumMax != null ? `${momentumCurrent}/${momentumMax}` : 'Optional progression fuel';
+  $: momentumBonusLabel =
+    (momentum?.subscriptionBonus ?? 0) > 0 && momentumBaseMax != null && momentumMax != null
+      ? `Base ${momentumBaseMax} + Sanctuary+ ${momentum?.subscriptionBonus ?? 0}`
+      : 'Core bonding stays free';
   let revealSeenId = '';
   let revealDismissed = false;
 
@@ -263,6 +280,33 @@
       </div>
     </article>
   {/if}
+
+  <article class="focus-card focus-card--momentum" aria-label="Momentum">
+    <div class="focus-card__eyebrow">Momentum</div>
+    <div class="focus-card__row">
+      <div>
+        <h2>{momentumLabel}</h2>
+        <p>Momentum belongs to optional missions and reward-bearing play, not to staying close to {companionName}.</p>
+      </div>
+      <a class="focus-card__link" href="/app/wallet">View</a>
+    </div>
+    <div class="sanctuary-progress sanctuary-progress--momentum" aria-label="Momentum details">
+      <span>{momentumBonusLabel}</span>
+      <span>{(momentum?.subscriptionBonus ?? 0) > 0 ? 'Subscriber cap bonus active' : 'No bond actions cost momentum'}</span>
+    </div>
+    <div class="momentum-grid">
+      <a class="path-item" href={missionHref}>
+        <span class="path-item__label">Spend on</span>
+        <strong>Missions and focused runs</strong>
+        <p>Use momentum where shards, XP, or stronger rewards are at stake.</p>
+      </a>
+      <a class="path-item" href={journalHref}>
+        <span class="path-item__label">Always free</span>
+        <strong>Check-ins, journal, messages, and care</strong>
+        <p>The relationship loop stays available even when your momentum is low.</p>
+      </a>
+    </div>
+  </article>
 
   {#if sanctuaryShelfRewards.length > 0}
     <article class="focus-card focus-card--shelf">
@@ -474,7 +518,20 @@
       radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 52%);
   }
 
+  .focus-card--momentum {
+    border-color: rgba(122, 194, 185, 0.2);
+    background:
+      linear-gradient(180deg, rgba(18, 27, 29, 0.94), rgba(10, 16, 18, 0.98)),
+      radial-gradient(circle at top left, rgba(122, 194, 185, 0.14), transparent 52%);
+  }
+
   .path-grid {
+    margin-top: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .momentum-grid {
     margin-top: 0.8rem;
     display: grid;
     gap: 0.55rem;
@@ -526,6 +583,10 @@
     padding: 0 0.78rem;
     font-size: 0.76rem;
     font-weight: 700;
+  }
+
+  .sanctuary-progress--momentum {
+    margin-top: 0.75rem;
   }
 
   .chapter-reveal__actions {
@@ -822,6 +883,10 @@
   }
 
   @media (min-width: 720px) {
+    .momentum-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .shelf-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }

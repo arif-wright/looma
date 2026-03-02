@@ -9,32 +9,32 @@
 
   const pillars = [
     {
-      eyebrow: 'Sanctuary',
-      title: 'A companion-first home',
-      body: 'Check in, care, and reconnect from one calm place built for short daily visits on your phone.'
+      eyebrow: 'Companion',
+      title: 'A living digital creature to return to',
+      body: 'Check on your companion, care for it, and watch it feel more alive each time you open Looma on your phone.'
     },
     {
       eyebrow: 'Journal',
-      title: 'Memory that feels alive',
-      body: 'Looma keeps a visible memory trail so your bond feels cumulative, not disposable.'
+      title: 'Memory is the differentiator',
+      body: 'Looma keeps a visible relationship trail so the bond feels cumulative instead of resetting every day.'
     },
     {
-      eyebrow: 'Weave',
-      title: 'Social that supports the bond',
-      body: 'Messages, circles, and missions feed the relationship instead of competing with it.'
+      eyebrow: 'Progression',
+      title: 'Modern virtual pet loops, mobile-native',
+      body: 'Rituals, missions, keepsakes, and social moments deepen the bond instead of pulling you into a noisy feed.'
     }
   ];
 
   const rhythm = [
-    'Check in with your companion and share how you feel.',
-    'See what Looma remembers in your journal and rituals.',
-    'Carry the bond into messages, circles, missions, and play.'
+    'Check on your companion and see how it is doing in its sanctuary.',
+    'Care for the bond through rituals, journal moments, and quick return loops.',
+    'Carry that bond into missions, messages, circles, and play.'
   ];
 
   const moments = [
-    'Built for one-thumb use and quick return visits.',
-    'Warm, private-feeling spaces instead of feed pressure.',
-    'A companion relationship that gains texture over time.'
+    'The emotional attachment loop of Tamagotchi, built for modern phones.',
+    'The progression and collectible identity of Neopets, without old portal clutter.',
+    'A companion relationship that visibly remembers and evolves over time.'
   ];
 </script>
 
@@ -53,11 +53,11 @@
   <main id="main" class="landing-main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__copy">
-        <p class="eyebrow">Companion sanctuary</p>
-        <h1 id="hero-title">A relationship platform for the companion you return to every day.</h1>
+        <p class="eyebrow">Modern virtual companion</p>
+        <h1 id="hero-title">Tamagotchi and Neopets, rebuilt as a mobile companion world that remembers you.</h1>
         <p class="lede">
-          Looma is a mobile-first sanctuary where memory, care, messages, and rituals all strengthen one bond over
-          time.
+          Looma is a mobile-first companion platform where care, progression, collectibles, and memory all deepen one
+          living bond over time.
         </p>
 
         <div class="hero__actions">
@@ -66,28 +66,28 @@
         </div>
 
         <div class="hero__chips" aria-label="Platform traits">
-          <span>Mobile first</span>
-          <span>Companion memory</span>
-          <span>Gentle social layer</span>
+          <span>Virtual companion</span>
+          <span>Memory-driven bond</span>
+          <span>Mobile-native progression</span>
         </div>
       </div>
 
       <div class="hero__panel" aria-label="Looma preview">
         <div class="preview-card preview-card--primary">
-          <span class="preview-card__eyebrow">Today with Looma</span>
-          <strong>Your companion is near.</strong>
-          <p>Check in, reopen your journal, and keep the thread of the bond warm.</p>
+          <span class="preview-card__eyebrow">Today with your companion</span>
+          <strong>Your companion is waiting in its sanctuary.</strong>
+          <p>Check in, care for it, reopen the journal, and keep the relationship moving forward.</p>
         </div>
         <div class="preview-grid">
           <article class="preview-card">
             <span class="preview-card__eyebrow">Journal</span>
-            <strong>What Looma remembers</strong>
-            <p>Visible memory gives the relationship continuity.</p>
+            <strong>What your companion remembers</strong>
+            <p>Visible memory gives the bond continuity instead of starting over every day.</p>
           </article>
           <article class="preview-card">
-            <span class="preview-card__eyebrow">Circles</span>
-            <strong>Connection without noise</strong>
-            <p>Messages and circles reinforce the companion loop.</p>
+            <span class="preview-card__eyebrow">Progression</span>
+            <strong>Keepsakes, rituals, and return loops</strong>
+            <p>Growth systems make the companion feel alive, collectible, and worth returning to.</p>
           </article>
         </div>
       </div>
@@ -105,8 +105,8 @@
 
     <section class="story-grid" aria-label="How Looma works">
       <article class="panel panel--deep">
-        <p class="eyebrow">The daily rhythm</p>
-        <h2>Three small returns make the platform work.</h2>
+        <p class="eyebrow">The daily loop</p>
+        <h2>Three small returns make Looma feel like a real companion product.</h2>
         <ol class="steps">
           {#each rhythm as step}
             <li>{step}</li>
@@ -115,8 +115,8 @@
       </article>
 
       <article class="panel panel--deep">
-        <p class="eyebrow">Why it feels different</p>
-        <h2>Designed for the way people actually come back on their phones.</h2>
+        <p class="eyebrow">Why it lands</p>
+        <h2>A modern virtual companion product, not a therapy app or a generic chatbot.</h2>
         <ul class="moments">
           {#each moments as moment}
             <li>{moment}</li>
@@ -127,10 +127,10 @@
 
     <section class="closing panel panel--soft" aria-labelledby="closing-title">
       <p class="eyebrow">Begin</p>
-      <h2 id="closing-title">Start with one companion. Let the rest of Looma grow around that relationship.</h2>
+      <h2 id="closing-title">Start with one companion. Let its world, memory, and progression grow around the bond.</h2>
       <p>
-        The product works best when it feels intimate first. That is the promise the platform now needs to make from
-        the first screen.
+        Looma works when it first feels like a living companion you want to check on, then reveals deeper memory and
+        progression over time.
       </p>
       <div class="closing__actions">
         <a class="cta cta--primary" href={primaryHref}>{primaryLabel}</a>

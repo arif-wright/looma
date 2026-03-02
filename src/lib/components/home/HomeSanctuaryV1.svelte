@@ -6,6 +6,8 @@
 
   type KeepsakeTone = 'care' | 'social' | 'mission' | 'play' | 'bond';
   type KeepsakeTheme = { tone: KeepsakeTone; title: string } | null;
+  type PremiumStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
+  type TimeSlice = 'dawn' | 'day' | 'dusk' | 'night';
 
   export let companionName = 'Mirae';
   export let companionAvatarUrl: string | null = null;
@@ -23,7 +25,7 @@
   export let subscriptionActive = false;
   export let subscriptionLabel = 'Sanctuary+';
   export let premiumAccentLabel: string | null = null;
-  export let premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
+  export let premiumStyle: PremiumStyle | null = null;
 
   const dispatch = createEventDispatcher<{
     primary: Record<string, never>;
@@ -32,17 +34,66 @@
 
   const ONBOARDING_KEY = 'looma:homeSanctuaryHintDismissed:v1';
   let showHint = false;
+  let timeSlice: TimeSlice = 'dusk';
+
+  const resolveTimeSlice = (): TimeSlice => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 10) return 'dawn';
+    if (hour >= 10 && hour < 17) return 'day';
+    if (hour >= 17 && hour < 21) return 'dusk';
+    return 'night';
+  };
 
   $: supportiveLine =
     (companionReply && companionReply.trim()) ||
     (closenessState === 'Distant'
-      ? "Take one slow breath. I'm here with you."
+      ? "I've been waiting in our sanctuary. Come a little closer."
       : closenessState === 'Resonant'
-        ? "You're in sync right now. Stay in this moment."
-        : "I'm listening. Share what's on your mind.");
+        ? 'The sanctuary feels bright with you here. Stay for a moment.'
+        : "I'm here in our little world. Tell me how you're arriving.");
   $: sanctuaryTone = keepsakeTheme?.tone ?? 'bond';
   $: auraLabel = keepsakeTheme ? `Keepsake aura: ${keepsakeTheme.title}` : null;
   $: premiumLabel = subscriptionActive ? premiumAccentLabel ?? `${subscriptionLabel} resonance` : null;
+  $: habitatName =
+    sanctuaryTone === 'care'
+      ? 'Lantern Meadow'
+      : sanctuaryTone === 'social'
+        ? 'Gathering Grove'
+        : sanctuaryTone === 'mission'
+          ? 'Wayfinder Terrace'
+          : sanctuaryTone === 'play'
+            ? 'Brightbloom Clearing'
+            : 'Whisper Garden';
+  $: habitatLine =
+    sanctuaryTone === 'care'
+      ? `${companionName} is resting in a quiet grove built for repeated care.`
+      : sanctuaryTone === 'social'
+        ? `${companionName} is moving through a warmer, more connected pocket world today.`
+        : sanctuaryTone === 'mission'
+          ? `${companionName} is in a more directional habitat, ready to turn the day toward action.`
+          : sanctuaryTone === 'play'
+            ? `${companionName} is in a lighter clearing where motion and play are easy to start.`
+            : `${companionName} is holding close in a softer sanctuary shaped by memory and bond.`;
+  $: presenceLine =
+    modelActivity === 'responding'
+      ? `${companionName} is turning toward you now.`
+      : closenessState === 'Distant'
+        ? `${companionName} is drifting near the edge of the garden.`
+        : closenessState === 'Resonant'
+          ? `${companionName} is glowing openly in the center of the habitat.`
+          : `${companionName} is waiting for you in the sanctuary.`;
+  $: timeLabel =
+    timeSlice === 'dawn'
+      ? 'Early light'
+      : timeSlice === 'day'
+        ? 'Open sky'
+        : timeSlice === 'dusk'
+          ? 'Evening glow'
+          : 'Night hush';
+  $: stagePrompt =
+    needsReconnectToday
+      ? `${companionName} looks ready for a return.`
+      : `${companionName} is already moving through the habitat.`;
 
   const dismissHint = () => {
     showHint = false;
@@ -50,6 +101,7 @@
   };
 
   onMount(() => {
+    timeSlice = resolveTimeSlice();
     if (!browser) return;
     showHint = window.localStorage.getItem(ONBOARDING_KEY) !== 'true';
   });
@@ -60,43 +112,77 @@
   data-keepsake-tone={sanctuaryTone}
   data-premium={subscriptionActive ? 'true' : 'false'}
   data-premium-style={premiumStyle ?? 'default'}
+  data-time-slice={timeSlice}
 >
-  <div class="bg base" aria-hidden="true"></div>
-  <div class="bg chroma" aria-hidden="true"></div>
+  <div class="bg sky" aria-hidden="true"></div>
+  <div class="bg glow" aria-hidden="true"></div>
+  <div class="bg canopy" aria-hidden="true"></div>
+  <div class="bg peaks" aria-hidden="true"></div>
   <div class="bg drift" aria-hidden="true"></div>
+  <div class="bg fireflies" aria-hidden="true"></div>
   <div class="bg premium" aria-hidden="true"></div>
-  <div class="bg stars" aria-hidden="true"></div>
-  <div class="bg noise" aria-hidden="true"></div>
+  <div class="bg grain" aria-hidden="true"></div>
 
   {#if showHint}
     <aside class="hint" role="status">
-      <p>Start with Reconnect. Then explore Circles, Games, and Messages.</p>
+      <p>Start by checking on your companion. The sanctuary is the place to return to first.</p>
       <button type="button" on:click={dismissHint} aria-label="Dismiss hint">Dismiss</button>
     </aside>
   {/if}
 
-  <main class="stage" aria-label="Companion home">
-    <div class="hero-wrap">
-      {#if premiumLabel}
-        <div class="premium-aura" role="status">
-          <span class="premium-aura__label">{subscriptionLabel}</span>
-          <strong>{premiumLabel}</strong>
+  <main class="stage" aria-label="Companion sanctuary">
+    <header class="sanctuary-head">
+      <div class="sanctuary-head__copy">
+        <span class="eyebrow">Sanctuary</span>
+        <h1>{habitatName}</h1>
+        <p>{habitatLine}</p>
+      </div>
+
+      <div class="sanctuary-chips">
+        <span class="chip">{timeLabel}</span>
+        <span class="chip chip--presence">{presenceLine}</span>
+        {#if premiumLabel}
+          <span class="chip chip--premium">{subscriptionLabel}</span>
+        {/if}
+      </div>
+    </header>
+
+    <div class="scene" aria-label={`${companionName}'s habitat`}>
+      <div class="scene__orb scene__orb--left" aria-hidden="true"></div>
+      <div class="scene__orb scene__orb--right" aria-hidden="true"></div>
+      <div class="scene__flora scene__flora--left" aria-hidden="true"></div>
+      <div class="scene__flora scene__flora--right" aria-hidden="true"></div>
+      <div class="scene__ground scene__ground--back" aria-hidden="true"></div>
+      <div class="scene__anchor" aria-hidden="true">
+        <div class="scene__anchor-ring"></div>
+        <div class="scene__anchor-stone"></div>
+        <div class="scene__anchor-grass"></div>
+      </div>
+
+      <div class="hero-wrap">
+        {#if auraLabel}
+          <div class="keepsake-aura" role="status">
+            <span class="keepsake-aura__label">Keepsake aura</span>
+            <strong>{keepsakeTheme?.title}</strong>
+          </div>
+        {/if}
+
+        <CompanionHero
+          name={companionName}
+          avatarUrl={companionAvatarUrl}
+          {closenessState}
+          activityState={modelActivity}
+          animationName={modelAnimation}
+          on:open={() => dispatch('companion', {})}
+        />
+
+        <div class="scene__caption">
+          <strong>{stagePrompt}</strong>
+          <span>{statusLine}</span>
         </div>
-      {/if}
-      {#if auraLabel}
-        <div class="keepsake-aura" role="status">
-          <span class="keepsake-aura__label">Keepsake aura</span>
-          <strong>{keepsakeTheme?.title}</strong>
-        </div>
-      {/if}
-      <CompanionHero
-        name={companionName}
-        avatarUrl={companionAvatarUrl}
-        {closenessState}
-        activityState={modelActivity}
-        animationName={modelAnimation}
-        on:open={() => dispatch('companion', {})}
-      />
+      </div>
+
+      <div class="scene__ground scene__ground--front" aria-hidden="true"></div>
     </div>
 
     <section class="dialogue" aria-live="polite">
@@ -110,16 +196,20 @@
     </section>
 
     <section class="focus">
-      <h1>{statusLine}</h1>
+      <div class="focus__copy">
+        <span class="eyebrow">Return</span>
+        <h2>{primaryLabel}</h2>
+        <p>{primaryCopy}</p>
+      </div>
       <button
         type="button"
         class={`reflect ${needsReconnectToday ? 'reflect--pulse' : ''}`}
         on:click={() => dispatch('primary', {})}
-      >{primaryLabel}</button>
-      <p>{primaryCopy}</p>
+      >
+        {needsReconnectToday ? 'Check in now' : 'Stay with your companion'}
+      </button>
     </section>
   </main>
-
 </section>
 
 <style>
@@ -130,127 +220,112 @@
     position: relative;
     min-height: 100dvh;
     overflow: hidden;
-    padding: max(0.95rem, env(safe-area-inset-top)) 0.9rem calc(1.4rem + env(safe-area-inset-bottom));
-    color: rgba(244, 244, 248, 0.96);
+    padding: max(0.95rem, env(safe-area-inset-top)) 0.9rem calc(1.5rem + env(safe-area-inset-bottom));
+    color: rgba(248, 244, 235, 0.98);
     font-family: var(--home-font-body);
-    display: grid;
-    grid-template-rows: auto 1fr;
-    gap: 1rem;
+  }
+
+  .bg,
+  .scene__orb,
+  .scene__flora,
+  .scene__ground,
+  .scene__anchor {
+    pointer-events: none;
   }
 
   .bg {
     position: absolute;
     inset: 0;
-    pointer-events: none;
   }
 
-  .base {
+  .sky {
     z-index: 0;
     background:
-      radial-gradient(80% 65% at 85% 14%, rgba(140, 236, 236, 0.33), transparent 72%),
-      radial-gradient(80% 70% at 12% 90%, rgba(255, 189, 142, 0.36), transparent 74%),
-      linear-gradient(160deg, rgba(26, 42, 122, 0.98), rgba(47, 70, 153, 0.94) 36%, rgba(102, 79, 152, 0.88) 66%, rgba(218, 161, 127, 0.76));
+      radial-gradient(80% 65% at 78% 16%, rgba(255, 219, 167, 0.34), transparent 72%),
+      radial-gradient(88% 70% at 10% 88%, rgba(117, 164, 206, 0.24), transparent 74%),
+      linear-gradient(180deg, rgba(12, 20, 39, 0.98) 0%, rgba(20, 35, 60, 0.96) 34%, rgba(44, 66, 84, 0.94) 60%, rgba(41, 55, 46, 0.96) 100%);
   }
 
-  .sanctuary[data-keepsake-tone='care'] .base {
+  .sanctuary[data-time-slice='dawn'] .sky {
     background:
-      radial-gradient(78% 62% at 85% 14%, rgba(157, 233, 207, 0.34), transparent 72%),
-      radial-gradient(76% 68% at 12% 88%, rgba(241, 197, 122, 0.34), transparent 74%),
-      linear-gradient(160deg, rgba(17, 39, 56, 0.98), rgba(22, 69, 82, 0.94) 36%, rgba(63, 102, 112, 0.88) 66%, rgba(205, 156, 91, 0.78));
+      radial-gradient(80% 65% at 78% 16%, rgba(255, 222, 174, 0.4), transparent 72%),
+      radial-gradient(88% 70% at 10% 88%, rgba(161, 202, 225, 0.28), transparent 74%),
+      linear-gradient(180deg, rgba(45, 48, 83, 0.98) 0%, rgba(93, 88, 136, 0.94) 28%, rgba(202, 153, 126, 0.86) 64%, rgba(92, 102, 74, 0.94) 100%);
   }
 
-  .sanctuary[data-keepsake-tone='social'] .base {
+  .sanctuary[data-time-slice='day'] .sky {
     background:
-      radial-gradient(80% 65% at 85% 14%, rgba(255, 176, 148, 0.34), transparent 72%),
-      radial-gradient(78% 70% at 12% 90%, rgba(238, 202, 125, 0.32), transparent 74%),
-      linear-gradient(160deg, rgba(62, 27, 48, 0.98), rgba(113, 49, 71, 0.94) 36%, rgba(166, 90, 79, 0.88) 66%, rgba(229, 176, 110, 0.76));
+      radial-gradient(72% 58% at 78% 16%, rgba(255, 246, 204, 0.3), transparent 72%),
+      radial-gradient(88% 70% at 10% 88%, rgba(164, 224, 231, 0.22), transparent 74%),
+      linear-gradient(180deg, rgba(76, 137, 174, 0.96) 0%, rgba(113, 164, 172, 0.92) 42%, rgba(126, 167, 129, 0.92) 100%);
   }
 
-  .sanctuary[data-keepsake-tone='mission'] .base {
+  .sanctuary[data-time-slice='night'] .sky {
     background:
-      radial-gradient(76% 60% at 85% 14%, rgba(243, 205, 112, 0.3), transparent 72%),
-      radial-gradient(82% 70% at 12% 90%, rgba(119, 155, 212, 0.28), transparent 74%),
-      linear-gradient(160deg, rgba(21, 29, 52, 0.98), rgba(49, 69, 116, 0.94) 36%, rgba(104, 94, 117, 0.88) 66%, rgba(214, 168, 99, 0.78));
+      radial-gradient(70% 54% at 78% 16%, rgba(183, 198, 241, 0.2), transparent 72%),
+      radial-gradient(88% 70% at 10% 88%, rgba(76, 116, 174, 0.2), transparent 74%),
+      linear-gradient(180deg, rgba(8, 13, 26, 0.98) 0%, rgba(12, 20, 38, 0.96) 38%, rgba(20, 31, 40, 0.96) 100%);
   }
 
-  .sanctuary[data-keepsake-tone='play'] .base {
-    background:
-      radial-gradient(80% 65% at 85% 14%, rgba(126, 228, 236, 0.34), transparent 72%),
-      radial-gradient(78% 70% at 12% 90%, rgba(255, 180, 135, 0.34), transparent 74%),
-      linear-gradient(160deg, rgba(24, 46, 76, 0.98), rgba(44, 91, 117, 0.94) 36%, rgba(121, 104, 159, 0.88) 66%, rgba(246, 165, 105, 0.76));
-  }
-
-  .sanctuary[data-keepsake-tone='bond'] .base {
-    background:
-      radial-gradient(80% 65% at 85% 14%, rgba(245, 229, 171, 0.28), transparent 72%),
-      radial-gradient(80% 70% at 12% 90%, rgba(255, 194, 146, 0.32), transparent 74%),
-      linear-gradient(160deg, rgba(34, 35, 84, 0.98), rgba(63, 60, 130, 0.94) 36%, rgba(126, 92, 145, 0.88) 66%, rgba(231, 187, 125, 0.76));
-  }
-
-  .chroma {
+  .glow {
     z-index: 1;
-    mix-blend-mode: soft-light;
-    opacity: 0.46;
+    opacity: 0.5;
+    mix-blend-mode: screen;
     background:
-      radial-gradient(65% 50% at 20% 24%, rgba(72, 220, 215, 0.42), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 177, 136, 0.42), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(92, 77, 178, 0.36), transparent 64%);
+      radial-gradient(55% 38% at 20% 22%, rgba(112, 212, 202, 0.28), transparent 72%),
+      radial-gradient(44% 36% at 82% 28%, rgba(255, 193, 144, 0.24), transparent 74%),
+      radial-gradient(38% 30% at 50% 78%, rgba(140, 121, 206, 0.18), transparent 72%);
   }
 
-  .sanctuary[data-keepsake-tone='care'] .chroma {
+  .canopy {
+    z-index: 2;
+    opacity: 0.82;
     background:
-      radial-gradient(65% 50% at 20% 24%, rgba(104, 229, 193, 0.4), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 209, 144, 0.32), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(87, 149, 160, 0.28), transparent 64%);
+      radial-gradient(55% 26% at 22% -6%, rgba(17, 44, 34, 0.84), transparent 64%),
+      radial-gradient(56% 28% at 82% -4%, rgba(13, 35, 30, 0.82), transparent 66%),
+      radial-gradient(40% 18% at 50% 2%, rgba(32, 59, 46, 0.52), transparent 68%);
   }
 
-  .sanctuary[data-keepsake-tone='social'] .chroma {
+  .peaks {
+    z-index: 2;
+    opacity: 0.78;
     background:
-      radial-gradient(65% 50% at 20% 24%, rgba(255, 168, 140, 0.42), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 210, 139, 0.34), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(187, 101, 120, 0.28), transparent 64%);
-  }
-
-  .sanctuary[data-keepsake-tone='mission'] .chroma {
-    background:
-      radial-gradient(65% 50% at 20% 24%, rgba(245, 202, 102, 0.32), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(154, 176, 245, 0.3), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(101, 122, 184, 0.26), transparent 64%);
-  }
-
-  .sanctuary[data-keepsake-tone='play'] .chroma {
-    background:
-      radial-gradient(65% 50% at 20% 24%, rgba(99, 231, 220, 0.42), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 186, 140, 0.38), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(121, 111, 205, 0.28), transparent 64%);
-  }
-
-  .sanctuary[data-keepsake-tone='bond'] .chroma {
-    background:
-      radial-gradient(65% 50% at 20% 24%, rgba(255, 230, 162, 0.3), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 188, 142, 0.34), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(151, 116, 196, 0.26), transparent 64%);
+      radial-gradient(70% 18% at 50% 76%, rgba(65, 84, 83, 0.66), transparent 72%),
+      radial-gradient(58% 14% at 18% 80%, rgba(45, 68, 60, 0.58), transparent 72%),
+      radial-gradient(50% 13% at 82% 80%, rgba(44, 61, 55, 0.54), transparent 72%);
   }
 
   .drift {
-    z-index: 2;
-    opacity: 0.38;
-    filter: blur(22px);
+    z-index: 3;
+    opacity: 0.26;
+    filter: blur(18px);
     background:
-      radial-gradient(46% 30% at 30% 28%, rgba(91, 212, 202, 0.5), transparent 78%),
-      radial-gradient(42% 30% at 68% 54%, rgba(118, 97, 205, 0.4), transparent 72%),
-      radial-gradient(44% 32% at 56% 84%, rgba(253, 176, 121, 0.4), transparent 80%);
-    animation: cloudDrift 18s cubic-bezier(0.32, 0.03, 0.16, 0.99) infinite alternate;
+      radial-gradient(34% 22% at 30% 40%, rgba(123, 223, 218, 0.44), transparent 76%),
+      radial-gradient(32% 20% at 68% 56%, rgba(255, 194, 146, 0.3), transparent 72%),
+      radial-gradient(40% 24% at 52% 68%, rgba(130, 110, 196, 0.24), transparent 74%);
+    animation: cloudDrift 16s ease-in-out infinite alternate;
+  }
+
+  .fireflies {
+    z-index: 4;
+    opacity: 0.45;
+    background-image:
+      radial-gradient(circle at 18% 38%, rgba(255, 241, 208, 0.8) 0.15rem, transparent 0.22rem),
+      radial-gradient(circle at 28% 62%, rgba(241, 250, 228, 0.74) 0.13rem, transparent 0.2rem),
+      radial-gradient(circle at 58% 34%, rgba(255, 236, 188, 0.72) 0.14rem, transparent 0.21rem),
+      radial-gradient(circle at 74% 56%, rgba(229, 255, 227, 0.68) 0.14rem, transparent 0.22rem),
+      radial-gradient(circle at 82% 40%, rgba(255, 232, 199, 0.74) 0.16rem, transparent 0.22rem);
+    animation: sparkle 9s ease-in-out infinite alternate;
   }
 
   .premium {
-    z-index: 2;
+    z-index: 4;
     opacity: 0;
     transition: opacity 220ms ease;
     background:
-      radial-gradient(42% 34% at 18% 18%, rgba(255, 244, 200, 0.22), transparent 78%),
-      radial-gradient(44% 36% at 84% 28%, rgba(255, 226, 168, 0.18), transparent 76%),
-      radial-gradient(36% 30% at 50% 82%, rgba(255, 239, 197, 0.14), transparent 74%);
+      radial-gradient(44% 30% at 18% 16%, rgba(255, 243, 200, 0.18), transparent 76%),
+      radial-gradient(40% 28% at 82% 22%, rgba(255, 225, 184, 0.14), transparent 76%),
+      radial-gradient(30% 24% at 50% 78%, rgba(250, 240, 211, 0.12), transparent 74%);
   }
 
   .sanctuary[data-premium='true'] .premium {
@@ -259,46 +334,34 @@
 
   .sanctuary[data-premium-style='gilded_dawn'] .premium {
     background:
-      radial-gradient(42% 34% at 18% 18%, rgba(255, 236, 176, 0.3), transparent 78%),
-      radial-gradient(44% 36% at 84% 28%, rgba(255, 206, 140, 0.22), transparent 76%),
-      radial-gradient(36% 30% at 50% 82%, rgba(255, 245, 205, 0.16), transparent 74%);
+      radial-gradient(44% 30% at 18% 16%, rgba(255, 232, 174, 0.26), transparent 76%),
+      radial-gradient(40% 28% at 82% 22%, rgba(255, 199, 126, 0.18), transparent 76%),
+      radial-gradient(30% 24% at 50% 78%, rgba(255, 242, 201, 0.14), transparent 74%);
   }
 
   .sanctuary[data-premium-style='moon_glass'] .premium {
     background:
-      radial-gradient(42% 34% at 18% 18%, rgba(224, 236, 255, 0.22), transparent 78%),
-      radial-gradient(44% 36% at 84% 28%, rgba(208, 222, 255, 0.18), transparent 76%),
-      radial-gradient(36% 30% at 50% 82%, rgba(240, 244, 255, 0.14), transparent 74%);
+      radial-gradient(44% 30% at 18% 16%, rgba(219, 232, 255, 0.22), transparent 76%),
+      radial-gradient(40% 28% at 82% 22%, rgba(201, 221, 255, 0.16), transparent 76%),
+      radial-gradient(30% 24% at 50% 78%, rgba(235, 244, 255, 0.12), transparent 74%);
   }
 
   .sanctuary[data-premium-style='ember_bloom'] .premium {
     background:
-      radial-gradient(42% 34% at 18% 18%, rgba(255, 214, 176, 0.24), transparent 78%),
-      radial-gradient(44% 36% at 84% 28%, rgba(255, 168, 140, 0.18), transparent 76%),
-      radial-gradient(36% 30% at 50% 82%, rgba(255, 229, 196, 0.14), transparent 74%);
+      radial-gradient(44% 30% at 18% 16%, rgba(255, 211, 180, 0.24), transparent 76%),
+      radial-gradient(40% 28% at 82% 22%, rgba(252, 170, 134, 0.18), transparent 76%),
+      radial-gradient(30% 24% at 50% 78%, rgba(255, 230, 204, 0.12), transparent 74%);
   }
 
   .sanctuary[data-premium-style='tide_silk'] .premium {
     background:
-      radial-gradient(42% 34% at 18% 18%, rgba(193, 237, 233, 0.24), transparent 78%),
-      radial-gradient(44% 36% at 84% 28%, rgba(168, 222, 228, 0.18), transparent 76%),
-      radial-gradient(36% 30% at 50% 82%, rgba(210, 245, 241, 0.13), transparent 74%);
+      radial-gradient(44% 30% at 18% 16%, rgba(196, 239, 233, 0.24), transparent 76%),
+      radial-gradient(40% 28% at 82% 22%, rgba(164, 225, 223, 0.16), transparent 76%),
+      radial-gradient(30% 24% at 50% 78%, rgba(215, 246, 242, 0.12), transparent 74%);
   }
 
-  .stars {
-    z-index: 3;
-    opacity: 0.26;
-    background-image:
-      radial-gradient(circle at 12% 21%, rgba(255, 244, 215, 0.55) 0.18rem, transparent 0.25rem),
-      radial-gradient(circle at 74% 31%, rgba(255, 243, 222, 0.48) 0.14rem, transparent 0.24rem),
-      radial-gradient(circle at 58% 83%, rgba(255, 238, 199, 0.44) 0.12rem, transparent 0.22rem),
-      radial-gradient(circle at 83% 66%, rgba(255, 241, 214, 0.42) 0.14rem, transparent 0.23rem),
-      radial-gradient(circle at 24% 72%, rgba(255, 247, 226, 0.38) 0.12rem, transparent 0.2rem);
-    filter: blur(0.7px);
-  }
-
-  .noise {
-    z-index: 4;
+  .grain {
+    z-index: 5;
     opacity: 0.08;
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.76' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
@@ -307,7 +370,7 @@
   .hint,
   .stage {
     position: relative;
-    z-index: 5;
+    z-index: 6;
   }
 
   .hint {
@@ -315,253 +378,461 @@
     grid-template-columns: 1fr auto;
     gap: 0.55rem;
     align-items: center;
-    border-radius: 0.9rem;
-    border: 1px solid rgba(223, 231, 246, 0.25);
-    background: rgba(20, 29, 72, 0.46);
-    backdrop-filter: blur(12px);
-    padding: 0.62rem 0.72rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(244, 232, 205, 0.16);
+    background: rgba(15, 25, 31, 0.42);
+    padding: 0.75rem 0.85rem;
+    backdrop-filter: blur(14px);
   }
 
-  .hint p {
+  .hint p,
+  .hint button {
     margin: 0;
-    font-size: 0.72rem;
-    line-height: 1.3;
-    color: rgba(236, 240, 247, 0.95);
+    font-size: 0.8rem;
   }
 
   .hint button {
-    min-height: 1.9rem;
+    border: none;
     border-radius: 999px;
-    border: 1px solid rgba(225, 233, 247, 0.38);
-    background: rgba(16, 24, 62, 0.7);
-    color: rgba(238, 242, 250, 0.9);
-    padding: 0 0.66rem;
-    text-transform: uppercase;
-    font-size: 0.62rem;
-    letter-spacing: 0.08em;
+    min-height: 2rem;
+    padding: 0 0.85rem;
+    font-weight: 700;
+    background: rgba(245, 228, 185, 0.16);
+    color: inherit;
   }
 
   .stage {
+    min-height: calc(100dvh - 2rem);
     display: grid;
-    grid-template-rows: minmax(14rem, auto) auto auto;
-    align-content: stretch;
-    justify-items: center;
-    gap: clamp(1.1rem, 3vh, 2rem);
-    min-height: calc(100dvh - 5.5rem);
-    padding-top: clamp(0.5rem, 4vh, 2.4rem);
-    padding-bottom: clamp(1rem, 6vh, 3.8rem);
-  }
-
-  .hero-wrap {
-    width: 100%;
-    display: grid;
-    justify-items: center;
-    align-self: start;
+    grid-template-rows: auto auto auto auto;
     gap: 0.9rem;
   }
 
-  .premium-aura {
-    width: min(100%, 20rem);
-    border-radius: 999px;
-    border: 1px solid rgba(255, 231, 182, 0.28);
-    background:
-      linear-gradient(135deg, rgba(255, 238, 196, 0.18), rgba(255, 255, 255, 0.06)),
-      rgba(17, 24, 39, 0.42);
-    backdrop-filter: blur(16px);
-    padding: 0.54rem 0.9rem;
+  .sanctuary-head {
     display: grid;
-    gap: 0.12rem;
-    text-align: center;
-    box-shadow: 0 16px 40px rgba(11, 17, 32, 0.24);
+    gap: 0.75rem;
   }
 
-  .premium-aura__label {
-    font-size: 0.62rem;
+  .sanctuary-head__copy {
+    display: grid;
+    gap: 0.24rem;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(255, 236, 200, 0.74);
+    color: rgba(230, 206, 154, 0.78);
   }
 
-  .premium-aura strong {
-    font-size: 0.84rem;
-    color: rgba(255, 248, 232, 0.96);
+  .sanctuary-head h1,
+  .focus h2 {
+    margin: 0;
+    font-family: var(--home-font-display);
+    line-height: 1.04;
+  }
+
+  .sanctuary-head h1 {
+    font-size: clamp(2rem, 9vw, 3.35rem);
+  }
+
+  .sanctuary-head p,
+  .focus p {
+    margin: 0;
+    color: rgba(233, 224, 206, 0.84);
+    line-height: 1.45;
+    font-size: 0.94rem;
+  }
+
+  .sanctuary-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .chip {
+    min-height: 1.9rem;
+    padding: 0 0.72rem;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 230, 193, 0.14);
+    background: rgba(18, 24, 28, 0.38);
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.74rem;
+    color: rgba(244, 235, 214, 0.88);
+    backdrop-filter: blur(12px);
+  }
+
+  .chip--presence {
+    color: rgba(212, 242, 225, 0.9);
+  }
+
+  .chip--premium {
+    color: rgba(255, 229, 174, 0.92);
+    border-color: rgba(255, 222, 151, 0.18);
+  }
+
+  .scene {
+    position: relative;
+    min-height: 24rem;
+    border-radius: 2rem;
+    overflow: hidden;
+    border: 1px solid rgba(241, 228, 198, 0.12);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(11, 16, 18, 0.08)),
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 52%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 244, 220, 0.08),
+      0 26px 60px rgba(8, 12, 14, 0.34);
+    backdrop-filter: blur(8px);
+  }
+
+  .scene__orb {
+    position: absolute;
+    width: 8rem;
+    height: 8rem;
+    border-radius: 999px;
+    filter: blur(36px);
+    opacity: 0.34;
+  }
+
+  .scene__orb--left {
+    left: -1rem;
+    top: 18%;
+    background: rgba(118, 227, 208, 0.56);
+  }
+
+  .scene__orb--right {
+    right: -1rem;
+    top: 14%;
+    background: rgba(255, 188, 144, 0.42);
+  }
+
+  .scene__flora {
+    position: absolute;
+    bottom: 18%;
+    width: 28%;
+    height: 28%;
+    opacity: 0.65;
+    filter: blur(0.5px);
+  }
+
+  .scene__flora--left {
+    left: -2%;
+    background:
+      radial-gradient(54% 100% at 40% 100%, rgba(42, 70, 42, 0.9), transparent 72%),
+      radial-gradient(30% 84% at 60% 100%, rgba(84, 132, 88, 0.7), transparent 70%),
+      radial-gradient(22% 80% at 82% 100%, rgba(145, 190, 132, 0.46), transparent 68%);
+  }
+
+  .scene__flora--right {
+    right: -2%;
+    background:
+      radial-gradient(54% 100% at 62% 100%, rgba(50, 74, 46, 0.88), transparent 72%),
+      radial-gradient(28% 82% at 40% 100%, rgba(96, 148, 92, 0.66), transparent 70%),
+      radial-gradient(18% 76% at 12% 100%, rgba(225, 190, 118, 0.3), transparent 68%);
+  }
+
+  .scene__ground {
+    position: absolute;
+    left: -8%;
+    right: -8%;
+    border-radius: 50%;
+  }
+
+  .scene__ground--back {
+    bottom: 12%;
+    height: 10rem;
+    background:
+      radial-gradient(50% 100% at 50% 40%, rgba(72, 110, 74, 0.58), transparent 72%),
+      radial-gradient(70% 100% at 50% 100%, rgba(20, 35, 28, 0.72), transparent 72%);
+    opacity: 0.82;
+  }
+
+  .scene__ground--front {
+    bottom: -14%;
+    height: 12rem;
+    background:
+      radial-gradient(60% 100% at 50% 10%, rgba(117, 155, 96, 0.46), transparent 70%),
+      radial-gradient(75% 100% at 50% 100%, rgba(22, 36, 28, 0.94), transparent 78%);
+  }
+
+  .scene__anchor {
+    position: absolute;
+    left: 50%;
+    bottom: 18%;
+    width: min(72vw, 22rem);
+    transform: translateX(-50%);
+  }
+
+  .scene__anchor-ring {
+    width: 78%;
+    height: 1.2rem;
+    margin: 0 auto;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(255, 231, 177, 0.34), rgba(255, 231, 177, 0.04) 72%, transparent 74%);
+    filter: blur(4px);
+  }
+
+  .scene__anchor-stone {
+    width: 100%;
+    height: 4.5rem;
+    margin-top: -0.4rem;
+    border-radius: 999px;
+    background:
+      radial-gradient(50% 90% at 50% 26%, rgba(106, 124, 138, 0.86), rgba(57, 68, 77, 0.82) 64%, rgba(17, 21, 24, 0.92));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 251, 240, 0.16),
+      0 18px 34px rgba(7, 10, 12, 0.32);
+  }
+
+  .scene__anchor-grass {
+    width: 86%;
+    height: 2.8rem;
+    margin: -1.2rem auto 0;
+    border-radius: 999px;
+    background:
+      radial-gradient(50% 100% at 50% 0%, rgba(170, 209, 134, 0.44), transparent 70%),
+      radial-gradient(70% 100% at 50% 100%, rgba(34, 67, 40, 0.74), transparent 72%);
+    filter: blur(2px);
+  }
+
+  .hero-wrap {
+    position: absolute;
+    inset: auto 0 14% 0;
+    z-index: 2;
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
   }
 
   .keepsake-aura {
-    width: min(100%, 18rem);
+    display: inline-grid;
+    gap: 0.1rem;
+    justify-items: center;
+    padding: 0.52rem 0.8rem;
     border-radius: 999px;
-    border: 1px solid rgba(244, 237, 214, 0.24);
-    background: rgba(18, 23, 57, 0.38);
-    backdrop-filter: blur(12px);
-    padding: 0.5rem 0.8rem;
-    display: grid;
-    gap: 0.08rem;
-    text-align: center;
-    box-shadow: 0 12px 28px rgba(16, 21, 51, 0.24);
+    border: 1px solid rgba(241, 227, 195, 0.16);
+    background: rgba(20, 24, 28, 0.38);
+    backdrop-filter: blur(10px);
   }
 
   .keepsake-aura__label {
     font-size: 0.62rem;
-    letter-spacing: 0.12em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(240, 230, 199, 0.72);
+    color: rgba(230, 206, 154, 0.72);
   }
 
   .keepsake-aura strong {
-    font-size: 0.82rem;
-    color: rgba(252, 248, 238, 0.96);
+    font-size: 0.8rem;
+    color: rgba(248, 243, 229, 0.96);
+  }
+
+  .scene__caption {
+    display: grid;
+    gap: 0.1rem;
+    justify-items: center;
+    text-align: center;
+    padding: 0.7rem 0.95rem;
+    border-radius: 1rem;
+    background: rgba(12, 17, 19, 0.42);
+    border: 1px solid rgba(243, 231, 205, 0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  .scene__caption strong {
+    font-size: 0.88rem;
+    color: rgba(248, 242, 226, 0.98);
+  }
+
+  .scene__caption span {
+    font-size: 0.8rem;
+    color: rgba(223, 215, 196, 0.8);
   }
 
   .dialogue {
-    width: min(100%, 36rem);
     display: grid;
-    gap: 0.82rem;
-    align-self: center;
+    gap: 0.5rem;
+  }
+
+  .bubble-group {
+    display: grid;
+    gap: 0.3rem;
   }
 
   .bubble {
     margin: 0;
-    max-width: min(82%, 24rem);
-    border: 1px solid rgba(224, 233, 247, 0.16);
-    border-radius: 1rem;
-    padding: 0.72rem 0.84rem;
-    font-size: 0.83rem;
-    line-height: 1.35;
-    backdrop-filter: blur(12px);
+    width: fit-content;
+    max-width: min(100%, 28rem);
+    border-radius: 1.15rem;
+    padding: 0.8rem 0.95rem;
+    line-height: 1.45;
+    font-size: 0.9rem;
+    backdrop-filter: blur(14px);
   }
 
   .bubble--user {
-    justify-self: start;
-    background: rgba(88, 175, 191, 0.3);
-    color: rgba(241, 248, 252, 0.92);
+    justify-self: flex-end;
+    background: rgba(246, 229, 186, 0.16);
+    border: 1px solid rgba(246, 229, 186, 0.18);
+    color: rgba(250, 242, 224, 0.92);
   }
 
   .bubble--companion {
-    justify-self: end;
-    background: rgba(118, 97, 173, 0.34);
-    color: rgba(244, 236, 250, 0.92);
-  }
-
-  .bubble-group {
-    justify-self: end;
-    display: grid;
-    gap: 0.25rem;
-    justify-items: end;
+    background: rgba(15, 25, 31, 0.44);
+    border: 1px solid rgba(244, 230, 194, 0.12);
+    color: rgba(242, 236, 220, 0.94);
   }
 
   .reply-debug {
-    margin: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: rgba(216, 230, 248, 0.72);
+    margin: 0 0.12rem;
+    font-size: 0.72rem;
+    color: rgba(222, 212, 188, 0.58);
   }
 
   .focus {
-    width: min(100%, 24rem);
     display: grid;
-    justify-items: center;
-    gap: 0.58rem;
-    text-align: center;
-    align-self: end;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 1.3rem;
+    border: 1px solid rgba(244, 230, 195, 0.12);
+    background: rgba(14, 19, 22, 0.4);
+    backdrop-filter: blur(14px);
   }
 
-  .focus h1 {
-    margin: 0;
-    font-family: var(--home-font-display);
-    font-size: clamp(1.95rem, 6vw, 3.1rem);
-    line-height: 1.02;
-    letter-spacing: -0.02em;
-    color: rgba(249, 245, 233, 0.98);
-    text-shadow: 0 8px 24px rgba(30, 26, 71, 0.34);
+  .focus__copy {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .focus h2 {
+    font-size: 1.18rem;
   }
 
   .reflect {
-    width: min(100%, 17.5rem);
-    min-height: 2.95rem;
-    border: 1px solid rgba(228, 237, 248, 0.34);
-    border-radius: 999px;
-    background: linear-gradient(145deg, rgba(29, 42, 101, 0.55), rgba(16, 26, 64, 0.76));
-    color: rgba(243, 247, 253, 0.95);
+    min-height: 3.2rem;
+    border: none;
+    border-radius: 1rem;
+    padding: 0 1rem;
+    background: linear-gradient(135deg, rgba(238, 205, 139, 0.92), rgba(245, 176, 132, 0.9));
+    color: rgba(22, 19, 17, 0.94);
+    font-weight: 800;
     font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    backdrop-filter: blur(14px);
-    transition: transform 220ms cubic-bezier(0.2, 0.82, 0.24, 1), border-color 220ms cubic-bezier(0.2, 0.82, 0.24, 1);
-  }
-
-  .reflect:hover,
-  .reflect:focus-visible {
-    transform: translateY(-1px);
-    border-color: rgba(241, 246, 253, 0.62);
-    outline: none;
+    box-shadow: 0 16px 34px rgba(12, 10, 8, 0.28);
   }
 
   .reflect--pulse {
-    animation: pulse 2.9s ease-in-out infinite;
+    animation: pulseButton 2.6s ease-in-out infinite;
   }
 
-  .focus p {
-    margin: 0;
-    color: rgba(233, 238, 247, 0.84);
-    font-size: 0.78rem;
+  .sanctuary[data-keepsake-tone='care'] .scene__orb--left,
+  .sanctuary[data-keepsake-tone='care'] .chip--presence {
+    color: rgba(199, 244, 220, 0.9);
+    background-color: rgba(91, 148, 127, 0.16);
   }
 
-  @media (min-width: 900px) {
-    .sanctuary {
-      gap: 1.1rem;
-      padding: max(1.1rem, env(safe-area-inset-top)) 1.35rem calc(1.8rem + env(safe-area-inset-bottom));
-    }
+  .sanctuary[data-keepsake-tone='social'] .scene__orb--right {
+    background: rgba(255, 171, 141, 0.48);
+  }
 
-    .stage {
-      gap: clamp(1.5rem, 3.8vh, 2.9rem);
-      min-height: calc(100dvh - 6.2rem);
-      padding-top: clamp(1rem, 8vh, 4.5rem);
-      padding-bottom: clamp(1.1rem, 8vh, 4.2rem);
-    }
+  .sanctuary[data-keepsake-tone='mission'] .scene__anchor-ring {
+    background: radial-gradient(circle, rgba(247, 219, 145, 0.36), rgba(247, 219, 145, 0.06) 72%, transparent 74%);
+  }
 
-    .dialogue {
-      width: min(100%, 50rem);
-      grid-template-columns: 1fr 1fr;
-      gap: 1.2rem;
-      align-items: end;
-    }
+  .sanctuary[data-keepsake-tone='play'] .scene__orb--left {
+    background: rgba(116, 228, 224, 0.62);
+  }
 
-    .bubble {
-      max-width: 100%;
-      font-size: 0.9rem;
-    }
-
-    .bubble--companion {
-      margin-top: 2.3rem;
-    }
-
-    .focus {
-      width: min(100%, 28rem);
-      gap: 0.58rem;
-    }
-
-    .focus h1 {
-      font-size: clamp(2.1rem, 4.2vw, 3.8rem);
-    }
+  .sanctuary[data-keepsake-tone='bond'] .scene__caption {
+    background: rgba(24, 19, 23, 0.44);
   }
 
   @keyframes cloudDrift {
-    from {
-      transform: translate3d(0, 0, 0);
+    0% {
+      transform: translate3d(-1.5%, 0, 0) scale(1);
     }
-    to {
-      transform: translate3d(-2.5%, -2.2%, 0);
+    100% {
+      transform: translate3d(1.5%, -2%, 0) scale(1.05);
     }
   }
 
-  @keyframes pulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 rgba(137, 198, 255, 0);
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0.34;
+      transform: translateY(0);
     }
     50% {
-      box-shadow: 0 0 0.95rem rgba(137, 198, 255, 0.38);
+      opacity: 0.58;
+      transform: translateY(-1.5%);
+    }
+  }
+
+  @keyframes pulseButton {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 16px 34px rgba(12, 10, 8, 0.28);
+    }
+    50% {
+      transform: scale(1.02);
+      box-shadow: 0 18px 40px rgba(255, 196, 140, 0.28);
+    }
+  }
+
+  @media (min-width: 720px) {
+    .sanctuary {
+      padding-inline: 1.15rem;
+    }
+
+    .stage {
+      max-width: 56rem;
+      margin: 0 auto;
+      width: 100%;
+      gap: 1rem;
+    }
+
+    .sanctuary-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+
+    .dialogue {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .bubble--user {
+      justify-self: start;
+    }
+
+    .bubble-group {
+      justify-items: end;
+    }
+
+    .bubble--companion {
+      justify-self: end;
+    }
+
+    .focus {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 359px) {
+    .scene {
+      min-height: 22rem;
+    }
+
+    .hint {
+      grid-template-columns: 1fr;
+    }
+
+    .chip--presence {
+      width: 100%;
     }
   }
 </style>
