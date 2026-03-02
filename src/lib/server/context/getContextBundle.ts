@@ -5,7 +5,8 @@ import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { getConsentFlags } from '$lib/server/consent';
 import { extractWorldState } from '$lib/server/context/worldState';
 import { normalizePortableCompanions } from '$lib/server/context/portableCompanions';
-import { computeEffectiveEnergyMax } from '$lib/player/energy';
+import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
+import { isSubscriptionActive } from '$lib/subscriptions';
 import {
   CONTEXT_BUNDLE_VERSION,
   type ContextBundle,
@@ -154,7 +155,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
     };
   }
 
-  const [stats, walletRes, companionBond, prefsRes, companionRes, consentFlags] = await Promise.all([
+  const [stats, walletRes, companionBond, prefsRes, companionRes, consentFlags, subscriptionRes] = await Promise.all([
     getPlayerStats(event, supabase),
     supabase
       .from('user_wallets')
@@ -175,7 +176,12 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       .order('state', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    getConsentFlags(event, supabase)
+    getConsentFlags(event, supabase),
+    supabase
+      .from('user_subscriptions')
+      .select('status, ends_at')
+      .eq('user_id', resolvedUserId)
+      .maybeSingle()
   ]);
 
   if (walletRes.error && walletRes.error.code !== 'PGRST116') {
@@ -202,10 +208,16 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
   let socialCount7d = 0;
   let featuredKeepsake: FeaturedKeepsakeBundle | null = null;
   const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
+  const subscriptionActive = isSubscriptionActive({
+    subscription_active: false,
+    subscription_status: subscriptionRes.data?.status ?? null,
+    subscription_ends_at: subscriptionRes.data?.ends_at ?? null
+  });
+  const subscriptionMomentumBonus = getSubscriptionMomentumBonus(subscriptionActive);
   const baseEnergyMax = stats?.energy_max ?? null;
   const effectiveEnergyMax =
     typeof baseEnergyMax === 'number'
-      ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
+      ? computeEffectiveMomentumMax(baseEnergyMax, missionEnergyBonus, subscriptionActive)
       : baseEnergyMax;
 
   if (consentFlags.memory && companionBond?.companionId) {
@@ -227,7 +239,9 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
         .gte('created_at', weekAgoIso),
       supabase
         .from('user_preferences')
-        .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+        .select(
+          'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+        )
         .eq('user_id', resolvedUserId)
         .maybeSingle()
     ]);
@@ -268,6 +282,13 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       typeof featuredPrefRes.data?.featured_companion_reward_companion_id === 'string'
         ? featuredPrefRes.data.featured_companion_reward_companion_id
         : null;
+    const premiumStyle =
+      featuredPrefRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+      featuredPrefRes.data?.premium_sanctuary_style === 'moon_glass' ||
+      featuredPrefRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+      featuredPrefRes.data?.premium_sanctuary_style === 'tide_silk'
+        ? featuredPrefRes.data.premium_sanctuary_style
+        : null;
 
     if (featuredRewardKey && featuredRewardCompanionId === companionBond.companionId) {
       const { data: rewardRow, error: rewardError } = await supabase
@@ -292,7 +313,8 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
             rewardRow.reward_tone === 'bond'
               ? rewardRow.reward_tone
               : 'bond',
-          companionId: String(rewardRow.companion_id ?? companionBond.companionId)
+          companionId: String(rewardRow.companion_id ?? companionBond.companionId),
+          premiumStyle
         };
       }
     }
@@ -310,6 +332,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       energyMax: effectiveEnergyMax,
       baseEnergyMax,
       missionEnergyBonus,
+      subscriptionMomentumBonus,
       currency: Number(walletRes.data?.shards ?? 0),
       walletUpdatedAt: walletRes.data?.updated_at ?? null
     },
@@ -320,6 +343,7 @@ export const getContextBundle = async (event: RequestEvent, args: ContextBundleA
       bondScore: companionBond?.score ?? null,
       xpMultiplier: companionBond?.bonus?.xpMultiplier ?? null,
       missionEnergyBonus,
+      subscriptionMomentumBonus,
       state: typeof companionRes.data?.state === 'string' ? companionRes.data.state : null,
       mood: typeof companionRes.data?.mood === 'string' ? companionRes.data.mood : null
     },

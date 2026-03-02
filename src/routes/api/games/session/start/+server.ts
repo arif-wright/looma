@@ -10,7 +10,8 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
-import { computeEffectiveEnergyMax } from '$lib/player/energy';
+import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
+import { isSubscriptionActive } from '$lib/subscriptions';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const maxSessionsPerDay = Number.parseInt(env.GAME_MAX_SESSIONS_PER_DAY ?? '100', 10) || 100;
@@ -142,17 +143,28 @@ export const POST: RequestHandler = async (event) => {
       }
     });
 
-    const [stats, walletRes, companionBond] = await Promise.all([
+    const [stats, walletRes, companionBond, subscriptionRes] = await Promise.all([
       getPlayerStats(event, supabase),
       supabase.from('user_wallets').select('shards').eq('user_id', user.id).maybeSingle(),
-      getActiveCompanionBond(user.id, supabase)
+      getActiveCompanionBond(user.id, supabase),
+      supabase
+        .from('user_subscriptions')
+        .select('status, ends_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
     ]);
 
     const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
+    const subscriptionActive = isSubscriptionActive({
+      subscription_active: false,
+      subscription_status: subscriptionRes.data?.status ?? null,
+      subscription_ends_at: subscriptionRes.data?.ends_at ?? null
+    });
+    const subscriptionMomentumBonus = getSubscriptionMomentumBonus(subscriptionActive);
     const baseEnergyMax = stats?.energy_max ?? null;
     const effectiveEnergyMax =
       typeof baseEnergyMax === 'number'
-        ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
+        ? computeEffectiveMomentumMax(baseEnergyMax, missionEnergyBonus, subscriptionActive)
         : baseEnergyMax;
 
     const playerStateSnapshot = {
@@ -163,6 +175,7 @@ export const POST: RequestHandler = async (event) => {
       energyMax: effectiveEnergyMax,
       baseEnergyMax,
       missionEnergyBonus,
+      subscriptionMomentumBonus,
       currency: Number(walletRes.data?.shards ?? 0)
     };
 

@@ -216,7 +216,8 @@ const buildContextSummary = (args: {
     featuredKeepsake: featuredKeepsakeRaw
       ? {
           title: readString(featuredKeepsakeRaw.title, ''),
-          tone: readString(featuredKeepsakeRaw.tone, 'bond')
+          tone: readString(featuredKeepsakeRaw.tone, 'bond'),
+          premiumStyle: readString(featuredKeepsakeRaw.premiumStyle, '') || null
         }
       : null
   };
@@ -237,6 +238,7 @@ const MUSE_SYSTEM_PROMPT = [
   'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
   'If recent shared moments or conversations are in context, you may softly reference that the bond is being carried through shared expression.',
   'If a featured keepsake is in context, you may softly reference it as a symbol of the current relationship chapter.',
+  'If a premium sanctuary style is in context, you may let it influence atmosphere subtly: gilded_dawn = warm and luminous, moon_glass = clear and calm, ember_bloom = soft and ember-warm, tide_silk = flowing and hush-soft.',
   'When the user expresses distress:',
   '1. Reflect the emotion.',
   '2. Validate it.',

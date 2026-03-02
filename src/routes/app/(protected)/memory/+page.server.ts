@@ -187,6 +187,7 @@ type PremiumChapterInsight = {
   title: string;
   body: string;
   highlights: string[];
+  styleVoice: string | null;
 };
 
 const COMPANION_SELECT =
@@ -398,9 +399,20 @@ const buildPremiumChapterInsight = (args: {
   weeklyPulse: ReturnType<typeof buildWeeklyPulse>;
   chapterHistory: ChapterHistoryEntry[];
   featuredKeepsake: { title: string; tone: 'care' | 'social' | 'mission' | 'play' | 'bond' } | null;
+  premiumStyle: PremiumSanctuaryStyle | null;
 }): PremiumChapterInsight => {
   const name = args.companionName.trim() || 'Your companion';
   const highlights: string[] = [];
+  const styleVoice =
+    args.premiumStyle === 'gilded_dawn'
+      ? 'This reading is holding the chapter in a warmer, more luminous register.'
+      : args.premiumStyle === 'moon_glass'
+        ? 'This reading is holding the chapter in a clearer, quieter register.'
+        : args.premiumStyle === 'ember_bloom'
+          ? 'This reading is holding the chapter in a softer, ember-warm register.'
+          : args.premiumStyle === 'tide_silk'
+            ? 'This reading is holding the chapter in a calmer, tide-soft register.'
+            : null;
 
   for (const reason of args.relationshipPulse.reasons.slice(0, 2)) {
     highlights.push(reason);
@@ -418,9 +430,10 @@ const buildPremiumChapterInsight = (args: {
     title: `${name}'s deeper chapter reading`,
     body:
       args.weeklyArc.emphasis === 'quiet'
-        ? `${name} is in a quieter phase. The signal is less about volume and more about consistency, small returns, and whether the bond is holding shape without pressure.`
-        : `${name} is in a ${args.weeklyArc.emphasis} chapter right now. The deeper pattern is not just what happened most recently, but what kind of rhythm keeps reappearing across the week.`,
-    highlights: highlights.slice(0, 4)
+        ? `${name} is in a quieter phase. The signal is less about volume and more about consistency, small returns, and whether the bond is holding shape without pressure.${styleVoice ? ` ${styleVoice}` : ''}`
+        : `${name} is in a ${args.weeklyArc.emphasis} chapter right now. The deeper pattern is not just what happened most recently, but what kind of rhythm keeps reappearing across the week.${styleVoice ? ` ${styleVoice}` : ''}`,
+    highlights: highlights.slice(0, 4),
+    styleVoice
   };
 };
 
@@ -977,6 +990,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           tone: featuredKeepsake.tone
         }
       : null,
+    premiumStyle: premiumSanctuaryStyle,
     weeklyArc,
     careMoments: weeklyPulse.careMoments,
     missionMoments: weeklyPulse.missionMoments,
@@ -1069,7 +1083,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           title: featuredKeepsake.title,
           tone: featuredKeepsake.tone
         }
-      : null
+      : null,
+    premiumStyle: premiumSanctuaryStyle
   });
   const timelineLimit = isSubscriber ? 90 : 30;
   const chapterHistoryLimit = isSubscriber ? 18 : 6;

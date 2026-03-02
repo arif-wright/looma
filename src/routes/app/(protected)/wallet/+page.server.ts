@@ -1,4 +1,7 @@
 import type { PageServerLoad } from './$types';
+import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
+import { getSubscriptionMomentumBonus, computeEffectiveMomentumMax } from '$lib/player/momentum';
+import { isSubscriptionActive } from '$lib/subscriptions';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const supabase = (locals as any)?.supabase;
@@ -18,7 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     (locals as any).user = fetched;
   }
 
-  const [walletRes, txRes, subscriptionRes] = await Promise.all([
+  const [walletRes, txRes, subscriptionRes, statsRes] = await Promise.all([
     supabase.from('user_wallets').select('shards').single(),
     supabase
       .from('wallet_transactions')
@@ -28,13 +31,31 @@ export const load: PageServerLoad = async ({ locals }) => {
     supabase
       .from('user_subscriptions')
       .select('tier, status, ends_at, renewal_at, source')
-      .maybeSingle()
+      .maybeSingle(),
+    getPlayerStats({ locals } as never, supabase)
   ]);
+
+  const subscriptionActive = isSubscriptionActive({
+    subscription_active: false,
+    subscription_status: subscriptionRes.data?.status ?? null,
+    subscription_ends_at: subscriptionRes.data?.ends_at ?? null
+  });
+  const subscriptionMomentumBonus = getSubscriptionMomentumBonus(subscriptionActive);
+  const momentumMax =
+    typeof statsRes?.energy_max === 'number'
+      ? computeEffectiveMomentumMax(statsRes.energy_max, 0, subscriptionActive)
+      : null;
 
   return {
     shards: walletRes.data?.shards ?? 0,
     tx: txRes.data ?? [],
     subscription: subscriptionRes.data ?? null,
+    momentum: {
+      current: statsRes?.energy ?? null,
+      max: momentumMax,
+      baseMax: statsRes?.energy_max ?? null,
+      subscriptionBonus: subscriptionMomentumBonus
+    },
     error: walletRes.error?.message ?? txRes.error?.message ?? null
   };
 };

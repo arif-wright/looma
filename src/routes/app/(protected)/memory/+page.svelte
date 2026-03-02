@@ -152,7 +152,7 @@
   $: relationshipEras = ((data.relationshipEras ?? []) as RelationshipEra[]).slice(0, data.subscription?.active ? 6 : 4);
   $: journalGuidance = (data.journalGuidance ?? null) as JournalGuidance | null;
   $: premiumChapterInsight = (data.premiumChapterInsight ?? null) as
-    | { title: string; body: string; highlights: string[] }
+    | { title: string; body: string; highlights: string[]; styleVoice: string | null }
     | null;
   $: subscriptionActive = Boolean(data.subscription?.active);
   $: premiumSanctuaryStyle = data.premiumSanctuaryStyle ?? null;
@@ -544,6 +544,9 @@
 
           {#if subscriptionActive && premiumChapterInsight}
             <p class="summary-text summary-text--compact">{premiumChapterInsight.body}</p>
+            {#if premiumChapterInsight.styleVoice}
+              <p class="meta-line">{premiumChapterInsight.styleVoice}</p>
+            {/if}
             <div class={`chapter-depth-list chapter-depth-list--${premiumSanctuaryStyle ?? 'default'}`}>
               {#each premiumChapterInsight.highlights as highlight}
                 <article class="chapter-depth-item">

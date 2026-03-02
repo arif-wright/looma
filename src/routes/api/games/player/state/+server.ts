@@ -6,13 +6,14 @@ import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { memoryStore } from '$lib/server/games/store';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
-import { computeEffectiveEnergyMax } from '$lib/player/energy';
+import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
+import { isSubscriptionActive } from '$lib/subscriptions';
 
 export const GET: RequestHandler = async (event) => {
   try {
     const auth = await requireUser(event);
 
-    const [stats, walletRes, rewardsRes, companionBond] = await Promise.all([
+    const [stats, walletRes, rewardsRes, companionBond, subscriptionRes] = await Promise.all([
       getPlayerStats(event, auth.supabase),
       auth.supabase
         .from('user_wallets')
@@ -27,14 +28,25 @@ export const GET: RequestHandler = async (event) => {
         .eq('session.user_id', auth.user.id)
         .order('inserted_at', { ascending: false })
         .limit(5),
-      getActiveCompanionBond(auth.user.id, auth.supabase)
+      getActiveCompanionBond(auth.user.id, auth.supabase),
+      auth.supabase
+        .from('user_subscriptions')
+        .select('status, ends_at')
+        .eq('user_id', auth.user.id)
+        .maybeSingle()
     ]);
 
     const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
+    const subscriptionActive = isSubscriptionActive({
+      subscription_active: false,
+      subscription_status: subscriptionRes.data?.status ?? null,
+      subscription_ends_at: subscriptionRes.data?.ends_at ?? null
+    });
+    const subscriptionMomentumBonus = getSubscriptionMomentumBonus(subscriptionActive);
     const baseEnergyMax = stats?.energy_max ?? null;
     const effectiveEnergyMax =
       typeof baseEnergyMax === 'number'
-        ? computeEffectiveEnergyMax(baseEnergyMax, missionEnergyBonus)
+        ? computeEffectiveMomentumMax(baseEnergyMax, missionEnergyBonus, subscriptionActive)
         : baseEnergyMax;
 
   let walletBalance = 0;
@@ -105,6 +117,7 @@ export const GET: RequestHandler = async (event) => {
       energyMax: effectiveEnergyMax,
       baseEnergyMax,
       missionEnergyBonus,
+      subscriptionMomentumBonus,
       currency: walletBalance,
       wallet: {
         balance: walletBalance,

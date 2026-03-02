@@ -22,15 +22,15 @@
       parts.push(`+${data.mission.xp_reward} XP`);
     }
     if (typeof data.mission.energy_reward === 'number' && data.mission.energy_reward > 0) {
-      parts.push(`+${data.mission.energy_reward} energy`);
+      parts.push(`+${data.mission.energy_reward} momentum`);
     }
     return parts.join(' · ') || 'No reward listed';
   };
 
   const requirementRows = [
     minLevel > 0 ? `Level ${minLevel}+` : null,
-    minEnergy > 0 ? `${minEnergy}+ energy` : null,
-    data.mission.cost?.energy ? `${data.mission.cost.energy} energy to begin` : null
+    minEnergy > 0 ? `${minEnergy}+ momentum` : null,
+    data.mission.cost?.energy ? `${data.mission.cost.energy} momentum to begin` : null
   ].filter((entry): entry is string => Boolean(entry));
 
   const refresh = async () => {
@@ -113,9 +113,17 @@
       {/if}
 
       <GlassCard class={`detail-card detail-card--chapter detail-card--${data.missionChapterFrame.tone}`}>
-        <p class="eyebrow">Current chapter</p>
+        <div class="chapter-head">
+          <p class="eyebrow">Current chapter</p>
+          {#if data.missionChapterFrame.premiumStyle}
+            <EmotionalChip tone="cool">{data.missionChapterFrame.premiumStyle.replace(/_/g, ' ')}</EmotionalChip>
+          {/if}
+        </div>
         <h2>{data.missionChapterFrame.title}</h2>
         <p class="support-copy">{data.missionChapterFrame.body}</p>
+        {#if data.missionChapterFrame.styleVoice}
+          <p class="chapter-style-voice">{data.missionChapterFrame.styleVoice}</p>
+        {/if}
       </GlassCard>
 
       <GlassCard class="detail-card">
@@ -229,6 +237,21 @@
     background:
       linear-gradient(180deg, rgba(34, 28, 24, 0.82), rgba(14, 18, 21, 0.92)),
       radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
+  }
+
+  .chapter-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .chapter-style-voice {
+    margin: 0;
+    color: rgba(215, 201, 174, 0.8);
+    font-size: 0.82rem;
+    line-height: 1.45;
   }
 
   .hero-meta {

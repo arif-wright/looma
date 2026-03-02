@@ -13,12 +13,12 @@
   const formatReward = (xp: number | null | undefined, energy: number | null | undefined) => {
     const parts = [];
     if (typeof xp === 'number' && xp > 0) parts.push(`+${xp} XP`);
-    if (typeof energy === 'number' && energy > 0) parts.push(`+${energy} energy`);
+    if (typeof energy === 'number' && energy > 0) parts.push(`+${energy} momentum`);
     return parts.join(' · ') || 'No reward listed';
   };
 
   const formatCost = (energy: number | null | undefined) =>
-    typeof energy === 'number' && energy > 0 ? `${energy} energy` : 'No energy cost';
+    typeof energy === 'number' && energy > 0 ? `${energy} momentum` : 'No momentum cost';
 
   const meetsRequirements = (mission: PageData['availableMissions'][number]) => {
     const level = data.stats?.level ?? 0;
@@ -88,11 +88,19 @@
             <p class="eyebrow">{data.missionChapterFrame.eyebrow}</p>
             <h2>{data.missionChapterFrame.title}</h2>
           </div>
-          <EmotionalChip tone="muted">
-            {data.missionChapterFrame.preferredTypes[0] ?? 'identity'}
-          </EmotionalChip>
+          <div class="chapter-head-chips">
+            <EmotionalChip tone="muted">
+              {data.missionChapterFrame.preferredTypes[0] ?? 'identity'}
+            </EmotionalChip>
+            {#if data.missionChapterFrame.premiumStyle}
+              <EmotionalChip tone="cool">{data.missionChapterFrame.premiumStyle.replace(/_/g, ' ')}</EmotionalChip>
+            {/if}
+          </div>
         </div>
         <p class="chapter-copy">{data.missionChapterFrame.body}</p>
+        {#if data.missionChapterFrame.styleVoice}
+          <p class="chapter-style-voice">{data.missionChapterFrame.styleVoice}</p>
+        {/if}
       </GlassCard>
 
       {#if data.activeMissions.length > 0}
@@ -250,11 +258,25 @@
     line-height: 1.5;
   }
 
+  .chapter-style-voice {
+    margin: 0;
+    color: rgba(215, 201, 174, 0.8);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
   .panel-head {
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
     align-items: flex-start;
+  }
+
+  .chapter-head-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: flex-end;
   }
 
   .eyebrow {

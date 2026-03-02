@@ -9,8 +9,9 @@ import { grantMissionRewards } from '$lib/server/missions/grant';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
-import { computeEffectiveEnergyMax } from '$lib/player/energy';
+import { computeEffectiveMomentumMax } from '$lib/player/momentum';
 import { getConsentFlags } from '$lib/server/consent';
+import { isSubscriptionActive } from '$lib/subscriptions';
 import {
   sanitizeIdentityResult,
   writeIdentityResultToPortableState
@@ -174,15 +175,25 @@ export const POST: RequestHandler = async (event) => {
     !consent.memory ||
     !consent.adaptation;
 
-  const [stats, bond] = await Promise.all([
+  const [stats, bond, subscriptionRes] = await Promise.all([
     getPlayerStats(event, supabase).catch(() => null),
-    getActiveCompanionBond(user.id, supabase).catch(() => null)
+    getActiveCompanionBond(user.id, supabase).catch(() => null),
+    supabase
+      .from('user_subscriptions')
+      .select('status, ends_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
   ]);
   const energyCapBase = stats?.energy_max ?? null;
   const missionEnergyBonus = bond?.bonus?.missionEnergyBonus ?? 0;
+  const subscriptionActive = isSubscriptionActive({
+    subscription_active: false,
+    subscription_status: subscriptionRes.data?.status ?? null,
+    subscription_ends_at: subscriptionRes.data?.ends_at ?? null
+  });
   const energyCap =
     typeof energyCapBase === 'number'
-      ? computeEffectiveEnergyMax(energyCapBase, missionEnergyBonus)
+      ? computeEffectiveMomentumMax(energyCapBase, missionEnergyBonus, subscriptionActive)
       : null;
 
   const completionIdempotencyKey = requestIdempotencyKey ?? `mission-complete:${activeSession.id}`;

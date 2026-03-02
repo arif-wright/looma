@@ -14,7 +14,12 @@
   import { walletBalance, walletTx, formatShards, setWalletBalance } from '$lib/stores/economy';
   import { formatSubscriptionStatus, formatSubscriptionTier, isSubscriptionActive } from '$lib/subscriptions';
 
-  export let data: { shards: number; tx: any[]; subscription?: any };
+  export let data: {
+    shards: number;
+    tx: any[];
+    subscription?: any;
+    momentum?: { current: number | null; max: number | null; baseMax: number | null; subscriptionBonus: number };
+  };
 
   let toastShow = false;
   let toastMsg = '';
@@ -149,14 +154,26 @@
               {#if subscriptionActive}
                 Renews or ends {subscription?.renewal_at ? new Date(subscription.renewal_at).toLocaleDateString() : 'later'}.
               {:else}
-                Faster momentum recovery and premium chapter depth live here.
+                Smoother momentum and premium chapter depth live here.
               {/if}
             </span>
           </article>
           <article class="pulse-card">
-            <span class="pulse-card__label">Includes</span>
-            <strong>Depth + expression</strong>
-            <span>Premium memory depth, sanctuary presentation, and smoother optional progression.</span>
+            <span class="pulse-card__label">Momentum</span>
+            <strong>
+              {#if data.momentum?.current != null && data.momentum?.max != null}
+                {data.momentum.current}/{data.momentum.max}
+              {:else}
+                Optional progression fuel
+              {/if}
+            </strong>
+            <span>
+              {#if subscriptionActive && (data.momentum?.subscriptionBonus ?? 0) > 0}
+                Sanctuary+ is adding +{data.momentum?.subscriptionBonus ?? 0} momentum cap on top of your base pool.
+              {:else}
+                Momentum powers optional missions and higher-yield play without gating your core companion bond.
+              {/if}
+            </span>
           </article>
         </div>
 

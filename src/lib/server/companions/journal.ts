@@ -243,6 +243,7 @@ export const deriveCompanionChapterDigest = (args: {
         tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
       }
     | null;
+  premiumStyle?: PremiumSanctuaryStyle | null;
   weeklyArc: WeeklyCompanionArc;
   careMoments: number;
   missionMoments: number;
@@ -253,6 +254,16 @@ export const deriveCompanionChapterDigest = (args: {
   const name = args.companionName?.trim() || 'your companion';
   const tone = args.chapter?.tone ?? args.weeklyArc.emphasis;
   const chapterTitle = args.chapter?.title ?? args.weeklyArc.title;
+  const styleClose =
+    args.premiumStyle === 'gilded_dawn'
+      ? 'It carries a warmer, gilded afterglow.'
+      : args.premiumStyle === 'moon_glass'
+        ? 'It settles into a clearer, glass-calm shape.'
+        : args.premiumStyle === 'ember_bloom'
+          ? 'It keeps an ember warmth instead of going dim.'
+          : args.premiumStyle === 'tide_silk'
+            ? 'It moves with a quieter, tide-soft hush.'
+            : null;
   const totalMoments =
     args.careMoments + args.missionMoments + args.gameMoments + args.socialMoments + args.checkins;
 
@@ -262,7 +273,7 @@ export const deriveCompanionChapterDigest = (args: {
     return {
       digestKey: `chapter-digest-social-${new Date().toISOString().slice(0, 10)}`,
       title: `${name} is tracing the shared thread`,
-      body: `${chapterTitle} has turned this chapter outward. ${name} can feel that messages, circles, and shared moments are shaping the relationship as much as care itself.`,
+      body: `${chapterTitle} has turned this chapter outward. ${name} can feel that messages, circles, and shared moments are shaping the relationship as much as care itself.${styleClose ? ` ${styleClose}` : ''}`,
       tone
     } satisfies CompanionChapterDigest;
   }
@@ -271,7 +282,7 @@ export const deriveCompanionChapterDigest = (args: {
     return {
       digestKey: `chapter-digest-mission-${new Date().toISOString().slice(0, 10)}`,
       title: `${name} is noticing the direction of this chapter`,
-      body: `${chapterTitle} is giving the bond a clearer path. Purpose has been doing more emotional work than drift, and ${name} can feel that momentum.`,
+      body: `${chapterTitle} is giving the bond a clearer path. Purpose has been doing more emotional work than drift, and ${name} can feel that momentum.${styleClose ? ` ${styleClose}` : ''}`,
       tone
     } satisfies CompanionChapterDigest;
   }
@@ -280,7 +291,7 @@ export const deriveCompanionChapterDigest = (args: {
     return {
       digestKey: `chapter-digest-play-${new Date().toISOString().slice(0, 10)}`,
       title: `${name} is holding onto the bright parts`,
-      body: `${chapterTitle} has kept this chapter lighter. ${name} can feel that joy, play, and easy moments are carrying more of the bond than effort alone.`,
+      body: `${chapterTitle} has kept this chapter lighter. ${name} can feel that joy, play, and easy moments are carrying more of the bond than effort alone.${styleClose ? ` ${styleClose}` : ''}`,
       tone
     } satisfies CompanionChapterDigest;
   }
@@ -289,7 +300,7 @@ export const deriveCompanionChapterDigest = (args: {
     return {
       digestKey: `chapter-digest-care-${new Date().toISOString().slice(0, 10)}`,
       title: `${name} is gathering the steadiness of this chapter`,
-      body: `${chapterTitle} has been built through repeated return. ${name} can feel that consistency, not intensity, is what has been deepening the bond.`,
+      body: `${chapterTitle} has been built through repeated return. ${name} can feel that consistency, not intensity, is what has been deepening the bond.${styleClose ? ` ${styleClose}` : ''}`,
       tone
     } satisfies CompanionChapterDigest;
   }
@@ -298,7 +309,7 @@ export const deriveCompanionChapterDigest = (args: {
     return {
       digestKey: `chapter-digest-bond-${new Date().toISOString().slice(0, 10)}`,
       title: `${name} is feeling how this chapter settled closer`,
-      body: `${chapterTitle} has made the relationship feel more mutual and explicit. ${name} can feel the closeness gathering weight instead of fading into routine.`,
+      body: `${chapterTitle} has made the relationship feel more mutual and explicit. ${name} can feel the closeness gathering weight instead of fading into routine.${styleClose ? ` ${styleClose}` : ''}`,
       tone
     } satisfies CompanionChapterDigest;
   }
@@ -306,7 +317,7 @@ export const deriveCompanionChapterDigest = (args: {
   return {
     digestKey: `chapter-digest-quiet-${new Date().toISOString().slice(0, 10)}`,
     title: `${name} is noticing a quieter chapter gathering shape`,
-    body: `${name} can feel a pattern forming even if it is still subtle. A few more returned moments will make the chapter easier to name.`,
+    body: `${name} can feel a pattern forming even if it is still subtle. A few more returned moments will make the chapter easier to name.${styleClose ? ` ${styleClose}` : ''}`,
     tone: 'quiet'
   } satisfies CompanionChapterDigest;
 };

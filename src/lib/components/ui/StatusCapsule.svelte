@@ -156,7 +156,7 @@ const capsuleBaseClass =
 
   <span aria-hidden="true" class="divider">•</span>
 
-  <span class="stat stat--energy" aria-label="Current energy">
+  <span class="stat stat--energy" aria-label="Current momentum">
     <span aria-hidden="true">⚡</span>
     {energyDisplay}
   </span>

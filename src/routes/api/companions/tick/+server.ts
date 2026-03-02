@@ -225,7 +225,9 @@ export const POST: RequestHandler = async (event) => {
           .or(`started_at.gte.${weekAgoIso},completed_at.gte.${weekAgoIso}`),
         supabase
           .from('user_preferences')
-          .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+          .select(
+            'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+          )
           .eq('user_id', playerId)
           .maybeSingle(),
         supabase
@@ -301,6 +303,13 @@ export const POST: RequestHandler = async (event) => {
       const featuredCompanionId =
         typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
           ? preferenceRes.data.featured_companion_reward_companion_id
+          : null;
+      const premiumStyle =
+        preferenceRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+        preferenceRes.data?.premium_sanctuary_style === 'moon_glass' ||
+        preferenceRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+        preferenceRes.data?.premium_sanctuary_style === 'tide_silk'
+          ? preferenceRes.data.premium_sanctuary_style
           : null;
 
       const rewardsByCompanionId = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).reduce<
@@ -380,6 +389,7 @@ export const POST: RequestHandler = async (event) => {
                 tone: chapter.tone
               }
             : null,
+          premiumStyle,
           weeklyArc,
           careMoments: recentCareCounts.get(companion.id) ?? 0,
           missionMoments: recentMissions,
@@ -391,6 +401,7 @@ export const POST: RequestHandler = async (event) => {
           ownerId: playerId,
           companionId: companion.id,
           digest,
+          notify: true,
           chapterTitle: chapter?.title ?? weeklyArc.title
         });
       }

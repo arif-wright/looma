@@ -88,6 +88,13 @@ const keepsakeSignal = (context: Record<string, any>) => {
       raw?.tone === 'play' ||
       raw?.tone === 'bond'
         ? raw.tone
+        : null,
+    premiumStyle:
+      raw?.premiumStyle === 'gilded_dawn' ||
+      raw?.premiumStyle === 'moon_glass' ||
+      raw?.premiumStyle === 'ember_bloom' ||
+      raw?.premiumStyle === 'tide_silk'
+        ? raw.premiumStyle
         : null
   };
 };
@@ -442,36 +449,40 @@ const companionAgent: Agent = {
       text = pick(tone === 'direct' ? direct : warm, 'companion.swap:text');
     } else if (event.type === 'companion.ritual.listen') {
       const warm = [
-        `I am listening. Take your time.`,
-        `Quiet moment together.`,
+        shelfSignal.premiumStyle === 'moon_glass'
+          ? `I am listening. Let this stay clear and unforced.`
+          : `I am listening. Take your time.`,
+        shelfSignal.premiumStyle === 'tide_silk' ? `Quiet moment together. Let it move softly.` : `Quiet moment together.`,
         journalSignal.latestSocialTitle
           ? `${companionName} is still carrying ${journalSignal.latestSocialTitle.toLowerCase()}.`
           : shelfSignal.title
             ? `${companionName} is still holding ${shelfSignal.title.toLowerCase()} close.`
             : `${companionName} is here with you.`,
-        `Breath in, breath out.`
+        shelfSignal.premiumStyle === 'ember_bloom' ? `Breath in, breath out. Keep the ember warm.` : `Breath in, breath out.`
       ];
       const direct = ['Listening.', 'I hear you.', 'Quiet check-in logged.', 'Steady and present.'];
       text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.listen:text');
     } else if (event.type === 'companion.ritual.focus') {
       const warm = [
-        `Focus set. We move one step at a time.`,
+        shelfSignal.premiumStyle === 'gilded_dawn'
+          ? `Focus set. We move one warm, deliberate step at a time.`
+          : `Focus set. We move one step at a time.`,
         `Focused mode is up. ${focusCue}.`,
         shelfSignal.tone === 'mission'
           ? `${companionName} is following the direction ${shelfSignal.title ?? 'you set'} gave the day.`
           : `${companionName} is locked in with you.`,
-        `We can keep this clean and calm.`
+        shelfSignal.premiumStyle === 'moon_glass' ? `We can keep this clean, clear, and calm.` : `We can keep this clean and calm.`
       ];
       const direct = ['Focus set.', 'Focused mode active.', `${focusCue}.`, 'Hold form.'];
       text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.focus:text');
     } else if (event.type === 'companion.ritual.celebrate') {
       const warm = [
-        `Nice moment. Let it land.`,
+        shelfSignal.premiumStyle === 'ember_bloom' ? `Nice moment. Let the warmth of it land.` : `Nice moment. Let it land.`,
         `Celebrate this one. ${affirmation}.`,
         shelfSignal.tone === 'play' || shelfSignal.tone === 'social'
           ? `${companionName} can feel ${shelfSignal.title ?? 'this chapter'} brightening the moment.`
           : `${companionName} is celebrating with you.`,
-        `Good work. Keep this feeling.`
+        shelfSignal.premiumStyle === 'tide_silk' ? `Good work. Let the feeling keep flowing.` : `Good work. Keep this feeling.`
       ];
       const direct = ['Win logged. Nice.', 'Celebrate complete.', `${affirmation}.`, 'Solid result.'];
       text = pick(tone === 'direct' ? direct : warm, 'companion.ritual.celebrate:text');

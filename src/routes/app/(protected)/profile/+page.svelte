@@ -81,6 +81,16 @@ let editOpen = false;
     ...featuredCompanionRewards.filter((reward) => reward.rewardKey === featuredKeepsake?.rewardKey),
     ...featuredCompanionRewards.filter((reward) => reward.rewardKey !== featuredKeepsake?.rewardKey)
   ].slice(0, 3);
+  $: premiumPulseVoice =
+    premiumSanctuaryStyle === 'gilded_dawn'
+      ? 'Your profile is carrying a warmer, gilded sense of presence right now.'
+      : premiumSanctuaryStyle === 'moon_glass'
+        ? 'Your profile is carrying a clearer, quieter sense of presence right now.'
+        : premiumSanctuaryStyle === 'ember_bloom'
+          ? 'Your profile is carrying a softer, ember-warm sense of presence right now.'
+          : premiumSanctuaryStyle === 'tide_silk'
+            ? 'Your profile is carrying a calmer, tide-soft sense of presence right now.'
+            : null;
   $: companionBondText = featuredCompanionCard
     ? `Affection ${featuredCompanionCard.affection ?? 0} · Trust ${featuredCompanionCard.trust ?? 0}`
     : 'Choose a featured companion to make your profile feel alive.';
@@ -205,6 +215,9 @@ let editOpen = false;
               <span>Sanctuary+</span>
               <strong>{premiumSanctuaryStyle.replace(/_/g, ' ')}</strong>
             </div>
+            {#if premiumPulseVoice}
+              <p class="profile-premium-voice">{premiumPulseVoice}</p>
+            {/if}
           {/if}
         </div>
 
@@ -226,7 +239,17 @@ let editOpen = false;
             <span class="pulse-tile__label">Current level</span>
             <strong>Level {levelValue}</strong>
             <span>{energyValue == null ? 'Energy hidden' : `${energyValue} energy available`}</span>
-            <p>Shape your presence through rituals, missions, and daily check-ins.</p>
+            <p>
+              {premiumSanctuaryStyle === 'moon_glass'
+                ? 'Shape your presence through clearer rituals, focused missions, and quieter daily check-ins.'
+                : premiumSanctuaryStyle === 'ember_bloom'
+                  ? 'Shape your presence through softer rituals, warmer missions, and intimate daily check-ins.'
+                  : premiumSanctuaryStyle === 'tide_silk'
+                    ? 'Shape your presence through flowing rituals, lighter missions, and calmer daily check-ins.'
+                    : premiumSanctuaryStyle === 'gilded_dawn'
+                      ? 'Shape your presence through luminous rituals, deliberate missions, and steadier daily check-ins.'
+                      : 'Shape your presence through rituals, missions, and daily check-ins.'}
+            </p>
           </article>
 
           <article class="pulse-tile">
@@ -786,6 +809,12 @@ let editOpen = false;
     color: rgba(255, 246, 228, 0.96);
     font-size: 0.84rem;
     text-transform: capitalize;
+  }
+
+  .profile-premium-voice {
+    margin: 0.6rem 0 0;
+    color: rgba(229, 217, 194, 0.82);
+    line-height: 1.5;
   }
 
   .pulse-action {

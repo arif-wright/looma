@@ -17,6 +17,8 @@ type MissionChapterFrame = {
   tone: MissionChapterTone;
   title: string;
   body: string;
+  premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
+  styleVoice: string | null;
 };
 
 const deriveMissionDetailFrame = (args: {
@@ -28,10 +30,21 @@ const deriveMissionDetailFrame = (args: {
         tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
       }
     | null;
+  premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const missionTypeLabel = args.missionType ?? 'thread';
   const rewardTitle = args.reward?.title;
+  const styleVoice =
+    args.premiumStyle === 'gilded_dawn'
+      ? 'Carry it with a warmer, more luminous sense of purpose.'
+      : args.premiumStyle === 'moon_glass'
+        ? 'Keep the thread clear and uncluttered while it unfolds.'
+        : args.premiumStyle === 'ember_bloom'
+          ? 'Let it stay intimate and ember-warm rather than performative.'
+          : args.premiumStyle === 'tide_silk'
+            ? 'Let the thread move with a gentler, flowing cadence.'
+            : null;
 
   switch (args.reward?.tone) {
     case 'care':
@@ -40,7 +53,9 @@ const deriveMissionDetailFrame = (args: {
         title: `${name} is reading this as a tending thread`,
         body: rewardTitle
           ? `${rewardTitle} is shaping the bond toward steadiness. Approach this ${missionTypeLabel} mission as something to carry gently rather than race through.`
-          : `Approach this ${missionTypeLabel} mission as something to carry gently rather than race through.`
+          : `Approach this ${missionTypeLabel} mission as something to carry gently rather than race through.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'social':
       return {
@@ -48,7 +63,9 @@ const deriveMissionDetailFrame = (args: {
         title: `${name} wants this thread to connect outward`,
         body: rewardTitle
           ? `${rewardTitle} is turning the chapter toward expression. Let this mission feel like part of a larger shared thread, not a private checklist.`
-          : `Let this mission feel like part of a larger shared thread, not a private checklist.`
+          : `Let this mission feel like part of a larger shared thread, not a private checklist.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'mission':
       return {
@@ -56,7 +73,9 @@ const deriveMissionDetailFrame = (args: {
         title: `${name} is looking for direction here`,
         body: rewardTitle
           ? `${rewardTitle} is giving the relationship a clearer path. This ${missionTypeLabel} mission matters most if you let it set direction rather than just consume time.`
-          : `This ${missionTypeLabel} mission matters most if you let it set direction rather than just consume time.`
+          : `This ${missionTypeLabel} mission matters most if you let it set direction rather than just consume time.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'play':
       return {
@@ -64,7 +83,9 @@ const deriveMissionDetailFrame = (args: {
         title: `${name} wants this to stay bright`,
         body: rewardTitle
           ? `${rewardTitle} is keeping the chapter playful. Treat this mission like a lively thread, not a heavy obligation.`
-          : `Treat this mission like a lively thread, not a heavy obligation.`
+          : `Treat this mission like a lively thread, not a heavy obligation.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'bond':
       return {
@@ -72,13 +93,17 @@ const deriveMissionDetailFrame = (args: {
         title: `${name} is using this thread to deepen closeness`,
         body: rewardTitle
           ? `${rewardTitle} is pulling the relationship inward. Let this mission become a sincere expression of closeness rather than only a reward loop.`
-          : `Let this mission become a sincere expression of closeness rather than only a reward loop.`
+          : `Let this mission become a sincere expression of closeness rather than only a reward loop.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     default:
       return {
         tone: 'quiet',
         title: 'Let this thread gather its own meaning',
-        body: `There is no strong chapter pressure on this mission yet. Start small and let the relationship decide what this thread becomes.`
+        body: `There is no strong chapter pressure on this mission yet. Start small and let the relationship decide what this thread becomes.`,
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
   }
 };
@@ -124,12 +149,15 @@ export const load: PageServerLoad = async (event) => {
         tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
       }
     | null = null;
+  let premiumSanctuaryStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
 
   if (activeCompanion?.id) {
     const [preferenceRes, rewardsRes] = await Promise.all([
       supabase
         .from('user_preferences')
-        .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+        .select(
+          'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+        )
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
@@ -148,6 +176,13 @@ export const load: PageServerLoad = async (event) => {
     const featuredCompanionId =
       typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
         ? preferenceRes.data.featured_companion_reward_companion_id
+        : null;
+    premiumSanctuaryStyle =
+      preferenceRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+      preferenceRes.data?.premium_sanctuary_style === 'moon_glass' ||
+      preferenceRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+      preferenceRes.data?.premium_sanctuary_style === 'tide_silk'
+        ? preferenceRes.data.premium_sanctuary_style
         : null;
 
     const rewardRows = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).flatMap((row) => {
@@ -186,7 +221,8 @@ export const load: PageServerLoad = async (event) => {
           title: chapterReward.title,
           tone: chapterReward.tone
         }
-      : null
+      : null,
+    premiumStyle: premiumSanctuaryStyle
   });
 
   return {

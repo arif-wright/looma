@@ -164,7 +164,7 @@ import { buildMissionArcs, selectMissionArc } from './missionArcs';
 <article class="pulse-card" data-variant={variant ?? 'C'}>
   <header class="pulse-meta" aria-label="Daily readiness">
     <div class="metric energy">
-      <span class="metric-label">Energy</span>
+      <span class="metric-label">Momentum</span>
       <strong class="metric-value">
         {resolvedEnergyMax > 0 ? `${resolvedEnergy}/${resolvedEnergyMax}` : resolvedEnergy}
       </strong>

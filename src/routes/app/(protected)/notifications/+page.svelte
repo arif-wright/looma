@@ -112,6 +112,12 @@
   };
 
   const isDigest = (item: NotificationRow) => item.metadata?.digest === true;
+  const digestChapterTitle = (item: NotificationRow) =>
+    typeof item.metadata?.chapterTitle === 'string' ? item.metadata.chapterTitle : null;
+  const digestTitle = (item: NotificationRow) =>
+    typeof item.metadata?.title === 'string' ? item.metadata.title : null;
+  const digestBody = (item: NotificationRow) =>
+    typeof item.metadata?.body === 'string' ? item.metadata.body : null;
 
   const formatTime = (iso: string) => {
     const ts = Date.parse(iso);
@@ -185,7 +191,19 @@
                   <span class="notification-kind-badge notification-kind-badge--premium">{styleLabel(notificationStyle(item))}</span>
                 {/if}
               </div>
-              <p class="desc">{describe(item)}</p>
+              {#if isDigest(item)}
+                <div class="digest-block">
+                  {#if digestTitle(item)}
+                    <strong>{digestTitle(item)}</strong>
+                  {/if}
+                  <p class="desc">{digestBody(item) ?? describe(item)}</p>
+                  {#if digestChapterTitle(item)}
+                    <small class="digest-chapter">{digestChapterTitle(item)}</small>
+                  {/if}
+                </div>
+              {:else}
+                <p class="desc">{describe(item)}</p>
+              {/if}
               <small>{formatTime(item.created_at)}</small>
             </div>
             {#if !item.read}
@@ -394,8 +412,34 @@
     border-color: rgba(255, 229, 174, 0.24);
     background: rgba(255, 241, 210, 0.08);
   }
+  .digest-block {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .digest-block strong {
+    color: rgba(250, 243, 229, 0.97);
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
   .desc { margin:0; color: rgba(245, 238, 225, 0.94); line-height: 1.45; }
   small { color: rgba(198, 184, 154, 0.88); }
+  .digest-chapter { color: rgba(215, 191, 143, 0.78); }
+  li[data-premium-style='gilded_dawn'] .digest-block strong,
+  li[data-premium-style='gilded_dawn'] .digest-chapter {
+    color: rgba(255, 232, 186, 0.92);
+  }
+  li[data-premium-style='moon_glass'] .digest-block strong,
+  li[data-premium-style='moon_glass'] .digest-chapter {
+    color: rgba(214, 230, 255, 0.92);
+  }
+  li[data-premium-style='ember_bloom'] .digest-block strong,
+  li[data-premium-style='ember_bloom'] .digest-chapter {
+    color: rgba(255, 205, 182, 0.92);
+  }
+  li[data-premium-style='tide_silk'] .digest-block strong,
+  li[data-premium-style='tide_silk'] .digest-chapter {
+    color: rgba(196, 240, 236, 0.92);
+  }
   .empty-panel {
     border-radius: 1.25rem;
     border: 1px solid rgba(214, 190, 141, 0.16);

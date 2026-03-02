@@ -23,6 +23,8 @@ type MissionChapterFrame = {
   title: string;
   body: string;
   preferredTypes: MissionThreadType[];
+  premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
+  styleVoice: string | null;
 };
 
 const byCreatedDesc = (a: MissionCard, b: MissionCard) =>
@@ -41,9 +43,20 @@ const deriveMissionChapterFrame = (args: {
         tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
       }
     | null;
+  premiumStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const rewardTitle = args.reward?.title;
+  const styleVoice =
+    args.premiumStyle === 'gilded_dawn'
+      ? 'Let the thread feel warmer and more deliberate than urgent.'
+      : args.premiumStyle === 'moon_glass'
+        ? 'Let the thread stay clear, clean, and unforced.'
+        : args.premiumStyle === 'ember_bloom'
+          ? 'Let the thread keep a softer ember warmth while it unfolds.'
+          : args.premiumStyle === 'tide_silk'
+            ? 'Let the thread move with a calmer, easier flow.'
+            : null;
 
   switch (args.reward?.tone) {
     case 'care':
@@ -54,7 +67,9 @@ const deriveMissionChapterFrame = (args: {
         body: rewardTitle
           ? `${rewardTitle} is shaping the relationship toward consistency. Identity and gentle action missions will land best right now.`
           : `${name} is responding to steadiness. Identity and gentle action missions will land best right now.`,
-        preferredTypes: ['identity', 'action']
+        preferredTypes: ['identity', 'action'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'social':
       return {
@@ -64,7 +79,9 @@ const deriveMissionChapterFrame = (args: {
         body: rewardTitle
           ? `${rewardTitle} is turning this chapter toward expression and connection. Identity and world missions fit better than solitary grind right now.`
           : `${name} is in a socially expressive chapter. Identity and world missions fit better than solitary grind right now.`,
-        preferredTypes: ['identity', 'world']
+        preferredTypes: ['identity', 'world'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'mission':
       return {
@@ -74,7 +91,9 @@ const deriveMissionChapterFrame = (args: {
         body: rewardTitle
           ? `${rewardTitle} is sharpening the bond toward purpose. World and action missions should sit at the front of the day.`
           : `${name} is in a wayfinding phase. World and action missions should sit at the front of the day.`,
-        preferredTypes: ['world', 'action']
+        preferredTypes: ['world', 'action'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'play':
       return {
@@ -84,7 +103,9 @@ const deriveMissionChapterFrame = (args: {
         body: rewardTitle
           ? `${rewardTitle} is keeping the chapter playful. Action missions and lighter identity threads will land better than heavy world-building today.`
           : `${name} is in a playful chapter. Action missions and lighter identity threads will land better than heavy world-building today.`,
-        preferredTypes: ['action', 'identity']
+        preferredTypes: ['action', 'identity'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     case 'bond':
       return {
@@ -94,7 +115,9 @@ const deriveMissionChapterFrame = (args: {
         body: rewardTitle
           ? `${rewardTitle} is pulling the relationship inward. Identity missions will usually feel more true than outward proving threads right now.`
           : `${name} is in a deeper bond chapter. Identity missions will usually feel more true than outward proving threads right now.`,
-        preferredTypes: ['identity', 'action']
+        preferredTypes: ['identity', 'action'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
     default:
       return {
@@ -102,7 +125,9 @@ const deriveMissionChapterFrame = (args: {
         eyebrow: 'Open chapter',
         title: 'Let the next thread gather naturally',
         body: `${name} is between clearer phases. Start with the mission that feels easiest to return to and let momentum build from there.`,
-        preferredTypes: ['identity', 'action', 'world']
+        preferredTypes: ['identity', 'action', 'world'],
+        premiumStyle: args.premiumStyle,
+        styleVoice
       } satisfies MissionChapterFrame;
   }
 };
@@ -177,12 +202,15 @@ export const load: PageServerLoad = async (event) => {
         tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
       }
     | null = null;
+  let premiumSanctuaryStyle: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null = null;
 
   if (activeCompanion?.id) {
     const [preferenceRes, rewardsRes] = await Promise.all([
       supabase
         .from('user_preferences')
-        .select('featured_companion_reward_key, featured_companion_reward_companion_id')
+        .select(
+          'featured_companion_reward_key, featured_companion_reward_companion_id, premium_sanctuary_style'
+        )
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
@@ -201,6 +229,13 @@ export const load: PageServerLoad = async (event) => {
     const featuredCompanionId =
       typeof preferenceRes.data?.featured_companion_reward_companion_id === 'string'
         ? preferenceRes.data.featured_companion_reward_companion_id
+        : null;
+    premiumSanctuaryStyle =
+      preferenceRes.data?.premium_sanctuary_style === 'gilded_dawn' ||
+      preferenceRes.data?.premium_sanctuary_style === 'moon_glass' ||
+      preferenceRes.data?.premium_sanctuary_style === 'ember_bloom' ||
+      preferenceRes.data?.premium_sanctuary_style === 'tide_silk'
+        ? preferenceRes.data.premium_sanctuary_style
         : null;
 
     const rewardRows = ((rewardsRes.data ?? []) as Array<Record<string, unknown>>).flatMap((row) => {
@@ -238,7 +273,8 @@ export const load: PageServerLoad = async (event) => {
           title: chapterReward.title,
           tone: chapterReward.tone
         }
-      : null
+      : null,
+    premiumStyle: premiumSanctuaryStyle
   });
 
   const activeMissions = activeSessions

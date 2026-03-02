@@ -11,6 +11,7 @@ export type PlayerStateBundle = {
   energyMax: number | null;
   baseEnergyMax?: number | null;
   missionEnergyBonus?: number | null;
+  subscriptionMomentumBonus?: number | null;
   currency: number;
   walletUpdatedAt: string | null;
 };
@@ -22,6 +23,7 @@ export type CompanionStateBundle = {
   bondScore: number | null;
   xpMultiplier: number | null;
   missionEnergyBonus?: number | null;
+  subscriptionMomentumBonus?: number | null;
   state: string | null;
   mood: string | null;
 };
@@ -81,6 +83,7 @@ export type FeaturedKeepsakeBundle = {
   title: string;
   tone: 'care' | 'social' | 'mission' | 'play' | 'bond';
   companionId: string;
+  premiumStyle?: 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk' | null;
 };
 
 export type ContextBundle = {
