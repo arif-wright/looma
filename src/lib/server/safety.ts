@@ -1,25 +1,13 @@
+import { createHash } from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { consumeApiRateLimit } from '$lib/server/rateLimit';
+
 type RateBucket = 'reaction' | 'share' | 'social_share';
 
-type RateEntry = {
-  stamps: number[];
-};
-
-type QuoteEntry = {
-  text: string;
-  timestamp: number;
-};
-
-type SafetyState = {
-  reactions: Map<string, RateEntry>;
-  shares: Map<string, RateEntry>;
-  socialShares: Map<string, RateEntry>;
-  quotes: Map<string, QuoteEntry>;
-};
-
-const WINDOW_MS = {
-  reaction: 60_000,
-  share: 60_000,
-  social_share: 600_000
+const WINDOW_SECONDS = {
+  reaction: 60,
+  share: 60,
+  social_share: 600
 } satisfies Record<RateBucket, number>;
 
 const LIMITS = {
@@ -28,66 +16,46 @@ const LIMITS = {
   social_share: 10
 } satisfies Record<RateBucket, number>;
 
-const globalStateKey = '__loomaSafetyState';
+const bucketName = (bucket: RateBucket) => `safety:${bucket}`;
 
-const existingState = (globalThis as unknown as Record<string, SafetyState | undefined>)[
-  globalStateKey
-];
-
-const state: SafetyState = existingState ?? {
-  reactions: new Map(),
-  shares: new Map(),
-  socialShares: new Map(),
-  quotes: new Map()
-};
-
-if (!existingState) {
-  (globalThis as unknown as Record<string, SafetyState>)[globalStateKey] = state;
-} else {
-  state.reactions ??= new Map();
-  state.shares ??= new Map();
-  state.socialShares ??= new Map();
-  state.quotes ??= new Map();
-}
-
-const bucketMap: Record<RateBucket, keyof SafetyState> = {
-  reaction: 'reactions',
-  share: 'shares',
-  social_share: 'socialShares'
-};
-
-function pruneEntries(entry: RateEntry, windowMs: number) {
-  const cutoff = Date.now() - windowMs;
-  entry.stamps = entry.stamps.filter((stamp) => stamp >= cutoff);
-}
-
-export function enforceRateLimit(bucket: RateBucket, userId: string): { ok: true } | { ok: false } {
+export async function enforceRateLimit(
+  supabase: SupabaseClient,
+  bucket: RateBucket,
+  userId: string
+): Promise<{ ok: true } | { ok: false; retryAfter?: number }> {
   if (!userId) return { ok: false };
-  const map = state[bucketMap[bucket]] as Map<string, RateEntry>;
-  let entry = map.get(userId);
-  if (!entry) {
-    entry = { stamps: [] };
-    map.set(userId, entry);
-  }
-  pruneEntries(entry, WINDOW_MS[bucket]);
-  if (entry.stamps.length >= LIMITS[bucket]) {
-    return { ok: false };
-  }
-  entry.stamps.push(Date.now());
-  return { ok: true };
+
+  const result = await consumeApiRateLimit({
+    supabase,
+    bucket: bucketName(bucket),
+    key: userId,
+    limit: LIMITS[bucket],
+    windowSeconds: WINDOW_SECONDS[bucket]
+  });
+
+  return result.allowed ? { ok: true } : { ok: false, retryAfter: result.retry_after_seconds };
 }
 
-export function validateQuoteShare(userId: string, quote: string | null | undefined): { ok: true } | { ok: false; reason: 'empty' | 'duplicate' } {
+export async function validateQuoteShare(
+  supabase: SupabaseClient,
+  userId: string,
+  quote: string | null | undefined
+): Promise<{ ok: true } | { ok: false; reason: 'empty' | 'duplicate'; retryAfter?: number }> {
   const trimmed = quote?.trim() ?? '';
   if (trimmed.length === 0) {
     return { ok: false, reason: 'empty' };
   }
 
-  const last = state.quotes.get(userId);
-  if (last && last.text === trimmed && Date.now() - last.timestamp <= 60_000) {
-    return { ok: false, reason: 'duplicate' };
-  }
+  const hash = createHash('sha256').update(trimmed).digest('hex');
+  const result = await consumeApiRateLimit({
+    supabase,
+    bucket: 'safety:share_quote',
+    key: `${userId}:${hash}`,
+    limit: 1,
+    windowSeconds: 60
+  });
 
-  state.quotes.set(userId, { text: trimmed, timestamp: Date.now() });
-  return { ok: true };
+  return result.allowed
+    ? { ok: true }
+    : { ok: false, reason: 'duplicate', retryAfter: result.retry_after_seconds };
 }

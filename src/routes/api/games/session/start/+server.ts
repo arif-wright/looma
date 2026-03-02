@@ -43,9 +43,9 @@ export const POST: RequestHandler = async (event) => {
     const { user, supabase } = await ensureAuth(event);
     const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
 
-    limit(`games:start:user:${user.id}`, rateLimitPerMinute);
+    await limit(supabase, `games:start:user:${user.id}`, rateLimitPerMinute);
     if (clientIp) {
-      limit(`games:start:ip:${clientIp}`, rateLimitPerMinute);
+      await limit(supabase, `games:start:ip:${clientIp}`, rateLimitPerMinute);
     }
 
     if (await hasAbuseFlag(user.id)) {

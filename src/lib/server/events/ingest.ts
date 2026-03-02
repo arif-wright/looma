@@ -3,6 +3,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 type ServerEventMeta = {
   sessionId?: string | null;
   ts?: string;
+  idempotencyKey?: string | null;
   suppressReactions?: boolean;
   suppressMemory?: boolean;
   suppressAdaptation?: boolean;
@@ -26,6 +27,7 @@ export const ingestServerEvent = async (
         meta: {
           sessionId: meta?.sessionId ?? null,
           ts: meta?.ts ?? new Date().toISOString(),
+          idempotencyKey: meta?.idempotencyKey ?? null,
           suppressReactions: meta?.suppressReactions === true,
           suppressMemory: meta?.suppressMemory === true,
           suppressAdaptation: meta?.suppressAdaptation === true

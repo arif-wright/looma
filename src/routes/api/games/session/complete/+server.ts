@@ -84,9 +84,9 @@ export const POST: RequestHandler = async (event) => {
   };
   let currentStreakDays = 0;
 
-  limit(`games:complete:user:${user.id}`, rateLimitPerMinute);
+  await limit(supabase, `games:complete:user:${user.id}`, rateLimitPerMinute);
   if (clientIp) {
-    limit(`games:complete:ip:${clientIp}`, rateLimitPerMinute);
+    await limit(supabase, `games:complete:ip:${clientIp}`, rateLimitPerMinute);
   }
 
   if (await hasAbuseFlag(user.id)) {

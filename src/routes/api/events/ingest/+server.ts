@@ -24,6 +24,7 @@ import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { applyEventToEmotionalState } from '$lib/server/emotionalState';
 import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
 import { consumeApiRateLimit } from '$lib/server/rateLimit';
+import { claimEventIngestReceipt, deriveEventIdempotencyKey } from '$lib/server/events/idempotency';
 
 const ALLOWED_TYPES = new Set([
   'session.start',
@@ -141,6 +142,35 @@ export const POST: RequestHandler = async (event) => {
     payload.payload && typeof payload.payload === 'object' && !Array.isArray(payload.payload)
       ? (payload.payload as Record<string, unknown>)
       : null;
+  const idempotencyKey = deriveEventIdempotencyKey({
+    type,
+    meta,
+    payload: eventPayload
+  });
+
+  if (userId) {
+    try {
+      const receipt = await claimEventIngestReceipt({
+        supabase,
+        userId,
+        type,
+        idempotencyKey
+      });
+
+      if (receipt.duplicate) {
+        return json({
+          ok: true,
+          deduped: true,
+          vetoed: false,
+          output: null,
+          actions: [],
+          traceId: null
+        });
+      }
+    } catch (err) {
+      console.error('[events] idempotency receipt failed', err);
+    }
+  }
 
   const suppressAdaptationFromMeta = meta.suppressAdaptation === true;
   const suppressMemoryFromMeta = meta.suppressMemory === true;

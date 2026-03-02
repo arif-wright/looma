@@ -4,6 +4,7 @@ import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/serv
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { consumeApiRateLimit } from '$lib/server/rateLimit';
+import { runSideEffects } from '$lib/server/sideEffects';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const MOODS = new Set(['calm', 'heavy', 'curious', 'energized', 'numb']);
@@ -264,36 +265,41 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const checkInAt = new Date().toISOString();
-  let chapterContext: CompanionChapterContext = null;
-  try {
-    chapterContext = await resolveCompanionChapterContext(db, userId, updatedCompanion.id);
-  } catch (err) {
-    console.error('[home/reconnect] chapter context lookup failed', err);
-  }
+  const [chapterContextResult, companionStatsResult, ritualResult] = await runSideEffects([
+    {
+      label: 'home/reconnect:chapter_context',
+      run: () => resolveCompanionChapterContext(db, userId, updatedCompanion.id)
+    },
+    {
+      label: 'home/reconnect:companion_stats',
+      run: async () => {
+        await db
+          .from('companion_stats')
+          .upsert(
+            {
+              companion_id: updatedCompanion.id,
+              played_at: checkInAt,
+              last_passive_tick: checkInAt
+            },
+            { onConflict: 'companion_id', ignoreDuplicates: false }
+          );
+        return true;
+      }
+    },
+    {
+      label: 'home/reconnect:ritual_increment',
+      run: () =>
+        incrementCompanionRitual(db, userId, 'care_once', {
+          companionName: updatedCompanion.name
+        })
+    }
+  ]);
 
-  try {
-    await db
-      .from('companion_stats')
-      .upsert(
-        {
-          companion_id: updatedCompanion.id,
-          played_at: checkInAt,
-          last_passive_tick: checkInAt
-        },
-        { onConflict: 'companion_id', ignoreDuplicates: false }
-      );
-  } catch (err) {
-    console.error('[home/reconnect] companion stats upsert failed', err);
-  }
-
-  let rituals = null;
-  try {
-    rituals = await incrementCompanionRitual(db, userId, 'care_once', {
-      companionName: updatedCompanion.name
-    });
-  } catch (err) {
-    console.error('[home/reconnect] ritual increment failed', err);
-  }
+  const chapterContext =
+    chapterContextResult && chapterContextResult.ok
+      ? ((chapterContextResult.value ?? null) as CompanionChapterContext)
+      : null;
+  const rituals = ritualResult && ritualResult.ok ? ritualResult.value : null;
 
   let eventResponse: unknown = null;
   try {
@@ -310,7 +316,10 @@ export const POST: RequestHandler = async (event) => {
         reflection,
         reflectionChars: reflection.length
       },
-      { ts: new Date().toISOString() }
+      {
+        ts: new Date().toISOString(),
+        idempotencyKey: `checkin:${checkin.id}:companion_ritual_listen`
+      }
     );
   } catch (err) {
     console.error('[home/reconnect] event ingest failed', err);
@@ -372,6 +381,10 @@ export const POST: RequestHandler = async (event) => {
       rituals,
       reaction: reactionWithFallback,
       chapter: chapterContext,
+      sideEffects: {
+        companionStatsSynced: Boolean(companionStatsResult?.ok),
+        ritualIncremented: Boolean(ritualResult?.ok)
+      },
       debug: {
         responseSource,
         responseNote,

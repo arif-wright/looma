@@ -2,6 +2,7 @@ export type EventMeta = {
   sessionId?: string;
   userId?: string;
   ts?: string;
+  idempotencyKey?: string;
 };
 
 export type EventPayload = Record<string, unknown> | undefined;

@@ -62,7 +62,7 @@ export const POST: RequestHandler = async (event) => {
     }
 
     if (!existingResult.data) {
-      const limit = enforceRateLimit('reaction', user.id);
+      const limit = await enforceRateLimit(supabase, 'reaction', user.id);
       if (!limit.ok) {
         return json(
           { error: 'rate_limited', details: 'Please slow down before reacting again.' },

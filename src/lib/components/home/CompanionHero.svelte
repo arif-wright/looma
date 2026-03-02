@@ -10,6 +10,8 @@
   export let closenessState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let activityState: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
   export let animationName: MuseAnimationName = 'Idle';
+  export let facing: 'left' | 'right' = 'right';
+  export let traveling = false;
 
   const dispatch = createEventDispatcher<{ open: Record<string, never> }>();
 
@@ -93,41 +95,45 @@
 <section class="core" aria-label="Companion model" style={`--core-intensity:${intensity};`}>
   <div class="core__halo"></div>
   <div class="core__halo core__halo--soft"></div>
-  <div class="core__model-wrap {activityState === 'responding' ? 'core__model-wrap--responding' : ''}">
+  <div
+    class="core__model-wrap {activityState === 'responding' ? 'core__model-wrap--responding' : ''} {traveling ? 'core__model-wrap--traveling' : ''}"
+  >
     <div class="core__model-track" style={`--tilt-x:${tiltX}; --tilt-y:${tiltY}; --ambient-x:${ambientX}; --ambient-y:${ambientY};`}>
-      <button
-        class="core__model-button"
-        type="button"
-        on:click={() => dispatch('open', {})}
-        on:pointerleave={resetTilt}
-        on:pointerenter={() => {
-          presenceBoost = 1;
-          if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
-          presenceDecayTimer = setTimeout(() => {
-            presenceBoost = 0;
-            presenceDecayTimer = null;
-          }, 900);
-        }}
-        on:pointerdown={() => {
-          presenceBoost = 1;
-        }}
-        on:blur={resetTilt}
-        aria-label={`Open ${name} details`}
-      >
-        <MuseModel
-          class="core__model"
-          poster={avatarUrl ?? undefined}
-          {animationName}
-          visualMood={visualMood}
-          glowEnabled={true}
-          glowScale={intensity}
-          motionScale={intensity}
-          transparent={true}
-          autoplay={true}
-          eager={true}
-          minSize={0}
-        />
-      </button>
+      <div class="core__facing" data-facing={facing}>
+        <button
+          class="core__model-button"
+          type="button"
+          on:click={() => dispatch('open', {})}
+          on:pointerleave={resetTilt}
+          on:pointerenter={() => {
+            presenceBoost = 1;
+            if (presenceDecayTimer) clearTimeout(presenceDecayTimer);
+            presenceDecayTimer = setTimeout(() => {
+              presenceBoost = 0;
+              presenceDecayTimer = null;
+            }, 900);
+          }}
+          on:pointerdown={() => {
+            presenceBoost = 1;
+          }}
+          on:blur={resetTilt}
+          aria-label={`Open ${name} details`}
+        >
+          <MuseModel
+            class="core__model"
+            poster={avatarUrl ?? undefined}
+            {animationName}
+            visualMood={visualMood}
+            glowEnabled={true}
+            glowScale={intensity}
+            motionScale={intensity}
+            transparent={true}
+            autoplay={true}
+            eager={true}
+            minSize={0}
+          />
+        </button>
+      </div>
     </div>
   </div>
 </section>
@@ -167,6 +173,7 @@
     margin: 0 auto;
     filter: drop-shadow(0 20px 42px rgba(18, 14, 45, 0.42));
     animation: modelFloat 9.2s ease-in-out infinite;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), filter 260ms ease;
   }
 
   .core__model-track {
@@ -181,8 +188,26 @@
     will-change: transform;
   }
 
+  .core__facing {
+    width: 100%;
+    height: 100%;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   .core__model-wrap--responding {
     filter: drop-shadow(0 24px 50px rgba(96, 179, 255, 0.42));
+  }
+
+  .core__model-wrap--traveling {
+    animation-duration: 4.4s;
+  }
+
+  .core__facing[data-facing='left'] {
+    transform: scaleX(-1);
+  }
+
+  .core__facing[data-facing='left'] .core__model-button {
+    transform: scaleX(-1);
   }
 
   .core__model-button {

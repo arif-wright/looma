@@ -8,6 +8,13 @@
   type KeepsakeTheme = { tone: KeepsakeTone; title: string } | null;
   type PremiumStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
   type TimeSlice = 'dawn' | 'day' | 'dusk' | 'night';
+  type HabitatAnchor = {
+    id: 'left_perch' | 'center_stone' | 'right_grass' | 'forward_pause';
+    x: number;
+    y: number;
+    label: string;
+  };
+  type HabitatBehavior = 'arriving' | 'roaming' | 'inspecting' | 'resting';
 
   export let companionName = 'Mirae';
   export let companionAvatarUrl: string | null = null;
@@ -35,6 +42,30 @@
   const ONBOARDING_KEY = 'looma:homeSanctuaryHintDismissed:v1';
   let showHint = false;
   let timeSlice: TimeSlice = 'dusk';
+  let sceneInteraction: {
+    id: string;
+    label: string;
+    body: string;
+  } | null = null;
+  let activeAnchor: HabitatAnchor = {
+    id: 'center_stone',
+    x: 50,
+    y: 14,
+    label: 'center stone'
+  };
+  let anchorIndex = 0;
+  let isRoaming = false;
+  let facing: 'left' | 'right' = 'right';
+  let roamTimer: number | null = null;
+  let pauseTimer: number | null = null;
+  let habitatBehavior: HabitatBehavior = 'arriving';
+
+  const habitatAnchors: HabitatAnchor[] = [
+    { id: 'left_perch', x: 28, y: 15, label: 'left perch' },
+    { id: 'center_stone', x: 50, y: 14, label: 'center stone' },
+    { id: 'right_grass', x: 71, y: 15, label: 'right grass' },
+    { id: 'forward_pause', x: 58, y: 11, label: 'forward clearing' }
+  ];
 
   const resolveTimeSlice = (): TimeSlice => {
     const hour = new Date().getHours();
@@ -77,6 +108,12 @@
   $: presenceLine =
     modelActivity === 'responding'
       ? `${companionName} is turning toward you now.`
+      : habitatBehavior === 'arriving'
+        ? `${companionName} is returning to the center of the habitat.`
+        : habitatBehavior === 'inspecting'
+          ? `${companionName} is pausing to inspect the sanctuary.`
+          : habitatBehavior === 'resting'
+            ? `${companionName} is settled and taking in the habitat.`
       : closenessState === 'Distant'
         ? `${companionName} is drifting near the edge of the garden.`
         : closenessState === 'Resonant'
@@ -93,17 +130,136 @@
   $: stagePrompt =
     needsReconnectToday
       ? `${companionName} looks ready for a return.`
-      : `${companionName} is already moving through the habitat.`;
+      : habitatBehavior === 'arriving'
+        ? `${companionName} is floating back toward the center stone.`
+        : habitatBehavior === 'inspecting'
+          ? `${companionName} pauses to look around the ${activeAnchor.label}.`
+          : habitatBehavior === 'resting'
+            ? `${companionName} is resting in the ${activeAnchor.label}.`
+            : `${companionName} is drifting through the ${activeAnchor.label}.`;
+  $: habitatObject =
+    sanctuaryTone === 'care'
+      ? {
+          id: 'lantern',
+          label: 'Lantern tuft',
+          title: 'The lantern grass is glowing softly',
+          body: `${companionName} settles more easily when the sanctuary feels tended and warm.`
+        }
+      : sanctuaryTone === 'social'
+        ? {
+            id: 'thread',
+            label: 'Thread bloom',
+            title: 'A shared-thread bloom is opening',
+            body: `${companionName} is carrying outward connection through the grove right now.`
+          }
+        : sanctuaryTone === 'mission'
+          ? {
+              id: 'wayfinder',
+              label: 'Wayfinder stone',
+              title: 'The wayfinder stone is humming',
+              body: `${companionName} is leaning toward a clearer next step in this chapter.`
+            }
+          : sanctuaryTone === 'play'
+            ? {
+                id: 'ripple',
+                label: 'Ripple pool',
+                title: 'The ripple pool is darting with light',
+                body: `${companionName} feels lighter when the sanctuary has room for motion and play.`
+              }
+            : {
+                id: 'sigil',
+                label: 'Bond sigil',
+                title: 'The bond sigil is glowing at the center',
+                body: `${companionName} is holding this chapter close and reading the sanctuary as a place of return.`
+              };
 
   const dismissHint = () => {
     showHint = false;
     if (browser) window.localStorage.setItem(ONBOARDING_KEY, 'true');
   };
 
+  const inspectHabitatObject = () => {
+    sceneInteraction = {
+      id: habitatObject.id,
+      label: habitatObject.label,
+      body: habitatObject.body
+    };
+  };
+
+  const clearSceneInteraction = () => {
+    sceneInteraction = null;
+  };
+
+  const clearTimers = () => {
+    if (roamTimer) window.clearTimeout(roamTimer);
+    if (pauseTimer) window.clearTimeout(pauseTimer);
+    roamTimer = null;
+    pauseTimer = null;
+  };
+
+  const scheduleNextRoam = (delayMs: number, mode: 'arrive_center' | 'cycle' = 'cycle') => {
+    if (!browser) return;
+    if (roamTimer) window.clearTimeout(roamTimer);
+    roamTimer = window.setTimeout(() => {
+      if (sceneInteraction) {
+        scheduleNextRoam(1800);
+        return;
+      }
+      chooseNextAnchor(mode);
+    }, delayMs);
+  };
+
+  const settleAtAnchor = (anchor: HabitatAnchor) => {
+    habitatBehavior = anchor.id === 'forward_pause' ? 'inspecting' : 'resting';
+    if (!browser) return;
+    if (pauseTimer) window.clearTimeout(pauseTimer);
+    pauseTimer = window.setTimeout(() => {
+      habitatBehavior = 'resting';
+      scheduleNextRoam(closenessState === 'Distant' ? 4200 : 2800);
+    }, anchor.id === 'forward_pause' ? 1800 : 1200);
+  };
+
+  const chooseNextAnchor = (mode: 'arrive_center' | 'cycle' = 'cycle') => {
+    const nextIndex =
+      mode === 'arrive_center'
+        ? 1
+        : closenessState === 'Distant'
+        ? anchorIndex === 0
+          ? 1
+          : 0
+        : (anchorIndex + 1) % habitatAnchors.length;
+    const nextAnchor = habitatAnchors[nextIndex] ?? habitatAnchors[1];
+    if (!nextAnchor) return;
+    facing = nextAnchor.x < activeAnchor.x ? 'left' : 'right';
+    isRoaming = true;
+    habitatBehavior = mode === 'arrive_center' ? 'arriving' : 'roaming';
+    activeAnchor = nextAnchor;
+    anchorIndex = nextIndex;
+    if (browser) {
+      if (pauseTimer) window.clearTimeout(pauseTimer);
+      pauseTimer = window.setTimeout(() => {
+        isRoaming = false;
+        settleAtAnchor(nextAnchor);
+      }, 1600);
+    }
+  };
+
   onMount(() => {
     timeSlice = resolveTimeSlice();
     if (!browser) return;
     showHint = window.localStorage.getItem(ONBOARDING_KEY) !== 'true';
+    activeAnchor = needsReconnectToday ? habitatAnchors[0] ?? activeAnchor : habitatAnchors[1] ?? activeAnchor;
+    anchorIndex = habitatAnchors.findIndex((anchor) => anchor.id === activeAnchor.id);
+    habitatBehavior = needsReconnectToday ? 'arriving' : 'resting';
+    if (needsReconnectToday) {
+      scheduleNextRoam(900, 'arrive_center');
+    } else {
+      scheduleNextRoam(closenessState === 'Distant' ? 3600 : 2200);
+    }
+
+    return () => {
+      clearTimers();
+    };
   });
 </script>
 
@@ -158,8 +314,19 @@
         <div class="scene__anchor-stone"></div>
         <div class="scene__anchor-grass"></div>
       </div>
+      <button
+        type="button"
+        class={`scene__feature scene__feature--${habitatObject.id}`}
+        on:click={inspectHabitatObject}
+        aria-label={habitatObject.label}
+      >
+        <span>{habitatObject.label}</span>
+      </button>
 
-      <div class="hero-wrap">
+      <div
+        class={`hero-wrap ${isRoaming ? 'hero-wrap--roaming' : ''}`}
+        style={`--hero-x:${activeAnchor.x}; --hero-y:${activeAnchor.y};`}
+      >
         {#if auraLabel}
           <div class="keepsake-aura" role="status">
             <span class="keepsake-aura__label">Keepsake aura</span>
@@ -173,6 +340,8 @@
           {closenessState}
           activityState={modelActivity}
           animationName={modelAnimation}
+          {facing}
+          traveling={isRoaming}
           on:open={() => dispatch('companion', {})}
         />
 
@@ -181,6 +350,19 @@
           <span>{statusLine}</span>
         </div>
       </div>
+
+      {#if sceneInteraction}
+        <div class="scene__callout" role="status">
+          <div>
+            <span class="scene__callout-label">{sceneInteraction.label}</span>
+            <strong>{habitatObject.title}</strong>
+            <p>{sceneInteraction.body}</p>
+          </div>
+          <button type="button" class="scene__callout-dismiss" on:click={clearSceneInteraction} aria-label="Close habitat detail">
+            Close
+          </button>
+        </div>
+      {/if}
 
       <div class="scene__ground scene__ground--front" aria-hidden="true"></div>
     </div>
@@ -599,13 +781,116 @@
     filter: blur(2px);
   }
 
+  .scene__feature {
+    position: absolute;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: rgba(247, 239, 220, 0.92);
+    padding: 0;
+  }
+
+  .scene__feature span {
+    position: absolute;
+    bottom: -1.4rem;
+    white-space: nowrap;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(243, 231, 205, 0.72);
+  }
+
+  .scene__feature::before,
+  .scene__feature::after {
+    content: '';
+    display: block;
+  }
+
+  .scene__feature::before {
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 999px;
+    filter: blur(16px);
+    opacity: 0.55;
+  }
+
+  .scene__feature::after {
+    position: absolute;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(249, 239, 215, 0.4);
+    background: rgba(248, 236, 209, 0.16);
+    box-shadow: 0 0 0 0 rgba(249, 239, 215, 0.12);
+    animation: habitatPulse 3.2s ease-in-out infinite;
+  }
+
+  .scene__feature--lantern {
+    left: 16%;
+    bottom: 26%;
+  }
+
+  .scene__feature--lantern::before {
+    background: rgba(255, 216, 144, 0.5);
+  }
+
+  .scene__feature--thread {
+    right: 17%;
+    bottom: 31%;
+  }
+
+  .scene__feature--thread::before {
+    background: rgba(255, 175, 146, 0.44);
+  }
+
+  .scene__feature--wayfinder {
+    left: 22%;
+    bottom: 21%;
+  }
+
+  .scene__feature--wayfinder::before {
+    background: rgba(242, 205, 120, 0.42);
+  }
+
+  .scene__feature--ripple {
+    right: 20%;
+    bottom: 21%;
+  }
+
+  .scene__feature--ripple::before {
+    background: rgba(133, 226, 224, 0.46);
+  }
+
+  .scene__feature--sigil {
+    right: 18%;
+    bottom: 26%;
+  }
+
+  .scene__feature--sigil::before {
+    background: rgba(231, 201, 136, 0.42);
+  }
+
   .hero-wrap {
     position: absolute;
-    inset: auto 0 14% 0;
+    left: calc(var(--hero-x, 50) * 1%);
+    bottom: calc(var(--hero-y, 14) * 1%);
     z-index: 2;
     display: grid;
     justify-items: center;
     gap: 0.6rem;
+    transform: translateX(-50%);
+    transition:
+      left 1.8s cubic-bezier(0.22, 1, 0.36, 1),
+      bottom 1.8s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 260ms ease;
+  }
+
+  .hero-wrap--roaming {
+    filter: drop-shadow(0 20px 28px rgba(246, 227, 184, 0.12));
   }
 
   .keepsake-aura {
@@ -652,6 +937,62 @@
   .scene__caption span {
     font-size: 0.8rem;
     color: rgba(223, 215, 196, 0.8);
+  }
+
+  .scene__callout {
+    position: absolute;
+    left: 0.8rem;
+    right: 0.8rem;
+    bottom: 1rem;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.82rem 0.92rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(243, 231, 205, 0.14);
+    background: rgba(10, 15, 17, 0.58);
+    backdrop-filter: blur(14px);
+  }
+
+  .scene__callout-label {
+    display: inline-flex;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(231, 207, 152, 0.76);
+  }
+
+  .scene__callout strong,
+  .scene__callout p {
+    display: block;
+    margin: 0;
+  }
+
+  .scene__callout strong {
+    margin-top: 0.08rem;
+    color: rgba(248, 242, 228, 0.98);
+    font-size: 0.88rem;
+    line-height: 1.25;
+  }
+
+  .scene__callout p {
+    margin-top: 0.2rem;
+    color: rgba(226, 218, 200, 0.82);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .scene__callout-dismiss {
+    align-self: start;
+    min-height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(243, 231, 205, 0.14);
+    background: rgba(243, 231, 205, 0.08);
+    color: rgba(248, 241, 226, 0.94);
+    padding: 0 0.75rem;
+    font-weight: 700;
   }
 
   .dialogue {
@@ -782,6 +1123,17 @@
     }
   }
 
+  @keyframes habitatPulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(249, 239, 215, 0.1);
+    }
+    50% {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 0.45rem rgba(249, 239, 215, 0.04);
+    }
+  }
+
   @media (min-width: 720px) {
     .sanctuary {
       padding-inline: 1.15rem;
@@ -819,6 +1171,12 @@
     .focus {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
+    }
+
+    .scene__callout {
+      left: 1rem;
+      right: auto;
+      max-width: 24rem;
     }
   }
 

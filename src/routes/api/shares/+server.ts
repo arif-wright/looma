@@ -45,7 +45,7 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'bad_request', details: 'Quote cannot be empty.' }, { status: 400, headers: CACHE_HEADERS });
   }
 
-  const limit = enforceRateLimit('share', user.id);
+  const limit = await enforceRateLimit(supabase, 'share', user.id);
   if (!limit.ok) {
     return json(
       { error: 'rate_limited', details: 'You are sharing too quickly. Please slow down.' },
@@ -54,7 +54,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   if (quote) {
-    const quoteCheck = validateQuoteShare(user.id, quote);
+    const quoteCheck = await validateQuoteShare(supabase, user.id, quote);
     if (!quoteCheck.ok) {
       const status = quoteCheck.reason === 'duplicate' ? 409 : 400;
       const details =

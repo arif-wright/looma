@@ -106,7 +106,7 @@ export const POST: RequestHandler = async (event) => {
     return reject(400, 'invalid_text', textResult.message, { text: payload.text });
   }
 
-  const rate = enforceRateLimit('social_share', user.id);
+  const rate = await enforceRateLimit(supabase, 'social_share', user.id);
   if (!rate.ok) {
     return reject(429, 'rate_limited', 'You are sharing too quickly. Please try again later.');
   }
