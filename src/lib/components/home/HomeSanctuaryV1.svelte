@@ -15,6 +15,7 @@
     label: string;
   };
   type HabitatBehavior = 'arriving' | 'roaming' | 'inspecting' | 'resting';
+  type HabitatObjectId = 'lantern' | 'thread' | 'wayfinder' | 'ripple' | 'sigil';
 
   export let companionName = 'Mirae';
   export let companionAvatarUrl: string | null = null;
@@ -63,6 +64,7 @@
   let tappedCompanion = false;
   let tapResetTimer: number | null = null;
   let stageAnimation: MuseAnimationName = 'Idle';
+  let objectFocusAnchorId: HabitatAnchor['id'] | null = null;
 
   const habitatAnchors: HabitatAnchor[] = [
     { id: 'left_perch', x: 28, y: 15, label: 'left perch' },
@@ -154,38 +156,46 @@
   $: habitatObject =
     sanctuaryTone === 'care'
       ? {
-          id: 'lantern',
+          id: 'lantern' as HabitatObjectId,
           label: 'Lantern tuft',
           title: 'The lantern grass is glowing softly',
           body: `${companionName} settles more easily when the sanctuary feels tended and warm.`
         }
       : sanctuaryTone === 'social'
         ? {
-            id: 'thread',
+            id: 'thread' as HabitatObjectId,
             label: 'Thread bloom',
             title: 'A shared-thread bloom is opening',
             body: `${companionName} is carrying outward connection through the grove right now.`
           }
         : sanctuaryTone === 'mission'
           ? {
-              id: 'wayfinder',
+              id: 'wayfinder' as HabitatObjectId,
               label: 'Wayfinder stone',
               title: 'The wayfinder stone is humming',
               body: `${companionName} is leaning toward a clearer next step in this chapter.`
             }
           : sanctuaryTone === 'play'
             ? {
-                id: 'ripple',
+                id: 'ripple' as HabitatObjectId,
                 label: 'Ripple pool',
                 title: 'The ripple pool is darting with light',
                 body: `${companionName} feels lighter when the sanctuary has room for motion and play.`
               }
             : {
-                id: 'sigil',
+                id: 'sigil' as HabitatObjectId,
                 label: 'Bond sigil',
                 title: 'The bond sigil is glowing at the center',
                 body: `${companionName} is holding this chapter close and reading the sanctuary as a place of return.`
               };
+
+  const objectAnchorMap: Record<HabitatObjectId, HabitatAnchor['id']> = {
+    lantern: 'left_perch',
+    thread: 'forward_pause',
+    wayfinder: 'center_stone',
+    ripple: 'right_grass',
+    sigil: 'forward_pause'
+  };
 
   const dismissHint = () => {
     showHint = false;
@@ -199,11 +209,17 @@
       body: habitatObject.body
     };
     inspectFocusLabel = habitatObject.label;
-    habitatBehavior = 'inspecting';
+    objectFocusAnchorId = objectAnchorMap[habitatObject.id];
+    if (objectFocusAnchorId) {
+      chooseAnchorById(objectFocusAnchorId, 'inspect_object');
+    } else {
+      habitatBehavior = 'inspecting';
+    }
   };
 
   const clearSceneInteraction = () => {
     sceneInteraction = null;
+    objectFocusAnchorId = null;
   };
 
   const clearTimers = () => {
@@ -228,9 +244,12 @@
   };
 
   const settleAtAnchor = (anchor: HabitatAnchor) => {
-    habitatBehavior = anchor.id === 'forward_pause' ? 'inspecting' : 'resting';
+    habitatBehavior =
+      objectFocusAnchorId === anchor.id || anchor.id === 'forward_pause' ? 'inspecting' : 'resting';
     inspectFocusLabel =
-      anchor.id === 'forward_pause'
+      objectFocusAnchorId === anchor.id
+        ? habitatObject.label
+        : anchor.id === 'forward_pause'
         ? habitatObject.label
         : anchor.id === 'left_perch'
           ? 'the left perch'
@@ -241,9 +260,32 @@
     if (pauseTimer) window.clearTimeout(pauseTimer);
     pauseTimer = window.setTimeout(() => {
       habitatBehavior = 'resting';
-      inspectFocusLabel = null;
+      inspectFocusLabel = sceneInteraction ? habitatObject.label : null;
+      objectFocusAnchorId = null;
       scheduleNextRoam(closenessState === 'Distant' ? 4200 : 2800);
-    }, anchor.id === 'forward_pause' ? 1800 : 1200);
+    }, objectFocusAnchorId === anchor.id || anchor.id === 'forward_pause' ? 1800 : 1200);
+  };
+
+  const chooseAnchorById = (
+    anchorId: HabitatAnchor['id'],
+    mode: 'arrive_center' | 'cycle' | 'inspect_object' = 'cycle'
+  ) => {
+    const nextIndex = habitatAnchors.findIndex((anchor) => anchor.id === anchorId);
+    if (nextIndex < 0) return;
+    const nextAnchor = habitatAnchors[nextIndex];
+    if (!nextAnchor) return;
+    facing = nextAnchor.x < activeAnchor.x ? 'left' : 'right';
+    isRoaming = true;
+    habitatBehavior = mode === 'arrive_center' ? 'arriving' : mode === 'inspect_object' ? 'inspecting' : 'roaming';
+    activeAnchor = nextAnchor;
+    anchorIndex = nextIndex;
+    if (browser) {
+      if (pauseTimer) window.clearTimeout(pauseTimer);
+      pauseTimer = window.setTimeout(() => {
+        isRoaming = false;
+        settleAtAnchor(nextAnchor);
+      }, mode === 'inspect_object' ? 1350 : 1600);
+    }
   };
 
   const chooseNextAnchor = (mode: 'arrive_center' | 'cycle' = 'cycle') => {
@@ -257,18 +299,7 @@
         : (anchorIndex + 1) % habitatAnchors.length;
     const nextAnchor = habitatAnchors[nextIndex] ?? habitatAnchors[1];
     if (!nextAnchor) return;
-    facing = nextAnchor.x < activeAnchor.x ? 'left' : 'right';
-    isRoaming = true;
-    habitatBehavior = mode === 'arrive_center' ? 'arriving' : 'roaming';
-    activeAnchor = nextAnchor;
-    anchorIndex = nextIndex;
-    if (browser) {
-      if (pauseTimer) window.clearTimeout(pauseTimer);
-      pauseTimer = window.setTimeout(() => {
-        isRoaming = false;
-        settleAtAnchor(nextAnchor);
-      }, 1600);
-    }
+    chooseAnchorById(nextAnchor.id, mode);
   };
 
   const reactToCompanionTap = () => {
