@@ -85,6 +85,13 @@
     secondaryHref: string;
   };
 
+  type IdentitySignal = {
+    label: string;
+    title: string;
+    body: string;
+    href: string;
+  };
+
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
   const LOW_ENERGY_THRESHOLD = 25;
@@ -635,6 +642,44 @@
     ? activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label
     : 'Quiet';
   $: activeBondLabel = activeCompanion ? `Bond Lv ${getBondLevel(activeCompanion)}` : 'Bond unavailable';
+  $: activeIdentitySignals = activeCompanion
+    ? ([
+        {
+          label: 'Memory anchor',
+          title: activeChapterHistory[0]?.title ?? activeKeepsake?.title ?? 'No clear chapter memory yet',
+          body:
+            activeChapterHistory[0]?.body ??
+            activeKeepsake?.body ??
+            `${activeCompanion.name} is still waiting for enough shared moments to form a stronger continuity anchor.`,
+          href: activeCompanionJournalHref
+        },
+        {
+          label: 'Temperament',
+          title: activeMoodLabel,
+          body: `${activeCompanion.name}'s current presentation is shaped by recent care, Spark, affection, and trust.`,
+          href: activeCompanionSanctuaryHref
+        },
+        {
+          label: 'Care rhythm',
+          title: activeCareCadence,
+          body: activeCareStatus,
+          href: activeCompanionSanctuaryHref
+        },
+        {
+          label: 'Next invitation',
+          title: activeEraAction.title,
+          body: activeEraAction.body,
+          href: activeEraAction.primaryHref
+        }
+      ] satisfies IdentitySignal[])
+    : ([
+        {
+          label: 'Memory anchor',
+          title: 'Waiting to begin',
+          body: 'Activate a companion and start with one check-in to create the first relationship signal.',
+          href: '/app/home'
+        }
+      ] satisfies IdentitySignal[]);
   $: activeEra = (() => {
     if (!activeCompanion) {
       return {
@@ -965,6 +1010,22 @@
           <p>{relationshipState.body}</p>
         </div>
 
+        <section class="identity-map" aria-label={`${activeCompanion.name} identity map`}>
+          <div class="identity-map__head">
+            <span class="identity-map__label">Identity map</span>
+            <strong>What {activeCompanion.name} is carrying right now</strong>
+          </div>
+          <div class="identity-map__grid">
+            {#each activeIdentitySignals as signal}
+              <a class="identity-signal" href={signal.href}>
+                <span>{signal.label}</span>
+                <strong>{signal.title}</strong>
+                <p>{signal.body}</p>
+              </a>
+            {/each}
+          </div>
+        </section>
+
         <div class={`era-panel era-panel--${activeEra.tone}`}>
           <span class="era-panel__label">{activeEra.label}</span>
           <strong>{activeEra.title}</strong>
@@ -1010,7 +1071,7 @@
           <article class="pulse-card">
             <span class="pulse-card__label">Bond strength</span>
             <strong>{activeBondLabel}</strong>
-            <span>{activeEffective?.energy ?? activeCompanion.energy ?? 0} energy available right now</span>
+            <span>{activeEffective?.energy ?? activeCompanion.energy ?? 0} Spark available right now</span>
           </article>
         </div>
 
@@ -1648,6 +1709,76 @@
     color: rgba(223, 215, 200, 0.84);
   }
 
+  .identity-map {
+    margin-top: 0.85rem;
+    border-radius: 1.05rem;
+    border: 1px solid rgba(126, 194, 185, 0.18);
+    background:
+      linear-gradient(180deg, rgba(16, 28, 31, 0.62), rgba(10, 15, 18, 0.8)),
+      radial-gradient(circle at top left, rgba(126, 194, 185, 0.12), transparent 54%);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.72rem;
+  }
+
+  .identity-map__head {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .identity-map__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(142, 219, 206, 0.78);
+  }
+
+  .identity-map__head strong {
+    color: rgba(248, 241, 227, 0.97);
+    font-size: 0.96rem;
+    line-height: 1.3;
+  }
+
+  .identity-map__grid {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .identity-signal {
+    min-height: 7.4rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(126, 194, 185, 0.14);
+    background: rgba(126, 194, 185, 0.07);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.74rem;
+    display: grid;
+    align-content: start;
+    gap: 0.18rem;
+  }
+
+  .identity-signal span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(142, 219, 206, 0.72);
+  }
+
+  .identity-signal strong {
+    color: rgba(248, 241, 227, 0.96);
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .identity-signal p {
+    margin: 0;
+    color: rgba(224, 214, 192, 0.78);
+    font-size: 0.78rem;
+    line-height: 1.42;
+  }
+
   .era-panel {
     margin-top: 0.85rem;
     border-radius: 1rem;
@@ -1963,6 +2094,12 @@
     display: grid;
     place-items: center;
     min-height: 260px;
+  }
+
+  @media (min-width: 720px) {
+    .identity-map__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .companion-view[data-keepsake-tone='care'] .companion-view__model {
