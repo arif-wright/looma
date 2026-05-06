@@ -7,13 +7,13 @@
 
 <section class="energy">
   <header>
-    <span class="label">Energy</span>
+    <span class="label">Spark</span>
     <span class="value">{current}/{max}</span>
   </header>
   <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={percent}>
     <span style={`width:${percent}%`}></span>
   </div>
-  <p class="hint">Keep the pulse above 50 for smooth missions.</p>
+  <p class="hint">Keep Spark above 50 for smoother shared missions.</p>
 </section>
 
 <style>

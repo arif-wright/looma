@@ -225,7 +225,7 @@ const capsuleBaseClass =
 
     {#if menuOpen}
       <div class="account-menu__dropdown" role="menu">
-        <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+        <a href="/app/preferences" role="menuitem" on:click={closeMenu}>Sanctuary preferences</a>
         <button
           type="button"
           role="menuitem"

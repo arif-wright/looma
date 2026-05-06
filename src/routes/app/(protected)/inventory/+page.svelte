@@ -83,7 +83,7 @@
   </svelte:fragment>
 
   <main class="inventory-shell">
-    <section class="inventory-pulse" aria-label="Inventory pulse">
+    <section class="inventory-pulse" aria-label="Keepsakes pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
         <h2>{items.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + companionRewards.length} keepsakes in your vault`}</h2>
@@ -91,7 +91,7 @@
           {#if error}
             Keepsakes could not be loaded right now. Your owned items are still safe.
           {:else if items.length === 0}
-            Visit the marketplace when you want new cosmetics, utility items, or bundle unlocks.
+            Visit the atelier when you want new cosmetics, utility items, or bundle unlocks.
           {:else}
             Your keepsakes should feel like a living record of what you have gathered for play, care, and self-expression.
           {/if}
@@ -119,7 +119,7 @@
         </article>
       </div>
 
-      <div class="inventory-quicklinks" aria-label="Inventory actions">
+      <div class="inventory-quicklinks" aria-label="Keepsakes actions">
         <a class="quicklink quicklink--primary" href="/app/shop">Open atelier</a>
         <a class="quicklink" href="/app/wallet">Check wallet</a>
       </div>
@@ -133,10 +133,10 @@
     {:else if !items.length && !companionRewards.length}
       <section class="inventory-state" aria-live="polite">
         <h3>Your vault is quiet</h3>
-        <p>No items owned yet. Explore the shop to pick up your first cosmetic, utility item, or bundle.</p>
+        <p>No items owned yet. Explore the atelier to pick up your first cosmetic, utility item, or bundle.</p>
       </section>
     {:else}
-      <section class="inventory-overview" aria-label="Inventory overview">
+      <section class="inventory-overview" aria-label="Keepsakes overview">
         <article class="overview-card">
           <span class="overview-card__label">Categories</span>
           <div class="overview-card__chips">

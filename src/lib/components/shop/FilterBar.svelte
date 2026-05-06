@@ -47,7 +47,7 @@
   };
 </script>
 
-<nav role="region" aria-label="Shop filters" class="filter-bar flex flex-wrap items-center gap-2 mb-3 md:mb-4">
+<nav role="region" aria-label="Atelier filters" class="filter-bar flex flex-wrap items-center gap-2 mb-3 md:mb-4">
   <div class="categories">
     {#each categories as option}
       <button

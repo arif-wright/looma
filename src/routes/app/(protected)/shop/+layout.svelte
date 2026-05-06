@@ -3,23 +3,23 @@
 </script>
 
 <SanctuaryPageFrame
-  eyebrow="Marketplace"
-  title="Shop"
-  subtitle="Spend shards on cosmetics and collectibles without leaving the sanctuary tone of the app."
+  eyebrow="Atelier"
+  title="Atelier"
+  subtitle="Spend shards on cosmetics, ambience, and keepsakes without pulling the bond out of focus."
 >
   <div class="shop-shell">
-    <header class="shop-head" aria-label="Marketplace navigation">
-      <nav class="shop-nav" aria-label="Shop sections">
-        <span class="nav-chip active">Shop</span>
+    <header class="shop-head" aria-label="Atelier navigation">
+      <nav class="shop-nav" aria-label="Atelier sections">
+        <span class="nav-chip active">Atelier</span>
         <span class="nav-chip">Creatures</span>
         <span class="nav-chip">Items</span>
         <span class="nav-chip">Bundles</span>
       </nav>
       <label class="search-field">
-        <span class="sr-only">Search the market</span>
+        <span class="sr-only">Search the atelier</span>
         <input
           type="search"
-          placeholder="Search the market…"
+          placeholder="Search the atelier..."
           class="search-input"
         />
       </label>

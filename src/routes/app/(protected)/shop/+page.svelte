@@ -179,7 +179,7 @@
 </script>
 
 <div class="shop-shell mx-auto max-w-screen-xl space-y-4 md:space-y-6">
-  <section class="shop-pulse" aria-label="Shop pulse">
+  <section class="shop-pulse" aria-label="Atelier pulse">
     <div>
       <p class="shop-pulse__eyebrow">Atelier pulse</p>
       <h1>Shape the sanctuary without selling the bond.</h1>
