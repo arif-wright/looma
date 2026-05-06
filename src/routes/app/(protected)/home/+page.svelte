@@ -1,852 +1,464 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
-  import { onMount } from 'svelte';
-  import HomeSanctuaryV1 from '$lib/components/home/HomeSanctuaryV1.svelte';
-  import HomeSecondaryStack from '$lib/components/home/HomeSecondaryStack.svelte';
-  import CompanionSheet from '$lib/components/home/CompanionSheet.svelte';
-  import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-  import { logEvent } from '$lib/analytics';
-  import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
-  import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
+  import { page } from '$app/stores';
+  import { Bell, Gem, MessageCircle, Plus, Search } from 'lucide-svelte';
+  import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
+  import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
+  import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
+  import FriendStatusPanel from '$lib/components/home/fantasy/FriendStatusPanel.svelte';
+  import GameCard from '$lib/components/home/fantasy/GameCard.svelte';
+  import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
+  import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
+  import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
   import type { PageData } from './$types';
-
-  type HomeMood = 'calm' | 'heavy' | 'curious' | 'energized' | 'numb';
-  type CompanionEraTone = 'care' | 'social' | 'mission' | 'play' | 'bond' | 'quiet';
 
   export let data: PageData;
 
-  const activeCompanion = data.activeCompanion ?? null;
-  let companionState = activeCompanion ? { ...activeCompanion } : null;
-  let dailyCheckinToday = data.dailyCheckinToday ?? null;
-  let latestDailyCheckin = data.latestDailyCheckin ?? null;
-  let companionReply: string | null = null;
-  let companionReplyDebug: string | null = null;
+  const fallbackCompanions = [
+    { name: 'Lumi', level: 18, bond: 87, mood: 'Happy', accent: 'violet', favorite: true },
+    { name: 'Fay', level: 15, bond: 75, mood: 'Steady', accent: 'silver', favorite: false },
+    { name: 'Ember', level: 20, bond: 92, mood: 'Fierce', accent: 'ember', favorite: false },
+    { name: 'Sylva', level: 16, bond: 68, mood: 'Gentle', accent: 'verdant', favorite: true }
+  ];
 
-  $: activeAsInstance =
-    companionState
-      ? ({
-          id: companionState.id,
-          name: companionState.name,
-          species: companionState.species ?? 'Muse',
-          rarity: 'common',
-          level: 1,
-          xp: 0,
-          affection: companionState.affection ?? 0,
-          trust: companionState.trust ?? 0,
-          energy: companionState.energy ?? 0,
-          mood: companionState.mood ?? 'steady',
-          avatar_url: companionState.avatar_url ?? null,
-          created_at: new Date().toISOString(),
-          updated_at: companionState.updated_at ?? new Date().toISOString(),
-          stats: companionState.stats ?? null
-        } as any)
-      : null;
+  const gameCards = [
+    { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
+    { title: 'Battle Stadium', level: 'Lv. 18', progress: 65, stat: '65%', cover: 'ember' },
+    { title: 'Skybound Odyssey', level: 'Lv. 12', progress: 40, stat: '40%', cover: 'sky' },
+    { title: 'Mystic Mayhem', level: 'Lv. 9', progress: 20, stat: '20%', cover: 'void' }
+  ];
 
-  $: effective = activeAsInstance ? computeCompanionEffectiveState(activeAsInstance) : null;
-  $: museAnimation = pickMuseAnimationForMood(effective?.moodKey, { nowMs: nowTick, seed: companionState?.id ?? '' });
+  const worldCards = [
+    { name: 'Looma Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
+    { name: 'Crystal Shores', level: 18, players: '856', reward: 18, tone: 'shore' },
+    { name: 'Voidspire', level: 29, players: '2.1K', reward: 29, tone: 'void' }
+  ];
 
-  const deriveClosenessState = () => {
-    if (!companionState) return 'Near' as const;
-    if (effective?.moodKey === 'distant') return 'Distant' as const;
-    if (effective?.moodKey === 'radiant') return 'Resonant' as const;
-    return 'Near' as const;
+  const normalizedMood = (value: string | null | undefined) => {
+    const mood = value?.trim();
+    if (!mood) return 'Happy';
+    return mood.charAt(0).toUpperCase() + mood.slice(1);
   };
 
-  $: closenessState = deriveClosenessState();
-  $: companionName = companionState?.name ?? 'Mirae';
-  $: primaryLabel = `Check in with ${companionName}`;
-  $: primaryCopy = `Share how you feel, hear ${companionName}'s response, and strengthen your bond.`;
-  $: primaryMission = data.missions?.[0] ?? null;
-  $: journalHref = companionState?.id ? `/app/memory?companion=${companionState.id}` : '/app/memory';
-  $: companionEraTitle =
-    data.weeklyArc?.emphasis === 'care'
-      ? 'Era of Steady Return'
-      : data.weeklyArc?.emphasis === 'social'
-        ? 'Era of Shared Thread'
-        : data.weeklyArc?.emphasis === 'mission'
-          ? 'Era of Wayfinding'
-          : data.weeklyArc?.emphasis === 'play'
-            ? 'Era of Bright Play'
-            : data.keepsakeTheme?.tone === 'bond'
-              ? 'Era of Deep Bond'
-              : 'Era of Gathering Quiet';
-  $: companionEraBody =
-    data.weeklyArc?.body ??
-    (data.keepsakeTheme?.title
-      ? `${data.keepsakeTheme.title} is currently shaping how ${companionName} reads the relationship.`
-      : `${companionName} is still gathering enough recent moments for the next clearer phase to emerge.`);
-  $: companionEraTone = (() => {
-    if (
-      data.keepsakeTheme?.tone === 'care' ||
-      data.keepsakeTheme?.tone === 'social' ||
-      data.keepsakeTheme?.tone === 'mission' ||
-      data.keepsakeTheme?.tone === 'play' ||
-      data.keepsakeTheme?.tone === 'bond'
-    ) {
-      return data.keepsakeTheme.tone;
-    }
-    if (
-      data.weeklyArc?.emphasis === 'care' ||
-      data.weeklyArc?.emphasis === 'social' ||
-      data.weeklyArc?.emphasis === 'mission' ||
-      data.weeklyArc?.emphasis === 'play'
-    ) {
-      return data.weeklyArc.emphasis;
-    }
-    return 'quiet';
-  })() as CompanionEraTone;
-  $: subscriptionActive = Boolean(data.subscription?.active);
-  $: premiumStyle = data.premiumSanctuaryStyle ?? null;
-  $: premiumAccentLabel =
-    premiumStyle === 'gilded_dawn'
-      ? 'Gilded Dawn is warming the sanctuary.'
-      : premiumStyle === 'moon_glass'
-        ? 'Moon Glass is softening the sanctuary light.'
-        : premiumStyle === 'ember_bloom'
-          ? 'Ember Bloom is drawing the sanctuary inward.'
-          : premiumStyle === 'tide_silk'
-            ? 'Tide Silk is making the sanctuary feel fluid and airy.'
-            : data.keepsakeTheme?.title
-              ? `${data.keepsakeTheme.title} is deepening the sanctuary atmosphere.`
-              : `${companionName}'s sanctuary is carrying a richer premium glow.`;
-  $: statusLine =
-    closenessState === 'Distant'
-      ? `${companionName} feels distant.`
-      : closenessState === 'Resonant'
-        ? `${companionName} feels deeply connected.`
-        : `${companionName} is near.`;
-
-  const isSameLocalDay = (dateA: Date, dateB: Date) =>
-    dateA.getFullYear() === dateB.getFullYear() && dateA.getMonth() === dateB.getMonth() && dateA.getDate() === dateB.getDate();
-
-  $: latestCheckinDate = latestDailyCheckin?.created_at ? new Date(latestDailyCheckin.created_at) : null;
-  $: checkinByDateField = Boolean(dailyCheckinToday);
-  $: checkinByTimestamp =
-    latestCheckinDate instanceof Date && !Number.isNaN(latestCheckinDate.getTime())
-      ? isSameLocalDay(latestCheckinDate, new Date())
-      : false;
-  $: hasRecentCheckin = checkinByDateField || checkinByTimestamp;
-
-  $: statusReason =
-    !hasRecentCheckin
-      ? `${companionName} hasn't heard from you today.`
-      : (effective?.energy ?? companionState?.energy ?? 0) < 35
-        ? `${companionName} feels a little low-energy right now. Stay nearby.`
-        : (data.notificationsUnread ?? 0) > 0
-          ? 'You have new moments waiting together.'
-          : `${companionName} heard from you recently and feels closer.`;
-
-  $: needsReconnectToday = closenessState === 'Distant' || !hasRecentCheckin;
-  const clipLine = (value: string | null | undefined, limit = 118) => {
-    const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
-    if (!normalized) return null;
-    if (normalized.length <= limit) return normalized;
-    return `${normalized.slice(0, limit - 1).trimEnd()}...`;
-  };
-  $: latestJournalMoment = data.journalMoments?.[0] ?? null;
-  $: memoryLine =
-    clipLine(latestJournalMoment?.body, 108) ??
-    clipLine(data.memorySummary?.summary_text, 108) ??
-    (hasRecentCheckin
-      ? `${companionName} remembers that you returned today.`
-      : `${companionName} is waiting for today's first check-in.`);
-  $: bondLine =
-    closenessState === 'Distant'
-      ? `${companionName} needs a small return to feel close again.`
-      : closenessState === 'Resonant'
-        ? 'The bond feels bright and responsive right now.'
-        : `${companionName} feels near enough for a quiet moment.`;
-  $: nextThreadLabel =
-    clipLine(data.dailyArc?.title, 84) ??
-    clipLine(primaryMission?.title, 84) ??
-    (needsReconnectToday ? 'Start with a short check-in.' : 'Open the next shared thread.');
-  $: nextThreadHref = primaryMission?.id ? `/app/missions/${primaryMission.id}` : '/app/missions';
-
-  let companionSheetOpen = false;
-  let checkinModalOpen = false;
-  let chapterRevealOpen = false;
-  let rewardToast: string | null = null;
-  let checkinError: string | null = null;
-  let checkinLoading = false;
-  let selectedMood: HomeMood = 'calm';
-  let reflectionText = '';
-  let rewardTimer: ReturnType<typeof setTimeout> | null = null;
-  let responseTimer: ReturnType<typeof setTimeout> | null = null;
-  let animationTickTimer: ReturnType<typeof setInterval> | null = null;
-  let modelActivity: 'idle' | 'attending' | 'composing' | 'responding' = 'idle';
-  let nowTick = Date.now();
-  let chapterRevealSeenId = '';
-
-  const moodPrompts: Record<HomeMood, string[]> = {
-    calm: ['I feel steady today, and I want to keep that feeling close.', 'A quiet moment I want you to remember is...'],
-    heavy: ['Something feels heavy right now, and I need a gentle return.', 'I do not need fixing, but I want you to know...'],
-    curious: ['I keep wondering about...', 'A question I want to carry with you today is...'],
-    energized: ['I feel ready to move, and I want our next step to be...', 'The thing giving me momentum today is...'],
-    numb: ['I feel a little far away from myself, but I am here.', 'Start small with me. What I can name is...']
-  };
-
-  const track = (
-    kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'checkin_submit' | 'checkin_success' | 'checkin_error',
-    meta: Record<string, unknown> = {}
-  ) => {
-    console.debug('[home]', kind, meta);
-    void logEvent(kind, meta);
-  };
-
-  const showReward = (copy: string) => {
-    rewardToast = copy;
-    if (rewardTimer) clearTimeout(rewardTimer);
-    rewardTimer = setTimeout(() => {
-      rewardToast = null;
-      rewardTimer = null;
-    }, 2600);
-  };
-
-  const handlePrimaryReconnect = () => {
-    track('primary_action_click', { intent: 'CHECKIN_REFLECT' });
-    checkinModalOpen = true;
-    checkinError = null;
-    modelActivity = 'composing';
-  };
-
-  const applyReflectionPrompt = (prompt: string) => {
-    reflectionText = prompt;
-    checkinError = null;
-    modelActivity = 'composing';
-  };
-
-  const closeCheckinModal = () => {
-    if (checkinLoading) return;
-    checkinModalOpen = false;
-    checkinError = null;
-    modelActivity = 'idle';
-  };
-
-  const submitCheckin = async () => {
-    if (!companionState?.id) {
-      checkinError = 'No active companion selected.';
-      return;
-    }
-    const reflection = reflectionText.trim();
-    if (reflection.length < 3) {
-      checkinError = 'Write at least a few words so Mirae can respond meaningfully.';
-      return;
-    }
-
-    checkinLoading = true;
-    checkinError = null;
-    modelActivity = 'responding';
-    track('checkin_submit', { mood: selectedMood, reflectionChars: reflection.length });
-
-    try {
-      const response = await fetch('/api/home/reconnect', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          companionId: companionState.id,
-          mood: selectedMood,
-          reflection
-        })
-      });
-
-      const payload = (await response.json().catch(() => null)) as {
-        checkin?: { id: string; mood: HomeMood; checkin_date: string; created_at: string } | null;
-        checkInAt?: string;
-        companion?: {
-          id: string;
-          trust: number;
-          affection: number;
-          energy: number;
-          mood: string;
-          updated_at: string;
-        } | null;
-        deltas?: { trust?: number; affection?: number; energy?: number } | null;
-        reaction?: { text?: string } | null;
-        debug?: { responseSource?: string; responseNote?: string | null; traceId?: string | null } | null;
-        message?: string;
-      } | null;
-
-      if (!response.ok) {
-        checkinError = payload?.message ?? 'Could not complete check-in right now.';
-        track('checkin_error', { status: response.status, mood: selectedMood });
-        modelActivity = 'composing';
-        return;
-      }
-
-      if (payload?.checkin) {
-        dailyCheckinToday = payload.checkin;
-        latestDailyCheckin = payload.checkin;
-      }
-      if (payload?.companion && companionState) {
-        const existingStats = companionState.stats;
-        const statsObj = Array.isArray(existingStats) ? (existingStats[0] ?? {}) : (existingStats ?? {});
-        const nextStats = {
-          ...statsObj,
-          played_at: payload.checkInAt ?? new Date().toISOString(),
-          last_passive_tick: payload.checkInAt ?? new Date().toISOString()
-        };
-
-        companionState = {
-          ...companionState,
-          trust: payload.companion.trust,
-          affection: payload.companion.affection,
-          energy: payload.companion.energy,
-          mood: payload.companion.mood,
-          updated_at: payload.companion.updated_at,
-          stats: Array.isArray(existingStats) ? [nextStats] : nextStats
-        };
-      }
-
-      const defaultReply = `Thank you for sharing that. I'm here with you.`;
-      companionReply =
-        typeof payload?.reaction?.text === 'string' && payload.reaction.text.trim().length > 0
-          ? payload.reaction.text.trim()
-          : defaultReply;
-      if (payload?.debug?.responseSource) {
-        companionReplyDebug = `source: ${payload.debug.responseSource}${payload.debug.responseNote ? ` · ${payload.debug.responseNote}` : ''}`;
-      } else {
-        companionReplyDebug = 'source: unknown';
-      }
-
-      const deltaEnergy = payload?.deltas?.energy ?? 0;
-      const deltaTrust = payload?.deltas?.trust ?? 0;
-      showReward(`You're connected. +${Math.max(0, deltaEnergy)} Spark · +${Math.max(0, deltaTrust)} Trust`);
-
-      reflectionText = '';
-      checkinModalOpen = false;
-      track('checkin_success', { mood: selectedMood, deltaEnergy, deltaTrust });
-
-      if (responseTimer) clearTimeout(responseTimer);
-      responseTimer = setTimeout(() => {
-        modelActivity = 'attending';
-      }, 2200);
-    } catch (error) {
-      checkinError = 'Network issue while saving your check-in.';
-      track('checkin_error', { mood: selectedMood, message: error instanceof Error ? error.message : String(error) });
-      modelActivity = 'composing';
-    } finally {
-      checkinLoading = false;
-    }
-  };
-
-  onMount(() => {
-    track('home_view', {
-      companion: companionState?.id ?? null,
-      closenessState,
-      hasMood: Boolean(dailyCheckinToday)
-    });
-
-    animationTickTimer = setInterval(() => {
-      nowTick = Date.now();
-    }, 30_000);
-
-    return () => {
-      if (rewardTimer) clearTimeout(rewardTimer);
-      if (responseTimer) clearTimeout(responseTimer);
-      if (animationTickTimer) clearInterval(animationTickTimer);
-    };
-  });
-
-  $: currentChapterReveal = data.chapterReveal ?? null;
-  $: if (browser) {
-    const revealId = currentChapterReveal?.id ?? '';
-    if (!revealId) {
-      chapterRevealSeenId = '';
-      chapterRevealOpen = false;
-    } else if (revealId !== chapterRevealSeenId) {
-      chapterRevealSeenId = revealId;
-      const seen = window.localStorage.getItem(`looma:chapterRevealSceneSeen:${revealId}`) === 'true';
-      chapterRevealOpen = !seen;
-    }
-  }
-
-  const closeChapterReveal = () => {
-    chapterRevealOpen = false;
-    if (!browser || !currentChapterReveal?.id) return;
-    window.localStorage.setItem(`looma:chapterRevealSceneSeen:${currentChapterReveal.id}`, 'true');
-  };
-
-  $: selectedMoodPrompts = moodPrompts[selectedMood];
+  $: activeCompanion = data.activeCompanion ?? null;
+  $: playerName =
+    (data as any)?.profile?.display_name ??
+    (data as any)?.user?.user_metadata?.name ??
+    (data as any)?.user?.email?.split('@')?.[0] ??
+    'Alex';
+  $: playerLevel = Math.max(1, Math.floor((data.stats as any)?.level ?? activeCompanion?.bondLevel ?? 24));
+  $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
+  $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
+  $: companionName = activeCompanion?.name ?? 'Lumi';
+  $: companionBond = Math.min(
+    100,
+    Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
+  );
+  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 18));
+  $: companionMood = normalizedMood(activeCompanion?.mood);
+  $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 3));
+  $: companions =
+    data.creatures && data.creatures.length > 0
+      ? data.creatures.slice(0, 4).map((creature, index) => ({
+          name: creature.name ?? fallbackCompanions[index]?.name ?? 'Companion',
+          level: Math.max(1, Math.floor(((creature.affection ?? 40) + (creature.trust ?? 40)) / 10)),
+          bond: Math.min(100, Math.max(0, Math.round(((creature.affection ?? 60) + (creature.trust ?? 60)) / 2))),
+          mood: normalizedMood(creature.mood_label ?? creature.mood),
+          accent: fallbackCompanions[index]?.accent ?? 'violet',
+          favorite: Boolean(creature.is_active),
+          avatarUrl: creature.avatar_url ?? null
+        }))
+      : fallbackCompanions;
 </script>
 
-<div class="home-root">
-  <main class="home-shell" aria-labelledby="home-title">
-    <h1 id="home-title" class="sr-only">Companion Home</h1>
+<svelte:head>
+  <title>Looma | Home</title>
+</svelte:head>
 
-    <HomeSanctuaryV1
-      companionName={companionName}
-      companionAvatarUrl={companionState?.avatar_url ?? null}
-      keepsakeTheme={data.keepsakeTheme ?? null}
-      {subscriptionActive}
-      premiumAccentLabel={premiumAccentLabel}
-      premiumStyle={premiumStyle}
-      {closenessState}
-      {statusLine}
-      {statusReason}
-      {memoryLine}
-      {bondLine}
-      {nextThreadLabel}
-      {nextThreadHref}
-      {needsReconnectToday}
-      {primaryLabel}
-      {primaryCopy}
-      {companionReply}
-      {companionReplyDebug}
-      {modelActivity}
-      modelAnimation={museAnimation}
-      on:primary={handlePrimaryReconnect}
-      on:companion={() => {
-        companionSheetOpen = true;
-        modelActivity = 'attending';
-        track('orb_open_sheet', { companion: companionState?.id ?? null });
-      }}
-    />
+<div class="fantasy-home">
+  <div class="ambient" aria-hidden="true"></div>
+  <FantasySidebar
+    playerName={playerName}
+    level={playerLevel}
+    xp={playerXp}
+    xpNext={playerXpNext}
+    activePath={$page.url.pathname}
+  />
 
-    {#if rewardToast}
-      <div class="reward-toast" role="status">{rewardToast}</div>
-    {/if}
-  </main>
-
-  <section class="home-secondary" aria-label="Sanctuary shortcuts">
-    <HomeSecondaryStack
-      feedPreview={data.feed?.[0] ?? null}
-      {journalHref}
-      journalSummary={data.memorySummary?.summary_text ?? null}
-      journalUpdatedAt={data.memorySummary?.last_built_at ?? null}
-      chapterReveal={data.chapterReveal ?? null}
-      missionTitle={primaryMission?.title ?? null}
-      missionSummary={primaryMission?.summary ?? null}
-      missionHref={primaryMission?.id ? `/app/missions/${primaryMission.id}` : '/app/missions'}
-      messagesHref="/app/messages"
-      circlesHref="/app/circles"
-      notificationsUnread={data.notificationsUnread ?? 0}
-      companionHref="/app/companions"
-      {companionName}
-      needsCheckin={needsReconnectToday}
-      rituals={data.rituals ?? []}
-      hasDailyCheckin={hasRecentCheckin}
-      journalMoments={data.journalMoments ?? []}
-      sanctuaryNudge={data.sanctuaryNudge ?? null}
-      dailyArc={data.dailyArc ?? null}
-      dailyArcRecap={data.dailyArcRecap ?? null}
-      weeklyArc={data.weeklyArc ?? null}
-      chapterMilestones={data.chapterMilestones ?? []}
-      chapterRewards={data.chapterRewards ?? []}
-      sanctuaryShelfRewards={data.sanctuaryShelfRewards ?? []}
-      eraAction={data.eraAction ?? null}
-      chapterPaths={data.chapterPaths ?? []}
-      momentum={data.momentum ?? null}
-      {premiumStyle}
-    />
-  </section>
-</div>
-
-<CompanionSheet
-  open={companionSheetOpen}
-  companionId={companionState?.id ?? null}
-  name={companionState?.name ?? null}
-  status={closenessState === 'Near' ? 'Synced' : closenessState}
-  bondTier={`Bond Tier ${companionState?.bondLevel ?? 1}`}
-  evolutionTag={companionState?.species ? `${companionState.species} form` : 'Base form'}
-  imageUrl={companionState?.avatar_url ?? null}
-  energy={effective?.energy ?? companionState?.energy ?? 0}
-  eraTitle={companionEraTitle}
-  eraBody={companionEraBody}
-  eraTone={companionEraTone}
-  onClose={() => {
-    companionSheetOpen = false;
-    modelActivity = 'idle';
-  }}
-/>
-
-<BottomSheet open={checkinModalOpen} title={`Check in with ${companionName}`} onClose={closeCheckinModal}>
-  <section class="checkin-sheet">
-    <p class="checkin-sheet__copy">How are you feeling right now?</p>
-
-    <div class="mood-row" role="radiogroup" aria-label="Mood">
-      {#each ['calm', 'heavy', 'curious', 'energized', 'numb'] as mood}
-        <button
-          type="button"
-          class={`mood-pill ${selectedMood === mood ? 'mood-pill--active' : ''}`}
-          role="radio"
-          aria-checked={selectedMood === mood}
-          on:click={() => {
-            selectedMood = mood as HomeMood;
-            modelActivity = 'composing';
-          }}
-        >
-          {mood}
-        </button>
-      {/each}
-    </div>
-
-    <div class="prompt-row" aria-label="Reflection starters">
-      {#each selectedMoodPrompts as prompt}
-        <button type="button" class="prompt-chip" on:click={() => applyReflectionPrompt(prompt)}>
-          {prompt}
-        </button>
-      {/each}
-    </div>
-
-    <label class="reflect-label" for="reflect-input">Tell {companionName} what this moment feels like.</label>
-    <textarea
-      id="reflect-input"
-      class="reflect-input"
-      rows="4"
-      maxlength="480"
-      bind:value={reflectionText}
-      placeholder="I feel..."
-      on:focus={() => {
-        modelActivity = 'composing';
-      }}
-      on:input={() => {
-        modelActivity = 'composing';
-      }}
-    ></textarea>
-
-    <p class="char-count">{reflectionText.trim().length}/480</p>
-
-    {#if checkinError}
-      <p class="checkin-error" role="alert">{checkinError}</p>
-    {/if}
-
-    <button type="button" class="submit-checkin" disabled={checkinLoading} on:click={submitCheckin}>
-      {checkinLoading ? 'Listening...' : `Share with ${companionName}`}
-    </button>
-  </section>
-</BottomSheet>
-
-<BottomSheet open={chapterRevealOpen} title="Chapter opened" onClose={closeChapterReveal}>
-  {#if currentChapterReveal}
-    <section class={`chapter-sheet chapter-sheet--${currentChapterReveal.tone ?? 'bond'}`}>
-      <div class="chapter-sheet__halo" aria-hidden="true"></div>
-      <p class="chapter-sheet__eyebrow">Companion reveal</p>
-      <h3>{currentChapterReveal.title}</h3>
-      {#if currentChapterReveal.rewardTitle}
-        <div class="chapter-sheet__keepsake">
-          <span>Keepsake</span>
-          <strong>{currentChapterReveal.rewardTitle}</strong>
-        </div>
-      {/if}
-      <p class="chapter-sheet__body">{currentChapterReveal.body}</p>
-      <div class="chapter-sheet__actions">
-        <a class="chapter-sheet__action chapter-sheet__action--primary" href={currentChapterReveal.href} on:click={closeChapterReveal}>
-          Open journal
+  <main class="home-main" aria-label="Looma companion home">
+    <header class="topbar">
+      <label class="search" aria-label="Search Looma">
+        <Search size={19} />
+        <input type="search" placeholder="Search worlds, games, companions, or friends..." />
+        <span>⌘K</span>
+      </label>
+      <div class="top-actions">
+        <a class="currency" href="/app/wallet" aria-label="Open wallet">
+          <Gem size={18} />
+          <span>{(data.wallet?.balance ?? 1240).toLocaleString()}</span>
         </a>
-        <a class="chapter-sheet__action" href="/app/companions" on:click={closeChapterReveal}>
-          Visit companion
+        <a class="icon-action" href="/app/notifications" aria-label="Notifications"><Bell size={19} /></a>
+        <a class="icon-action" href="/app/messages" aria-label="Messages"><MessageCircle size={19} /></a>
+        <a class="avatar-action" href="/app/profile" aria-label="Profile">
+          <span>{playerName.slice(0, 1).toUpperCase()}</span>
         </a>
       </div>
-    </section>
-  {/if}
-</BottomSheet>
+    </header>
+
+    <div class="content-grid">
+      <section class="center-stack">
+        <HeroLivingWorld
+          playerName={playerName}
+          companionName={companionName}
+          level={companionLevel}
+          mood={companionMood}
+          bond={companionBond}
+          companionAvatarUrl={activeCompanion?.avatar_url ?? null}
+        />
+
+        <section class="glass-section companions-section" aria-labelledby="companions-title">
+          <div class="section-header">
+            <h2 id="companions-title">Your Companions</h2>
+            <a href="/app/companions">View All</a>
+          </div>
+          <div class="companion-grid">
+            {#each companions as companion}
+              <CompanionCard {...companion} />
+            {/each}
+            <a class="summon-card" href="/app/companions" aria-label="Summon new companion">
+              <span><Plus size={30} /></span>
+              <strong>Summon</strong>
+              <small>New Companion</small>
+            </a>
+          </div>
+        </section>
+
+        <div class="lower-grid">
+          <section class="glass-section" aria-labelledby="games-title">
+            <div class="section-header">
+              <h2 id="games-title">Continue Playing</h2>
+              <a href="/app/games">View All</a>
+            </div>
+            <div class="card-grid game-grid">
+              {#each gameCards as game}
+                <GameCard {...game} />
+              {/each}
+            </div>
+          </section>
+
+          <section class="glass-section" aria-labelledby="worlds-title">
+            <div class="section-header">
+              <h2 id="worlds-title">Explore Worlds</h2>
+              <a href="/app/worlds">View All</a>
+            </div>
+            <div class="card-grid world-grid">
+              {#each worldCards as world}
+                <WorldCard {...world} />
+              {/each}
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <aside class="right-stack" aria-label="Daily panels">
+        <RitualPanel completed={ritualCompleted} />
+        <FriendStatusPanel />
+        <ActivityFeed />
+      </aside>
+    </div>
+  </main>
+</div>
 
 <style>
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  :global(body) {
+    background: #050714;
   }
 
-  .home-root {
-    --home-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
-    --home-font-body: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
+  :global(.app-shell:has(.fantasy-home)) {
+    background: #050714;
+  }
 
-    --home-text-secondary: rgba(189, 208, 232, 0.88);
-    --home-cta-start: rgba(86, 232, 220, 0.96);
-    --home-cta-end: rgba(119, 175, 255, 0.95);
-    --home-cta-text: rgba(6, 16, 35, 0.96);
-    --home-radius-lg: 0.95rem;
-    --home-shadow-soft: 0 14px 28px rgba(20, 184, 166, 0.3);
-
+  .fantasy-home {
+    position: relative;
+    display: grid;
     min-height: 100vh;
-    position: relative;
-    overflow: clip;
-    font-family: var(--home-font-body);
-  }
-
-  .home-shell {
-    position: relative;
-    z-index: 5;
-    margin: 0;
-    width: 100%;
-    max-width: none;
-    box-sizing: border-box;
-    padding: 0;
-    display: grid;
-    gap: 0;
-  }
-
-  .reward-toast {
-    position: fixed;
-    left: 50%;
-    bottom: calc(5.4rem + env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    border-radius: 999px;
-    border: 1px solid rgba(45, 212, 191, 0.44);
-    background: rgba(13, 148, 136, 0.95);
-    color: rgba(240, 253, 250, 0.96);
-    padding: 0.48rem 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    box-shadow: var(--home-shadow-soft);
-  }
-
-  .home-secondary {
-    position: relative;
-    z-index: 6;
-    padding: 0.95rem 0.95rem calc(7rem + env(safe-area-inset-bottom));
-  }
-
-  .checkin-sheet {
-    display: grid;
-    gap: 0.72rem;
-  }
-
-  .checkin-sheet__copy {
-    margin: 0;
-    color: var(--home-text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }
-
-  .mood-row {
-    display: flex;
-    gap: 0.42rem;
-    flex-wrap: wrap;
-  }
-
-  .mood-pill {
-    min-height: 2rem;
-    border-radius: 999px;
-    border: 1px solid rgba(173, 192, 222, 0.38);
-    background: rgba(15, 22, 46, 0.55);
-    color: rgba(228, 236, 247, 0.9);
-    text-transform: capitalize;
-    font-size: 0.76rem;
-    padding: 0 0.72rem;
-  }
-
-  .mood-pill--active {
-    border-color: rgba(148, 248, 225, 0.8);
-    background: rgba(19, 65, 90, 0.6);
-    color: rgba(228, 255, 248, 0.98);
-  }
-
-  .prompt-row {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .prompt-chip {
-    width: 100%;
-    border-radius: 0.9rem;
-    border: 1px solid rgba(161, 185, 218, 0.24);
-    background: rgba(13, 26, 45, 0.56);
-    color: rgba(223, 235, 247, 0.9);
-    padding: 0.64rem 0.72rem;
-    font: inherit;
-    font-size: 0.8rem;
-    line-height: 1.35;
-    text-align: left;
-  }
-
-  .prompt-chip:hover,
-  .prompt-chip:focus-visible {
-    outline: none;
-    border-color: rgba(148, 248, 225, 0.62);
-    background: rgba(20, 49, 70, 0.66);
-    color: rgba(239, 253, 250, 0.98);
-  }
-
-  .reflect-label {
-    font-size: 0.76rem;
-    letter-spacing: 0.03em;
-    color: rgba(215, 228, 245, 0.84);
-  }
-
-  .reflect-input {
-    width: 100%;
-    box-sizing: border-box;
-    border-radius: 0.95rem;
-    border: 1px solid rgba(161, 185, 218, 0.4);
-    background: rgba(10, 18, 40, 0.62);
-    color: rgba(241, 246, 253, 0.94);
-    padding: 0.7rem 0.78rem;
-    resize: vertical;
-    font: inherit;
-  }
-
-  .reflect-input:focus-visible {
-    outline: 2px solid rgba(133, 212, 255, 0.8);
-    outline-offset: 2px;
-  }
-
-  .char-count {
-    margin: 0;
-    text-align: right;
-    color: rgba(194, 213, 235, 0.72);
-    font-size: 0.72rem;
-  }
-
-  .checkin-error {
-    margin: 0;
-    color: rgba(255, 184, 184, 0.95);
-    font-size: 0.8rem;
-  }
-
-  .submit-checkin {
-    min-height: 2.8rem;
-    border-radius: var(--home-radius-lg);
-    border: none;
-    background: linear-gradient(135deg, var(--home-cta-start), var(--home-cta-end));
-    color: var(--home-cta-text);
-    font-weight: 700;
-    font-size: 0.95rem;
-  }
-
-  .submit-checkin:disabled {
-    opacity: 0.75;
-  }
-
-  .chapter-sheet {
-    position: relative;
+    grid-template-columns: 18rem minmax(0, 1fr);
     overflow: hidden;
-    border-radius: 1.2rem;
-    border: 1px solid rgba(214, 190, 141, 0.2);
-    padding: 1rem;
-    display: grid;
-    gap: 0.75rem;
     background:
-      linear-gradient(160deg, rgba(21, 25, 42, 0.9), rgba(10, 14, 24, 0.94)),
-      radial-gradient(circle at top center, rgba(214, 190, 141, 0.16), transparent 52%);
+      radial-gradient(circle at 78% 12%, rgba(123, 77, 255, 0.24), transparent 24rem),
+      radial-gradient(circle at 45% 42%, rgba(74, 244, 255, 0.08), transparent 24rem),
+      linear-gradient(135deg, #080719, #070a19 52%, #050714);
+    color: rgba(249, 247, 255, 0.95);
+    font-family: var(--font-body, 'Manrope', system-ui, sans-serif);
   }
 
-  .chapter-sheet__halo {
+  .ambient {
     position: absolute;
-    inset: -10% 8% auto 8%;
-    height: 8rem;
-    border-radius: 999px;
-    filter: blur(24px);
-    opacity: 0.55;
-    background: rgba(214, 190, 141, 0.24);
+    inset: 0;
     pointer-events: none;
+    background-image:
+      radial-gradient(circle, rgba(255, 255, 255, 0.52) 0 1px, transparent 1.6px),
+      radial-gradient(circle, rgba(98, 232, 255, 0.7) 0 1px, transparent 1.5px),
+      radial-gradient(circle, rgba(255, 92, 220, 0.62) 0 1px, transparent 1.5px);
+    background-position:
+      5% 8%,
+      68% 10%,
+      36% 70%;
+    background-size:
+      13rem 12rem,
+      17rem 15rem,
+      19rem 18rem;
+    opacity: 0.42;
   }
 
-  .chapter-sheet--care .chapter-sheet__halo {
-    background: rgba(132, 214, 179, 0.28);
-  }
-
-  .chapter-sheet--social .chapter-sheet__halo {
-    background: rgba(233, 162, 122, 0.28);
-  }
-
-  .chapter-sheet--mission .chapter-sheet__halo {
-    background: rgba(222, 186, 103, 0.28);
-  }
-
-  .chapter-sheet--play .chapter-sheet__halo {
-    background: rgba(124, 220, 224, 0.28);
-  }
-
-  .chapter-sheet--bond .chapter-sheet__halo {
-    background: rgba(214, 190, 141, 0.28);
-  }
-
-  .chapter-sheet__eyebrow,
-  .chapter-sheet h3,
-  .chapter-sheet__keepsake,
-  .chapter-sheet__body,
-  .chapter-sheet__actions {
+  .home-main {
     position: relative;
     z-index: 1;
+    min-width: 0;
+    padding: 1.5rem;
   }
 
-  .chapter-sheet__eyebrow {
-    margin: 0;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(224, 231, 255, 0.72);
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.35rem;
   }
 
-  .chapter-sheet h3 {
-    margin: 0;
-    font-family: var(--home-font-display);
-    font-size: 1.3rem;
-    line-height: 1.12;
-    color: rgba(249, 245, 233, 0.98);
-  }
-
-  .chapter-sheet__keepsake {
+  .search {
+    display: flex;
+    width: min(34rem, 100%);
+    min-height: 3.15rem;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid rgba(170, 151, 255, 0.18);
     border-radius: 1rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background: rgba(255, 255, 255, 0.04);
-    padding: 0.8rem 0.9rem;
-    display: grid;
-    gap: 0.16rem;
+    background: rgba(8, 10, 27, 0.58);
+    padding: 0 1rem;
+    color: rgba(231, 229, 246, 0.58);
+    backdrop-filter: blur(22px);
   }
 
-  .chapter-sheet__keepsake span {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(224, 231, 255, 0.68);
+  .search input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: white;
+    font: inherit;
+    outline: 0;
   }
 
-  .chapter-sheet__keepsake strong {
-    color: rgba(248, 241, 227, 0.98);
-    font-size: 0.95rem;
+  .search input::placeholder {
+    color: rgba(231, 229, 246, 0.48);
   }
 
-  .chapter-sheet__body {
-    margin: 0;
-    color: rgba(228, 236, 247, 0.9);
-    line-height: 1.55;
-    font-size: 0.94rem;
+  .search span {
+    color: rgba(231, 229, 246, 0.58);
+    font-size: 0.78rem;
   }
 
-  .chapter-sheet__actions {
-    display: grid;
-    gap: 0.65rem;
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
   }
 
-  .chapter-sheet__action {
-    min-height: 2.9rem;
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(243, 247, 253, 0.95);
-    text-decoration: none;
+  .currency,
+  .icon-action,
+  .avatar-action {
     display: inline-flex;
+    min-height: 2.75rem;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    border: 1px solid rgba(170, 151, 255, 0.18);
+    background: rgba(13, 14, 34, 0.62);
+    color: white;
+    text-decoration: none;
+    backdrop-filter: blur(18px);
   }
 
-  .chapter-sheet__action--primary {
-    background: linear-gradient(135deg, rgba(217, 189, 126, 0.92), rgba(176, 130, 70, 0.94));
-    color: rgba(23, 17, 10, 0.96);
-    border-color: transparent;
+  .currency {
+    gap: 0.5rem;
+    border-radius: 0.95rem;
+    padding: 0 1rem;
+    font-weight: 800;
   }
 
-  @media (min-width: 720px) {
-    .home-secondary {
-      width: min(34rem, calc(100vw - 2rem));
-      margin: 0 auto;
-      padding-left: 0;
-      padding-right: 0;
+  .currency :global(svg) {
+    color: #b78cff;
+    fill: currentColor;
+  }
+
+  .icon-action,
+  .avatar-action {
+    width: 2.75rem;
+    border-radius: 50%;
+  }
+
+  .avatar-action {
+    background:
+      radial-gradient(circle at 42% 32%, #ffd36e, transparent 16%),
+      linear-gradient(135deg, #a75cff, #ff6fb8);
+    font-weight: 900;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .center-stack,
+  .right-stack {
+    display: grid;
+    gap: 1.2rem;
+    min-width: 0;
+  }
+
+  .glass-section {
+    border: 1px solid rgba(166, 145, 255, 0.18);
+    border-radius: 1.15rem;
+    background: rgba(12, 13, 32, 0.66);
+    padding: 1rem;
+    backdrop-filter: blur(22px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 22px 60px rgba(3, 5, 18, 0.26);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .section-header h2 {
+    margin: 0;
+    color: white;
+    font-size: 1.02rem;
+  }
+
+  .section-header a {
+    color: rgba(226, 222, 246, 0.7);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .companion-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
+
+  .summon-card {
+    display: grid;
+    min-height: 13.4rem;
+    place-items: center;
+    align-content: center;
+    gap: 0.35rem;
+    border: 1px solid rgba(166, 145, 255, 0.18);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.035);
+    color: white;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .summon-card span {
+    display: grid;
+    width: 4rem;
+    height: 4rem;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(244, 241, 255, 0.9);
+  }
+
+  .summon-card strong {
+    margin-top: 0.5rem;
+    font-size: 0.92rem;
+  }
+
+  .summon-card small {
+    color: rgba(224, 220, 244, 0.72);
+    font-size: 0.78rem;
+  }
+
+  .lower-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .card-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .game-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .world-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 1380px) {
+    .content-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
 
-    .prompt-row {
+    .right-stack {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .fantasy-home {
+      grid-template-columns: 1fr;
+    }
+
+    .home-main {
+      padding: 1rem;
+    }
+
+    .companion-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .lower-grid,
+    .right-stack {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .topbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .top-actions {
+      justify-content: space-between;
+    }
+
+    .companion-grid,
+    .game-grid,
+    .world-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 520px) {
+    .companion-grid,
+    .game-grid,
+    .world-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
