@@ -33,6 +33,63 @@
     data.mission.cost?.energy ? `${data.mission.cost.energy} Spark to begin` : null
   ].filter((entry): entry is string => Boolean(entry));
 
+  const threadLabel =
+    data.mission.type === 'identity'
+      ? 'Identity thread'
+      : data.mission.type === 'world'
+        ? 'World thread'
+        : data.mission.type === 'action'
+          ? 'Action thread'
+          : 'Companion thread';
+
+  const threadMeaning =
+    data.mission.type === 'identity'
+      ? 'This thread should help the companion understand you more clearly.'
+      : data.mission.type === 'world'
+        ? 'This thread should leave a mark on the sanctuary or the shared world around the bond.'
+        : data.mission.type === 'action'
+          ? 'This thread should turn care into motion without making closeness feel like work.'
+          : 'This thread can still become meaningful if you enter it deliberately.';
+
+  const readinessLabel = canStart
+    ? data.activeSession
+      ? 'Already underway'
+      : 'Ready to begin'
+    : currentLevel < minLevel
+      ? 'Journey needs time'
+      : 'Spark needs recovery';
+
+  $: commitmentSignals = [
+    {
+      label: 'Thread type',
+      title: threadLabel,
+      body: threadMeaning
+    },
+    {
+      label: 'Companion read',
+      title: data.activeCompanion ? `${data.activeCompanion.name} is part of this` : 'No companion selected',
+      body: data.missionChapterFrame.body
+    },
+    {
+      label: 'Readiness',
+      title: readinessLabel,
+      body: canStart
+        ? 'You have enough Journey and Spark for this thread.'
+        : requirementRows.length > 0
+          ? requirementRows.join(' · ')
+          : 'This thread is waiting for the right moment.'
+    },
+    {
+      label: 'Memory result',
+      title: data.completedSession ? 'Already remembered' : data.activeSession ? 'In progress' : 'Not started yet',
+      body: data.completedSession
+        ? 'This mission has already become part of your recent relationship history.'
+        : data.activeSession
+          ? 'Complete it when the action feels landed enough to become a memory.'
+          : 'Starting this mission creates a thread that can later appear in the Journal.'
+    }
+  ];
+
   const refresh = async () => {
     await goto(window.location.pathname, {
       invalidateAll: true,
@@ -124,6 +181,26 @@
         {#if data.missionChapterFrame.styleVoice}
           <p class="chapter-style-voice">{data.missionChapterFrame.styleVoice}</p>
         {/if}
+      </GlassCard>
+
+      <GlassCard class="detail-card detail-card--commitment">
+        <div class="chapter-head">
+          <div>
+            <p class="eyebrow">Before you begin</p>
+            <h2>Commit to the thread, not just the reward</h2>
+          </div>
+          <EmotionalChip tone={canStart ? 'cool' : 'muted'}>{readinessLabel}</EmotionalChip>
+        </div>
+
+        <div class="commitment-grid">
+          {#each commitmentSignals as signal}
+            <article class="commitment-card">
+              <span>{signal.label}</span>
+              <strong>{signal.title}</strong>
+              <p>{signal.body}</p>
+            </article>
+          {/each}
+        </div>
       </GlassCard>
 
       <GlassCard class="detail-card">
@@ -254,6 +331,49 @@
     line-height: 1.45;
   }
 
+  .detail-card--commitment {
+    border-color: rgba(126, 194, 185, 0.14);
+    background:
+      linear-gradient(180deg, rgba(17, 30, 32, 0.74), rgba(12, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(126, 194, 185, 0.12), transparent 56%);
+  }
+
+  .commitment-grid {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .commitment-card {
+    min-height: 7.8rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(126, 194, 185, 0.14);
+    background: rgba(126, 194, 185, 0.07);
+    padding: 0.85rem;
+    display: grid;
+    align-content: start;
+    gap: 0.24rem;
+  }
+
+  .commitment-card span {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(147, 222, 210, 0.78);
+  }
+
+  .commitment-card strong {
+    color: rgba(248, 241, 235, 0.98);
+    font-size: 0.9rem;
+    line-height: 1.28;
+  }
+
+  .commitment-card p {
+    color: rgba(219, 208, 196, 0.82);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
   .hero-meta {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -374,6 +494,10 @@
   @media (min-width: 920px) {
     .detail-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commitment-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .actions {
