@@ -232,7 +232,7 @@
 
         <div class="mt-3 grid sm:grid-cols-2 gap-2">
           <label class="flex items-center justify-between py-2"
-            ><span>Show level</span><input type="checkbox" bind:checked={showLevel} /></label
+            ><span>Show journey level</span><input type="checkbox" bind:checked={showLevel} /></label
           >
           <label class="flex items-center justify-between py-2"
             ><span>Show shards</span><input type="checkbox" bind:checked={showShards} /></label
@@ -241,11 +241,11 @@
             ><span>Show location</span><input type="checkbox" bind:checked={showLocation} /></label
           >
           <label class="flex items-center justify-between py-2"
-            ><span>Show achievements</span
+            ><span>Show milestones</span
             ><input type="checkbox" bind:checked={showAchievements} /></label
           >
           <label class="flex items-center justify-between py-2"
-            ><span>Show feed</span><input type="checkbox" bind:checked={showFeed} /></label
+            ><span>Show activity thread</span><input type="checkbox" bind:checked={showFeed} /></label
           >
           <label class="flex items-center justify-between py-2"
             ><span>Show join date</span><input type="checkbox" bind:checked={showJoined} /></label

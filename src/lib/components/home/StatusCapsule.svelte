@@ -65,7 +65,7 @@ $: xpPercent =
   <div class="status-line">
   <div class="stat level-stat">
     <strong class="value">
-      <span class="value-label">Level</span>
+      <span class="value-label">Journey</span>
       <span class="value-number">{level ?? '—'}</span>
     </strong>
   </div>
@@ -86,7 +86,7 @@ $: xpPercent =
 
   <div class="status-line">
     <div class="stat">
-      <span class="label">Energy</span>
+      <span class="label">Spark</span>
       <strong class="value">
         {#if typeof energy === 'number' && typeof energyMax === 'number'}
           {energy}/{energyMax}
@@ -96,7 +96,7 @@ $: xpPercent =
       </strong>
     </div>
     <div class="metric">
-      <span class="metric-label">Charge</span>
+      <span class="metric-label">Momentum</span>
       <div class="meter" role="progressbar" aria-valuenow={energyPercent ?? undefined} aria-valuemin="0" aria-valuemax="100">
         <span style={`width:${energyPercent ?? 0}%`}></span>
       </div>

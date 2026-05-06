@@ -22,17 +22,17 @@
     typeof xp === 'number' && typeof xpNext === 'number' && xpNext > 0
       ? Math.min(100, Math.round((xp / xpNext) * 100))
       : 0;
-  $: energyLabel =
+  $: sparkLabel =
     typeof energy === 'number' && typeof energyMax === 'number'
       ? `${energy}/${energyMax}`
       : fmt(energy);
 </script>
 
-<Panel title="Player stats" className="profile-panel profile-stats panel-glass">
+<Panel title="Journey pulse" className="profile-panel profile-stats panel-glass">
   <div class="stat-grid">
     {#if showLevel}
       <article>
-        <p class="label">Level</p>
+        <p class="label">Journey</p>
         <p class="value">{fmt(level)}</p>
       </article>
       <article>
@@ -44,8 +44,8 @@
       </article>
     {/if}
     <article>
-      <p class="label">Energy</p>
-      <p class="value">{energyLabel}</p>
+      <p class="label">Spark</p>
+      <p class="value">{sparkLabel}</p>
     </article>
     {#if showShards}
       <article>

@@ -74,8 +74,8 @@
 
 <SanctuaryPageFrame
   eyebrow="Collection"
-  title="Inventory"
-  subtitle="Keep your owned cosmetics, boosts, and unlocks visible without breaking the sanctuary flow."
+  title="Keepsakes"
+  subtitle="Keep companion rewards, cosmetics, boosts, and expression pieces visible without breaking the sanctuary flow."
 >
   <svelte:fragment slot="actions">
     <EmotionalChip tone="warm">{items.length + companionRewards.length} owned</EmotionalChip>
@@ -89,11 +89,11 @@
         <h2>{items.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + companionRewards.length} keepsakes in your vault`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
-            Inventory could not be loaded right now. Your owned items are still safe.
+            Keepsakes could not be loaded right now. Your owned items are still safe.
           {:else if items.length === 0}
             Visit the marketplace when you want new cosmetics, utility items, or bundle unlocks.
           {:else}
-            Your inventory should feel like a living record of what you have gathered for play, care, and self-expression.
+            Your keepsakes should feel like a living record of what you have gathered for play, care, and self-expression.
           {/if}
         </p>
       </div>
@@ -120,15 +120,15 @@
       </div>
 
       <div class="inventory-quicklinks" aria-label="Inventory actions">
-        <a class="quicklink quicklink--primary" href="/app/shop">Open marketplace</a>
+        <a class="quicklink quicklink--primary" href="/app/shop">Open atelier</a>
         <a class="quicklink" href="/app/wallet">Check wallet</a>
       </div>
     </section>
 
     {#if error}
       <section class="inventory-state inventory-state--error" aria-live="polite">
-        <h3>Inventory unavailable</h3>
-        <p>Failed to load inventory: {error}</p>
+        <h3>Keepsakes unavailable</h3>
+        <p>Failed to load keepsakes: {error}</p>
       </section>
     {:else if !items.length && !companionRewards.length}
       <section class="inventory-state" aria-live="polite">

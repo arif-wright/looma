@@ -66,10 +66,10 @@ export let gameId: string | null = null;
   };
 </script>
 
-<section class="badge-strip" aria-label="Recent achievements" data-testid="achievement-badge-strip">
+<section class="badge-strip" aria-label="Recent milestones" data-testid="achievement-badge-strip">
   <header>
-    <h2>Achievements</h2>
-    <button type="button" on:click={() => openPanel()} aria-label="View all achievements">
+    <h2>Milestones</h2>
+    <button type="button" on:click={() => openPanel()} aria-label="View all milestones">
       View all
     </button>
   </header>

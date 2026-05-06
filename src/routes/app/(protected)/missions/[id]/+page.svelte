@@ -22,15 +22,15 @@
       parts.push(`+${data.mission.xp_reward} XP`);
     }
     if (typeof data.mission.energy_reward === 'number' && data.mission.energy_reward > 0) {
-      parts.push(`+${data.mission.energy_reward} momentum`);
+      parts.push(`+${data.mission.energy_reward} Spark`);
     }
     return parts.join(' · ') || 'No reward listed';
   };
 
   const requirementRows = [
-    minLevel > 0 ? `Level ${minLevel}+` : null,
-    minEnergy > 0 ? `${minEnergy}+ momentum` : null,
-    data.mission.cost?.energy ? `${data.mission.cost.energy} momentum to begin` : null
+    minLevel > 0 ? `Journey ${minLevel}+` : null,
+    minEnergy > 0 ? `${minEnergy}+ Spark` : null,
+    data.mission.cost?.energy ? `${data.mission.cost.energy} Spark to begin` : null
   ].filter((entry): entry is string => Boolean(entry));
 
   const refresh = async () => {
@@ -169,8 +169,8 @@
           <p class="eyebrow">What this thread asks</p>
           <h2>Requirements</h2>
           <ul class="bullet-list">
-            <li>Current level: {currentLevel}</li>
-            <li>Current energy: {currentEnergy}</li>
+            <li>Current journey: {currentLevel}</li>
+            <li>Current Spark: {currentEnergy}</li>
             <li>{requirementRows.length > 0 ? requirementRows.join(' · ') : 'No requirements beyond showing up.'}</li>
           </ul>
         </GlassCard>

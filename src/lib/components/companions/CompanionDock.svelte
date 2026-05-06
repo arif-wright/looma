@@ -29,7 +29,7 @@
   const moodLine = () => {
     if (!companion) return 'Choose a companion to travel beside you.';
     const label = effective?.moodLabel ?? 'Steady';
-    const energy = typeof effective?.energy === 'number' ? `Energy ${Math.round(effective.energy)}%` : null;
+    const energy = typeof effective?.energy === 'number' ? `Spark ${Math.round(effective.energy)}%` : null;
     return energy ? `${label} · ${energy}` : label;
   };
 

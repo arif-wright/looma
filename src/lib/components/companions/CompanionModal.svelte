@@ -67,7 +67,7 @@
   type OptionalMood = { label: string; expiresAt: string };
 
   const CARE_ACTIONS: Array<{ key: CareAction; label: string; effect: string; description: string }> = [
-    { key: 'feed', label: 'Feed', effect: 'Energy up', description: 'A small refill and a softer bond.' },
+    { key: 'feed', label: 'Feed', effect: 'Spark up', description: 'A small refill and a softer bond.' },
     { key: 'play', label: 'Play', effect: 'Trust up', description: 'Shared motion builds closeness.' },
     { key: 'groom', label: 'Groom', effect: 'Calm reset', description: 'A quiet routine to settle the day.' }
   ];
@@ -723,7 +723,7 @@
         </div>
       </article>
       <article>
-        <header>Energy</header>
+        <header>Spark</header>
         <div class="meter" role="progressbar" aria-valuenow={pct(effective?.energy ?? companion.energy)} aria-valuemin="0" aria-valuemax="100">
           <span style={`width:${pct(effective?.energy ?? companion.energy)}%`}></span>
         </div>

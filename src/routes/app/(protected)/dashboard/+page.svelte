@@ -78,7 +78,7 @@
           <h2>{activeCompanion?.name ?? 'No active companion yet'}</h2>
           <p class="support-copy">
             {#if activeCompanion}
-              Mood: {activeCompanion.mood ?? 'steady'} · Energy: {activeCompanion.energy ?? 0}
+              Mood: {activeCompanion.mood ?? 'steady'} · Spark: {activeCompanion.energy ?? 0}
             {:else}
               Start in Sanctuary to choose or wake your companion.
             {/if}

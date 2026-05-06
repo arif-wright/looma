@@ -52,7 +52,7 @@
 
 <section class="telemetry" aria-live="polite">
   <div class="telemetry__level text-sm text-white/70">
-    Level {Number.isFinite(level ?? NaN) ? level : '—'}
+    Journey {Number.isFinite(level ?? NaN) ? level : '—'}
   </div>
   <div class="telemetry__xp">
     <span class="telemetry__label">Bond XP</span>

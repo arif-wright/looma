@@ -50,8 +50,8 @@
     },
     {
       author: 'Kai Hoshi',
-      subtitle: 'Energy tip',
-      body: 'Took a short resonance walk. Energy popped from 42 to 54. Try it before missions!',
+      subtitle: 'Spark tip',
+      body: 'Took a short resonance walk. Spark rose from 42 to 54. Try it before missions!',
       timestamp: '1 hour ago'
     }
   ];
@@ -181,7 +181,7 @@
           <div class="companion">
             <div class="companion__card">
               <h3>Nova</h3>
-              <p>Energy synced. Mood: serene. Ready for a shared mission.</p>
+              <p>Spark synced. Mood: serene. Ready for a shared mission.</p>
             </div>
             <button type="button" class="companion__cta" on:click={() => handleShortcut('/app/companions')}>
               Adopt a companion

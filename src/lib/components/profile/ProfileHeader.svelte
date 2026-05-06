@@ -408,7 +408,7 @@ function openReport() {
       <nav class="tabs" aria-label="Profile sections">
         <a class="tab tab-active" href="#overview">Overview</a>
         <a class="tab" href="#companions">Companions</a>
-        <a class="tab" href="#achievements">Achievements</a>
+        <a class="tab" href="#achievements">Milestones</a>
         <a class="tab" href="#activity">Activity</a>
       </nav>
     </div>

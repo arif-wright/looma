@@ -13,12 +13,12 @@
   const formatReward = (xp: number | null | undefined, energy: number | null | undefined) => {
     const parts = [];
     if (typeof xp === 'number' && xp > 0) parts.push(`+${xp} XP`);
-    if (typeof energy === 'number' && energy > 0) parts.push(`+${energy} momentum`);
+    if (typeof energy === 'number' && energy > 0) parts.push(`+${energy} Spark`);
     return parts.join(' · ') || 'No reward listed';
   };
 
   const formatCost = (energy: number | null | undefined) =>
-    typeof energy === 'number' && energy > 0 ? `${energy} momentum` : 'No momentum cost';
+    typeof energy === 'number' && energy > 0 ? `${energy} Spark` : 'No Spark cost';
 
   const meetsRequirements = (mission: PageData['availableMissions'][number]) => {
     const level = data.stats?.level ?? 0;
@@ -32,8 +32,8 @@
     const minLevel = mission.minLevel ?? mission.min_level ?? mission.requirements?.minLevel ?? null;
     const minEnergy = mission.requirements?.minEnergy ?? null;
     const notes = [];
-    if (typeof minLevel === 'number' && minLevel > 0) notes.push(`Level ${minLevel}+`);
-    if (typeof minEnergy === 'number' && minEnergy > 0) notes.push(`${minEnergy}+ energy`);
+    if (typeof minLevel === 'number' && minLevel > 0) notes.push(`Journey ${minLevel}+`);
+    if (typeof minEnergy === 'number' && minEnergy > 0) notes.push(`${minEnergy}+ Spark`);
     return notes.join(' · ') || 'Ready now';
   };
 
@@ -184,7 +184,7 @@
           <div class="panel-head">
             <div>
               <p class="eyebrow">Completed recently</p>
-              <h2>Momentum you already built</h2>
+              <h2>Spark you already built</h2>
             </div>
           </div>
 

@@ -208,7 +208,7 @@ let editOpen = false;
           <h2>{profile.display_name ?? profile.handle ?? 'Your Looma identity'}</h2>
           <p>
             Your profile should feel like a living companion space, not just a bio card. Keep your bond, reflections,
-            and current energy visible.
+            and current Spark visible.
           </p>
           {#if subscriptionActive && premiumSanctuaryStyle}
             <div class="profile-premium-style">
@@ -236,9 +236,9 @@ let editOpen = false;
           </article>
 
           <article class="pulse-tile">
-            <span class="pulse-tile__label">Current level</span>
-            <strong>Level {levelValue}</strong>
-            <span>{energyValue == null ? 'Energy hidden' : `${energyValue} energy available`}</span>
+            <span class="pulse-tile__label">Journey pulse</span>
+            <strong>Journey {levelValue}</strong>
+            <span>{energyValue == null ? 'Spark hidden' : `${energyValue} Spark available`}</span>
             <p>
               {premiumSanctuaryStyle === 'moon_glass'
                 ? 'Shape your presence through clearer rituals, focused missions, and quieter daily check-ins.'
@@ -254,7 +254,7 @@ let editOpen = false;
 
           <article class="pulse-tile">
             <span class="pulse-tile__label">Latest milestone</span>
-            <strong>{latestAchievement?.title ?? 'No recent achievements yet'}</strong>
+            <strong>{latestAchievement?.title ?? 'No recent milestones yet'}</strong>
             <span>{latestAchievement?.when_label ?? 'Play, connect, and care to unlock your first milestone.'}</span>
             <p>Your visible progress helps the whole profile feel inhabited.</p>
           </article>
@@ -264,7 +264,7 @@ let editOpen = false;
           <a class="pulse-action pulse-action--primary" href="/app/companions">Open companions</a>
           <a class="pulse-action" href="/app/memory">Open journal</a>
           <a class="pulse-action" href="/app/home">Go to sanctuary</a>
-          <a class="pulse-action" href="/app/settings">Settings</a>
+          <a class="pulse-action" href="/app/preferences">Preferences</a>
         </div>
 
         {#if keepsakeShelfItems.length > 0}

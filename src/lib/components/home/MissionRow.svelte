@@ -28,7 +28,7 @@
   const missionTypeClass = (type: MissionItem['type']) =>
     type === 'identity' ? 'type-identity' : type === 'world' ? 'type-world' : 'type-action';
   const missionTypeHint = (type: MissionItem['type']) =>
-    type === 'identity' ? 'No cost' : type === 'world' ? 'Usually no cost' : 'Energy cost';
+    type === 'identity' ? 'No Spark cost' : type === 'world' ? 'Usually no Spark cost' : 'Spark cost';
   const actionCost = (mission: MissionItem) =>
     mission.type === 'action' ? Math.max(0, Math.floor(mission.cost?.energy ?? 0)) : 0;
   const missionPeriod = (mission: MissionItem) => {
@@ -62,7 +62,7 @@
         <span>+{xpBoost}% XP</span>
       {/if}
       {#if missionEnergyBonus > 0}
-        <span>+{missionEnergyBonus} mission energy cap</span>
+        <span>+{missionEnergyBonus} mission Spark cap</span>
       {/if}
     </p>
   {/if}
@@ -91,18 +91,18 @@
             <p class="summary">{mission.summary}</p>
           {/if}
           {#if mission.type === 'action'}
-            <p class="action-cost">Energy cost: <strong>{actionCost(mission)}</strong></p>
+            <p class="action-cost">Spark cost: <strong>{actionCost(mission)}</strong></p>
             {#if typeof currentEnergy === 'number'}
-              <p class="action-energy-state">Available energy: {currentEnergy}</p>
+              <p class="action-energy-state">Available Spark: {currentEnergy}</p>
             {/if}
             {#if !canStartMission(mission)}
-              <p class="action-blocked" role="alert">Not enough energy to start.</p>
+              <p class="action-blocked" role="alert">Not enough Spark to start.</p>
             {/if}
           {/if}
           <dl class="rewards">
             {#if mission.energy_reward !== undefined && mission.energy_reward !== null}
               <div>
-                <dt>Energy</dt>
+                <dt>Spark</dt>
                 <dd>{mission.energy_reward}</dd>
               </div>
             {/if}
@@ -114,11 +114,11 @@
             {/if}
           </dl>
           {#if missionEnergyBonus > 0}
-            <p class="mission-note">Companion raises your mission energy cap by {missionEnergyBonus}.</p>
+            <p class="mission-note">Companion raises your mission Spark cap by {missionEnergyBonus}.</p>
           {/if}
           {#if mission.type === 'action'}
             <p class="mission-note mission-note--strong">
-              Expected rewards: +{mission.energy_reward ?? 0} energy, +{mission.xp_reward ?? 0} XP.
+              Expected rewards: +{mission.energy_reward ?? 0} Spark, +{mission.xp_reward ?? 0} XP.
             </p>
           {/if}
           {#if activeSessionByMission[mission.id]}

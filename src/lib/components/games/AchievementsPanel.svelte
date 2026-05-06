@@ -280,7 +280,7 @@ export let requestId: number | null = null;
     >
       <header class="panel-header">
         <div class="panel-titles">
-          <h2 id="achievements-panel-title">Achievements</h2>
+          <h2 id="achievements-panel-title">Milestones</h2>
           <p class="panel-subtitle">Total points · {points}</p>
         </div>
         <button type="button" class="close-button" on:click={closePanel} data-testid="achievements-close">
@@ -288,7 +288,7 @@ export let requestId: number | null = null;
         </button>
       </header>
 
-      <nav class="panel-tabs" aria-label="Achievements scope">
+      <nav class="panel-tabs" aria-label="Milestones scope">
         <button
           type="button"
           class:active={activeTab === 'all'}

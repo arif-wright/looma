@@ -28,7 +28,7 @@
 
 <section class="highlights">
   <Panel className="panel-glass highlight-card">
-    <p class="label">Pinned</p>
+    <p class="label">Pinned memory</p>
     {#if pinnedPost}
       <h3>{pinnedPost.body || 'Pinned post'}</h3>
       <p class="meta">{formatDate(pinnedPost.created_at)}</p>
@@ -37,30 +37,30 @@
         href={profileHandle ? `/app/u/${profileHandle}?post=${pinnedPost.id}` : '#'}
         aria-label="Open pinned post"
       >
-        View post
+        View memory
       </a>
     {:else}
-      <p class="empty">Add a pinned update to greet visitors.</p>
+      <p class="empty">Add a pinned memory to greet visitors.</p>
     {/if}
   </Panel>
 
   <Panel className="panel-glass highlight-card">
-    <p class="label">Mood</p>
+    <p class="label">Companion mood</p>
     {#if companion}
       <h3>{companion.name}</h3>
       <p class="meta">{companion.mood}</p>
     {:else}
-      <p class="empty">No featured companion moods yet.</p>
+      <p class="empty">No featured companion mood yet.</p>
     {/if}
   </Panel>
 
   <Panel className="panel-glass highlight-card">
-    <p class="label">Latest achievement</p>
+    <p class="label">Latest milestone</p>
     {#if latestAchievement}
       <h3>{latestAchievement.label}</h3>
       <p class="meta">{latestAchievement.when}</p>
     {:else}
-      <p class="empty">Achievements will appear here soon.</p>
+      <p class="empty">Milestones will appear here soon.</p>
     {/if}
   </Panel>
 </section>

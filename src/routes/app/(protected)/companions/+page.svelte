@@ -623,7 +623,7 @@
     ? needsAttention(activeCompanion)
       ? 'Needs a gentle check-in'
       : (activeEffective?.energy ?? activeCompanion.energy ?? 0) <= LOW_ENERGY_THRESHOLD
-        ? 'Energy is running low'
+        ? 'Spark is running low'
         : 'Bond is steady'
     : 'Waiting for your first companion';
   $: activeCareCadence = activeCompanion
@@ -1112,7 +1112,7 @@
             </div>
           </div>
           <div class="meter-row">
-            <div class="meter-row__label"><span>Energy</span><span>{activeEffective?.energy ?? activeCompanion.energy}</span></div>
+            <div class="meter-row__label"><span>Spark</span><span>{activeEffective?.energy ?? activeCompanion.energy}</span></div>
             <div class="meter-track meter-track--energy">
               <span
                 class="meter-fill"
@@ -1266,7 +1266,7 @@
         <select bind:value={filters.sort}>
           <option value="bond_desc">Bond level</option>
           <option value="recent_interaction">Recently interacted</option>
-          <option value="energy_desc">Energy</option>
+          <option value="energy_desc">Spark</option>
           <option value="name_asc">Name</option>
         </select>
       </label>

@@ -113,7 +113,7 @@
         </div>
       </div>
       <div class="metric">
-        <span>Energy</span>
+        <span>Spark</span>
         <div class="meter" role="progressbar" aria-valuenow={pct(companion.energy)} aria-valuemin="0" aria-valuemax="100">
           <span class="fill warn" style={`width:${pct(companion.energy)}%`}></span>
         </div>

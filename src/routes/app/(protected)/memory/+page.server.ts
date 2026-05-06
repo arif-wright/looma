@@ -272,9 +272,9 @@ const buildRelationshipReasons = (args: {
   const completedGames = gameRows.length;
 
   if (energy <= 20) {
-    reasons.push('Energy is low, so this companion is reading as more fragile and quiet.');
+    reasons.push('Spark is low, so this companion is reading as more fragile and quiet.');
   } else if (energy >= 70) {
-    reasons.push('Energy is high, which supports a brighter and more responsive presence.');
+    reasons.push('Spark is high, which supports a brighter and more responsive presence.');
   }
 
   if (trust >= 70 && affection >= 70) {

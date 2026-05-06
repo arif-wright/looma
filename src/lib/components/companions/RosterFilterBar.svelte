@@ -58,7 +58,7 @@
     <select value={filters.sort} on:change={(event) => update({ sort: (event.currentTarget as HTMLSelectElement).value as RosterFilterState['sort'] })}>
       <option value="bond_desc">Bond level</option>
       <option value="newest">Newest</option>
-      <option value="energy">Energy</option>
+      <option value="energy">Spark</option>
     </select>
   </label>
 </div>

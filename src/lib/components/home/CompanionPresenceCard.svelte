@@ -162,7 +162,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
 
   {#if companion}
     <div class="card-body">
-      <div class="home-avatar" aria-label={`Energy ${energyPct}`}>
+      <div class="home-avatar" aria-label={`Spark ${energyPct}`}>
         <div class="home-avatar__meter">
           <svg class="home-avatar__stroke" viewBox="0 0 100 100" aria-hidden="true">
             <circle class="home-avatar__track" cx="50" cy="50" r={RING_R} />
@@ -179,7 +179,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
             <img src={portraitSrc ?? companion.avatar_url ?? DEFAULT_AVATAR} alt="" class="home-avatar__img" aria-hidden="true" />
           </div>
         </div>
-        <span class="home-avatar__label"><span class="home-avatar__label-pill">Energy {energyPct}%</span></span>
+        <span class="home-avatar__label"><span class="home-avatar__label-pill">Spark {energyPct}%</span></span>
       </div>
       <div class="stat-block">
         <div>

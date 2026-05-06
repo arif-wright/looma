@@ -31,7 +31,7 @@
 
     <div class="stats">
       <div><span>Link</span><strong>{status}</strong></div>
-      <div><span>Energy</span><strong>{Math.round(energy)}</strong></div>
+      <div><span>Spark</span><strong>{Math.round(energy)}</strong></div>
     </div>
 
     {#if eraTitle}
@@ -46,7 +46,7 @@
 
     <div class="actions">
       <a class="cta cta--ghost" href={companionId ? `/app/memory?companion=${encodeURIComponent(companionId)}` : '/app/memory'}>Open journal</a>
-      <a class="cta" href="/app/companions">Visit companion</a>
+      <a class="cta" href="/app/companions">Visit sanctuary</a>
     </div>
   </section>
 </BottomSheet>

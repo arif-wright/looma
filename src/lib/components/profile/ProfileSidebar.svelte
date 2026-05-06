@@ -27,7 +27,7 @@
 
 <aside class="profile-sticky space-y-4" aria-label="Profile summary">
   <section class="panel">
-    <h3 class="panel-title">{hidePrivate ? 'Companion' : 'Featured Companion'}</h3>
+    <h3 class="panel-title">{hidePrivate ? 'Companion' : 'Featured companion'}</h3>
     {#if companionHidden}
       <p class="text-sm text-white/60">Companion info hidden.</p>
     {:else if featuredCompanion}
@@ -67,7 +67,7 @@
           </div>
         </div>
         {#if isOwner && !hideCompanionActions}
-          <a class="btn-ghost w-full mt-3 text-center" href="/app/companions">Open Companion Panel</a>
+          <a class="btn-ghost w-full mt-3 text-center" href="/app/companions">Open companion sanctuary</a>
         {/if}
       {/if}
     {:else}
@@ -90,19 +90,19 @@
   {/if}
 
   <section class="panel">
-    <h3 class="panel-title">Recent Achievements</h3>
+    <h3 class="panel-title">Recent milestones</h3>
     {#if achList.length}
       <ul class="space-y-2">
         {#each achList.slice(0, 5) as achievement}
           <li class="flex items-center gap-3">
             <AchievementIcon
               icon={typeof achievement.icon === 'string' ? achievement.icon : 'trophy'}
-              label={achievement.title ?? achievement.name ?? 'Achievement'}
+              label={achievement.title ?? achievement.name ?? 'Milestone'}
               size={20}
               style="--achievement-icon-size:2.5rem"
             />
             <div class="min-w-0">
-              <div class="text-sm font-medium truncate">{achievement.title ?? achievement.name ?? 'Achievement'}</div>
+              <div class="text-sm font-medium truncate">{achievement.title ?? achievement.name ?? 'Milestone'}</div>
               {#if achievement.when_label}
                 <div class="text-xs text-white/60 truncate">{achievement.when_label}</div>
               {/if}
@@ -111,19 +111,19 @@
         {/each}
       </ul>
       {#if achList.length > 5}
-        <a href="/app/achievements" class="btn-ghost mt-3 w-full text-center">View all</a>
+        <a href="/app/achievements" class="btn-ghost mt-3 w-full text-center">View milestones</a>
       {/if}
     {:else}
-      <p class="text-sm text-white/60">No achievements yet—play missions to unlock your first badge.</p>
+      <p class="text-sm text-white/60">No milestones yet. Play, connect, and care to unlock the first one.</p>
     {/if}
   </section>
 
   {#if !hidePrivate}
     <section class="panel">
-      <h3 class="panel-title">Stats</h3>
+      <h3 class="panel-title">Journey</h3>
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="rounded-xl bg-white/5 p-3">
-          <div class="text-xs text-white/60">Level</div>
+          <div class="text-xs text-white/60">Journey</div>
           <div class="font-semibold">{formatNumber(stats?.level ?? profile?.level ?? 1)}</div>
         </div>
         <div class="rounded-xl bg-white/5 p-3">
@@ -138,11 +138,11 @@
     </section>
 
     <section class="panel">
-      <h3 class="panel-title">Quick Links</h3>
+      <h3 class="panel-title">Return paths</h3>
       <ul class="grid gap-2">
-        <li><a class="btn-ghost w-full text-left" href="/app/companions">My Companions</a></li>
-        <li><a class="btn-ghost w-full text-left" href="/app/achievements">Achievements</a></li>
-        <li><a class="btn-ghost w-full text-left" href="/app/settings">Settings</a></li>
+        <li><a class="btn-ghost w-full text-left" href="/app/companions">Companion sanctuary</a></li>
+        <li><a class="btn-ghost w-full text-left" href="/app/achievements">Milestones</a></li>
+        <li><a class="btn-ghost w-full text-left" href="/app/preferences">Preferences</a></li>
       </ul>
     </section>
   {/if}
