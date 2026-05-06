@@ -41,11 +41,22 @@
     { label: 'Profile', href: '/app/profile', icon: UserRound }
   ];
 
+  const backgroundByArchetype: Record<string, string> = {
+    echo: '/assets/echo_background.png',
+    guardian: '/assets/guardian_background.png',
+    muse: '/assets/muse_background.png',
+    root: '/assets/root_background.png',
+    spark: '/assets/spark_background.png'
+  };
+
   const normalizedMood = (value: string | null | undefined) => {
     const mood = value?.trim();
     if (!mood) return 'Happy';
     return mood.charAt(0).toUpperCase() + mood.slice(1);
   };
+
+  const normalizeArchetype = (value: string | null | undefined) =>
+    (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 
   $: activeCompanion = data.activeCompanion ?? null;
   $: playerName =
@@ -57,6 +68,8 @@
   $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
   $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
   $: companionName = activeCompanion?.name ?? 'Lumi';
+  $: companionArchetype = normalizeArchetype(activeCompanion?.species) || 'muse';
+  $: heroBackgroundUrl = backgroundByArchetype[companionArchetype] ?? '/assets/muse_background.png';
   $: companionBond = Math.min(
     100,
     Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
@@ -82,7 +95,7 @@
   <title>Looma | Home</title>
 </svelte:head>
 
-<div class="fantasy-home">
+<div class="fantasy-home" style={`--home-bg-image: url('${heroBackgroundUrl}')`}>
   <div class="ambient" aria-hidden="true"></div>
   <FantasySidebar
     playerName={playerName}
@@ -226,9 +239,38 @@
     font-family: var(--font-body, 'Manrope', system-ui, sans-serif);
   }
 
+  .fantasy-home::before,
+  .fantasy-home::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: clamp(40rem, 64vw, 48rem);
+    pointer-events: none;
+  }
+
+  .fantasy-home::before {
+    z-index: 0;
+    background-image: var(--home-bg-image);
+    background-position: center top;
+    background-size: cover;
+    opacity: 0.9;
+    transform: scale(1.01);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.78) 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.78) 70%, transparent 100%);
+  }
+
+  .fantasy-home::after {
+    z-index: 0;
+    background:
+      linear-gradient(90deg, rgba(5, 7, 20, 0.88), rgba(5, 7, 20, 0.24) 42%, rgba(5, 7, 20, 0.62)),
+      linear-gradient(180deg, rgba(5, 7, 20, 0.12), rgba(5, 7, 20, 0.3) 44%, rgba(5, 7, 20, 0.72) 78%, #050714 100%),
+      radial-gradient(circle at 62% 26%, rgba(94, 242, 255, 0.12), transparent 24rem);
+  }
+
   .ambient {
     position: absolute;
     inset: 0;
+    z-index: 1;
     pointer-events: none;
     background-image:
       radial-gradient(circle, rgba(255, 255, 255, 0.52) 0 1px, transparent 1.6px),
@@ -247,7 +289,7 @@
 
   .home-main {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     min-width: 0;
     padding: 1.5rem 1.35rem 1.35rem;
   }
@@ -489,6 +531,12 @@
         radial-gradient(circle at 50% 18%, rgba(123, 77, 255, 0.32), transparent 18rem),
         radial-gradient(circle at 50% 46%, rgba(74, 244, 255, 0.12), transparent 16rem),
         linear-gradient(180deg, #07081c, #050714 64%);
+    }
+
+    .fantasy-home::before {
+      background-position: center top;
+      height: 45rem;
+      opacity: 0.78;
     }
 
     :global(.fantasy-sidebar) {

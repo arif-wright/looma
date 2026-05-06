@@ -85,16 +85,17 @@
   .living-world {
     position: relative;
     min-height: clamp(22.7rem, 31vw, 26rem);
-    overflow: hidden;
-    border: 1px solid rgba(154, 130, 255, 0.18);
-    border-radius: 1.35rem;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
     background:
-      linear-gradient(90deg, rgba(5, 7, 20, 0.96), rgba(8, 10, 30, 0.35) 42%, rgba(6, 7, 21, 0.72)),
+      linear-gradient(90deg, rgba(5, 7, 20, 0.28), rgba(8, 10, 30, 0.08) 42%, rgba(6, 7, 21, 0.16)),
       radial-gradient(circle at 61% 52%, rgba(75, 244, 255, 0.28), transparent 24%),
       radial-gradient(circle at 77% 14%, rgba(141, 83, 255, 0.34), transparent 22%),
-      radial-gradient(circle at 24% 35%, rgba(75, 244, 255, 0.13), transparent 24%),
-      linear-gradient(150deg, #090b28, #15124b 44%, #070817);
-    box-shadow: 0 24px 80px rgba(2, 3, 14, 0.44);
+      radial-gradient(circle at 24% 35%, rgba(75, 244, 255, 0.13), transparent 24%);
+    background-position: center;
+    background-size: cover;
+    box-shadow: none;
     isolation: isolate;
   }
 
@@ -103,7 +104,7 @@
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(180deg, transparent 48%, rgba(3, 5, 15, 0.35) 72%, rgba(3, 5, 15, 0.86)),
+      linear-gradient(180deg, transparent 48%, rgba(3, 5, 15, 0.18) 72%, rgba(3, 5, 15, 0.34)),
       radial-gradient(circle at 60% 80%, rgba(94, 242, 255, 0.22), transparent 21%),
       linear-gradient(90deg, rgba(2, 4, 15, 0.5), transparent 28%, transparent 68%, rgba(2, 4, 15, 0.34));
     pointer-events: none;

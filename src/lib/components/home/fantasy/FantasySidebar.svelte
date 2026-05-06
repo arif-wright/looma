@@ -98,6 +98,7 @@
   .fantasy-sidebar {
     position: sticky;
     top: 0;
+    z-index: 2;
     display: flex;
     min-height: 100vh;
     flex-direction: column;
