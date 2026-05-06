@@ -95,6 +95,15 @@
     subscriptionBonus: number;
   };
 
+  type WeaveSignal = {
+    id: 'presence' | 'memory' | 'thread' | 'spark';
+    label: string;
+    title: string;
+    body: string;
+    href: string;
+    state: 'waiting' | 'alive' | 'steady' | 'low';
+  };
+
   export let feedPreview: FeedItem | null = null;
   export let journalHref = '/app/memory';
   export let journalSummary: string | null = null;
@@ -165,6 +174,45 @@
     (momentum?.subscriptionBonus ?? 0) > 0 && momentumBaseMax != null && momentumMax != null
       ? `Base ${momentumBaseMax} + Sanctuary+ ${momentum?.subscriptionBonus ?? 0}`
       : 'Core bonding stays free';
+  $: weaveSignals = [
+    {
+      id: 'presence',
+      label: 'Presence',
+      title: hasDailyCheckin ? `${companionName} heard from you today` : `${companionName} is waiting`,
+      body: hasDailyCheckin
+        ? 'Today has an anchor. The sanctuary can now respond from a fresher emotional state.'
+        : 'A short check-in will give the day its first emotional anchor.',
+      href: companionHref,
+      state: hasDailyCheckin ? 'alive' : 'waiting'
+    },
+    {
+      id: 'memory',
+      label: 'Memory',
+      title: journalMoments.length > 0 ? `${journalMoments.length} recent moments` : journalDate ? `Updated ${journalDate}` : 'Still gathering',
+      body: journalSummary ?? 'The journal becomes more useful as check-ins, missions, and companion replies accumulate.',
+      href: journalHref,
+      state: journalMoments.length > 0 || Boolean(journalSummary) ? 'alive' : 'steady'
+    },
+    {
+      id: 'thread',
+      label: 'Thread',
+      title: dailyArc?.title ?? missionTitle ?? 'Choose the next shared step',
+      body: dailyArc?.body ?? missionSummary ?? 'Pick a small action that gives the relationship shape without turning the sanctuary into a checklist.',
+      href: dailyArc?.steps.find((step) => !step.complete)?.href ?? missionHref,
+      state: dailyArc?.steps.every((step) => step.complete) ? 'steady' : 'alive'
+    },
+    {
+      id: 'spark',
+      label: 'Spark',
+      title: momentumLabel,
+      body: momentumCurrent != null && momentumMax != null && momentumCurrent < Math.max(12, momentumMax * 0.25)
+        ? 'Spark is low, so reward-bearing play should stay gentle. The relationship loop remains open.'
+        : 'Spark can power optional missions and reward loops while companion care stays available.',
+      href: '/app/wallet',
+      state: momentumCurrent != null && momentumMax != null && momentumCurrent < Math.max(12, momentumMax * 0.25) ? 'low' : 'steady'
+    }
+  ] satisfies WeaveSignal[];
+  $: weaveCompletion = weaveSignals.filter((signal) => signal.state === 'alive' || signal.state === 'steady').length;
   let revealSeenId = '';
   let revealDismissed = false;
 
@@ -206,6 +254,29 @@
       </div>
     </article>
   {/if}
+
+  <article class="focus-card focus-card--weave" aria-label="Companion weave">
+    <div class="weave-head">
+      <div>
+        <span class="focus-card__eyebrow">Companion weave</span>
+        <h2>{weaveCompletion}/4 relationship signals are online</h2>
+      </div>
+      <a class="focus-card__link" href={journalHref}>Trace</a>
+    </div>
+    <p>
+      Looma should make it obvious why the sanctuary feels the way it does. These are the live signals shaping {companionName}'s day.
+    </p>
+    <div class="weave-grid">
+      {#each weaveSignals as signal (signal.id)}
+        <a class={`weave-signal weave-signal--${signal.state}`} href={signal.href}>
+          <span class="weave-signal__status" aria-hidden="true"></span>
+          <span class="weave-signal__label">{signal.label}</span>
+          <strong>{signal.title}</strong>
+          <p>{signal.body}</p>
+        </a>
+      {/each}
+    </div>
+  </article>
 
   <article class="focus-card focus-card--ritual">
     <div class="focus-card__eyebrow">Daily sanctuary</div>
@@ -523,6 +594,112 @@
     background:
       linear-gradient(180deg, rgba(18, 27, 29, 0.94), rgba(10, 16, 18, 0.98)),
       radial-gradient(circle at top left, rgba(122, 194, 185, 0.14), transparent 52%);
+  }
+
+  .focus-card--weave {
+    border-color: rgba(134, 202, 193, 0.2);
+    background:
+      linear-gradient(180deg, rgba(18, 28, 29, 0.95), rgba(11, 16, 18, 0.98)),
+      radial-gradient(circle at top left, rgba(134, 202, 193, 0.16), transparent 50%),
+      radial-gradient(circle at bottom right, rgba(217, 189, 126, 0.1), transparent 48%);
+  }
+
+  .weave-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem;
+  }
+
+  .weave-head h2 {
+    margin-top: 0.45rem;
+  }
+
+  .weave-grid {
+    margin-top: 0.85rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .weave-signal {
+    position: relative;
+    min-height: 8.6rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 190, 139, 0.12);
+    background: rgba(217, 189, 126, 0.06);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.82rem 0.82rem 0.82rem 0.92rem;
+    display: grid;
+    align-content: start;
+    gap: 0.22rem;
+    overflow: hidden;
+  }
+
+  .weave-signal::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.18rem;
+    background: rgba(217, 189, 126, 0.58);
+  }
+
+  .weave-signal__status {
+    width: 0.52rem;
+    height: 0.52rem;
+    border-radius: 999px;
+    background: rgba(217, 189, 126, 0.78);
+    box-shadow: 0 0 18px rgba(217, 189, 126, 0.35);
+  }
+
+  .weave-signal__label {
+    margin-top: 0.15rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(217, 189, 126, 0.72);
+  }
+
+  .weave-signal strong {
+    font-size: 0.84rem;
+    line-height: 1.25;
+    color: rgba(250, 243, 229, 0.96);
+  }
+
+  .weave-signal p {
+    color: rgba(224, 216, 200, 0.76);
+    font-size: 0.78rem;
+  }
+
+  .weave-signal--alive {
+    border-color: rgba(124, 220, 196, 0.24);
+    background: rgba(20, 43, 39, 0.42);
+  }
+
+  .weave-signal--alive::before,
+  .weave-signal--alive .weave-signal__status {
+    background: rgba(124, 220, 196, 0.88);
+  }
+
+  .weave-signal--waiting {
+    border-color: rgba(231, 178, 121, 0.24);
+    background: rgba(45, 31, 20, 0.44);
+  }
+
+  .weave-signal--waiting::before,
+  .weave-signal--waiting .weave-signal__status {
+    background: rgba(231, 178, 121, 0.88);
+  }
+
+  .weave-signal--low {
+    border-color: rgba(231, 134, 121, 0.22);
+    background: rgba(46, 24, 22, 0.42);
+  }
+
+  .weave-signal--low::before,
+  .weave-signal--low .weave-signal__status {
+    background: rgba(231, 134, 121, 0.86);
   }
 
   .path-grid {
@@ -883,6 +1060,10 @@
   }
 
   @media (min-width: 720px) {
+    .weave-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .momentum-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

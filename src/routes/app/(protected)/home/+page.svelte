@@ -177,6 +177,14 @@
   let nowTick = Date.now();
   let chapterRevealSeenId = '';
 
+  const moodPrompts: Record<HomeMood, string[]> = {
+    calm: ['I feel steady today, and I want to keep that feeling close.', 'A quiet moment I want you to remember is...'],
+    heavy: ['Something feels heavy right now, and I need a gentle return.', 'I do not need fixing, but I want you to know...'],
+    curious: ['I keep wondering about...', 'A question I want to carry with you today is...'],
+    energized: ['I feel ready to move, and I want our next step to be...', 'The thing giving me momentum today is...'],
+    numb: ['I feel a little far away from myself, but I am here.', 'Start small with me. What I can name is...']
+  };
+
   const track = (
     kind: 'home_view' | 'primary_action_click' | 'orb_open_sheet' | 'checkin_submit' | 'checkin_success' | 'checkin_error',
     meta: Record<string, unknown> = {}
@@ -197,6 +205,12 @@
   const handlePrimaryReconnect = () => {
     track('primary_action_click', { intent: 'CHECKIN_REFLECT' });
     checkinModalOpen = true;
+    checkinError = null;
+    modelActivity = 'composing';
+  };
+
+  const applyReflectionPrompt = (prompt: string) => {
+    reflectionText = prompt;
     checkinError = null;
     modelActivity = 'composing';
   };
@@ -351,6 +365,8 @@
     if (!browser || !currentChapterReveal?.id) return;
     window.localStorage.setItem(`looma:chapterRevealSceneSeen:${currentChapterReveal.id}`, 'true');
   };
+
+  $: selectedMoodPrompts = moodPrompts[selectedMood];
 </script>
 
 <div class="home-root">
@@ -460,6 +476,14 @@
           }}
         >
           {mood}
+        </button>
+      {/each}
+    </div>
+
+    <div class="prompt-row" aria-label="Reflection starters">
+      {#each selectedMoodPrompts as prompt}
+        <button type="button" class="prompt-chip" on:click={() => applyReflectionPrompt(prompt)}>
+          {prompt}
         </button>
       {/each}
     </div>
@@ -613,6 +637,32 @@
     border-color: rgba(148, 248, 225, 0.8);
     background: rgba(19, 65, 90, 0.6);
     color: rgba(228, 255, 248, 0.98);
+  }
+
+  .prompt-row {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .prompt-chip {
+    width: 100%;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(161, 185, 218, 0.24);
+    background: rgba(13, 26, 45, 0.56);
+    color: rgba(223, 235, 247, 0.9);
+    padding: 0.64rem 0.72rem;
+    font: inherit;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    text-align: left;
+  }
+
+  .prompt-chip:hover,
+  .prompt-chip:focus-visible {
+    outline: none;
+    border-color: rgba(148, 248, 225, 0.62);
+    background: rgba(20, 49, 70, 0.66);
+    color: rgba(239, 253, 250, 0.98);
   }
 
   .reflect-label {
@@ -793,6 +843,10 @@
       margin: 0 auto;
       padding-left: 0;
       padding-right: 0;
+    }
+
+    .prompt-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>
