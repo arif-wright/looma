@@ -33,6 +33,13 @@
     ritualKey: string | null;
     ritualLabel: string | null;
   };
+  type ContinuitySignal = {
+    label: string;
+    title: string;
+    body: string;
+    state: 'alive' | 'quiet' | 'waiting';
+    href: string;
+  };
 
   let statusMessage: string | null = null;
   let statusTone: 'default' | 'success' | 'error' = 'default';
@@ -168,6 +175,55 @@
       : windowedTimeline.filter((item) =>
           `${item.title} ${item.body} ${item.meta ?? ''}`.toLowerCase().includes(normalizedQuery)
         );
+  $: selectedName = data.selectedCompanion?.name ?? 'Your companion';
+  $: latestMoment = data.timeline[0] ?? null;
+  $: latestMomentAge = latestMoment ? formatWhen(latestMoment.occurredAt) : null;
+  $: evidenceCounts = {
+    care: data.weeklyPulse?.careMoments ?? data.timeline.filter((item) => item.kind === 'care').length,
+    checkins: data.weeklyPulse?.recentCheckins ?? data.timeline.filter((item) => item.kind === 'checkin').length,
+    missions: data.weeklyPulse?.missionMoments ?? data.timeline.filter((item) => item.kind === 'mission').length,
+    play: data.weeklyPulse?.gameMoments ?? data.timeline.filter((item) => item.kind === 'game').length,
+    social: data.weeklyPulse?.socialMoments ?? data.timeline.filter((item) => item.kind === 'social').length
+  };
+  $: continuitySignals = [
+    {
+      label: 'Freshness',
+      title: latestMomentAge ? `Latest moment ${latestMomentAge}` : 'No moments yet',
+      body: latestMoment
+        ? `${latestMoment.title} is the newest signal in ${selectedName}'s journal.`
+        : 'Start with a check-in so the journal can form its first current signal.',
+      state: latestMoment ? 'alive' : 'waiting',
+      href: latestMoment ? '#journal-timeline' : '/app/home'
+    },
+    {
+      label: 'Evidence',
+      title: `${evidenceCounts.care + evidenceCounts.checkins + evidenceCounts.missions + evidenceCounts.play + evidenceCounts.social} signals this week`,
+      body: `${formatCount(evidenceCounts.care, 'care moment')}, ${formatCount(evidenceCounts.checkins, 'check-in')}, ${formatCount(evidenceCounts.missions, 'mission')}, ${formatCount(evidenceCounts.play, 'play session')}, and ${formatCount(evidenceCounts.social, 'shared moment')} are feeding the read.`,
+      state:
+        evidenceCounts.care + evidenceCounts.checkins + evidenceCounts.missions + evidenceCounts.play + evidenceCounts.social > 0
+          ? 'alive'
+          : 'quiet',
+      href: '#journal-timeline'
+    },
+    {
+      label: 'Carried thread',
+      title: data.relationshipPulse?.headline ?? data.dailyArc?.title ?? 'Still resolving',
+      body:
+        data.relationshipPulse?.reasons?.[0] ??
+        data.dailyArc?.body ??
+        `${selectedName} needs a few more moments before the journal can describe a stable pattern.`,
+      state: data.relationshipPulse || data.dailyArc ? 'alive' : 'quiet',
+      href: '/app/home'
+    },
+    {
+      label: 'Next gesture',
+      title: journalGuidance?.title ?? 'Return gently',
+      body: journalGuidance?.body ?? 'A short check-in is enough to give the relationship a clearer next signal.',
+      state: journalGuidance ? 'alive' : 'waiting',
+      href: journalGuidance?.primaryHref ?? '/app/home'
+    }
+  ] satisfies ContinuitySignal[];
+  $: continuityStrength = continuitySignals.filter((signal) => signal.state === 'alive').length;
 
   $: milestoneCards = (() => {
     const cards: Array<{ id: string; label: string; title: string; body: string }> = [];
@@ -381,6 +437,25 @@
           <span>Companion-specific</span>
           <span>Summary can be cleared</span>
           <span>Core bond stays free</span>
+        </div>
+      </section>
+
+      <section class="continuity-ledger" aria-label="Relationship continuity ledger">
+        <div class="continuity-ledger__head">
+          <div>
+            <p class="eyebrow">Continuity ledger</p>
+            <h2>{continuityStrength}/4 signals are giving {selectedName} continuity</h2>
+          </div>
+          <a class="btn btn--ghost btn--link" href="/app/home">Return to sanctuary</a>
+        </div>
+        <div class="continuity-grid">
+          {#each continuitySignals as signal}
+            <a class={`continuity-signal continuity-signal--${signal.state}`} href={signal.href}>
+              <span class="continuity-signal__label">{signal.label}</span>
+              <strong>{signal.title}</strong>
+              <p>{signal.body}</p>
+            </a>
+          {/each}
         </div>
       </section>
 
@@ -765,6 +840,7 @@
         </GlassCard>
       </div>
 
+      <div id="journal-timeline" class="timeline-anchor" aria-hidden="true"></div>
       <GlassCard class="memory-card">
         <div class="card-head">
           <div>
@@ -927,6 +1003,92 @@
     padding: 0.42rem 0.72rem;
     font-size: 0.78rem;
     font-weight: 700;
+  }
+
+  .continuity-ledger {
+    display: grid;
+    gap: 0.9rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(126, 194, 185, 0.18);
+    background:
+      linear-gradient(155deg, rgba(17, 30, 32, 0.72), rgba(10, 16, 20, 0.86)),
+      radial-gradient(circle at top left, rgba(126, 194, 185, 0.14), transparent 48%),
+      radial-gradient(circle at bottom right, rgba(214, 190, 141, 0.08), transparent 50%);
+    padding: 1rem;
+  }
+
+  .continuity-ledger__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .continuity-grid {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .continuity-signal {
+    position: relative;
+    min-height: 8.4rem;
+    display: grid;
+    align-content: start;
+    gap: 0.24rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.34);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.9rem;
+  }
+
+  .continuity-signal::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.18rem;
+    background: rgba(148, 163, 184, 0.72);
+  }
+
+  .continuity-signal__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(148, 219, 208, 0.78);
+  }
+
+  .continuity-signal strong {
+    color: rgba(241, 245, 249, 0.98);
+    font-size: 0.94rem;
+    line-height: 1.28;
+  }
+
+  .continuity-signal p {
+    color: rgba(226, 232, 240, 0.84);
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .continuity-signal--alive {
+    border-color: rgba(126, 194, 185, 0.24);
+    background: rgba(20, 52, 48, 0.3);
+  }
+
+  .continuity-signal--alive::before {
+    background: rgba(126, 220, 196, 0.88);
+  }
+
+  .continuity-signal--waiting {
+    border-color: rgba(231, 178, 121, 0.22);
+    background: rgba(45, 31, 20, 0.34);
+  }
+
+  .continuity-signal--waiting::before {
+    background: rgba(231, 178, 121, 0.86);
   }
 
   .card-head {
@@ -1516,6 +1678,10 @@
     gap: 0.75rem;
   }
 
+  .timeline-anchor {
+    scroll-margin-top: 6rem;
+  }
+
   .search-field {
     display: grid;
     gap: 0.35rem;
@@ -1560,6 +1726,10 @@
     .memory-grid {
       grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
       align-items: start;
+    }
+
+    .continuity-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .timeline-toolbar {
