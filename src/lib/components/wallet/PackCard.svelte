@@ -22,10 +22,10 @@
     <button
       type="button"
       class="card-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-      aria-label={`Purchase ${shards.toLocaleString()} shards`}
+      aria-label={`Add ${shards.toLocaleString()} shards`}
       on:click={onBuy}
     >
-      Purchase
+      Add shards
     </button>
   </div>
 </article>

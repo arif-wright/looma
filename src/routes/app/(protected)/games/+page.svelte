@@ -175,7 +175,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma — Game Hub</title>
+  <title>Looma - Play</title>
 </svelte:head>
 
 <div class="games-root bg-neuro" data-testid="games-hub">
@@ -183,8 +183,8 @@
   <SanctuaryPageFrame
     class="games-shell-wrap"
     eyebrow="Ritual Play"
-    title="Games"
-    subtitle="Choose a short play ritual that supports energy, focus, and connection."
+    title="Play"
+    subtitle="Choose a short play ritual that supports Spark, focus, and connection."
   >
     <svelte:fragment slot="actions">
       <EmotionalChip tone="muted">{hasPlayedGames ? 'Returning player' : 'First session'}</EmotionalChip>
@@ -204,8 +204,8 @@
         </h1>
         <p class="hero-lead">
           {hasPlayedGames
-            ? 'Continue your streak, explore new worlds, and keep the shard economy humming.'
-            : 'No games played yet. Pick any game below to start your first session.'}
+            ? 'Continue your streak, revisit a shared rhythm, and give your companion something to react to.'
+            : 'No games played yet. Pick any ritual below to start your first shared session.'}
         </p>
         {#if featuredGame}
           <div class="hero-actions">
@@ -218,7 +218,7 @@
               Play {featuredGame.name}
             </a>
             <a class="hero-secondary" href="/app/shop" data-ana="cta:shop">
-              Swap shards for boosters
+              Visit the atelier
             </a>
           </div>
           <div class="hero-mini-links">
@@ -236,7 +236,7 @@
           <div class="hero-card__badge">Spotlight</div>
           <div class="hero-card__body">
             <h2>{featuredGame.name}</h2>
-            <p>Master the course, bank shards, and climb the community leaderboard.</p>
+            <p>Share a short run, earn optional rewards, and give the day a brighter rhythm.</p>
           </div>
           <footer class="hero-card__footer">
             <div>
@@ -252,10 +252,10 @@
       {/if}
       </section>
 
-      <section class="games-rewards panel-glass" aria-label="Latest rewards">
+      <section class="games-rewards panel-glass" aria-label="Latest play rewards">
       <header>
-        <h2>Latest rewards</h2>
-        <p>{hasPlayedGames ? 'Recent XP bursts and shard drops from your sessions.' : 'After your first session, rewards show up here.'}</p>
+        <h2>Latest play echoes</h2>
+        <p>{hasPlayedGames ? 'Recent XP bursts and shard drops from shared sessions.' : 'After your first session, play echoes show up here.'}</p>
         {#if rewardList.length > PAGE_SIZE}
           <div class="rewards-pagination">
             <button
@@ -305,15 +305,15 @@
           {/each}
         </ul>
       {:else}
-        <p class="rewards-empty">No games played yet. Your latest rewards will appear here.</p>
+        <p class="rewards-empty">No play rituals yet. Your latest echoes will appear here.</p>
       {/if}
       </section>
 
-      <section class="games-grid-panel panel-glass" aria-label="All games" data-testid="games-grid">
+      <section class="games-grid-panel panel-glass" aria-label="All play rituals" data-testid="games-grid">
       <header class="games-grid-panel__header">
-        <p class="games-grid-panel__kicker">Game library</p>
-        <h2 class="games-grid-panel__title">All games</h2>
-        <p class="games-grid-panel__lead">Browse the latest sims ready for playtesting.</p>
+        <p class="games-grid-panel__kicker">Play library</p>
+        <h2 class="games-grid-panel__title">All rituals</h2>
+        <p class="games-grid-panel__lead">Browse short playable loops built for focus, motion, and companion reactions.</p>
       </header>
       <GameGrid items={gridGames} aspect="16:9" />
       </section>

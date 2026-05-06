@@ -53,7 +53,7 @@
       const amount = latestCredit?.amount ?? null;
 
       celebrateWalletCredit();
-      showToast(amount ? `+${amount} shards added to your wallet` : 'Purchase successful');
+      showToast(amount ? `+${amount} shards added to your sanctuary balance` : 'Purchase successful');
 
       const clean = new URL(url);
       clean.searchParams.delete('status');
@@ -105,8 +105,8 @@
   <InlineToast show={toastShow} message={toastMsg} onClose={() => (toastShow = false)} />
   <SanctuaryPageFrame
     eyebrow="Economy"
-    title="Wallet"
-    subtitle="Hold shards, top up quickly, and keep your transaction trail easy to read."
+    title="Shard Wallet"
+    subtitle="Hold expression currency, review your trail, and keep paid systems separate from the core companion bond."
   >
     <svelte:fragment slot="actions">
       <EmotionalChip tone="cool">{formatShards(data.shards)} available</EmotionalChip>
@@ -119,7 +119,7 @@
           <p class="wallet-pulse__eyebrow">Shard balance</p>
           <h2>{formatShards(data.shards)}</h2>
           <p class="wallet-pulse__lede">
-            Keep purchases lightweight and visible. The wallet should feel like part of the sanctuary, not a separate store.
+            Keep purchases lightweight and visible. Shards should support expression, atmosphere, and optional convenience.
           </p>
         </div>
 
@@ -142,7 +142,7 @@
           <p class="wallet-pulse__eyebrow">Sanctuary+</p>
           <h2>{subscriptionActive ? formatSubscriptionTier(subscription?.tier) : 'Unlock deeper sanctuary perks'}</h2>
           <p class="wallet-pulse__lede">
-            Keep the bond loop free. Use premium for smoother progression, richer chapter depth, and a more expressive sanctuary.
+            Keep the bond loop free. Use premium for smoother Spark flow, richer chapter depth, and a more expressive sanctuary.
           </p>
         </div>
 
@@ -154,7 +154,7 @@
               {#if subscriptionActive}
                 Renews or ends {subscription?.renewal_at ? new Date(subscription.renewal_at).toLocaleDateString() : 'later'}.
               {:else}
-                Smoother momentum and premium chapter depth live here.
+                Smoother Spark and premium chapter depth live here.
               {/if}
             </span>
           </article>
@@ -169,9 +169,9 @@
             </strong>
             <span>
               {#if subscriptionActive && (data.momentum?.subscriptionBonus ?? 0) > 0}
-                Sanctuary+ is adding +{data.momentum?.subscriptionBonus ?? 0} momentum cap on top of your base pool.
+                Sanctuary+ is adding +{data.momentum?.subscriptionBonus ?? 0} Spark cap on top of your base pool.
               {:else}
-                Momentum powers optional missions and higher-yield play without gating your core companion bond.
+                Spark powers optional missions and higher-yield play without gating your core companion bond.
               {/if}
             </span>
           </article>
@@ -196,7 +196,7 @@
       <div class="wallet-container">
       <WalletHero shards={data.shards} />
 
-      <Panel title="Buy Shards" className="wallet-panel">
+      <Panel title="Shard packs" className="wallet-panel">
         <div class="packs" role="list">
           <PackCard
             shards={500}

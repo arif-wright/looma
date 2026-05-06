@@ -25,7 +25,7 @@
 <a
   href={`/app/games/${game.slug}`}
   class="group block rounded-2xl bg-white/[0.02] ring-1 ring-white/10 transition-shadow hover:ring-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-  aria-label={`Play ${game.name}`}
+  aria-label={`Start ${game.name} ritual`}
 >
   <div class="relative rounded-2xl bg-[linear-gradient(135deg,rgba(0,255,255,.45),rgba(255,0,255,.45))] p-[1px]">
     <div class="rounded-2xl bg-[#0B0E13]">
@@ -49,7 +49,7 @@
       </div>
       <div class="flex items-center justify-between px-3 py-2">
         <h3 class="text-sm font-semibold text-white">{game.name}</h3>
-        <span class="text-[11px] text-white/60 transition-colors group-hover:text-white/80">Play →</span>
+        <span class="text-[11px] text-white/60 transition-colors group-hover:text-white/80">Begin</span>
       </div>
     </div>
   </div>

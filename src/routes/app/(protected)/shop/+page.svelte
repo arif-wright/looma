@@ -83,9 +83,9 @@
     return 'Purchase failed';
   };
   const subNavItems = [
-    { label: 'Shop', href: '/app/shop', active: true },
+    { label: 'Atelier', href: '/app/shop', active: true },
     { label: 'Companions', href: '/app/companions', active: false },
-    { label: 'Items', href: '/app/items', active: false },
+    { label: 'Keepsakes', href: '/app/inventory', active: false },
     { label: 'Bundles', href: '/app/bundles', active: false }
   ];
 
@@ -181,10 +181,10 @@
 <div class="shop-shell mx-auto max-w-screen-xl space-y-4 md:space-y-6">
   <section class="shop-pulse" aria-label="Shop pulse">
     <div>
-      <p class="shop-pulse__eyebrow">Marketplace pulse</p>
-      <h1>Spend shards without losing the sanctuary feel.</h1>
+      <p class="shop-pulse__eyebrow">Atelier pulse</p>
+      <h1>Shape the sanctuary without selling the bond.</h1>
       <p class="shop-pulse__lede">
-        Cosmetics and collectibles should support the companion loop, not feel like a detached storefront.
+        Cosmetics, ambience, and collectibles should support the companion loop, not feel like a detached storefront.
       </p>
     </div>
 
@@ -192,7 +192,7 @@
       <article class="pulse-card">
         <span class="pulse-card__label">Wallet</span>
         <strong>{numberFormatter.format(balance)} shards</strong>
-        <span>Top up only when you need to extend the experience.</span>
+        <span>Use shards for expression, cosmetics, and optional convenience.</span>
       </article>
       <article class="pulse-card">
         <span class="pulse-card__label">Owned</span>
@@ -204,8 +204,8 @@
 
   <header class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
     <div>
-      <h2 class="text-2xl font-semibold text-white">Shop</h2>
-      <p class="text-sm text-white/60">Browse featured drops, filter gear, and spend shards.</p>
+      <h2 class="text-2xl font-semibold text-white">Atelier</h2>
+      <p class="text-sm text-white/60">Browse featured drops, filter keepsakes, and spend shards on expression.</p>
     </div>
 
     <div class="wallet-pill inline-flex items-center gap-2 self-start md:self-auto rounded-full px-3 py-1.5 text-sm ring-1">
@@ -242,7 +242,7 @@
     <div>
       <input
         type="search"
-        placeholder="Search the market…"
+        placeholder="Search the atelier..."
         class="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white/90 placeholder:text-white/40 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
       />
     </div>
@@ -257,7 +257,7 @@
 
     {#if data.error}
       <div class="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-        Failed to load shop items: {data.error}
+        Failed to load atelier items: {data.error}
       </div>
     {:else}
       <ShopGrid items={catalogItems} filters={current} on:open={openModal} />

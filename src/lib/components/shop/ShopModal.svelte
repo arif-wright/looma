@@ -98,7 +98,7 @@
           {:else if busy}
             Processing…
           {:else}
-            Purchase
+            Add to sanctuary
           {/if}
         </button>
       </footer>
