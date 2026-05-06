@@ -25,6 +25,10 @@
   export let statusReason = "She hasn't heard from you today.";
   export let primaryLabel = 'Reconnect (30 sec)';
   export let primaryCopy = 'A quick check-in to bring Mirae closer.';
+  export let memoryLine: string | null = null;
+  export let bondLine: string | null = null;
+  export let nextThreadLabel: string | null = null;
+  export let nextThreadHref = '/app/missions';
   export let needsReconnectToday = false;
   export let companionReply: string | null = null;
   export let companionReplyDebug: string | null = null;
@@ -447,6 +451,21 @@
 
       <div class="scene__ground scene__ground--front" aria-hidden="true"></div>
     </div>
+
+    <section class="continuity" aria-label="Relationship continuity">
+      <a class="continuity__item continuity__item--memory" href="/app/memory" data-sveltekit-preload-data="hover">
+        <span>Remembered</span>
+        <strong>{memoryLine ?? `${companionName} is still gathering today's first memory.`}</strong>
+      </a>
+      <button type="button" class="continuity__item continuity__item--bond" on:click={() => dispatch('companion', {})}>
+        <span>Bond</span>
+        <strong>{bondLine ?? statusLine}</strong>
+      </button>
+      <a class="continuity__item continuity__item--thread" href={nextThreadHref} data-sveltekit-preload-data="hover">
+        <span>Next thread</span>
+        <strong>{nextThreadLabel ?? 'Choose a small moment together.'}</strong>
+      </a>
+    </section>
 
     <section class="dialogue" aria-live="polite">
       <p class="bubble bubble--user">{statusReason}</p>
@@ -1105,6 +1124,76 @@
     gap: 0.5rem;
   }
 
+  .continuity {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.55rem;
+  }
+
+  .continuity__item {
+    min-width: 0;
+    display: grid;
+    gap: 0.22rem;
+    align-content: start;
+    min-height: 5.35rem;
+    padding: 0.78rem 0.82rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(244, 230, 195, 0.12);
+    background: rgba(12, 18, 21, 0.38);
+    color: rgba(245, 239, 224, 0.94);
+    text-align: left;
+    text-decoration: none;
+    backdrop-filter: blur(14px);
+  }
+
+  button.continuity__item {
+    border-color: rgba(244, 230, 195, 0.12);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .continuity__item:focus-visible {
+    outline: 2px solid rgba(238, 205, 139, 0.78);
+    outline-offset: 2px;
+  }
+
+  .continuity__item span {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(230, 206, 154, 0.78);
+  }
+
+  .continuity__item strong {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    font-size: 0.82rem;
+    line-height: 1.32;
+    color: rgba(248, 242, 226, 0.96);
+  }
+
+  .continuity__item--memory {
+    background:
+      linear-gradient(135deg, rgba(238, 205, 139, 0.09), transparent),
+      rgba(12, 18, 21, 0.38);
+  }
+
+  .continuity__item--bond {
+    background:
+      linear-gradient(135deg, rgba(118, 227, 208, 0.08), transparent),
+      rgba(12, 18, 21, 0.38);
+  }
+
+  .continuity__item--thread {
+    background:
+      linear-gradient(135deg, rgba(255, 188, 144, 0.09), transparent),
+      rgba(12, 18, 21, 0.38);
+  }
+
   .bubble-group {
     display: grid;
     gap: 0.3rem;
@@ -1261,6 +1350,10 @@
       align-items: start;
     }
 
+    .continuity__item {
+      min-height: 5rem;
+    }
+
     .bubble--user {
       justify-self: start;
     }
@@ -1296,6 +1389,10 @@
 
     .chip--presence {
       width: 100%;
+    }
+
+    .continuity {
+      grid-template-columns: 1fr;
     }
   }
 </style>

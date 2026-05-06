@@ -137,6 +137,30 @@
           : `${companionName} heard from you recently and feels closer.`;
 
   $: needsReconnectToday = closenessState === 'Distant' || !hasRecentCheckin;
+  const clipLine = (value: string | null | undefined, limit = 118) => {
+    const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return null;
+    if (normalized.length <= limit) return normalized;
+    return `${normalized.slice(0, limit - 1).trimEnd()}...`;
+  };
+  $: latestJournalMoment = data.journalMoments?.[0] ?? null;
+  $: memoryLine =
+    clipLine(latestJournalMoment?.body, 108) ??
+    clipLine(data.memorySummary?.summary_text, 108) ??
+    (hasRecentCheckin
+      ? `${companionName} remembers that you returned today.`
+      : `${companionName} is waiting for today's first check-in.`);
+  $: bondLine =
+    closenessState === 'Distant'
+      ? `${companionName} needs a small return to feel close again.`
+      : closenessState === 'Resonant'
+        ? 'The bond feels bright and responsive right now.'
+        : `${companionName} feels near enough for a quiet moment.`;
+  $: nextThreadLabel =
+    clipLine(data.dailyArc?.title, 84) ??
+    clipLine(primaryMission?.title, 84) ??
+    (needsReconnectToday ? 'Start with a short check-in.' : 'Open the next shared thread.');
+  $: nextThreadHref = primaryMission?.id ? `/app/missions/${primaryMission.id}` : '/app/missions';
 
   let companionSheetOpen = false;
   let checkinModalOpen = false;
@@ -272,7 +296,7 @@
 
       const deltaEnergy = payload?.deltas?.energy ?? 0;
       const deltaTrust = payload?.deltas?.trust ?? 0;
-      showReward(`You're connected. +${Math.max(0, deltaEnergy)} Energy · +${Math.max(0, deltaTrust)} Trust`);
+      showReward(`You're connected. +${Math.max(0, deltaEnergy)} Spark · +${Math.max(0, deltaTrust)} Trust`);
 
       reflectionText = '';
       checkinModalOpen = false;
@@ -343,6 +367,10 @@
       {closenessState}
       {statusLine}
       {statusReason}
+      {memoryLine}
+      {bondLine}
+      {nextThreadLabel}
+      {nextThreadHref}
       {needsReconnectToday}
       {primaryLabel}
       {primaryCopy}
@@ -415,7 +443,7 @@
   }}
 />
 
-<BottomSheet open={checkinModalOpen} title="Check in with Mirae" onClose={closeCheckinModal}>
+<BottomSheet open={checkinModalOpen} title={`Check in with ${companionName}`} onClose={closeCheckinModal}>
   <section class="checkin-sheet">
     <p class="checkin-sheet__copy">How are you feeling right now?</p>
 
@@ -436,7 +464,7 @@
       {/each}
     </div>
 
-    <label class="reflect-label" for="reflect-input">Tell her what this moment feels like.</label>
+    <label class="reflect-label" for="reflect-input">Tell {companionName} what this moment feels like.</label>
     <textarea
       id="reflect-input"
       class="reflect-input"
@@ -459,7 +487,7 @@
     {/if}
 
     <button type="button" class="submit-checkin" disabled={checkinLoading} on:click={submitCheckin}>
-      {checkinLoading ? 'Listening...' : 'Share with Mirae'}
+      {checkinLoading ? 'Listening...' : `Share with ${companionName}`}
     </button>
   </section>
 </BottomSheet>
