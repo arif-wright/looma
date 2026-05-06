@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Bell, Gem, MessageCircle, Plus, Search } from 'lucide-svelte';
+  import { Bell, Gamepad2, Gem, Heart, Home, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
   import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
@@ -31,6 +31,14 @@
     { name: 'Looma Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
     { name: 'Crystal Shores', level: 18, players: '856', reward: 18, tone: 'shore' },
     { name: 'Voidspire', level: 29, players: '2.1K', reward: 29, tone: 'void' }
+  ];
+
+  const mobileNav = [
+    { label: 'Home', href: '/app/home', icon: Home },
+    { label: 'Bond', href: '/app/companions', icon: Heart },
+    { label: 'Play', href: '/app/games', icon: Gamepad2 },
+    { label: 'Messages', href: '/app/messages', icon: MessageCircle },
+    { label: 'Profile', href: '/app/profile', icon: UserRound }
   ];
 
   const normalizedMood = (value: string | null | undefined) => {
@@ -115,6 +123,24 @@
           companionAvatarUrl={activeCompanion?.avatar_url ?? null}
         />
 
+        <section class="mobile-loop" aria-label="Today's companion loop">
+          <RitualPanel completed={ritualCompleted} />
+          <div class="mobile-quick-actions">
+            <a href="/app/companions">
+              <Sparkles size={19} />
+              <span>Gift</span>
+            </a>
+            <a href="/app/games">
+              <Gamepad2 size={19} />
+              <span>Play</span>
+            </a>
+            <a href="/app/messages">
+              <Heart size={19} />
+              <span>Check in</span>
+            </a>
+          </div>
+        </section>
+
         <section class="glass-section companions-section" aria-labelledby="companions-title">
           <div class="section-header">
             <h2 id="companions-title">Your Companions</h2>
@@ -166,6 +192,15 @@
       </aside>
     </div>
   </main>
+
+  <nav class="mobile-bottom-nav" aria-label="Primary mobile navigation">
+    {#each mobileNav as item}
+      <a class:active={$page.url.pathname === item.href || (item.href !== '/app/home' && $page.url.pathname.startsWith(item.href))} href={item.href}>
+        <svelte:component this={item.icon} size={21} />
+        <span>{item.label}</span>
+      </a>
+    {/each}
+  </nav>
 </div>
 
 <style>
@@ -317,6 +352,11 @@
     min-width: 0;
   }
 
+  .mobile-loop,
+  .mobile-bottom-nav {
+    display: none;
+  }
+
   .glass-section {
     border: 1px solid rgba(166, 145, 255, 0.18);
     border-radius: 1.15rem;
@@ -438,27 +478,210 @@
   }
 
   @media (max-width: 760px) {
+    .fantasy-home {
+      display: block;
+      min-height: 100svh;
+      overflow-x: hidden;
+      padding-bottom: calc(5.8rem + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 50% 18%, rgba(123, 77, 255, 0.32), transparent 18rem),
+        radial-gradient(circle at 50% 46%, rgba(74, 244, 255, 0.12), transparent 16rem),
+        linear-gradient(180deg, #07081c, #050714 64%);
+    }
+
+    :global(.fantasy-sidebar) {
+      display: none;
+    }
+
+    .home-main {
+      padding: 0;
+    }
+
     .topbar {
-      align-items: stretch;
-      flex-direction: column;
+      position: fixed;
+      left: 0.85rem;
+      right: 0.85rem;
+      top: max(0.7rem, env(safe-area-inset-top));
+      z-index: 20;
+      margin: 0;
+      pointer-events: none;
+    }
+
+    .search {
+      display: none;
     }
 
     .top-actions {
-      justify-content: space-between;
+      width: 100%;
+      justify-content: flex-end;
+      pointer-events: auto;
+    }
+
+    .currency {
+      min-height: 2.45rem;
+      border-radius: 999px;
+      padding: 0 0.8rem;
+      font-size: 0.82rem;
+    }
+
+    .icon-action {
+      display: none;
+    }
+
+    .avatar-action {
+      width: 2.45rem;
+      min-height: 2.45rem;
+    }
+
+    .content-grid,
+    .center-stack {
+      display: block;
+    }
+
+    .right-stack {
+      display: none;
+    }
+
+    .mobile-loop {
+      display: grid;
+      gap: 0.8rem;
+      margin: -1rem 0.85rem 1rem;
+      position: relative;
+      z-index: 4;
+    }
+
+    .mobile-quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .mobile-quick-actions a {
+      display: grid;
+      min-height: 4.7rem;
+      place-items: center;
+      align-content: center;
+      gap: 0.32rem;
+      border: 1px solid rgba(167, 92, 255, 0.22);
+      border-radius: 1rem;
+      background: rgba(16, 16, 41, 0.74);
+      color: white;
+      text-decoration: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+    }
+
+    .mobile-quick-actions span {
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .glass-section {
+      margin: 0 0 1rem;
+      border-width: 1px 0;
+      border-radius: 0;
+      background: linear-gradient(180deg, rgba(12, 13, 32, 0.38), rgba(12, 13, 32, 0.2));
+      padding: 1rem 0 1.1rem;
+      box-shadow: none;
+    }
+
+    .section-header {
+      margin: 0 0.95rem 0.8rem;
+    }
+
+    .section-header h2 {
+      font-size: 0.98rem;
+    }
+
+    .section-header a {
+      min-height: 2.4rem;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 0.35rem;
     }
 
     .companion-grid,
     .game-grid,
     .world-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(10.5rem, 68vw);
+      grid-template-columns: none;
+      gap: 0.78rem;
+      overflow-x: auto;
+      padding: 0 0.95rem 0.45rem;
+      scroll-padding-inline: 0.95rem;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .game-grid,
+    .world-grid {
+      grid-auto-columns: minmax(9.8rem, 58vw);
+    }
+
+    .companion-grid > :global(*),
+    .game-grid > :global(*),
+    .world-grid > :global(*) {
+      scroll-snap-align: start;
+    }
+
+    .summon-card {
+      min-height: 13.4rem;
+    }
+
+    .lower-grid {
+      display: block;
+    }
+
+    .mobile-bottom-nav {
+      position: fixed;
+      left: 0.65rem;
+      right: 0.65rem;
+      bottom: max(0.6rem, env(safe-area-inset-bottom));
+      z-index: 30;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.18rem;
+      border: 1px solid rgba(183, 140, 255, 0.26);
+      border-radius: 1.35rem;
+      background: rgba(9, 10, 28, 0.82);
+      padding: 0.45rem;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(24px);
+    }
+
+    .mobile-bottom-nav a {
+      display: grid;
+      min-height: 3.45rem;
+      place-items: center;
+      align-content: center;
+      gap: 0.18rem;
+      border-radius: 1rem;
+      color: rgba(231, 228, 248, 0.68);
+      text-decoration: none;
+    }
+
+    .mobile-bottom-nav a.active {
+      background: linear-gradient(180deg, rgba(142, 92, 255, 0.28), rgba(77, 244, 255, 0.08));
+      color: white;
+      box-shadow: inset 0 0 0 1px rgba(184, 154, 255, 0.18);
+    }
+
+    .mobile-bottom-nav span {
+      font-size: 0.62rem;
+      font-weight: 800;
     }
   }
 
   @media (max-width: 520px) {
-    .companion-grid,
+    .companion-grid {
+      grid-auto-columns: minmax(10.5rem, 74vw);
+    }
+
     .game-grid,
     .world-grid {
-      grid-template-columns: 1fr;
+      grid-auto-columns: minmax(9.6rem, 63vw);
     }
   }
 </style>

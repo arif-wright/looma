@@ -367,4 +367,142 @@
       width: auto;
     }
   }
+
+  @media (max-width: 760px) {
+    .living-world {
+      min-height: min(43.5rem, 88svh);
+      border-width: 0 0 1px;
+      border-radius: 0 0 1.6rem 1.6rem;
+      background:
+        linear-gradient(180deg, rgba(5, 7, 20, 0.36), rgba(5, 7, 20, 0.84) 78%),
+        radial-gradient(circle at 50% 44%, rgba(94, 242, 255, 0.24), transparent 34%),
+        radial-gradient(circle at 50% 22%, rgba(155, 92, 255, 0.34), transparent 20rem),
+        linear-gradient(180deg, #0c0d2e, #070819);
+    }
+
+    .hero-copy {
+      width: 100%;
+      padding: max(4.2rem, calc(env(safe-area-inset-top) + 3.6rem)) 1.05rem 0;
+      text-align: left;
+    }
+
+    .hero-copy p:first-child {
+      font-size: 0.82rem;
+      font-weight: 800;
+      opacity: 0.72;
+    }
+
+    .hero-copy h1 {
+      font-size: clamp(2rem, 12vw, 3.2rem);
+      margin: 0.22rem 0 0.35rem;
+    }
+
+    .intro {
+      max-width: 13rem;
+      font-size: 0.86rem;
+      line-height: 1.42;
+    }
+
+    .hero-actions {
+      position: absolute;
+      left: 1rem;
+      right: 1rem;
+      bottom: 1.05rem;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 0.65rem;
+      margin: 0;
+    }
+
+    .hero-actions a {
+      min-height: 3.65rem;
+      border-radius: 1rem;
+      padding: 0 0.8rem;
+      font-size: 0.92rem;
+    }
+
+    .companion-stage {
+      left: 0;
+      right: 0;
+      top: 8.5rem;
+      bottom: 7.4rem;
+      min-width: 0;
+      place-items: center;
+      overflow: visible;
+    }
+
+    .companion-aura {
+      inset: 4% 2% 0;
+      filter: blur(34px);
+      opacity: 1;
+    }
+
+    .companion-model,
+    .companion-image {
+      width: min(25rem, 112vw);
+      height: min(28rem, 58svh);
+    }
+
+    .status-card {
+      left: 1rem;
+      right: auto;
+      bottom: 5.25rem;
+      width: min(13.5rem, calc(100vw - 2rem));
+      border-radius: 1rem;
+      padding: 0.8rem;
+      background: rgba(12, 13, 34, 0.58);
+    }
+
+    .status-card header strong {
+      font-size: 0.9rem;
+    }
+
+    .status-card > span,
+    .status-row span,
+    .status-row strong {
+      font-size: 0.76rem;
+    }
+
+    .mini-meter {
+      margin: 0.45rem 0 0.65rem;
+    }
+
+    .status-row {
+      margin-top: 0.48rem;
+    }
+
+    .castle {
+      bottom: 27%;
+      opacity: 0.32;
+      transform: scale(0.72);
+    }
+
+    .castle-one {
+      left: -1rem;
+    }
+
+    .castle-two {
+      right: -3rem;
+      transform: scale(0.58);
+    }
+  }
+
+  @media (max-width: 390px) {
+    .living-world {
+      min-height: 40.5rem;
+    }
+
+    .intro {
+      display: none;
+    }
+
+    .companion-stage {
+      top: 7.6rem;
+    }
+
+    .status-card {
+      bottom: 5rem;
+    }
+  }
 </style>
