@@ -14,7 +14,7 @@
 
 <section class="circle-list" aria-label="Your circles">
   <header>
-    <h2>Circles</h2>
+    <h2>Shared circles</h2>
     <div class="actions">
       <button type="button" on:click={() => dispatch('create')}>Create</button>
       <button type="button" class="ghost" on:click={() => dispatch('join')}>Join</button>
@@ -23,7 +23,7 @@
 
   <ul>
     {#if circles.length === 0}
-      <li class="empty">No circles yet.</li>
+      <li class="empty">No shared circles yet.</li>
     {:else}
       {#each circles as circle (circle.circleId)}
         <li>

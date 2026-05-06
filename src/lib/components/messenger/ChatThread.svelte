@@ -53,7 +53,7 @@
   });
 </script>
 
-<section class="thread" aria-label="Chat thread">
+<section class="thread" aria-label="Close message thread">
   <header>
     <h2>{title}</h2>
     {#if presenceLabel}
@@ -71,7 +71,7 @@
     {#if loading}
       <p class="thread__state">Loading messages…</p>
     {:else if messages.length === 0}
-      <p class="thread__state">No messages yet.</p>
+      <p class="thread__state">No messages yet. Start with one clear note.</p>
     {:else}
       {#each messages as message (message.id)}
         <div class={`thread__line ${message.sender_id === currentUserId ? 'own' : ''}`}>

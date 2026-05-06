@@ -45,25 +45,25 @@
   };
 </script>
 
-<section class="conversation-list" aria-label="Conversations">
+<section class="conversation-list" aria-label="Close threads">
   <div class="conversation-list__header">
-    <h2>Messages</h2>
-    <button type="button" on:click={() => dispatch('create')}>New</button>
+    <h2>Close threads</h2>
+    <button type="button" on:click={() => dispatch('create')}>Start</button>
   </div>
 
   <label class="conversation-list__search">
-    <span class="sr-only">Search conversations</span>
+    <span class="sr-only">Search close threads</span>
     <input
       type="search"
-      placeholder="Search"
+      placeholder="Search threads"
       value={query}
       on:input={(event) => dispatch('query', { value: (event.currentTarget as HTMLInputElement).value })}
     />
   </label>
 
-  <ul class="conversation-list__items" role="listbox" aria-label="Conversation list">
+  <ul class="conversation-list__items" role="listbox" aria-label="Close thread list">
     {#if conversations.length === 0}
-      <li class="conversation-list__empty">No conversations yet.</li>
+      <li class="conversation-list__empty">No close threads yet.</li>
     {:else}
       {#each conversations as conversation (conversation.conversationId)}
         <li>

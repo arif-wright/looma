@@ -208,9 +208,9 @@
 </script>
 
 <SanctuaryPageFrame
-  eyebrow="Community"
+  eyebrow="Shared Presence"
   title="Circles"
-  subtitle="Move between intimate groups built for support, reflection, and shared moments."
+  subtitle="Move between small groups built for support, reflection, and shared moments around the relationship."
 >
   <GlassCard class={`circle-chapter-card circle-chapter-card--${data.circleChapterFrame?.tone ?? 'quiet'}`}>
     <p class="circle-chapter-card__eyebrow">Current chapter</p>

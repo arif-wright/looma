@@ -1092,7 +1092,7 @@
 <SanctuaryPageFrame
   eyebrow="Companion Dialogue"
   title="Messages"
-  subtitle="Keep your conversations spacious, warm, and easy to follow."
+  subtitle="Keep close threads spacious, warm, and connected to the chapter your companion is living through."
 >
   <svelte:fragment slot="actions">
     {#if presenceLabel}
@@ -1126,7 +1126,7 @@
                 <h2>{data.messageChapterFrame?.inboxTitle ?? 'Keep the weave close'}</h2>
                 <p>
                   {data.messageChapterFrame?.inboxBody ??
-                    'Reply quickly, start a new conversation, and keep your closest threads easy to reach.'}
+                    'Reply with care, start one clear thread, and keep your closest people easy to reach.'}
                 </p>
               </div>
               <div class="mobile-inbox-intro__meta">
@@ -1177,7 +1177,7 @@
 
           {#if !activeConversationId}
             <div class="thread-empty">
-              <p>Pick a conversation to start messaging.</p>
+              <p>Pick a close thread when you are ready to speak with care.</p>
             </div>
           {:else}
             <ChatThread
