@@ -34,7 +34,7 @@
   $: xpLabel = typeof xp === 'number' && typeof xpNext === 'number'
     ? `${xp}/${xpNext}`
     : 'Aligning…';
-  $: energyLabel = typeof energy === 'number' && typeof energyMax === 'number'
+  $: sparkLabel = typeof energy === 'number' && typeof energyMax === 'number'
     ? `${energy}/${energyMax}`
     : '—';
   $: shardValue = typeof walletBalance === 'number' ? walletBalance.toLocaleString() : '0';
@@ -125,17 +125,17 @@
             <span class="lean-status__sr">{moodTitle}</span>
           </div>
         {/if}
-        <div class="lean-status__level">
-          <span class="lean-status__label">Level</span>
+        <div class="lean-status__level" aria-label="Journey level">
+          <span class="lean-status__label">Journey</span>
           <strong>{levelLabel}</strong>
         </div>
         <div class="lean-status__progress" aria-hidden={xpLabel === 'Aligning…'}>
           <div class="lean-status__bar"><span style={`width:${xpPct}%`}></span></div>
           <span class="lean-status__meta">{xpLabel}</span>
         </div>
-        <div class="lean-status__metric pill is-static" aria-label="Energy">
+        <div class="lean-status__metric pill is-static" aria-label="Spark for optional progression">
           <span>⚡</span>
-          <span>{energyLabel}</span>
+          <span>{sparkLabel}</span>
         </div>
         <a
           class="lean-status__metric pill"
@@ -179,7 +179,7 @@
 
         {#if menuOpen}
           <div class="lean-account-menu__dropdown" role="menu">
-            <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+            <a href="/app/preferences" role="menuitem" on:click={closeMenu}>Sanctuary preferences</a>
             <button
               type="button"
               role="menuitem"

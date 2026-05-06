@@ -85,7 +85,7 @@
 
 <nav class="lean-appbar md:hidden">
   <div class="appbar-row">
-    <a href="/app/home" aria-label="Home" class="brand-button">
+    <a href="/app/home" aria-label="Open Sanctuary" class="brand-button">
       <div class="brand-glyph"></div>
     </a>
 
@@ -105,7 +105,7 @@
     <a
       href="/app/wallet"
       class={`chip ${pulse ? 'motion-safe:animate-chipPulse' : ''}`}
-      aria-label="Wallet"
+      aria-label="Shard balance"
     >
       <span class="chip-glyph" aria-hidden="true"></span>
       <span class="tabular-nums">{fmt(currentBalance)}</span>
@@ -141,7 +141,7 @@
       </button>
       {#if menuOpen}
         <div class="account-menu__dropdown" role="menu">
-          <a href="/app/preferences" role="menuitem" on:click={closeMenu}>User Preferences</a>
+          <a href="/app/preferences" role="menuitem" on:click={closeMenu}>Sanctuary preferences</a>
           <button
             type="button"
             role="menuitem"

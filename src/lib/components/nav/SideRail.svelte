@@ -8,16 +8,17 @@
   export let isAdmin = false;
 
   const navItems: NavItem[] = [
-    { href: '/app/home', label: 'Home', icon: '🏠' },
+    { href: '/app/home', label: 'Sanctuary', icon: '⌂' },
+    { href: '/app/memory', label: 'Journal', icon: '◌' },
     { href: '/app/messages', label: 'Messages', icon: '💬' },
     { href: '/app/friends', label: 'Friends', icon: '🫂' },
     { href: '/app/circles', label: 'Circles', icon: '⭕' },
     { href: '/app/events', label: 'Events', icon: '🗓️' },
     { href: '/app/companions', label: 'Companions', icon: '🐾' },
     { href: '/app/missions', label: 'Missions', icon: '🎯' },
-    { href: '/app/shop', label: 'Shop', icon: '🛒' },
-    { href: '/app/companions', label: 'Companions', icon: '🤝' },
-    { href: '/app/inventory', label: 'Inventory', icon: '💾' },
+    { href: '/app/games', label: 'Play', icon: '✦' },
+    { href: '/app/shop', label: 'Atelier', icon: '◇' },
+    { href: '/app/inventory', label: 'Keepsakes', icon: '▣' },
     { href: '/app/u/me', label: 'Profile', icon: '👤' }
   ];
 
