@@ -20,6 +20,32 @@
   const formatCost = (energy: number | null | undefined) =>
     typeof energy === 'number' && energy > 0 ? `${energy} Spark` : 'No Spark cost';
 
+  const threadLabel = (type: string | null | undefined) =>
+    type === 'identity'
+      ? 'Identity thread'
+      : type === 'world'
+        ? 'World thread'
+        : type === 'action'
+          ? 'Action thread'
+          : 'Companion thread';
+
+  const threadBody = (type: string | null | undefined) =>
+    type === 'identity'
+      ? 'Best for reflection, memory, trust, and the feeling of being known.'
+      : type === 'world'
+        ? 'Best for shaping the sanctuary, shared context, and the world around the bond.'
+        : type === 'action'
+          ? 'Best for motion, momentum, light challenge, and turning care into action.'
+          : 'A flexible thread that can still feed the relationship.';
+
+  const isPreferredThread = (type: string | null | undefined) =>
+    type === 'identity' || type === 'action' || type === 'world'
+      ? (data.missionChapterFrame.preferredTypes as string[]).includes(type)
+      : false;
+
+  const fitLabel = (type: string | null | undefined) =>
+    isPreferredThread(type) ? 'Chapter fit' : 'Optional detour';
+
   const meetsRequirements = (mission: PageData['availableMissions'][number]) => {
     const level = data.stats?.level ?? 0;
     const energy = data.stats?.energy ?? 0;
@@ -59,6 +85,28 @@
       startingMissionId = null;
     }
   };
+
+  $: preferredThreadSummary = data.missionChapterFrame.preferredTypes.map(threadLabel).join(' · ');
+  $: recommendedMissions = data.availableMissions.filter((mission) => isPreferredThread(mission.type)).slice(0, 3);
+  $: missionCompass = [
+    {
+      label: 'Companion state',
+      title: data.activeCompanion ? `${data.activeCompanion.name} is setting the tone` : 'No active companion',
+      body: data.activeCompanion
+        ? data.missionChapterFrame.body
+        : 'Choose an active companion to make mission recommendations feel more personal.'
+    },
+    {
+      label: 'Best thread types',
+      title: preferredThreadSummary || 'Open choice',
+      body: 'The list below is sorted around the thread types that best match the current chapter.'
+    },
+    {
+      label: 'Spark boundary',
+      title: `${data.stats?.energy ?? 0} Spark available`,
+      body: 'Missions can cost Spark, but check-ins, care, and journal continuity stay available.'
+    }
+  ];
 </script>
 
 <svelte:head>
@@ -100,6 +148,37 @@
         <p class="chapter-copy">{data.missionChapterFrame.body}</p>
         {#if data.missionChapterFrame.styleVoice}
           <p class="chapter-style-voice">{data.missionChapterFrame.styleVoice}</p>
+        {/if}
+      </GlassCard>
+
+      <GlassCard class="mission-panel mission-panel--compass">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Thread compass</p>
+            <h2>Why these missions are being offered</h2>
+          </div>
+          <EmotionalChip tone="muted">{recommendedMissions.length} close fits</EmotionalChip>
+        </div>
+
+        <div class="compass-grid">
+          {#each missionCompass as signal}
+            <article class="compass-card">
+              <span>{signal.label}</span>
+              <strong>{signal.title}</strong>
+              <p>{signal.body}</p>
+            </article>
+          {/each}
+        </div>
+
+        {#if recommendedMissions.length > 0}
+          <div class="recommended-strip" aria-label="Recommended mission threads">
+            {#each recommendedMissions as mission}
+              <a class="recommended-pill" href={`/app/missions/${mission.id}`}>
+                <span>{threadLabel(mission.type)}</span>
+                <strong>{mission.title ?? 'Untitled mission'}</strong>
+              </a>
+            {/each}
+          </div>
         {/if}
       </GlassCard>
 
@@ -156,8 +235,15 @@
 
                 <div class="mission-card__meta">
                   <span>{requirementCopy(mission)}</span>
+                  <span>{fitLabel(mission.type)}</span>
+                  <span>{threadLabel(mission.type)}</span>
                   <span>{formatCost(mission.cost?.energy ?? null)}</span>
                   <span>{formatReward(mission.xp_reward, mission.energy_reward)}</span>
+                </div>
+
+                <div class={`thread-fit ${isPreferredThread(mission.type) ? 'thread-fit--strong' : ''}`}>
+                  <span>{fitLabel(mission.type)}</span>
+                  <p>{threadBody(mission.type)}</p>
                 </div>
 
                 <div class="mission-card__actions">
@@ -265,6 +351,70 @@
     line-height: 1.45;
   }
 
+  .mission-panel--compass {
+    border-color: rgba(126, 194, 185, 0.14);
+    background:
+      linear-gradient(180deg, rgba(17, 30, 32, 0.74), rgba(12, 18, 21, 0.92)),
+      radial-gradient(circle at top left, rgba(126, 194, 185, 0.12), transparent 56%);
+  }
+
+  .compass-grid {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .compass-card {
+    min-height: 7.4rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(126, 194, 185, 0.14);
+    background: rgba(126, 194, 185, 0.07);
+    padding: 0.85rem;
+    display: grid;
+    align-content: start;
+    gap: 0.24rem;
+  }
+
+  .compass-card span,
+  .recommended-pill span,
+  .thread-fit span {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(147, 222, 210, 0.78);
+  }
+
+  .compass-card strong,
+  .recommended-pill strong {
+    color: rgba(248, 241, 235, 0.98);
+    font-size: 0.9rem;
+    line-height: 1.28;
+  }
+
+  .compass-card p,
+  .thread-fit p {
+    margin: 0;
+    color: rgba(219, 208, 196, 0.82);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .recommended-strip {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .recommended-pill {
+    border-radius: 1rem;
+    border: 1px solid rgba(126, 194, 185, 0.14);
+    background: rgba(255, 248, 240, 0.04);
+    color: inherit;
+    text-decoration: none;
+    padding: 0.8rem;
+    display: grid;
+    gap: 0.2rem;
+  }
+
   .panel-head {
     display: flex;
     justify-content: space-between;
@@ -358,6 +508,20 @@
     color: rgba(240, 228, 214, 0.86);
   }
 
+  .thread-fit {
+    border-radius: 0.9rem;
+    border: 1px solid rgba(236, 216, 193, 0.08);
+    background: rgba(255, 246, 230, 0.04);
+    padding: 0.75rem 0.8rem;
+    display: grid;
+    gap: 0.22rem;
+  }
+
+  .thread-fit--strong {
+    border-color: rgba(126, 194, 185, 0.18);
+    background: rgba(126, 194, 185, 0.08);
+  }
+
   .mission-card__actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -417,6 +581,10 @@
 
     .missions-shell :global(.mission-panel:nth-child(2)) {
       grid-column: 1;
+    }
+
+    .compass-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 </style>
