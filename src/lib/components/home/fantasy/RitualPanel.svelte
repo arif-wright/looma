@@ -29,9 +29,11 @@
 <style>
   .side-panel {
     border: 1px solid rgba(166, 145, 255, 0.2);
-    border-radius: 1.15rem;
-    background: rgba(17, 16, 39, 0.66);
-    padding: 1.1rem;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 80% 0%, rgba(139, 92, 246, 0.14), transparent 38%),
+      rgba(17, 16, 39, 0.66);
+    padding: 1rem;
     color: white;
     backdrop-filter: blur(22px);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -54,26 +56,26 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.96rem;
   }
 
   header span,
   .ritual span,
   .bonus span {
     color: rgba(232, 228, 249, 0.75);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 
   .rituals {
     display: grid;
-    gap: 0.9rem;
-    margin: 1.1rem 0;
+    gap: 0.8rem;
+    margin: 1rem 0;
   }
 
   i {
     display: grid;
-    width: 1.55rem;
-    height: 1.55rem;
+    width: 1.45rem;
+    height: 1.45rem;
     flex: 0 0 auto;
     place-items: center;
     border-radius: 50%;

@@ -31,9 +31,11 @@
 <style>
   .side-panel {
     border: 1px solid rgba(166, 145, 255, 0.2);
-    border-radius: 1.15rem;
-    background: rgba(17, 16, 39, 0.66);
-    padding: 1.1rem;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 80% 0%, rgba(139, 92, 246, 0.12), transparent 38%),
+      rgba(17, 16, 39, 0.66);
+    padding: 1rem;
     color: white;
     backdrop-filter: blur(22px);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -53,7 +55,7 @@
 
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.96rem;
   }
 
   a {
@@ -64,7 +66,7 @@
 
   .friends {
     display: grid;
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
   .friend {
@@ -72,8 +74,8 @@
   }
 
   .avatar {
-    width: 2.45rem;
-    height: 2.45rem;
+    width: 2.35rem;
+    height: 2.35rem;
     flex: 0 0 auto;
     border-radius: 50%;
     background:

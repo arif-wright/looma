@@ -40,7 +40,7 @@
     { label: 'Play a game', href: '/app/games', icon: Gamepad2 },
     { label: 'Summon companion', href: '/app/companions', icon: Sparkles },
     { label: 'Start a quest', href: '/app/missions', icon: WandSparkles },
-    { label: 'Open market', href: '/app/shop', icon: Store }
+    { label: 'Create a world', href: '/app/worlds', icon: Store }
   ];
 
   $: xpPercent = xpNext > 0 ? Math.min(100, Math.round((xp / xpNext) * 100)) : 0;
@@ -101,10 +101,10 @@
     display: flex;
     min-height: 100vh;
     flex-direction: column;
-    gap: 1.35rem;
+    gap: 1.12rem;
     border-right: 1px solid rgba(174, 145, 255, 0.16);
     background: linear-gradient(180deg, rgba(13, 12, 32, 0.88), rgba(7, 8, 20, 0.94));
-    padding: 1.25rem;
+    padding: 1rem;
     color: rgba(247, 244, 255, 0.94);
     box-shadow: 16px 0 60px rgba(3, 6, 20, 0.34);
   }
@@ -114,7 +114,7 @@
     align-items: center;
     gap: 0.75rem;
     color: white;
-    font-size: 1.22rem;
+    font-size: 1.18rem;
     font-weight: 800;
     text-decoration: none;
   }
@@ -131,27 +131,27 @@
   }
 
   .brand-mark {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.55rem;
+    height: 2.55rem;
     border-radius: 0.9rem;
   }
 
   .nav-list,
   .quick-actions {
     display: grid;
-    gap: 0.38rem;
+    gap: 0.34rem;
   }
 
   .nav-list a,
   .quick-actions a {
     display: flex;
-    min-height: 2.75rem;
+    min-height: 2.65rem;
     align-items: center;
     gap: 0.8rem;
     border: 1px solid transparent;
-    border-radius: 0.9rem;
+    border-radius: 0.75rem;
     color: rgba(237, 234, 255, 0.82);
-    padding: 0 0.8rem;
+    padding: 0 0.72rem;
     text-decoration: none;
     transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
   }
@@ -168,9 +168,9 @@
   .world-card,
   .player-card {
     border: 1px solid rgba(164, 139, 255, 0.18);
-    border-radius: 1rem;
+    border-radius: 0.9rem;
     background: rgba(255, 255, 255, 0.045);
-    padding: 0.95rem;
+    padding: 0.78rem;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
@@ -190,8 +190,8 @@
   }
 
   .world-thumb {
-    width: 3rem;
-    height: 3rem;
+    width: 2.75rem;
+    height: 2.75rem;
     flex: 0 0 auto;
     border-radius: 0.8rem;
     background:
@@ -246,8 +246,8 @@
   }
 
   .crest {
-    width: 3.2rem;
-    height: 3.2rem;
+    width: 3rem;
+    height: 3rem;
     flex: 0 0 auto;
     border-radius: 1rem;
   }

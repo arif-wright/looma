@@ -33,9 +33,11 @@
 <style>
   .side-panel {
     border: 1px solid rgba(166, 145, 255, 0.2);
-    border-radius: 1.15rem;
-    background: rgba(17, 16, 39, 0.66);
-    padding: 1.1rem;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 80% 0%, rgba(139, 92, 246, 0.12), transparent 38%),
+      rgba(17, 16, 39, 0.66);
+    padding: 1rem;
     color: white;
     backdrop-filter: blur(22px);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -59,7 +61,7 @@
   }
 
   h2 {
-    font-size: 1rem;
+    font-size: 0.96rem;
   }
 
   a,
@@ -75,9 +77,9 @@
   }
 
   article {
-    gap: 0.72rem;
+    gap: 0.68rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    padding: 0.75rem 0;
+    padding: 0.68rem 0;
   }
 
   article:first-child {
@@ -91,8 +93,8 @@
 
   .icon {
     display: grid;
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.32rem;
+    height: 2.32rem;
     flex: 0 0 auto;
     place-items: center;
     border: 1px solid color-mix(in srgb, var(--tone), transparent 45%);
@@ -110,7 +112,7 @@
   strong {
     display: block;
     color: rgba(255, 255, 255, 0.92);
-    font-size: 0.84rem;
+    font-size: 0.8rem;
     font-weight: 600;
   }
 </style>

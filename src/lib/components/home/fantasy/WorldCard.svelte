@@ -30,12 +30,14 @@
 <style>
   .world-card {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.44rem;
     min-width: 0;
     border: 1px solid rgba(161, 146, 255, 0.16);
-    border-radius: 0.9rem;
-    background: rgba(255, 255, 255, 0.045);
-    padding: 0.55rem;
+    border-radius: 0.78rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.035)),
+      rgba(7, 9, 24, 0.5);
+    padding: 0.48rem;
     color: white;
   }
 
@@ -43,7 +45,7 @@
     position: relative;
     aspect-ratio: 1.25;
     overflow: hidden;
-    border-radius: 0.72rem;
+    border-radius: 0.62rem;
   }
 
   .thumb::before {
@@ -52,6 +54,16 @@
     inset: 17% 16% 0;
     background: rgba(7, 8, 25, 0.62);
     clip-path: polygon(0 100%, 10% 48%, 24% 48%, 31% 18%, 39% 48%, 50% 48%, 56% 0, 63% 48%, 79% 48%, 91% 27%, 100% 100%);
+  }
+
+  .thumb::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 52%;
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(99, 244, 255, 0.26), transparent 62%),
+      linear-gradient(180deg, transparent, rgba(5, 8, 25, 0.48));
   }
 
   .thumb span {
@@ -69,15 +81,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.86rem;
+    font-size: 0.78rem;
   }
 
   .meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.55rem;
+    gap: 0.46rem;
     color: rgba(230, 226, 246, 0.72);
-    font-size: 0.72rem;
+    font-size: 0.66rem;
   }
 
   .meta span {

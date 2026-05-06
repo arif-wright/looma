@@ -32,20 +32,22 @@
 <style>
   .game-card {
     display: grid;
-    gap: 0.48rem;
+    gap: 0.42rem;
     min-width: 0;
     border: 1px solid rgba(161, 146, 255, 0.16);
-    border-radius: 0.9rem;
-    background: rgba(255, 255, 255, 0.045);
-    padding: 0.55rem;
+    border-radius: 0.78rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.035)),
+      rgba(7, 9, 24, 0.5);
+    padding: 0.48rem;
     color: white;
   }
 
   .cover {
     position: relative;
-    aspect-ratio: 1.28;
+    aspect-ratio: 1.08;
     overflow: hidden;
-    border-radius: 0.72rem;
+    border-radius: 0.62rem;
   }
 
   .cover::before {
@@ -55,6 +57,15 @@
     border-radius: 50% 50% 0 0;
     background: linear-gradient(180deg, rgba(8, 12, 31, 0.15), rgba(8, 12, 31, 0.76));
     clip-path: polygon(0 100%, 9% 50%, 20% 50%, 26% 22%, 35% 50%, 49% 50%, 56% 0, 66% 50%, 79% 50%, 91% 34%, 100% 100%);
+  }
+
+  .cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.38), transparent 11%),
+      linear-gradient(180deg, transparent 48%, rgba(5, 8, 25, 0.5));
   }
 
   .cover span {
@@ -69,7 +80,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.82rem;
+    font-size: 0.76rem;
   }
 
   .meta {
@@ -78,7 +89,7 @@
     justify-content: space-between;
     gap: 0.4rem;
     color: rgba(230, 226, 246, 0.68);
-    font-size: 0.72rem;
+    font-size: 0.66rem;
   }
 
   .meta span:last-child {

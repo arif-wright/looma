@@ -216,7 +216,7 @@
     position: relative;
     display: grid;
     min-height: 100vh;
-    grid-template-columns: 18rem minmax(0, 1fr);
+    grid-template-columns: 14.5rem minmax(0, 1fr);
     overflow: hidden;
     background:
       radial-gradient(circle at 78% 12%, rgba(123, 77, 255, 0.24), transparent 24rem),
@@ -249,7 +249,7 @@
     position: relative;
     z-index: 1;
     min-width: 0;
-    padding: 1.5rem;
+    padding: 1.5rem 1.35rem 1.35rem;
   }
 
   .topbar {
@@ -257,17 +257,17 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.35rem;
+    margin-bottom: 1.25rem;
   }
 
   .search {
     display: flex;
-    width: min(34rem, 100%);
-    min-height: 3.15rem;
+    width: min(27.5rem, 100%);
+    min-height: 2.9rem;
     align-items: center;
     gap: 0.8rem;
     border: 1px solid rgba(170, 151, 255, 0.18);
-    border-radius: 1rem;
+    border-radius: 1.45rem;
     background: rgba(8, 10, 27, 0.58);
     padding: 0 1rem;
     color: rgba(231, 229, 246, 0.58);
@@ -340,15 +340,15 @@
 
   .content-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 22rem;
-    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 1.55rem;
     align-items: start;
   }
 
   .center-stack,
   .right-stack {
     display: grid;
-    gap: 1.2rem;
+    gap: 1rem;
     min-width: 0;
   }
 
@@ -359,9 +359,11 @@
 
   .glass-section {
     border: 1px solid rgba(166, 145, 255, 0.18);
-    border-radius: 1.15rem;
-    background: rgba(12, 13, 32, 0.66);
-    padding: 1rem;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(126, 92, 255, 0.08), transparent 42%),
+      rgba(12, 13, 32, 0.66);
+    padding: 0.88rem;
     backdrop-filter: blur(22px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -373,13 +375,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.78rem;
   }
 
   .section-header h2 {
     margin: 0;
     color: white;
-    font-size: 1.02rem;
+    font-size: 0.98rem;
   }
 
   .section-header a {
@@ -391,17 +393,17 @@
   .companion-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.9rem;
+    gap: 0.86rem;
   }
 
   .summon-card {
     display: grid;
-    min-height: 13.4rem;
+    min-height: 12.2rem;
     place-items: center;
     align-content: center;
     gap: 0.35rem;
     border: 1px solid rgba(166, 145, 255, 0.18);
-    border-radius: 1rem;
+    border-radius: 0.86rem;
     background: rgba(255, 255, 255, 0.035);
     color: white;
     text-align: center;
@@ -410,8 +412,8 @@
 
   .summon-card span {
     display: grid;
-    width: 4rem;
-    height: 4rem;
+    width: 3.8rem;
+    height: 3.8rem;
     place-items: center;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 50%;
@@ -437,7 +439,7 @@
 
   .card-grid {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .game-grid {

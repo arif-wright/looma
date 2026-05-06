@@ -44,14 +44,15 @@
 <style>
   .companion-card {
     position: relative;
-    min-height: 13.4rem;
+    min-height: 12.2rem;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--accent), transparent 55%);
-    border-radius: 1rem;
+    border-radius: 0.86rem;
     background:
-      radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--accent), transparent 48%), transparent 38%),
+      radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--accent), transparent 34%), transparent 40%),
+      radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--accent), transparent 74%), transparent 30%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
-    padding: 0.75rem;
+    padding: 0.68rem;
     color: white;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
@@ -74,7 +75,7 @@
 
   .portrait {
     display: grid;
-    height: 7.5rem;
+    height: 7.1rem;
     place-items: center;
   }
 
@@ -86,13 +87,14 @@
 
   .creature {
     position: relative;
-    width: 5.5rem;
-    height: 5.8rem;
+    width: 6rem;
+    height: 6.35rem;
     border-radius: 48% 48% 42% 42%;
     background:
-      radial-gradient(circle at 35% 38%, #031434 0 9%, transparent 10%),
-      radial-gradient(circle at 65% 38%, #031434 0 9%, transparent 10%),
-      radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.42), transparent 15%),
+      radial-gradient(circle at 35% 38%, #05153d 0 10%, #69efff 10% 15%, transparent 16%),
+      radial-gradient(circle at 65% 38%, #05153d 0 10%, #69efff 10% 15%, transparent 16%),
+      radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.48), transparent 14%),
+      linear-gradient(130deg, transparent 0 38%, rgba(255, 255, 255, 0.18) 39% 41%, transparent 42% 100%),
       linear-gradient(160deg, color-mix(in srgb, var(--accent), white 18%), color-mix(in srgb, var(--accent), black 30%));
     box-shadow: 0 0 42px color-mix(in srgb, var(--accent), transparent 26%);
   }
@@ -101,21 +103,21 @@
   .creature::after {
     content: '';
     position: absolute;
-    top: 1.35rem;
-    width: 2.4rem;
-    height: 2.6rem;
+    top: 1.45rem;
+    width: 2.9rem;
+    height: 3.1rem;
     border-radius: 70% 20% 70% 20%;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent), white 24%), transparent);
     opacity: 0.82;
   }
 
   .creature::before {
-    left: -1.6rem;
+    left: -2rem;
     transform: rotate(-24deg);
   }
 
   .creature::after {
-    right: -1.6rem;
+    right: -2rem;
     transform: scaleX(-1) rotate(-24deg);
   }
 
@@ -125,13 +127,13 @@
   }
 
   .copy strong {
-    font-size: 0.94rem;
+    font-size: 0.86rem;
   }
 
   .copy span,
   .meta {
     color: rgba(226, 222, 246, 0.72);
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 
   .meta {
