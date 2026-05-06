@@ -323,14 +323,14 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Memory</title>
+  <title>Looma - Journal</title>
 </svelte:head>
 
 <div class="memory-root" data-premium-style={premiumSanctuaryStyle ?? 'default'}>
   <SanctuaryPageFrame
     eyebrow="Companion Journal"
-    title="Memory"
-    subtitle="See what your companion has been carrying forward from recent rituals, play, and mission progress."
+    title="Journal"
+    subtitle="Inspect what your companion has been carrying forward from rituals, play, check-ins, and mission progress."
   >
     <svelte:fragment slot="actions">
       {#if data.selectedCompanion}
@@ -367,6 +367,22 @@
           <p class="empty-copy">No companions yet. Start by opening the companion flow first.</p>
         {/if}
       </GlassCard>
+
+      <section class="trust-band" aria-label="Memory transparency">
+        <article class="trust-band__copy">
+          <p class="eyebrow">Memory transparency</p>
+          <h2>You can inspect the read before you trust the magic.</h2>
+          <p>
+            This journal is built from companion care, check-ins, missions, play, social moments, and saved summaries.
+            Refreshing rebuilds the current snapshot. Clearing removes this companion's summary card, not your whole account history.
+          </p>
+        </article>
+        <div class="trust-band__rules" aria-label="Journal rules">
+          <span>Companion-specific</span>
+          <span>Summary can be cleared</span>
+          <span>Core bond stays free</span>
+        </div>
+      </section>
 
       <div class="memory-grid">
         <GlassCard class="memory-card memory-card--summary">
@@ -873,6 +889,44 @@
   .memory-card {
     display: grid;
     gap: 1rem;
+  }
+
+  .trust-band {
+    display: grid;
+    gap: 0.9rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(214, 190, 141, 0.18);
+    background:
+      linear-gradient(155deg, rgba(34, 28, 18, 0.68), rgba(12, 18, 22, 0.82)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 48%);
+    padding: 1rem;
+  }
+
+  .trust-band__copy {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .trust-band__copy p:last-child {
+    color: rgba(226, 232, 240, 0.86);
+    line-height: 1.5;
+    max-width: 58rem;
+  }
+
+  .trust-band__rules {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .trust-band__rules span {
+    border-radius: 999px;
+    border: 1px solid rgba(214, 190, 141, 0.2);
+    background: rgba(214, 190, 141, 0.08);
+    color: rgba(245, 238, 225, 0.92);
+    padding: 0.42rem 0.72rem;
+    font-size: 0.78rem;
+    font-weight: 700;
   }
 
   .card-head {
