@@ -7,6 +7,7 @@
   import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
   import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let notifications: NotificationItem[] = [];
   export let userEmail: string | null = null;
@@ -107,7 +108,7 @@
       class={`chip ${pulse ? 'motion-safe:animate-chipPulse' : ''}`}
       aria-label="Shard balance"
     >
-      <span class="chip-glyph" aria-hidden="true"></span>
+      <ShardIcon size={17} />
       <span class="tabular-nums">{fmt(currentBalance)}</span>
     </a>
 
@@ -259,14 +260,6 @@
     font-size: 0.78rem;
     color: rgba(249, 243, 236, 0.96);
     text-decoration: none;
-  }
-
-  .chip-glyph {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(240, 180, 112, 0.92);
-    box-shadow: 0 0 12px rgba(240, 180, 112, 0.42);
   }
 
   .account-menu {

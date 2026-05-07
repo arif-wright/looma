@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+
   export let shards: number;
   export let price: string;
   export let badge: string | null = null;
@@ -12,7 +14,7 @@
     {/if}
 
     <div class="card-summary">
-      <div class="card-icon" aria-hidden="true">💎</div>
+      <div class="card-icon" aria-hidden="true"><ShardIcon size={30} /></div>
       <div>
         <div class="card-value">{shards.toLocaleString()}</div>
         <div class="card-price">{price}</div>

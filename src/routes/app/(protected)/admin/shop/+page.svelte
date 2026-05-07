@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   export let data: {
     forbidden: boolean;
     items: any[];
@@ -473,7 +474,7 @@
                 />
                 <div class="absolute right-2 top-2 flex gap-1 text-[10px] uppercase">
                   <span class="badge">{item.rarity}</span>
-                  <span class="badge">💎 {item.price_shards}</span>
+                  <span class="badge inline-flex items-center gap-1"><ShardIcon size={13} /> {item.price_shards}</span>
                 </div>
                 {#if !item.active}
                   <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]"></div>

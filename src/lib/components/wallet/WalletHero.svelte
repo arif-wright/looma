@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tweened } from 'svelte/motion';
   import { onMount } from 'svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let shards = 0;
 
@@ -16,7 +17,7 @@
   <div class="hero-content">
     <div class="hero-label">Shard balance</div>
     <div class="hero-balance">
-      <span class="hero-icon" aria-hidden="true">💎</span>
+      <span class="hero-icon" aria-hidden="true"><ShardIcon size={32} /></span>
       <div class="hero-amount">{$animated.toFixed(0)}</div>
     </div>
     <p class="hero-helper">Expression currency for cosmetics, atmosphere, keepsakes, and optional convenience. Core bonding stays free.</p>

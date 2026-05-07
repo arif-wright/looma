@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Gem } from 'lucide-svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let level: number | null = null;
   export let xp: number | null = null;
@@ -61,7 +61,7 @@
     </div>
   </div>
   <div class="telemetry__wallet">
-    <Gem class="telemetry__gem" stroke-width={1.6} />
+    <ShardIcon size={17} />
     <span class="telemetry__balance">{formatCurrency(walletBalance)} {currencyLabel}</span>
     {#if deltaSign}
       <span class={`telemetry__delta ${walletDelta && walletDelta > 0 ? 'up' : 'down'}`}>
@@ -122,12 +122,6 @@
     gap: 0.5rem;
     font-size: 0.85rem;
     color: rgba(226, 232, 240, 0.75);
-  }
-
-  .telemetry__gem {
-    width: 1rem;
-    height: 1rem;
-    color: rgba(103, 232, 249, 0.9);
   }
 
   .telemetry__balance {

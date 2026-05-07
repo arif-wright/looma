@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Check, Gem } from 'lucide-svelte';
+  import { Check } from 'lucide-svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let completed = 3;
 
@@ -21,7 +22,7 @@
   </div>
   <div class="bonus">
     <span>Ritual Bonus</span>
-    <strong><Gem size={15} /> +50</strong>
+    <strong><ShardIcon size={16} /> +50</strong>
   </div>
   <div class="meter"><span style={`width: ${(completed / 3) * 100}%`}></span></div>
 </section>

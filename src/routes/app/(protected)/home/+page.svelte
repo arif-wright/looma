@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Bell, Gamepad2, Gem, Heart, Home, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
+  import { Bell, Gamepad2, Heart, Home, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
   import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
@@ -9,6 +9,7 @@
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
   import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -113,7 +114,7 @@
       </label>
       <div class="top-actions">
         <a class="currency" href="/app/wallet" aria-label="Open wallet">
-          <Gem size={18} />
+          <ShardIcon size={20} />
           <span>{(data.wallet?.balance ?? 1240).toLocaleString()}</span>
         </a>
         <a class="icon-action" href="/app/notifications" aria-label="Notifications"><Bell size={19} /></a>
@@ -347,11 +348,6 @@
     border-radius: 0.95rem;
     padding: 0 1rem;
     font-weight: 800;
-  }
-
-  .currency :global(svg) {
-    color: #b78cff;
-    fill: currentColor;
   }
 
   .icon-action,

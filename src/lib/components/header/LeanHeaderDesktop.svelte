@@ -11,6 +11,7 @@
   import { activeCompanionStore } from '$lib/stores/companions';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let iconNavItems: IconNavItem[] = [];
   export let energy: number | null = null;
@@ -144,7 +145,7 @@
           aria-label="Shard balance"
           on:click={navWallet}
         >
-          <span aria-hidden="true">💎</span>
+          <ShardIcon size={17} />
           <span class="lean-status__wallet-value">{shardValue}</span>
           <span class="lean-status__wallet-currency">{shardCurrency}</span>
         </a>

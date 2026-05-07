@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Gem, Users } from 'lucide-svelte';
+  import { Users } from 'lucide-svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let name: string;
   export let level = 1;
@@ -21,9 +22,9 @@
   </div>
   <strong>{name}</strong>
   <div class="meta">
-    <span><Gem size={12} /> {level}</span>
+    <span><ShardIcon size={13} /> {level}</span>
     <span><Users size={12} /> {players}</span>
-    <span><Gem size={12} /> {reward}</span>
+    <span><ShardIcon size={13} /> {reward}</span>
   </div>
 </article>
 

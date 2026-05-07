@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let items: any[] = [];
   export let onClickItem: (item: any) => void = () => {};
@@ -87,7 +88,7 @@
           {/if}
         </div>
         <div class="cta-row">
-          <span class="price">💎 {items[idx]?.price_shards}</span>
+          <span class="price"><ShardIcon size={17} /> {items[idx]?.price_shards}</span>
           <button
             class="cta"
             on:click={() => onClickItem?.(items[idx])}

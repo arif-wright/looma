@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { Gem, Sparkles } from 'lucide-svelte';
+  import { Sparkles } from 'lucide-svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   const items = [
     { name: 'Maya completed', detail: "Dragon's Trial", time: '2m ago', tone: '#a75cff', icon: Sparkles },
     { name: 'Zephyr summoned a', detail: 'legendary companion', time: '15m ago', tone: '#ff6fb8', icon: Sparkles },
     { name: 'Kai joined your world', detail: 'Looma Prime', time: '1h ago', tone: '#ffd36e', icon: Sparkles },
-    { name: 'Nova sent you a gift', detail: '25', time: '2h ago', tone: '#62e8ff', icon: Gem }
+    { name: 'Nova sent you a gift', detail: '25', time: '2h ago', tone: '#62e8ff', shard: true }
   ];
 </script>
 
@@ -18,7 +19,11 @@
     {#each items as item}
       <article>
         <span class="icon" style={`--tone: ${item.tone}`}>
-          <svelte:component this={item.icon} size={17} />
+          {#if item.shard}
+            <ShardIcon size={22} />
+          {:else}
+            <svelte:component this={item.icon} size={17} />
+          {/if}
         </span>
         <div>
           <p>{item.name}</p>

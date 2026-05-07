@@ -10,6 +10,7 @@
   import { getBondBonusForLevel } from '$lib/companions/bond';
   import { computeEffectiveEnergyMax } from '$lib/player/energy';
   import FeedbackModal from '$lib/components/modals/FeedbackModal.svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let energy: number | null = null;
   export let energyMax: number | null = null;
@@ -171,7 +172,7 @@ const capsuleBaseClass =
     href="/app/wallet"
     on:click={openWallet}
   >
-    <span aria-hidden="true">💎</span>
+    <ShardIcon size={16} />
     <span>
       {#if typeof walletBalance === 'number'}
         {walletBalance.toLocaleString()}

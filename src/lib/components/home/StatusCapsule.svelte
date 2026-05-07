@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+
   export let level: number | null = null;
   export let xp: number | null = null;
   export let xpNext: number | null = null;
@@ -114,7 +116,7 @@ $: xpPercent =
     <div class="wallet">
       <span class="label">Wallet</span>
       <div class="pill wallet-pill" aria-live="polite">
-        <span class="pill-icon" aria-hidden="true">💎</span>
+        <ShardIcon size={16} />
         <span class="pill-text">
           {walletDisplay} {walletCurrencyLabel}
         </span>

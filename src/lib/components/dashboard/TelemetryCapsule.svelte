@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Gem } from 'lucide-svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let level: number | null = 1;
   export let xp: number | null = 1200;
@@ -24,7 +24,7 @@
     <div class="fill" style={`width:${progress * 100}%`}></div>
   </div>
   <div class="wallet">
-    <Gem stroke-width={1.6} />
+    <ShardIcon size={17} />
     <span class="wallet__balance">{format(walletBalance)} {walletCurrency.toUpperCase()}</span>
   </div>
 </section>

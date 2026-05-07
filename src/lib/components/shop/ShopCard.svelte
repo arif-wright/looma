@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
 
   export let item: any;
 
@@ -40,7 +41,11 @@
         {item.rarity}
       </span>
       <span class="rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold ring-1 ring-white/10">
-        {item.__owned ? 'Owned' : `💎 ${item.price_shards}`}
+        {#if item.__owned}
+          Owned
+        {:else}
+          <span class="inline-flex items-center gap-1"><ShardIcon size={13} /> {item.price_shards}</span>
+        {/if}
       </span>
     </div>
     {#if item.__owned}
