@@ -96,7 +96,6 @@
 </svelte:head>
 
 <div class="fantasy-home" style={`--home-bg-image: url('${heroBackgroundUrl}')`}>
-  <div class="ambient" aria-hidden="true"></div>
   <FantasySidebar
     playerName={playerName}
     level={playerLevel}
@@ -239,16 +238,18 @@
     font-family: var(--font-body, 'Manrope', system-ui, sans-serif);
   }
 
-  .fantasy-home::before,
-  .fantasy-home::after {
+  .home-main::before,
+  .home-main::after {
     content: '';
     position: absolute;
-    inset: 0 0 auto;
+    top: 0;
+    right: calc(19rem + 1.55rem);
+    left: 0;
     height: clamp(40rem, 64vw, 48rem);
     pointer-events: none;
   }
 
-  .fantasy-home::before {
+  .home-main::before {
     z-index: 0;
     background-image: var(--home-bg-image);
     background-position: center top;
@@ -259,32 +260,12 @@
     mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.78) 70%, transparent 100%);
   }
 
-  .fantasy-home::after {
+  .home-main::after {
     z-index: 0;
     background:
-      linear-gradient(90deg, rgba(5, 7, 20, 0.88), rgba(5, 7, 20, 0.24) 42%, rgba(5, 7, 20, 0.62)),
+      linear-gradient(90deg, rgba(5, 7, 20, 0.82), rgba(5, 7, 20, 0.18) 42%, rgba(5, 7, 20, 0.68)),
       linear-gradient(180deg, rgba(5, 7, 20, 0.12), rgba(5, 7, 20, 0.3) 44%, rgba(5, 7, 20, 0.72) 78%, #050714 100%),
       radial-gradient(circle at 62% 26%, rgba(94, 242, 255, 0.12), transparent 24rem);
-  }
-
-  .ambient {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background-image:
-      radial-gradient(circle, rgba(255, 255, 255, 0.52) 0 1px, transparent 1.6px),
-      radial-gradient(circle, rgba(98, 232, 255, 0.7) 0 1px, transparent 1.5px),
-      radial-gradient(circle, rgba(255, 92, 220, 0.62) 0 1px, transparent 1.5px);
-    background-position:
-      5% 8%,
-      68% 10%,
-      36% 70%;
-    background-size:
-      13rem 12rem,
-      17rem 15rem,
-      19rem 18rem;
-    opacity: 0.42;
   }
 
   .home-main {
@@ -292,6 +273,12 @@
     z-index: 2;
     min-width: 0;
     padding: 1.5rem 1.35rem 1.35rem;
+  }
+
+  .topbar,
+  .content-grid {
+    position: relative;
+    z-index: 2;
   }
 
   .topbar {
@@ -493,6 +480,11 @@
   }
 
   @media (max-width: 1380px) {
+    .home-main::before,
+    .home-main::after {
+      right: 0;
+    }
+
     .content-grid {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -533,7 +525,7 @@
         linear-gradient(180deg, #07081c, #050714 64%);
     }
 
-    .fantasy-home::before {
+    .home-main::before {
       background-position: center top;
       height: 45rem;
       opacity: 0.78;

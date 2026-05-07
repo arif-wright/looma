@@ -11,19 +11,6 @@
 </script>
 
 <section class="living-world" aria-labelledby="living-world-title">
-  <div class="stars" aria-hidden="true"></div>
-  <div class="world-depth" aria-hidden="true">
-    <span class="moon"></span>
-    <span class="castle castle-one"></span>
-    <span class="castle castle-two"></span>
-    <span class="ridge ridge-left"></span>
-    <span class="ridge ridge-right"></span>
-    <span class="path"></span>
-    <span class="platform"></span>
-    <span class="flora flora-one"></span>
-    <span class="flora flora-two"></span>
-  </div>
-
   <div class="hero-copy">
     <p>Welcome back,</p>
     <h1 id="living-world-title">{playerName}<span aria-hidden="true">+</span></h1>
@@ -88,162 +75,9 @@
     overflow: visible;
     border: 0;
     border-radius: 0;
-    background:
-      linear-gradient(90deg, rgba(5, 7, 20, 0.28), rgba(8, 10, 30, 0.08) 42%, rgba(6, 7, 21, 0.16)),
-      radial-gradient(circle at 61% 52%, rgba(75, 244, 255, 0.28), transparent 24%),
-      radial-gradient(circle at 77% 14%, rgba(141, 83, 255, 0.34), transparent 22%),
-      radial-gradient(circle at 24% 35%, rgba(75, 244, 255, 0.13), transparent 24%);
-    background-position: center;
-    background-size: cover;
+    background: transparent;
     box-shadow: none;
     isolation: isolate;
-  }
-
-  .living-world::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(180deg, transparent 48%, rgba(3, 5, 15, 0.18) 72%, rgba(3, 5, 15, 0.34)),
-      radial-gradient(circle at 60% 80%, rgba(94, 242, 255, 0.22), transparent 21%),
-      linear-gradient(90deg, rgba(2, 4, 15, 0.5), transparent 28%, transparent 68%, rgba(2, 4, 15, 0.34));
-    pointer-events: none;
-    z-index: -1;
-  }
-
-  .stars,
-  .stars::before {
-    position: absolute;
-    inset: 0;
-    background-image:
-      radial-gradient(circle, rgba(255, 255, 255, 0.8) 0 1px, transparent 1.6px),
-      radial-gradient(circle, rgba(98, 232, 255, 0.8) 0 1px, transparent 1.4px),
-      radial-gradient(circle, rgba(255, 92, 220, 0.8) 0 1px, transparent 1.4px);
-    background-position:
-      8% 12%,
-      70% 8%,
-      40% 72%;
-    background-size:
-      8.5rem 7rem,
-      11rem 8rem,
-      9rem 10rem;
-    opacity: 0.5;
-  }
-
-  .stars::before {
-    content: '';
-    filter: blur(1px);
-    opacity: 0.5;
-    transform: translateY(1.5rem);
-  }
-
-  .world-depth {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-  }
-
-  .moon {
-    position: absolute;
-    right: 8%;
-    top: 7%;
-    width: 3.4rem;
-    height: 3.4rem;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #ffd989, #9b5cff 54%, transparent 58%);
-    filter: blur(0.5px);
-    opacity: 0.55;
-  }
-
-  .castle {
-    position: absolute;
-    bottom: 32%;
-    width: 12.5rem;
-    height: 12.5rem;
-    opacity: 0.58;
-    filter: drop-shadow(0 0 22px rgba(109, 78, 255, 0.4));
-    clip-path: polygon(8% 100%, 8% 55%, 17% 55%, 17% 38%, 27% 38%, 32% 11%, 39% 38%, 50% 38%, 50% 61%, 62% 61%, 62% 44%, 73% 44%, 79% 22%, 86% 44%, 94% 44%, 94% 100%);
-    background: linear-gradient(180deg, rgba(90, 75, 190, 0.86), rgba(8, 12, 34, 0.95));
-  }
-
-  .castle-one {
-    left: 22%;
-    bottom: 37%;
-    transform: scale(0.9);
-  }
-
-  .castle-two {
-    right: 2%;
-    bottom: 30%;
-    transform: scale(0.68);
-  }
-
-  .ridge {
-    position: absolute;
-    bottom: 17%;
-    height: 34%;
-    opacity: 0.54;
-    background: linear-gradient(180deg, rgba(47, 39, 116, 0.72), rgba(5, 8, 25, 0.92));
-    filter: blur(0.2px);
-    clip-path: polygon(0 100%, 0 72%, 8% 56%, 17% 65%, 28% 28%, 38% 64%, 48% 44%, 61% 68%, 74% 35%, 86% 68%, 100% 52%, 100% 100%);
-  }
-
-  .ridge-left {
-    left: 0;
-    width: 45%;
-  }
-
-  .ridge-right {
-    right: 0;
-    width: 38%;
-    transform: scaleX(-1);
-  }
-
-  .path {
-    position: absolute;
-    left: 34%;
-    right: 18%;
-    bottom: 0;
-    height: 36%;
-    border-radius: 50% 50% 0 0;
-    background:
-      radial-gradient(ellipse at 50% 88%, rgba(96, 245, 255, 0.18), rgba(142, 83, 255, 0.1) 48%, transparent 70%),
-      repeating-radial-gradient(ellipse at 50% 100%, rgba(151, 185, 255, 0.16) 0 0.45rem, transparent 0.5rem 1.4rem);
-  }
-
-  .platform {
-    position: absolute;
-    left: 45%;
-    right: 25%;
-    bottom: 7%;
-    height: 4.8rem;
-    border-radius: 50%;
-    background:
-      radial-gradient(ellipse at 50% 50%, rgba(73, 248, 255, 0.34), transparent 34%),
-      radial-gradient(ellipse at 50% 50%, rgba(96, 76, 190, 0.62), rgba(21, 22, 62, 0.78) 54%, transparent 70%);
-    filter: blur(0.2px);
-  }
-
-  .flora {
-    position: absolute;
-    bottom: 10%;
-    width: 5rem;
-    height: 5rem;
-    opacity: 0.5;
-    background:
-      radial-gradient(ellipse at 35% 70%, rgba(84, 231, 147, 0.52), transparent 20%),
-      radial-gradient(ellipse at 55% 45%, rgba(94, 242, 255, 0.28), transparent 18%),
-      radial-gradient(ellipse at 70% 74%, rgba(126, 92, 255, 0.42), transparent 20%);
-  }
-
-  .flora-one {
-    left: 29%;
-  }
-
-  .flora-two {
-    right: 17%;
-    bottom: 8%;
-    transform: scale(0.75);
   }
 
   .hero-copy {
@@ -492,11 +326,7 @@
       min-height: min(43.5rem, 88svh);
       border-width: 0 0 1px;
       border-radius: 0 0 1.6rem 1.6rem;
-      background:
-        linear-gradient(180deg, rgba(5, 7, 20, 0.36), rgba(5, 7, 20, 0.84) 78%),
-        radial-gradient(circle at 50% 44%, rgba(94, 242, 255, 0.24), transparent 34%),
-        radial-gradient(circle at 50% 22%, rgba(155, 92, 255, 0.34), transparent 20rem),
-        linear-gradient(180deg, #0c0d2e, #070819);
+      background: transparent;
     }
 
     .hero-copy {
@@ -591,20 +421,6 @@
       margin-top: 0.48rem;
     }
 
-    .castle {
-      bottom: 27%;
-      opacity: 0.32;
-      transform: scale(0.72);
-    }
-
-    .castle-one {
-      left: -1rem;
-    }
-
-    .castle-two {
-      right: -3rem;
-      transform: scale(0.58);
-    }
   }
 
   @media (max-width: 390px) {
