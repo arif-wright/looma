@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowRight, Heart, Pencil, Smile } from 'lucide-svelte';
+  import { ArrowRight, Pencil, Smile } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
   export let playerName = 'Alex';
@@ -61,7 +61,9 @@
       <span>{mood}</span>
     </div>
     <div class="status-row">
-      <i class="stat-icon stat-icon--bond" aria-hidden="true"><Heart size={20} /></i>
+      <i class="stat-icon stat-icon--bond" aria-hidden="true">
+        <img src="/assets/heart.png" alt="" loading="eager" />
+      </i>
       <span>Bond</span>
       <strong>{bond}%</strong>
     </div>
@@ -270,6 +272,14 @@
 
   .stat-icon :global(svg) {
     filter: drop-shadow(0 0 5px currentColor);
+  }
+
+  .stat-icon img {
+    display: block;
+    width: 1.18rem;
+    height: 1.18rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 5px rgba(255, 120, 176, 0.68));
   }
 
   .stat-icon--mood {
