@@ -106,11 +106,15 @@
     muse: {
       backgroundPosition: 'center top',
       mobileBackgroundPosition: 'center top',
-      stageLeft: '34%',
-      stageRight: '24%',
-      stageTranslateX: '-2.75rem',
-      stageTranslateY: '1.15rem',
-      mobileStageTranslateY: '1rem'
+      stageLeft: '22%',
+      stageRight: '39%',
+      stageWidth: 'min(23rem, 92%)',
+      stageHeight: 'min(24rem, 100%)',
+      stageTranslateX: '-0.75rem',
+      stageTranslateY: '2.35rem',
+      mobileStageWidth: 'min(20rem, 92vw)',
+      mobileStageHeight: 'min(22rem, 52svh)',
+      mobileStageTranslateY: '1.55rem'
     },
     root: {
       backgroundPosition: '49% top',
@@ -365,11 +369,7 @@
   }
 
   .home-main::after {
-    z-index: 0;
-    background:
-      linear-gradient(90deg, rgba(5, 7, 20, 0.82), rgba(5, 7, 20, 0.18) 42%, rgba(5, 7, 20, 0.68)),
-      linear-gradient(180deg, rgba(5, 7, 20, 0.12), rgba(5, 7, 20, 0.3) 44%, rgba(5, 7, 20, 0.72) 78%, #050714 100%),
-      radial-gradient(circle at 62% 26%, rgba(94, 242, 255, 0.12), transparent 24rem);
+    display: none;
   }
 
   .home-main {
