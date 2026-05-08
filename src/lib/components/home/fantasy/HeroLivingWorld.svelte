@@ -163,13 +163,14 @@
 
   .companion-stage {
     position: absolute;
-    left: 40%;
-    right: 18%;
-    bottom: 0.35rem;
-    top: -0.8rem;
+    left: var(--hero-stage-left, 40%);
+    right: var(--hero-stage-right, 18%);
+    bottom: var(--hero-stage-bottom, 0.35rem);
+    top: var(--hero-stage-top, -0.8rem);
     display: grid;
     place-items: end center;
     min-width: 20rem;
+    transform: translate(var(--hero-stage-translate-x, 0), var(--hero-stage-translate-y, 0));
   }
 
   .companion-aura {
@@ -187,8 +188,8 @@
   .companion-image {
     position: relative;
     z-index: 2;
-    width: min(33rem, 124%);
-    height: min(33rem, 122%);
+    width: var(--hero-stage-width, min(33rem, 124%));
+    height: var(--hero-stage-height, min(33rem, 122%));
     object-fit: contain;
     filter: drop-shadow(0 0 42px rgba(77, 244, 255, 0.42));
   }
@@ -311,6 +312,7 @@
       top: 13rem;
       bottom: 4.5rem;
       min-width: 0;
+      transform: translate(0, var(--hero-stage-mobile-translate-y, 0));
     }
 
     .status-card {
@@ -374,11 +376,12 @@
     .companion-stage {
       left: 0;
       right: 0;
-      top: 8.5rem;
-      bottom: 7.4rem;
+      top: var(--hero-stage-mobile-top, 8.5rem);
+      bottom: var(--hero-stage-mobile-bottom, 7.4rem);
       min-width: 0;
       place-items: center;
       overflow: visible;
+      transform: translate(0, var(--hero-stage-mobile-translate-y, 0));
     }
 
     .companion-aura {
@@ -389,8 +392,8 @@
 
     .companion-model,
     .companion-image {
-      width: min(25rem, 112vw);
-      height: min(28rem, 58svh);
+      width: var(--hero-stage-mobile-width, min(25rem, 112vw));
+      height: var(--hero-stage-mobile-height, min(28rem, 58svh));
     }
 
     .status-card {

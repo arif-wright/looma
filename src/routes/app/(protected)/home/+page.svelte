@@ -50,6 +50,99 @@
     spark: '/assets/spark_background.png'
   };
 
+  type HeroScenePlacement = {
+    backgroundPosition: string;
+    mobileBackgroundPosition: string;
+    stageLeft: string;
+    stageRight: string;
+    stageTop: string;
+    stageBottom: string;
+    stageWidth: string;
+    stageHeight: string;
+    stageTranslateX: string;
+    stageTranslateY: string;
+    mobileStageTop: string;
+    mobileStageBottom: string;
+    mobileStageWidth: string;
+    mobileStageHeight: string;
+    mobileStageTranslateY: string;
+  };
+
+  const defaultHeroScenePlacement: HeroScenePlacement = {
+    backgroundPosition: 'center top',
+    mobileBackgroundPosition: 'center top',
+    stageLeft: '40%',
+    stageRight: '18%',
+    stageTop: '-0.8rem',
+    stageBottom: '0.35rem',
+    stageWidth: 'min(33rem, 124%)',
+    stageHeight: 'min(33rem, 122%)',
+    stageTranslateX: '0',
+    stageTranslateY: '0',
+    mobileStageTop: '8.5rem',
+    mobileStageBottom: '7.4rem',
+    mobileStageWidth: 'min(25rem, 112vw)',
+    mobileStageHeight: 'min(28rem, 58svh)',
+    mobileStageTranslateY: '0'
+  };
+
+  // Tuned from the platform/landing spot in each generated background. Keeping
+  // these values data-driven lets art changes be calibrated without touching layout CSS.
+  const heroScenePlacementByArchetype: Record<string, Partial<HeroScenePlacement>> = {
+    echo: {
+      backgroundPosition: '51% top',
+      mobileBackgroundPosition: '52% top',
+      stageLeft: '39%',
+      stageRight: '17%',
+      stageTranslateY: '0.2rem'
+    },
+    guardian: {
+      backgroundPosition: '50% top',
+      mobileBackgroundPosition: '51% top',
+      stageLeft: '39%',
+      stageRight: '18%',
+      stageTranslateY: '0.1rem'
+    },
+    muse: {
+      backgroundPosition: 'center top',
+      mobileBackgroundPosition: 'center top'
+    },
+    root: {
+      backgroundPosition: '49% top',
+      mobileBackgroundPosition: '50% top',
+      stageLeft: '38%',
+      stageRight: '18%',
+      stageTranslateY: '0.35rem'
+    },
+    spark: {
+      backgroundPosition: '52% top',
+      mobileBackgroundPosition: '53% top',
+      stageLeft: '41%',
+      stageRight: '16%',
+      stageTranslateY: '-0.05rem'
+    }
+  };
+
+  const buildHeroSceneStyle = (placement: HeroScenePlacement, backgroundUrl: string) =>
+    [
+      `--home-bg-image: url('${backgroundUrl}')`,
+      `--home-bg-position: ${placement.backgroundPosition}`,
+      `--home-bg-position-mobile: ${placement.mobileBackgroundPosition}`,
+      `--hero-stage-left: ${placement.stageLeft}`,
+      `--hero-stage-right: ${placement.stageRight}`,
+      `--hero-stage-top: ${placement.stageTop}`,
+      `--hero-stage-bottom: ${placement.stageBottom}`,
+      `--hero-stage-width: ${placement.stageWidth}`,
+      `--hero-stage-height: ${placement.stageHeight}`,
+      `--hero-stage-translate-x: ${placement.stageTranslateX}`,
+      `--hero-stage-translate-y: ${placement.stageTranslateY}`,
+      `--hero-stage-mobile-top: ${placement.mobileStageTop}`,
+      `--hero-stage-mobile-bottom: ${placement.mobileStageBottom}`,
+      `--hero-stage-mobile-width: ${placement.mobileStageWidth}`,
+      `--hero-stage-mobile-height: ${placement.mobileStageHeight}`,
+      `--hero-stage-mobile-translate-y: ${placement.mobileStageTranslateY}`
+    ].join('; ');
+
   const normalizedMood = (value: string | null | undefined) => {
     const mood = value?.trim();
     if (!mood) return 'Happy';
@@ -71,6 +164,11 @@
   $: companionName = activeCompanion?.name ?? 'Lumi';
   $: companionArchetype = normalizeArchetype(activeCompanion?.species) || 'muse';
   $: heroBackgroundUrl = backgroundByArchetype[companionArchetype] ?? '/assets/muse_background.png';
+  $: heroScenePlacement = {
+    ...defaultHeroScenePlacement,
+    ...(heroScenePlacementByArchetype[companionArchetype] ?? {})
+  };
+  $: heroSceneStyle = buildHeroSceneStyle(heroScenePlacement, heroBackgroundUrl);
   $: companionBond = Math.min(
     100,
     Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
@@ -96,7 +194,7 @@
   <title>Looma | Home</title>
 </svelte:head>
 
-<div class="fantasy-home" style={`--home-bg-image: url('${heroBackgroundUrl}')`}>
+<div class="fantasy-home" style={heroSceneStyle}>
   <FantasySidebar
     playerName={playerName}
     level={playerLevel}
@@ -253,7 +351,7 @@
   .home-main::before {
     z-index: 0;
     background-image: var(--home-bg-image);
-    background-position: center top;
+    background-position: var(--home-bg-position, center top);
     background-size: cover;
     opacity: 0.9;
     transform: scale(1.01);
@@ -522,7 +620,7 @@
     }
 
     .home-main::before {
-      background-position: center top;
+      background-position: var(--home-bg-position-mobile, var(--home-bg-position, center top));
       height: 45rem;
       opacity: 0.78;
     }
