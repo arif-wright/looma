@@ -105,7 +105,12 @@
     },
     muse: {
       backgroundPosition: 'center top',
-      mobileBackgroundPosition: 'center top'
+      mobileBackgroundPosition: 'center top',
+      stageLeft: '34%',
+      stageRight: '24%',
+      stageTranslateX: '-2.75rem',
+      stageTranslateY: '1.15rem',
+      mobileStageTranslateY: '1rem'
     },
     root: {
       backgroundPosition: '49% top',
