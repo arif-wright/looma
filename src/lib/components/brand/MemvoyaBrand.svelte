@@ -28,40 +28,42 @@
 
 <style>
   .memvoya-brand {
-    --brand-mark-size: 2.15rem;
-    --brand-title-width: 8.9rem;
-    --brand-title-height: 2rem;
-    --brand-title-offset: -3.47rem;
+    --brand-mark-size: 3.1rem;
+    --brand-title-width: 10.4rem;
+    --brand-title-height: 2.34rem;
+    --brand-title-offset: -4.06rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.62rem;
+    gap: 0.78rem;
     color: inherit;
     text-decoration: none;
     line-height: 1;
   }
 
   .memvoya-brand--sm {
-    --brand-mark-size: 1.85rem;
-    --brand-title-width: 7.45rem;
-    --brand-title-height: 1.68rem;
-    --brand-title-offset: -2.9rem;
+    --brand-mark-size: 2.55rem;
+    --brand-title-width: 9rem;
+    --brand-title-height: 2.04rem;
+    --brand-title-offset: -3.51rem;
   }
 
   .memvoya-brand--lg {
-    --brand-mark-size: 2.65rem;
-    --brand-title-width: 10.8rem;
-    --brand-title-height: 2.42rem;
-    --brand-title-offset: -4.2rem;
+    --brand-mark-size: 3.7rem;
+    --brand-title-width: 12.35rem;
+    --brand-title-height: 2.78rem;
+    --brand-title-offset: -4.82rem;
   }
 
   .memvoya-brand__mark {
     width: var(--brand-mark-size);
     height: var(--brand-mark-size);
-    border-radius: 999px;
+    border-radius: 0.95rem;
     background-image: url('/assets/logo.png');
-    background-size: cover;
+    background-size: 178%;
     background-position: center;
-    box-shadow: 0 0 18px rgba(169, 123, 225, 0.28);
+    box-shadow:
+      0 0 0 1px rgba(221, 170, 92, 0.16),
+      0 0 20px rgba(169, 123, 225, 0.34);
     flex: 0 0 auto;
   }
 
