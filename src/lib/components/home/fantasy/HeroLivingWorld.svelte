@@ -402,6 +402,8 @@
     height: var(--hero-stage-height, min(33rem, 122%));
     object-fit: contain;
     filter: drop-shadow(0 0 42px rgba(77, 244, 255, 0.42));
+    transform: scale(var(--hero-companion-scale, 1));
+    transform-origin: 50% 100%;
   }
 
   @keyframes sceneMoteFloat {
@@ -613,6 +615,7 @@
     .companion-image {
       width: var(--hero-stage-mobile-width, min(25rem, 112vw));
       height: var(--hero-stage-mobile-height, min(28rem, 58svh));
+      transform: scale(var(--hero-companion-mobile-scale, var(--hero-companion-scale, 1)));
     }
 
     .status-card {

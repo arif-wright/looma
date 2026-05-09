@@ -61,11 +61,13 @@
     stageHeight: string;
     stageTranslateX: string;
     stageTranslateY: string;
+    companionScale: string;
     mobileStageTop: string;
     mobileStageBottom: string;
     mobileStageWidth: string;
     mobileStageHeight: string;
     mobileStageTranslateY: string;
+    mobileCompanionScale: string;
     bridgePrimaryRgb: string;
     bridgeSecondaryRgb: string;
     bridgeAccentRgb: string;
@@ -87,11 +89,13 @@
     stageHeight: 'min(33rem, 122%)',
     stageTranslateX: '0',
     stageTranslateY: '0',
+    companionScale: '1',
     mobileStageTop: '8.5rem',
     mobileStageBottom: '7.4rem',
     mobileStageWidth: 'min(25rem, 112vw)',
     mobileStageHeight: 'min(28rem, 58svh)',
     mobileStageTranslateY: '0',
+    mobileCompanionScale: '1',
     bridgePrimaryRgb: '155 92 255',
     bridgeSecondaryRgb: '94 242 255',
     bridgeAccentRgb: '255 112 223',
@@ -137,9 +141,11 @@
       stageHeight: 'min(17.5rem, 76%)',
       stageTranslateX: '-0.35rem',
       stageTranslateY: '2.85rem',
+      companionScale: '0.62',
       mobileStageWidth: 'min(15.5rem, 72vw)',
       mobileStageHeight: 'min(17rem, 42svh)',
       mobileStageTranslateY: '1.55rem',
+      mobileCompanionScale: '0.68',
       bridgePrimaryRgb: '176 92 255',
       bridgeSecondaryRgb: '104 229 255',
       bridgeAccentRgb: '255 150 226',
@@ -187,11 +193,13 @@
       `--hero-stage-height: ${placement.stageHeight}`,
       `--hero-stage-translate-x: ${placement.stageTranslateX}`,
       `--hero-stage-translate-y: ${placement.stageTranslateY}`,
+      `--hero-companion-scale: ${placement.companionScale}`,
       `--hero-stage-mobile-top: ${placement.mobileStageTop}`,
       `--hero-stage-mobile-bottom: ${placement.mobileStageBottom}`,
       `--hero-stage-mobile-width: ${placement.mobileStageWidth}`,
       `--hero-stage-mobile-height: ${placement.mobileStageHeight}`,
       `--hero-stage-mobile-translate-y: ${placement.mobileStageTranslateY}`,
+      `--hero-companion-mobile-scale: ${placement.mobileCompanionScale}`,
       `--hero-bridge-primary-rgb: ${placement.bridgePrimaryRgb}`,
       `--hero-bridge-secondary-rgb: ${placement.bridgeSecondaryRgb}`,
       `--hero-bridge-accent-rgb: ${placement.bridgeAccentRgb}`,
