@@ -47,6 +47,8 @@
   export let cameraOrbit: string | undefined = '205deg 80deg 105%';
   // Deprecated: keep for compatibility with existing layout.
   export let cameraTarget: string | undefined = undefined;
+  // Uses model-viewer's GLB transform, unlike CSS/camera framing.
+  export let modelScale: string | undefined = undefined;
 
   let container: HTMLDivElement | null = null;
   let viewer: any = null;
@@ -437,6 +439,7 @@
       orientation={orientation}
       camera-orbit={cameraOrbit}
       camera-target={cameraTarget}
+      scale={modelScale}
       exposure={exposure}
       interaction-prompt="none"
       animation-name={animationName}

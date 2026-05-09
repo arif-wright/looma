@@ -82,6 +82,10 @@
           visualMood="calm"
           cameraOrbit="180deg 76deg 165%"
           cameraTarget="0m 0.62m 0m"
+          modelScale="0.62 0.62 0.62"
+          animationName="Idle"
+          motionEnabled={true}
+          respectReducedMotion={false}
         />
       </div>
     {/if}
