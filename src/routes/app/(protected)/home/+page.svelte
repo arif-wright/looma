@@ -219,6 +219,12 @@
   const normalizeArchetype = (value: string | null | undefined) =>
     (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+  const resolveSceneArchetype = (value: string | null | undefined) => {
+    const key = normalizeArchetype(value);
+    if (!key || key === 'harmonizer' || key === 'lumi') return 'muse';
+    return backgroundByArchetype[key] ? key : 'muse';
+  };
+
   $: activeCompanion = data.activeCompanion ?? null;
   $: playerName =
     (data as any)?.profile?.display_name ??
@@ -229,7 +235,7 @@
   $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
   $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
   $: companionName = activeCompanion?.name ?? 'Lumi';
-  $: companionArchetype = normalizeArchetype(activeCompanion?.species) || 'muse';
+  $: companionArchetype = resolveSceneArchetype(activeCompanion?.species);
   $: heroBackgroundUrl = backgroundByArchetype[companionArchetype] ?? '/assets/muse_background.png';
   $: heroScenePlacement = {
     ...defaultHeroScenePlacement,
