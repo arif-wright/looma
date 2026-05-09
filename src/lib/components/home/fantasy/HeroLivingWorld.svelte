@@ -256,28 +256,29 @@
   .scene-ground__shadow {
     background: radial-gradient(
       ellipse at center,
-      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.58),
-      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.24) 42%,
-      transparent 72%
+      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.5),
+      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.18) 46%,
+      transparent 78%
     );
-    filter: blur(12px);
-    transform: scaleX(1.15);
+    filter: blur(16px);
+    transform: scaleX(1.26);
   }
 
   .scene-ground__ring {
-    border: 1px solid rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.42);
+    border: 1px solid rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.18);
     box-shadow:
-      0 0 20px rgba(var(--hero-bridge-primary-rgb, 155 92 255) / calc(0.28 * var(--hero-bridge-intensity, 0.86))),
-      inset 0 0 22px rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.14);
-    opacity: calc(0.64 * var(--hero-bridge-intensity, 0.86));
+      0 0 28px rgba(var(--hero-bridge-primary-rgb, 155 92 255) / calc(0.16 * var(--hero-bridge-intensity, 0.86))),
+      inset 0 0 30px rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.08);
+    filter: blur(1.8px);
+    opacity: calc(0.38 * var(--hero-bridge-intensity, 0.86));
   }
 
   .scene-ground__glow {
     background:
-      radial-gradient(ellipse at 50% 48%, rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.2), transparent 38%),
-      radial-gradient(ellipse at 50% 58%, rgba(var(--hero-bridge-primary-rgb, 155 92 255) / 0.2), transparent 64%);
-    filter: blur(8px);
-    opacity: var(--hero-bridge-intensity, 0.86);
+      radial-gradient(ellipse at 50% 48%, rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.16), transparent 34%),
+      radial-gradient(ellipse at 50% 58%, rgba(var(--hero-bridge-primary-rgb, 155 92 255) / 0.18), transparent 68%);
+    filter: blur(13px);
+    opacity: calc(0.84 * var(--hero-bridge-intensity, 0.86));
   }
 
   .scene-particles {
