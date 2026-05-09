@@ -447,7 +447,23 @@
   }
 
   .home-main::after {
-    display: none;
+    z-index: 1;
+    background:
+      radial-gradient(circle at 17% 22%, rgba(var(--hero-bridge-secondary-rgb) / 0.64) 0 0.08rem, transparent 0.18rem),
+      radial-gradient(circle at 31% 34%, rgba(var(--hero-bridge-primary-rgb) / 0.5) 0 0.1rem, transparent 0.22rem),
+      radial-gradient(circle at 47% 19%, rgba(var(--hero-bridge-accent-rgb) / 0.48) 0 0.08rem, transparent 0.2rem),
+      radial-gradient(circle at 64% 31%, rgba(var(--hero-bridge-secondary-rgb) / 0.5) 0 0.09rem, transparent 0.21rem),
+      radial-gradient(circle at 79% 17%, rgba(var(--hero-bridge-primary-rgb) / 0.46) 0 0.1rem, transparent 0.24rem),
+      radial-gradient(circle at 88% 42%, rgba(var(--hero-bridge-accent-rgb) / 0.38) 0 0.08rem, transparent 0.21rem),
+      radial-gradient(circle at 23% 56%, rgba(var(--hero-bridge-primary-rgb) / 0.38) 0 0.08rem, transparent 0.21rem),
+      radial-gradient(circle at 58% 53%, rgba(var(--hero-bridge-secondary-rgb) / 0.42) 0 0.09rem, transparent 0.22rem),
+      radial-gradient(circle at 72% 67%, rgba(var(--hero-bridge-accent-rgb) / 0.34) 0 0.08rem, transparent 0.22rem);
+    filter: blur(0.1px) drop-shadow(0 0 10px rgba(var(--hero-bridge-secondary-rgb) / 0.32));
+    opacity: calc(0.48 * var(--hero-bridge-intensity, 0.86));
+    transform: translate3d(0, 0, 0);
+    animation: ambientHeroMotes 14s ease-in-out infinite alternate;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 76%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 76%, transparent 100%);
   }
 
   .home-main {
@@ -455,6 +471,20 @@
     z-index: 2;
     min-width: 0;
     padding: 1.5rem 1.35rem 1.35rem;
+  }
+
+  @keyframes ambientHeroMotes {
+    0% {
+      transform: translate3d(-0.25rem, 0.15rem, 0);
+      opacity: calc(0.36 * var(--hero-bridge-intensity, 0.86));
+    }
+    48% {
+      transform: translate3d(0.35rem, -0.45rem, 0);
+    }
+    100% {
+      transform: translate3d(0.65rem, -0.9rem, 0);
+      opacity: calc(0.52 * var(--hero-bridge-intensity, 0.86));
+    }
   }
 
   .topbar,
