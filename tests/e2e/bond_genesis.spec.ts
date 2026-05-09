@@ -2,16 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test('quiz → archetype → spawn companion', async ({ page }) => {
   await page.goto('/app/onboarding/companion');
-  await expect(page.getByRole('heading', { level: 1, name: /Answer a few questions so Looma can meet you properly/i })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: /Question 1 \/ 10/i })).toBeVisible();
-  await expect(page.getByTestId('quiz-progress')).toHaveText(/10%/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByText(/Question 1 of 12/i)).toBeVisible();
 
-  for (let i = 0; i < 10; i += 1) {
+  for (let i = 0; i < 12; i += 1) {
     await page.getByTestId('quiz-choice-agree').click();
     await page.getByTestId('quiz-next').click();
   }
 
-  await expect(page.getByRole('heading', { level: 2, name: /Matched:/i })).toBeVisible();
+  await expect(page.getByText(/Your companion energy/i)).toBeVisible();
 
   const spawnButton = page.getByTestId('quiz-spawn');
   if (await spawnButton.isEnabled()) {

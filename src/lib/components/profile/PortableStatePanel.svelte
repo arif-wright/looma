@@ -98,7 +98,7 @@
   <div class="portable-panel__header">
     <div>
       <p class="portable-panel__eyebrow">Transparency</p>
-      <h3 id="portable-heading" class="panel-title m-0">What Looma remembers</h3>
+      <h3 id="portable-heading" class="panel-title m-0">What Memvoya remembers</h3>
       <p class="portable-panel__copy">
         This is a small, portable memory bundle. You can opt out or reset at any time.
       </p>
@@ -128,7 +128,7 @@
             {/if}
           </span>
           <span class="portable-panel__toggle-copy">
-            Allow Looma to store portable memory items (short summaries only).
+            Allow Memvoya to store portable memory items (short summaries only).
           </span>
         </span>
       </label>
@@ -149,7 +149,7 @@
             {/if}
           </span>
           <span class="portable-panel__toggle-copy">
-            Allow Looma to personalize experiences from your recent context.
+            Allow Memvoya to personalize experiences from your recent context.
           </span>
         </span>
       </label>
@@ -179,7 +179,7 @@
     <div class="portable-panel__memory">
       <h4 class="portable-panel__subhead">Current memory</h4>
       {#if !consent.memory}
-        <p class="portable-panel__status">Memory is off. Looma is not storing portable items.</p>
+        <p class="portable-panel__status">Memory is off. Memvoya is not storing portable items.</p>
       {:else if !portableState || portableState.items.length === 0}
         <p class="portable-panel__status">Nothing stored yet.</p>
       {:else}

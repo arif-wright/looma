@@ -138,7 +138,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
       <p class="card-label">{title}</p>
       <h3>{companion ? companion.name : 'No companion yet'}</h3>
       <p class="card-subtitle">
-        {companion ? speciesLabel : 'Choose a companion to travel beside you across Looma.'}
+        {companion ? speciesLabel : 'Choose a companion to travel beside you across Memvoya.'}
       </p>
     </div>
     {#if companion}
@@ -232,7 +232,7 @@ import { PORTRAIT_HOST_EVENT } from '$lib/companions/portraitHost';
   {:else}
     <div class="empty-copy" role="status">
       <p class="empty-title">No active companion yet</p>
-      <p class="empty-body">Choose a companion to travel with you through Looma and earn bonus XP.</p>
+      <p class="empty-body">Choose a companion to travel with you through Memvoya and earn bonus XP.</p>
       <a class="btn-check empty-cta" href="/app/companions">Choose a companion</a>
     </div>
   {/if}

@@ -11,6 +11,7 @@
     Users,
     WandSparkles
   } from 'lucide-svelte';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
 
   type NavItem = {
     label: string;
@@ -46,11 +47,8 @@
   $: xpPercent = xpNext > 0 ? Math.min(100, Math.round((xp / xpNext) * 100)) : 0;
 </script>
 
-<aside class="fantasy-sidebar" aria-label="Looma navigation">
-  <a class="brand" href="/app/home" aria-label="Looma home">
-    <span class="brand-mark"><Gem size={25} /></span>
-    <span>looma</span>
-  </a>
+<aside class="fantasy-sidebar" aria-label="Memvoya navigation">
+  <MemvoyaBrand href="/app/home" size="sm" ariaLabel="Memvoya home" />
 
   <nav class="nav-list" aria-label="Primary">
     {#each navItems as item}
@@ -66,7 +64,7 @@
     <div class="world-row">
       <div class="world-thumb" aria-hidden="true"></div>
       <div>
-        <strong>Looma Prime</strong>
+        <strong>Memvoya Prime</strong>
         <span>Level {level}</span>
       </div>
     </div>
@@ -110,17 +108,6 @@
     box-shadow: 16px 0 60px rgba(3, 6, 20, 0.34);
   }
 
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white;
-    font-size: 1.18rem;
-    font-weight: 800;
-    text-decoration: none;
-  }
-
-  .brand-mark,
   .crest {
     display: grid;
     place-items: center;
@@ -129,12 +116,6 @@
       radial-gradient(circle at 50% 34%, rgba(126, 246, 255, 0.55), transparent 35%),
       linear-gradient(135deg, rgba(153, 85, 255, 0.96), rgba(64, 30, 136, 0.76));
     box-shadow: 0 0 26px rgba(155, 92, 255, 0.52);
-  }
-
-  .brand-mark {
-    width: 2.55rem;
-    height: 2.55rem;
-    border-radius: 0.9rem;
   }
 
   .nav-list,

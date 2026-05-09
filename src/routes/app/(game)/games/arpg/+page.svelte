@@ -28,7 +28,7 @@
   const game =
     data.game ?? {
       slug,
-      name: 'Looma ARPG',
+      name: 'Memvoya ARPG',
       min_version: '1.0.0',
       max_score: 150000
     };
@@ -72,7 +72,7 @@
   let reward: SessionReward | null = null;
   let ritualCompletions: CompanionRitual[] = [];
   let errorMessage: string | null = null;
-  let status = 'Preparing Looma ARPG…';
+  let status = 'Preparing Memvoya ARPG…';
 
   type LeaderboardState = {
     rows: LeaderboardDisplayRow[];
@@ -175,7 +175,7 @@
     sessionLoading = true;
     reward = null;
     errorMessage = null;
-    status = 'Connecting to Looma ARPG…';
+    status = 'Connecting to Memvoya ARPG…';
 
     try {
       session = await startSession(slug, 'standard', {
@@ -333,7 +333,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma — {game.name}</title>
+  <title>Memvoya — {game.name}</title>
 </svelte:head>
 
 <div class="bg-neuro min-h-screen" data-testid="looma-arpg">

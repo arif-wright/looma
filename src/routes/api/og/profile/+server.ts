@@ -182,7 +182,7 @@ export const GET: RequestHandler = async (event) => {
 
   const element = profile.isPrivate
     ? createPrivateElement()
-    : createProfileElement(profile, profile.bio?.slice(0, 160) ?? 'View this explorer on Looma');
+    : createProfileElement(profile, profile.bio?.slice(0, 160) ?? 'View this explorer on Memvoya');
 
   return new ImageResponse(element, {
     width,

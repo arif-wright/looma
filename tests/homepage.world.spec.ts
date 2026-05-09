@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-test('Looma World homepage renders key sections and CTA navigates to auth', async ({ page }) => {
+test('Memvoya homepage renders key sections and CTA navigates to auth', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  await expect(page.getByRole('link', { name: 'Looma' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Memvoya home' })).toBeVisible();
   await expect(page.getByTestId('hero-backdrop')).toBeVisible();
   await expect(page.locator('.feature-row span')).toHaveCount(4);
   await expect(page.locator('.archetype-card')).toHaveCount(5);

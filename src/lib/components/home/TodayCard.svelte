@@ -120,7 +120,7 @@ import { buildMissionArcs, selectMissionArc } from './missionArcs';
 
   const caughtUpActions = [
     { label: 'Play Tiles Run', href: '/app/games/tiles-run' },
-    { label: 'Play Looma ARPG', href: '/app/games/arpg' },
+    { label: 'Play Memvoya ARPG', href: '/app/games/arpg' },
     { label: 'Visit companions', href: '/app/companions' }
   ];
 

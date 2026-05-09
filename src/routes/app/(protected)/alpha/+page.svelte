@@ -7,11 +7,11 @@
 
   const contactEmail: string | null = data?.alphaContactEmail ?? null;
   const contactText: string =
-    data?.alphaContactText ?? 'If you think you should have access, contact the Looma team.';
+    data?.alphaContactText ?? 'If you think you should have access, contact the Memvoya team.';
 </script>
 
 <svelte:head>
-  <title>Looma — Alpha Access Required</title>
+  <title>Memvoya — Alpha Access Required</title>
 </svelte:head>
 
 <div class="alpha-root">

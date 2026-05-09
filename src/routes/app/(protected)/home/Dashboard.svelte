@@ -30,7 +30,7 @@
 
   const shortcuts = [
     { label: 'Tiles Run', description: 'Daily score chase', href: '/app/games/tiles-run', icon: Gamepad2 },
-    { label: 'Looma ARPG', description: 'Dash and collect shards', href: '/app/games/arpg', icon: Gamepad2 },
+    { label: 'Memvoya ARPG', description: 'Dash and collect shards', href: '/app/games/arpg', icon: Gamepad2 },
     { label: 'Leaderboards', description: 'Global standings', href: '/app/leaderboard', icon: Trophy },
     { label: 'Atelier', description: 'Expression & cosmetics', href: '/app/shop', icon: ShoppingBag }
   ];
@@ -99,7 +99,7 @@
 <div class="dashboard">
   <div class="dashboard__backdrop" aria-hidden="true"></div>
   <main class="dashboard__shell" aria-labelledby="dashboard-heading">
-    <h1 id="dashboard-heading" class="sr-only">Looma sanctuary overview</h1>
+    <h1 id="dashboard-heading" class="sr-only">Memvoya sanctuary overview</h1>
     <div class="dashboard__grid">
       <aside class="sidebar sidebar--left" aria-label="Primary navigation">
         <div class="sidebar__section">

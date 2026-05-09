@@ -21,7 +21,7 @@
       return `Shares ${shared_following} following${shared_following === 1 ? '' : 's'}`;
     }
     if (popularity > 0) {
-      return 'Popular on Looma';
+      return 'Popular on Memvoya';
     }
     return 'New explorer';
   };

@@ -19,7 +19,7 @@ export const GET: RequestHandler = async (event) => {
         return json({
           games: [
             { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
-            { slug: 'arpg', name: 'Looma ARPG', min_version: '1.0.0', max_score: 150000 }
+            { slug: 'arpg', name: 'Memvoya ARPG', min_version: '1.0.0', max_score: 150000 }
           ],
           fallback: true
         });

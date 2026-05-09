@@ -5,7 +5,7 @@
   const items = [
     { name: 'Maya completed', detail: "Dragon's Trial", time: '2m ago', tone: '#a75cff', icon: Sparkles },
     { name: 'Zephyr summoned a', detail: 'legendary companion', time: '15m ago', tone: '#ff6fb8', icon: Sparkles },
-    { name: 'Kai joined your world', detail: 'Looma Prime', time: '1h ago', tone: '#ffd36e', icon: Sparkles },
+    { name: 'Kai joined your world', detail: 'Memvoya Prime', time: '1h ago', tone: '#ffd36e', icon: Sparkles },
     { name: 'Nova sent you a gift', detail: '25', time: '2h ago', tone: '#62e8ff', shard: true }
   ];
 </script>

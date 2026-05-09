@@ -21,8 +21,8 @@
   const stats = data.stats;
   const shareUrl = data.shareUrl ?? '';
   const ogImageUrl = data.ogImageUrl ?? `${shareUrl ? new URL('/api/og/profile?handle=' + profile.handle, shareUrl).toString() : ''}`;
-  const metaTitle = `${profile.display_name ?? profile.handle} (@${profile.handle}) • Looma`;
-  const metaDescription = data.metaDescription ?? profile.bio?.slice(0, 160) ?? 'View this explorer on Looma';
+  const metaTitle = `${profile.display_name ?? profile.handle} (@${profile.handle}) • Memvoya`;
+  const metaDescription = data.metaDescription ?? profile.bio?.slice(0, 160) ?? 'View this explorer on Memvoya';
   let featuredCompanionCard: Companion | null = data.featuredCompanion
     ? ({ ...data.featuredCompanion, owner_id: profile.id } as Companion)
     : null;

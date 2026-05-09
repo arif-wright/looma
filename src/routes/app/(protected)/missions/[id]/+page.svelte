@@ -149,7 +149,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.mission.title ?? 'Mission'} - Looma</title>
+  <title>{data.mission.title ?? 'Mission'} - Memvoya</title>
 </svelte:head>
 
 <div class="mission-detail-root">

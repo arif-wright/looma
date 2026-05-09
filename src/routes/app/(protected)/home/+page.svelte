@@ -9,6 +9,7 @@
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
   import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
   import type { PageData } from './$types';
@@ -30,7 +31,7 @@
   ];
 
   const worldCards = [
-    { name: 'Looma Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
+    { name: 'Memvoya Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
     { name: 'Crystal Shores', level: 18, players: '856', reward: 18, tone: 'shore' },
     { name: 'Voidspire', level: 29, players: '2.1K', reward: 29, tone: 'void' }
   ];
@@ -258,7 +259,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma | Home</title>
+  <title>Memvoya | Home</title>
 </svelte:head>
 
 <div class="fantasy-home" style={heroSceneStyle}>
@@ -270,13 +271,12 @@
     activePath={$page.url.pathname}
   />
 
-  <main class="home-main" aria-label="Looma companion home">
+  <main class="home-main" aria-label="Memvoya companion home">
     <header class="topbar">
-      <a class="mobile-brand" href="/app/home" aria-label="Looma home">
-        <span>looma</span>
-        <small>AI</small>
-      </a>
-      <label class="search" aria-label="Search Looma">
+      <div class="mobile-brand">
+        <MemvoyaBrand href="/app/home" size="sm" showMark={false} ariaLabel="Memvoya home" />
+      </div>
+      <label class="search" aria-label="Search Memvoya">
         <Search size={19} />
         <input type="search" placeholder="Search worlds, games, companions, or friends..." />
         <span>⌘K</span>
@@ -755,26 +755,7 @@
 
     .mobile-brand {
       display: inline-flex;
-      align-items: baseline;
-      gap: 0.35rem;
-      color: #fff3cf;
-      text-decoration: none;
-      text-shadow: 0 0 22px rgba(171, 92, 255, 0.48);
-    }
-
-    .mobile-brand span {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: clamp(1.85rem, 9vw, 2.55rem);
-      line-height: 1;
-      letter-spacing: 0;
-    }
-
-    .mobile-brand small {
-      color: #b15cff;
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 0.78rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
+      align-items: center;
     }
 
     .search {

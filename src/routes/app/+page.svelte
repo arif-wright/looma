@@ -12,8 +12,8 @@
 
   const screens: Screen[] = [
     {
-      title: 'Welcome to Looma.',
-      body: 'Looma is a place you return to, not a chatbot you have to manage.'
+      title: 'Welcome to Memvoya.',
+      body: 'Memvoya is a place you return to, not a chatbot you have to manage.'
     },
     {
       title: 'Companions respond.',
@@ -62,7 +62,7 @@
   <div class="onboard-root bg-neuro">
     <BackgroundStack />
 
-    <main class="onboard-shell" aria-label="Looma onboarding">
+    <main class="onboard-shell" aria-label="Memvoya onboarding">
       <section class="onboard-card panel-glass" aria-live="polite">
         <header class="onboard-header">
           <div class="dots" aria-hidden="true">
@@ -86,7 +86,7 @@
         <footer class="actions">
           <button class="btn-ghost" type="button" on:click={skip}>Skip for now</button>
           <button class="btn-primary" type="button" on:click={next}>
-            {step >= screens.length - 1 ? 'Enter Looma' : 'Next'}
+            {step >= screens.length - 1 ? 'Enter Memvoya' : 'Next'}
           </button>
         </footer>
       </section>

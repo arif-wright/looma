@@ -280,7 +280,7 @@ export const load: PageServerLoad = async (event) => {
   const baseUrl = env.PUBLIC_APP_URL ?? event.url.origin;
   const shareUrl = `${baseUrl}/u/${profileWithUserId.handle}`;
   const defaultDescription =
-    profileWithUserId.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Looma';
+    profileWithUserId.bio?.trim()?.slice(0, 160) ?? 'View this explorer on Memvoya';
 
   if (blockedView) {
     const followCounts = await getFollowCounts(profileWithUserId.id);
@@ -374,7 +374,7 @@ export const load: PageServerLoad = async (event) => {
   });
 
   const isGatedPublic = gated;
-  const metaDescription = isGatedPublic ? 'This profile is private on Looma' : defaultDescription;
+  const metaDescription = isGatedPublic ? 'This profile is private on Memvoya' : defaultDescription;
   const ogImageUrl = isGatedPublic
     ? `${baseUrl}/og/default-profile.png`
     : `${baseUrl}/api/og/profile?handle=${profileWithUserId.handle}`;

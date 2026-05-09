@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Heart, MessageCircle, Share2 } from 'lucide-svelte';
 
-  export let author = 'Looma Friend';
+  export let author = 'Memvoya Friend';
   export let subtitle = 'Shared a resonance';
   export let body = 'The field feels calmer after our last mission.';
   export let timestamp = 'Just now';

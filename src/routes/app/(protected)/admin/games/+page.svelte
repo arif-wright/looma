@@ -20,7 +20,7 @@
 </script>
 
 <svelte:head>
-  <title>Game Audit — Looma Admin</title>
+  <title>Game Audit — Memvoya Admin</title>
 </svelte:head>
 
 <div class="audit-shell">

@@ -943,7 +943,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Companions</title>
+  <title>Memvoya - Companions</title>
 </svelte:head>
 
 <SanctuaryPageFrame

@@ -677,7 +677,7 @@ $: if (isBrowser && gameSurfaceEl && !fullscreenCtrl) {
 </script>
 
 <svelte:head>
-  <title>Looma — {game.name}</title>
+  <title>Memvoya — {game.name}</title>
 </svelte:head>
 
 <GameWrapper

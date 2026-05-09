@@ -214,12 +214,12 @@ export const load: PageServerLoad = async (event) => {
   const profileUrl = `${baseUrl}/app/u/${profile.handle}`;
   const metaTitle =
     profile.display_name?.trim()?.length
-      ? `${profile.display_name} (@${profile.handle}) · Looma`
-      : `@${profile.handle} · Looma`;
+      ? `${profile.display_name} (@${profile.handle}) · Memvoya`
+      : `@${profile.handle} · Memvoya`;
   const metaDescription =
     profile.bio && profile.bio.trim().length > 0
       ? profile.bio.trim().slice(0, 160)
-      : 'Explore this Looma profile.';
+      : 'Explore this Memvoya profile.';
   const metaImage = profile.banner_url ?? profile.avatar_url ?? null;
 
   const feed = showFeed

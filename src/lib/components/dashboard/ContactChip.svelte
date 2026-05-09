@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let name = 'Looma Companion';
+  export let name = 'Memvoya Companion';
   export let status: 'online' | 'idle' | 'away' | 'offline' = 'online';
 
   const statusLabel: Record<typeof status, string> = {

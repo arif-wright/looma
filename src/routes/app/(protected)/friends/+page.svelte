@@ -219,7 +219,7 @@
     <header class="friends-header panel">
       <div>
         <p class="eyebrow">Connection hub</p>
-        <h1>Your people in Looma</h1>
+        <h1>Your people in Memvoya</h1>
         <p class="lede">This should feel like a gentle bridge into messages and circles, not an admin screen.</p>
       </div>
 
@@ -258,7 +258,7 @@
         {#if friends.length === 0}
           <div class="empty-panel">
             <p class="state">No friends yet.</p>
-            <p class="empty-copy">Start by sending a request to someone you want close inside Looma.</p>
+            <p class="empty-copy">Start by sending a request to someone you want close inside Memvoya.</p>
           </div>
         {:else}
           <ul>

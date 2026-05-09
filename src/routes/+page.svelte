@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import { canonicalArchetypeList } from '$lib/onboarding/archetypes';
 
   export let data: { loggedIn: boolean };
@@ -13,10 +14,10 @@
 </script>
 
 <svelte:head>
-  <title>Looma</title>
+  <title>Memvoya</title>
   <meta
     name="description"
-    content="Looma is an emotionally adaptive companion world where your first bond shapes rituals, memory, and ambient worlds."
+    content="Memvoya is an emotionally adaptive companion world where your first bond shapes rituals, memory, and ambient worlds."
   />
 </svelte:head>
 
@@ -24,7 +25,7 @@
 
 <div class="landing-shell">
   <header class="topbar">
-    <a class="brand" href="/" aria-label="Looma home">Looma</a>
+    <MemvoyaBrand href="/" size="md" ariaLabel="Memvoya home" />
     <nav class="topbar__nav" aria-label="Landing navigation">
       <a href="#worlds">The Archetypes</a>
       <a href="#how">How It Works</a>
@@ -61,7 +62,7 @@
             <a class="cta cta--ghost" href="#worlds">Explore the energies</a>
           </div>
 
-          <div class="feature-row" aria-label="Looma signals">
+          <div class="feature-row" aria-label="Memvoya signals">
             {#each featurePoints as point}
               <span>{point}</span>
             {/each}
@@ -98,7 +99,7 @@
         <h2 id="how-title">A quiz becomes the first emotional handshake.</h2>
       </div>
       <p>
-        Looma listens for steadiness, memory, curiosity, reassurance, and reflection, then introduces the companion
+        Memvoya listens for steadiness, memory, curiosity, reassurance, and reflection, then introduces the companion
         lineage that feels most resonant.
       </p>
     </section>
@@ -163,16 +164,9 @@
     color: rgba(250, 244, 232, 0.94);
   }
 
-  .brand,
   .topbar a {
     color: inherit;
     text-decoration: none;
-  }
-
-  .brand {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.65rem;
-    font-weight: 700;
   }
 
   .topbar__nav {

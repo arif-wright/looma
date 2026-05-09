@@ -161,7 +161,7 @@
     <header class="notifications-hero panel">
       <div>
         <p class="eyebrow">Inbox pulse</p>
-        <h1>Your Looma signals</h1>
+        <h1>Your Memvoya signals</h1>
         <p class="lede">Important nudges should feel gentle and readable, especially on your phone.</p>
       </div>
       <div class="hero-actions">
@@ -176,7 +176,7 @@
     {:else if items.length === 0}
       <div class="empty-panel panel">
         <p class="state">No notifications yet.</p>
-        <p class="empty-copy">When Looma has something worth surfacing, it will appear here.</p>
+        <p class="empty-copy">When Memvoya has something worth surfacing, it will appear here.</p>
       </div>
     {:else}
       <ul>

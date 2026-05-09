@@ -34,7 +34,7 @@
     ? data.activeMission.title
     : needsCheckin
       ? `${activeCompanion?.name ?? 'Your companion'} is waiting to hear from you today.`
-      : 'Review what Looma is carrying forward from your recent play and rituals.';
+      : 'Review what Memvoya is carrying forward from your recent play and rituals.';
 
   const quickLinks = [
     { href: '/app/home', label: 'Sanctuary', description: 'Reconnect with your companion.' },
@@ -47,13 +47,13 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Journey</title>
+  <title>Memvoya - Journey</title>
 </svelte:head>
 
 <div class="journey-root">
   <SanctuaryPageFrame
     eyebrow="Journey"
-    title="Today in Looma"
+    title="Today in Memvoya"
     subtitle="A mobile-first snapshot of what matters right now: bond, missions, memory, and momentum."
   >
     <svelte:fragment slot="actions">
@@ -135,7 +135,7 @@
       {#if data.memorySummary?.summary_text}
         <GlassCard class="journey-card">
           <p class="eyebrow">Memory pulse</p>
-          <h2>What Looma is remembering</h2>
+          <h2>What Memvoya is remembering</h2>
           <p class="memory-copy">{data.memorySummary.summary_text}</p>
           {#if data.memorySummary.highlights_json?.length}
             <div class="chip-row">

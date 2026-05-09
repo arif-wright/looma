@@ -449,13 +449,13 @@
 </script>
 
 <svelte:head>
-  <title>Looma — Preferences</title>
+  <title>Memvoya — Preferences</title>
 </svelte:head>
 
 <SanctuaryPageFrame
   eyebrow="Sanctuary Controls"
   title="Preferences"
-  subtitle="Shape how Looma appears, remembers, and shares your presence."
+  subtitle="Shape how Memvoya appears, remembers, and shares your presence."
 >
   <svelte:fragment slot="actions">
     <EmotionalChip tone="muted">{memoryModeSummary}</EmotionalChip>
@@ -467,7 +467,7 @@
       <div>
         <p class="eyebrow">Control room</p>
         <h1>Set the tone of your sanctuary.</h1>
-        <p class="lede">Companion display, privacy, memory, and the shape of what Looma carries forward.</p>
+        <p class="lede">Companion display, privacy, memory, and the shape of what Memvoya carries forward.</p>
       </div>
 
       <div class="preferences-pulse">

@@ -67,7 +67,7 @@
 </script>
 
 <svelte:head>
-  <title>Anti-Cheat — Looma Admin</title>
+  <title>Anti-Cheat — Memvoya Admin</title>
 </svelte:head>
 
 <div class="anti-shell">

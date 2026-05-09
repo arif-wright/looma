@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte';
 
   export let url = '';
-  export let title = 'Check out my Looma profile';
+  export let title = 'Check out my Memvoya profile';
 
   let message = '';
   let timer: ReturnType<typeof setTimeout> | null = null;

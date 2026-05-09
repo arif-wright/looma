@@ -82,7 +82,7 @@
           </header>
           <p class="type-note">{missionTypeHint(mission.type)}</p>
           {#if mission.type === 'identity'}
-            <p class="privacy-note">You control what Looma remembers.</p>
+            <p class="privacy-note">You control what Memvoya remembers.</p>
           {/if}
           {#if xpBoost > 0}
             <p class="companion-badge">+{xpBoost}% XP from bond</p>

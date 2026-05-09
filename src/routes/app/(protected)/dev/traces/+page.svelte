@@ -44,7 +44,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Event Traces</title>
+  <title>Memvoya - Event Traces</title>
 </svelte:head>
 
 <main class="trace-page">

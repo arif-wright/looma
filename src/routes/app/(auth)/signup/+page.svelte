@@ -114,7 +114,7 @@
 <article class="auth-card" style={`--accent-gradient: ${ACCENT_GRADIENT};`}>
   <header class="auth-card__header">
     <p class="auth-card__eyebrow">Begin sanctuary</p>
-    <h1>Start with one companion and let the rest of Looma grow around that bond.</h1>
+    <h1>Start with one companion and let the rest of Memvoya grow around that bond.</h1>
     <p>Create your account, step into the sanctuary, and begin building memory from the first check-in.</p>
   </header>
 

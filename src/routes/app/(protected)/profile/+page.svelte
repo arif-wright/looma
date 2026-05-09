@@ -205,7 +205,7 @@ let editOpen = false;
       <section class="profile-pulse panel" aria-label="Profile pulse">
         <div class="profile-pulse__intro">
           <p class="profile-pulse__eyebrow">Profile pulse</p>
-          <h2>{profile.display_name ?? profile.handle ?? 'Your Looma identity'}</h2>
+          <h2>{profile.display_name ?? profile.handle ?? 'Your Memvoya identity'}</h2>
           <p>
             Your profile should feel like a living companion space, not just a bio card. Keep your bond, reflections,
             and current Spark visible.

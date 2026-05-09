@@ -5,6 +5,7 @@
   import NotificationBell from '$lib/components/ui/NotificationBell.svelte';
   import AvatarImage from '$lib/components/ui/AvatarImage.svelte';
   import CenterIconNav from '$lib/components/ui/CenterIconNav.svelte';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import type { NotificationItem, IconNavItem } from '$lib/components/ui/types';
   import { currentProfile, type CurrentProfile } from '$lib/stores/profile';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
@@ -102,15 +103,12 @@
 <header class="lean-header" data-testid="lean-header">
   <div class="lean-header__inner">
     <div class="lean-header__left">
-      <a href="/app/home" class="lean-logo" aria-label="Go home">
-        <span class="lean-logo__mark" aria-hidden="true"></span>
-        <span class="lean-logo__word">Looma</span>
-      </a>
-      <label class="lean-search" role="search" aria-label="Search Looma">
+      <MemvoyaBrand href="/app/home" size="sm" ariaLabel="Memvoya home" />
+      <label class="lean-search" role="search" aria-label="Search Memvoya">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="lean-search__icon" aria-hidden="true">
           <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" />
         </svg>
-        <input type="search" placeholder="Search the weave" aria-label="Search Looma" />
+        <input type="search" placeholder="Search the weave" aria-label="Search Memvoya" />
       </label>
     </div>
 
@@ -246,37 +244,6 @@
   .lean-header__left {
     justify-content: flex-start;
     grid-column: 1;
-  }
-
-  .lean-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-decoration: none;
-    min-width: 0;
-  }
-
-  .lean-logo__mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, rgba(112, 221, 194, 0.92), rgba(240, 180, 112, 0.88));
-    box-shadow: 0 8px 18px rgba(240, 180, 112, 0.2);
-  }
-
-  .lean-logo__word {
-    display: none;
-    font-size: 0.82rem;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(249, 243, 236, 0.8);
-    font-weight: 600;
-  }
-
-  @media (min-width: 900px) {
-    .lean-logo__word {
-      display: inline;
-    }
   }
 
   .lean-search {

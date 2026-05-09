@@ -379,7 +379,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Journal</title>
+  <title>Memvoya - Journal</title>
 </svelte:head>
 
 <div class="memory-root" data-premium-style={premiumSanctuaryStyle ?? 'default'}>

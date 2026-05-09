@@ -4,13 +4,13 @@
 </script>
 
 <svelte:head>
-  <title>Looma · Maintenance</title>
+  <title>Memvoya · Maintenance</title>
 </svelte:head>
 
 <main class="maintenance">
   <div class="card">
     <p class="eyebrow">We will be right back</p>
-    <h1>We are tuning the Looma field.</h1>
+    <h1>We are tuning the Memvoya field.</h1>
     <p>{maintenanceMessage}</p>
     <a href="/app/home">Try again</a>
   </div>

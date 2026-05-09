@@ -304,7 +304,7 @@
       {/if}
 
       {#if missionType === 'identity'}
-        <p class="privacy-note">You control what Looma remembers.</p>
+        <p class="privacy-note">You control what Memvoya remembers.</p>
       {/if}
 
       {#if missionType === 'action'}

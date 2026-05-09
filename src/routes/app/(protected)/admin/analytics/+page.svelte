@@ -44,7 +44,7 @@
 </script>
 
 <svelte:head>
-  <title>Analytics — Looma Admin</title>
+  <title>Analytics — Memvoya Admin</title>
 </svelte:head>
 
 <div class="analytics-shell">

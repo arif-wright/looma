@@ -87,7 +87,7 @@ export const canonicalArchetypes: Record<CanonicalArchetypeId, CanonicalArchetyp
     imagePath: '/assets/guardian_background.png',
     resultHeadline: 'Your companion is drawn to the way you seek steadiness.',
     resultCopy:
-      'Your answers lean toward safety, clarity, and reassurance. Looma can begin by offering a grounded presence that helps the day feel held.',
+      'Your answers lean toward safety, clarity, and reassurance. Memvoya can begin by offering a grounded presence that helps the day feel held.',
     suggestedFirstRitual: 'Choose one small anchor you want to return to when the day gets loud.'
   },
   spark: {
@@ -117,7 +117,7 @@ export const canonicalArchetypes: Record<CanonicalArchetypeId, CanonicalArchetyp
     imagePath: '/assets/root_background.png',
     resultHeadline: 'Your companion is drawn to your quiet rhythm of growth.',
     resultCopy:
-      'Your answers point toward steadiness, ritual, and gentle momentum. Looma can begin by helping small returns feel nourishing instead of demanding.',
+      'Your answers point toward steadiness, ritual, and gentle momentum. Memvoya can begin by helping small returns feel nourishing instead of demanding.',
     suggestedFirstRitual: 'Choose one tiny repeatable ritual that would help you feel rooted.'
   },
   echo: {
@@ -133,7 +133,7 @@ export const canonicalArchetypes: Record<CanonicalArchetypeId, CanonicalArchetyp
     resultHeadline: 'Your companion is drawn to the patterns you carry forward.',
     resultCopy:
       'Your answers suggest a need for continuity: not just support in the moment, but a companion that remembers what keeps returning and helps it make sense.',
-    suggestedFirstRitual: 'Offer one memory or pattern you want Looma to notice gently over time.'
+    suggestedFirstRitual: 'Offer one memory or pattern you want Memvoya to notice gently over time.'
   }
 };
 

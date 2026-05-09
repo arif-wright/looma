@@ -29,7 +29,7 @@
     ? (data.games as GameEntry[])
     : [
         { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
-        { slug: 'arpg', name: 'Looma ARPG', min_version: '1.0.0', max_score: 150000 },
+        { slug: 'arpg', name: 'Memvoya ARPG', min_version: '1.0.0', max_score: 150000 },
         { slug: 'astro-match', name: 'Astro Match', min_version: '1.0.0', max_score: 75000 }
       ];
 
@@ -175,7 +175,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Play</title>
+  <title>Memvoya - Play</title>
 </svelte:head>
 
 <div class="games-root bg-neuro" data-testid="games-hub">

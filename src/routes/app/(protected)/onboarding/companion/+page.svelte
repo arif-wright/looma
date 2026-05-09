@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import { logEvent } from '$lib/analytics';
   import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
   import type { PageData } from './$types';
@@ -310,7 +311,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - First Bond</title>
+  <title>Memvoya - First Bond</title>
 </svelte:head>
 
 <div class="bond-shell">
@@ -318,7 +319,7 @@
   <div class="scene-shade" aria-hidden="true"></div>
 
   <header class="onboarding-top">
-    <a class="brand" href="/app/home" aria-label="Looma home">Looma</a>
+    <MemvoyaBrand href="/app/home" size="md" ariaLabel="Memvoya home" />
     <div class="step-rail" aria-label="Onboarding progress">
       {#each onboardingSteps as step, index}
         <div class={`step ${index <= stageIndex ? 'is-active' : ''}`}>
@@ -525,17 +526,9 @@
     padding-top: 1.6rem;
   }
 
-  .brand,
   .exit-link {
     color: inherit;
     text-decoration: none;
-  }
-
-  .brand {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1;
   }
 
   .step-rail {

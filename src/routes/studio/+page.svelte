@@ -3,9 +3,9 @@
   const CANONICAL = '/';
   const abs = (path: string) => (ORIGIN ? `${ORIGIN}${path}` : path);
   const SHARE_URL = ORIGIN || CANONICAL;
-  const SITE_TITLE = 'Looma by Kinforge — Game-ready creature collections';
+  const SITE_TITLE = 'Memvoya by Kinforge — Game-ready creature collections';
   const SITE_DESCRIPTION =
-    'Looma helps Kinforge game masters collect, organise, and deploy creatures with a shared toolkit built for collaborative worldbuilding.';
+    'Memvoya helps Kinforge game masters collect, organise, and deploy creatures with a shared toolkit built for collaborative worldbuilding.';
 
   const features = [
     {
@@ -16,7 +16,7 @@
     {
       title: 'Prep with confidence',
       description:
-        'Build encounter groups in advance, attach custom rules, and drop them into any session. Looma keeps your notes, stat blocks, and art synced.'
+        'Build encounter groups in advance, attach custom rules, and drop them into any session. Memvoya keeps your notes, stat blocks, and art synced.'
     },
     {
       title: 'Co-create with your table',
@@ -28,7 +28,7 @@
   const howItWorks = [
     {
       title: 'Capture inspirations',
-      text: 'Import from Kinforge, upload your own art, or start with a blank card. Looma standardises the format so everything stays playable.'
+      text: 'Import from Kinforge, upload your own art, or start with a blank card. Memvoya standardises the format so everything stays playable.'
     },
     {
       title: 'Build smart lists',
@@ -49,7 +49,7 @@
     sameAs: ['https://kinforge.gg', 'https://twitter.com/kinforge'],
     brand: {
       '@type': 'Brand',
-      name: 'Looma'
+      name: 'Memvoya'
     }
   };
 </script>
@@ -81,10 +81,10 @@
   <header class="hero" aria-labelledby="hero-heading">
     <div class="hero__content">
       <p class="hero__eyebrow">Kinforge presents</p>
-      <h1 id="hero-heading">Looma keeps every creature at your command</h1>
+      <h1 id="hero-heading">Memvoya keeps every creature at your command</h1>
       <p class="hero__lead">
         Prep faster, improvise with confidence, and give your players unforgettable encounters.
-        Looma is the command centre for Kinforge storytellers who need living creature collections in seconds.
+        Memvoya is the command centre for Kinforge storytellers who need living creature collections in seconds.
       </p>
       <div class="hero__actions">
         <a class="button" href="/app/auth">Start with your Kinforge account</a>
@@ -94,7 +94,7 @@
     <figure class="hero__media">
       <img
         src="/og/looma_og.png"
-        alt="Stylised Looma dashboard showing curated creature cards"
+        alt="Stylised Memvoya dashboard showing curated creature cards"
         width="1200"
         height="630"
         loading="lazy"
@@ -120,8 +120,8 @@
 
     <section class="how" aria-labelledby="how-heading">
       <div class="section-intro">
-        <h2 id="how-heading">How Looma supports your session flow</h2>
-        <p>From early brainstorms to the moment initiative starts, Looma keeps the details consistent.</p>
+        <h2 id="how-heading">How Memvoya supports your session flow</h2>
+        <p>From early brainstorms to the moment initiative starts, Memvoya keeps the details consistent.</p>
       </div>
       <ol class="how-steps">
         {#each howItWorks as step, index}
@@ -141,13 +141,13 @@
         <h2 id="cta-heading">Ready to bring your creatures to life?</h2>
         <p>Log in with your Kinforge credentials and start building encounters that surprise every table.</p>
       </div>
-      <a class="button button--light" href="/app/auth">Sign in to Looma</a>
+      <a class="button button--light" href="/app/auth">Sign in to Memvoya</a>
     </section>
   </main>
 
-  <footer class="footer" aria-label="Looma footer">
+  <footer class="footer" aria-label="Memvoya footer">
     <div>
-      <strong>Looma</strong>
+      <strong>Memvoya</strong>
       <p>Creature collections, encounter prep, and collaborative lore for Kinforge worlds.</p>
     </div>
     <nav aria-label="Secondary">

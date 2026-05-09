@@ -1,6 +1,7 @@
 <script lang="ts">
   import StatusCapsule from '$lib/components/ui/StatusCapsule.svelte';
   import CenterIconNav from '$lib/components/ui/CenterIconNav.svelte';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import type { IconNavItem, NotificationItem } from '$lib/components/ui/types';
   import { Search } from 'lucide-svelte';
   import type { ActiveCompanionSnapshot } from '$lib/stores/companions';
@@ -23,15 +24,12 @@
 <header class="app-header" data-testid="brand-header">
   <div class="app-header__inner">
     <div class="header-left">
-      <div class="logo-lockup" role="img" aria-label="Looma sanctuary sigil">
-        <span class="logo-dot" aria-hidden="true"></span>
-        <span class="logo-text">Looma</span>
-      </div>
-      <label class="search-omnibox panel-glass" role="search" aria-label="Search Looma">
+      <MemvoyaBrand href="/app/home" size="sm" ariaLabel="Memvoya home" />
+      <label class="search-omnibox panel-glass" role="search" aria-label="Search Memvoya">
         <span class="search-icon" aria-hidden="true">
           <Search aria-hidden="true" />
         </span>
-        <input type="search" placeholder="Search companions, people, and rituals" aria-label="Search Looma" />
+        <input type="search" placeholder="Search companions, people, and rituals" aria-label="Search Memvoya" />
       </label>
     </div>
     <div class="header-nav">
@@ -96,32 +94,6 @@
     gap: 1rem;
     min-width: 0;
     flex: 1 1 auto;
-  }
-
-  .logo-lockup {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 999px;
-    border: 1px solid rgba(240, 222, 193, 0.14);
-    background: rgba(255, 246, 230, 0.04);
-    box-shadow: 0 10px 26px rgba(11, 8, 11, 0.44);
-  }
-
-  .logo-dot {
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: radial-gradient(circle at 30% 30%, rgba(112, 221, 194, 0.92), rgba(240, 180, 112, 0.72));
-    box-shadow: 0 0 24px rgba(240, 180, 112, 0.28);
-  }
-
-  .logo-text {
-    font-size: 0.8rem;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: rgba(250, 242, 230, 0.82);
   }
 
   .search-omnibox {
@@ -232,9 +204,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .logo-dot,
-    .search-omnibox,
-    .logo-lockup {
+    .search-omnibox {
       transition: none;
     }
   }

@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-  <title>Orbfield — Looma</title>
+  <title>Orbfield — Memvoya</title>
 </svelte:head>
 
 <GameShell

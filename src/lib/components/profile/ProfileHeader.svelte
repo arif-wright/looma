@@ -83,8 +83,8 @@ $: if (followCounts !== lastCountsProp) {
   async function handleShare() {
     if (!canShare || !shareUrl) return;
     const payload = {
-      title: `${displayName} on Looma`,
-      text: profile?.bio?.slice(0, 120) ?? 'View this explorer on Looma',
+      title: `${displayName} on Memvoya`,
+      text: profile?.bio?.slice(0, 120) ?? 'View this explorer on Memvoya',
       url: shareUrl
     };
     try {

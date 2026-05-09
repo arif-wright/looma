@@ -264,7 +264,7 @@
       <a class="focus-card__link" href={journalHref}>Trace</a>
     </div>
     <p>
-      Looma should make it obvious why the sanctuary feels the way it does. These are the live signals shaping {companionName}'s day.
+      Memvoya should make it obvious why the sanctuary feels the way it does. These are the live signals shaping {companionName}'s day.
     </p>
     <div class="weave-grid">
       {#each weaveSignals as signal (signal.id)}
@@ -462,7 +462,7 @@
     <a class="shortcut" href={missionHref}>
       <span class="shortcut__label">Mission</span>
       <strong>{missionTitle ?? 'Pick up today’s path'}</strong>
-      <span>{missionSummary ?? 'A short action to deepen your rhythm with Looma.'}</span>
+      <span>{missionSummary ?? 'A short action to deepen your rhythm with Memvoya.'}</span>
     </a>
 
     <a class="shortcut" href={messagesHref}>

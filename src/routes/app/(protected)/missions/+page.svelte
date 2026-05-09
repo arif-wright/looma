@@ -110,7 +110,7 @@
 </script>
 
 <svelte:head>
-  <title>Looma - Missions</title>
+  <title>Memvoya - Missions</title>
 </svelte:head>
 
 <div class="missions-root">
