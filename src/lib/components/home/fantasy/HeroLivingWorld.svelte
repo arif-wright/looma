@@ -71,8 +71,8 @@
     {:else}
       <div class="companion-model">
         <MuseModel
-          minSize="280px"
-          size="470px"
+          minSize="0px"
+          size="100%"
           framed={false}
           cameraControls={false}
           eager={true}
