@@ -18,14 +18,31 @@ export const POST: RequestHandler = async (event) => {
 
   const consent = traits?.consent ?? true;
 
-  const { error: upsertError } = await supabase.from('player_traits').upsert({
+  let upsertError = (await supabase.from('player_traits').upsert({
     user_id: userId,
     raw: null,
     facets: null,
     archetype: null,
+    emotional_profile: null,
+    primary_archetype: null,
+    secondary_archetype: null,
+    companion_seed: null,
+    archetype_scores: null,
+    onboarding_quiz_version: null,
     consent,
     updated_at: new Date().toISOString()
-  });
+  })).error;
+
+  if (upsertError?.code === 'PGRST204' || upsertError?.message?.includes('emotional_profile')) {
+    upsertError = (await supabase.from('player_traits').upsert({
+      user_id: userId,
+      raw: null,
+      facets: null,
+      archetype: null,
+      consent,
+      updated_at: new Date().toISOString()
+    })).error;
+  }
 
   if (upsertError) {
     console.error('[persona/reset] upsert failed', upsertError);

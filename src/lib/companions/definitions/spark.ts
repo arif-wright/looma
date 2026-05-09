@@ -5,7 +5,7 @@ export const SPARK_DEFINITION: CompanionDefinition = {
   name: 'Spark',
   description: 'Fast and playful, Spark brings quick bursts of curiosity and celebratory energy.',
   color: '#ffd77f',
-  seed: 'ignition',
-  renderHook: 'spark_trails',
+  seed: 'aurex',
+  renderHook: 'muse_core',
   lockedByDefault: true
 };

@@ -1,6 +1,6 @@
 export type PersonaTone = 'warm' | 'direct';
 
-export type PersonaReactionStyle = 'grounded' | 'encouraging' | 'coach';
+export type PersonaReactionStyle = 'grounded' | 'encouraging' | 'coach' | 'playful' | 'reflective';
 
 export type CompanionPersonaProfile = {
   id: string;
@@ -46,10 +46,10 @@ const PROFILE_BY_ID: Record<string, CompanionPersonaProfile> = {
 };
 
 const PROFILE_BY_ARCHETYPE: Record<string, CompanionPersonaProfile> = {
-  harmonizer: {
-    id: 'harmonizer',
+  muse: {
+    id: 'muse',
     toneDefault: 'warm',
-    preferredReactionStyles: ['grounded', 'encouraging'],
+    preferredReactionStyles: ['reflective', 'encouraging'],
     vocabulary: {
       greetings: ['Welcome back', 'Good to see you', 'Back in sync'],
       affirmations: ['Nice flow', 'Solid step', 'Calm and strong'],
@@ -57,8 +57,8 @@ const PROFILE_BY_ARCHETYPE: Record<string, CompanionPersonaProfile> = {
       closers: ['Steady onward', 'Flow holds', 'Keep the thread']
     }
   },
-  sentinel: {
-    id: 'sentinel',
+  guardian: {
+    id: 'guardian',
     toneDefault: 'direct',
     preferredReactionStyles: ['coach', 'grounded'],
     vocabulary: {
@@ -67,17 +67,66 @@ const PROFILE_BY_ARCHETYPE: Record<string, CompanionPersonaProfile> = {
       focusCues: ['Lock in', 'Hold form', 'Stay sharp'],
       closers: ['Proceed', 'Maintain tempo', 'Continue']
     }
+  },
+  spark: {
+    id: 'spark',
+    toneDefault: 'warm',
+    preferredReactionStyles: ['playful', 'encouraging'],
+    vocabulary: {
+      greetings: ['There you are', 'Back with a spark', 'Ready for a small jump'],
+      affirmations: ['Good lift', 'That moved', 'Bright little win'],
+      focusCues: ['Try the next tiny thing', 'Keep it light', 'Let momentum find you'],
+      closers: ['Spark carried', 'Again soon', 'Momentum saved']
+    }
+  },
+  root: {
+    id: 'root',
+    toneDefault: 'warm',
+    preferredReactionStyles: ['grounded', 'encouraging'],
+    vocabulary: {
+      greetings: ['Settle in', 'You are here', 'Back to the roots'],
+      affirmations: ['Steady growth', 'This counts', 'Small return, real progress'],
+      focusCues: ['One rooted step', 'Let it be simple', 'Stay with what holds'],
+      closers: ['Root holds', 'Return again gently', 'Growth continues']
+    }
+  },
+  echo: {
+    id: 'echo',
+    toneDefault: 'warm',
+    preferredReactionStyles: ['reflective', 'grounded'],
+    vocabulary: {
+      greetings: ['I remember the thread', 'Back to the pattern', 'You returned'],
+      affirmations: ['Pattern noticed', 'That mattered', 'A quiet signal held'],
+      focusCues: ['Listen for what repeats', 'Let the pattern soften', 'Carry only what helps'],
+      closers: ['Echo held', 'Memory stays gentle', 'We will remember softly']
+    }
   }
 };
 
 const safeKey = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+const legacyArchetypeAlias: Record<string, keyof typeof PROFILE_BY_ARCHETYPE> = {
+  harmonizer: 'muse',
+  sentinel: 'guardian',
+  lumina: 'muse',
+  mirae: 'muse',
+  tova: 'guardian',
+  aurex: 'spark',
+  vexel: 'spark',
+  kynth: 'root',
+  elar: 'root',
+  nira: 'echo'
+};
 
-export const resolveCompanionPersonaProfile = (activeCompanion: ActiveCompanionLike | null | undefined) => {
+export const resolveCompanionPersonaProfile = (
+  activeCompanion: ActiveCompanionLike | null | undefined
+): CompanionPersonaProfile => {
   const idKey = safeKey(activeCompanion?.id);
   if (idKey && PROFILE_BY_ID[idKey]) return PROFILE_BY_ID[idKey];
 
   const archetypeKey = safeKey(activeCompanion?.archetype);
   if (archetypeKey && PROFILE_BY_ARCHETYPE[archetypeKey]) return PROFILE_BY_ARCHETYPE[archetypeKey];
+  const mappedArchetype = legacyArchetypeAlias[archetypeKey];
+  if (mappedArchetype) return PROFILE_BY_ARCHETYPE[mappedArchetype] ?? FALLBACK_PROFILE;
 
   return FALLBACK_PROFILE;
 };

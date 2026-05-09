@@ -19,6 +19,7 @@ import { alphaGate } from '$lib/server/alphaGate';
 import { isSubscriptionActive } from '$lib/subscriptions';
 
 const HOURS_12 = 12 * 60 * 60 * 1000;
+const BOND_GENESIS_PATH = '/app/onboarding/companion';
 
 const variantRoll = (): 'A' | 'B' | 'C' => {
   const roll = Math.random();
@@ -261,6 +262,26 @@ export const load: LayoutServerLoad = async (event) => {
   const resolverMode = shouldResolveLanding(normalizedPath, forceHome);
 
   const supabase = locals.supabase ?? supabaseServer(event);
+  const shouldCheckBondGenesis = !normalizedPath.startsWith(BOND_GENESIS_PATH);
+  if (shouldCheckBondGenesis) {
+    const [{ data: bondFlag, error: bondFlagError }, { count: companionCount, error: companionCountError }] =
+      await Promise.all([
+        supabase.from('feature_flags').select('enabled').eq('key', 'bond_genesis').maybeSingle(),
+        supabase.from('companions').select('id', { count: 'exact', head: true }).eq('owner_id', user.id)
+      ]);
+
+    if (bondFlagError) {
+      console.error('[resolver] bond genesis flag lookup failed', bondFlagError);
+    }
+    if (companionCountError) {
+      console.error('[resolver] bond genesis companion count failed', companionCountError);
+    }
+
+    if (bondFlag?.enabled && (companionCount ?? 0) === 0) {
+      throw redirect(302, BOND_GENESIS_PATH);
+    }
+  }
+
   const preferences = await getOrCreatePreferences(supabase, user.id);
   const variant = await ensureVariant(supabase, preferences);
   let notifications: Array<Record<string, any>> = [];

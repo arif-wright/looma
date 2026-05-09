@@ -5,7 +5,7 @@ export const GUARDIAN_DEFINITION: CompanionDefinition = {
   name: 'Guardian',
   description: 'Steady and protective, Guardian favors deliberate pacing and resilient focus.',
   color: '#8fd3ff',
-  seed: 'steadfast',
-  renderHook: 'guardian_shell',
+  seed: 'tova',
+  renderHook: 'muse_core',
   lockedByDefault: true
 };

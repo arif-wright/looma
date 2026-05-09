@@ -1345,7 +1345,7 @@
                 <p>Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
                 <p>Bond level {getBondLevel(instance)}</p>
                 <p class="discover-meta">
-                  Hook {archetypeMetadataByCompanionId[instance.id]?.renderHook ?? 'default_core'}
+                  Hook {archetypeMetadataByCompanionId[instance.id]?.renderHook ?? 'muse_core'}
                 </p>
               </div>
               <div class="list-card__actions">

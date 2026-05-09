@@ -6,35 +6,22 @@
   import { logEvent } from '$lib/analytics';
   import { devLog, safeApiPayloadMessage, safeUiMessage } from '$lib/utils/safeUiError';
   import type { PageData } from './$types';
+  import { resolveArchetypeConfig, type CanonicalArchetypeId, type EmotionalProfile } from '$lib/onboarding/archetypes';
+  import { ONBOARDING_QUESTIONS } from '$lib/onboarding/emotionalProfile';
 
   export let data: PageData;
 
-  type Axis = 'EI' | 'NS' | 'TF' | 'JP';
-  type Facet = 'empathy' | 'curiosity' | 'structure';
   type Choice = 'A' | 'B';
   type Question = {
     id: string;
     prompt: string;
-    axis?: Axis;
-    facet?: Facet;
   };
-  type AnswerRecord = { id: string; axis?: Axis; facet?: Facet; choice: Choice };
+  type AnswerRecord = { id: string; choice: Choice };
 
   const STORAGE_KEY = 'looma_bond_answers_v2';
   const CONSENT_KEY = 'looma_bond_consent_v1';
 
-  const questions: Question[] = [
-    { id: 'q1', prompt: 'A quiet recharge beats a crowded victory lap.', axis: 'EI', facet: 'empathy' },
-    { id: 'q2', prompt: 'You would rather explore than follow a checklist.', axis: 'JP', facet: 'curiosity' },
-    { id: 'q3', prompt: 'You decide with heart as much as head.', axis: 'TF', facet: 'empathy' },
-    { id: 'q4', prompt: 'You prefer clarity and routine to surprises.', axis: 'JP', facet: 'structure' },
-    { id: 'q5', prompt: 'You seek patterns, not just facts.', axis: 'NS', facet: 'curiosity' },
-    { id: 'q6', prompt: 'You like to keep things organized.', axis: 'JP', facet: 'structure' },
-    { id: 'q7', prompt: 'People lean on you for support.', facet: 'empathy' },
-    { id: 'q8', prompt: 'You get a spark from learning new tricks.', facet: 'curiosity' },
-    { id: 'q9', prompt: 'You calm a room without saying much.', axis: 'EI', facet: 'structure' },
-    { id: 'q10', prompt: 'You enjoy finishing things as much as starting them.', axis: 'JP' }
-  ];
+  const questions: Question[] = ONBOARDING_QUESTIONS.map(({ id, prompt }) => ({ id, prompt }));
 
   const stageNotes = [
     'We are listening for how you restore and connect.',
@@ -55,7 +42,14 @@
   let currentIndex = 0;
   let errorMsg = '';
   let submitting = false;
-  let result: { archetype?: string | null; summary?: Record<string, unknown> | null } | null = null;
+  let result: {
+    primaryArchetype?: CanonicalArchetypeId | string | null;
+    secondaryArchetype?: CanonicalArchetypeId | string | null;
+    companionSeed?: string | null;
+    emotionalProfile?: EmotionalProfile | null;
+    archetype?: string | null;
+    summary?: Record<string, unknown> | null;
+  } | null = null;
   let toast: { message: string; kind: 'info' | 'error' } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let reduced = false;
@@ -64,17 +58,17 @@
   let currentChoice: Choice | null = null;
   let currentQuestion: Question = firstQuestion;
 
-  const archetypeDescriptions: Record<string, { title: string; body: string; aura: string }> = {
-    harmonizer: {
-      title: 'A calm, relational companion',
-      body: 'This bond tends toward warmth, reassurance, and emotional steadiness.',
-      aura: 'Warm and steady'
-    },
-    sentinel: {
-      title: 'A focused, watchful companion',
-      body: 'This bond tends toward clarity, structure, and grounded guidance.',
-      aura: 'Clear and protective'
-    }
+  const emotionalSummaryCopy: Record<keyof EmotionalProfile, string> = {
+    emotional_openness: 'Emotionally open',
+    stability_preference: 'Steadiness seeking',
+    novelty_seeking: 'Curiosity led',
+    reflection_orientation: 'Reflective',
+    reassurance_need: 'Reassurance responsive',
+    social_energy: 'Socially energized',
+    ritual_affinity: 'Ritual friendly',
+    playful_activation: 'Playfully activated',
+    memory_affinity: 'Memory attuned',
+    gentle_reinforcement_response: 'Gentle encouragement'
   };
 
   $: currentQuestion = questions[currentIndex] ?? firstQuestion;
@@ -87,16 +81,21 @@
   $: stageLabel = ['Attunement', 'Signal', 'Bond'][stageIndex] ?? 'Bond';
   $: stageNote = stageNotes[stageIndex] ?? stageNotes[stageNotes.length - 1];
   $: answeredCount = Object.keys(answers).length;
-  $: resultKey = typeof result?.archetype === 'string' ? result.archetype.toLowerCase() : 'harmonizer';
-  $: archetypeCopy =
-    archetypeDescriptions[resultKey] ?? {
-      title: 'A companion tuned to your rhythm',
-      body: 'This first bond will adapt to your tone, pacing, and emotional texture over time.',
-      aura: 'Adaptive and present'
-    };
-  $: summaryEntries = result?.summary && typeof result.summary === 'object'
-    ? Object.entries(result.summary)
-        .filter(([, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+  $: resultKey =
+    typeof result?.primaryArchetype === 'string'
+      ? result.primaryArchetype
+      : typeof result?.archetype === 'string'
+        ? result.archetype
+        : 'muse';
+  $: archetypeConfig = resolveArchetypeConfig(resultKey);
+  $: secondaryConfig = resolveArchetypeConfig(
+    typeof result?.secondaryArchetype === 'string' ? result.secondaryArchetype : null,
+    'guardian'
+  );
+  $: emotionalHighlights = result?.emotionalProfile
+    ? (Object.entries(result.emotionalProfile) as Array<[keyof EmotionalProfile, number]>)
+        .filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
+        .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
     : [];
 
@@ -163,9 +162,7 @@
       ...answers,
       [question.id]: {
         id: question.id,
-        choice,
-        ...(question.axis ? { axis: question.axis } : {}),
-        ...(question.facet ? { facet: question.facet } : {})
+        choice
       }
     };
     persistAnswers();
@@ -234,6 +231,13 @@
 
       result = {
         archetype: response?.archetype ?? null,
+        primaryArchetype: response?.primaryArchetype ?? response?.archetype ?? null,
+        secondaryArchetype: response?.secondaryArchetype ?? null,
+        companionSeed: response?.companionSeed ?? null,
+        emotionalProfile:
+          response?.emotionalProfile && typeof response.emotionalProfile === 'object'
+            ? response.emotionalProfile
+            : null,
         summary: response?.summary && typeof response.summary === 'object' ? response.summary : null
       };
       logEvent('persona_quiz_complete', { archetype: response?.archetype ?? null });
@@ -360,7 +364,7 @@
       <div class="panel-top">
         <div>
           <p class="eyebrow">Attunement</p>
-          <h2>{result ? `Matched: ${result.archetype ?? 'Companion'}` : `Question ${progressLabel}`}</h2>
+          <h2>{result ? `Matched: ${archetypeConfig.displayName}` : `Question ${progressLabel}`}</h2>
         </div>
         {#if !result}
           <div class="progress-meta" data-testid="quiz-progress">{Math.round(progressPercent)}%</div>
@@ -453,30 +457,31 @@
       {:else}
         <div class="result-stage" in:fly={{ y: 16, duration: 220 }}>
           <article class="result-card">
+            <img class="result-card__asset" src={archetypeConfig.imagePath} alt="" aria-hidden="true" />
             <p class="eyebrow">Archetype</p>
-            <h3>{result.archetype ?? 'Companion'}</h3>
-            <p class="result-card__lede">{archetypeCopy.title}</p>
-            <p>{archetypeCopy.body}</p>
+            <h3>{archetypeConfig.displayName}</h3>
+            <p class="result-card__lede">{archetypeConfig.resultHeadline}</p>
+            <p>{archetypeConfig.resultCopy}</p>
 
             <div class="result-grid">
               <article class="result-tile">
                 <span class="result-tile__label">Aura</span>
-                <strong>{archetypeCopy.aura}</strong>
+                <strong>{archetypeConfig.emotionalFunction}</strong>
                 <span>Your first companion will start from this tone.</span>
               </article>
               <article class="result-tile">
-                <span class="result-tile__label">Bond effect</span>
-                <strong>{hasCompanion ? 'Personalization only' : 'New companion unlock'}</strong>
-                <span>{hasCompanion ? 'You already have a companion, so this updates the way Looma tunes itself to you.' : 'Spawning now will create your first companion bond.'}</span>
+                <span class="result-tile__label">Companion lineage</span>
+                <strong>{archetypeConfig.companionSeed}</strong>
+                <span>{hasCompanion ? `This updates your ${secondaryConfig.displayName} resonance too.` : archetypeConfig.suggestedFirstRitual}</span>
               </article>
             </div>
 
-            {#if summaryEntries.length}
+            {#if emotionalHighlights.length}
               <div class="summary-grid" aria-label="Persona summary">
-                {#each summaryEntries as [key, value]}
+                {#each emotionalHighlights as [key, value]}
                   <article class="summary-chip">
-                    <span>{String(key).replace(/_/g, ' ')}</span>
-                    <strong>{String(value)}</strong>
+                    <span>{emotionalSummaryCopy[key]}</span>
+                    <strong>{Math.round(value * 100)}%</strong>
                   </article>
                 {/each}
               </div>
@@ -832,6 +837,16 @@
     line-height: 1.02;
     text-transform: capitalize;
     color: rgba(250, 244, 232, 0.98);
+  }
+
+  .result-card__asset {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 0.82rem;
+    border: 1px solid rgba(214, 190, 141, 0.16);
+    margin-bottom: 0.2rem;
   }
 
   .result-card__lede {

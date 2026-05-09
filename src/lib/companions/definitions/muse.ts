@@ -5,6 +5,6 @@ export const MUSE_DEFINITION: CompanionDefinition = {
   name: 'Muse',
   description: 'A harmonizing companion tuned for gentle momentum and balanced routines.',
   color: '#5ef2ff',
-  seed: 'harmonizer',
+  seed: 'mirae',
   renderHook: 'muse_core'
 };
