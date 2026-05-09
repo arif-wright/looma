@@ -290,10 +290,6 @@
     height: 1.55rem;
     flex: 0 0 auto;
     place-items: center;
-    border-radius: 999px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.38),
-      0 0 18px rgba(255, 255, 255, 0.14);
     font-style: normal;
   }
 
@@ -303,24 +299,17 @@
 
   .stat-icon img {
     display: block;
-    width: 1.18rem;
-    height: 1.18rem;
+    width: 1.38rem;
+    height: 1.38rem;
     object-fit: contain;
-    filter: drop-shadow(0 0 5px rgba(255, 120, 176, 0.68));
   }
 
   .stat-icon--mood {
-    background:
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.76), transparent 24%),
-      linear-gradient(135deg, #c8ffd5, #69f08f 58%, #31c96b);
-    color: #0d5b34;
+    color: inherit;
   }
 
   .stat-icon--bond {
-    background:
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.72), transparent 24%),
-      linear-gradient(135deg, #ff9ac2, #ff5d96 58%, #ff3c7d);
-    color: #ffe4ef;
+    color: inherit;
   }
 
   .status-row span {
