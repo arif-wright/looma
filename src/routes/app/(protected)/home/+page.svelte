@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Bell, Gamepad2, Heart, Home, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
+  import { Bell, Gamepad2, Gift, Heart, Home, Leaf, Menu, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
   import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
@@ -214,6 +214,10 @@
 
   <main class="home-main" aria-label="Looma companion home">
     <header class="topbar">
+      <a class="mobile-brand" href="/app/home" aria-label="Looma home">
+        <span>looma</span>
+        <small>AI</small>
+      </a>
       <label class="search" aria-label="Search Looma">
         <Search size={19} />
         <input type="search" placeholder="Search worlds, games, companions, or friends..." />
@@ -229,6 +233,7 @@
         <a class="avatar-action" href="/app/profile" aria-label="Profile">
           <span>{playerName.slice(0, 1).toUpperCase()}</span>
         </a>
+        <button class="menu-action" type="button" aria-label="Open menu"><Menu size={27} /></button>
       </div>
     </header>
 
@@ -244,21 +249,29 @@
         />
 
         <section class="mobile-loop" aria-label="Today's companion loop">
-          <RitualPanel completed={ritualCompleted} />
           <div class="mobile-quick-actions">
-            <a href="/app/companions">
+            <a class="mobile-action-card mobile-action-card--bond" href="/app/games">
               <Sparkles size={19} />
-              <span>Gift</span>
+              <span>Play Together</span>
+              <small>+ Bond</small>
             </a>
-            <a href="/app/games">
+            <a class="mobile-action-card mobile-action-card--energy" href="/app/companions">
+              <Leaf size={19} />
+              <span>Feed {companionName}</span>
+              <small>+ Energy</small>
+            </a>
+            <a class="mobile-action-card mobile-action-card--world" href="/app/worlds">
               <Gamepad2 size={19} />
-              <span>Play</span>
+              <span>Enter World</span>
+              <small>+ Adventure</small>
             </a>
-            <a href="/app/messages">
-              <Heart size={19} />
-              <span>Check in</span>
+            <a class="mobile-action-card mobile-action-card--gift" href="/app/inventory">
+              <Gift size={19} />
+              <span>Open Gift</span>
+              <small>1 Ready</small>
             </a>
           </div>
+          <RitualPanel completed={ritualCompleted} />
         </section>
 
         <section class="glass-section companions-section" aria-labelledby="companions-title">
@@ -383,6 +396,11 @@
   .content-grid {
     position: relative;
     z-index: 2;
+  }
+
+  .mobile-brand,
+  .menu-action {
+    display: none;
   }
 
   .topbar {
@@ -626,8 +644,8 @@
 
     .home-main::before {
       background-position: var(--home-bg-position-mobile, var(--home-bg-position, center top));
-      height: 39rem;
-      opacity: 0.78;
+      height: min(48rem, 92svh);
+      opacity: 0.96;
     }
 
     :global(.fantasy-sidebar) {
@@ -640,12 +658,36 @@
 
     .topbar {
       position: fixed;
-      left: 0.85rem;
-      right: 0.85rem;
-      top: max(0.7rem, env(safe-area-inset-top));
+      left: 1.25rem;
+      right: 1.25rem;
+      top: max(1.05rem, calc(env(safe-area-inset-top) + 0.45rem));
       z-index: 20;
       margin: 0;
-      pointer-events: none;
+      pointer-events: auto;
+    }
+
+    .mobile-brand {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.35rem;
+      color: #fff3cf;
+      text-decoration: none;
+      text-shadow: 0 0 22px rgba(171, 92, 255, 0.48);
+    }
+
+    .mobile-brand span {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(1.85rem, 9vw, 2.55rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .mobile-brand small {
+      color: #b15cff;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
     }
 
     .search {
@@ -653,9 +695,9 @@
     }
 
     .top-actions {
-      width: 100%;
+      width: auto;
       justify-content: flex-end;
-      pointer-events: auto;
+      gap: 0.65rem;
     }
 
     .currency {
@@ -666,12 +708,29 @@
     }
 
     .icon-action {
-      display: none;
+      display: inline-flex;
+      width: 2.55rem;
+      min-height: 2.55rem;
+      border: 0;
+      background: transparent;
+      color: #fff3cf;
+      backdrop-filter: none;
     }
 
     .avatar-action {
-      width: 2.45rem;
-      min-height: 2.45rem;
+      display: none;
+    }
+
+    .menu-action {
+      display: inline-grid;
+      width: 2.55rem;
+      min-height: 2.55rem;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #fff3cf;
+      padding: 0;
+      cursor: pointer;
     }
 
     .content-grid,
@@ -685,45 +744,97 @@
 
     .mobile-loop {
       display: grid;
-      gap: 0.8rem;
-      margin: -1rem 0.85rem 1rem;
+      gap: 1rem;
+      margin: -0.25rem 1.05rem 1rem;
       position: relative;
       z-index: 4;
     }
 
     .mobile-quick-actions {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.65rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.62rem;
     }
 
     .mobile-quick-actions a {
       display: grid;
-      min-height: 4.7rem;
+      min-height: 7.1rem;
       place-items: center;
       align-content: center;
-      gap: 0.32rem;
-      border: 1px solid rgba(167, 92, 255, 0.22);
-      border-radius: 1rem;
-      background: rgba(16, 16, 41, 0.74);
+      gap: 0.38rem;
+      border: 1px solid rgba(167, 92, 255, 0.32);
+      border-radius: 1.1rem;
+      background:
+        radial-gradient(circle at 50% 24%, rgba(171, 92, 255, 0.34), transparent 46%),
+        rgba(10, 10, 29, 0.74);
       color: white;
       text-decoration: none;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(20px);
+      text-align: center;
+    }
+
+    .mobile-action-card--energy {
+      border-color: rgba(125, 213, 80, 0.32);
+      background:
+        radial-gradient(circle at 50% 24%, rgba(125, 213, 80, 0.25), transparent 46%),
+        rgba(10, 18, 20, 0.72);
+    }
+
+    .mobile-action-card--world {
+      border-color: rgba(75, 141, 255, 0.36);
+      background:
+        radial-gradient(circle at 50% 24%, rgba(75, 141, 255, 0.26), transparent 46%),
+        rgba(9, 13, 29, 0.74);
+    }
+
+    .mobile-action-card--gift {
+      border-color: rgba(227, 169, 67, 0.36);
+      background:
+        radial-gradient(circle at 50% 24%, rgba(227, 169, 67, 0.28), transparent 46%),
+        rgba(23, 15, 12, 0.72);
+    }
+
+    .mobile-quick-actions :global(svg) {
+      width: 2.15rem;
+      height: 2.15rem;
+      filter: drop-shadow(0 0 16px currentColor);
     }
 
     .mobile-quick-actions span {
+      font-size: clamp(0.74rem, 3.4vw, 0.92rem);
+      font-weight: 800;
+      line-height: 1.12;
+    }
+
+    .mobile-quick-actions small {
+      color: #bd7cff;
       font-size: 0.78rem;
       font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .mobile-action-card--energy small {
+      color: #8ed45d;
+    }
+
+    .mobile-action-card--world small {
+      color: #6fa2ff;
+    }
+
+    .mobile-action-card--gift small {
+      color: #e4b65a;
     }
 
     .glass-section {
-      margin: 0 0 1rem;
-      border-width: 1px 0;
-      border-radius: 0;
-      background: linear-gradient(180deg, rgba(12, 13, 32, 0.38), rgba(12, 13, 32, 0.2));
+      margin: 0 1.05rem 1rem;
+      border-width: 1px;
+      border-radius: 1.15rem;
+      background: rgba(12, 13, 32, 0.56);
       padding: 1rem 0 1.1rem;
-      box-shadow: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 18px 50px rgba(0, 0, 0, 0.28);
     }
 
     .section-header {

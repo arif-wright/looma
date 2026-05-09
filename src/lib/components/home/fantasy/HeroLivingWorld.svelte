@@ -351,7 +351,7 @@
 
   @media (max-width: 760px) {
     .living-world {
-      min-height: min(43.5rem, 88svh);
+      min-height: min(43.5rem, 86svh);
       border-width: 0 0 1px;
       border-radius: 0 0 1.6rem 1.6rem;
       background: transparent;
@@ -359,37 +359,36 @@
 
     .hero-copy {
       width: 100%;
-      padding: max(4.2rem, calc(env(safe-area-inset-top) + 3.6rem)) 1.05rem 0;
+      padding: max(6rem, calc(env(safe-area-inset-top) + 5rem)) 1.35rem 0;
       text-align: left;
     }
 
     .hero-copy p:first-child {
-      font-size: 0.82rem;
+      font-size: clamp(1.55rem, 7vw, 2.1rem);
       font-weight: 800;
-      opacity: 0.72;
+      color: #fff;
+      opacity: 0.94;
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1.08;
     }
 
     .hero-copy h1 {
-      font-size: clamp(2rem, 12vw, 3.2rem);
-      margin: 0.22rem 0 0.35rem;
+      font-size: clamp(1.55rem, 7vw, 2.1rem);
+      margin: 0.08rem 0 0.6rem;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 700;
+      line-height: 1.08;
     }
 
     .intro {
-      max-width: 13rem;
-      font-size: 0.86rem;
+      max-width: 17rem;
+      font-size: clamp(1rem, 4vw, 1.16rem);
       line-height: 1.42;
+      color: rgba(245, 239, 255, 0.76);
     }
 
     .hero-actions {
-      position: absolute;
-      left: 1rem;
-      right: 1rem;
-      bottom: 1.05rem;
-      z-index: 5;
-      display: grid;
-      grid-template-columns: 1.08fr 0.92fr;
-      gap: 0.65rem;
-      margin: 0;
+      display: none;
     }
 
     .hero-actions a {
@@ -423,13 +422,13 @@
     }
 
     .status-card {
-      left: 1rem;
+      left: 1.05rem;
       right: auto;
-      bottom: 5.25rem;
-      width: min(13.5rem, calc(100vw - 2rem));
-      border-radius: 1rem;
-      padding: 0.8rem;
-      background: rgba(12, 13, 34, 0.58);
+      bottom: 12.5rem;
+      width: min(13.8rem, calc(100vw - 2.1rem));
+      border-radius: 1.15rem;
+      padding: 0.95rem;
+      background: rgba(14, 10, 34, 0.72);
     }
 
     .status-card header strong {
