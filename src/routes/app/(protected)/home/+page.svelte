@@ -135,12 +135,12 @@
     muse: {
       backgroundPosition: 'center top',
       mobileBackgroundPosition: 'center top',
-      stageLeft: '22%',
-      stageRight: '39%',
-      stageWidth: 'min(21rem, 88%)',
-      stageHeight: 'min(23rem, 96%)',
-      stageTranslateX: '-0.7rem',
-      stageTranslateY: '1.95rem',
+      stageLeft: '31%',
+      stageRight: '30%',
+      stageWidth: 'min(24rem, 96%)',
+      stageHeight: 'min(25rem, 104%)',
+      stageTranslateX: '0.65rem',
+      stageTranslateY: '0.35rem',
       companionScale: '1',
       mobileStageWidth: 'min(18.5rem, 84vw)',
       mobileStageHeight: 'min(20rem, 48svh)',
@@ -151,9 +151,9 @@
       bridgeAccentRgb: '255 150 226',
       bridgeShadowRgb: '15 8 42',
       bridgeIntensity: '0.48',
-      bridgeGroundWidth: '58%',
+      bridgeGroundWidth: '54%',
       bridgeGroundHeight: '10%',
-      bridgeGroundBottom: '4%'
+      bridgeGroundBottom: '11%'
     },
     root: {
       backgroundPosition: '49% top',
