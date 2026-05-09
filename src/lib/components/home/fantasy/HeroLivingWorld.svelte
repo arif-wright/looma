@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowRight, Pencil, Smile } from 'lucide-svelte';
+  import { ArrowRight, Pencil } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
   export let playerName = 'Alex';
@@ -8,6 +8,31 @@
   export let mood = 'Happy';
   export let bond = 87;
   export let companionAvatarUrl: string | null = null;
+
+  const moodIconByKey: Record<string, string> = {
+    calm: '/assets/steady.png',
+    content: '/assets/steady.png',
+    curious: '/assets/curious.png',
+    distant: '/assets/sleepy.png',
+    energized: '/assets/happy.png',
+    happy: '/assets/happy.png',
+    idle: '/assets/steady.png',
+    low_energy: '/assets/sleepy.png',
+    neutral: '/assets/steady.png',
+    radiant: '/assets/happy.png',
+    resting: '/assets/sleepy.png',
+    sleep: '/assets/sleepy.png',
+    sleepy: '/assets/sleepy.png',
+    steady: '/assets/steady.png',
+    tired: '/assets/sleepy.png'
+  };
+
+  const moodIconFor = (value: string) => {
+    const key = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return moodIconByKey[key] ?? '/assets/steady.png';
+  };
+
+  $: moodIconUrl = moodIconFor(mood);
 </script>
 
 <section class="living-world" aria-labelledby="living-world-title">
@@ -57,7 +82,9 @@
     <span>Level {level}</span>
     <div class="mini-meter"><span style={`width: ${Math.min(100, level * 4)}%`}></span></div>
     <div class="status-row mood">
-      <i class="stat-icon stat-icon--mood" aria-hidden="true"><Smile size={20} /></i>
+      <i class="stat-icon stat-icon--mood" aria-hidden="true">
+        <img src={moodIconUrl} alt="" loading="eager" />
+      </i>
       <span>{mood}</span>
     </div>
     <div class="status-row">
