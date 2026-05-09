@@ -41,6 +41,11 @@
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__art" data-testid="hero-backdrop" aria-hidden="true"></div>
+      <div class="hero__particles" aria-hidden="true">
+        {#each Array(12) as _, index}
+          <span style={`--i:${index}`}></span>
+        {/each}
+      </div>
       <div class="hero__shade" aria-hidden="true"></div>
 
       <div class="hero__inner">
@@ -180,6 +185,7 @@
   .topbar__nav a:hover,
   .topbar__nav a:focus-visible {
     color: rgba(255, 220, 151, 0.98);
+    text-shadow: 0 0 18px rgba(255, 211, 122, 0.28);
   }
 
   .topbar__actions {
@@ -197,6 +203,11 @@
     align-items: center;
     justify-content: center;
     font-weight: 800;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease,
+      background 180ms ease;
   }
 
   .topbar__link {
@@ -204,10 +215,25 @@
     background: rgba(8, 6, 19, 0.42);
   }
 
+  .topbar__link:hover,
+  .topbar__link:focus-visible {
+    border-color: rgba(255, 220, 151, 0.5);
+    background: rgba(18, 10, 38, 0.62);
+    box-shadow: 0 0 22px rgba(190, 135, 255, 0.14);
+    transform: translateY(-1px);
+  }
+
   .topbar__cta {
     display: none;
     background: linear-gradient(135deg, #ffd37a, #d99a39);
     color: #170e05;
+    box-shadow: 0 10px 28px rgba(217, 154, 57, 0.16);
+  }
+
+  .topbar__cta:hover,
+  .topbar__cta:focus-visible {
+    box-shadow: 0 16px 38px rgba(217, 154, 57, 0.3);
+    transform: translateY(-1px);
   }
 
   .hero {
@@ -218,6 +244,7 @@
   }
 
   .hero__art,
+  .hero__particles,
   .hero__shade {
     position: absolute;
     inset: 0;
@@ -228,11 +255,48 @@
     background-image: url('/assets/default_background.png');
     background-size: cover;
     background-position: center 35%;
+    transform: scale(1.015);
   }
 
-  .hero__shade {
+  .hero__particles {
     z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero__particles span {
+    position: absolute;
+    width: var(--size, 0.28rem);
+    height: var(--size, 0.28rem);
+    left: var(--x);
+    top: var(--y);
+    border-radius: 999px;
+    background: rgba(255, 211, 122, 0.86);
+    box-shadow:
+      0 0 14px rgba(255, 211, 122, 0.62),
+      0 0 28px rgba(190, 135, 255, 0.28);
+    opacity: 0.72;
+    animation: particleDrift var(--duration, 9s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .hero__particles span:nth-child(1) { --x: 63%; --y: 18%; --size: 0.22rem; --duration: 8s; --delay: -1s; }
+  .hero__particles span:nth-child(2) { --x: 72%; --y: 38%; --size: 0.34rem; --duration: 11s; --delay: -5s; }
+  .hero__particles span:nth-child(3) { --x: 88%; --y: 24%; --size: 0.2rem; --duration: 9s; --delay: -3s; }
+  .hero__particles span:nth-child(4) { --x: 54%; --y: 62%; --size: 0.28rem; --duration: 10s; --delay: -6s; }
+  .hero__particles span:nth-child(5) { --x: 81%; --y: 68%; --size: 0.18rem; --duration: 7s; --delay: -2s; }
+  .hero__particles span:nth-child(6) { --x: 42%; --y: 32%; --size: 0.22rem; --duration: 12s; --delay: -8s; }
+  .hero__particles span:nth-child(7) { --x: 68%; --y: 76%; --size: 0.26rem; --duration: 8.5s; --delay: -4s; }
+  .hero__particles span:nth-child(8) { --x: 93%; --y: 52%; --size: 0.3rem; --duration: 10.5s; --delay: -7s; }
+  .hero__particles span:nth-child(9) { --x: 58%; --y: 46%; --size: 0.16rem; --duration: 9.5s; --delay: -2.5s; }
+  .hero__particles span:nth-child(10) { --x: 76%; --y: 14%; --size: 0.18rem; --duration: 7.5s; --delay: -4.5s; }
+  .hero__particles span:nth-child(11) { --x: 49%; --y: 78%; --size: 0.2rem; --duration: 12.5s; --delay: -9s; }
+  .hero__particles span:nth-child(12) { --x: 84%; --y: 83%; --size: 0.24rem; --duration: 8.8s; --delay: -1.8s; }
+
+  .hero__shade {
+    z-index: -1;
     background:
+      radial-gradient(circle at 68% 42%, rgba(190, 135, 255, 0.15), transparent 20rem),
       linear-gradient(90deg, rgba(5, 4, 13, 0.97) 0%, rgba(5, 4, 13, 0.86) 31%, rgba(5, 4, 13, 0.34) 68%),
       linear-gradient(180deg, rgba(5, 4, 13, 0.08) 0%, rgba(5, 4, 13, 0.14) 52%, #05040d 100%);
   }
@@ -322,6 +386,34 @@
     justify-content: center;
     text-decoration: none;
     font-weight: 800;
+    position: relative;
+    overflow: hidden;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease,
+      background 180ms ease,
+      color 180ms ease;
+  }
+
+  .cta::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.28) 46%, transparent 62%);
+    transform: translateX(-120%);
+    transition: transform 420ms ease;
+    pointer-events: none;
+  }
+
+  .cta:hover,
+  .cta:focus-visible {
+    transform: translateY(-2px);
+  }
+
+  .cta:hover::after,
+  .cta:focus-visible::after {
+    transform: translateX(120%);
   }
 
   .cta--primary {
@@ -330,10 +422,22 @@
     box-shadow: 0 12px 32px rgba(217, 154, 57, 0.24);
   }
 
+  .cta--primary:hover,
+  .cta--primary:focus-visible {
+    box-shadow: 0 18px 44px rgba(217, 154, 57, 0.38);
+  }
+
   .cta--ghost {
     border: 1px solid rgba(255, 220, 151, 0.24);
     color: rgba(250, 244, 232, 0.95);
     background: rgba(8, 6, 19, 0.34);
+  }
+
+  .cta--ghost:hover,
+  .cta--ghost:focus-visible {
+    border-color: rgba(190, 135, 255, 0.56);
+    background: rgba(18, 10, 38, 0.58);
+    box-shadow: 0 16px 40px rgba(95, 54, 255, 0.22);
   }
 
   .feature-row {
@@ -359,6 +463,7 @@
     margin-right: 0.55rem;
     background: #be87ff;
     box-shadow: 0 0 18px rgba(190, 135, 255, 0.72);
+    animation: signalPulse 3.6s ease-in-out infinite;
   }
 
   .worlds {
@@ -380,6 +485,7 @@
   }
 
   .archetype-card {
+    position: relative;
     min-height: 16.6rem;
     border: 1px solid rgba(255, 220, 151, 0.18);
     border-radius: 0.5rem;
@@ -387,6 +493,31 @@
     background: rgba(8, 7, 18, 0.88);
     display: grid;
     grid-template-rows: minmax(10.3rem, 1fr) auto;
+    box-shadow: 0 18px 38px rgba(4, 3, 12, 0.26);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .archetype-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 211, 122, 0.12), transparent 38%);
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
+  }
+
+  .archetype-card:hover {
+    transform: translateY(-0.28rem);
+    border-color: rgba(255, 220, 151, 0.38);
+    box-shadow: 0 28px 56px rgba(4, 3, 12, 0.38), 0 0 34px rgba(145, 76, 255, 0.14);
+  }
+
+  .archetype-card:hover::after {
+    opacity: 1;
   }
 
   .archetype-card img {
@@ -394,6 +525,12 @@
     height: 100%;
     object-fit: cover;
     object-position: center top;
+    transition: transform 420ms ease, filter 420ms ease;
+  }
+
+  .archetype-card:hover img {
+    transform: scale(1.04);
+    filter: saturate(1.08) contrast(1.04);
   }
 
   .archetype-card__body {
@@ -414,6 +551,11 @@
     border-top: 1px solid rgba(255, 236, 196, 0.1);
     display: grid;
     gap: 0.8rem;
+    transition: border-color 180ms ease;
+  }
+
+  .support-band:hover {
+    border-color: rgba(255, 236, 196, 0.18);
   }
 
   .support-band:last-child {
@@ -502,6 +644,49 @@
 
     .archetype-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__particles span,
+    .feature-row span::before {
+      animation: none;
+    }
+
+    .cta,
+    .topbar__link,
+    .topbar__cta,
+    .archetype-card,
+    .archetype-card img {
+      transition: none;
+    }
+  }
+
+  @keyframes particleDrift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(0.9);
+      opacity: 0.34;
+    }
+    35% {
+      transform: translate3d(0.8rem, -1.1rem, 0) scale(1.08);
+      opacity: 0.86;
+    }
+    68% {
+      transform: translate3d(-0.45rem, -0.35rem, 0) scale(0.96);
+      opacity: 0.58;
+    }
+  }
+
+  @keyframes signalPulse {
+    0%,
+    100% {
+      transform: scale(0.94);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.12);
+      opacity: 1;
     }
   }
 </style>
