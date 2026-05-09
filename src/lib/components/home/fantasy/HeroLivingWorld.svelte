@@ -8,6 +8,7 @@
   export let mood = 'Happy';
   export let bond = 87;
   export let companionAvatarUrl: string | null = null;
+  export let companionArchetype = 'muse';
 
   const moodIconByKey: Record<string, string> = {
     calm: '/assets/steady.png',
@@ -33,6 +34,7 @@
   };
 
   $: moodIconUrl = moodIconFor(mood);
+  $: shouldRenderMuseModel = companionArchetype.trim().toLowerCase() === 'muse';
 </script>
 
 <section class="living-world" aria-labelledby="living-world-title">
@@ -66,9 +68,7 @@
       <span class="scene-ground__glow"></span>
     </div>
     <div class="companion-aura" aria-hidden="true"></div>
-    {#if companionAvatarUrl}
-      <img class="companion-image" src={companionAvatarUrl} alt={companionName} />
-    {:else}
+    {#if shouldRenderMuseModel}
       <div class="companion-model">
         <MuseModel
           minSize="0px"
@@ -88,6 +88,8 @@
           respectReducedMotion={false}
         />
       </div>
+    {:else if companionAvatarUrl}
+      <img class="companion-image" src={companionAvatarUrl} alt={companionName} />
     {/if}
     <div class="scene-particles scene-particles--front" aria-hidden="true">
       <span></span>
