@@ -353,7 +353,7 @@
     top: 0;
     right: calc(19rem + 1.55rem);
     left: 0;
-    height: clamp(40rem, 64vw, 48rem);
+    height: clamp(31rem, 42vw, 36rem);
     pointer-events: none;
   }
 
@@ -626,7 +626,7 @@
 
     .home-main::before {
       background-position: var(--home-bg-position-mobile, var(--home-bg-position, center top));
-      height: 45rem;
+      height: 39rem;
       opacity: 0.78;
     }
 

@@ -100,7 +100,7 @@
 <style>
   .living-world {
     position: relative;
-    min-height: clamp(22.7rem, 31vw, 26rem);
+    min-height: clamp(25rem, 34vw, 29rem);
     overflow: visible;
     border: 0;
     border-radius: 0;
