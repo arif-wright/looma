@@ -225,7 +225,7 @@
 
   .hero__art {
     z-index: -3;
-    background-image: url('/og/looma_world_og.png');
+    background-image: url('/assets/default_background.png');
     background-size: cover;
     background-position: center 35%;
   }
