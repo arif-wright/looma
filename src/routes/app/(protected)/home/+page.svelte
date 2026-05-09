@@ -66,6 +66,14 @@
     mobileStageWidth: string;
     mobileStageHeight: string;
     mobileStageTranslateY: string;
+    bridgePrimaryRgb: string;
+    bridgeSecondaryRgb: string;
+    bridgeAccentRgb: string;
+    bridgeShadowRgb: string;
+    bridgeIntensity: string;
+    bridgeGroundWidth: string;
+    bridgeGroundHeight: string;
+    bridgeGroundBottom: string;
   };
 
   const defaultHeroScenePlacement: HeroScenePlacement = {
@@ -83,7 +91,15 @@
     mobileStageBottom: '7.4rem',
     mobileStageWidth: 'min(25rem, 112vw)',
     mobileStageHeight: 'min(28rem, 58svh)',
-    mobileStageTranslateY: '0'
+    mobileStageTranslateY: '0',
+    bridgePrimaryRgb: '155 92 255',
+    bridgeSecondaryRgb: '94 242 255',
+    bridgeAccentRgb: '255 112 223',
+    bridgeShadowRgb: '9 5 28',
+    bridgeIntensity: '0.86',
+    bridgeGroundWidth: '54%',
+    bridgeGroundHeight: '15%',
+    bridgeGroundBottom: '4%'
   };
 
   // Tuned from the platform/landing spot in each generated background. Keeping
@@ -94,14 +110,23 @@
       mobileBackgroundPosition: '52% top',
       stageLeft: '39%',
       stageRight: '17%',
-      stageTranslateY: '0.2rem'
+      stageTranslateY: '0.2rem',
+      bridgePrimaryRgb: '121 121 255',
+      bridgeSecondaryRgb: '112 232 255',
+      bridgeAccentRgb: '207 166 255',
+      bridgeShadowRgb: '6 15 38'
     },
     guardian: {
       backgroundPosition: '50% top',
       mobileBackgroundPosition: '51% top',
       stageLeft: '39%',
       stageRight: '18%',
-      stageTranslateY: '0.1rem'
+      stageTranslateY: '0.1rem',
+      bridgePrimaryRgb: '255 182 92',
+      bridgeSecondaryRgb: '118 214 255',
+      bridgeAccentRgb: '245 219 149',
+      bridgeShadowRgb: '25 14 8',
+      bridgeIntensity: '0.72'
     },
     muse: {
       backgroundPosition: 'center top',
@@ -114,21 +139,37 @@
       stageTranslateY: '2.35rem',
       mobileStageWidth: 'min(20rem, 92vw)',
       mobileStageHeight: 'min(22rem, 52svh)',
-      mobileStageTranslateY: '1.55rem'
+      mobileStageTranslateY: '1.55rem',
+      bridgePrimaryRgb: '176 92 255',
+      bridgeSecondaryRgb: '104 229 255',
+      bridgeAccentRgb: '255 150 226',
+      bridgeShadowRgb: '15 8 42',
+      bridgeGroundWidth: '48%',
+      bridgeGroundHeight: '13%',
+      bridgeGroundBottom: '3%'
     },
     root: {
       backgroundPosition: '49% top',
       mobileBackgroundPosition: '50% top',
       stageLeft: '38%',
       stageRight: '18%',
-      stageTranslateY: '0.35rem'
+      stageTranslateY: '0.35rem',
+      bridgePrimaryRgb: '126 255 201',
+      bridgeSecondaryRgb: '166 233 77',
+      bridgeAccentRgb: '96 214 132',
+      bridgeShadowRgb: '6 28 18'
     },
     spark: {
       backgroundPosition: '52% top',
       mobileBackgroundPosition: '53% top',
       stageLeft: '41%',
       stageRight: '16%',
-      stageTranslateY: '-0.05rem'
+      stageTranslateY: '-0.05rem',
+      bridgePrimaryRgb: '255 126 74',
+      bridgeSecondaryRgb: '94 242 255',
+      bridgeAccentRgb: '255 221 83',
+      bridgeShadowRgb: '31 10 8',
+      bridgeIntensity: '0.94'
     }
   };
 
@@ -149,7 +190,15 @@
       `--hero-stage-mobile-bottom: ${placement.mobileStageBottom}`,
       `--hero-stage-mobile-width: ${placement.mobileStageWidth}`,
       `--hero-stage-mobile-height: ${placement.mobileStageHeight}`,
-      `--hero-stage-mobile-translate-y: ${placement.mobileStageTranslateY}`
+      `--hero-stage-mobile-translate-y: ${placement.mobileStageTranslateY}`,
+      `--hero-bridge-primary-rgb: ${placement.bridgePrimaryRgb}`,
+      `--hero-bridge-secondary-rgb: ${placement.bridgeSecondaryRgb}`,
+      `--hero-bridge-accent-rgb: ${placement.bridgeAccentRgb}`,
+      `--hero-bridge-shadow-rgb: ${placement.bridgeShadowRgb}`,
+      `--hero-bridge-intensity: ${placement.bridgeIntensity}`,
+      `--hero-bridge-ground-width: ${placement.bridgeGroundWidth}`,
+      `--hero-bridge-ground-height: ${placement.bridgeGroundHeight}`,
+      `--hero-bridge-ground-bottom: ${placement.bridgeGroundBottom}`
     ].join('; ');
 
   const normalizedMood = (value: string | null | undefined) => {

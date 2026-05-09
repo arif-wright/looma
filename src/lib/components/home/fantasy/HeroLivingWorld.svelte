@@ -52,6 +52,19 @@
   </div>
 
   <div class="companion-stage">
+    <div class="scene-particles scene-particles--back" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <div class="scene-ground" aria-hidden="true">
+      <span class="scene-ground__shadow"></span>
+      <span class="scene-ground__ring"></span>
+      <span class="scene-ground__glow"></span>
+    </div>
     <div class="companion-aura" aria-hidden="true"></div>
     {#if companionAvatarUrl}
       <img class="companion-image" src={companionAvatarUrl} alt={companionName} />
@@ -72,6 +85,12 @@
         />
       </div>
     {/if}
+    <div class="scene-particles scene-particles--front" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
   </div>
 
   <aside class="status-card" aria-label={`${companionName} status`}>
@@ -200,6 +219,8 @@
     place-items: end center;
     min-width: 20rem;
     transform: translate(var(--hero-stage-translate-x, 0), var(--hero-stage-translate-y, 0));
+    isolation: isolate;
+    pointer-events: none;
   }
 
   .companion-aura {
@@ -211,6 +232,165 @@
       radial-gradient(circle, rgba(155, 92, 255, 0.58), transparent 54%);
     filter: blur(28px);
     opacity: 0.85;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .scene-ground {
+    position: absolute;
+    left: 50%;
+    bottom: var(--hero-bridge-ground-bottom, 4%);
+    z-index: 1;
+    width: var(--hero-bridge-ground-width, 54%);
+    height: var(--hero-bridge-ground-height, 15%);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .scene-ground span {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+
+  .scene-ground__shadow {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.58),
+      rgba(var(--hero-bridge-shadow-rgb, 9 5 28) / 0.24) 42%,
+      transparent 72%
+    );
+    filter: blur(12px);
+    transform: scaleX(1.15);
+  }
+
+  .scene-ground__ring {
+    border: 1px solid rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.42);
+    box-shadow:
+      0 0 20px rgba(var(--hero-bridge-primary-rgb, 155 92 255) / calc(0.28 * var(--hero-bridge-intensity, 0.86))),
+      inset 0 0 22px rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.14);
+    opacity: calc(0.64 * var(--hero-bridge-intensity, 0.86));
+  }
+
+  .scene-ground__glow {
+    background:
+      radial-gradient(ellipse at 50% 48%, rgba(var(--hero-bridge-secondary-rgb, 94 242 255) / 0.2), transparent 38%),
+      radial-gradient(ellipse at 50% 58%, rgba(var(--hero-bridge-primary-rgb, 155 92 255) / 0.2), transparent 64%);
+    filter: blur(8px);
+    opacity: var(--hero-bridge-intensity, 0.86);
+  }
+
+  .scene-particles {
+    position: absolute;
+    inset: 4% -2% 2%;
+    z-index: 1;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .scene-particles--front {
+    z-index: 3;
+  }
+
+  .scene-particles span {
+    position: absolute;
+    width: var(--mote-size, 0.34rem);
+    height: var(--mote-size, 0.34rem);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.95), transparent 26%),
+      radial-gradient(circle, rgba(var(--mote-rgb, var(--hero-bridge-secondary-rgb, 94 242 255)) / 0.96), transparent 72%);
+    box-shadow:
+      0 0 12px rgba(var(--mote-rgb, var(--hero-bridge-secondary-rgb, 94 242 255)) / 0.76),
+      0 0 28px rgba(var(--hero-bridge-primary-rgb, 155 92 255) / 0.28);
+    opacity: calc(var(--mote-opacity, 0.72) * var(--hero-bridge-intensity, 0.86));
+    animation: sceneMoteFloat var(--mote-duration, 8s) ease-in-out infinite;
+    animation-delay: var(--mote-delay, 0s);
+  }
+
+  .scene-particles--back span:nth-child(1) {
+    --mote-size: 0.28rem;
+    --mote-duration: 9.5s;
+    --mote-delay: -1s;
+    left: 16%;
+    top: 36%;
+  }
+
+  .scene-particles--back span:nth-child(2) {
+    --mote-rgb: var(--hero-bridge-primary-rgb, 155 92 255);
+    --mote-size: 0.42rem;
+    --mote-duration: 11s;
+    --mote-delay: -4s;
+    left: 76%;
+    top: 28%;
+  }
+
+  .scene-particles--back span:nth-child(3) {
+    --mote-size: 0.22rem;
+    --mote-duration: 7.5s;
+    --mote-delay: -2.6s;
+    left: 31%;
+    top: 54%;
+  }
+
+  .scene-particles--back span:nth-child(4) {
+    --mote-rgb: var(--hero-bridge-accent-rgb, 255 112 223);
+    --mote-size: 0.36rem;
+    --mote-duration: 10s;
+    --mote-delay: -6s;
+    left: 67%;
+    top: 62%;
+  }
+
+  .scene-particles--back span:nth-child(5) {
+    --mote-size: 0.24rem;
+    --mote-duration: 12s;
+    --mote-delay: -8s;
+    left: 44%;
+    top: 24%;
+  }
+
+  .scene-particles--back span:nth-child(6) {
+    --mote-rgb: var(--hero-bridge-primary-rgb, 155 92 255);
+    --mote-size: 0.3rem;
+    --mote-duration: 8.5s;
+    --mote-delay: -3.2s;
+    left: 86%;
+    top: 50%;
+  }
+
+  .scene-particles--front span:nth-child(1) {
+    --mote-rgb: var(--hero-bridge-accent-rgb, 255 112 223);
+    --mote-size: 0.34rem;
+    --mote-duration: 7.5s;
+    --mote-delay: -2s;
+    left: 25%;
+    top: 66%;
+  }
+
+  .scene-particles--front span:nth-child(2) {
+    --mote-size: 0.28rem;
+    --mote-duration: 8.5s;
+    --mote-delay: -5s;
+    left: 58%;
+    top: 42%;
+  }
+
+  .scene-particles--front span:nth-child(3) {
+    --mote-rgb: var(--hero-bridge-primary-rgb, 155 92 255);
+    --mote-size: 0.4rem;
+    --mote-duration: 10s;
+    --mote-delay: -7s;
+    left: 72%;
+    top: 72%;
+  }
+
+  .scene-particles--front span:nth-child(4) {
+    --mote-size: 0.22rem;
+    --mote-duration: 7s;
+    --mote-delay: -1.5s;
+    left: 42%;
+    top: 76%;
   }
 
   .companion-model,
@@ -221,6 +401,19 @@
     height: var(--hero-stage-height, min(33rem, 122%));
     object-fit: contain;
     filter: drop-shadow(0 0 42px rgba(77, 244, 255, 0.42));
+  }
+
+  @keyframes sceneMoteFloat {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(0.92);
+    }
+    42% {
+      transform: translate3d(0.7rem, -1.1rem, 0) scale(1.08);
+    }
+    68% {
+      transform: translate3d(-0.45rem, -0.45rem, 0) scale(0.98);
+    }
   }
 
   .status-card {
