@@ -80,8 +80,8 @@
           glowEnabled={true}
           auraColor="cyan"
           visualMood="calm"
-          cameraOrbit="180deg 76deg 92%"
-          cameraTarget="0m 0.72m 0m"
+          cameraOrbit="180deg 76deg 165%"
+          cameraTarget="0m 0.62m 0m"
         />
       </div>
     {/if}
