@@ -137,10 +137,10 @@
       mobileBackgroundPosition: 'center top',
       stageLeft: '31%',
       stageRight: '30%',
-      stageWidth: 'min(24rem, 96%)',
-      stageHeight: 'min(25rem, 104%)',
+      stageWidth: 'min(27rem, 108%)',
+      stageHeight: 'min(28rem, 116%)',
       stageTranslateX: '0.65rem',
-      stageTranslateY: '0.35rem',
+      stageTranslateY: '-0.6rem',
       companionScale: '1',
       mobileStageWidth: 'min(18.5rem, 84vw)',
       mobileStageHeight: 'min(20rem, 48svh)',
@@ -153,7 +153,7 @@
       bridgeIntensity: '0.48',
       bridgeGroundWidth: '54%',
       bridgeGroundHeight: '10%',
-      bridgeGroundBottom: '11%'
+      bridgeGroundBottom: '15%'
     },
     root: {
       backgroundPosition: '49% top',
