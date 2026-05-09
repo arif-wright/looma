@@ -73,8 +73,10 @@
     <section id="worlds" class="worlds" aria-labelledby="worlds-title">
       <div class="section-heading">
         <p class="eyebrow">Five paths. One first encounter.</p>
-        <h2 id="worlds-title">Which companion energy calls to you?</h2>
-        <p>Each path reflects a different way a companion can steady, remember, reflect, or awaken the bond.</p>
+        <h2 id="worlds-title">Which companion <span>energy</span> calls to you?</h2>
+        <p class="section-heading__lede">
+          Each path reflects a different way a companion can steady, remember, reflect, or awaken the bond.
+        </p>
       </div>
 
       <div class="archetype-grid">
@@ -225,7 +227,7 @@
 
   .topbar__cta {
     display: none;
-    background: linear-gradient(135deg, #ffd37a, #d99a39);
+    background: linear-gradient(135deg, #f0c478, #ddaa5c);
     color: #170e05;
     box-shadow: 0 10px 28px rgba(217, 154, 57, 0.16);
   }
@@ -271,9 +273,9 @@
     left: var(--x);
     top: var(--y);
     border-radius: 999px;
-    background: rgba(255, 211, 122, 0.86);
+    background: rgba(221, 170, 92, 0.86);
     box-shadow:
-      0 0 14px rgba(255, 211, 122, 0.62),
+      0 0 14px rgba(221, 170, 92, 0.62),
       0 0 28px rgba(190, 135, 255, 0.28);
     opacity: 0.72;
     animation: particleDrift var(--duration, 9s) ease-in-out infinite;
@@ -316,7 +318,7 @@
 
   .eyebrow {
     margin: 0;
-    color: rgba(190, 135, 255, 0.92);
+    color: #a97be1;
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.18em;
@@ -342,8 +344,9 @@
     line-height: 0.92;
   }
 
-  h1 span {
-    color: #ffd37a;
+  h1 span,
+  h2 span {
+    color: #ddaa5c;
   }
 
   h2 {
@@ -417,7 +420,7 @@
   }
 
   .cta--primary {
-    background: linear-gradient(135deg, #ffd37a, #d99a39);
+    background: linear-gradient(135deg, #f0c478, #ddaa5c);
     color: #170e05;
     box-shadow: 0 12px 32px rgba(217, 154, 57, 0.24);
   }
@@ -471,11 +474,16 @@
   }
 
   .section-heading {
-    max-width: 44rem;
+    max-width: 68rem;
     margin: 0 auto;
     display: grid;
     gap: 0.45rem;
     text-align: center;
+  }
+
+  .section-heading h2,
+  .section-heading__lede {
+    text-wrap: balance;
   }
 
   .archetype-grid {
@@ -631,6 +639,10 @@
 
     h2 {
       font-size: 1.9rem;
+    }
+
+    .section-heading {
+      max-width: 44rem;
     }
 
     .hero__actions {
