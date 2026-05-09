@@ -19,6 +19,19 @@
     sessionStorage.removeItem(STORAGE_KEY);
   };
 
+  const waitForSession = async (supabase: ReturnType<typeof createSupabaseBrowserClient>) => {
+    const deadline = Date.now() + 4_000;
+
+    while (Date.now() < deadline) {
+      const { data, error } = await supabase.auth.getSession();
+      if (data.session) return data.session;
+      if (error) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return null;
+  };
+
   onMount(async () => {
     const supabase = createSupabaseBrowserClient();
 
@@ -26,25 +39,6 @@
       const currentUrl = window.location.href;
       const parsed = new URL(currentUrl);
       const hashParams = new URLSearchParams(parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash);
-
-      if (hashParams.has('access_token')) {
-        const access_token = hashParams.get('access_token');
-        const refresh_token = hashParams.get('refresh_token');
-        if (!access_token) {
-          fail('Access token missing from callback.');
-          return;
-        }
-        const { data, error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token: refresh_token ?? ''
-        });
-        if (error || !data?.session) {
-          fail(error?.message ?? 'Unable to complete OAuth session.');
-          return;
-        }
-        await complete();
-        return;
-      }
 
       if (parsed.searchParams.has('error')) {
         const reason =
@@ -55,35 +49,18 @@
         return;
       }
 
-      if (parsed.searchParams.has('code')) {
-        const authCode = parsed.searchParams.get('code');
-        if (!authCode) {
-          fail('We could not complete the sign-in process.');
+      if (parsed.searchParams.has('code') || hashParams.has('access_token')) {
+        const session = await waitForSession(supabase);
+        if (!session) {
+          fail('We could not finish signing you in. Please try again from the login page.');
           return;
         }
-
-        const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-        if (error || !data.session) {
-          const raw = (error?.message ?? '').toLowerCase();
-          if (raw.includes('code verifier') || raw.includes('flow state')) {
-            fail('Sign-in session expired. Please start again from the login page.');
-            return;
-          }
-          fail(error?.message ?? 'We could not complete the sign-in process.');
-          return;
-        }
-
         await complete();
         return;
       }
 
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        fail(error.message ?? 'We could not complete the sign-in process.');
-        return;
-      }
-
-      if (data.user) {
+      const session = await waitForSession(supabase);
+      if (session) {
         await complete();
         return;
       }
