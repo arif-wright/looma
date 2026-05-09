@@ -10,6 +10,7 @@
   import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
   import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+  import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -216,14 +217,7 @@
     return mood.charAt(0).toUpperCase() + mood.slice(1);
   };
 
-  const normalizeArchetype = (value: string | null | undefined) =>
-    (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-
-  const resolveSceneArchetype = (value: string | null | undefined) => {
-    const key = normalizeArchetype(value);
-    if (!key || key === 'harmonizer' || key === 'lumi') return 'muse';
-    return backgroundByArchetype[key] ? key : 'muse';
-  };
+  const resolveSceneArchetype = (value: string | null | undefined) => resolveCanonicalArchetypeId(value, 'muse');
 
   $: activeCompanion = data.activeCompanion ?? null;
   $: playerName =
