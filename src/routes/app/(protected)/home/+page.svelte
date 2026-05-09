@@ -303,8 +303,6 @@
           level={companionLevel}
           mood={companionMood}
           bond={companionBond}
-          companionArchetype={companionArchetype}
-          companionAvatarUrl={activeCompanion?.avatar_url ?? null}
         />
 
         <section class="mobile-loop" aria-label="Today's companion loop">

@@ -7,8 +7,6 @@
   export let level = 18;
   export let mood = 'Happy';
   export let bond = 87;
-  export let companionAvatarUrl: string | null = null;
-  export let companionArchetype = 'muse';
 
   const moodIconByKey: Record<string, string> = {
     calm: '/assets/steady.png',
@@ -34,7 +32,6 @@
   };
 
   $: moodIconUrl = moodIconFor(mood);
-  $: shouldRenderMuseModel = companionArchetype.trim().toLowerCase() === 'muse';
 </script>
 
 <section class="living-world" aria-labelledby="living-world-title">
@@ -68,29 +65,25 @@
       <span class="scene-ground__glow"></span>
     </div>
     <div class="companion-aura" aria-hidden="true"></div>
-    {#if shouldRenderMuseModel}
-      <div class="companion-model">
-        <MuseModel
-          minSize="0px"
-          size="100%"
-          framed={false}
-          cameraControls={false}
-          eager={true}
-          glowIntensity={85}
-          glowEnabled={true}
-          auraColor="cyan"
-          visualMood="calm"
-          cameraOrbit="180deg 76deg 118%"
-          cameraTarget="0m 0.7m 0m"
-          modelScale="1 1 1"
-          animationName="Idle"
-          motionEnabled={true}
-          respectReducedMotion={false}
-        />
-      </div>
-    {:else if companionAvatarUrl}
-      <img class="companion-image" src={companionAvatarUrl} alt={companionName} />
-    {/if}
+    <div class="companion-model">
+      <MuseModel
+        minSize="0px"
+        size="100%"
+        framed={false}
+        cameraControls={false}
+        eager={true}
+        glowIntensity={85}
+        glowEnabled={true}
+        auraColor="cyan"
+        visualMood="calm"
+        cameraOrbit="180deg 76deg 118%"
+        cameraTarget="0m 0.7m 0m"
+        modelScale="1 1 1"
+        animationName="Idle"
+        motionEnabled={true}
+        respectReducedMotion={false}
+      />
+    </div>
     <div class="scene-particles scene-particles--front" aria-hidden="true">
       <span></span>
       <span></span>
@@ -400,8 +393,7 @@
     top: 76%;
   }
 
-  .companion-model,
-  .companion-image {
+  .companion-model {
     position: relative;
     z-index: 2;
     width: var(--hero-stage-width, min(33rem, 124%));
@@ -617,8 +609,7 @@
       opacity: 1;
     }
 
-    .companion-model,
-    .companion-image {
+    .companion-model {
       width: var(--hero-stage-mobile-width, min(25rem, 112vw));
       height: var(--hero-stage-mobile-height, min(28rem, 58svh));
       transform: scale(var(--hero-companion-mobile-scale, var(--hero-companion-scale, 1)));
