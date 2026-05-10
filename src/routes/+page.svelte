@@ -118,9 +118,9 @@
           lineage that feels most resonant.
         </p>
         <div class="support-card__signals" aria-label="How Memvoya works">
-          <span><i aria-hidden="true"></i>Guided self-discovery</span>
-          <span><i aria-hidden="true"></i>Emotional alignment</span>
-          <span><i aria-hidden="true"></i>Personalized companion match</span>
+          <span><i aria-hidden="true"><img src="/assets/discovery_icon.png" alt="" loading="lazy" /></i>Guided self-discovery</span>
+          <span><i aria-hidden="true"><img src="/assets/emotional_icon.png" alt="" loading="lazy" /></i>Emotional alignment</span>
+          <span><i aria-hidden="true"><img src="/assets/personalize_icon.png" alt="" loading="lazy" /></i>Personalized companion match</span>
         </div>
       </div>
     </section>
@@ -140,9 +140,9 @@
           emotion, memory, and daily rituals.
         </p>
         <div class="support-card__signals" aria-label="Companion qualities">
-          <span><i aria-hidden="true"></i>Built for ongoing connection</span>
-          <span><i aria-hidden="true"></i>Designed to evolve with you</span>
-          <span><i aria-hidden="true"></i>Always there when you return</span>
+          <span><i aria-hidden="true"><img src="/assets/built_icon.png" alt="" loading="lazy" /></i>Built for ongoing connection</span>
+          <span><i aria-hidden="true"><img src="/assets/design_icon.png" alt="" loading="lazy" /></i>Designed to evolve with you</span>
+          <span><i aria-hidden="true"><img src="/assets/star_icon.png" alt="" loading="lazy" /></i>Always there when you return</span>
         </div>
       </div>
     </section>
@@ -793,13 +793,14 @@
     box-shadow: 0 0 20px rgba(190, 135, 255, 0.24);
   }
 
-  .support-card__signals i::before {
-    content: '';
-    width: 0.56rem;
-    height: 0.56rem;
-    border: 1px solid rgba(221, 170, 92, 0.54);
-    border-radius: 0.16rem;
-    transform: rotate(45deg);
+  .support-card__signals i img {
+    width: 1.18rem;
+    height: 1.18rem;
+    object-fit: contain;
+    display: block;
+    filter:
+      saturate(1.08)
+      drop-shadow(0 0 8px rgba(190, 135, 255, 0.42));
   }
 
   @media (min-width: 760px) {
