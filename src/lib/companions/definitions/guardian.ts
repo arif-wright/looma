@@ -1,4 +1,5 @@
 import type { CompanionDefinition } from './types';
+import { companionElementProfiles } from '$lib/companions/elements';
 
 export const GUARDIAN_DEFINITION: CompanionDefinition = {
   key: 'guardian',
@@ -7,5 +8,6 @@ export const GUARDIAN_DEFINITION: CompanionDefinition = {
   color: '#8fd3ff',
   seed: 'tova',
   renderHook: 'muse_core',
+  elementProfile: companionElementProfiles.guardian,
   lockedByDefault: true
 };

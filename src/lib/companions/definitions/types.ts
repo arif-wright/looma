@@ -1,3 +1,5 @@
+import type { CompanionElementProfile } from '$lib/companions/elements';
+
 export type CompanionDefinition = {
   key: string;
   name: string;
@@ -5,6 +7,7 @@ export type CompanionDefinition = {
   color: string;
   seed: string;
   renderHook: string;
+  elementProfile: CompanionElementProfile;
   lockedByDefault?: boolean;
 };
 

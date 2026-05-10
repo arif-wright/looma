@@ -1,4 +1,5 @@
 import type { CompanionDefinition } from './types';
+import { companionElementProfiles } from '$lib/companions/elements';
 
 export const ECHO_DEFINITION: CompanionDefinition = {
   key: 'echo',
@@ -7,5 +8,6 @@ export const ECHO_DEFINITION: CompanionDefinition = {
   color: '#9aa8ff',
   seed: 'nira',
   renderHook: 'muse_core',
+  elementProfile: companionElementProfiles.echo,
   lockedByDefault: true
 };

@@ -1,4 +1,5 @@
 import type { CompanionDefinition } from './types';
+import { companionElementProfiles } from '$lib/companions/elements';
 
 export const ROOT_DEFINITION: CompanionDefinition = {
   key: 'root',
@@ -7,5 +8,6 @@ export const ROOT_DEFINITION: CompanionDefinition = {
   color: '#7effc9',
   seed: 'kynth',
   renderHook: 'muse_core',
+  elementProfile: companionElementProfiles.root,
   lockedByDefault: true
 };

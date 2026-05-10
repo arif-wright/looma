@@ -35,6 +35,8 @@
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
+  import { getCompanionIdentity, getElementById, type GiftCategory } from '$lib/companions/identity';
+  import { getFavoriteGiftItemsForCompanion, calculateGiftBondGain } from '$lib/companions/giftPreferences';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
@@ -58,6 +60,7 @@
   };
 
   type TabKey = 'owned' | 'discover';
+  type DetailTabKey = 'overview' | 'skills' | 'growth' | 'story';
   type SortKey = 'bond_desc' | 'recent_interaction' | 'energy_desc' | 'name_asc';
 
   type FilterState = {
@@ -252,6 +255,7 @@
 
   let selectedForCare: Companion | null = null;
   let activeTab: TabKey = 'owned';
+  let activeDetailTab: DetailTabKey = 'overview';
   let filters: FilterState = {
     search: '',
     archetype: 'all',
@@ -939,6 +943,24 @@
     return [mood, element, 'Loyal'].slice(0, 3);
   };
   const giftIcons = ['/assets/shard_icon.png', '/assets/star_icon.png', '/assets/paw_icon.png', '/assets/heart_icon.png'];
+  const giftIconFor = (iconKey: string) => {
+    if (iconKey === 'music' || iconKey === 'story' || iconKey === 'memory') return '/assets/star_icon.png';
+    if (iconKey === 'flower' || iconKey === 'tea' || iconKey === 'plant') return '/assets/heart_icon.png';
+    if (iconKey === 'sweet' || iconKey === 'toy' || iconKey === 'puzzle') return '/assets/paw_icon.png';
+    return '/assets/shard_icon.png';
+  };
+  const detailTabs: Array<{ key: DetailTabKey; label: string }> = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'skills', label: 'Skills' },
+    { key: 'growth', label: 'Growth' },
+    { key: 'story', label: 'Story' }
+  ];
+  const giftGroups: Array<{ key: GiftCategory; label: string }> = [
+    { key: 'core', label: 'Core Gifts' },
+    { key: 'element', label: 'Element Gifts' },
+    { key: 'bond', label: 'Bond Gifts' },
+    { key: 'story', label: 'Story Gifts' }
+  ];
   const activeProfileAvatar =
     ($page.data?.profile as any)?.avatar_url ??
     ($page.data?.user as any)?.user_metadata?.avatar_url ??
@@ -952,6 +974,11 @@
       : 0;
   $: masteryLevel = ownedInstances.length > 0 ? Math.max(...ownedInstances.map((companion) => companionLevel(companion))) : 1;
   $: detailCompanion = activeCompanion ?? filteredOwned[0] ?? ownedInstances[0] ?? null;
+  $: detailIdentity = getCompanionIdentity(detailCompanion);
+  $: detailElementProfile = detailIdentity.elementProfile;
+  $: detailPrimaryElement = getElementById(detailElementProfile.primary);
+  $: detailSecondaryElement = getElementById(detailElementProfile.secondary);
+  $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 5);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
   $: if (selectedForCare) {
@@ -1230,32 +1257,166 @@
           <div class="bond-meter"><span style={`width:${companionBondScore(detailCompanion)}%`}></span></div>
 
           <div class="detail-tabs" aria-label="Companion detail sections">
-            <button class="is-active" type="button">Overview</button>
-            <button type="button">Skills</button>
-            <button type="button">Growth</button>
-            <button type="button">Story</button>
+            {#each detailTabs as tab}
+              <button
+                class:is-active={activeDetailTab === tab.key}
+                type="button"
+                aria-pressed={activeDetailTab === tab.key}
+                on:click={() => (activeDetailTab = tab.key)}
+              >
+                {tab.label}
+              </button>
+            {/each}
           </div>
 
-          <div class="detail-section">
-            <span>Element</span>
-            <strong><Gem size={18} /> {companionElement(detailCompanion)}</strong>
-          </div>
-          <div class="detail-section">
-            <span>Personality</span>
-            <div class="tag-row">
-              {#each companionPersonality(detailCompanion) as trait}
-                <b>{trait}</b>
+          {#if activeDetailTab === 'overview'}
+            <div class="detail-tab-panel">
+              <div class="detail-section element-profile-section">
+                <div class="element-profile-head">
+                  <span>Element Profile</span>
+                  <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
+                </div>
+                <p class="identity-copy">{detailIdentity.archetype.overviewIdentity}</p>
+                <div class="element-pair">
+                  <article>
+                    <span>Primary</span>
+                    <strong><Gem size={18} /> {detailPrimaryElement?.label ?? 'Sound'}</strong>
+                    <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
+                  </article>
+                  <article>
+                    <span>Secondary</span>
+                    <strong><Sparkles size={18} /> {detailSecondaryElement?.label ?? 'Light'}</strong>
+                    <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
+                  </article>
+                </div>
+                <div class="element-domain">
+                  <span>Emotional Domain</span>
+                  <strong>{detailElementProfile.emotionalDomain}</strong>
+                  <p>{detailElementProfile.expressionLine}</p>
+                </div>
+                <div class="ritual-row" aria-label="Preferred rituals">
+                  {#each detailElementProfile.preferredRituals as ritual}
+                    <b>{ritual}</b>
+                  {/each}
+                </div>
+              </div>
+              <div class="detail-section">
+                <span>Personality</span>
+                <div class="tag-row">
+                  {#each detailIdentity.personality as trait}
+                    <b>{trait}</b>
+                  {/each}
+                </div>
+              </div>
+              <div class="detail-section">
+                <span>Favorite Gifts</span>
+                <div class="favorite-gift-grid">
+                  {#each favoriteGiftItems as gift (gift.id)}
+                    {@const preview = calculateGiftBondGain(detailCompanion, gift)}
+                    <button
+                      type="button"
+                      class="favorite-gift-item"
+                      aria-label={`${gift.name}, ${preview.preference} gift`}
+                      title={`${gift.description} ${preview.response} Expected bond: +${preview.bondGain}`}
+                    >
+                      <img src={giftIconFor(gift.iconKey)} alt="" />
+                      <span>{gift.name}</span>
+                      <small>{gift.categoryDefinition.label}</small>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {:else if activeDetailTab === 'skills'}
+            <div class="detail-tab-panel">
+              <div class="section-heading">
+                <span>Companion Gifts</span>
+                <strong>{detailCompanion.name}'s Gifts</strong>
+              </div>
+              {#each giftGroups as group}
+                {#if detailIdentity.gifts[group.key].length > 0}
+                  <div class="gift-group">
+                    <span>{group.label}</span>
+                    {#each detailIdentity.gifts[group.key] as gift (gift.id)}
+                      <article class="gift-card">
+                        <div>
+                          <strong>{gift.name}</strong>
+                          <p>{gift.description}</p>
+                        </div>
+                        <div class="gift-meta">
+                          <b>{gift.category}</b>
+                          <em>{gift.state}</em>
+                        </div>
+                        {#if gift.state === 'locked'}
+                          <small>{gift.unlockCondition}</small>
+                        {/if}
+                      </article>
+                    {/each}
+                  </div>
+                {/if}
               {/each}
             </div>
-          </div>
-          <div class="detail-section">
-            <span>Favorite Gifts</span>
-            <div class="gift-row">
-              {#each giftIcons as icon}
-                <button type="button" aria-label="Favorite gift"><img src={icon} alt="" /></button>
+          {:else if activeDetailTab === 'growth'}
+            <div class="detail-tab-panel">
+              <div class="growth-summary">
+                <span>Current Growth Path</span>
+                <strong>{detailIdentity.growth.currentPath}</strong>
+                <p>
+                  Next: {detailIdentity.growth.nextMilestone?.label ?? 'All current milestones are open.'}
+                </p>
+              </div>
+              <div class="influence-bars" aria-label="Secondary element influence">
+                {#each detailIdentity.growth.secondaryElementInfluence as influence}
+                  <div class="influence-row">
+                    <div><span>{influence.label}</span><strong>{influence.value}%</strong></div>
+                    <div class="influence-track"><span style={`width:${influence.value}%`}></span></div>
+                    <p>{influence.description}</p>
+                  </div>
+                {/each}
+              </div>
+              <div class="milestone-track">
+                {#each detailIdentity.growth.milestones as milestone}
+                  <article class:unlocked={milestone.unlocked}>
+                    <span></span>
+                    <div>
+                      <strong>{milestone.label}</strong>
+                      <p>{milestone.description}</p>
+                      <small>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</small>
+                    </div>
+                  </article>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            <div class="detail-tab-panel story-panel">
+              <article class="story-card origin">
+                <span>Origin</span>
+                <strong>{detailIdentity.story.origin.title}</strong>
+                <p>{detailIdentity.story.origin.body}</p>
+              </article>
+              {#each detailIdentity.story.sharedMemories as memory}
+                <article class="story-card">
+                  <span>Shared Memory</span>
+                  <strong>{memory.title}</strong>
+                  <p>{memory.body}</p>
+                </article>
+              {/each}
+              {#each detailIdentity.story.unlockedFragments as fragment}
+                <article class="story-card">
+                  <span>{fragment.type}</span>
+                  <strong>{fragment.title}</strong>
+                  <p>{fragment.body}</p>
+                </article>
+              {/each}
+              {#each detailIdentity.story.lockedFragments as fragment}
+                <article class="story-card locked">
+                  <span>{fragment.unlockCondition}</span>
+                  <strong>{fragment.title}</strong>
+                  <p>{fragment.body}</p>
+                </article>
               {/each}
             </div>
-          </div>
+          {/if}
           <div class="detail-actions">
             <button type="button" class="primary-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
             <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
@@ -1984,35 +2145,299 @@
     gap: 0.58rem;
   }
 
+  .detail-tab-panel {
+    display: grid;
+    gap: 0.82rem;
+    max-height: 24rem;
+    overflow: auto;
+    padding-right: 0.18rem;
+  }
+
+  .detail-tab-panel::-webkit-scrollbar {
+    width: 0.38rem;
+  }
+
+  .detail-tab-panel::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(183, 92, 255, 0.35);
+  }
+
+  .element-profile-section {
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(183, 92, 255, 0.13), transparent 52%),
+      rgba(255, 255, 255, 0.035);
+    padding: 0.85rem;
+  }
+
+  .identity-copy {
+    margin: 0;
+    color: rgba(230, 225, 244, 0.72);
+    font-size: 0.84rem;
+    line-height: 1.55;
+  }
+
+  .element-profile-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .element-profile-head > span,
+  .element-pair article > span,
+  .element-domain > span {
+    color: rgba(220, 216, 237, 0.68);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .element-profile-head strong {
+    color: #ddaa5c;
+    font-size: 0.86rem;
+  }
+
+  .element-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.58rem;
+  }
+
+  .element-pair article,
+  .element-domain {
+    display: grid;
+    gap: 0.38rem;
+    border: 1px solid rgba(153, 130, 236, 0.12);
+    border-radius: 0.78rem;
+    background: rgba(9, 10, 29, 0.38);
+    padding: 0.68rem;
+  }
+
+  .element-pair article p,
+  .element-domain p {
+    margin: 0;
+    color: rgba(220, 216, 237, 0.64);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .element-domain strong {
+    color: rgba(248, 246, 255, 0.95);
+  }
+
   .tag-row,
-  .gift-row,
+  .ritual-row,
   .detail-actions {
     display: flex;
     gap: 0.65rem;
     flex-wrap: wrap;
   }
 
-  .tag-row b {
+  .tag-row b,
+  .ritual-row b {
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.075);
     padding: 0.38rem 0.72rem;
     font-size: 0.85rem;
   }
 
-  .gift-row button {
-    display: grid;
-    width: 4rem;
-    height: 4rem;
-    place-items: center;
-    border: 1px solid rgba(153, 130, 236, 0.18);
-    border-radius: 0.8rem;
-    background: rgba(255, 255, 255, 0.055);
+  .ritual-row b {
+    border: 1px solid rgba(221, 170, 92, 0.22);
+    background: rgba(221, 170, 92, 0.08);
+    color: rgba(255, 234, 196, 0.94);
   }
 
-  .gift-row img {
-    width: 2.25rem;
-    height: 2.25rem;
+  .section-heading,
+  .growth-summary,
+  .gift-group,
+  .gift-card,
+  .influence-row,
+  .milestone-track,
+  .story-card {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .section-heading > span,
+  .gift-group > span,
+  .growth-summary > span,
+  .story-card > span {
+    color: #a97be1;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .section-heading strong,
+  .growth-summary strong {
+    color: rgba(248, 246, 255, 0.96);
+    font-size: 1rem;
+  }
+
+  .growth-summary,
+  .gift-card,
+  .story-card {
+    border: 1px solid rgba(153, 130, 236, 0.15);
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.045);
+    padding: 0.78rem;
+  }
+
+  .gift-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gift-card strong,
+  .story-card strong,
+  .milestone-track strong {
+    color: rgba(255, 250, 242, 0.96);
+  }
+
+  .gift-card p,
+  .growth-summary p,
+  .influence-row p,
+  .milestone-track p,
+  .story-card p {
+    margin: 0;
+    color: rgba(220, 216, 237, 0.66);
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  .gift-meta {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .gift-meta b,
+  .gift-meta em,
+  .gift-card small,
+  .milestone-track small {
+    width: fit-content;
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 999px;
+    background: rgba(10, 11, 31, 0.56);
+    color: rgba(230, 225, 244, 0.74);
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 800;
+    padding: 0.26rem 0.5rem;
+    text-transform: capitalize;
+  }
+
+  .gift-meta em {
+    border-color: rgba(221, 170, 92, 0.22);
+    color: rgba(255, 234, 196, 0.9);
+  }
+
+  .influence-row > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: rgba(248, 246, 255, 0.9);
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .influence-track {
+    height: 0.34rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .influence-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7d4dff, #ddaa5c);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.5);
+  }
+
+  .milestone-track {
+    position: relative;
+  }
+
+  .milestone-track article {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .milestone-track article > span {
+    width: 0.78rem;
+    height: 0.78rem;
+    margin-top: 0.18rem;
+    border: 1px solid rgba(153, 130, 236, 0.44);
+    border-radius: 999px;
+    background: rgba(13, 15, 38, 0.95);
+    box-shadow: 0 0 0.9rem rgba(183, 92, 255, 0.22);
+  }
+
+  .milestone-track article.unlocked > span {
+    background: #a75cff;
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.72);
+  }
+
+  .story-panel {
+    max-height: 24rem;
+  }
+
+  .story-card.origin {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(221, 170, 92, 0.13), transparent 52%),
+      rgba(255, 255, 255, 0.045);
+  }
+
+  .story-card.locked {
+    border-style: dashed;
+    opacity: 0.78;
+  }
+
+  .favorite-gift-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.58rem;
+  }
+
+  .favorite-gift-item {
+    display: grid;
+    min-height: 5.5rem;
+    place-items: center;
+    gap: 0.22rem;
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 0.8rem;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(221, 170, 92, 0.12), transparent 60%),
+      rgba(255, 255, 255, 0.055);
+    color: rgba(248, 246, 255, 0.9);
+    cursor: help;
+    padding: 0.55rem;
+    text-align: center;
+  }
+
+  .favorite-gift-item img {
+    width: 1.65rem;
+    height: 1.65rem;
     object-fit: contain;
+    filter: drop-shadow(0 0 0.45rem rgba(183, 92, 255, 0.45));
+  }
+
+  .favorite-gift-item span {
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .favorite-gift-item small {
+    color: rgba(220, 216, 237, 0.64);
+    font-size: 0.68rem;
   }
 
   .detail-actions {
