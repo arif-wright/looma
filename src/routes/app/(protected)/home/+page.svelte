@@ -439,7 +439,7 @@
     content: '';
     position: absolute;
     top: 0;
-    right: calc(19rem + 1.55rem);
+    right: calc(20.5rem + 2.35rem);
     left: 0;
     height: clamp(31rem, 42vw, 36rem);
     pointer-events: none;
@@ -601,7 +601,7 @@
   .content-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 19rem;
-    gap: 1.55rem;
+    gap: 2.35rem;
     align-items: start;
   }
 
@@ -610,6 +610,10 @@
     display: grid;
     gap: 1rem;
     min-width: 0;
+  }
+
+  .right-stack {
+    transform: translateX(0.45rem);
   }
 
   .mobile-loop,
@@ -722,6 +726,7 @@
 
     .right-stack {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      transform: none;
     }
   }
 
