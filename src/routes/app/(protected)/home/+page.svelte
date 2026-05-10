@@ -11,6 +11,7 @@
   import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+  import type { MessengerConversation } from '$lib/components/messenger/types';
   import type { NotificationItem } from '$lib/components/ui/types';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
   import type { PageData } from './$types';
@@ -228,6 +229,12 @@
   let markingNotifications = false;
   let unreadNotifications = 0;
   let notificationPreview: NotificationItem[] = [];
+  let messagesOpen = false;
+  let conversations: MessengerConversation[] = [];
+  let conversationsLoading = false;
+  let conversationsLoaded = false;
+  let conversationsError: string | null = null;
+  let unreadMessages = 0;
 
   const relativeTime = (iso: string) => {
     const then = Date.parse(iso);
@@ -312,6 +319,54 @@
     }
   };
 
+  const conversationName = (conversation: MessengerConversation) =>
+    conversation.type === 'group'
+      ? conversation.group_name ?? 'Group conversation'
+      : conversation.peer?.display_name ?? conversation.peer?.handle ?? 'Someone';
+
+  const conversationPreview = (conversation: MessengerConversation) =>
+    conversation.blocked
+      ? 'This conversation is blocked.'
+      : conversation.preview?.trim() || 'No messages yet.';
+
+  const conversationInitial = (conversation: MessengerConversation) =>
+    conversationName(conversation).trim().slice(0, 1).toUpperCase() || 'M';
+
+  const fetchConversations = async () => {
+    if (conversationsLoading || conversationsLoaded) return;
+    conversationsLoading = true;
+    conversationsError = null;
+    try {
+      const response = await fetch('/api/messenger/conversations', { headers: { 'cache-control': 'no-store' } });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        conversationsError = typeof payload?.message === 'string' ? payload.message : 'Could not load messages.';
+        return;
+      }
+      conversations = Array.isArray(payload?.items) ? payload.items.slice(0, 5) : [];
+      conversationsLoaded = true;
+    } catch {
+      conversationsError = 'Could not load messages.';
+    } finally {
+      conversationsLoading = false;
+    }
+  };
+
+  const toggleMessages = () => {
+    messagesOpen = !messagesOpen;
+    if (messagesOpen) {
+      notificationsOpen = false;
+      void fetchConversations();
+    }
+  };
+
+  const toggleNotifications = () => {
+    notificationsOpen = !notificationsOpen;
+    if (notificationsOpen) {
+      messagesOpen = false;
+    }
+  };
+
   $: activeCompanion = data.activeCompanion ?? null;
   $: if ((data as any)?.notifications !== lastNotificationRef) {
     lastNotificationRef = ((data as any)?.notifications ?? []) as NotificationItem[];
@@ -319,6 +374,7 @@
   }
   $: unreadNotifications = notificationItems.filter((item) => !item.read).length;
   $: notificationPreview = notificationItems.slice(0, 5);
+  $: unreadMessages = conversations.reduce((total, conversation) => total + Math.max(0, conversation.unreadCount ?? 0), 0);
   $: playerName =
     (data as any)?.profile?.display_name ??
     (data as any)?.user?.user_metadata?.name ??
@@ -405,7 +461,7 @@
             aria-label={unreadNotifications > 0 ? `Notifications (${unreadNotifications} unread)` : 'Notifications'}
             aria-expanded={notificationsOpen}
             aria-haspopup="dialog"
-            on:click={() => (notificationsOpen = !notificationsOpen)}
+            on:click={toggleNotifications}
           >
             <Bell size={19} />
             {#if unreadNotifications > 0}
@@ -450,7 +506,70 @@
             </div>
           {/if}
         </div>
-        <a class="icon-action" href="/app/messages" aria-label="Messages"><MessageCircle size={19} /></a>
+        <div class="message-menu" class:open={messagesOpen}>
+          <button
+            class="icon-action message-trigger"
+            type="button"
+            aria-label={unreadMessages > 0 ? `Messages (${unreadMessages} unread)` : 'Messages'}
+            aria-expanded={messagesOpen}
+            aria-haspopup="dialog"
+            on:click={toggleMessages}
+          >
+            <MessageCircle size={19} />
+            {#if unreadMessages > 0}
+              <span class="notification-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
+            {/if}
+          </button>
+          {#if messagesOpen}
+            <div class="message-dropdown" role="dialog" aria-label="Messages">
+              <header>
+                <h2>Messages</h2>
+                <a href="/app/messages">Open inbox</a>
+              </header>
+
+              <div class="message-list">
+                {#if conversationsLoading}
+                  <p class="notification-empty">Loading messages...</p>
+                {:else if conversationsError}
+                  <p class="notification-empty">{conversationsError}</p>
+                {:else if conversations.length > 0}
+                  {#each conversations as conversation, index (conversation.conversationId)}
+                    <a
+                      class="message-item"
+                      class:unread={conversation.unreadCount > 0}
+                      href={`/app/messages?conversation=${conversation.conversationId}`}
+                    >
+                      <span class="message-avatar" style={`--tone: ${notificationTones[index % notificationTones.length]}`}>
+                        {#if conversation.peer?.avatar_url}
+                          <img src={conversation.peer.avatar_url} alt="" loading="lazy" />
+                        {:else}
+                          <span>{conversationInitial(conversation)}</span>
+                        {/if}
+                      </span>
+                      <span class="notification-copy">
+                        <strong>{conversationName(conversation)}</strong>
+                        <small>{conversationPreview(conversation)}</small>
+                        {#if conversation.last_message_at}
+                          <time datetime={conversation.last_message_at}>{relativeTime(conversation.last_message_at)}</time>
+                        {/if}
+                      </span>
+                      {#if conversation.unreadCount > 0}
+                        <i aria-label={`${conversation.unreadCount} unread`}>{conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}</i>
+                      {/if}
+                    </a>
+                  {/each}
+                {:else}
+                  <p class="notification-empty">No conversations yet.</p>
+                {/if}
+              </div>
+
+              <a class="notification-footer" href="/app/messages">
+                <span>View All Messages</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          {/if}
+        </div>
         <a class="avatar-action" href="/app/profile" aria-label="Profile">
           {#if profileAvatarUrl}
             <img src={profileAvatarUrl} alt="" />
@@ -652,6 +771,10 @@
     z-index: 2;
   }
 
+  .topbar {
+    z-index: 80;
+  }
+
   .mobile-brand,
   .menu-action {
     display: none;
@@ -704,9 +827,11 @@
     gap: 0.7rem;
   }
 
-  .notification-menu {
+  .notification-menu,
+  .message-menu {
     position: relative;
     display: inline-flex;
+    z-index: 90;
   }
 
   .currency,
@@ -736,14 +861,18 @@
     border-radius: 50%;
   }
 
-  .notification-trigger {
+  .notification-trigger,
+  .message-trigger {
     position: relative;
     cursor: pointer;
   }
 
   .notification-menu.open .notification-trigger,
+  .message-menu.open .message-trigger,
   .notification-trigger:hover,
-  .notification-trigger:focus-visible {
+  .notification-trigger:focus-visible,
+  .message-trigger:hover,
+  .message-trigger:focus-visible {
     border-color: rgba(169, 123, 225, 0.52);
     background: rgba(26, 20, 55, 0.78);
     box-shadow: 0 0 24px rgba(169, 123, 225, 0.2);
@@ -765,11 +894,12 @@
     box-shadow: 0 0 16px rgba(167, 92, 255, 0.72);
   }
 
-  .notification-dropdown {
+  .notification-dropdown,
+  .message-dropdown {
     position: absolute;
     top: calc(100% + 0.72rem);
     right: -0.4rem;
-    z-index: 40;
+    z-index: 1000;
     width: min(21.5rem, calc(100vw - 2rem));
     border: 1px solid rgba(169, 123, 225, 0.24);
     border-radius: 0.95rem;
@@ -784,7 +914,12 @@
     backdrop-filter: blur(24px);
   }
 
-  .notification-dropdown header {
+  .message-dropdown {
+    right: -3.85rem;
+  }
+
+  .notification-dropdown header,
+  .message-dropdown header {
     min-height: 2.85rem;
     display: flex;
     align-items: center;
@@ -794,22 +929,27 @@
     padding: 0 0.85rem;
   }
 
-  .notification-dropdown h2 {
+  .notification-dropdown h2,
+  .message-dropdown h2 {
     margin: 0;
     font-size: 0.88rem;
   }
 
-  .notification-dropdown header button {
+  .notification-dropdown header button,
+  .message-dropdown header a {
     border: 0;
     background: transparent;
     color: rgba(221, 211, 246, 0.74);
     font: inherit;
     font-size: 0.68rem;
+    text-decoration: none;
     cursor: pointer;
   }
 
   .notification-dropdown header button:hover:not(:disabled),
-  .notification-dropdown header button:focus-visible:not(:disabled) {
+  .notification-dropdown header button:focus-visible:not(:disabled),
+  .message-dropdown header a:hover,
+  .message-dropdown header a:focus-visible {
     color: #ddaa5c;
   }
 
@@ -818,13 +958,15 @@
     cursor: default;
   }
 
-  .notification-list {
+  .notification-list,
+  .message-list {
     display: grid;
     gap: 0.12rem;
     padding: 0.52rem;
   }
 
-  .notification-item {
+  .notification-item,
+  .message-item {
     min-height: 4.05rem;
     border-radius: 0.6rem;
     display: grid;
@@ -837,12 +979,15 @@
   }
 
   .notification-item:hover,
-  .notification-item:focus-visible {
+  .notification-item:focus-visible,
+  .message-item:hover,
+  .message-item:focus-visible {
     background: rgba(169, 123, 225, 0.09);
     outline: none;
   }
 
-  .notification-item.unread {
+  .notification-item.unread,
+  .message-item.unread {
     background: rgba(169, 123, 225, 0.08);
   }
 
@@ -894,6 +1039,44 @@
     height: 0.45rem;
     border-radius: 999px;
     background: #a75cff;
+    box-shadow: 0 0 14px rgba(167, 92, 255, 0.7);
+  }
+
+  .message-avatar {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--tone), transparent 42%);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.78), transparent 10%),
+      linear-gradient(135deg, color-mix(in srgb, var(--tone), white 8%), rgba(16, 12, 42, 0.94));
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 900;
+    overflow: hidden;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--tone), transparent 52%);
+  }
+
+  .message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .message-item i {
+    min-width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: #a75cff;
+    color: white;
+    font-size: 0.64rem;
+    font-style: normal;
+    font-weight: 900;
     box-shadow: 0 0 14px rgba(167, 92, 255, 0.7);
   }
 
