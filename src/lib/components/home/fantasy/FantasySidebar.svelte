@@ -96,16 +96,32 @@
   .fantasy-sidebar {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 5;
     display: flex;
     min-height: 100vh;
     flex-direction: column;
     gap: 1.12rem;
     border-right: 1px solid rgba(174, 145, 255, 0.16);
-    background: linear-gradient(180deg, rgba(13, 12, 32, 0.88), rgba(7, 8, 20, 0.94));
+    background:
+      linear-gradient(90deg, rgba(7, 7, 20, 0.99) 0%, rgba(8, 8, 23, 0.985) 82%, rgba(8, 8, 23, 0.98) 100%),
+      linear-gradient(180deg, rgba(13, 12, 32, 0.98), rgba(7, 8, 20, 0.99));
     padding: 1rem;
     color: rgba(247, 244, 255, 0.94);
-    box-shadow: 16px 0 60px rgba(3, 6, 20, 0.34);
+    box-shadow:
+      18px 0 52px rgba(3, 6, 20, 0.66),
+      inset -1px 0 0 rgba(174, 145, 255, 0.1);
+    isolation: isolate;
+  }
+
+  .fantasy-sidebar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -1.15rem;
+    bottom: 0;
+    width: 1.15rem;
+    background: linear-gradient(90deg, rgba(7, 7, 20, 0.82), transparent);
+    pointer-events: none;
   }
 
   .crest {
