@@ -1248,7 +1248,7 @@
             <div class="detail-model">
               <MuseModel
                 bind:this={museHostRef}
-                size="315px"
+                size="250px"
                 minSize="0px"
                 autoplay
                 framed={false}
@@ -1256,9 +1256,9 @@
                 respectReducedMotion={false}
                 animationName={museAnimation}
                 poster={undefined}
-                cameraOrbit="205deg 78deg 78%"
-                cameraTarget="0m 0.42m 0m"
-                modelScale="1.42 1.42 1.42"
+                cameraOrbit="205deg 78deg 92%"
+                cameraTarget="0m 0.58m 0m"
+                modelScale="1.1 1.1 1.1"
                 auraColor={activeCosmetics.auraColor}
                 glowIntensity={activeCosmetics.glowIntensity}
               />
@@ -2148,7 +2148,7 @@
     inset: 2.65rem 0 0;
     z-index: 4;
     display: grid;
-    min-height: 20.35rem;
+    min-height: 19.6rem;
     place-items: center;
     border-radius: 0;
     background: transparent;
@@ -2159,18 +2159,18 @@
     position: relative;
     z-index: 3;
     width: 100%;
-    transform: translateY(0.92rem);
+    transform: translateY(2.15rem);
     filter: drop-shadow(0 1.2rem 1.9rem rgba(48, 17, 102, 0.46));
   }
 
   .model-platform {
     position: absolute;
     left: 50%;
-    bottom: 1.75rem;
+    bottom: 0.1rem;
     z-index: 1;
-    width: min(88%, 18.6rem);
-    transform: translateX(-50%) perspective(30rem) rotateX(2deg);
-    opacity: 0.92;
+    width: min(92%, 19rem);
+    transform: translateX(-50%) perspective(30rem) rotateX(4deg) scaleY(0.88);
+    opacity: 0.78;
     filter:
       drop-shadow(0 0 1.1rem rgba(108, 75, 255, 0.44))
       drop-shadow(0 1.1rem 1.3rem rgba(0, 0, 0, 0.38));
