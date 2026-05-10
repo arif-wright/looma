@@ -439,7 +439,7 @@
     content: '';
     position: absolute;
     top: 0;
-    right: calc(20.5rem + 2.35rem);
+    right: calc(19.75rem + 1.95rem);
     left: 0;
     height: clamp(31rem, 42vw, 36rem);
     pointer-events: none;
@@ -601,7 +601,7 @@
   .content-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 19rem;
-    gap: 2.35rem;
+    gap: 1.95rem;
     align-items: start;
   }
 
@@ -613,7 +613,7 @@
   }
 
   .right-stack {
-    transform: translateX(0.45rem);
+    transform: translateX(0.22rem);
   }
 
   .mobile-loop,
