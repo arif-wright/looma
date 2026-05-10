@@ -104,7 +104,9 @@
     </section>
 
     <section id="how" class="support-band" aria-labelledby="how-title">
-      <div class="support-card__visual support-card__visual--handshake" aria-hidden="true"></div>
+      <div class="support-card__visual support-card__visual--handshake" aria-hidden="true">
+        <img src="/assets/handshake.png" alt="" loading="lazy" />
+      </div>
       <div class="support-card__intro">
         <p class="eyebrow">How it works</p>
         <h2 id="how-title">A quiz becomes the first <span>emotional handshake</span>.</h2>
@@ -124,7 +126,9 @@
     </section>
 
     <section id="companions" class="support-band" aria-labelledby="companions-title">
-      <div class="support-card__visual support-card__visual--orbit" aria-hidden="true"></div>
+      <div class="support-card__visual support-card__visual--orbit" aria-hidden="true">
+        <img src="/assets/cosmic_crystal.png" alt="" loading="lazy" />
+      </div>
       <div class="support-card__intro">
         <p class="eyebrow">Companions</p>
         <h2 id="companions-title">Not a category. A <span>relationship</span> that can return.</h2>
@@ -658,15 +662,26 @@
 
   .support-card__visual {
     min-height: 9.7rem;
-    border-radius: 0.45rem;
     position: relative;
-    overflow: hidden;
-    background-size: cover;
-    background-position: center;
-    background:
-      radial-gradient(circle at 50% 52%, rgba(190, 135, 255, 0.24), transparent 4.8rem),
-      radial-gradient(circle at 50% 52%, rgba(221, 170, 92, 0.1), transparent 7rem),
-      linear-gradient(135deg, rgba(25, 11, 52, 0.7), rgba(5, 4, 13, 0.16));
+    overflow: visible;
+    background: transparent;
+  }
+
+  .support-card__visual img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    filter:
+      saturate(1.08)
+      drop-shadow(0 0 24px rgba(169, 123, 225, 0.28));
+    mix-blend-mode: screen;
+    opacity: 0.92;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 58%, transparent 82%);
+    mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 58%, transparent 82%);
   }
 
   .support-card__visual::before,
@@ -688,34 +703,21 @@
   }
 
   .support-card__visual--handshake {
-    background:
-      linear-gradient(90deg, rgba(5, 4, 13, 0.18), rgba(5, 4, 13, 0.02)),
-      radial-gradient(circle at 50% 48%, rgba(169, 123, 225, 0.18), transparent 56%),
-      url('/assets/handshake.png') center / cover;
-  }
-
-  .support-card__visual--handshake::before {
-    inset: 10% 18%;
-    transform: rotate(-8deg);
     background: transparent;
   }
 
+  .support-card__visual--handshake::before,
+  .support-card__visual--handshake::after {
+    display: none;
+  }
+
   .support-card__visual--orbit {
-    background:
-      linear-gradient(90deg, rgba(5, 4, 13, 0.2), rgba(5, 4, 13, 0.04)),
-      radial-gradient(circle at 50% 48%, rgba(169, 123, 225, 0.18), transparent 58%),
-      url('/assets/cosmic_crystal.png') center / cover;
+    background: transparent;
   }
 
-  .support-card__visual--orbit::before {
-    transform: rotate(-16deg);
-  }
-
+  .support-card__visual--orbit::before,
   .support-card__visual--orbit::after {
-    inset: 35% 43%;
-    border-radius: 0.35rem;
-    transform: rotate(45deg);
-    background: rgba(190, 135, 255, 0.04);
+    display: none;
   }
 
   .support-card__intro {
