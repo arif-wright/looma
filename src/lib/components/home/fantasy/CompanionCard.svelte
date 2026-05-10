@@ -8,6 +8,7 @@
   export let accent = 'violet';
   export let favorite = false;
   export let avatarUrl: string | null = null;
+  export let href: string | null = null;
 
   $: hue =
     accent === 'ember'
@@ -20,6 +21,9 @@
 </script>
 
 <article class="companion-card" style={`--accent: ${hue}`}>
+  {#if href}
+    <a class="card-link" href={href} aria-label={`Open ${name}`}></a>
+  {/if}
   <button class="favorite" type="button" aria-label={favorite ? `${name} is a favorite` : `Favorite ${name}`}>
     <Star size={16} fill={favorite ? 'currentColor' : 'none'} />
   </button>
@@ -73,6 +77,18 @@
     cursor: pointer;
   }
 
+  .card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+
+  .card-link:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent), white 18%);
+    outline-offset: -3px;
+  }
+
   .portrait {
     display: grid;
     height: 7.1rem;
@@ -122,6 +138,8 @@
   }
 
   .copy {
+    position: relative;
+    z-index: 2;
     display: grid;
     gap: 0.16rem;
   }
@@ -137,6 +155,8 @@
   }
 
   .meta {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
@@ -151,6 +171,8 @@
   }
 
   .meter {
+    position: relative;
+    z-index: 2;
     height: 0.25rem;
     overflow: hidden;
     border-radius: 999px;

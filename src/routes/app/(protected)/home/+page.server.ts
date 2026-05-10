@@ -851,7 +851,7 @@ export const load: PageServerLoad = async (event) => {
           .order('is_active', { ascending: false })
           .order('slot_index', { ascending: true, nullsFirst: false })
           .order('created_at', { ascending: true })
-          .limit(3)
+          .limit(4)
           .throwOnError();
 
         creatureMoments =

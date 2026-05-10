@@ -18,13 +18,6 @@
 
   export let data: PageData;
 
-  const fallbackCompanions = [
-    { name: 'Lumi', level: 18, bond: 87, mood: 'Happy', accent: 'violet', favorite: true },
-    { name: 'Fay', level: 15, bond: 75, mood: 'Steady', accent: 'silver', favorite: false },
-    { name: 'Ember', level: 20, bond: 92, mood: 'Fierce', accent: 'ember', favorite: false },
-    { name: 'Sylva', level: 16, bond: 68, mood: 'Gentle', accent: 'verdant', favorite: true }
-  ];
-
   const gameCards = [
     { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
     { title: 'Battle Stadium', level: 'Lv. 18', progress: 65, stat: '65%', cover: 'ember' },
@@ -221,6 +214,18 @@
   };
 
   const resolveSceneArchetype = (value: string | null | undefined) => resolveCanonicalArchetypeId(value, 'muse');
+  const companionAccent = (species: string | null | undefined, index: number): string => {
+    const archetype = resolveSceneArchetype(species);
+    if (archetype === 'spark') return 'ember';
+    if (archetype === 'root') return 'verdant';
+    if (archetype === 'guardian') return 'silver';
+    if (archetype === 'echo') return 'violet';
+    return ['violet', 'silver', 'ember', 'verdant'][index % 4] ?? 'violet';
+  };
+  const numberOr = (value: unknown, fallback: number) => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
   const notificationTones = ['#a75cff', '#ddaa5c', '#62e8ff', '#ff6fb8', '#8d5cff'];
 
   let notificationsOpen = false;
@@ -415,15 +420,27 @@
   $: companions =
     data.creatures && data.creatures.length > 0
       ? data.creatures.slice(0, 4).map((creature, index) => ({
-          name: creature.name ?? fallbackCompanions[index]?.name ?? 'Companion',
-          level: Math.max(1, Math.floor(((creature.affection ?? 40) + (creature.trust ?? 40)) / 10)),
-          bond: Math.min(100, Math.max(0, Math.round(((creature.affection ?? 60) + (creature.trust ?? 60)) / 2))),
+          name: creature.name ?? 'Companion',
+          level: Math.max(
+            1,
+            Math.floor(
+              numberOr((creature.stats as any)?.bond_level, ((creature.affection ?? 40) + (creature.trust ?? 40)) / 10)
+            )
+          ),
+          bond: Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round(numberOr((creature.stats as any)?.bond_score, ((creature.affection ?? 60) + (creature.trust ?? 60)) / 2))
+            )
+          ),
           mood: normalizedMood(creature.mood_label ?? creature.mood),
-          accent: fallbackCompanions[index]?.accent ?? 'violet',
+          accent: companionAccent(creature.species, index),
           favorite: Boolean(creature.is_active),
-          avatarUrl: creature.avatar_url ?? null
+          avatarUrl: creature.avatar_url ?? null,
+          href: `/app/companions?focus=${encodeURIComponent(creature.id)}`
         }))
-      : fallbackCompanions;
+      : [];
 </script>
 
 <svelte:head>
