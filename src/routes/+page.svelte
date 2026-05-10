@@ -675,13 +675,11 @@
     object-fit: contain;
     object-position: center;
     display: block;
-    filter:
-      saturate(1.08)
-      drop-shadow(0 0 24px rgba(169, 123, 225, 0.28));
+    filter: saturate(1.04);
     mix-blend-mode: screen;
-    opacity: 0.92;
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 58%, transparent 82%);
-    mask-image: radial-gradient(ellipse at center, #000 42%, rgba(0, 0, 0, 0.86) 58%, transparent 82%);
+    opacity: 0.86;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 50%, rgba(0, 0, 0, 0.72) 66%, transparent 86%);
+    mask-image: radial-gradient(ellipse at center, #000 50%, rgba(0, 0, 0, 0.72) 66%, transparent 86%);
   }
 
   .support-card__visual::before,
@@ -750,15 +748,15 @@
   }
 
   .support-card__divider span {
-    width: 1.05rem;
-    height: 1.05rem;
-    border-radius: 0.2rem;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 0;
     background: #a97be1;
+    clip-path: polygon(50% 0%, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0% 50%, 37% 37%);
     box-shadow:
-      0 0 0 0.32rem rgba(169, 123, 225, 0.08),
-      0 0 24px rgba(169, 123, 225, 0.82);
+      0 0 0 0.24rem rgba(169, 123, 225, 0.08),
+      0 0 20px rgba(169, 123, 225, 0.78);
     position: absolute;
-    transform: rotate(45deg);
   }
 
   .support-card__details {
