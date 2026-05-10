@@ -2058,7 +2058,7 @@
     position: sticky;
     top: 1.25rem;
     display: grid;
-    gap: 0.82rem;
+    gap: 0.62rem;
     overflow: hidden;
     border-radius: 1.25rem;
     padding: 0;
@@ -2073,7 +2073,7 @@
       radial-gradient(circle at 75% 20%, rgba(67, 151, 255, 0.18), transparent 12%),
       radial-gradient(circle at 58% 38%, rgba(91, 55, 221, 0.26), transparent 34%),
       radial-gradient(circle at 50% 72%, rgba(167, 92, 255, 0.2), transparent 42%),
-      linear-gradient(180deg, rgba(14, 17, 52, 0.2), rgba(7, 8, 27, 0.9));
+      linear-gradient(180deg, rgba(14, 17, 52, 0.2) 0%, rgba(10, 11, 31, 0.74) 72%, rgba(13, 15, 38, 0.84) 100%);
     isolation: isolate;
   }
 
@@ -2081,8 +2081,10 @@
     content: '';
     position: absolute;
     inset: auto 0 0;
-    height: 42%;
-    background: linear-gradient(180deg, transparent, rgba(10, 11, 31, 0.88));
+    height: 52%;
+    background:
+      radial-gradient(70% 44% at 50% 62%, rgba(121, 83, 255, 0.12), transparent 72%),
+      linear-gradient(180deg, transparent 0%, rgba(10, 11, 31, 0.58) 54%, rgba(13, 15, 38, 0.86) 100%);
     pointer-events: none;
     z-index: 5;
   }
@@ -2244,6 +2246,22 @@
   .mood-row span {
     color: #91f4a4;
     font-weight: 800;
+  }
+
+  .mood-row {
+    position: relative;
+    margin-top: -0.16rem;
+  }
+
+  .mood-row::before {
+    content: '';
+    position: absolute;
+    left: -1.18rem;
+    right: -1.18rem;
+    top: -1.05rem;
+    height: 1.25rem;
+    background: linear-gradient(180deg, rgba(13, 15, 38, 0), rgba(13, 15, 38, 0.86));
+    pointer-events: none;
   }
 
   .bond-row {
