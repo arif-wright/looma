@@ -679,7 +679,10 @@ export const load: PageServerLoad = async (event) => {
     preferences: parent.preferences ?? null,
     notificationsUnread: parent.notificationsUnread ?? 0,
     wallet: null as Awaited<ReturnType<typeof getWalletWithTransactions>>['wallet'] | null,
-    shardBalance: null as number | null,
+    shardBalance:
+      typeof (parent as Record<string, any>).wallet?.shards === 'number'
+        ? ((parent as Record<string, any>).wallet.shards as number)
+        : null,
     walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions'],
     flags: { bond_genesis: false },
     companionCount: 0,
@@ -897,9 +900,11 @@ export const load: PageServerLoad = async (event) => {
         if (error) {
           throw error;
         }
-        shardBalance = typeof data?.shards === 'number' ? data.shards : Number(data?.shards ?? 0);
-        if (!Number.isFinite(shardBalance)) {
-          shardBalance = null;
+        if (data && data.shards !== null && data.shards !== undefined) {
+          const nextShards = typeof data.shards === 'number' ? data.shards : Number(data.shards);
+          if (Number.isFinite(nextShards)) {
+            shardBalance = nextShards;
+          }
         }
       } catch (err) {
         diagnostics.push('shard_wallet_query_failed');
