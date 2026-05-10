@@ -104,25 +104,43 @@
     </section>
 
     <section id="how" class="support-band" aria-labelledby="how-title">
-      <div>
+      <div class="support-card__visual support-card__visual--handshake" aria-hidden="true"></div>
+      <div class="support-card__intro">
         <p class="eyebrow">How it works</p>
-        <h2 id="how-title">A quiz becomes the first emotional handshake.</h2>
+        <h2 id="how-title">A quiz becomes the first <span>emotional handshake</span>.</h2>
       </div>
-      <p>
-        Memvoya listens for steadiness, memory, curiosity, reassurance, and reflection, then introduces the companion
-        lineage that feels most resonant.
-      </p>
+      <div class="support-card__divider" aria-hidden="true"><span></span></div>
+      <div class="support-card__details">
+        <p>
+          Memvoya listens for steadiness, memory, curiosity, reassurance, and reflection, then introduces the companion
+          lineage that feels most resonant.
+        </p>
+        <div class="support-card__signals" aria-label="How Memvoya works">
+          <span><i aria-hidden="true"></i>Guided self-discovery</span>
+          <span><i aria-hidden="true"></i>Emotional alignment</span>
+          <span><i aria-hidden="true"></i>Personalized companion match</span>
+        </div>
+      </div>
     </section>
 
     <section id="companions" class="support-band" aria-labelledby="companions-title">
-      <div>
+      <div class="support-card__visual support-card__visual--orbit" aria-hidden="true"></div>
+      <div class="support-card__intro">
         <p class="eyebrow">Companions</p>
-        <h2 id="companions-title">Not a category. A relationship that can return.</h2>
+        <h2 id="companions-title">Not a category. A <span>relationship</span> that can return.</h2>
       </div>
-      <p>
-        The result should feel like a first encounter: a companion finding resonance with the way you move through
-        emotion, memory, and daily rituals.
-      </p>
+      <div class="support-card__divider" aria-hidden="true"><span></span></div>
+      <div class="support-card__details">
+        <p>
+          The result should feel like a first encounter: a companion finding resonance with the way you move through
+          emotion, memory, and daily rituals.
+        </p>
+        <div class="support-card__signals" aria-label="Companion qualities">
+          <span><i aria-hidden="true"></i>Built for ongoing connection</span>
+          <span><i aria-hidden="true"></i>Designed to evolve with you</span>
+          <span><i aria-hidden="true"></i>Always there when you return</span>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -586,23 +604,189 @@
 
   .support-band {
     margin-top: 2.2rem;
-    padding: 1.3rem 0;
-    border-top: 1px solid rgba(255, 236, 196, 0.1);
+    min-height: 13.7rem;
+    padding: 1.95rem 2rem;
+    border: 1px solid rgba(190, 135, 255, 0.22);
+    border-radius: 0.52rem;
+    background:
+      radial-gradient(circle at 15% 50%, rgba(116, 51, 222, 0.18), transparent 18rem),
+      linear-gradient(180deg, rgba(12, 8, 28, 0.72), rgba(6, 5, 16, 0.9));
+    box-shadow:
+      0 22px 54px rgba(3, 2, 12, 0.32),
+      inset 0 1px 0 rgba(255, 244, 220, 0.04);
     display: grid;
-    gap: 0.8rem;
-    transition: border-color 180ms ease;
+    gap: 1.25rem;
+    overflow: hidden;
+    position: relative;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
   }
 
   .support-band:hover {
-    border-color: rgba(255, 236, 196, 0.18);
+    border-color: rgba(190, 135, 255, 0.36);
+    box-shadow:
+      0 28px 68px rgba(3, 2, 12, 0.4),
+      0 0 34px rgba(145, 76, 255, 0.12),
+      inset 0 1px 0 rgba(255, 244, 220, 0.06);
+    transform: translateY(-0.12rem);
   }
 
   .support-band:last-child {
-    padding-bottom: 4rem;
+    margin-bottom: 4rem;
   }
 
   .support-band h2 {
-    font-size: 1.85rem;
+    color: rgba(255, 248, 234, 0.98);
+    font-size: 2.15rem;
+    line-height: 1.06;
+  }
+
+  .support-band h2 span {
+    color: #ddaa5c;
+  }
+
+  .support-band .eyebrow {
+    color: #a97be1;
+    text-shadow: 0 0 18px rgba(169, 123, 225, 0.42);
+  }
+
+  .support-card__visual {
+    min-height: 9.7rem;
+    border-radius: 0.45rem;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 52%, rgba(190, 135, 255, 0.24), transparent 4.8rem),
+      radial-gradient(circle at 50% 52%, rgba(221, 170, 92, 0.1), transparent 7rem),
+      linear-gradient(135deg, rgba(25, 11, 52, 0.7), rgba(5, 4, 13, 0.16));
+  }
+
+  .support-card__visual::before,
+  .support-card__visual::after {
+    content: '';
+    position: absolute;
+    inset: 15% 16%;
+    border: 1px solid rgba(190, 135, 255, 0.38);
+    border-radius: 999px;
+    box-shadow:
+      0 0 24px rgba(190, 135, 255, 0.2),
+      inset 0 0 20px rgba(190, 135, 255, 0.12);
+  }
+
+  .support-card__visual::after {
+    inset: 28% 27%;
+    border-color: rgba(221, 170, 92, 0.2);
+    transform: rotate(-18deg);
+  }
+
+  .support-card__visual--handshake {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(169, 123, 225, 0.38), transparent 4.6rem),
+      radial-gradient(circle at 35% 42%, rgba(221, 170, 92, 0.16), transparent 4.2rem),
+      linear-gradient(135deg, rgba(32, 12, 63, 0.72), rgba(5, 4, 13, 0.2));
+  }
+
+  .support-card__visual--handshake::before {
+    clip-path: polygon(0 42%, 38% 42%, 48% 30%, 58% 42%, 100% 42%, 100% 58%, 58% 58%, 48% 70%, 38% 58%, 0 58%);
+    border-radius: 0;
+    background: linear-gradient(90deg, transparent, rgba(190, 135, 255, 0.34), transparent);
+  }
+
+  .support-card__visual--orbit::before {
+    transform: rotate(-16deg);
+  }
+
+  .support-card__visual--orbit::after {
+    inset: 34% 43%;
+    border-radius: 0.35rem;
+    transform: rotate(45deg);
+    background: rgba(190, 135, 255, 0.16);
+  }
+
+  .support-card__intro {
+    display: grid;
+    align-content: center;
+    gap: 0.85rem;
+  }
+
+  .support-card__divider {
+    min-height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .support-card__divider::before {
+    content: '';
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(169, 123, 225, 0.32) 18%,
+      rgba(255, 244, 220, 0.28) 50%,
+      rgba(169, 123, 225, 0.32) 82%,
+      transparent
+    );
+    box-shadow: 0 0 18px rgba(169, 123, 225, 0.22);
+  }
+
+  .support-card__divider span {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 0.2rem;
+    background: #a97be1;
+    box-shadow:
+      0 0 0 0.32rem rgba(169, 123, 225, 0.08),
+      0 0 24px rgba(169, 123, 225, 0.82);
+    position: absolute;
+    transform: rotate(45deg);
+  }
+
+  .support-card__details {
+    display: grid;
+    align-content: center;
+    gap: 1.45rem;
+  }
+
+  .support-card__signals {
+    display: grid;
+    gap: 0.75rem;
+    color: rgba(230, 221, 208, 0.78);
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .support-card__signals span {
+    display: flex;
+    align-items: center;
+    gap: 0.62rem;
+  }
+
+  .support-card__signals i {
+    width: 1.95rem;
+    height: 1.95rem;
+    border: 1px solid rgba(190, 135, 255, 0.72);
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    background:
+      radial-gradient(circle, rgba(169, 123, 225, 0.2), transparent 58%),
+      rgba(8, 6, 19, 0.32);
+    box-shadow: 0 0 20px rgba(190, 135, 255, 0.24);
+  }
+
+  .support-card__signals i::before {
+    content: '';
+    width: 0.56rem;
+    height: 0.56rem;
+    border: 1px solid rgba(221, 170, 92, 0.54);
+    border-radius: 0.16rem;
+    transform: rotate(45deg);
   }
 
   @media (min-width: 760px) {
@@ -616,8 +800,16 @@
     }
 
     .support-band {
-      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-      align-items: end;
+      grid-template-columns: minmax(10rem, 0.62fr) minmax(0, 1fr) 3.2rem minmax(0, 1.36fr);
+      align-items: stretch;
+    }
+
+    .support-card__divider {
+      display: flex;
+    }
+
+    .support-card__signals {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -695,6 +887,18 @@
     .archetype-grid {
       grid-template-columns: 1fr;
     }
+
+    .support-band {
+      padding: 1rem;
+    }
+
+    .support-band h2 {
+      font-size: 1.7rem;
+    }
+
+    .support-card__visual {
+      min-height: 8rem;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -707,7 +911,8 @@
     .topbar__link,
     .topbar__cta,
     .archetype-card,
-    .archetype-card img {
+    .archetype-card img,
+    .support-band {
       transition: none;
     }
   }
