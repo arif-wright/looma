@@ -508,6 +508,10 @@
     text-align: center;
   }
 
+  .section-heading .eyebrow {
+    color: #a97be1;
+  }
+
   .section-heading h2,
   .section-heading__lede {
     text-wrap: balance;
