@@ -546,42 +546,44 @@
 {:else}
 <div class="app-shell">
   <div
-    class="app-surface"
+    class={`app-surface ${isHome ? 'app-surface--home' : ''}`}
     style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
   >
-    {#if FLAGS.NEW_BRAND_HEADER}
-      <BrandHeader
-        iconNavItems={iconNavItems}
-        energy={$playerProgress.energy}
-        energyMax={$playerProgress.energyMax}
-        level={$playerProgress.level}
-        xp={$playerProgress.xp}
-        xpNext={$playerProgress.xpNext}
-        walletBalance={walletBalance}
-        walletCurrency={walletCurrency}
-        notifications={bellNotifications}
-        unreadCount={bellUnread}
-        userEmail={userEmail}
-        activeCompanion={data?.activeCompanion ?? null}
-        onLogout={handleLogout}
-      />
-    {:else}
-      <LeanHeader
-        energy={$playerProgress.energy}
-        energyMax={$playerProgress.energyMax}
-        level={$playerProgress.level}
-        xp={$playerProgress.xp}
-        xpNext={$playerProgress.xpNext}
-        walletBalance={walletBalance}
-        walletCurrency={walletCurrency}
-        notifications={bellNotifications}
-        unreadCount={bellUnread}
-        userEmail={userEmail}
-        onLogout={handleLogout}
-        iconNavItems={iconNavItems}
-        profile={data?.profile ?? null}
-        activeCompanion={data?.activeCompanion ?? null}
-      />
+    {#if !isHome}
+      {#if FLAGS.NEW_BRAND_HEADER}
+        <BrandHeader
+          iconNavItems={iconNavItems}
+          energy={$playerProgress.energy}
+          energyMax={$playerProgress.energyMax}
+          level={$playerProgress.level}
+          xp={$playerProgress.xp}
+          xpNext={$playerProgress.xpNext}
+          walletBalance={walletBalance}
+          walletCurrency={walletCurrency}
+          notifications={bellNotifications}
+          unreadCount={bellUnread}
+          userEmail={userEmail}
+          activeCompanion={data?.activeCompanion ?? null}
+          onLogout={handleLogout}
+        />
+      {:else}
+        <LeanHeader
+          energy={$playerProgress.energy}
+          energyMax={$playerProgress.energyMax}
+          level={$playerProgress.level}
+          xp={$playerProgress.xp}
+          xpNext={$playerProgress.xpNext}
+          walletBalance={walletBalance}
+          walletCurrency={walletCurrency}
+          notifications={bellNotifications}
+          unreadCount={bellUnread}
+          userEmail={userEmail}
+          onLogout={handleLogout}
+          iconNavItems={iconNavItems}
+          profile={data?.profile ?? null}
+          activeCompanion={data?.activeCompanion ?? null}
+        />
+      {/if}
     {/if}
 
     <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--sanctuary'}`}>
@@ -657,6 +659,10 @@
     background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
     overflow-x: clip;
     position: relative;
+  }
+
+  .app-surface--home {
+    grid-template-rows: 1fr;
   }
 
   .app-surface::before {

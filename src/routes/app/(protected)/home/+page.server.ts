@@ -679,6 +679,7 @@ export const load: PageServerLoad = async (event) => {
     preferences: parent.preferences ?? null,
     notificationsUnread: parent.notificationsUnread ?? 0,
     wallet: null as Awaited<ReturnType<typeof getWalletWithTransactions>>['wallet'] | null,
+    shardBalance: null as number | null,
     walletTx: [] as Awaited<ReturnType<typeof getWalletWithTransactions>>['transactions'],
     flags: { bond_genesis: false },
     companionCount: 0,
@@ -867,6 +868,7 @@ export const load: PageServerLoad = async (event) => {
     }
 
     let wallet = safe.wallet;
+    let shardBalance = safe.shardBalance;
     let walletTx = safe.walletTx;
     let flags = { ...safe.flags };
     let companionCount = safe.companionCount;
@@ -882,6 +884,26 @@ export const load: PageServerLoad = async (event) => {
       } catch (err) {
         diagnostics.push('wallet_query_failed');
         reportHomeLoadIssue('wallet_query_failed', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_wallets')
+          .select('shards')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (error) {
+          throw error;
+        }
+        shardBalance = typeof data?.shards === 'number' ? data.shards : Number(data?.shards ?? 0);
+        if (!Number.isFinite(shardBalance)) {
+          shardBalance = null;
+        }
+      } catch (err) {
+        diagnostics.push('shard_wallet_query_failed');
+        reportHomeLoadIssue('shard_wallet_query_failed', {
           error: err instanceof Error ? err.message : String(err)
         });
       }
@@ -1284,6 +1306,7 @@ export const load: PageServerLoad = async (event) => {
       preferences: parent.preferences ?? null,
       notificationsUnread: parent.notificationsUnread ?? 0,
       wallet,
+      shardBalance,
       walletTx,
       flags,
       companionCount,

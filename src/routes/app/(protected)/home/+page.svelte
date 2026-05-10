@@ -226,6 +226,20 @@
     (data as any)?.user?.user_metadata?.name ??
     (data as any)?.user?.email?.split('@')?.[0] ??
     'Alex';
+  $: profileAvatarUrl =
+    (data as any)?.profile?.avatar_url ??
+    (data as any)?.user?.user_metadata?.avatar_url ??
+    (data as any)?.user?.user_metadata?.picture ??
+    null;
+  $: shardBalance = Math.max(
+    0,
+    Math.floor(
+      (data as any)?.shardBalance ??
+        (data.wallet as any)?.shards ??
+        (data.wallet as any)?.balance ??
+        0
+    )
+  );
   $: playerLevel = Math.max(1, Math.floor((data.stats as any)?.level ?? activeCompanion?.bondLevel ?? 24));
   $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
   $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
@@ -284,12 +298,16 @@
       <div class="top-actions">
         <a class="currency" href="/app/wallet" aria-label="Open wallet">
           <ShardIcon size={20} />
-          <span>{(data.wallet?.balance ?? 1240).toLocaleString()}</span>
+          <span>{shardBalance.toLocaleString()}</span>
         </a>
         <a class="icon-action" href="/app/notifications" aria-label="Notifications"><Bell size={19} /></a>
         <a class="icon-action" href="/app/messages" aria-label="Messages"><MessageCircle size={19} /></a>
         <a class="avatar-action" href="/app/profile" aria-label="Profile">
-          <span>{playerName.slice(0, 1).toUpperCase()}</span>
+          {#if profileAvatarUrl}
+            <img src={profileAvatarUrl} alt="" />
+          {:else}
+            <span>{playerName.slice(0, 1).toUpperCase()}</span>
+          {/if}
         </a>
         <button class="menu-action" type="button" aria-label="Open menu"><Menu size={27} /></button>
       </div>
@@ -378,7 +396,7 @@
       <aside class="right-stack" aria-label="Daily panels">
         <RitualPanel completed={ritualCompleted} />
         <FriendStatusPanel />
-        <ActivityFeed />
+        <ActivityFeed notifications={(data as any)?.notifications ?? []} />
       </aside>
     </div>
   </main>
@@ -569,6 +587,15 @@
       radial-gradient(circle at 42% 32%, #ffd36e, transparent 16%),
       linear-gradient(135deg, #a75cff, #ff6fb8);
     font-weight: 900;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .avatar-action img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .content-grid {

@@ -1,13 +1,50 @@
 <script lang="ts">
   import { Sparkles } from 'lucide-svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+  import type { NotificationItem } from '$lib/components/ui/types';
 
-  const items = [
-    { name: 'Maya completed', detail: "Dragon's Trial", time: '2m ago', tone: '#a75cff', icon: Sparkles },
-    { name: 'Zephyr summoned a', detail: 'legendary companion', time: '15m ago', tone: '#ff6fb8', icon: Sparkles },
-    { name: 'Kai joined your world', detail: 'Memvoya Prime', time: '1h ago', tone: '#ffd36e', icon: Sparkles },
-    { name: 'Nova sent you a gift', detail: '25', time: '2h ago', tone: '#62e8ff', shard: true }
-  ];
+  export let notifications: NotificationItem[] = [];
+
+  const relativeTime = (iso: string) => {
+    const then = Date.parse(iso);
+    if (!Number.isFinite(then)) return 'Now';
+    const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (seconds < 60) return 'Now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const notificationLabel = (item: NotificationItem) => {
+    const actor = typeof item.metadata?.actor_name === 'string' ? item.metadata.actor_name : 'Someone';
+    switch (item.kind) {
+      case 'reaction':
+        return { name: `${actor} reacted`, detail: 'to your post', shard: false };
+      case 'comment':
+        return { name: `${actor} commented`, detail: 'on your thread', shard: false };
+      case 'share':
+        return { name: `${actor} shared`, detail: 'one of your moments', shard: false };
+      case 'achievement_unlocked':
+        return { name: 'Achievement unlocked', detail: String(item.metadata?.title ?? 'New reward'), shard: true };
+      case 'companion_nudge':
+        return { name: 'Companion nudge', detail: String(item.metadata?.title ?? 'A bond moment is ready'), shard: false };
+      case 'event_reminder':
+        return { name: 'Event reminder', detail: String(item.metadata?.title ?? 'Something is starting soon'), shard: false };
+      default:
+        return { name: 'New activity', detail: 'Memvoya has an update', shard: false };
+    }
+  };
+
+  $: items = notifications.slice(0, 4).map((item, index) => ({
+    ...notificationLabel(item),
+    id: item.id,
+    time: relativeTime(item.created_at),
+    tone: ['#a75cff', '#ff6fb8', '#ffd36e', '#62e8ff'][index % 4],
+    icon: Sparkles
+  }));
 </script>
 
 <section class="side-panel" aria-labelledby="activity-title">
@@ -15,8 +52,9 @@
     <h2 id="activity-title">Activity Feed</h2>
     <a href="/app/notifications">View All</a>
   </header>
-  <div class="items">
-    {#each items as item}
+  {#if items.length > 0}
+    <div class="items">
+      {#each items as item}
       <article>
         <span class="icon" style={`--tone: ${item.tone}`}>
           {#if item.shard}
@@ -31,8 +69,11 @@
         </div>
         <time>{item.time}</time>
       </article>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="empty">No new activity yet.</p>
+  {/if}
 </section>
 
 <style>
@@ -75,6 +116,10 @@
     color: rgba(225, 222, 245, 0.66);
     font-size: 0.76rem;
     text-decoration: none;
+  }
+
+  .empty {
+    padding: 0.3rem 0 0.1rem;
   }
 
   .items {
