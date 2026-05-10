@@ -1224,28 +1224,41 @@
 
       <aside class="detail-panel" aria-label="Active companion details">
         {#if detailCompanion}
-          <div class="detail-head">
-            <div>
-              <h2>{detailCompanion.name}</h2>
-              <span>Level {companionLevel(detailCompanion)}</span>
+          <div class="detail-hero">
+            <div class="detail-head">
+              <div>
+                <div class="name-row">
+                  <h2>{detailCompanion.name}</h2>
+                  <button
+                    type="button"
+                    class="edit-button"
+                    aria-label={`Edit ${detailCompanion.name}`}
+                    on:click={() => openCareModal(detailCompanion)}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                </div>
+                <span>Level {companionLevel(detailCompanion)}</span>
+                <p class="rarity-row"><img src="/assets/shard_icon.png" alt="" /> {detailCompanion.rarity ?? 'Epic'}</p>
+              </div>
             </div>
-            <button type="button" class="edit-button" aria-label={`Edit ${detailCompanion.name}`} on:click={() => openCareModal(detailCompanion)}>
-              <Pencil size={15} />
-            </button>
-          </div>
-          <p class="rarity-row"><img src="/assets/shard_icon.png" alt="" /> {detailCompanion.rarity ?? 'Epic'}</p>
-          <div class="detail-model">
-            <MuseModel
-              bind:this={museHostRef}
-              size="250px"
-              autoplay
-              respectReducedMotion={false}
-              animationName={museAnimation}
-              poster={undefined}
-              cameraTarget={undefined}
-              auraColor={activeCosmetics.auraColor}
-              glowIntensity={activeCosmetics.glowIntensity}
-            />
+            <div class="hero-particles" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="detail-model">
+              <MuseModel
+                bind:this={museHostRef}
+                size="255px"
+                autoplay
+                respectReducedMotion={false}
+                animationName={museAnimation}
+                poster={undefined}
+                cameraTarget={undefined}
+                auraColor={activeCosmetics.auraColor}
+                glowIntensity={activeCosmetics.glowIntensity}
+              />
+              <img class="model-platform" src="/assets/platform.png" alt="" aria-hidden="true" />
+            </div>
           </div>
           <div class="mood-row">
             <span><Smile size={23} fill="currentColor" /> {getCompanionMoodMeta(detailCompanion.mood).label}</span>
@@ -2040,18 +2053,53 @@
     position: sticky;
     top: 1.25rem;
     display: grid;
-    gap: 1rem;
+    gap: 0.82rem;
+    overflow: hidden;
     border-radius: 1.25rem;
-    padding: 1.2rem;
+    padding: 0;
+  }
+
+  .detail-hero {
+    position: relative;
+    min-height: 22.2rem;
+    overflow: hidden;
+    border-radius: 1.25rem 1.25rem 0 0;
+    background:
+      radial-gradient(circle at 75% 20%, rgba(67, 151, 255, 0.18), transparent 12%),
+      radial-gradient(circle at 58% 38%, rgba(91, 55, 221, 0.26), transparent 34%),
+      radial-gradient(circle at 50% 72%, rgba(167, 92, 255, 0.2), transparent 42%),
+      linear-gradient(180deg, rgba(14, 17, 52, 0.2), rgba(7, 8, 27, 0.9));
+    isolation: isolate;
+  }
+
+  .detail-hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 42%;
+    background: linear-gradient(180deg, transparent, rgba(10, 11, 31, 0.88));
+    pointer-events: none;
+    z-index: 5;
   }
 
   .detail-head {
-    justify-content: space-between;
+    position: relative;
+    z-index: 10;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 1.12rem 1.18rem 0;
+  }
+
+  .name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
   }
 
   .detail-head h2 {
-    margin: 0 0 0.18rem;
-    font-size: 1.35rem;
+    margin: 0;
+    font-size: 1.08rem;
+    line-height: 1.1;
   }
 
   .detail-head span,
@@ -2061,34 +2109,119 @@
     color: rgba(220, 216, 237, 0.7);
   }
 
+  .detail-head span {
+    display: block;
+    margin-top: 0.18rem;
+    font-size: 0.75rem;
+  }
+
   .edit-button {
     border: 0;
     background: transparent;
     color: rgba(220, 216, 237, 0.8);
     cursor: pointer;
+    line-height: 0;
+    padding: 0.12rem;
   }
 
   .rarity-row {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    margin: 0;
+    gap: 0.32rem;
+    margin: 0.58rem 0 0;
+    font-size: 0.78rem;
     font-weight: 800;
   }
 
   .rarity-row img {
-    width: 1rem;
-    height: 1rem;
+    width: 0.9rem;
+    height: 0.9rem;
   }
 
   .detail-model {
+    position: absolute;
+    inset: 2.25rem 0 0;
+    z-index: 4;
     display: grid;
-    min-height: 15.5rem;
+    min-height: 19.8rem;
     place-items: center;
-    border-radius: 1rem;
-    background:
-      radial-gradient(circle at 50% 45%, rgba(95, 122, 255, 0.24), transparent 58%),
-      linear-gradient(180deg, rgba(15, 23, 62, 0.58), rgba(8, 9, 28, 0.2));
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .detail-model :global(.muse-shell) {
+    position: relative;
+    z-index: 3;
+    transform: translateY(-0.4rem);
+    filter: drop-shadow(0 1.2rem 1.9rem rgba(48, 17, 102, 0.46));
+  }
+
+  .model-platform {
+    position: absolute;
+    left: 50%;
+    bottom: 1.35rem;
+    z-index: 1;
+    width: min(82%, 16.8rem);
+    transform: translateX(-50%);
+    opacity: 0.78;
+    filter: drop-shadow(0 0 1.1rem rgba(108, 75, 255, 0.44));
+    pointer-events: none;
+  }
+
+  .hero-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .hero-particles span {
+    position: absolute;
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 999px;
+    background: #66d8ff;
+    box-shadow: 0 0 0.65rem rgba(102, 216, 255, 0.95);
+    animation: detailParticleFloat 5.6s ease-in-out infinite;
+  }
+
+  .hero-particles span:nth-child(1) {
+    left: 18%;
+    top: 35%;
+  }
+
+  .hero-particles span:nth-child(2) {
+    left: 76%;
+    top: 19%;
+    animation-delay: -1.4s;
+  }
+
+  .hero-particles span:nth-child(3) {
+    left: 84%;
+    top: 42%;
+    background: #a97be1;
+    animation-delay: -2.6s;
+  }
+
+  .hero-particles span:nth-child(4) {
+    left: 24%;
+    top: 68%;
+    background: #ddaa5c;
+    animation-delay: -3.2s;
+  }
+
+  .hero-particles span:nth-child(5) {
+    left: 67%;
+    top: 63%;
+    animation-delay: -4.1s;
+  }
+
+  .hero-particles span:nth-child(6) {
+    left: 40%;
+    top: 24%;
+    width: 0.16rem;
+    height: 0.16rem;
+    animation-delay: -0.8s;
   }
 
   .mood-row span,
@@ -2107,6 +2240,17 @@
   .bond-row {
     justify-content: space-between;
     color: rgba(248, 246, 255, 0.9);
+  }
+
+  .mood-row,
+  .bond-row,
+  .bond-meter,
+  .detail-tabs,
+  .detail-tab-panel,
+  .detail-actions,
+  .active-note {
+    margin-left: 1.18rem;
+    margin-right: 1.18rem;
   }
 
   .bond-row :global(svg) {
@@ -2464,6 +2608,7 @@
     margin: 0;
     border-top: 1px solid rgba(153, 130, 236, 0.12);
     padding-top: 0.9rem;
+    padding-bottom: 1rem;
   }
 
   .active-note span {
@@ -2541,6 +2686,18 @@
     .summon-card,
     .collection-card {
       min-height: 14rem;
+    }
+  }
+
+  @keyframes detailParticleFloat {
+    0%,
+    100% {
+      opacity: 0.28;
+      transform: translate3d(0, 0.45rem, 0) scale(0.82);
+    }
+    45% {
+      opacity: 1;
+      transform: translate3d(0.28rem, -0.45rem, 0) scale(1.18);
     }
   }
 </style>
