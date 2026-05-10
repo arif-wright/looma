@@ -11,6 +11,7 @@
   import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+  import type { NotificationItem } from '$lib/components/ui/types';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
   import type { PageData } from './$types';
 
@@ -219,8 +220,105 @@
   };
 
   const resolveSceneArchetype = (value: string | null | undefined) => resolveCanonicalArchetypeId(value, 'muse');
+  const notificationTones = ['#a75cff', '#ddaa5c', '#62e8ff', '#ff6fb8', '#8d5cff'];
+
+  let notificationsOpen = false;
+  let notificationItems: NotificationItem[] = [];
+  let lastNotificationRef: NotificationItem[] | null = null;
+  let markingNotifications = false;
+  let unreadNotifications = 0;
+  let notificationPreview: NotificationItem[] = [];
+
+  const relativeTime = (iso: string) => {
+    const then = Date.parse(iso);
+    if (!Number.isFinite(then)) return 'Now';
+    const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (seconds < 60) return 'Now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const notificationTitle = (item: NotificationItem) => {
+    const meta = item.metadata ?? {};
+    if (typeof meta.title === 'string' && meta.title.trim()) return meta.title;
+    if (typeof meta.rewardTitle === 'string' && meta.rewardTitle.trim()) return meta.rewardTitle;
+    if (typeof (item as any).title === 'string' && (item as any).title.trim()) return (item as any).title;
+    switch (item.kind) {
+      case 'achievement_unlocked':
+        return 'Achievement Unlocked';
+      case 'companion_nudge':
+        return 'Companion Nudge';
+      case 'event_reminder':
+        return 'Event Reminder';
+      case 'comment':
+        return 'New Comment';
+      case 'reaction':
+        return 'New Reaction';
+      case 'share':
+        return 'Shared Moment';
+      default:
+        return 'New Notification';
+    }
+  };
+
+  const notificationBody = (item: NotificationItem) => {
+    const meta = item.metadata ?? {};
+    if (typeof meta.body === 'string' && meta.body.trim()) return meta.body;
+    if (typeof meta.description === 'string' && meta.description.trim()) return meta.description;
+    if (typeof (item as any).body === 'string' && (item as any).body.trim()) return (item as any).body;
+    switch (item.kind) {
+      case 'achievement_unlocked':
+        return 'A new reward is ready for you.';
+      case 'companion_nudge':
+        return 'Your companion has something for you.';
+      case 'event_reminder':
+        return 'Something is starting soon.';
+      case 'comment':
+        return 'Someone replied to your thread.';
+      case 'reaction':
+        return 'Someone reacted to your moment.';
+      case 'share':
+        return 'Someone shared one of your moments.';
+      default:
+        return 'Memvoya has an update for you.';
+    }
+  };
+
+  const notificationHref = (item: NotificationItem) => {
+    if (item.target_kind === 'companion') return '/app/companions';
+    if (item.target_kind === 'event') return '/app/events';
+    if (item.target_kind === 'achievement') return '/app/profile';
+    if (item.target_kind === 'post' || item.target_kind === 'comment') return '/app/notifications';
+    return '/app/notifications';
+  };
+
+  const markNotificationsRead = async () => {
+    if (markingNotifications || unreadNotifications === 0) return;
+    markingNotifications = true;
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_all' })
+      });
+      if (!response.ok) return;
+      notificationItems = notificationItems.map((item) => ({ ...item, read: true }));
+    } finally {
+      markingNotifications = false;
+    }
+  };
 
   $: activeCompanion = data.activeCompanion ?? null;
+  $: if ((data as any)?.notifications !== lastNotificationRef) {
+    lastNotificationRef = ((data as any)?.notifications ?? []) as NotificationItem[];
+    notificationItems = [...lastNotificationRef];
+  }
+  $: unreadNotifications = notificationItems.filter((item) => !item.read).length;
+  $: notificationPreview = notificationItems.slice(0, 5);
   $: playerName =
     (data as any)?.profile?.display_name ??
     (data as any)?.user?.user_metadata?.name ??
@@ -300,7 +398,58 @@
           <ShardIcon size={20} />
           <span>{shardBalance.toLocaleString()}</span>
         </a>
-        <a class="icon-action" href="/app/notifications" aria-label="Notifications"><Bell size={19} /></a>
+        <div class="notification-menu" class:open={notificationsOpen}>
+          <button
+            class="icon-action notification-trigger"
+            type="button"
+            aria-label={unreadNotifications > 0 ? `Notifications (${unreadNotifications} unread)` : 'Notifications'}
+            aria-expanded={notificationsOpen}
+            aria-haspopup="dialog"
+            on:click={() => (notificationsOpen = !notificationsOpen)}
+          >
+            <Bell size={19} />
+            {#if unreadNotifications > 0}
+              <span class="notification-badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>
+            {/if}
+          </button>
+          {#if notificationsOpen}
+            <div class="notification-dropdown" role="dialog" aria-label="Notifications">
+              <header>
+                <h2>Notifications</h2>
+                <button type="button" on:click={markNotificationsRead} disabled={markingNotifications || unreadNotifications === 0}>
+                  Mark all as read
+                </button>
+              </header>
+
+              <div class="notification-list">
+                {#if notificationPreview.length > 0}
+                  {#each notificationPreview as item, index (item.id)}
+                    <a class="notification-item" class:unread={!item.read} href={notificationHref(item)}>
+                      <span class="notification-icon" style={`--tone: ${notificationTones[index % notificationTones.length]}`}>
+                        <ShardIcon size={21} />
+                      </span>
+                      <span class="notification-copy">
+                        <strong>{notificationTitle(item)}</strong>
+                        <small>{notificationBody(item)}</small>
+                        <time datetime={item.created_at}>{relativeTime(item.created_at)}</time>
+                      </span>
+                      {#if !item.read}
+                        <i aria-hidden="true"></i>
+                      {/if}
+                    </a>
+                  {/each}
+                {:else}
+                  <p class="notification-empty">No notifications yet.</p>
+                {/if}
+              </div>
+
+              <a class="notification-footer" href="/app/notifications">
+                <span>View All Notifications</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          {/if}
+        </div>
         <a class="icon-action" href="/app/messages" aria-label="Messages"><MessageCircle size={19} /></a>
         <a class="avatar-action" href="/app/profile" aria-label="Profile">
           {#if profileAvatarUrl}
@@ -555,6 +704,11 @@
     gap: 0.7rem;
   }
 
+  .notification-menu {
+    position: relative;
+    display: inline-flex;
+  }
+
   .currency,
   .icon-action,
   .avatar-action {
@@ -580,6 +734,192 @@
   .avatar-action {
     width: 2.75rem;
     border-radius: 50%;
+  }
+
+  .notification-trigger {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .notification-menu.open .notification-trigger,
+  .notification-trigger:hover,
+  .notification-trigger:focus-visible {
+    border-color: rgba(169, 123, 225, 0.52);
+    background: rgba(26, 20, 55, 0.78);
+    box-shadow: 0 0 24px rgba(169, 123, 225, 0.2);
+  }
+
+  .notification-badge {
+    position: absolute;
+    top: -0.2rem;
+    right: -0.1rem;
+    min-width: 1.08rem;
+    height: 1.08rem;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: #a75cff;
+    color: white;
+    font-size: 0.63rem;
+    font-weight: 900;
+    box-shadow: 0 0 16px rgba(167, 92, 255, 0.72);
+  }
+
+  .notification-dropdown {
+    position: absolute;
+    top: calc(100% + 0.72rem);
+    right: -0.4rem;
+    z-index: 40;
+    width: min(21.5rem, calc(100vw - 2rem));
+    border: 1px solid rgba(169, 123, 225, 0.24);
+    border-radius: 0.95rem;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(126, 92, 255, 0.24), transparent 14rem),
+      linear-gradient(180deg, rgba(15, 16, 40, 0.98), rgba(8, 10, 27, 0.98));
+    box-shadow:
+      0 24px 70px rgba(2, 3, 14, 0.62),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: rgba(249, 247, 255, 0.95);
+    overflow: hidden;
+    backdrop-filter: blur(24px);
+  }
+
+  .notification-dropdown header {
+    min-height: 2.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(169, 123, 225, 0.14);
+    padding: 0 0.85rem;
+  }
+
+  .notification-dropdown h2 {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .notification-dropdown header button {
+    border: 0;
+    background: transparent;
+    color: rgba(221, 211, 246, 0.74);
+    font: inherit;
+    font-size: 0.68rem;
+    cursor: pointer;
+  }
+
+  .notification-dropdown header button:hover:not(:disabled),
+  .notification-dropdown header button:focus-visible:not(:disabled) {
+    color: #ddaa5c;
+  }
+
+  .notification-dropdown header button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .notification-list {
+    display: grid;
+    gap: 0.12rem;
+    padding: 0.52rem;
+  }
+
+  .notification-item {
+    min-height: 4.05rem;
+    border-radius: 0.6rem;
+    display: grid;
+    grid-template-columns: 2.35rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.72rem;
+    padding: 0.52rem 0.5rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .notification-item:hover,
+  .notification-item:focus-visible {
+    background: rgba(169, 123, 225, 0.09);
+    outline: none;
+  }
+
+  .notification-item.unread {
+    background: rgba(169, 123, 225, 0.08);
+  }
+
+  .notification-icon {
+    display: grid;
+    width: 2.15rem;
+    height: 2.15rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--tone), transparent 36%);
+    border-radius: 0.72rem;
+    background:
+      radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--tone), white 8%), transparent 46%),
+      rgba(10, 10, 29, 0.82);
+    color: white;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--tone), transparent 52%);
+  }
+
+  .notification-copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .notification-copy strong,
+  .notification-copy small,
+  .notification-copy time {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .notification-copy strong {
+    font-size: 0.78rem;
+  }
+
+  .notification-copy small,
+  .notification-copy time,
+  .notification-empty {
+    color: rgba(225, 222, 245, 0.7);
+    font-size: 0.7rem;
+  }
+
+  .notification-copy time {
+    color: rgba(225, 222, 245, 0.48);
+  }
+
+  .notification-item i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: #a75cff;
+    box-shadow: 0 0 14px rgba(167, 92, 255, 0.7);
+  }
+
+  .notification-empty {
+    margin: 0;
+    padding: 1.6rem 0.75rem;
+    text-align: center;
+  }
+
+  .notification-footer {
+    min-height: 3.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid rgba(169, 123, 225, 0.14);
+    padding: 0 1.1rem;
+    color: #c99cff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .notification-footer:hover,
+  .notification-footer:focus-visible {
+    color: #ddaa5c;
   }
 
   .avatar-action {
