@@ -1,7 +1,23 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { page } from '$app/stores';
   import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
+  import {
+    Bell,
+    ChevronDown,
+    Gem,
+    Heart,
+    MessageSquare,
+    Pencil,
+    Plus,
+    Search,
+    Shield,
+    SlidersHorizontal,
+    Smile,
+    Sparkles,
+    Star
+  } from 'lucide-svelte';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
   import { createCompanionRosterState } from '$lib/stores/companionRosterState';
@@ -16,6 +32,7 @@
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
@@ -895,6 +912,48 @@
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const clampPercent = (value: number | null | undefined) => Math.max(0, Math.min(100, Math.round(value ?? 0)));
+  const companionBondScore = (companion: Companion | null | undefined) => {
+    if (!companion) return 0;
+    const raw = companion.stats?.bond_score ?? companion.bond_score;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return clampPercent(raw);
+    return clampPercent(((companion.affection ?? 0) + (companion.trust ?? 0)) / 2);
+  };
+  const companionLevel = (companion: Companion | null | undefined) => {
+    if (!companion) return 1;
+    const raw = companion.stats?.bond_level ?? companion.bond_level ?? companion.level;
+    return Math.max(1, Math.round(Number(raw) || 1));
+  };
+  const companionTone = (companion: Companion, index = 0) => {
+    const token = normalizeToken(companion.species);
+    if (token.includes('guardian') || token.includes('tova')) return 'silver';
+    if (token.includes('spark') || token.includes('aurex') || token.includes('vexel')) return 'ember';
+    if (token.includes('root') || token.includes('kynth') || token.includes('elar')) return 'verdant';
+    if (token.includes('echo') || token.includes('nira')) return 'violet';
+    return ['violet', 'silver', 'ember', 'verdant'][index % 4] ?? 'violet';
+  };
+  const companionElement = (companion: Companion | null | undefined) => cleanArchetype(companion?.species) || 'Arcane';
+  const companionPersonality = (companion: Companion | null | undefined) => {
+    const mood = getCompanionMoodMeta(companion?.mood ?? companion?.state ?? 'steady').label;
+    const element = companionElement(companion);
+    return [mood, element, 'Loyal'].slice(0, 3);
+  };
+  const giftIcons = ['/assets/shard_icon.png', '/assets/star_icon.png', '/assets/paw_icon.png', '/assets/heart_icon.png'];
+  const activeProfileAvatar =
+    ($page.data?.profile as any)?.avatar_url ??
+    ($page.data?.user as any)?.user_metadata?.avatar_url ??
+    ($page.data?.user as any)?.user_metadata?.picture ??
+    null;
+  $: shardBalance =
+    typeof ($page.data?.wallet as any)?.shards === 'number' ? (($page.data?.wallet as any).shards as number) : 0;
+  $: averageBond =
+    ownedInstances.length > 0
+      ? Math.round(ownedInstances.reduce((total, companion) => total + companionBondScore(companion), 0) / ownedInstances.length)
+      : 0;
+  $: masteryLevel = ownedInstances.length > 0 ? Math.max(...ownedInstances.map((companion) => companionLevel(companion))) : 1;
+  $: detailCompanion = activeCompanion ?? filteredOwned[0] ?? ownedInstances[0] ?? null;
+  $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
+
   $: if (selectedForCare) {
     const refreshed = ownedInstances.find((entry) => entry.id === selectedForCare?.id);
     if (refreshed) selectedForCare = refreshed;
@@ -946,467 +1005,275 @@
   <title>Memvoya - Companions</title>
 </svelte:head>
 
-<SanctuaryPageFrame
-  eyebrow="Companion Presence"
-  title="Your Companions"
-  subtitle="One place to check in, care, and switch who stays by your side."
->
-  <svelte:fragment slot="actions">
-    <EmotionalChip tone="cool">Active: {activeCompanion ? activeCompanion.name : 'None'}</EmotionalChip>
-    <EmotionalChip tone="muted">Slots: {slotsUsed}/{maxSlots}</EmotionalChip>
-  </svelte:fragment>
-<main class="companions-page sanctuary-card">
-  <div class="hydration-flag" data-hydrated={hydrated ? 'true' : 'false'} aria-hidden="true"></div>
-  <header class="companions-header">
-    <div class="header-pills">
-      <button type="button" class="pill pill-action" on:click={handleUnlockCta}>Unlock slot</button>
-      <button type="button" class="pill pill-action" on:click={refreshRoster} disabled={loading}>
-        {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
-    </div>
-  </header>
+<div class="companions-fantasy-shell">
+  <FantasySidebar
+    activePath="/app/companions"
+    playerName={($page.data?.profile as any)?.display_name ?? ($page.data?.user as any)?.email?.split('@')[0] ?? 'Traveler'}
+    level={masteryLevel}
+    xp={Math.round(slotsPercent * 50)}
+    xpNext={5000}
+  />
 
-  {#if switchMessage}
-    <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
-  {/if}
+  <main class="companions-workspace" aria-label="Companions">
+    <header class="topbar">
+      <label class="search-field" aria-label="Search companions">
+        <Search size={18} />
+        <input type="search" placeholder="Search companions..." bind:value={filters.search} />
+      </label>
+      <div class="topbar-controls">
+        <label class="select-field">
+          <span>Rarity</span>
+          <select bind:value={filters.sort}>
+            <option value="bond_desc">Bond</option>
+            <option value="recent_interaction">Recent</option>
+            <option value="energy_desc">Spark</option>
+            <option value="name_asc">Name</option>
+          </select>
+          <ChevronDown size={16} />
+        </label>
+        <label class="select-field">
+          <span>All Elements</span>
+          <select bind:value={filters.archetype}>
+            <option value="all">All Elements</option>
+            {#each archetypeOptions as archetype}
+              <option value={archetype}>{archetype}</option>
+            {/each}
+          </select>
+          <ChevronDown size={16} />
+        </label>
+        <button type="button" class="icon-button" aria-label="Filters">
+          <SlidersHorizontal size={18} />
+        </button>
+        <div class="shard-pill" aria-label={`${shardBalance.toLocaleString()} shards`}>
+          <img src="/assets/shard_icon.png" alt="" />
+          <span>{shardBalance.toLocaleString()}</span>
+        </div>
+        <button type="button" class="icon-button" aria-label="Notifications">
+          <Bell size={18} />
+        </button>
+        <a class="icon-button" href="/app/messages" aria-label="Messages">
+          <MessageSquare size={18} />
+        </a>
+        <a class="profile-pill" href="/app/profile" aria-label="Profile">
+          {#if activeProfileAvatar}
+            <img src={activeProfileAvatar} alt="" />
+          {:else}
+            <span>{(($page.data?.user as any)?.email ?? 'M').slice(0, 1).toUpperCase()}</span>
+          {/if}
+          <ChevronDown size={14} />
+        </a>
+      </div>
+    </header>
 
-  <section
-    class="companion-view"
-    aria-labelledby="companion-view-heading"
-    data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}
-    data-premium={subscriptionActive ? 'true' : 'false'}
-    data-premium-style={premiumStyle ?? 'default'}
-  >
-    <div class="companion-view__content">
-      <p class="eyebrow">Companion View</p>
-      {#if activeCompanion}
-        {#key activeCompanion.id}
-          <div class="view-title-block">
-            <h2 id="companion-view-heading">{activeCompanion.name} · {cleanArchetype(activeCompanion.species)}</h2>
-            <div class="view-chips">
-              <span class="chip">Active</span>
-              <span class="chip">Bond Lv {getBondLevel(activeCompanion)}</span>
-              {#if activeKeepsake}
-                <span class={`chip chip--keepsake chip--${activeKeepsakeTone}`}>{activeKeepsake.title}</span>
-              {/if}
-              {#if activeCompanionRenderHook}
-                <span class="chip chip--hook">Hook {activeCompanionRenderHook}</span>
-              {/if}
-              {#if activeCompanionEvolutionStage}
-                <span class="chip chip--evolution">Evolution {activeCompanionEvolutionStage}</span>
-              {/if}
-              {#if subscriptionActive}
-                <span class="chip chip--premium">Sanctuary+</span>
-              {/if}
-              <span class="chip">{activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label}</span>
+    <section class="roster-layout">
+      <div class="roster-main">
+        <div class="title-row">
+          <div>
+            <h1>Companions</h1>
+            <div class="tabs-row" role="tablist" aria-label="Companion tabs">
+              <button
+                class={`tab ${activeTab === 'owned' ? 'is-active' : ''}`}
+                role="tab"
+                aria-selected={activeTab === 'owned'}
+                on:click={() => (activeTab = 'owned')}
+              >
+                My Companions
+              </button>
+              <button
+                class={`tab ${activeTab === 'discover' ? 'is-active' : ''}`}
+                role="tab"
+                aria-selected={activeTab === 'discover'}
+                on:click={() => (activeTab = 'discover')}
+              >
+                Companion Collection
+              </button>
             </div>
           </div>
-        {/key}
-        <p class="time-context">
-          Last check-in: {activeEffective?.msSinceCheckIn == null ? formatElapsed(lastInteractionAt(activeCompanion)) : formatLastCareLabel(activeEffective.msSinceCheckIn)}
-        </p>
-        <div class="relationship-copy">
-          <p class="relationship-copy__title">{relationshipState.title}</p>
-          <p>{relationshipState.body}</p>
-        </div>
-
-        <section class="identity-map" aria-label={`${activeCompanion.name} identity map`}>
-          <div class="identity-map__head">
-            <span class="identity-map__label">Identity map</span>
-            <strong>What {activeCompanion.name} is carrying right now</strong>
-          </div>
-          <div class="identity-map__grid">
-            {#each activeIdentitySignals as signal}
-              <a class="identity-signal" href={signal.href}>
-                <span>{signal.label}</span>
-                <strong>{signal.title}</strong>
-                <p>{signal.body}</p>
-              </a>
-            {/each}
-          </div>
-        </section>
-
-        <div class={`era-panel era-panel--${activeEra.tone}`}>
-          <span class="era-panel__label">{activeEra.label}</span>
-          <strong>{activeEra.title}</strong>
-          <p>{activeEra.body}</p>
-        </div>
-
-        <div class={`era-action era-action--${activeEra.tone}`}>
-          <span class="era-action__label">Era guidance</span>
-          <strong>{activeEraAction.title}</strong>
-          <p>{activeEraAction.body}</p>
-          <div class="era-action__links">
-            <a class="era-action__link" href={activeEraAction.primaryHref}>{activeEraAction.primaryLabel}</a>
-            <a class="era-action__link era-action__link--ghost" href={activeEraAction.secondaryHref}>
-              {activeEraAction.secondaryLabel}
-            </a>
+          <div class="mobile-actions">
+            <button type="button" class="soft-button" on:click={refreshRoster} disabled={loading}>
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
           </div>
         </div>
 
-        {#if subscriptionActive}
-          <div class={`premium-presence premium-presence--${activeKeepsakeTone ?? 'bond'}`}>
-            <span class="premium-presence__label">Sanctuary+ presence</span>
-            <strong>{activeCompanion.name}'s shelf is carrying extra depth</strong>
-            <p>
-              Premium atmosphere is extending this companion’s keepsake tone through the shelf, model glow, and sanctuary framing without changing the core bond loop.
-            </p>
-            {#if premiumStyle}
-              <span class="premium-presence__style">{premiumStyle.replace(/_/g, ' ')}</span>
-            {/if}
-          </div>
+        {#if switchMessage}
+          <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
         {/if}
 
-        <div class="pulse-grid" aria-label="Active companion pulse">
-          <article class="pulse-card">
-            <span class="pulse-card__label">Care state</span>
-            <strong>{activeCareStatus}</strong>
-            <span>{activeMoodLabel}</span>
+        <section class="stats-grid" aria-label="Companion overview">
+          <article class="stat-card">
+            <span class="stat-orb stat-orb--blue"><Shield size={24} /></span>
+            <strong>{ownedInstances.length}</strong>
+            <span>Active Companions</span>
           </article>
-          <article class="pulse-card">
-            <span class="pulse-card__label">Last moment</span>
-            <strong>{activeCareCadence}</strong>
-            <span>Come back often to keep the bond warm.</span>
+          <article class="stat-card">
+            <span class="stat-orb stat-orb--gold"><Sparkles size={24} /></span>
+            <strong>{ownedInstances.length + discoverEntries.length}</strong>
+            <span>Companions Collected</span>
           </article>
-          <article class="pulse-card">
-            <span class="pulse-card__label">Bond strength</span>
-            <strong>{activeBondLabel}</strong>
-            <span>{activeEffective?.energy ?? activeCompanion.energy ?? 0} Spark available right now</span>
+          <article class="stat-card">
+            <span class="stat-orb stat-orb--heart"><Heart size={24} fill="currentColor" /></span>
+            <strong>{averageBond}%</strong>
+            <span>Average Bond</span>
           </article>
-        </div>
+          <article class="stat-card">
+            <span class="stat-orb stat-orb--violet"><Gem size={24} /></span>
+            <strong>Lvl {masteryLevel}</strong>
+            <span>Companion Mastery</span>
+          </article>
+        </section>
 
-        <div class="view-actions" aria-label="Active companion actions">
-          <button type="button" class="care-primary" on:click={() => openCareModal(activeCompanion)}>
-            Check in with {activeCompanion.name}
-          </button>
-          <a class="secondary-link" href={activeCompanionJournalHref}>Open journal</a>
-          <a class="secondary-link" href={activeCompanionSanctuaryHref}>Go to sanctuary</a>
-        </div>
-
-        <div
-          class="active-keepsakes"
-          aria-label="Active companion keepsakes"
-          data-keepsake-tone={activeKeepsake ? activeKeepsakeTone : null}
-          data-premium={subscriptionActive ? 'true' : 'false'}
-        >
-          <div class="panel-title-row">
-            <h2>Keepsakes</h2>
-            <p>{activeChapterRewards.length > 0 ? 'Earned through your recent companion chapters.' : 'Chapter keepsakes will gather here as the bond deepens.'}</p>
-          </div>
-          {#if activeChapterHistory.length > 0}
-            <div class="chapter-history-strip" aria-label="Recent chapter openings">
-              {#each activeChapterHistory.slice(0, 3) as entry (entry.id)}
-                <article class="chapter-history-strip__item">
-                  <strong>{entry.title}</strong>
-                  <span>{entry.createdAt ? formatElapsed(entry.createdAt) : 'Recently opened'}</span>
-                </article>
-              {/each}
-            </div>
-          {/if}
-          {#if activeShelfRewards.length > 0}
-            <div class="keepsake-shelf" aria-label="Companion keepsake shelf">
-              {#each activeShelfRewards as reward (reward.rewardKey)}
-                <div class={`keepsake-shelf__item keepsake-shelf__item--${reward.tone ?? 'bond'} ${isFeaturedKeepsake(reward) ? 'is-featured' : ''}`}>
-                  <span class="keepsake-shelf__label">{isFeaturedKeepsake(reward) ? 'Featured' : 'Shelf'}</span>
-                  <strong>{reward.title}</strong>
-                </div>
-              {/each}
-            </div>
-          {/if}
-          {#if activeChapterRewards.length > 0}
-            <div class="switcher-grid">
-              {#each activeChapterRewards as reward (reward.rewardKey)}
-                <article class="switcher-item">
-                  <div class="switcher-item__head">
-                    <div>
-                      <strong>{reward.title}</strong>
-                      <span>{reward.tone ?? 'bond'} keepsake</span>
-                    </div>
-                    {#if isFeaturedKeepsake(reward)}
-                      <span class="status-chip status-chip--active">Featured</span>
-                    {/if}
-                  </div>
-                  <p class="switcher-item__meta">{reward.body}</p>
-                  <div class="switcher-item__foot">
-                    <span class="switcher-item__time">
-                      {reward.unlockedAt ? `Unlocked ${formatElapsed(reward.unlockedAt)}` : 'Unlocked recently'}
-                    </span>
-                    <button
-                      type="button"
-                      class="keepsake-feature"
-                      disabled={keepsakeSaving || isFeaturedKeepsake(reward)}
-                      on:click={() => {
-                        void featureKeepsake(reward);
-                      }}
-                    >
-                      {isFeaturedKeepsake(reward) ? 'Featured' : 'Feature on profile'}
-                    </button>
-                  </div>
-                </article>
-              {/each}
-            </div>
-            {#if keepsakeError}
-              <p class="empty-copy" role="alert">{keepsakeError}</p>
-            {/if}
-          {:else}
-            <p class="empty-copy">No keepsakes unlocked for this companion yet.</p>
-          {/if}
-        </div>
-
-        <div class="meter-stack" aria-label="Companion instance stats">
-          <div class="meter-row">
-            <div class="meter-row__label"><span>Affection</span><span>{activeEffective?.affection ?? activeCompanion.affection}</span></div>
-            <div class="meter-track meter-track--affection">
-              <span
-                class="meter-fill"
-                style={`width:${Math.max(0, Math.min(100, activeEffective?.affection ?? activeCompanion.affection ?? 0))}%`}
-              ></span>
-            </div>
-          </div>
-          <div class="meter-row">
-            <div class="meter-row__label"><span>Trust</span><span>{activeEffective?.trust ?? activeCompanion.trust}</span></div>
-            <div class="meter-track meter-track--trust">
-              <span
-                class="meter-fill"
-                style={`width:${Math.max(0, Math.min(100, activeEffective?.trust ?? activeCompanion.trust ?? 0))}%`}
-              ></span>
-            </div>
-          </div>
-          <div class="meter-row">
-            <div class="meter-row__label"><span>Spark</span><span>{activeEffective?.energy ?? activeCompanion.energy}</span></div>
-            <div class="meter-track meter-track--energy">
-              <span
-                class="meter-fill"
-                style={`width:${Math.max(0, Math.min(100, activeEffective?.energy ?? activeCompanion.energy ?? 0))}%`}
-              ></span>
-            </div>
-          </div>
-        </div>
-      {:else}
-        <h2 id="companion-view-heading">Companion View</h2>
-        <p class="time-context">Last check-in: Not yet</p>
-        <div class="relationship-copy">
-          <p class="relationship-copy__title">{relationshipState.title}</p>
-          <p>{relationshipState.body}</p>
-        </div>
-      {/if}
-    </div>
-
-    <div class="companion-view__model" aria-hidden="true">
-      {#if !selectedForCare}
-        {#key activeCompanion?.id ?? 'none'}
-          <MuseModel
-            bind:this={museHostRef}
-            size="240px"
-            autoplay
-            respectReducedMotion={false}
-            animationName={museAnimation}
-            poster={undefined}
-            cameraTarget={undefined}
-            preserveDrawingBuffer
-            auraColor={activeCosmetics.auraColor}
-            glowIntensity={activeCosmetics.glowIntensity}
-          />
-        {/key}
-      {/if}
-    </div>
-  </section>
-
-  {#if ownedInstances.length > 0}
-    <section class="mobile-switch-rail" aria-label="Quick companion switching">
-      <div class="panel-title-row">
-        <h2>Quick switch</h2>
-        <p>Swipe through your active roster and tap to bring one closer.</p>
-      </div>
-
-      <div class="mobile-switch-rail__track">
-        {#each ownedInstances as instance (instance.id)}
-          <button
-            type="button"
-            class={`mobile-switch-pill ${activeCompanion?.id === instance.id ? 'is-active' : ''}`}
-            disabled={setActiveBusyId !== null}
-            on:click={() => {
-              void activateCompanion(instance.id);
-            }}
-          >
-            <span class="mobile-switch-pill__name">{instance.name}</span>
-            <span class="mobile-switch-pill__meta">
-              {effectiveById.get(instance.id)?.moodLabel ?? getCompanionMoodMeta(instance.mood).label}
-            </span>
-          </button>
-        {/each}
-      </div>
-    </section>
-  {/if}
-
-  <section class="switcher" aria-label="Companion switcher">
-    <div class="panel-title-row">
-      <h2>Switcher</h2>
-      <p>Quickly choose who is with you right now.</p>
-    </div>
-
-    {#if ownedInstances.length === 0}
-      <p class="empty-copy">No companions yet. Your switcher will appear here after your first companion joins you.</p>
-    {:else}
-      <div class="switcher-grid">
-        {#each ownedInstances as instance (instance.id)}
-          <button
-            type="button"
-            class={`switcher-item ${activeCompanion?.id === instance.id ? 'is-active' : ''}`}
-            data-switcher-item="true"
-            disabled={setActiveBusyId !== null}
-            on:click={() => {
-              void activateCompanion(instance.id);
-            }}
-          >
-            <div>
-              <p class="switcher-item__name">{instance.name} · {cleanArchetype(instance.species)}</p>
-              <p class="switcher-item__meta">Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
-            </div>
-            <div class="switcher-item__right">
-              <span class={`status-chip status-chip--${statusLabel(instance, activeCompanion?.id === instance.id).toLowerCase().replace(/\s+/g, '-')}`}>
-                {statusLabel(instance, activeCompanion?.id === instance.id)}
-              </span>
-              <span class="mood-chip">{effectiveById.get(instance.id)?.moodLabel ?? getCompanionMoodMeta(instance.mood).label}</span>
-            </div>
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </section>
-
-  <section class="tabbed-list" aria-label="Companion lists">
-    <div class="tabs-row" role="tablist" aria-label="Companion tabs">
-      <button
-        class={`tab ${activeTab === 'owned' ? 'is-active' : ''}`}
-        role="tab"
-        aria-selected={activeTab === 'owned'}
-        on:click={() => (activeTab = 'owned')}
-      >
-        Your Companions
-      </button>
-      <button
-        class={`tab ${activeTab === 'discover' ? 'is-active' : ''}`}
-        role="tab"
-        aria-selected={activeTab === 'discover'}
-        on:click={() => (activeTab = 'discover')}
-      >
-        Discover
-      </button>
-    </div>
-
-    <div class="filters-grid" aria-label="Companion filters">
-      <label class="filter-field">
-        <span>Search</span>
-        <input
-          type="search"
-          placeholder={activeTab === 'owned' ? 'Search by name or archetype' : 'Search archetypes'}
-          bind:value={filters.search}
-        />
-      </label>
-      <label class="filter-field">
-        <span>Archetype</span>
-        <select bind:value={filters.archetype}>
-          <option value="all">All</option>
-          {#each archetypeOptions as archetype}
-            <option value={archetype}>{archetype}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Mood</span>
-        <select bind:value={filters.mood} disabled={activeTab === 'discover'}>
-          <option value="all">All</option>
-          {#each moodOptions as mood}
-            <option value={mood}>{mood}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="filter-field">
-        <span>Sort</span>
-        <select bind:value={filters.sort}>
-          <option value="bond_desc">Bond level</option>
-          <option value="recent_interaction">Recently interacted</option>
-          <option value="energy_desc">Spark</option>
-          <option value="name_asc">Name</option>
-        </select>
-      </label>
-    </div>
-
-    {#if activeTab === 'owned'}
-      {#if filteredOwned.length === 0}
-        <p class="empty-copy">No companions match this filter yet.</p>
-      {:else}
-        <div class="list-grid">
-          {#each filteredOwned as instance (instance.id)}
-            <article class={`list-card ${activeCompanion?.id === instance.id ? 'is-active' : ''}`} data-owned-row="true">
-              <div>
-                <h3>{instance.name} · {cleanArchetype(instance.species)}</h3>
-                <p>Last check-in {formatElapsed(lastInteractionAt(instance))}</p>
-                <p>Bond level {getBondLevel(instance)}</p>
-                <p class="discover-meta">
-                  Hook {archetypeMetadataByCompanionId[instance.id]?.renderHook ?? 'muse_core'}
-                </p>
-              </div>
-              <div class="list-card__actions">
-                <span class="status-chip">{statusLabel(instance, activeCompanion?.id === instance.id)}</span>
+        {#if activeTab === 'owned'}
+          <section class="companion-grid" aria-label="My companions">
+            {#if filteredOwned.length === 0}
+              <p class="empty-copy">No companions match this filter yet.</p>
+            {:else}
+              {#each filteredOwned as instance, index (instance.id)}
                 <button
                   type="button"
-                  class="inline-action"
-                  disabled={setActiveBusyId !== null || activeCompanion?.id === instance.id}
+                  class={`roster-card ${activeCompanion?.id === instance.id ? 'is-active' : ''}`}
+                  data-tone={companionTone(instance, index)}
                   on:click={() => {
                     void activateCompanion(instance.id);
                   }}
+                  on:dblclick={() => openCareModal(instance)}
                 >
-                  {activeCompanion?.id === instance.id ? 'Active' : setActiveBusyId === instance.id ? 'Setting...' : 'Set active'}
+                  {#if activeCompanion?.id === instance.id}
+                    <span class="active-badge">Active</span>
+                  {/if}
+                  <span class="favorite-star" aria-hidden="true"><Star size={18} fill="currentColor" /></span>
+                  <div class="avatar-stage">
+                    <img src={instance.avatar_url ?? '/avatar-fallback.png'} alt="" loading="lazy" />
+                  </div>
+                  <div class="roster-copy">
+                    <strong>{instance.name}</strong>
+                    <span>Level {companionLevel(instance)}</span>
+                  </div>
+                  <div class="roster-foot">
+                    <div class="element-dots" aria-hidden="true">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <span class="bond-mini"><Heart size={14} fill="currentColor" /> {companionBondScore(instance)}%</span>
+                  </div>
                 </button>
-              </div>
-            </article>
-          {/each}
-        </div>
-      {/if}
-    {:else}
-      {#if filteredDiscover.length === 0}
-        <p class="empty-copy">No discoveries match this filter yet.</p>
-      {:else}
-        <div class="list-grid discover-grid">
-          {#each filteredDiscover as entry (entry.key)}
-            <button
-              type="button"
-              class={`list-card discover-card ${entry.locked ? 'discover-card--locked' : ''}`}
-              data-discover-row="true"
-              on:click={() => {
-                discoverModal = entry;
-              }}
-            >
-              <div>
-                <h3>{entry.name} {#if entry.locked}<span class="discover-lock">Locked</span>{/if}</h3>
-                <p>{entry.description}</p>
-                <p class="discover-meta">Render hook: {entry.renderHook}</p>
-              </div>
-              <span class="inline-action">{entry.locked ? 'Preview' : 'View details'}</span>
+              {/each}
+            {/if}
+
+            <button type="button" class="summon-card" on:click={handleUnlockCta}>
+              <span><Plus size={32} /></span>
+              <strong>Summon</strong>
+              <small>New Companion</small>
             </button>
-          {/each}
-        </div>
-      {/if}
-    {/if}
-  </section>
+          </section>
+        {:else}
+          <section class="collection-grid" aria-label="Companion collection">
+            {#if filteredDiscover.length === 0}
+              <p class="empty-copy">No discoveries match this filter yet.</p>
+            {:else}
+              {#each filteredDiscover as entry (entry.key)}
+                <button type="button" class="collection-card" on:click={() => (discoverModal = entry)}>
+                  <span class="stat-orb stat-orb--violet"><Sparkles size={24} /></span>
+                  <strong>{entry.name}</strong>
+                  <p>{entry.description}</p>
+                  <small>{entry.locked ? 'Locked preview' : 'View details'}</small>
+                </button>
+              {/each}
+            {/if}
+          </section>
+        {/if}
 
-  {#if rosterError}
-    <p class="error-banner" role="alert">{rosterError}</p>
-  {/if}
+        <section class="slots-panel">
+          <div>
+            <strong>Companion Slots</strong>
+            <span>{slotsUsed}/{maxSlots}</span>
+          </div>
+          <div class="slot-meter" aria-hidden="true"><span style={`width:${slotsPercent}%`}></span></div>
+          <button type="button" class="upgrade-button" on:click={handleUnlockCta}>
+            <img src="/assets/shard_icon.png" alt="" />
+            Upgrade Slots
+          </button>
+        </section>
+      </div>
 
-  <section class="bond-milestones-panel">
-    <h2>Daily rituals</h2>
-    <CompanionRitualList rituals={$companionRitualsStore} emptyCopy="Pick an active companion to begin daily rituals." />
-  </section>
+      <aside class="detail-panel" aria-label="Active companion details">
+        {#if detailCompanion}
+          <div class="detail-head">
+            <div>
+              <h2>{detailCompanion.name}</h2>
+              <span>Level {companionLevel(detailCompanion)}</span>
+            </div>
+            <button type="button" class="edit-button" aria-label={`Edit ${detailCompanion.name}`} on:click={() => openCareModal(detailCompanion)}>
+              <Pencil size={15} />
+            </button>
+          </div>
+          <p class="rarity-row"><img src="/assets/shard_icon.png" alt="" /> {detailCompanion.rarity ?? 'Epic'}</p>
+          <div class="detail-model">
+            <MuseModel
+              bind:this={museHostRef}
+              size="250px"
+              autoplay
+              respectReducedMotion={false}
+              animationName={museAnimation}
+              poster={undefined}
+              cameraTarget={undefined}
+              auraColor={activeCosmetics.auraColor}
+              glowIntensity={activeCosmetics.glowIntensity}
+            />
+          </div>
+          <div class="mood-row">
+            <span><Smile size={23} fill="currentColor" /> {getCompanionMoodMeta(detailCompanion.mood).label}</span>
+          </div>
+          <div class="bond-row">
+            <div><Heart size={22} fill="currentColor" /> <span>Bond</span></div>
+            <strong>{companionBondScore(detailCompanion)}%</strong>
+          </div>
+          <div class="bond-meter"><span style={`width:${companionBondScore(detailCompanion)}%`}></span></div>
 
-  <section class="bond-milestones-panel" aria-label="Bond milestones">
-    <h2>Bond milestones</h2>
-    <BondMilestonesPanel milestones={bondMilestones} />
-  </section>
-</main>
-</SanctuaryPageFrame>
+          <div class="detail-tabs" aria-label="Companion detail sections">
+            <button class="is-active" type="button">Overview</button>
+            <button type="button">Skills</button>
+            <button type="button">Growth</button>
+            <button type="button">Story</button>
+          </div>
+
+          <div class="detail-section">
+            <span>Element</span>
+            <strong><Gem size={18} /> {companionElement(detailCompanion)}</strong>
+          </div>
+          <div class="detail-section">
+            <span>Personality</span>
+            <div class="tag-row">
+              {#each companionPersonality(detailCompanion) as trait}
+                <b>{trait}</b>
+              {/each}
+            </div>
+          </div>
+          <div class="detail-section">
+            <span>Favorite Gifts</span>
+            <div class="gift-row">
+              {#each giftIcons as icon}
+                <button type="button" aria-label="Favorite gift"><img src={icon} alt="" /></button>
+              {/each}
+            </div>
+          </div>
+          <div class="detail-actions">
+            <button type="button" class="primary-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
+            <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
+          </div>
+          <p class="active-note"><span></span> {activeCompanion?.id === detailCompanion.id ? 'Active Companion' : 'Ready to activate'}</p>
+        {:else}
+          <div class="empty-detail">
+            <Sparkles size={36} />
+            <h2>No companion yet</h2>
+            <p>Your first companion details will appear here once the bond begins.</p>
+            <button type="button" class="primary-action" on:click={handleUnlockCta}>Summon companion</button>
+          </div>
+        {/if}
+      </aside>
+    </section>
+  </main>
+</div>
+
 
 <CompanionModal
   open={Boolean(selectedForCare)}
@@ -1500,1249 +1367,755 @@
 {/if}
 
 <style>
-  .companions-page {
-    width: min(100%, 1440px);
-    margin: 0 auto;
-    padding: clamp(1.05rem, 2.4vw, 2.1rem);
+  .companions-fantasy-shell {
     display: grid;
-    gap: 1.55rem;
-    border-radius: 1.4rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
+    grid-template-columns: 14.25rem minmax(0, 1fr);
+    min-height: 100vh;
     background:
-      linear-gradient(165deg, rgba(18, 24, 31, 0.74), rgba(9, 13, 18, 0.88)),
-      radial-gradient(circle at 82% 2%, rgba(210, 173, 97, 0.12), transparent 50%);
-    box-shadow: 0 28px 54px rgba(5, 10, 18, 0.34);
+      radial-gradient(circle at 80% 8%, rgba(87, 70, 205, 0.22), transparent 36rem),
+      radial-gradient(circle at 44% 100%, rgba(125, 66, 210, 0.16), transparent 36rem),
+      linear-gradient(180deg, #08091a 0%, #060716 100%);
+    color: rgba(248, 246, 255, 0.94);
   }
 
-  .companions-header {
+  .companions-workspace {
+    min-width: 0;
+    padding: 1.5rem 1.25rem 1.75rem 1.85rem;
+  }
+
+  .topbar,
+  .topbar-controls,
+  .title-row,
+  .detail-head,
+  .bond-row,
+  .slots-panel,
+  .tabs-row {
     display: flex;
+    align-items: center;
+  }
+
+  .topbar {
     gap: 1rem;
     justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    margin-bottom: 1.85rem;
   }
 
-  .header-pills {
+  .search-field {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.62rem;
-    justify-content: flex-end;
-  }
-
-  .pill {
-    border: 1px solid rgba(202, 220, 244, 0.34);
-    border-radius: 999px;
-    padding: 0.54rem 0.96rem;
-    font-size: 0.92rem;
-    background: rgba(27, 41, 86, 0.5);
-    color: rgba(244, 248, 255, 0.92);
-    transition: border-color 220ms var(--san-ease-out), transform 220ms var(--san-ease-out);
-  }
-
-  .pill-action {
-    cursor: pointer;
-  }
-
-  .pill-action:hover,
-  .pill-action:focus-visible {
-    border-color: rgba(230, 238, 250, 0.58);
-    transform: translateY(-1px);
-    outline: none;
-  }
-
-  .switch-message {
-    margin: 0;
-    border-radius: 16px;
-    border: 1px solid rgba(214, 190, 141, 0.26);
-    background: rgba(31, 25, 17, 0.58);
-    padding: 0.72rem 0.95rem;
-    color: rgba(244, 234, 214, 0.92);
-  }
-
-  .companion-view,
-  .mobile-switch-rail,
-  .switcher,
-  .tabbed-list,
-  .bond-milestones-panel {
-    border-radius: 1.35rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background:
-      linear-gradient(158deg, rgba(18, 24, 31, 0.92), rgba(10, 14, 18, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(210, 173, 97, 0.12), transparent 46%);
-    box-shadow: 0 18px 40px rgba(7, 13, 24, 0.34);
-    padding: clamp(1.05rem, 2.1vw, 1.45rem);
-  }
-
-  .companion-view {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .companion-view[data-keepsake-tone='care'] {
-    background:
-      linear-gradient(158deg, rgba(16, 28, 31, 0.92), rgba(10, 18, 20, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(118, 198, 160, 0.18), transparent 46%);
-  }
-
-  .companion-view[data-keepsake-tone='social'] {
-    background:
-      linear-gradient(158deg, rgba(35, 24, 28, 0.92), rgba(18, 13, 15, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(220, 150, 115, 0.2), transparent 46%);
-  }
-
-  .companion-view[data-keepsake-tone='mission'] {
-    background:
-      linear-gradient(158deg, rgba(19, 23, 33, 0.92), rgba(10, 14, 18, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(221, 180, 93, 0.18), transparent 46%);
-  }
-
-  .companion-view[data-keepsake-tone='play'] {
-    background:
-      linear-gradient(158deg, rgba(18, 27, 34, 0.92), rgba(10, 15, 19, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(121, 208, 214, 0.18), transparent 46%);
-  }
-
-  .companion-view[data-keepsake-tone='bond'] {
-    background:
-      linear-gradient(158deg, rgba(24, 23, 33, 0.92), rgba(11, 13, 18, 0.92)),
-      radial-gradient(circle at 80% -4%, rgba(214, 190, 141, 0.16), transparent 46%);
-  }
-
-  .eyebrow {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: rgba(215, 191, 143, 0.74);
-    font-size: 0.82rem;
-  }
-
-  .view-title-block h2 {
-    margin: 0.55rem 0 0;
-    font-family: var(--san-font-display);
-    font-size: clamp(1.78rem, 3.1vw, 2.32rem);
-    letter-spacing: -0.015em;
-  }
-
-  .view-chips {
-    margin-top: 0.7rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-  }
-
-  .chip {
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.22);
-    padding: 0.28rem 0.72rem;
-    font-size: 0.8rem;
-    background: rgba(52, 40, 20, 0.28);
-  }
-
-  .chip--evolution {
-    border-color: rgba(214, 190, 141, 0.42);
-    background: rgba(214, 190, 141, 0.12);
-    color: rgba(248, 238, 214, 0.96);
-  }
-
-  .chip--hook {
-    border-color: rgba(128, 175, 148, 0.34);
-    background: rgba(128, 175, 148, 0.12);
-    color: rgba(221, 237, 224, 0.95);
-  }
-
-  .chip--keepsake {
-    color: rgba(250, 244, 226, 0.96);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  }
-
-  .chip--care {
-    border-color: rgba(132, 214, 179, 0.42);
-    background: rgba(82, 156, 126, 0.16);
-  }
-
-  .chip--social {
-    border-color: rgba(233, 162, 122, 0.42);
-    background: rgba(175, 91, 69, 0.16);
-  }
-
-  .chip--mission {
-    border-color: rgba(222, 186, 103, 0.44);
-    background: rgba(165, 122, 53, 0.16);
-  }
-
-  .chip--play {
-    border-color: rgba(124, 220, 224, 0.42);
-    background: rgba(79, 154, 179, 0.16);
-  }
-
-  .chip--bond {
-    border-color: rgba(214, 190, 141, 0.42);
-    background: rgba(214, 190, 141, 0.12);
-  }
-
-  .chip--premium {
-    border-color: rgba(255, 228, 170, 0.42);
-    background: rgba(255, 236, 198, 0.12);
-    color: rgba(255, 246, 228, 0.98);
-    box-shadow: 0 0 0 1px rgba(255, 242, 214, 0.05) inset;
-  }
-
-  .time-context {
-    margin: 0.7rem 0 0;
-    color: rgba(223, 209, 179, 0.78);
-  }
-
-  .relationship-copy {
-    margin-top: 0.7rem;
-  }
-
-  .relationship-copy__title {
-    margin: 0;
-    font-weight: 600;
-    color: rgba(247, 241, 228, 0.96);
-  }
-
-  .relationship-copy p {
-    margin: 0.25rem 0 0;
-    color: rgba(223, 215, 200, 0.84);
-  }
-
-  .identity-map {
-    margin-top: 0.85rem;
-    border-radius: 1.05rem;
-    border: 1px solid rgba(126, 194, 185, 0.18);
-    background:
-      linear-gradient(180deg, rgba(16, 28, 31, 0.62), rgba(10, 15, 18, 0.8)),
-      radial-gradient(circle at top left, rgba(126, 194, 185, 0.12), transparent 54%);
-    padding: 0.9rem;
-    display: grid;
-    gap: 0.72rem;
-  }
-
-  .identity-map__head {
-    display: grid;
-    gap: 0.2rem;
-  }
-
-  .identity-map__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(142, 219, 206, 0.78);
-  }
-
-  .identity-map__head strong {
-    color: rgba(248, 241, 227, 0.97);
-    font-size: 0.96rem;
-    line-height: 1.3;
-  }
-
-  .identity-map__grid {
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .identity-signal {
-    min-height: 7.4rem;
-    border-radius: 0.9rem;
-    border: 1px solid rgba(126, 194, 185, 0.14);
-    background: rgba(126, 194, 185, 0.07);
-    color: inherit;
-    text-decoration: none;
-    padding: 0.74rem;
-    display: grid;
-    align-content: start;
-    gap: 0.18rem;
-  }
-
-  .identity-signal span {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(142, 219, 206, 0.72);
-  }
-
-  .identity-signal strong {
-    color: rgba(248, 241, 227, 0.96);
-    font-size: 0.84rem;
-    line-height: 1.25;
-  }
-
-  .identity-signal p {
-    margin: 0;
-    color: rgba(224, 214, 192, 0.78);
-    font-size: 0.78rem;
-    line-height: 1.42;
-  }
-
-  .era-panel {
-    margin-top: 0.85rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    padding: 0.9rem;
-    display: grid;
-    gap: 0.22rem;
-    background: rgba(28, 22, 16, 0.5);
-  }
-
-  .era-panel__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(225, 210, 176, 0.74);
-  }
-
-  .era-panel strong {
-    color: rgba(248, 241, 227, 0.97);
-    font-size: 0.98rem;
-    line-height: 1.3;
-  }
-
-  .era-panel p {
-    margin: 0;
-    color: rgba(224, 214, 192, 0.82);
-    line-height: 1.5;
-  }
-
-  .era-panel--care {
-    border-color: rgba(132, 214, 179, 0.24);
-    background: rgba(21, 41, 36, 0.46);
-  }
-
-  .era-panel--social {
-    border-color: rgba(233, 162, 122, 0.24);
-    background: rgba(45, 27, 24, 0.46);
-  }
-
-  .era-panel--mission {
-    border-color: rgba(222, 186, 103, 0.24);
-    background: rgba(43, 33, 20, 0.46);
-  }
-
-  .era-panel--play {
-    border-color: rgba(124, 220, 224, 0.24);
-    background: rgba(20, 36, 45, 0.46);
-  }
-
-  .era-panel--bond {
-    border-color: rgba(214, 190, 141, 0.24);
-    background: rgba(35, 29, 22, 0.46);
-  }
-
-  .era-panel--quiet {
-    border-color: rgba(148, 163, 184, 0.2);
-    background: rgba(18, 24, 38, 0.42);
-  }
-
-  .era-action {
-    margin-top: 0.7rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    padding: 0.9rem;
-    display: grid;
-    gap: 0.3rem;
-    background:
-      linear-gradient(180deg, rgba(24, 20, 15, 0.74), rgba(11, 15, 18, 0.9)),
-      radial-gradient(circle at top left, rgba(214, 190, 141, 0.08), transparent 54%);
-  }
-
-  .era-action__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(225, 210, 176, 0.74);
-  }
-
-  .era-action strong {
-    color: rgba(248, 241, 227, 0.97);
-    font-size: 0.96rem;
-    line-height: 1.3;
-  }
-
-  .era-action p {
-    margin: 0;
-    color: rgba(224, 214, 192, 0.82);
-    line-height: 1.5;
-  }
-
-  .era-action__links {
-    margin-top: 0.45rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-  }
-
-  .era-action__link {
-    min-height: 2.2rem;
-    padding: 0 0.92rem;
-    border-radius: 999px;
-    display: inline-flex;
+    min-height: 3rem;
+    width: min(100%, 27rem);
     align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(214, 190, 141, 0.24);
-    background: rgba(214, 190, 141, 0.14);
-    color: rgba(251, 244, 229, 0.96);
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .era-action__link--ghost {
-    background: rgba(214, 190, 141, 0.06);
-  }
-
-  .era-action--care {
-    border-color: rgba(132, 214, 179, 0.22);
-  }
-
-  .era-action--social {
-    border-color: rgba(233, 162, 122, 0.22);
-  }
-
-  .era-action--mission {
-    border-color: rgba(222, 186, 103, 0.22);
-  }
-
-  .era-action--play {
-    border-color: rgba(124, 220, 224, 0.22);
-  }
-
-  .era-action--bond {
-    border-color: rgba(214, 190, 141, 0.24);
-  }
-
-  .era-action--quiet {
-    border-color: rgba(148, 163, 184, 0.2);
-  }
-
-  .premium-presence {
-    margin-top: 0.7rem;
+    gap: 0.75rem;
+    border: 1px solid rgba(153, 130, 236, 0.18);
     border-radius: 1rem;
-    border: 1px solid rgba(255, 231, 182, 0.22);
-    padding: 0.92rem;
-    display: grid;
-    gap: 0.24rem;
-    background:
-      linear-gradient(145deg, rgba(255, 239, 204, 0.08), rgba(18, 24, 31, 0.5)),
-      radial-gradient(circle at top right, rgba(255, 235, 188, 0.14), transparent 48%);
+    background: rgba(9, 10, 29, 0.78);
+    padding: 0 1rem;
+    color: rgba(198, 193, 226, 0.76);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
-  .premium-presence__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(249, 229, 188, 0.78);
-  }
-
-  .premium-presence strong {
-    color: rgba(255, 247, 230, 0.97);
-    font-size: 0.98rem;
-    line-height: 1.3;
-  }
-
-  .premium-presence p {
-    margin: 0;
-    color: rgba(232, 220, 197, 0.84);
-    line-height: 1.52;
-  }
-
-  .premium-presence__style {
-    display: inline-flex;
-    width: fit-content;
-    margin-top: 0.2rem;
-    padding: 0.22rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 235, 188, 0.18);
-    background: rgba(255, 239, 204, 0.08);
-    color: rgba(249, 229, 188, 0.84);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .pulse-grid {
-    margin-top: 0.95rem;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.68rem;
-  }
-
-  .pulse-card {
-    border-radius: 1rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background:
-      linear-gradient(180deg, rgba(29, 24, 17, 0.62), rgba(12, 16, 19, 0.86)),
-      radial-gradient(circle at top, rgba(214, 190, 141, 0.08), transparent 55%);
-    padding: 0.82rem;
-    display: grid;
-    gap: 0.18rem;
-  }
-
-  .pulse-card__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(215, 191, 143, 0.72);
-  }
-
-  .pulse-card strong {
-    color: rgba(248, 241, 227, 0.98);
-    font-size: 0.98rem;
-    line-height: 1.25;
-  }
-
-  .pulse-card span:last-child {
-    color: rgba(219, 208, 185, 0.76);
-    font-size: 0.78rem;
-    line-height: 1.4;
-  }
-
-  .view-actions {
-    margin-top: 0.9rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.62rem;
-  }
-
-  .care-primary {
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.34);
-    background: linear-gradient(125deg, rgba(212, 173, 92, 0.92), rgba(166, 121, 61, 0.92));
-    color: rgba(23, 17, 10, 0.96);
-    padding: 0.66rem 1.05rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 220ms var(--san-ease-out), box-shadow 220ms var(--san-ease-out);
-  }
-
-  .care-primary:hover,
-  .care-primary:focus-visible {
-    transform: translateY(-1px);
-    box-shadow: 0 12px 30px rgba(212, 173, 92, 0.24);
-    outline: none;
-  }
-
-  .secondary-link {
-    min-height: 2.5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(43, 33, 20, 0.24);
-    color: rgba(244, 235, 217, 0.94);
-    padding: 0 0.95rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-
-  .meter-stack {
-    margin-top: 0.95rem;
-    display: grid;
-    gap: 0.7rem;
-  }
-
-  .meter-row__label {
-    display: flex;
-    justify-content: space-between;
-    color: rgba(214, 224, 255, 0.88);
-    font-size: 0.88rem;
-    margin-bottom: 0.22rem;
-  }
-
-  .meter-track {
+  .search-field input,
+  .select-field select {
     width: 100%;
-    height: 11px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 999px;
+    border: 0;
+    background: transparent;
+    color: rgba(248, 246, 255, 0.9);
+    outline: 0;
+  }
+
+  .search-field input::placeholder {
+    color: rgba(205, 200, 230, 0.56);
+  }
+
+  .topbar-controls {
+    gap: 0.75rem;
+  }
+
+  .select-field,
+  .icon-button,
+  .shard-pill,
+  .profile-pill {
+    min-height: 2.75rem;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 0.95rem;
+    background: rgba(10, 11, 31, 0.78);
+    color: rgba(248, 246, 255, 0.88);
+    text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .select-field {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(7.2rem, 1fr) auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0 0.85rem;
+  }
+
+  .select-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
-  .meter-fill {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    transition: width 300ms ease;
+  .select-field select {
+    appearance: none;
+    cursor: pointer;
+    font-size: 0.86rem;
   }
 
-  .meter-track--affection .meter-fill {
-    background: linear-gradient(90deg, rgba(84, 224, 245, 0.95), rgba(151, 127, 255, 0.95));
+  .icon-button,
+  .profile-pill,
+  .shard-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .meter-track--trust .meter-fill {
-    background: linear-gradient(90deg, rgba(120, 232, 168, 0.95), rgba(47, 199, 118, 0.95));
+  .icon-button {
+    width: 2.75rem;
+    padding: 0;
   }
 
-  .meter-track--energy .meter-fill {
-    background: linear-gradient(90deg, rgba(246, 219, 134, 0.95), rgba(239, 143, 92, 0.95));
+  .icon-button:hover,
+  .profile-pill:hover,
+  .soft-button:hover,
+  .upgrade-button:hover,
+  .primary-action:hover,
+  .secondary-action:hover,
+  .summon-card:hover,
+  .roster-card:hover,
+  .collection-card:hover {
+    border-color: rgba(179, 113, 255, 0.55);
+    transform: translateY(-1px);
   }
 
-  .companion-view__model {
-    border-radius: 1.05rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background: radial-gradient(circle at center, rgba(214, 190, 141, 0.14), rgba(8, 12, 18, 0.9) 72%);
+  .shard-pill {
+    gap: 0.55rem;
+    min-width: 6.2rem;
+    padding: 0 0.9rem;
+    font-weight: 800;
+  }
+
+  .shard-pill img {
+    width: 1.18rem;
+    height: 1.18rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 0.45rem rgba(178, 83, 255, 0.75));
+  }
+
+  .profile-pill {
+    gap: 0.45rem;
+    padding: 0 0.42rem;
+  }
+
+  .profile-pill img,
+  .profile-pill span {
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 999px;
+  }
+
+  .profile-pill img {
+    object-fit: cover;
+  }
+
+  .profile-pill span {
     display: grid;
     place-items: center;
-    min-height: 260px;
+    background: linear-gradient(135deg, #ddaa5c, #a75cff);
+    font-weight: 900;
   }
 
-  @media (min-width: 720px) {
-    .identity-map__grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .companion-view[data-keepsake-tone='care'] .companion-view__model {
-    background: radial-gradient(circle at center, rgba(119, 204, 168, 0.2), rgba(8, 12, 18, 0.9) 72%);
-  }
-
-  .companion-view[data-keepsake-tone='social'] .companion-view__model {
-    background: radial-gradient(circle at center, rgba(227, 152, 120, 0.22), rgba(8, 12, 18, 0.9) 72%);
-  }
-
-  .companion-view[data-keepsake-tone='mission'] .companion-view__model {
-    background: radial-gradient(circle at center, rgba(219, 178, 88, 0.2), rgba(8, 12, 18, 0.9) 72%);
-  }
-
-  .companion-view[data-keepsake-tone='play'] .companion-view__model {
-    background: radial-gradient(circle at center, rgba(117, 216, 223, 0.22), rgba(8, 12, 18, 0.9) 72%);
-  }
-
-  .companion-view[data-keepsake-tone='bond'] .companion-view__model {
-    background: radial-gradient(circle at center, rgba(214, 190, 141, 0.18), rgba(8, 12, 18, 0.9) 72%);
-  }
-
-  .companion-view[data-premium='true'] {
-    box-shadow:
-      0 18px 40px rgba(7, 13, 24, 0.34),
-      0 0 0 1px rgba(255, 232, 186, 0.08) inset,
-      0 0 46px rgba(255, 227, 169, 0.08);
-  }
-
-  .companion-view[data-premium='true'] .companion-view__model {
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 233, 186, 0.08),
-      0 0 52px rgba(255, 227, 169, 0.1);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] {
-    box-shadow:
-      0 18px 42px rgba(58, 38, 12, 0.34),
-      0 0 0 1px rgba(255, 229, 172, 0.1) inset,
-      0 0 56px rgba(255, 219, 136, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] .companion-view__model,
-  .companion-view[data-premium='true'][data-premium-style='gilded_dawn'] .premium-presence {
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 229, 172, 0.08),
-      0 0 56px rgba(255, 219, 136, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='moon_glass'] {
-    box-shadow:
-      0 18px 42px rgba(15, 34, 58, 0.34),
-      0 0 0 1px rgba(183, 220, 238, 0.1) inset,
-      0 0 56px rgba(168, 205, 224, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='moon_glass'] .companion-view__model,
-  .companion-view[data-premium='true'][data-premium-style='moon_glass'] .premium-presence {
-    box-shadow:
-      inset 0 0 0 1px rgba(183, 220, 238, 0.08),
-      0 0 56px rgba(168, 205, 224, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] {
-    box-shadow:
-      0 18px 42px rgba(68, 24, 18, 0.34),
-      0 0 0 1px rgba(241, 170, 144, 0.1) inset,
-      0 0 56px rgba(236, 145, 113, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] .companion-view__model,
-  .companion-view[data-premium='true'][data-premium-style='ember_bloom'] .premium-presence {
-    box-shadow:
-      inset 0 0 0 1px rgba(241, 170, 144, 0.08),
-      0 0 56px rgba(236, 145, 113, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='tide_silk'] {
-    box-shadow:
-      0 18px 42px rgba(10, 48, 50, 0.34),
-      0 0 0 1px rgba(145, 226, 220, 0.1) inset,
-      0 0 56px rgba(122, 202, 196, 0.12);
-  }
-
-  .companion-view[data-premium='true'][data-premium-style='tide_silk'] .companion-view__model,
-  .companion-view[data-premium='true'][data-premium-style='tide_silk'] .premium-presence {
-    box-shadow:
-      inset 0 0 0 1px rgba(145, 226, 220, 0.08),
-      0 0 56px rgba(122, 202, 196, 0.12);
-  }
-
-  .panel-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .panel-title-row h2,
-  .bond-milestones-panel h2 {
-    margin: 0;
-    font-size: 1.18rem;
-  }
-
-  .panel-title-row p {
-    margin: 0;
-    color: rgba(221, 208, 183, 0.72);
-  }
-
-  .keepsake-shelf {
-    margin-top: 0.8rem;
+  .roster-layout {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem;
-  }
-
-  .chapter-history-strip {
-    margin-top: 0.8rem;
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .chapter-history-strip__item {
-    border-radius: 0.95rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background: rgba(24, 20, 15, 0.42);
-    padding: 0.75rem 0.8rem;
-    display: grid;
-    gap: 0.16rem;
-  }
-
-  .chapter-history-strip__item strong {
-    color: rgba(248, 241, 227, 0.96);
-    font-size: 0.84rem;
-    line-height: 1.35;
-  }
-
-  .chapter-history-strip__item span {
-    color: rgba(221, 208, 183, 0.72);
-    font-size: 0.75rem;
-  }
-
-  .keepsake-shelf__item {
-    border-radius: 0.95rem;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    padding: 0.72rem;
-    display: grid;
-    gap: 0.12rem;
-    background: rgba(24, 20, 15, 0.5);
-  }
-
-  .keepsake-shelf__item.is-featured {
-    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.24);
-  }
-
-  .active-keepsakes[data-premium='true'] .keepsake-shelf__item.is-featured {
-    box-shadow:
-      0 0 0 1px rgba(255, 230, 176, 0.3),
-      0 0 28px rgba(255, 222, 154, 0.08);
-  }
-
-  .keepsake-shelf__label {
-    font-size: 0.62rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(225, 210, 176, 0.72);
-  }
-
-  .keepsake-shelf__item strong {
-    color: rgba(248, 241, 227, 0.96);
-    font-size: 0.84rem;
-    line-height: 1.3;
-  }
-
-  .keepsake-shelf__item--care {
-    border-color: rgba(132, 214, 179, 0.24);
-    background: rgba(21, 41, 36, 0.48);
-  }
-
-  .keepsake-shelf__item--social {
-    border-color: rgba(233, 162, 122, 0.24);
-    background: rgba(45, 27, 24, 0.48);
-  }
-
-  .keepsake-shelf__item--mission {
-    border-color: rgba(222, 186, 103, 0.24);
-    background: rgba(43, 33, 20, 0.48);
-  }
-
-  .keepsake-shelf__item--play {
-    border-color: rgba(124, 220, 224, 0.24);
-    background: rgba(20, 36, 45, 0.48);
-  }
-
-  .keepsake-shelf__item--bond {
-    border-color: rgba(214, 190, 141, 0.24);
-    background: rgba(35, 29, 22, 0.48);
-  }
-
-  .mobile-switch-rail__track {
-    margin-top: 0.8rem;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(9rem, 1fr);
-    gap: 0.65rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
-    scroll-snap-type: x proximity;
-  }
-
-  .mobile-switch-pill {
-    border-radius: 1rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background:
-      linear-gradient(180deg, rgba(29, 24, 17, 0.62), rgba(12, 16, 19, 0.84)),
-      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 55%);
-    color: rgba(245, 238, 224, 0.96);
-    min-height: 4.6rem;
-    padding: 0.8rem;
-    display: grid;
-    align-content: start;
-    gap: 0.25rem;
-    text-align: left;
-    scroll-snap-align: start;
-  }
-
-  .mobile-switch-pill.is-active {
-    border-color: rgba(214, 190, 141, 0.42);
-    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
-  }
-
-  .mobile-switch-pill__name {
-    font-weight: 700;
-    font-size: 0.92rem;
-  }
-
-  .mobile-switch-pill__meta {
-    color: rgba(219, 208, 185, 0.74);
-    font-size: 0.78rem;
-  }
-
-  .switcher-grid {
-    margin-top: 0.8rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 0.7rem;
-  }
-
-  .active-keepsakes[data-keepsake-tone='care'] .switcher-item {
-    border-color: rgba(132, 214, 179, 0.22);
-    background: rgba(18, 35, 31, 0.62);
-  }
-
-  .active-keepsakes[data-keepsake-tone='social'] .switcher-item {
-    border-color: rgba(233, 162, 122, 0.22);
-    background: rgba(39, 24, 22, 0.62);
-  }
-
-  .active-keepsakes[data-keepsake-tone='mission'] .switcher-item {
-    border-color: rgba(222, 186, 103, 0.22);
-    background: rgba(36, 28, 17, 0.62);
-  }
-
-  .active-keepsakes[data-keepsake-tone='play'] .switcher-item {
-    border-color: rgba(124, 220, 224, 0.22);
-    background: rgba(18, 31, 39, 0.62);
-  }
-
-  .active-keepsakes[data-keepsake-tone='bond'] .switcher-item {
-    border-color: rgba(214, 190, 141, 0.22);
-    background: rgba(24, 20, 15, 0.62);
-  }
-
-  .switcher-item {
-    border-radius: 0.96rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background: rgba(24, 20, 15, 0.62);
-    color: rgba(243, 237, 226, 0.95);
-    padding: 0.75rem 0.85rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.8rem;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .switcher-item.is-active {
-    border-color: rgba(214, 190, 141, 0.52);
-    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
-  }
-
-  .switcher-item__name {
-    margin: 0;
-    font-weight: 600;
-  }
-
-  .switcher-item__meta {
-    margin: 0.2rem 0 0;
-    font-size: 0.86rem;
-    color: rgba(219, 208, 185, 0.75);
-  }
-
-  .switcher-item__head {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
+    gap: 1.55rem;
     align-items: start;
   }
 
-  .switcher-item__foot {
-    display: flex;
+  .roster-main {
+    min-width: 0;
+  }
+
+  .title-row {
     justify-content: space-between;
-    gap: 0.75rem;
-    align-items: center;
-    margin-top: 0.65rem;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(153, 130, 236, 0.16);
+    padding-bottom: 0.9rem;
   }
 
-  .keepsake-feature {
-    min-height: 2rem;
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.2);
-    background: rgba(214, 190, 141, 0.12);
-    color: rgba(248, 241, 227, 0.94);
-    padding: 0 0.8rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-  }
-
-  .keepsake-feature:disabled {
-    opacity: 0.7;
-  }
-
-  .switcher-item__right {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    align-items: flex-end;
-  }
-
-  .status-chip,
-  .mood-chip {
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    padding: 0.2rem 0.64rem;
-    font-size: 0.75rem;
-    background: rgba(43, 33, 20, 0.24);
-    white-space: nowrap;
+  .title-row h1 {
+    margin: 0 0 0.85rem;
+    font-size: clamp(1.7rem, 3vw, 2rem);
+    letter-spacing: -0.03em;
   }
 
   .tabs-row {
-    display: inline-flex;
-    gap: 0.4rem;
-    border-radius: 999px;
-    padding: 0.25rem;
-    background: rgba(15, 18, 20, 0.95);
-    border: 1px solid rgba(214, 190, 141, 0.18);
+    gap: 1.8rem;
   }
 
   .tab {
     border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     background: transparent;
-    color: rgba(234, 225, 206, 0.9);
-    border-radius: 999px;
-    padding: 0.46rem 0.9rem;
+    color: rgba(218, 213, 236, 0.7);
+    padding: 0 0 0.7rem;
     cursor: pointer;
-    font-weight: 600;
   }
 
   .tab.is-active {
-    background: rgba(214, 190, 141, 0.16);
-    color: rgba(251, 244, 229, 0.96);
+    border-color: #b75cff;
+    color: white;
+    box-shadow: 0 0.55rem 1.6rem rgba(183, 92, 255, 0.2);
   }
 
-  .filters-grid {
-    margin-top: 0.88rem;
+  .soft-button,
+  .upgrade-button,
+  .primary-action,
+  .secondary-action {
+    border: 1px solid rgba(153, 130, 236, 0.24);
+    border-radius: 0.8rem;
+    background: rgba(255, 255, 255, 0.045);
+    color: white;
+    cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .soft-button {
+    padding: 0.55rem 0.85rem;
+  }
+
+  .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.7rem;
+    grid-template-columns: 2fr 2fr 2fr 1.65fr;
+    gap: 1rem;
+    margin: 1.55rem 0 1.45rem;
   }
 
-  .filter-field {
+  .stat-card {
     display: grid;
-    gap: 0.34rem;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(214, 198, 164, 0.74);
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 5.75rem;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 1.08rem;
+    background:
+      radial-gradient(circle at 16% 22%, rgba(139, 82, 255, 0.16), transparent 56%),
+      rgba(13, 15, 39, 0.84);
+    padding: 1rem 1.1rem;
   }
 
-  .filter-field input,
-  .filter-field select {
+  .stat-card strong {
+    font-size: 1.55rem;
+  }
+
+  .stat-card > span:last-child {
+    color: rgba(220, 216, 237, 0.78);
+    font-size: 0.86rem;
+  }
+
+  .stat-orb {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
     border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(15, 18, 20, 0.96);
-    color: rgba(245, 239, 227, 0.94);
-    padding: 0.48rem 0.82rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
   }
 
-  .list-grid {
-    margin-top: 0.92rem;
+  .stat-orb--blue {
+    color: #6d8cff;
+    background: rgba(65, 95, 255, 0.16);
+  }
+
+  .stat-orb--gold {
+    color: #ddaa5c;
+    background: rgba(221, 170, 92, 0.14);
+  }
+
+  .stat-orb--heart {
+    color: #ff6fb8;
+    background: rgba(255, 111, 184, 0.15);
+  }
+
+  .stat-orb--violet {
+    color: #b75cff;
+    background: rgba(183, 92, 255, 0.17);
+  }
+
+  .companion-grid,
+  .collection-grid {
     display: grid;
-    gap: 0.7rem;
-  }
-
-  .list-card {
-    border-radius: 0.96rem;
-    border: 1px solid rgba(214, 190, 141, 0.16);
-    background: rgba(24, 20, 15, 0.62);
-    color: rgba(245, 239, 227, 0.95);
-    padding: 0.74rem 0.84rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
   }
 
-  .list-card.is-active {
-    border-color: rgba(214, 190, 141, 0.5);
-    box-shadow: 0 0 0 1px rgba(214, 190, 141, 0.22);
+  .roster-card,
+  .summon-card,
+  .collection-card,
+  .detail-panel,
+  .slots-panel {
+    border: 1px solid rgba(153, 130, 236, 0.22);
+    background: rgba(13, 15, 38, 0.84);
+    box-shadow: 0 1.35rem 3rem rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.045);
   }
 
-  .list-card h3 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  .list-card p {
-    margin: 0.2rem 0 0;
-    color: rgba(223, 211, 188, 0.79);
-    font-size: 0.88rem;
-  }
-
-  .list-card__actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    align-items: flex-end;
-  }
-
-  .inline-action {
-    border-radius: 999px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(43, 33, 20, 0.24);
-    color: rgba(246, 239, 225, 0.94);
-    padding: 0.33rem 0.76rem;
-    cursor: pointer;
-    font-size: 0.82rem;
-  }
-
-  .inline-action:disabled {
-    opacity: 0.62;
-    cursor: not-allowed;
-  }
-
-  .discover-card {
+  .roster-card,
+  .summon-card,
+  .collection-card {
+    position: relative;
+    min-height: 16rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    color: white;
     text-align: left;
     cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .discover-card--locked {
-    border-color: rgba(214, 190, 141, 0.3);
-    background: rgba(42, 33, 20, 0.65);
+  .roster-card {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    padding: 0.95rem;
   }
 
-  .discover-lock {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    color: rgba(255, 222, 163, 0.94);
+  .roster-card.is-active {
+    border-color: rgba(183, 92, 255, 0.78);
+    box-shadow: 0 0 0 1px rgba(183, 92, 255, 0.28), 0 1.45rem 3.2rem rgba(88, 43, 181, 0.28);
   }
 
-  .discover-meta {
-    margin-top: 0.35rem;
-    font-size: 0.8rem;
-    color: rgba(214, 203, 180, 0.84);
-  }
-
-  .empty-copy {
-    margin: 0.8rem 0 0;
-    color: rgba(214, 203, 180, 0.75);
-  }
-
-  .discover-modal__eyebrow {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: rgba(215, 191, 143, 0.76);
-    font-size: 0.78rem;
-  }
-
-  .discover-modal h3 {
-    margin: 0.5rem 0 0;
-  }
-
-  .discover-modal p {
-    color: rgba(223, 215, 200, 0.84);
-  }
-
-  .discover-modal__hint {
-    border-radius: 12px;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(24, 20, 15, 0.56);
-    padding: 0.66rem 0.76rem;
-  }
-
-  .error-banner {
-    margin: 0;
-    border: 1px solid rgba(214, 190, 141, 0.18);
-    background: rgba(24, 20, 15, 0.72);
-    border-radius: 12px;
-    padding: 0.7rem 0.85rem;
-  }
-
-  .toast {
-    position: fixed;
-    left: 50%;
-    bottom: calc(5.6rem + env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    border-radius: 999px;
-    padding: 0.48rem 0.84rem;
-    border: 1px solid rgba(214, 190, 141, 0.22);
-    background: rgba(16, 18, 19, 0.96);
-    color: rgba(244, 239, 229, 0.95);
-    z-index: 80;
-  }
-
-  .toast--error {
-    border-color: rgba(255, 180, 180, 0.45);
-  }
-
-  @media (max-width: 980px) {
-    .companions-page {
-      padding: 0.9rem 0.7rem calc(6rem + env(safe-area-inset-bottom));
-      gap: 1rem;
-      border-radius: 1.1rem;
-    }
-
-    .companion-view {
-      grid-template-columns: 1fr;
-    }
-
-    .companion-view__model {
-      min-height: 220px;
-    }
-
-    .pulse-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .keepsake-shelf {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 700px) {
-    .companions-page {
-      padding-inline: 0.6rem;
-      border-radius: 1rem;
-    }
-
-    .companion-view,
-    .mobile-switch-rail,
-    .switcher,
-    .tabbed-list,
-    .bond-milestones-panel {
-      border-radius: 1rem;
-      padding: 0.9rem;
-    }
-
-    .header-pills {
-      justify-content: flex-start;
-    }
-
-    .view-title-block h2 {
-      font-size: clamp(1.5rem, 8vw, 1.9rem);
-    }
-
-    .view-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .care-primary {
-      grid-column: 1 / -1;
-      min-height: 2.9rem;
-    }
-
-    .switcher-item__foot {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .keepsake-feature {
-      width: 100%;
-    }
-
-    .secondary-link {
-      min-height: 2.7rem;
-      width: 100%;
-    }
-
-    .mobile-switch-rail__track {
-      grid-auto-columns: minmax(10rem, 74vw);
-    }
-
-    .switcher-item,
-    .list-card {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .switcher-item__right,
-    .list-card__actions {
-      align-items: flex-start;
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .pill,
-    .care-primary,
-    .inline-action {
-      transition: none !important;
-      transform: none !important;
-    }
-
-    .meter-fill {
-      transition: none !important;
-    }
-  }
-
-  .hydration-flag {
+  .roster-card::before {
+    content: '';
     position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--card-accent), transparent 44%), transparent 46%),
+      linear-gradient(180deg, color-mix(in srgb, var(--card-accent), transparent 88%), transparent 58%);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .roster-card[data-tone='violet'] {
+    --card-accent: #9e5cff;
+  }
+
+  .roster-card[data-tone='silver'] {
+    --card-accent: #b9c1d3;
+  }
+
+  .roster-card[data-tone='ember'] {
+    --card-accent: #ff7a2c;
+  }
+
+  .roster-card[data-tone='verdant'] {
+    --card-accent: #91d34d;
+  }
+
+  .active-badge,
+  .favorite-star,
+  .avatar-stage,
+  .roster-copy,
+  .roster-foot {
+    position: relative;
+    z-index: 1;
+  }
+
+  .active-badge {
+    position: absolute;
+    left: 0.8rem;
+    top: 0.8rem;
+    border-radius: 999px;
+    background: rgba(84, 176, 104, 0.9);
+    padding: 0.26rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .favorite-star {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    color: #ffcc4c;
+    filter: drop-shadow(0 0 0.55rem rgba(255, 203, 76, 0.45));
+  }
+
+  .avatar-stage {
+    display: grid;
+    place-items: center;
+    min-height: 10.8rem;
+  }
+
+  .avatar-stage img {
+    width: min(100%, 11.5rem);
+    height: 11.5rem;
+    object-fit: contain;
+    filter: drop-shadow(0 1rem 1.5rem color-mix(in srgb, var(--card-accent), transparent 45%));
+  }
+
+  .roster-copy {
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .roster-copy strong {
+    font-size: 1.04rem;
+  }
+
+  .roster-copy span,
+  .collection-card p,
+  .collection-card small {
+    color: rgba(220, 216, 237, 0.74);
+  }
+
+  .roster-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.55rem;
+  }
+
+  .element-dots {
+    display: flex;
+    gap: 0.32rem;
+  }
+
+  .element-dots span {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card-accent), #090a1d 35%);
+    box-shadow: 0 0 0.7rem color-mix(in srgb, var(--card-accent), transparent 42%);
+  }
+
+  .bond-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #ff75b8;
+    font-weight: 800;
+  }
+
+  .summon-card {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.55rem;
+    border-style: dashed;
+    text-align: center;
+  }
+
+  .summon-card span {
+    display: grid;
+    width: 4rem;
+    height: 4rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(248, 246, 255, 0.86);
+  }
+
+  .summon-card small {
+    color: rgba(220, 216, 237, 0.72);
+  }
+
+  .collection-card {
+    display: grid;
+    gap: 0.75rem;
+    align-content: start;
+    padding: 1.1rem;
+  }
+
+  .slots-panel {
+    justify-content: space-between;
+    gap: 1.2rem;
+    margin-top: 1.6rem;
+    border-radius: 1rem;
+    padding: 1rem 1.1rem;
+  }
+
+  .slots-panel > div:first-child {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
     white-space: nowrap;
+  }
+
+  .slot-meter {
+    flex: 1;
+    height: 0.35rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .slot-meter span,
+  .bond-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7d4dff, #db63ff);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.58);
+  }
+
+  .upgrade-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.68rem 0.95rem;
+  }
+
+  .upgrade-button img {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .detail-panel {
+    position: sticky;
+    top: 1.25rem;
+    display: grid;
+    gap: 1rem;
+    border-radius: 1.25rem;
+    padding: 1.2rem;
+  }
+
+  .detail-head {
+    justify-content: space-between;
+  }
+
+  .detail-head h2 {
+    margin: 0 0 0.18rem;
+    font-size: 1.35rem;
+  }
+
+  .detail-head span,
+  .rarity-row,
+  .detail-section > span,
+  .active-note {
+    color: rgba(220, 216, 237, 0.7);
+  }
+
+  .edit-button {
     border: 0;
+    background: transparent;
+    color: rgba(220, 216, 237, 0.8);
+    cursor: pointer;
+  }
+
+  .rarity-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 800;
+  }
+
+  .rarity-row img {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .detail-model {
+    display: grid;
+    min-height: 15.5rem;
+    place-items: center;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(95, 122, 255, 0.24), transparent 58%),
+      linear-gradient(180deg, rgba(15, 23, 62, 0.58), rgba(8, 9, 28, 0.2));
+  }
+
+  .mood-row span,
+  .bond-row div,
+  .detail-section strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .mood-row span {
+    color: #91f4a4;
+    font-weight: 800;
+  }
+
+  .bond-row {
+    justify-content: space-between;
+    color: rgba(248, 246, 255, 0.9);
+  }
+
+  .bond-row :global(svg) {
+    color: #ff75b8;
+  }
+
+  .bond-meter {
+    height: 0.32rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .detail-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid rgba(153, 130, 236, 0.15);
+  }
+
+  .detail-tabs button {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: rgba(220, 216, 237, 0.64);
+    padding: 0.75rem 0.15rem;
+    cursor: pointer;
+  }
+
+  .detail-tabs button.is-active {
+    border-color: #b75cff;
+    color: white;
+  }
+
+  .detail-section {
+    display: grid;
+    gap: 0.58rem;
+  }
+
+  .tag-row,
+  .gift-row,
+  .detail-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .tag-row b {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.075);
+    padding: 0.38rem 0.72rem;
+    font-size: 0.85rem;
+  }
+
+  .gift-row button {
+    display: grid;
+    width: 4rem;
+    height: 4rem;
+    place-items: center;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 0.8rem;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  .gift-row img {
+    width: 2.25rem;
+    height: 2.25rem;
+    object-fit: contain;
+  }
+
+  .detail-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .primary-action,
+  .secondary-action {
+    min-height: 3rem;
+    font-weight: 900;
+  }
+
+  .primary-action {
+    border-color: rgba(207, 100, 255, 0.5);
+    background: linear-gradient(135deg, #745cff, #cf55ff);
+    box-shadow: 0 0.8rem 1.7rem rgba(158, 82, 255, 0.3);
+  }
+
+  .active-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    border-top: 1px solid rgba(153, 130, 236, 0.12);
+    padding-top: 0.9rem;
+  }
+
+  .active-note span {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: #73eb83;
+    box-shadow: 0 0 0.65rem rgba(115, 235, 131, 0.7);
+  }
+
+  .empty-detail {
+    display: grid;
+    min-height: 30rem;
+    place-items: center;
+    align-content: center;
+    gap: 0.85rem;
+    text-align: center;
+    color: rgba(220, 216, 237, 0.74);
+  }
+
+  @media (max-width: 1280px) {
+    .companions-fantasy-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .roster-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .detail-panel {
+      position: relative;
+      top: auto;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .companions-workspace {
+      padding: 1rem 1rem calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
+    .topbar,
+    .topbar-controls,
+    .title-row,
+    .slots-panel {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .search-field {
+      width: 100%;
+    }
+
+    .topbar-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stats-grid,
+    .companion-grid,
+    .collection-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 620px) {
+    .topbar-controls,
+    .stats-grid,
+    .companion-grid,
+    .collection-grid,
+    .detail-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .roster-card,
+    .summon-card,
+    .collection-card {
+      min-height: 14rem;
+    }
   }
 </style>

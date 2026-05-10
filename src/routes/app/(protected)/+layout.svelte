@@ -48,6 +48,8 @@
   const pageStore = page;
   let currentPath = '';
   let isHome = false;
+  let isCompanions = false;
+  let isImmersiveShell = false;
   let isGames = false;
   let isShop = false;
   let isProfileSurface = false;
@@ -97,6 +99,8 @@
 
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
+  $: isCompanions = currentPath.startsWith('/app/companions');
+  $: isImmersiveShell = isHome || isCompanions;
   $: isGames = currentPath.startsWith('/app/games');
   $: isShop = currentPath.startsWith('/app/shop');
   $: isProfileSurface =
@@ -549,7 +553,7 @@
     class={`app-surface ${isHome ? 'app-surface--home' : ''}`}
     style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
   >
-    {#if !isHome}
+    {#if !isImmersiveShell}
       {#if FLAGS.NEW_BRAND_HEADER}
         <BrandHeader
           iconNavItems={iconNavItems}
@@ -586,8 +590,8 @@
       {/if}
     {/if}
 
-    <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--sanctuary'}`}>
-      {#if isHome}
+    <main class={`app-main ${isImmersiveShell ? 'app-main--home' : 'app-main--sanctuary'}`}>
+      {#if isImmersiveShell}
         <slot />
       {:else}
         <div class="route-shell">
