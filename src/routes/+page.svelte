@@ -633,6 +633,10 @@
     transform: translateY(-0.12rem);
   }
 
+  .support-band + .support-band {
+    margin-top: 1.05rem;
+  }
+
   .support-band:last-child {
     margin-bottom: 4rem;
   }
@@ -657,6 +661,8 @@
     border-radius: 0.45rem;
     position: relative;
     overflow: hidden;
+    background-size: cover;
+    background-position: center;
     background:
       radial-gradient(circle at 50% 52%, rgba(190, 135, 255, 0.24), transparent 4.8rem),
       radial-gradient(circle at 50% 52%, rgba(221, 170, 92, 0.1), transparent 7rem),
@@ -683,15 +689,22 @@
 
   .support-card__visual--handshake {
     background:
-      radial-gradient(circle at 50% 50%, rgba(169, 123, 225, 0.38), transparent 4.6rem),
-      radial-gradient(circle at 35% 42%, rgba(221, 170, 92, 0.16), transparent 4.2rem),
-      linear-gradient(135deg, rgba(32, 12, 63, 0.72), rgba(5, 4, 13, 0.2));
+      linear-gradient(90deg, rgba(5, 4, 13, 0.18), rgba(5, 4, 13, 0.02)),
+      radial-gradient(circle at 50% 48%, rgba(169, 123, 225, 0.18), transparent 56%),
+      url('/assets/handshake.png') center / cover;
   }
 
   .support-card__visual--handshake::before {
-    clip-path: polygon(0 42%, 38% 42%, 48% 30%, 58% 42%, 100% 42%, 100% 58%, 58% 58%, 48% 70%, 38% 58%, 0 58%);
-    border-radius: 0;
-    background: linear-gradient(90deg, transparent, rgba(190, 135, 255, 0.34), transparent);
+    inset: 10% 18%;
+    transform: rotate(-8deg);
+    background: transparent;
+  }
+
+  .support-card__visual--orbit {
+    background:
+      linear-gradient(90deg, rgba(5, 4, 13, 0.2), rgba(5, 4, 13, 0.04)),
+      radial-gradient(circle at 50% 48%, rgba(169, 123, 225, 0.18), transparent 58%),
+      url('/assets/cosmic_crystal.png') center / cover;
   }
 
   .support-card__visual--orbit::before {
@@ -699,10 +712,10 @@
   }
 
   .support-card__visual--orbit::after {
-    inset: 34% 43%;
+    inset: 35% 43%;
     border-radius: 0.35rem;
     transform: rotate(45deg);
-    background: rgba(190, 135, 255, 0.16);
+    background: rgba(190, 135, 255, 0.04);
   }
 
   .support-card__intro {
