@@ -10,7 +10,12 @@
   const secondaryHref = isAuthed ? '/app/memory' : '/app/auth';
   const secondaryLabel = isAuthed ? 'Open journal' : 'Sign in';
 
-  const featurePoints = ['Emotional memory', 'Adaptive companions', 'Ambient worlds', 'Gentle rituals'];
+  const featurePoints = [
+    { label: 'Emotional memory', icon: '/assets/shard_icon.png' },
+    { label: 'Adaptive companions', icon: '/assets/paw_icon.png' },
+    { label: 'Ambient worlds', icon: '/assets/star_icon.png' },
+    { label: 'Gentle rituals', icon: '/assets/heart_icon.png' }
+  ];
 </script>
 
 <svelte:head>
@@ -64,7 +69,12 @@
 
           <div class="feature-row" aria-label="Memvoya signals">
             {#each featurePoints as point}
-              <span>{point}</span>
+              <span class="feature-row__item">
+                <span class="feature-row__icon" aria-hidden="true">
+                  <img src={point.icon} alt="" />
+                </span>
+                <span>{point.label}</span>
+              </span>
             {/each}
           </div>
         </div>
@@ -439,28 +449,51 @@
 
   .feature-row {
     margin-top: 1rem;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem 1.1rem;
+    width: min(55rem, calc(100vw - 1.5rem));
+    display: flex;
+    align-items: center;
+    gap: 1.35rem;
     color: rgba(229, 220, 205, 0.78);
     font-size: 0.9rem;
   }
 
-  .feature-row span {
-    min-height: 1.5rem;
+  .feature-row__item {
+    min-height: 2.1rem;
     display: flex;
     align-items: center;
+    gap: 0.48rem;
+    flex: 0 0 auto;
   }
 
-  .feature-row span::before {
-    content: '';
-    width: 0.45rem;
-    height: 0.45rem;
+  .feature-row__icon {
+    position: relative;
+    width: 1.45rem;
+    height: 1.45rem;
     border-radius: 999px;
-    margin-right: 0.55rem;
-    background: #be87ff;
-    box-shadow: 0 0 18px rgba(190, 135, 255, 0.72);
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    filter:
+      drop-shadow(0 0 8px rgba(190, 135, 255, 0.62))
+      drop-shadow(0 0 18px rgba(221, 170, 92, 0.22));
     animation: signalPulse 3.6s ease-in-out infinite;
+  }
+
+  .feature-row__icon::before {
+    content: '';
+    position: absolute;
+    inset: 0.18rem;
+    border-radius: inherit;
+    background: rgba(190, 135, 255, 0.18);
+    box-shadow: 0 0 20px rgba(190, 135, 255, 0.5);
+    z-index: -1;
+  }
+
+  .feature-row__icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
   }
 
   .worlds {
@@ -644,8 +677,15 @@
     }
 
     .feature-row {
-      grid-template-columns: 1fr;
-      gap: 0.55rem;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 0.8rem;
+    }
+
+    .feature-row__item {
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     .archetype-grid {
@@ -655,7 +695,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .hero__particles span,
-    .feature-row span::before {
+    .feature-row__icon {
       animation: none;
     }
 
