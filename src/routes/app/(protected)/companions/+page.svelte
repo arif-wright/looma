@@ -978,7 +978,7 @@
   $: detailElementProfile = detailIdentity.elementProfile;
   $: detailPrimaryElement = getElementById(detailElementProfile.primary);
   $: detailSecondaryElement = getElementById(detailElementProfile.secondary);
-  $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 5);
+  $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
   $: if (selectedForCare) {
@@ -1128,25 +1128,35 @@
         {/if}
 
         <section class="stats-grid" aria-label="Companion overview">
-          <article class="stat-card">
-            <span class="stat-orb stat-orb--blue"><Shield size={24} /></span>
-            <strong>{ownedInstances.length}</strong>
-            <span>Active Companions</span>
+          <article class="stat-cluster">
+            <div class="stat-segment">
+              <span class="stat-orb stat-orb--blue" style={`--progress:${Math.min(100, Math.round((ownedInstances.length / Math.max(1, maxSlots)) * 100))}%`}><Shield size={20} /></span>
+              <div>
+                <strong>{ownedInstances.length}</strong>
+                <span>Active Companions</span>
+              </div>
+            </div>
+            <div class="stat-segment">
+              <span class="stat-orb stat-orb--gold" style={`--progress:${Math.min(100, Math.round(((ownedInstances.length + discoverEntries.length) / 12) * 100))}%`}><Sparkles size={20} /></span>
+              <div>
+                <strong>{ownedInstances.length + discoverEntries.length}</strong>
+                <span>Companions Collected</span>
+              </div>
+            </div>
+            <div class="stat-segment">
+              <span class="stat-orb stat-orb--heart" style={`--progress:${averageBond}%`}><Heart size={20} fill="currentColor" /></span>
+              <div>
+                <strong>{averageBond}%</strong>
+                <span>Average Bond</span>
+              </div>
+            </div>
           </article>
-          <article class="stat-card">
-            <span class="stat-orb stat-orb--gold"><Sparkles size={24} /></span>
-            <strong>{ownedInstances.length + discoverEntries.length}</strong>
-            <span>Companions Collected</span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-orb stat-orb--heart"><Heart size={24} fill="currentColor" /></span>
-            <strong>{averageBond}%</strong>
-            <span>Average Bond</span>
-          </article>
-          <article class="stat-card">
+          <article class="stat-card mastery-card">
             <span class="stat-orb stat-orb--violet"><Gem size={24} /></span>
-            <strong>Lvl {masteryLevel}</strong>
-            <span>Companion Mastery</span>
+            <div>
+              <strong>Lvl {masteryLevel}</strong>
+              <span>Companion Mastery</span>
+            </div>
           </article>
         </section>
 
@@ -1174,13 +1184,15 @@
                   </div>
                   <div class="roster-copy">
                     <strong>{instance.name}</strong>
-                    <span>Level {companionLevel(instance)}</span>
+                    <div class="roster-meta-line">
+                      <span>Level {companionLevel(instance)}</span>
+                      <span class="bond-mini"><Heart size={14} fill="currentColor" /> {companionBondScore(instance)}%</span>
+                    </div>
                   </div>
                   <div class="roster-foot">
                     <div class="element-dots" aria-hidden="true">
                       <span></span><span></span><span></span>
                     </div>
-                    <span class="bond-mini"><Heart size={14} fill="currentColor" /> {companionBondScore(instance)}%</span>
                   </div>
                 </button>
               {/each}
@@ -1289,19 +1301,19 @@
 
           {#if activeDetailTab === 'overview'}
             <div class="detail-tab-panel">
-              <div class="detail-section element-profile-section">
+              <div class="detail-section element-profile-section" title={detailIdentity.archetype.overviewIdentity}>
                 <div class="element-profile-head">
                   <span>Element Profile</span>
                   <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
                 </div>
                 <p class="identity-copy">{detailIdentity.archetype.overviewIdentity}</p>
                 <div class="element-pair">
-                  <article>
+                  <article title={detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}>
                     <span>Primary</span>
                     <strong><Gem size={18} /> {detailPrimaryElement?.label ?? 'Sound'}</strong>
                     <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
                   </article>
-                  <article>
+                  <article title={detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}>
                     <span>Secondary</span>
                     <strong><Sparkles size={18} /> {detailSecondaryElement?.label ?? 'Light'}</strong>
                     <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
@@ -1771,61 +1783,96 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: 2fr 2fr 2fr 1.65fr;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 15rem);
+    gap: 0.72rem;
     margin: 1.55rem 0 1.45rem;
   }
 
+  .stat-cluster,
   .stat-card {
-    display: grid;
-    grid-template-columns: auto auto 1fr;
-    align-items: center;
-    gap: 0.75rem;
-    min-height: 5.75rem;
     border: 1px solid rgba(153, 130, 236, 0.18);
     border-radius: 1.08rem;
     background:
       radial-gradient(circle at 16% 22%, rgba(139, 82, 255, 0.16), transparent 56%),
       rgba(13, 15, 39, 0.84);
+  }
+
+  .stat-cluster {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 5.15rem;
+  }
+
+  .stat-segment {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.72rem;
+    padding: 1rem 1.05rem;
+  }
+
+  .stat-segment + .stat-segment::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1rem;
+    bottom: 1rem;
+    width: 1px;
+    background: rgba(183, 164, 255, 0.1);
+  }
+
+  .stat-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.72rem;
+    min-height: 5.15rem;
     padding: 1rem 1.1rem;
   }
 
-  .stat-card strong {
-    font-size: 1.55rem;
+  .stat-card strong,
+  .stat-segment strong {
+    display: block;
+    font-size: 1.34rem;
+    line-height: 1;
   }
 
-  .stat-card > span:last-child {
+  .stat-card div > span,
+  .stat-segment div > span {
     color: rgba(220, 216, 237, 0.78);
-    font-size: 0.86rem;
+    font-size: 0.72rem;
   }
 
   .stat-orb {
     display: grid;
-    width: 3rem;
-    height: 3rem;
+    width: 2.85rem;
+    height: 2.85rem;
     place-items: center;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: 1px solid transparent;
+    background:
+      linear-gradient(rgba(13, 15, 39, 0.92), rgba(13, 15, 39, 0.92)) padding-box,
+      conic-gradient(currentColor var(--progress, 0%), rgba(255, 255, 255, 0.1) 0) border-box;
+    box-shadow: inset 0 0 0 0.48rem rgba(255, 255, 255, 0.035);
   }
 
   .stat-orb--blue {
     color: #6d8cff;
-    background: rgba(65, 95, 255, 0.16);
   }
 
   .stat-orb--gold {
     color: #ddaa5c;
-    background: rgba(221, 170, 92, 0.14);
   }
 
   .stat-orb--heart {
     color: #ff6fb8;
-    background: rgba(255, 111, 184, 0.15);
   }
 
   .stat-orb--violet {
     color: #b75cff;
     background: rgba(183, 92, 255, 0.17);
+    border-color: rgba(255, 255, 255, 0.14);
   }
 
   .companion-grid,
@@ -1939,7 +1986,7 @@
 
   .roster-copy {
     display: grid;
-    gap: 0.18rem;
+    gap: 0.32rem;
   }
 
   .roster-copy strong {
@@ -1952,11 +1999,22 @@
     color: rgba(220, 216, 237, 0.74);
   }
 
-  .roster-foot {
+  .roster-meta-line {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 0.55rem;
+    gap: 0.6rem;
+    color: rgba(220, 216, 237, 0.74);
+    font-size: 0.86rem;
+  }
+
+  .roster-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 0.65rem;
+    border-top: 1px solid rgba(183, 164, 255, 0.12);
+    padding-top: 0.5rem;
   }
 
   .element-dots {
@@ -2318,8 +2376,8 @@
 
   .detail-tab-panel {
     display: grid;
-    gap: 0.82rem;
-    max-height: 24rem;
+    gap: 0.68rem;
+    max-height: 21.8rem;
     overflow: auto;
     padding-right: 0.18rem;
   }
@@ -2339,14 +2397,15 @@
     background:
       radial-gradient(circle at 20% 0%, rgba(183, 92, 255, 0.13), transparent 52%),
       rgba(255, 255, 255, 0.035);
-    padding: 0.85rem;
+    padding: 0.78rem;
   }
 
   .identity-copy {
-    margin: 0;
-    color: rgba(230, 225, 244, 0.72);
-    font-size: 0.84rem;
-    line-height: 1.55;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
   .element-profile-head {
@@ -2389,14 +2448,16 @@
 
   .element-pair article p,
   .element-domain p {
-    margin: 0;
-    color: rgba(220, 216, 237, 0.64);
-    font-size: 0.78rem;
-    line-height: 1.45;
+    display: none;
   }
 
   .element-domain strong {
     color: rgba(248, 246, 255, 0.95);
+  }
+
+  .element-domain {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
   }
 
   .tag-row,
@@ -2573,15 +2634,15 @@
 
   .favorite-gift-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.58rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.52rem;
   }
 
   .favorite-gift-item {
+    position: relative;
     display: grid;
-    min-height: 5.5rem;
+    min-height: 4.3rem;
     place-items: center;
-    gap: 0.22rem;
     border: 1px solid rgba(153, 130, 236, 0.16);
     border-radius: 0.8rem;
     background:
@@ -2589,26 +2650,34 @@
       rgba(255, 255, 255, 0.055);
     color: rgba(248, 246, 255, 0.9);
     cursor: help;
-    padding: 0.55rem;
+    padding: 0.45rem;
     text-align: center;
   }
 
   .favorite-gift-item img {
-    width: 1.65rem;
-    height: 1.65rem;
+    width: 2rem;
+    height: 2rem;
     object-fit: contain;
     filter: drop-shadow(0 0 0.45rem rgba(183, 92, 255, 0.45));
   }
 
   .favorite-gift-item span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     font-size: 0.74rem;
     font-weight: 900;
     line-height: 1.1;
   }
 
   .favorite-gift-item small {
-    color: rgba(220, 216, 237, 0.64);
-    font-size: 0.68rem;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 
   .detail-actions {
@@ -2636,6 +2705,7 @@
     border-top: 1px solid rgba(153, 130, 236, 0.12);
     padding-top: 0.9rem;
     padding-bottom: 1rem;
+    margin-bottom: 0.45rem;
   }
 
   .active-note span {
@@ -2713,6 +2783,16 @@
     .summon-card,
     .collection-card {
       min-height: 14rem;
+    }
+
+    .stat-cluster {
+      grid-template-columns: 1fr;
+    }
+
+    .stat-segment + .stat-segment::before {
+      inset: 0.05rem 1rem auto;
+      width: auto;
+      height: 1px;
     }
   }
 
