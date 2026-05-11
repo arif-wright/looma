@@ -2116,15 +2116,16 @@
     position: sticky;
     top: 1.25rem;
     display: grid;
-    gap: 0.62rem;
+    gap: 0.48rem;
     overflow: hidden;
     border-radius: 1.25rem;
     padding: 0;
+    font-size: 0.92rem;
   }
 
   .detail-hero {
     position: relative;
-    min-height: 22.2rem;
+    min-height: 21.35rem;
     overflow: hidden;
     border-radius: 1.25rem 1.25rem 0 0;
     background:
@@ -2205,10 +2206,10 @@
 
   .detail-model {
     position: absolute;
-    inset: 2.65rem 0 0;
+    inset: 2.42rem 0 0;
     z-index: 4;
     display: grid;
-    min-height: 19.6rem;
+    min-height: 18.9rem;
     place-items: center;
     border-radius: 0;
     background: transparent;
@@ -2308,7 +2309,7 @@
 
   .mood-row {
     position: relative;
-    margin-top: -0.16rem;
+    margin-top: -0.08rem;
   }
 
   .mood-row::before {
@@ -2360,8 +2361,9 @@
     border-bottom: 2px solid transparent;
     background: transparent;
     color: rgba(220, 216, 237, 0.64);
-    padding: 0.75rem 0.15rem;
+    padding: 0.62rem 0.15rem;
     cursor: pointer;
+    font-size: 0.76rem;
   }
 
   .detail-tabs button.is-active {
@@ -2371,14 +2373,14 @@
 
   .detail-section {
     display: grid;
-    gap: 0.58rem;
+    gap: 0.46rem;
   }
 
   .detail-tab-panel {
     display: grid;
-    gap: 0.68rem;
-    max-height: 21.8rem;
-    overflow: auto;
+    gap: 0.55rem;
+    max-height: none;
+    overflow: visible;
     padding-right: 0.18rem;
   }
 
@@ -2397,7 +2399,7 @@
     background:
       radial-gradient(circle at 20% 0%, rgba(183, 92, 255, 0.13), transparent 52%),
       rgba(255, 255, 255, 0.035);
-    padding: 0.78rem;
+    padding: 0.68rem;
   }
 
   .identity-copy {
@@ -2419,7 +2421,7 @@
   .element-pair article > span,
   .element-domain > span {
     color: rgba(220, 216, 237, 0.68);
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -2427,23 +2429,23 @@
 
   .element-profile-head strong {
     color: #ddaa5c;
-    font-size: 0.86rem;
+    font-size: 0.8rem;
   }
 
   .element-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.58rem;
+    gap: 0.48rem;
   }
 
   .element-pair article,
   .element-domain {
     display: grid;
-    gap: 0.38rem;
+    gap: 0.3rem;
     border: 1px solid rgba(153, 130, 236, 0.12);
     border-radius: 0.78rem;
     background: rgba(9, 10, 29, 0.38);
-    padding: 0.68rem;
+    padding: 0.58rem;
   }
 
   .element-pair article p,
@@ -2464,7 +2466,7 @@
   .ritual-row,
   .detail-actions {
     display: flex;
-    gap: 0.65rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
   }
 
@@ -2472,8 +2474,8 @@
   .ritual-row b {
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.075);
-    padding: 0.38rem 0.72rem;
-    font-size: 0.85rem;
+    padding: 0.3rem 0.62rem;
+    font-size: 0.78rem;
   }
 
   .ritual-row b {
@@ -2635,13 +2637,13 @@
   .favorite-gift-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.52rem;
+    gap: 0.45rem;
   }
 
   .favorite-gift-item {
     position: relative;
     display: grid;
-    min-height: 4.3rem;
+    min-height: 3.82rem;
     place-items: center;
     border: 1px solid rgba(153, 130, 236, 0.16);
     border-radius: 0.8rem;
@@ -2650,13 +2652,13 @@
       rgba(255, 255, 255, 0.055);
     color: rgba(248, 246, 255, 0.9);
     cursor: help;
-    padding: 0.45rem;
+    padding: 0.38rem;
     text-align: center;
   }
 
   .favorite-gift-item img {
-    width: 2rem;
-    height: 2rem;
+    width: 1.78rem;
+    height: 1.78rem;
     object-fit: contain;
     filter: drop-shadow(0 0 0.45rem rgba(183, 92, 255, 0.45));
   }
@@ -2687,8 +2689,9 @@
 
   .primary-action,
   .secondary-action {
-    min-height: 3rem;
+    min-height: 2.72rem;
     font-weight: 900;
+    font-size: 0.82rem;
   }
 
   .primary-action {
@@ -2701,11 +2704,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    margin: 0;
+    margin: 0 1.18rem 0.72rem;
     border-top: 1px solid rgba(153, 130, 236, 0.12);
-    padding-top: 0.9rem;
-    padding-bottom: 1rem;
-    margin-bottom: 0.45rem;
+    padding: 0.82rem 0.25rem 0.72rem;
+    font-size: 0.82rem;
   }
 
   .active-note span {
