@@ -942,13 +942,7 @@
     const element = companionElement(companion);
     return [mood, element, 'Loyal'].slice(0, 3);
   };
-  const giftIcons = ['/assets/shard_icon.png', '/assets/star_icon.png', '/assets/paw_icon.png', '/assets/heart_icon.png'];
-  const giftIconFor = (iconKey: string) => {
-    if (iconKey === 'music' || iconKey === 'story' || iconKey === 'memory') return '/assets/star_icon.png';
-    if (iconKey === 'flower' || iconKey === 'tea' || iconKey === 'plant') return '/assets/heart_icon.png';
-    if (iconKey === 'sweet' || iconKey === 'toy' || iconKey === 'puzzle') return '/assets/paw_icon.png';
-    return '/assets/shard_icon.png';
-  };
+  const giftFallbackIcon = '/assets/shard_icon.png';
   const detailTabs: Array<{ key: DetailTabKey; label: string }> = [
     { key: 'overview', label: 'Overview' },
     { key: 'skills', label: 'Skills' },
@@ -1347,9 +1341,16 @@
                       type="button"
                       class="favorite-gift-item"
                       aria-label={`${gift.name}, ${preview.preference} gift`}
-                      title={`${gift.description} ${preview.response} Expected bond: +${preview.bondGain}`}
+                      title={`${gift.name} (${gift.rarity} ${gift.category}). ${gift.description} ${preview.response} Expected bond: +${preview.bondGain}`}
                     >
-                      <img src={giftIconFor(gift.iconKey)} alt="" />
+                      <img
+                        src={gift.icon}
+                        alt=""
+                        on:error={(event) => {
+                          const image = event.currentTarget as HTMLImageElement;
+                          if (!image.src.endsWith(giftFallbackIcon)) image.src = giftFallbackIcon;
+                        }}
+                      />
                       <span>{gift.name}</span>
                       <small>{gift.categoryDefinition.label}</small>
                     </button>

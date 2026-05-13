@@ -29,8 +29,9 @@ export const GIFT_CATEGORY_IDS = [
 ] as const;
 
 export type GiftCategoryId = (typeof GIFT_CATEGORY_IDS)[number];
+export type GiftCategory = GiftCategoryId;
 export type GiftPreferenceLevel = 'loved' | 'liked' | 'neutral' | 'disliked';
-export type GiftRarity = 'common' | 'uncommon' | 'rare';
+export type GiftRarity = 'common' | 'rare' | 'epic';
 
 export type GiftCategoryDefinition = {
   id: GiftCategoryId;
@@ -59,10 +60,10 @@ export type CompanionGiftItem = {
   name: string;
   category: GiftCategoryId;
   rarity: GiftRarity;
+  icon: string;
   description: string;
   tags: string[];
   baseBondValue: number;
-  iconKey: string;
 };
 
 export type GiftPreferenceEvaluation = {
@@ -160,18 +161,93 @@ export const elementGiftPreferences: Record<CompanionElementId, ElementGiftPrefe
   ember: { loved: ['hearth', 'lantern', 'stone'], liked: ['charm', 'tea'] }
 };
 
+const gift = (
+  id: string,
+  name: string,
+  category: GiftCategoryId,
+  rarity: GiftRarity,
+  baseBondValue: number,
+  description: string,
+  tags: string[]
+): CompanionGiftItem => ({
+  id,
+  name,
+  category,
+  rarity,
+  icon: `/assets/gifts/gift-${category}-${rarity}-${id.replace(`${category}_${rarity}_`, '').replace(/_/g, '-')}.png`,
+  description,
+  tags,
+  baseBondValue
+});
+
+// Favorite Gifts are consumable bond items. They are separate from equipment items such as Sigils, Charms, and Relics.
 export const companionGiftItems: CompanionGiftItem[] = [
-  { id: 'resonance_crystal', name: 'Resonance Crystal', category: 'crystal', rarity: 'rare', tags: ['muse', 'sound', 'light', 'harmony'], baseBondValue: 12, iconKey: 'crystal', description: 'A softly glowing crystal that hums when held near a Muse.' },
-  { id: 'star_chime', name: 'Star Chime', category: 'music', rarity: 'uncommon', tags: ['muse', 'sound', 'dream'], baseBondValue: 10, iconKey: 'music', description: 'A tiny chime that rings with a tone only companions seem to hear.' },
-  { id: 'moonflower', name: 'Moonflower', category: 'flower', rarity: 'uncommon', tags: ['muse', 'light', 'dream'], baseBondValue: 9, iconKey: 'flower', description: 'A luminous flower that opens when the room grows quiet.' },
-  { id: 'ember_lantern', name: 'Ember Lantern', category: 'lantern', rarity: 'rare', tags: ['guardian', 'ember', 'protection'], baseBondValue: 12, iconKey: 'lantern', description: 'A small lantern with a steady flame that never seems to flicker.' },
-  { id: 'hearthstone', name: 'Hearthstone', category: 'hearth', rarity: 'uncommon', tags: ['guardian', 'root', 'ember'], baseBondValue: 10, iconKey: 'hearth', description: 'A warm stone that carries the feeling of a safe place.' },
-  { id: 'puzzle_cube', name: 'Puzzle Cube', category: 'puzzle', rarity: 'uncommon', tags: ['spark', 'curiosity', 'play'], baseBondValue: 9, iconKey: 'puzzle', description: 'A shifting little cube that never solves the same way twice.' },
-  { id: 'joy_cookie', name: 'Joy Cookie', category: 'sweet', rarity: 'common', tags: ['spark', 'sweet', 'playful'], baseBondValue: 6, iconKey: 'sweet', description: 'A cheerful treat with a sparkle of harmless mischief.' },
-  { id: 'seedstone', name: 'Seedstone', category: 'stone', rarity: 'uncommon', tags: ['root', 'grounding', 'growth'], baseBondValue: 10, iconKey: 'stone', description: 'A smooth stone with a tiny living sprout curled inside.' },
-  { id: 'warm_tea_leaf', name: 'Warm Tea Leaf', category: 'tea', rarity: 'common', tags: ['root', 'tide', 'calm'], baseBondValue: 7, iconKey: 'tea', description: 'A fragrant leaf that gives off a gentle warmth.' },
-  { id: 'memory_locket', name: 'Memory Locket', category: 'memory', rarity: 'rare', tags: ['echo', 'memory', 'keepsake'], baseBondValue: 12, iconKey: 'memory', description: 'A tiny locket that seems heavier when it holds meaning.' },
-  { id: 'storyglass_shard', name: 'Storyglass Shard', category: 'story', rarity: 'uncommon', tags: ['echo', 'dream', 'story'], baseBondValue: 10, iconKey: 'story', description: 'A translucent shard that shows a different image depending on who remembers it.' }
+  gift('crystal_common_glow_pebble', 'Glow Pebble', 'crystal', 'common', 5, 'A small glowing stone that feels warm when held.', ['muse', 'light', 'harmony', 'clarity']),
+  gift('crystal_rare_resonance_crystal', 'Resonance Crystal', 'crystal', 'rare', 12, 'A softly glowing crystal that hums when held near a Muse.', ['muse', 'sound', 'light', 'harmony', 'expression']),
+  gift('crystal_epic_prism_heart_crystal', 'Prism Heart Crystal', 'crystal', 'epic', 20, 'A radiant heart-shaped crystal that scatters emotion into color.', ['muse', 'light', 'prism', 'harmony', 'expression']),
+  gift('music_common_tiny_chime', 'Tiny Chime', 'music', 'common', 5, 'A small chime with a soft, clear tone.', ['muse', 'sound', 'harmony', 'expression']),
+  gift('music_rare_star_chime', 'Star Chime', 'music', 'rare', 10, 'A tiny chime that rings with a tone only companions seem to hear.', ['muse', 'sound', 'dream', 'harmony']),
+  gift('music_epic_celestial_lyre_charm', 'Celestial Lyre Charm', 'music', 'epic', 20, 'A golden lyre charm that seems to remember every melody.', ['muse', 'sound', 'light', 'harmony', 'memory']),
+  gift('flower_common_soft_bloom', 'Soft Bloom', 'flower', 'common', 5, 'A gentle bloom with petals that glow faintly in quiet moments.', ['muse', 'light', 'root', 'care']),
+  gift('flower_rare_moonflower', 'Moonflower', 'flower', 'rare', 9, 'A luminous flower that opens when the room grows quiet.', ['muse', 'light', 'dream', 'reflection']),
+  gift('flower_epic_harmonia_lotus', 'Harmonia Lotus', 'flower', 'epic', 20, 'A radiant lotus said to bloom only near deep emotional resonance.', ['muse', 'light', 'harmony', 'root', 'expression']),
+  gift('memory_common_memory_bead', 'Memory Bead', 'memory', 'common', 5, 'A tiny bead that seems to hold the warmth of a small remembered moment.', ['echo', 'memory', 'keepsake', 'reflection']),
+  gift('memory_rare_memory_locket', 'Memory Locket', 'memory', 'rare', 12, 'A tiny locket that seems heavier when it holds meaning.', ['echo', 'memory', 'keepsake', 'reflection']),
+  gift('memory_epic_remembered_star', 'Remembered Star', 'memory', 'epic', 20, 'A star-shaped keepsake that glows brighter around cherished memories.', ['echo', 'dream', 'memory', 'light', 'reflection']),
+  gift('sweet_common_joy_cookie', 'Joy Cookie', 'sweet', 'common', 6, 'A cheerful treat with a sparkle of harmless mischief.', ['spark', 'play', 'curiosity', 'joy']),
+  gift('sweet_rare_dream_macaron', 'Dream Macaron', 'sweet', 'rare', 10, 'A soft, dreamy confection with a filling that tastes like starlight.', ['spark', 'dream', 'play', 'wonder']),
+  gift('sweet_epic_starlight_confection', 'Starlight Confection', 'sweet', 'epic', 20, 'A dazzling magical dessert that leaves tiny star motes in the air.', ['spark', 'light', 'play', 'momentum']),
+  gift('toy_common_glimmer_top', 'Glimmer Top', 'toy', 'common', 5, 'A small spinning toy that leaves a faint trail of light.', ['spark', 'play', 'curiosity', 'light']),
+  gift('toy_rare_spark_kite', 'Spark Kite', 'toy', 'rare', 10, 'A bright little kite that tugs toward motion and laughter.', ['spark', 'play', 'momentum', 'light']),
+  gift('toy_epic_wonder_spinner', 'Wonder Spinner', 'toy', 'epic', 20, 'A magical spinner that shifts shape with every burst of curiosity.', ['spark', 'play', 'curiosity', 'dream']),
+  gift('puzzle_common_simple_puzzle_tile', 'Simple Puzzle Tile', 'puzzle', 'common', 5, 'A small puzzle tile with a soft star etched into its surface.', ['spark', 'curiosity', 'pattern', 'play']),
+  gift('puzzle_rare_puzzle_cube', 'Puzzle Cube', 'puzzle', 'rare', 9, 'A shifting little cube that never solves the same way twice.', ['spark', 'curiosity', 'play', 'momentum']),
+  gift('puzzle_epic_infinite_puzzle_box', 'Infinite Puzzle Box', 'puzzle', 'epic', 20, 'A mysterious puzzle box that reveals new patterns when understood.', ['spark', 'dream', 'curiosity', 'pattern']),
+  gift('lantern_common_pocket_lantern', 'Pocket Lantern', 'lantern', 'common', 5, 'A tiny lantern with a steady, comforting glow.', ['guardian', 'ember', 'light', 'safety']),
+  gift('lantern_rare_ember_lantern', 'Ember Lantern', 'lantern', 'rare', 12, 'A small lantern with a steady flame that never seems to flicker.', ['guardian', 'ember', 'protection', 'safety']),
+  gift('lantern_epic_oathfire_lantern', 'Oathfire Lantern', 'lantern', 'epic', 20, 'A brilliant lantern said to burn brightest when protecting someone.', ['guardian', 'ember', 'protection', 'loyalty']),
+  gift('charm_common_soft_charm', 'Soft Charm', 'charm', 'common', 5, 'A small charm that carries a gentle feeling of care.', ['guardian', 'echo', 'care', 'safety']),
+  gift('charm_rare_safehouse_charm', 'Safehouse Charm', 'charm', 'rare', 10, 'A tiny house-shaped charm that feels like a safe place.', ['guardian', 'root', 'protection', 'safety']),
+  gift('charm_epic_guardian_crest', 'Guardian Crest', 'charm', 'epic', 20, 'A radiant crest that symbolizes loyalty, courage, and protection.', ['guardian', 'ember', 'protection', 'loyalty']),
+  gift('plant_common_tiny_sprout', 'Tiny Sprout', 'plant', 'common', 5, 'A small sprout that leans gently toward warmth.', ['root', 'growth', 'grounding', 'restoration']),
+  gift('plant_rare_moss_charm', 'Moss Charm', 'plant', 'rare', 10, 'A mossy charm that carries the calm of shaded earth.', ['root', 'grounding', 'restoration', 'tide']),
+  gift('plant_epic_living_grove_seed', 'Living Grove Seed', 'plant', 'epic', 20, 'A living seed that hums with the patience of an ancient grove.', ['root', 'growth', 'grounding', 'restoration']),
+  gift('tea_common_warm_tea_leaf', 'Warm Tea Leaf', 'tea', 'common', 7, 'A fragrant leaf that gives off a gentle warmth.', ['root', 'tide', 'calm', 'restoration']),
+  gift('tea_rare_resting_grove_tea', 'Resting Grove Tea', 'tea', 'rare', 10, 'A calming tea blend that smells like rain on leaves.', ['root', 'tide', 'restoration', 'grounding']),
+  gift('tea_epic_stillwater_tea_bloom', 'Stillwater Tea Bloom', 'tea', 'epic', 20, 'A luminous tea bloom that opens slowly in moments of quiet recovery.', ['root', 'tide', 'restoration', 'recovery']),
+  gift('story_common_story_slip', 'Story Slip', 'story', 'common', 5, 'A curled little note with a half-remembered line written inside.', ['echo', 'dream', 'memory', 'reflection']),
+  gift('story_rare_storyglass_shard', 'Storyglass Shard', 'story', 'rare', 10, 'A translucent shard that shows a different image depending on who remembers it.', ['echo', 'dream', 'story', 'memory']),
+  gift('story_epic_mythbound_page', 'Mythbound Page', 'story', 'epic', 20, 'A glowing page from a story that seems to include the reader.', ['echo', 'dream', 'memory', 'reflection']),
+  gift('art_common_color_thread', 'Color Thread', 'art', 'common', 5, 'A spool of luminous thread used to stitch feeling into color.', ['muse', 'dream', 'expression', 'art']),
+  gift('art_rare_painted_star_tile', 'Painted Star Tile', 'art', 'rare', 10, 'A painted tile whose star glimmers differently from every angle.', ['muse', 'light', 'dream', 'expression']),
+  gift('art_epic_dreambrush_relic', 'Dreambrush Relic', 'art', 'epic', 20, 'A magical brush that paints the color of remembered dreams.', ['muse', 'dream', 'expression', 'memory']),
+  gift('shell_common_soft_shell', 'Soft Shell', 'shell', 'common', 5, 'A pale shell that carries the hush of distant water.', ['root', 'tide', 'echo', 'listening']),
+  gift('shell_rare_prism_shell', 'Prism Shell', 'shell', 'rare', 10, 'A pearlescent shell with prism-light refractions and a soft violet-blue glow.', ['root', 'tide', 'muse', 'light']),
+  gift('shell_epic_moonlit_tide_shell', 'Moonlit Tide Shell', 'shell', 'epic', 20, 'A luminous shell that seems to hold a tide beneath moonlight.', ['root', 'tide', 'echo', 'dream', 'memory']),
+  gift('woven_common_braided_thread', 'Braided Thread', 'woven', 'common', 5, 'A simple braided thread made with careful hands.', ['guardian', 'root', 'care', 'grounding']),
+  gift('woven_rare_woven_band', 'Woven Band', 'woven', 'rare', 10, 'A soft braided charm bracelet with tiny glowing beads.', ['guardian', 'root', 'care', 'safety']),
+  gift('woven_epic_rootwoven_bracelet', 'Rootwoven Bracelet', 'woven', 'epic', 20, 'An ancient woven bracelet braided with living root and luminous thread.', ['guardian', 'root', 'grounding', 'protection']),
+  gift('hearth_common_warm_coal', 'Warm Coal', 'hearth', 'common', 5, 'A small coal that glows warmly without burning.', ['guardian', 'ember', 'hearth', 'safety']),
+  gift('hearth_rare_hearthstone', 'Hearthstone', 'hearth', 'rare', 10, 'A warm stone that carries the feeling of a safe place.', ['guardian', 'root', 'ember', 'safety']),
+  gift('hearth_epic_hearthheart_ember', 'Hearthheart Ember', 'hearth', 'epic', 20, 'A heart-shaped ember that glows brighter around trust and courage.', ['guardian', 'ember', 'protection', 'trust']),
+  gift('stone_common_smooth_stone', 'Smooth Stone', 'stone', 'common', 5, 'A smooth grounding stone marked with a faint spiral.', ['root', 'guardian', 'grounding', 'stability']),
+  gift('stone_rare_seedstone', 'Seedstone', 'stone', 'rare', 10, 'A smooth stone with a tiny living sprout curled inside.', ['root', 'grounding', 'growth', 'stability']),
+  gift('stone_epic_ancient_rootstone', 'Ancient Rootstone', 'stone', 'epic', 20, 'A deep green stone wrapped in ancient root and quiet patience.', ['root', 'guardian', 'grounding', 'restoration']),
+  gift('moon_common_moon_drop', 'Moon Drop', 'moon', 'common', 5, 'A tiny moonlit drop that glows softly in the dark.', ['echo', 'dream', 'memory', 'reflection']),
+  gift('moon_rare_moonlit_shell', 'Moonlit Shell', 'moon', 'rare', 10, 'A small shell filled with pale moonlight and quiet memory.', ['echo', 'dream', 'tide', 'memory']),
+  gift('moon_epic_lunar_memory_orb', 'Lunar Memory Orb', 'moon', 'epic', 20, 'A glowing orb that reflects memories as if they were constellations.', ['echo', 'dream', 'memory', 'reflection']),
+  gift('prism_common_prism_chip', 'Prism Chip', 'prism', 'common', 5, 'A tiny prism shard that catches light in gentle colors.', ['muse', 'light', 'clarity', 'expression']),
+  gift('prism_rare_prism_shell', 'Prism Shell', 'prism', 'rare', 10, 'A shell-like prism that bends soft light into emotional color.', ['muse', 'light', 'tide', 'expression']),
+  gift('prism_epic_radiant_prism_crown', 'Radiant Prism Crown', 'prism', 'epic', 20, 'A radiant crown of prism light, delicate enough to feel ceremonial.', ['muse', 'light', 'harmony', 'expression']),
+  gift('keepsake_common_faded_ribbon', 'Faded Ribbon', 'keepsake', 'common', 5, 'A soft ribbon that feels like it belonged to an old, kind memory.', ['echo', 'memory', 'keepsake', 'reflection']),
+  gift('keepsake_rare_keepsake_locket', 'Keepsake Locket', 'keepsake', 'rare', 10, 'A delicate locket made to hold something emotionally important.', ['echo', 'memory', 'keepsake', 'loyalty']),
+  gift('keepsake_epic_everheld_token', 'Everheld Token', 'keepsake', 'epic', 20, 'A luminous token that seems to preserve what matters most.', ['echo', 'memory', 'keepsake', 'continuity']),
+  gift('snack_common_bright_berry', 'Bright Berry', 'snack', 'common', 5, 'A bright little berry with a sweet spark of energy.', ['spark', 'play', 'momentum', 'snack']),
+  gift('snack_rare_spark_biscuit', 'Spark Biscuit', 'snack', 'rare', 10, 'A crisp biscuit that gives off tiny playful sparks.', ['spark', 'play', 'momentum', 'curiosity']),
+  gift('snack_epic_festival_starcake', 'Festival Starcake', 'snack', 'epic', 20, 'A celebratory cake topped with starlight and joyful magic.', ['spark', 'light', 'play', 'celebration']),
+  gift('trinket_common_curiosity_coin', 'Curiosity Coin', 'trinket', 'common', 5, 'A little coin that seems to flip itself when curiosity rises.', ['spark', 'curiosity', 'play', 'discovery']),
+  gift('trinket_rare_glimmer_bauble', 'Glimmer Bauble', 'trinket', 'rare', 10, 'A playful bauble that glimmers with small surprises.', ['spark', 'curiosity', 'light', 'play']),
+  gift('trinket_epic_wonderwork_trinket', 'Wonderwork Trinket', 'trinket', 'epic', 20, 'A tiny impossible object that shifts when no one is watching.', ['spark', 'dream', 'curiosity', 'play'])
 ];
 
 export const giftResponseCopy: Record<GiftPreferenceLevel, string[]> = {
@@ -216,12 +292,29 @@ const preferenceFromSet = (categoryId: GiftCategoryId, prefs: Partial<GiftPrefer
   return null;
 };
 
-const strongest = (...levels: Array<GiftPreferenceLevel | null>): GiftPreferenceLevel => {
-  return levels.reduce<GiftPreferenceLevel>((best, level) => (level && rank[level] > rank[best] ? level : best), 'neutral');
+const strongestPositive = (...levels: Array<GiftPreferenceLevel | null>): GiftPreferenceLevel | null => {
+  return levels.reduce<GiftPreferenceLevel | null>((best, level) => {
+    if (!level || level === 'neutral' || level === 'disliked') return best;
+    return !best || rank[level] > rank[best] ? level : best;
+  }, null);
 };
 
 export const getGiftCategory = (categoryId: string | null | undefined): GiftCategoryDefinition | null => {
   return GIFT_CATEGORY_IDS.includes(categoryId as GiftCategoryId) ? giftCategories[categoryId as GiftCategoryId] : null;
+};
+
+export const getAllCompanionGifts = (): CompanionGiftItem[] => [...companionGiftItems];
+
+export const getCompanionGiftById = (giftId: string | null | undefined): CompanionGiftItem | null => {
+  return companionGiftItems.find((gift) => gift.id === giftId) ?? null;
+};
+
+export const getGiftsByCategory = (categoryId: GiftCategoryId): CompanionGiftItem[] => {
+  return companionGiftItems.filter((gift) => gift.category === categoryId);
+};
+
+export const getGiftsByRarity = (rarity: GiftRarity): CompanionGiftItem[] => {
+  return companionGiftItems.filter((gift) => gift.rarity === rarity);
 };
 
 export const getArchetypeGiftPreferences = (archetypeId: string | null | undefined): ArchetypeGiftPreferences =>
@@ -272,7 +365,7 @@ export const getGiftPreferenceForCompanion = (
       ...getElementGiftPreferences(elementProfile.secondary).liked
     ]
   });
-  return strongest(archetypePreference, elementPreference);
+  return strongestPositive(archetypePreference, elementPreference) ?? archetypePreference ?? 'neutral';
 };
 
 export const getGiftBondMultiplier = (preference: GiftPreferenceLevel) => multipliers[preference] ?? 1;
@@ -319,3 +412,5 @@ export const getFavoriteGiftItemsForCompanion = (
     })
     .slice(0, limit);
 };
+
+export const getFavoriteGiftsForCompanion = getFavoriteGiftItemsForCompanion;

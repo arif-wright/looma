@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateGiftBondGain,
   companionGiftItems,
+  getAllCompanionGifts,
+  getCompanionGiftById,
   getCompanionGiftPreferences,
   getFavoriteGiftItemsForCompanion,
+  getGiftsByCategory,
+  getGiftsByRarity,
   getGiftPreferenceForCompanion
 } from '$lib/companions/giftPreferences';
 import type { Companion } from '$lib/stores/companions';
@@ -26,6 +30,15 @@ const companion = (overrides: Partial<Companion> = {}): Companion => ({
 });
 
 describe('companion gift preferences', () => {
+  it('exposes the full consumable gift asset library', () => {
+    expect(getAllCompanionGifts()).toHaveLength(66);
+    expect(getCompanionGiftById('crystal_rare_resonance_crystal')?.icon).toBe(
+      '/assets/gifts/gift-crystal-rare-resonance-crystal.png'
+    );
+    expect(getGiftsByCategory('crystal')).toHaveLength(3);
+    expect(getGiftsByRarity('epic')).toHaveLength(22);
+  });
+
   it('resolves archetype and secondary element favorite categories', () => {
     const preferences = getCompanionGiftPreferences(companion());
 
@@ -56,7 +69,7 @@ describe('companion gift preferences', () => {
   });
 
   it('calculates gentle bond gain and favorite gift display items', () => {
-    const gift = companionGiftItems.find((entry) => entry.id === 'resonance_crystal');
+    const gift = companionGiftItems.find((entry) => entry.id === 'crystal_rare_resonance_crystal');
     expect(gift).toBeTruthy();
 
     const result = calculateGiftBondGain(companion(), gift!);
