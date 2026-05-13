@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
 
   type MessageAttachmentInput = {
     kind?: 'image' | 'gif' | 'file' | 'link';
@@ -45,14 +45,13 @@
     height: number | null;
   };
 
-  const PICKER_EMOJIS = ['😀', '😂', '😍', '🥹', '😭', '🔥', '🙏', '❤️', '👍', '🎉', '😮', '😢'];
-
   let body = '';
   let lastSeed = '';
   let inputRef: HTMLTextAreaElement | null = null;
   let fileInputRef: HTMLInputElement | null = null;
 
   let showEmojiPicker = false;
+  let emojiPickerReady = false;
   let showGifPicker = false;
   let gifQuery = '';
   let gifLoading = false;
@@ -68,6 +67,12 @@
   if (browser) {
     reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
+
+  const loadEmojiPicker = async () => {
+    if (!browser || emojiPickerReady) return;
+    await import('emoji-picker-element');
+    emojiPickerReady = true;
+  };
 
   $: if (editing && editSeed !== lastSeed) {
     body = editSeed;
@@ -151,6 +156,21 @@
     });
 
     dispatch('typing', { typing: body.trim().length > 0 });
+  };
+
+  const toggleEmojiPicker = async () => {
+    showEmojiPicker = !showEmojiPicker;
+    showGifPicker = false;
+    if (showEmojiPicker) {
+      await loadEmojiPicker();
+      await tick();
+    }
+  };
+
+  const handleEmojiClick = (event: Event) => {
+    const detail = (event as CustomEvent<{ unicode?: string; emoji?: { unicode?: string; annotation?: string } }>).detail;
+    const emoji = detail?.unicode ?? detail?.emoji?.unicode;
+    if (emoji) insertEmoji(emoji);
   };
 
   const loadImageDimensions = (file: File): Promise<{ width: number | null; height: number | null }> =>
@@ -306,7 +326,7 @@
     {/if}
 
     <div class="toolbar" role="group" aria-label="Composer tools">
-      <button type="button" class="tool" on:click={() => (showEmojiPicker = !showEmojiPicker)} aria-expanded={showEmojiPicker}>😊</button>
+      <button type="button" class="tool" on:click={toggleEmojiPicker} aria-expanded={showEmojiPicker}>😊</button>
       <button type="button" class="tool" on:click={() => fileInputRef?.click()} disabled={uploading || disabled}>📷</button>
       <button type="button" class="tool" on:click={() => (showGifPicker = !showGifPicker)} disabled={disabled}>GIF</button>
       <input
@@ -321,9 +341,11 @@
 
     {#if showEmojiPicker}
       <div class="emoji-picker" role="dialog" aria-label="Emoji picker">
-        {#each PICKER_EMOJIS as emoji}
-          <button type="button" on:click={() => insertEmoji(emoji)}>{emoji}</button>
-        {/each}
+        {#if emojiPickerReady}
+          <emoji-picker class="looma-emoji-picker" on:emoji-click={handleEmojiClick}></emoji-picker>
+        {:else}
+          <p class="emoji-loading">Loading emoji...</p>
+        {/if}
       </div>
     {/if}
 
@@ -435,22 +457,50 @@
   }
 
   .emoji-picker {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.65rem);
+    z-index: 40;
+    width: min(22rem, calc(100vw - 2rem));
+    overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 0.72rem;
-    background: rgba(2, 6, 23, 0.94);
-    padding: 0.4rem;
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 0.25rem;
+    border-radius: 0.95rem;
+    background:
+      radial-gradient(circle at 18% 8%, rgba(167, 92, 255, 0.22), transparent 12rem),
+      linear-gradient(180deg, rgba(13, 15, 39, 0.98), rgba(5, 8, 24, 0.98));
+    box-shadow:
+      0 24px 70px rgba(0, 0, 0, 0.46),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    padding: 0.35rem;
+    backdrop-filter: blur(20px);
   }
 
-  .emoji-picker button {
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(15, 23, 42, 0.6);
-    border-radius: 0.5rem;
-    font-size: 1.1rem;
-    padding: 0.25rem;
-    cursor: pointer;
+  .looma-emoji-picker {
+    width: 100%;
+    height: 24rem;
+    --background: transparent;
+    --border-color: transparent;
+    --border-radius: 0.75rem;
+    --button-active-background: rgba(167, 92, 255, 0.28);
+    --button-hover-background: rgba(167, 92, 255, 0.18);
+    --category-emoji-padding: 0.35rem;
+    --emoji-padding: 0.38rem;
+    --indicator-color: #a75cff;
+    --input-border-color: rgba(186, 153, 255, 0.24);
+    --input-border-radius: 0.75rem;
+    --input-font-color: rgba(248, 246, 255, 0.94);
+    --input-placeholder-color: rgba(221, 214, 244, 0.54);
+    --input-padding: 0.55rem 0.7rem;
+    --outline-color: rgba(167, 92, 255, 0.5);
+    --skintone-border-radius: 999px;
+    --text-color: rgba(248, 246, 255, 0.9);
+  }
+
+  .emoji-loading {
+    margin: 0;
+    padding: 1rem;
+    color: rgba(221, 214, 244, 0.72);
+    font-size: 0.84rem;
   }
 
   .gif-picker {
