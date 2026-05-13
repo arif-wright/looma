@@ -77,7 +77,14 @@
   let callStarting = false;
   let callError: string | null = null;
   let localCallStream: MediaStream | null = null;
+  let remoteCallStream: MediaStream | null = null;
   let localVideoRef: HTMLVideoElement | null = null;
+  let remoteVideoRef: HTMLVideoElement | null = null;
+  let remoteAudioRef: HTMLAudioElement | null = null;
+  let peerConnection: RTCPeerConnection | null = null;
+  let callId: string | null = null;
+  let incomingOffer: RTCSessionDescriptionInit | null = null;
+  let callPhase: 'idle' | 'incoming' | 'outgoing' | 'connecting' | 'connected' = 'idle';
   let callMicMuted = false;
   let callCameraOff = false;
 
@@ -836,6 +843,39 @@
     localVideoRef.srcObject = callMode === 'video' ? localCallStream : null;
   };
 
+  const syncRemoteMedia = () => {
+    if (remoteVideoRef) remoteVideoRef.srcObject = callMode === 'video' ? remoteCallStream : null;
+    if (remoteAudioRef) remoteAudioRef.srcObject = remoteCallStream;
+  };
+
+  const sendCallSignal = async (payload: Record<string, unknown>) => {
+    if (!activeMessagesChannel || !activeConversationId || !currentUserId) return;
+    await activeMessagesChannel
+      .send({
+        type: 'broadcast',
+        event: 'call-signal',
+        payload: {
+          conversationId: activeConversationId,
+          fromUserId: currentUserId,
+          ...payload
+        }
+      })
+      .catch(() => {});
+  };
+
+  const closePeerConnection = () => {
+    if (peerConnection) {
+      peerConnection.onicecandidate = null;
+      peerConnection.ontrack = null;
+      peerConnection.onconnectionstatechange = null;
+      peerConnection.close();
+    }
+    peerConnection = null;
+    remoteCallStream?.getTracks().forEach((track) => track.stop());
+    remoteCallStream = null;
+    syncRemoteMedia();
+  };
+
   const stopLocalCallStream = () => {
     if (localCallStream) {
       localCallStream.getTracks().forEach((track) => track.stop());
@@ -844,14 +884,70 @@
     syncLocalVideo();
   };
 
+  const createPeerConnection = () => {
+    closePeerConnection();
+    const connection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    remoteCallStream = new MediaStream();
+    syncRemoteMedia();
+
+    connection.onicecandidate = (event) => {
+      if (!event.candidate || !callId) return;
+      void sendCallSignal({
+        kind: 'candidate',
+        callId,
+        candidate: event.candidate.toJSON()
+      });
+    };
+
+    connection.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (stream) {
+        remoteCallStream = stream;
+      } else {
+        const next = remoteCallStream ?? new MediaStream();
+        next.addTrack(event.track);
+        remoteCallStream = next;
+      }
+      callPhase = 'connected';
+      syncRemoteMedia();
+    };
+
+    connection.onconnectionstatechange = () => {
+      if (connection.connectionState === 'connected') callPhase = 'connected';
+      if (connection.connectionState === 'failed' || connection.connectionState === 'disconnected') {
+        callError = 'The call connection was interrupted.';
+      }
+    };
+
+    peerConnection = connection;
+    return connection;
+  };
+
+  const prepareLocalCallStream = async (mode: 'voice' | 'video') => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Calls are not supported in this browser.');
+    }
+
+    localCallStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video:
+        mode === 'video'
+          ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user'
+            }
+          : false
+    });
+    syncLocalVideo();
+    return localCallStream;
+  };
+
   const startCall = async (mode: 'voice' | 'video') => {
     if (!browser || !activeConversationId) return;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      callError = 'Calls are not supported in this browser.';
-      callOpen = true;
-      callMode = mode;
-      return;
-    }
 
     callMode = mode;
     callOpen = true;
@@ -859,38 +955,102 @@
     callError = null;
     callMicMuted = false;
     callCameraOff = false;
+    callPhase = 'outgoing';
+    callId = crypto.randomUUID();
+    incomingOffer = null;
+    closePeerConnection();
     stopLocalCallStream();
 
     try {
-      localCallStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: mode === 'video'
-          ? {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: 'user'
-            }
-          : false
+      const stream = await prepareLocalCallStream(mode);
+      const connection = createPeerConnection();
+      stream.getTracks().forEach((track) => connection.addTrack(track, stream));
+      const offer = await connection.createOffer();
+      await connection.setLocalDescription(offer);
+      await sendCallSignal({
+        kind: 'offer',
+        callId,
+        mode,
+        sdp: offer
       });
-      syncLocalVideo();
     } catch (err) {
       callError =
         err instanceof DOMException && err.name === 'NotAllowedError'
           ? 'Camera or microphone permission was denied.'
-          : 'Could not start the call. Check your device permissions and try again.';
+          : err instanceof Error
+            ? err.message
+            : 'Could not start the call. Check your device permissions and try again.';
+      callPhase = 'idle';
       stopLocalCallStream();
+      closePeerConnection();
+    } finally {
+      callStarting = false;
+    }
+  };
+
+  const acceptIncomingCall = async () => {
+    if (!browser || !incomingOffer || !callId) return;
+    callStarting = true;
+    callError = null;
+    callPhase = 'connecting';
+    stopLocalCallStream();
+    closePeerConnection();
+
+    try {
+      const stream = await prepareLocalCallStream(callMode);
+      const connection = createPeerConnection();
+      stream.getTracks().forEach((track) => connection.addTrack(track, stream));
+      await connection.setRemoteDescription(incomingOffer);
+      const answer = await connection.createAnswer();
+      await connection.setLocalDescription(answer);
+      await sendCallSignal({
+        kind: 'answer',
+        callId,
+        mode: callMode,
+        sdp: answer
+      });
+      incomingOffer = null;
+    } catch (err) {
+      callError =
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'Camera or microphone permission was denied.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not answer the call.';
+      callPhase = 'idle';
+      stopLocalCallStream();
+      closePeerConnection();
     } finally {
       callStarting = false;
     }
   };
 
   const endCall = () => {
+    if (callId) {
+      void sendCallSignal({ kind: 'end', callId });
+    }
     callOpen = false;
     callStarting = false;
     callError = null;
+    callId = null;
+    callPhase = 'idle';
+    incomingOffer = null;
     callMicMuted = false;
     callCameraOff = false;
     stopLocalCallStream();
+    closePeerConnection();
+  };
+
+  const dismissIncomingCall = () => {
+    if (callId) {
+      void sendCallSignal({ kind: 'decline', callId });
+    }
+    callOpen = false;
+    callStarting = false;
+    callError = null;
+    callId = null;
+    callPhase = 'idle';
+    incomingOffer = null;
   };
 
   const toggleMic = () => {
@@ -907,8 +1067,79 @@
     });
   };
 
+  const handleCallSignal = async (payload: unknown) => {
+    if (!payload || typeof payload !== 'object' || !currentUserId || !activeConversationId) return;
+    const signal = payload as Record<string, unknown>;
+    if (signal.conversationId !== activeConversationId || signal.fromUserId === currentUserId) return;
+    const kind = signal.kind;
+    const signalCallId = typeof signal.callId === 'string' ? signal.callId : null;
+
+    if (kind === 'offer') {
+      const mode = signal.mode === 'video' ? 'video' : 'voice';
+      const sdp = signal.sdp;
+      if (!signalCallId || !sdp || typeof sdp !== 'object') return;
+      if (callOpen && callPhase !== 'incoming') {
+        await sendCallSignal({ kind: 'busy', callId: signalCallId });
+        return;
+      }
+      callId = signalCallId;
+      callMode = mode;
+      incomingOffer = sdp as RTCSessionDescriptionInit;
+      callPhase = 'incoming';
+      callOpen = true;
+      callStarting = false;
+      callError = null;
+      return;
+    }
+
+    if (!signalCallId || signalCallId !== callId) return;
+
+    if (kind === 'answer') {
+      const sdp = signal.sdp;
+      if (!peerConnection || !sdp || typeof sdp !== 'object') return;
+      await peerConnection.setRemoteDescription(sdp as RTCSessionDescriptionInit).catch(() => {
+        callError = 'Could not connect the call.';
+      });
+      callPhase = 'connecting';
+      return;
+    }
+
+    if (kind === 'candidate') {
+      const candidate = signal.candidate;
+      if (!peerConnection || !candidate || typeof candidate !== 'object') return;
+      await peerConnection.addIceCandidate(candidate as RTCIceCandidateInit).catch(() => {});
+      return;
+    }
+
+    if (kind === 'busy') {
+      callError = `${threadTitle} is unavailable right now.`;
+      return;
+    }
+
+    if (kind === 'decline') {
+      callError = `${threadTitle} declined the call.`;
+      closePeerConnection();
+      stopLocalCallStream();
+      callPhase = 'idle';
+      return;
+    }
+
+    if (kind === 'end') {
+      callOpen = false;
+      callId = null;
+      callPhase = 'idle';
+      incomingOffer = null;
+      stopLocalCallStream();
+      closePeerConnection();
+    }
+  };
+
   $: if (localVideoRef || localCallStream || callMode) {
     syncLocalVideo();
+  }
+
+  $: if (remoteVideoRef || remoteAudioRef || remoteCallStream || callMode) {
+    syncRemoteMedia();
   }
 
   const sendTyping = async (typing: boolean, force = false) => {
@@ -1208,6 +1439,9 @@
         if (!payload || payload.conversationId !== conversationId) return;
         if (!payload.userId || payload.userId === currentUserId) return;
         setUserTyping(payload.userId, payload.typing === true);
+      })
+      .on('broadcast', { event: 'call-signal' }, (event) => {
+        void handleCallSignal(event.payload);
       })
       .subscribe();
   };
@@ -1569,10 +1803,14 @@
               <p>{callMode === 'video' ? 'Video Call' : 'Voice Call'}</p>
               <h2>{threadTitle}</h2>
               <span>
-                {#if callStarting}
+                {#if callPhase === 'incoming'}
+                  Incoming {callMode === 'video' ? 'video' : 'voice'} call
+                {:else if callStarting}
                   Connecting devices...
                 {:else if callError}
                   Needs attention
+                {:else if callPhase === 'connected'}
+                  Connected
                 {:else}
                   Waiting for {threadTitle} to join
                 {/if}
@@ -1583,51 +1821,78 @@
         </header>
 
         <div class="call-stage" class:call-stage--voice={callMode === 'voice'}>
-          {#if callMode === 'video' && localCallStream && !callCameraOff}
-            <video bind:this={localVideoRef} autoplay muted playsinline></video>
+          {#if callMode === 'video' && remoteCallStream && callPhase === 'connected'}
+            <video bind:this={remoteVideoRef} autoplay muted playsinline></video>
+          {:else if callMode === 'video' && localCallStream && !callCameraOff}
+            <video bind:this={localVideoRef} class="call-local-video--full" autoplay muted playsinline></video>
           {:else}
             <div class="call-orb" aria-hidden="true">
               <span>{threadTitle.slice(0, 1).toUpperCase()}</span>
             </div>
+          {/if}
+          <audio bind:this={remoteAudioRef} autoplay></audio>
+          {#if callMode === 'video' && remoteCallStream && localCallStream && !callCameraOff}
+            <video class="call-local-preview" bind:this={localVideoRef} autoplay muted playsinline></video>
           {/if}
 
           <div class="call-status">
             {#if callError}
               <strong>{callError}</strong>
               <span>Use the controls below to close the call and try again.</span>
+            {:else if callPhase === 'incoming'}
+              <strong>{threadTitle} is calling</strong>
+              <span>Accept to share your {callMode === 'video' ? 'camera and microphone' : 'microphone'}.</span>
             {:else if callStarting}
               <strong>Starting {callMode === 'video' ? 'camera' : 'voice'} chat...</strong>
               <span>Your browser may ask for permission.</span>
+            {:else if callPhase === 'connected'}
+              <strong>{callMode === 'video' ? 'Video connected' : 'Voice connected'}</strong>
+              <span>Your conversation is live.</span>
             {:else}
               <strong>{callMode === 'video' ? 'Camera ready' : 'Voice ready'}</strong>
-              <span>Peer connection signaling is ready to attach here.</span>
+              <span>Waiting for {threadTitle} to answer.</span>
             {/if}
           </div>
         </div>
 
         <footer class="call-controls">
-          <button type="button" class:muted={callMicMuted} on:click={toggleMic} disabled={!localCallStream || Boolean(callError)}>
-            {#if callMicMuted}
-              <MicOff size={20} />
-            {:else}
-              <Mic size={20} />
-            {/if}
-            <span>{callMicMuted ? 'Unmute' : 'Mute'}</span>
-          </button>
-          {#if callMode === 'video'}
-            <button type="button" class:muted={callCameraOff} on:click={toggleCamera} disabled={!localCallStream || Boolean(callError)}>
-              {#if callCameraOff}
-                <VideoOff size={20} />
-              {:else}
+          {#if callPhase === 'incoming'}
+            <button type="button" class="accept-call" on:click={acceptIncomingCall} disabled={callStarting}>
+              {#if callMode === 'video'}
                 <Video size={20} />
+              {:else}
+                <Phone size={20} />
               {/if}
-              <span>{callCameraOff ? 'Camera On' : 'Camera Off'}</span>
+              <span>Accept</span>
+            </button>
+            <button type="button" class="end-call" on:click={dismissIncomingCall}>
+              <PhoneOff size={20} />
+              <span>Decline</span>
+            </button>
+          {:else}
+            <button type="button" class:muted={callMicMuted} on:click={toggleMic} disabled={!localCallStream || Boolean(callError)}>
+              {#if callMicMuted}
+                <MicOff size={20} />
+              {:else}
+                <Mic size={20} />
+              {/if}
+              <span>{callMicMuted ? 'Unmute' : 'Mute'}</span>
+            </button>
+            {#if callMode === 'video'}
+              <button type="button" class:muted={callCameraOff} on:click={toggleCamera} disabled={!localCallStream || Boolean(callError)}>
+                {#if callCameraOff}
+                  <VideoOff size={20} />
+                {:else}
+                  <Video size={20} />
+                {/if}
+                <span>{callCameraOff ? 'Camera On' : 'Camera Off'}</span>
+              </button>
+            {/if}
+            <button type="button" class="end-call" on:click={endCall}>
+              <PhoneOff size={20} />
+              <span>End</span>
             </button>
           {/if}
-          <button type="button" class="end-call" on:click={endCall}>
-            <PhoneOff size={20} />
-            <span>End</span>
-          </button>
         </footer>
       </div>
     </div>
@@ -2357,6 +2622,21 @@
     background: #050714;
   }
 
+  .call-stage audio {
+    display: none;
+  }
+
+  .call-local-preview {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    width: min(11rem, 32vw) !important;
+    height: min(7rem, 20vw) !important;
+    border: 1px solid rgba(186, 153, 255, 0.32);
+    border-radius: 0.8rem;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+  }
+
   .call-stage--voice {
     min-height: 22rem;
   }
@@ -2425,6 +2705,11 @@
   .call-controls button.muted {
     background: rgba(255, 184, 77, 0.14);
     border-color: rgba(255, 184, 77, 0.34);
+  }
+
+  .call-controls .accept-call {
+    background: linear-gradient(135deg, #34d399, #178a58);
+    border-color: rgba(116, 255, 190, 0.42);
   }
 
   .call-controls .end-call {
