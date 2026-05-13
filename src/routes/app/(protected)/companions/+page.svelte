@@ -1048,6 +1048,12 @@
     null;
   $: shardBalance =
     typeof ($page.data?.wallet as any)?.shards === 'number' ? (($page.data?.wallet as any).shards as number) : 0;
+  $: activeCompanionCount = activeCompanion ? 1 : 0;
+  $: companionsCollected = ownedInstances.length;
+  $: companionCollectionTotal = companionsCollected + discoverEntries.length;
+  $: activeCompanionProgress = activeCompanionCount > 0 ? 100 : 0;
+  $: collectionProgress =
+    companionCollectionTotal > 0 ? Math.min(100, Math.round((companionsCollected / companionCollectionTotal) * 100)) : 0;
   $: averageBond =
     ownedInstances.length > 0
       ? Math.round(ownedInstances.reduce((total, companion) => total + companionBondScore(companion), 0) / ownedInstances.length)
@@ -1227,16 +1233,16 @@
         <section class="stats-grid" aria-label="Companion overview">
           <article class="stat-cluster">
             <div class="stat-segment">
-              <span class="stat-orb stat-orb--blue" style={`--progress:${Math.min(100, Math.round((ownedInstances.length / Math.max(1, maxSlots)) * 100))}%`}><Shield size={20} /></span>
+              <span class="stat-orb stat-orb--blue" style={`--progress:${activeCompanionProgress}%`}><Shield size={20} /></span>
               <div>
-                <strong>{ownedInstances.length}</strong>
+                <strong>{activeCompanionCount}</strong>
                 <span>Active Companions</span>
               </div>
             </div>
             <div class="stat-segment">
-              <span class="stat-orb stat-orb--gold" style={`--progress:${Math.min(100, Math.round(((ownedInstances.length + discoverEntries.length) / 12) * 100))}%`}><Sparkles size={20} /></span>
+              <span class="stat-orb stat-orb--gold" style={`--progress:${collectionProgress}%`}><Sparkles size={20} /></span>
               <div>
-                <strong>{ownedInstances.length + discoverEntries.length}</strong>
+                <strong>{companionsCollected}</strong>
                 <span>Companions Collected</span>
               </div>
             </div>
