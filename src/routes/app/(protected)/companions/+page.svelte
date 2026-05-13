@@ -1692,91 +1692,164 @@
             </div>
           {:else if activeDetailTab === 'skills'}
             <div class="detail-tab-panel">
-              <div class="section-heading">
+              <div class="compact-section-head">
                 <span>Companion Gifts</span>
                 <strong>{detailCompanion.name}'s Gifts</strong>
               </div>
               {#each giftGroups as group}
                 {#if detailIdentity.gifts[group.key].length > 0}
-                  <div class="gift-group">
+                  <div class="gift-group compact-group">
                     <span>{group.label}</span>
+                    <div class="compact-tile-grid">
                     {#each detailIdentity.gifts[group.key] as gift (gift.id)}
-                      <article class="gift-card">
-                        <div>
+                      <button type="button" class="compact-tile gift-card tooltip-host" aria-label={`${gift.name}. ${gift.description}`}>
+                        <span class="tile-icon" aria-hidden="true">
+                          {#if group.key === 'core'}
+                            <Sparkles size={17} />
+                          {:else if group.key === 'element'}
+                            <Gem size={17} />
+                          {:else if group.key === 'bond'}
+                            <Heart size={17} fill="currentColor" />
+                          {:else}
+                            <Star size={17} />
+                          {/if}
+                        </span>
+                        <span class="tile-copy">
+                          <strong>{gift.name}</strong>
+                          <small>{gift.state}</small>
+                        </span>
+                        <div class="tooltip-card gift-tooltip" role="tooltip">
+                          <span>{group.label}</span>
                           <strong>{gift.name}</strong>
                           <p>{gift.description}</p>
+                          <em>{gift.effectSummary}</em>
+                          <small>{gift.visualBehavior}</small>
+                          {#if gift.state === 'locked'}
+                            <b>{gift.unlockCondition}</b>
+                          {:else}
+                            <b>{gift.state}</b>
+                          {/if}
                         </div>
-                        <div class="gift-meta">
-                          <b>{gift.category}</b>
-                          <em>{gift.state}</em>
-                        </div>
-                        {#if gift.state === 'locked'}
-                          <small>{gift.unlockCondition}</small>
-                        {/if}
-                      </article>
+                      </button>
                     {/each}
+                    </div>
                   </div>
                 {/if}
               {/each}
             </div>
           {:else if activeDetailTab === 'growth'}
             <div class="detail-tab-panel">
-              <div class="growth-summary">
-                <span>Current Growth Path</span>
-                <strong>{detailIdentity.growth.currentPath}</strong>
-                <p>
-                  Next: {detailIdentity.growth.nextMilestone?.label ?? 'All current milestones are open.'}
-                </p>
+              <button type="button" class="compact-tile growth-summary tooltip-host">
+                <span class="tile-icon" aria-hidden="true"><Sparkles size={17} /></span>
+                <span class="tile-copy">
+                  <strong>{detailIdentity.growth.currentPath}</strong>
+                  <small>Current Growth Path</small>
+                </span>
+                <div class="tooltip-card growth-tooltip" role="tooltip">
+                  <span>Current Growth Path</span>
+                  <strong>{detailIdentity.growth.currentPath}</strong>
+                  <p>Next: {detailIdentity.growth.nextMilestone?.label ?? 'All current milestones are open.'}</p>
+                </div>
+              </button>
+              <div class="compact-section-head">
+                <span>Influence</span>
+                <strong>Secondary Element</strong>
               </div>
-              <div class="influence-bars" aria-label="Secondary element influence">
+              <div class="influence-bars compact-tile-grid" aria-label="Secondary element influence">
                 {#each detailIdentity.growth.secondaryElementInfluence as influence}
-                  <div class="influence-row">
-                    <div><span>{influence.label}</span><strong>{influence.value}%</strong></div>
+                  <button type="button" class="compact-tile influence-row tooltip-host" aria-label={`${influence.label}: ${influence.value}%`}>
+                    <span class="tile-icon" aria-hidden="true"><Gem size={17} /></span>
+                    <span class="tile-copy">
+                      <strong>{influence.label}</strong>
+                      <small>{influence.value}%</small>
+                    </span>
                     <div class="influence-track"><span style={`width:${influence.value}%`}></span></div>
-                    <p>{influence.description}</p>
-                  </div>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>Influence</span>
+                      <strong>{influence.label} · {influence.value}%</strong>
+                      <p>{influence.description}</p>
+                    </div>
+                  </button>
                 {/each}
               </div>
-              <div class="milestone-track">
+              <div class="compact-section-head">
+                <span>Milestones</span>
+                <strong>Growth Track</strong>
+              </div>
+              <div class="milestone-track compact-tile-grid">
                 {#each detailIdentity.growth.milestones as milestone}
-                  <article class:unlocked={milestone.unlocked}>
-                    <span></span>
-                    <div>
+                  <button type="button" class="compact-tile milestone-tile tooltip-host" class:unlocked={milestone.unlocked}>
+                    <span class="milestone-dot" aria-hidden="true"></span>
+                    <span class="tile-copy">
+                      <strong>{milestone.label}</strong>
+                      <small>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</small>
+                    </span>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>{milestone.unlocked ? 'Opened Milestone' : 'Locked Milestone'}</span>
                       <strong>{milestone.label}</strong>
                       <p>{milestone.description}</p>
-                      <small>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</small>
+                      <b>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</b>
                     </div>
-                  </article>
+                  </button>
                 {/each}
               </div>
             </div>
           {:else}
             <div class="detail-tab-panel story-panel">
-              <article class="story-card origin">
-                <span>Origin</span>
-                <strong>{detailIdentity.story.origin.title}</strong>
-                <p>{detailIdentity.story.origin.body}</p>
-              </article>
+              <button type="button" class="compact-tile story-card origin tooltip-host">
+                <span class="tile-icon" aria-hidden="true"><Sparkles size={17} /></span>
+                <span class="tile-copy">
+                  <strong>{detailIdentity.story.origin.title}</strong>
+                  <small>Origin</small>
+                </span>
+                <div class="tooltip-card story-tooltip" role="tooltip">
+                  <span>Origin</span>
+                  <strong>{detailIdentity.story.origin.title}</strong>
+                  <p>{detailIdentity.story.origin.body}</p>
+                </div>
+              </button>
               {#each detailIdentity.story.sharedMemories as memory}
-                <article class="story-card">
-                  <span>Shared Memory</span>
-                  <strong>{memory.title}</strong>
-                  <p>{memory.body}</p>
-                </article>
+                <button type="button" class="compact-tile story-card tooltip-host">
+                  <span class="tile-icon" aria-hidden="true"><Heart size={17} fill="currentColor" /></span>
+                  <span class="tile-copy">
+                    <strong>{memory.title}</strong>
+                    <small>Shared Memory</small>
+                  </span>
+                  <div class="tooltip-card story-tooltip" role="tooltip">
+                    <span>Shared Memory</span>
+                    <strong>{memory.title}</strong>
+                    <p>{memory.body}</p>
+                  </div>
+                </button>
               {/each}
               {#each detailIdentity.story.unlockedFragments as fragment}
-                <article class="story-card">
-                  <span>{fragment.type}</span>
-                  <strong>{fragment.title}</strong>
-                  <p>{fragment.body}</p>
-                </article>
+                <button type="button" class="compact-tile story-card tooltip-host">
+                  <span class="tile-icon" aria-hidden="true"><Star size={17} /></span>
+                  <span class="tile-copy">
+                    <strong>{fragment.title}</strong>
+                    <small>{fragment.type}</small>
+                  </span>
+                  <div class="tooltip-card story-tooltip" role="tooltip">
+                    <span>{fragment.type}</span>
+                    <strong>{fragment.title}</strong>
+                    <p>{fragment.body}</p>
+                    <b>{fragment.unlockCondition}</b>
+                  </div>
+                </button>
               {/each}
               {#each detailIdentity.story.lockedFragments as fragment}
-                <article class="story-card locked">
-                  <span>{fragment.unlockCondition}</span>
-                  <strong>{fragment.title}</strong>
-                  <p>{fragment.body}</p>
-                </article>
+                <button type="button" class="compact-tile story-card locked tooltip-host">
+                  <span class="tile-icon" aria-hidden="true"><Shield size={17} /></span>
+                  <span class="tile-copy">
+                    <strong>{fragment.title}</strong>
+                    <small>{fragment.unlockCondition}</small>
+                  </span>
+                  <div class="tooltip-card story-tooltip" role="tooltip">
+                    <span>{fragment.unlockCondition}</span>
+                    <strong>{fragment.title}</strong>
+                    <p>{fragment.body}</p>
+                  </div>
+                </button>
               {/each}
             </div>
           {/if}
@@ -3164,6 +3237,138 @@
     gap: 0.55rem;
   }
 
+  .compact-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .compact-section-head span,
+  .compact-group > span {
+    color: #a97be1;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .compact-section-head strong {
+    color: rgba(248, 246, 255, 0.94);
+    font-size: 0.86rem;
+  }
+
+  .compact-group {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .compact-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .compact-tile {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 3.45rem;
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 0.8rem;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(183, 92, 255, 0.12), transparent 60%),
+      rgba(255, 255, 255, 0.045);
+    color: rgba(248, 246, 255, 0.92);
+    cursor: help;
+    font: inherit;
+    padding: 0.52rem 0.58rem;
+    text-align: left;
+  }
+
+  .compact-tile:hover,
+  .compact-tile:focus-visible {
+    border-color: rgba(183, 92, 255, 0.48);
+    outline: none;
+    box-shadow: 0 0 1.1rem rgba(183, 92, 255, 0.16);
+  }
+
+  .tile-icon {
+    display: grid;
+    width: 2.12rem;
+    height: 2.12rem;
+    place-items: center;
+    border: 1px solid rgba(221, 170, 92, 0.22);
+    border-radius: 0.7rem;
+    background:
+      radial-gradient(circle at 50% 34%, rgba(221, 170, 92, 0.22), transparent 52%),
+      rgba(10, 11, 31, 0.58);
+    color: #ddaa5c;
+  }
+
+  .tile-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.18rem;
+  }
+
+  .tile-copy strong,
+  .tile-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile-copy strong {
+    color: rgba(255, 250, 242, 0.96);
+    font-size: 0.78rem;
+    line-height: 1.18;
+  }
+
+  .tile-copy small {
+    color: rgba(220, 216, 237, 0.64);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: capitalize;
+  }
+
+  .compact-tile .tooltip-card {
+    bottom: calc(100% + 0.5rem);
+  }
+
+  .growth-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .influence-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
+  }
+
+  .influence-row .influence-track {
+    grid-column: 1 / -1;
+  }
+
+  .milestone-tile {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .milestone-dot {
+    width: 0.78rem;
+    height: 0.78rem;
+    border: 1px solid rgba(153, 130, 236, 0.44);
+    border-radius: 999px;
+    background: rgba(13, 15, 38, 0.95);
+    box-shadow: 0 0 0.9rem rgba(183, 92, 255, 0.22);
+  }
+
+  .milestone-tile.unlocked .milestone-dot {
+    background: #a75cff;
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.72);
+  }
+
   .section-heading > span,
   .gift-group > span,
   .growth-summary > span,
@@ -3211,14 +3416,6 @@
     line-height: 1.45;
   }
 
-  .gift-meta {
-    display: flex;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-  }
-
-  .gift-meta b,
-  .gift-meta em,
   .gift-card small,
   .milestone-track small {
     width: fit-content;
@@ -3231,11 +3428,6 @@
     font-weight: 800;
     padding: 0.26rem 0.5rem;
     text-transform: capitalize;
-  }
-
-  .gift-meta em {
-    border-color: rgba(221, 170, 92, 0.22);
-    color: rgba(255, 234, 196, 0.9);
   }
 
   .influence-row > div:first-child {
@@ -3266,28 +3458,6 @@
     position: relative;
   }
 
-  .milestone-track article {
-    position: relative;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.7rem;
-  }
-
-  .milestone-track article > span {
-    width: 0.78rem;
-    height: 0.78rem;
-    margin-top: 0.18rem;
-    border: 1px solid rgba(153, 130, 236, 0.44);
-    border-radius: 999px;
-    background: rgba(13, 15, 38, 0.95);
-    box-shadow: 0 0 0.9rem rgba(183, 92, 255, 0.22);
-  }
-
-  .milestone-track article.unlocked > span {
-    background: #a75cff;
-    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.72);
-  }
-
   .story-panel {
     max-height: 24rem;
   }
@@ -3301,6 +3471,22 @@
   .story-card.locked {
     border-style: dashed;
     opacity: 0.78;
+  }
+
+  .growth-summary.compact-tile,
+  .gift-card.compact-tile,
+  .story-card.compact-tile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.55rem;
+    min-height: 3.45rem;
+    padding: 0.52rem 0.58rem;
+  }
+
+  .story-card.origin.compact-tile {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(221, 170, 92, 0.16), transparent 56%),
+      rgba(255, 255, 255, 0.045);
   }
 
   .favorite-gift-grid {
