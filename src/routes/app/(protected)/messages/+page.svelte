@@ -1539,31 +1539,31 @@
       />
     </header>
 
-    <section class="messages-heading">
-      <div>
-        <h1>Messages <span aria-hidden="true">✦</span></h1>
-        <p>Chat with friends, companions, and the Looma community.</p>
-      </div>
-      <div class="heading-actions">
-        <button
-          class="new-message"
-          type="button"
-          on:click={() => {
-            showStartModal = true;
-            startModalError = null;
-            void loadFriendOptions();
-          }}
-        >
-          <Pencil size={17} />
-          <span>New Message</span>
-        </button>
-        <button class="filter-button" type="button" aria-label="Filter messages">
-          <SlidersHorizontal size={18} />
-        </button>
-      </div>
-    </section>
-
     <div class="messages-grid">
+      <section class="messages-heading">
+        <div>
+          <h1>Messages <span aria-hidden="true">✦</span></h1>
+          <p>Chat with friends, companions, and the Looma community.</p>
+        </div>
+        <div class="heading-actions">
+          <button
+            class="new-message"
+            type="button"
+            on:click={() => {
+              showStartModal = true;
+              startModalError = null;
+              void loadFriendOptions();
+            }}
+          >
+            <Pencil size={17} />
+            <span>New Message</span>
+          </button>
+          <button class="filter-button" type="button" aria-label="Filter messages">
+            <SlidersHorizontal size={18} />
+          </button>
+        </div>
+      </section>
+
       {#if showConversationPanel}
         <section class="inbox-panel" aria-label="Conversation list">
           <nav class="inbox-tabs" aria-label="Message filters">
@@ -1999,9 +1999,12 @@
   }
 
   .messages-heading {
+    grid-column: 1 / 3;
+    grid-row: 1;
     justify-content: space-between;
+    align-self: start;
     gap: 1rem;
-    margin-bottom: 1.25rem;
+    margin: 0;
   }
 
   .messages-heading h1 {
@@ -2057,9 +2060,20 @@
   .messages-grid {
     display: grid;
     grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr) minmax(18rem, 23rem);
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 1rem;
-    height: calc(100vh - 8.65rem);
+    height: calc(100vh - 4.95rem);
     min-height: 0;
+  }
+
+  .inbox-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .chat-panel {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .inbox-panel,
@@ -2297,6 +2311,8 @@
   }
 
   .right-rail {
+    grid-column: 3;
+    grid-row: 1 / 3;
     min-width: 0;
     min-height: 0;
     overflow: auto;
@@ -2346,10 +2362,10 @@
 
   .companion-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 9rem;
-    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) 10.75rem;
+    gap: 0.35rem;
     align-items: center;
-    margin: 1rem 0 0.8rem;
+    margin: 0.72rem 0 0.65rem;
   }
 
   .companion-hero h3 {
@@ -2375,15 +2391,15 @@
 
   .companion-art {
     display: grid;
-    min-height: 8.25rem;
+    min-height: 10.2rem;
     place-items: center;
     color: #a75cff;
     filter: drop-shadow(0 0 26px rgba(167, 92, 255, 0.6));
   }
 
   .companion-art img {
-    width: 8.5rem;
-    height: 8.5rem;
+    width: 10.65rem;
+    height: 10.65rem;
     object-fit: cover;
     border-radius: 1.2rem;
   }
@@ -2890,6 +2906,13 @@
       grid-template-columns: 1fr;
       height: auto;
       min-height: calc(100vh - 12rem);
+    }
+
+    .messages-heading,
+    .inbox-panel,
+    .chat-panel {
+      grid-column: 1;
+      grid-row: auto;
     }
 
     .inbox-panel,
