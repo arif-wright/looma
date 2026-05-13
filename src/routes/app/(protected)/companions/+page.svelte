@@ -274,6 +274,8 @@
 
   let discoverModal: DiscoverCompanionDefinition | null = null;
   let museHostRef: MuseModel | null = null;
+  let detailModelLoaded = false;
+  let detailModelCompanionId: string | null = null;
 
   const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
   const stableSig = (value: Record<string, unknown>) => {
@@ -1064,6 +1066,11 @@
       : 0;
   $: masteryLevel = ownedInstances.length > 0 ? Math.max(...ownedInstances.map((companion) => companionLevel(companion))) : 1;
   $: detailCompanion = activeCompanion ?? filteredOwned[0] ?? ownedInstances[0] ?? null;
+  $: if ((detailCompanion?.id ?? null) !== detailModelCompanionId) {
+    detailModelCompanionId = detailCompanion?.id ?? null;
+    detailModelLoaded = !detailCompanion;
+  }
+  $: showCompanionsSplash = !hydrated || !detailModelLoaded;
   $: detailIdentity = getCompanionIdentity(detailCompanion);
   $: detailElementProfile = detailIdentity.elementProfile;
   $: detailPrimaryElement = getElementById(detailElementProfile.primary);
@@ -1123,6 +1130,16 @@
 </svelte:head>
 
 <div class="companions-fantasy-shell">
+  {#if showCompanionsSplash}
+    <div class="page-splash" role="status" aria-live="polite" aria-label="Loading companions">
+      <div class="page-splash__orb" aria-hidden="true"></div>
+      <div class="page-splash__copy">
+        <strong>Calling companions</strong>
+        <span>{detailCompanion ? `Preparing ${detailCompanion.name}` : 'Preparing your roster'}...</span>
+      </div>
+    </div>
+  {/if}
+
   <FantasySidebar
     activePath="/app/companions"
     playerName={($page.data?.profile as any)?.display_name ?? ($page.data?.user as any)?.email?.split('@')[0] ?? 'Traveler'}
@@ -1355,6 +1372,7 @@
             <div class="detail-model">
               <MuseModel
                 bind:this={museHostRef}
+                bind:loaded={detailModelLoaded}
                 size="270px"
                 minSize="0px"
                 autoplay
@@ -1767,6 +1785,7 @@
 
 <style>
   .companions-fantasy-shell {
+    position: relative;
     display: grid;
     grid-template-columns: 14.25rem minmax(0, 1fr);
     min-height: 100vh;
@@ -1775,6 +1794,61 @@
       radial-gradient(circle at 44% 100%, rgba(125, 66, 210, 0.16), transparent 36rem),
       linear-gradient(180deg, #08091a 0%, #060716 100%);
     color: rgba(248, 246, 255, 0.94);
+  }
+
+  .page-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: grid;
+    place-items: center;
+    gap: 1.05rem;
+    align-content: center;
+    background:
+      radial-gradient(circle at 54% 42%, rgba(167, 92, 255, 0.3), transparent 18rem),
+      radial-gradient(circle at 45% 58%, rgba(221, 170, 92, 0.12), transparent 20rem),
+      linear-gradient(180deg, #08091a 0%, #060716 100%);
+    color: white;
+  }
+
+  .page-splash__orb {
+    width: 5.8rem;
+    height: 5.8rem;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.94), transparent 0.45rem),
+      radial-gradient(circle at 50% 50%, rgba(221, 170, 92, 0.82), rgba(167, 92, 255, 0.58) 46%, rgba(98, 232, 255, 0.12) 74%, transparent 76%);
+    box-shadow:
+      0 0 34px rgba(167, 92, 255, 0.58),
+      0 0 70px rgba(221, 170, 92, 0.2);
+    animation: splashPulse 1.6s ease-in-out infinite;
+  }
+
+  .page-splash__copy {
+    display: grid;
+    gap: 0.35rem;
+    text-align: center;
+  }
+
+  .page-splash__copy strong {
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+  }
+
+  .page-splash__copy span {
+    color: rgba(231, 225, 255, 0.72);
+    font-size: 0.88rem;
+  }
+
+  @keyframes splashPulse {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+      opacity: 0.82;
+    }
+    50% {
+      transform: translateY(-0.35rem) scale(1.04);
+      opacity: 1;
+    }
   }
 
   .companions-workspace {

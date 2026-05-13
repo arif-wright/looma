@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { Gamepad2, Gift, Heart, Home, Leaf, Menu, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
@@ -15,6 +16,8 @@
   import type { PageData } from './$types';
 
   export let data: PageData;
+  let pageMounted = false;
+  let heroModelLoaded = false;
 
   const gameCards = [
     { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
@@ -286,6 +289,11 @@
           href: `/app/companions?focus=${encodeURIComponent(creature.id)}`
         }))
       : [];
+  $: showHomeSplash = !pageMounted || !heroModelLoaded;
+
+  onMount(() => {
+    pageMounted = true;
+  });
 </script>
 
 <svelte:head>
@@ -293,6 +301,16 @@
 </svelte:head>
 
 <div class="fantasy-home" style={heroSceneStyle}>
+  {#if showHomeSplash}
+    <div class="page-splash" role="status" aria-live="polite" aria-label="Loading Memvoya home">
+      <div class="page-splash__orb" aria-hidden="true"></div>
+      <div class="page-splash__copy">
+        <strong>Opening your world</strong>
+        <span>Gathering {companionName}'s glow...</span>
+      </div>
+    </div>
+  {/if}
+
   <FantasySidebar
     playerName={playerName}
     level={playerLevel}
@@ -325,6 +343,7 @@
     <div class="content-grid">
       <section class="center-stack">
         <HeroLivingWorld
+          bind:modelLoaded={heroModelLoaded}
           playerName={playerName}
           companionName={companionName}
           level={companionLevel}
@@ -441,6 +460,61 @@
       linear-gradient(135deg, #080719, #070a19 52%, #050714);
     color: rgba(249, 247, 255, 0.95);
     font-family: var(--font-body, 'Manrope', system-ui, sans-serif);
+  }
+
+  .page-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: grid;
+    place-items: center;
+    gap: 1.05rem;
+    align-content: center;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(155, 92, 255, 0.34), transparent 18rem),
+      radial-gradient(circle at 42% 54%, rgba(94, 242, 255, 0.14), transparent 20rem),
+      linear-gradient(135deg, #070719, #090a20 54%, #050714);
+    color: white;
+  }
+
+  .page-splash__orb {
+    width: 6rem;
+    height: 6rem;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.94), transparent 0.45rem),
+      radial-gradient(circle at 50% 50%, rgba(255, 112, 223, 0.88), rgba(128, 92, 255, 0.58) 45%, rgba(94, 242, 255, 0.12) 74%, transparent 76%);
+    box-shadow:
+      0 0 34px rgba(178, 83, 255, 0.6),
+      0 0 70px rgba(94, 242, 255, 0.22);
+    animation: splashPulse 1.6s ease-in-out infinite;
+  }
+
+  .page-splash__copy {
+    display: grid;
+    gap: 0.35rem;
+    text-align: center;
+  }
+
+  .page-splash__copy strong {
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+  }
+
+  .page-splash__copy span {
+    color: rgba(231, 225, 255, 0.72);
+    font-size: 0.88rem;
+  }
+
+  @keyframes splashPulse {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+      opacity: 0.82;
+    }
+    50% {
+      transform: translateY(-0.35rem) scale(1.04);
+      opacity: 1;
+    }
   }
 
   .home-main::before,

@@ -7,6 +7,7 @@
   export let level = 18;
   export let mood = 'Happy';
   export let bond = 87;
+  export let modelLoaded = false;
 
   const moodIconByKey: Record<string, string> = {
     calm: '/assets/steady.png',
@@ -67,6 +68,7 @@
     <div class="companion-aura" aria-hidden="true"></div>
     <div class="companion-model">
       <MuseModel
+        bind:loaded={modelLoaded}
         minSize="0px"
         size="100%"
         framed={false}

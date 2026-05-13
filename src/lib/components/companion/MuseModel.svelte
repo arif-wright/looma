@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount, tick } from 'svelte';
   import { dev } from '$app/environment';
   import { normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { MUSE_VISUAL_BY_MOOD, type MuseVisualMood } from '$lib/companions/museVisuals';
@@ -49,17 +49,22 @@
   export let cameraTarget: string | undefined = undefined;
   // Uses model-viewer's GLB transform, unlike CSS/camera framing.
   export let modelScale: string | undefined = undefined;
+  export let loaded = false;
+  export let loadState: 'idle' | 'loading' | 'loaded' | 'error' | 'unsupported' = 'idle';
 
   let container: HTMLDivElement | null = null;
   let viewer: any = null;
   let supportsWebGL = true;
   let shouldLoad = false;
   let loadError: string | null = null;
-  let isLoaded = false;
   let isVisible = true;
   let reducedMotion = false;
   let mediaQuery: MediaQueryList | null = null;
   let observer: IntersectionObserver | null = null;
+  const dispatch = createEventDispatcher<{
+    ready: { state: 'loaded' | 'unsupported' };
+    error: { state: 'error'; message: string };
+  }>();
 
   const normalizeSize = (value: string | number) => (typeof value === 'number' ? `${value}px` : value);
   const auraColorMap: Record<string, string> = {
@@ -80,10 +85,15 @@
 
   const loadModelViewer = async () => {
     if (shouldLoad && !customElements.get('model-viewer')) {
+      loaded = false;
+      loadState = 'loading';
       try {
         await import('@google/model-viewer');
       } catch (err) {
         loadError = err instanceof Error ? err.message : 'Failed to load 3D renderer.';
+        loaded = true;
+        loadState = 'error';
+        dispatch('error', { state: 'error', message: loadError });
       }
     }
   };
@@ -170,7 +180,7 @@
       }
 
       // If the model isn't loaded yet, wait briefly for a paintable frame.
-      if (!isLoaded) {
+      if (!loaded) {
         await new Promise<void>((resolve) => {
           let settled = false;
           const done = () => {
@@ -312,7 +322,12 @@
 
   onMount(() => {
     supportsWebGL = checkWebGL();
-    if (!supportsWebGL) return;
+    if (!supportsWebGL) {
+      loaded = true;
+      loadState = 'unsupported';
+      dispatch('ready', { state: 'unsupported' });
+      return;
+    }
 
     mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     reducedMotion = respectReducedMotion && mediaQuery.matches;
@@ -332,6 +347,8 @@
       // Modals/portaits can be rendered in scroll containers where IntersectionObserver
       // doesn't always fire promptly. Eager mode guarantees the element loads.
       shouldLoad = true;
+      loaded = false;
+      loadState = 'loading';
       void loadModelViewer();
     } else {
       observer = new IntersectionObserver(
@@ -340,6 +357,8 @@
           isVisible = Boolean(entry?.isIntersecting);
           if (isVisible && !shouldLoad) {
             shouldLoad = true;
+            loaded = false;
+            loadState = 'loading';
             void loadModelViewer();
           }
           updatePlayback();
@@ -444,7 +463,8 @@
       interaction-prompt="none"
       animation-name={animationName}
       on:load={() => {
-        isLoaded = true;
+        loaded = true;
+        loadState = 'loaded';
         const available = viewer?.availableAnimations ?? [];
         const desired =
           animationName && available.includes(animationName)
@@ -466,13 +486,17 @@
           }
         }
         updatePlayback();
+        dispatch('ready', { state: 'loaded' });
       }}
       on:error={() => {
         loadError = 'Unable to load the Muse model.';
+        loaded = true;
+        loadState = 'error';
+        dispatch('error', { state: 'error', message: loadError });
       }}
       bind:this={viewer}
     ></model-viewer>
-    {#if !isLoaded}
+    {#if !loaded}
       <div class="muse-overlay" aria-hidden="true">
         <div class="muse-placeholder__orb"></div>
         <p>Loading Muse…</p>
