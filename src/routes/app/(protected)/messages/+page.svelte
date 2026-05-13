@@ -2,7 +2,22 @@
   import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-  import { Heart, ImageIcon, MessageCircle, MoreHorizontal, Pencil, Phone, Search, SlidersHorizontal, Smile, Video } from 'lucide-svelte';
+  import {
+    Heart,
+    ImageIcon,
+    MessageCircle,
+    Mic,
+    MicOff,
+    MoreHorizontal,
+    Pencil,
+    Phone,
+    PhoneOff,
+    Search,
+    SlidersHorizontal,
+    Smile,
+    Video,
+    VideoOff
+  } from 'lucide-svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
   import ChatThread from '$lib/components/messenger/ChatThread.svelte';
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
@@ -57,6 +72,14 @@
 
   let editingMessageId: string | null = null;
   let editingSeed = '';
+  let callOpen = false;
+  let callMode: 'voice' | 'video' = 'voice';
+  let callStarting = false;
+  let callError: string | null = null;
+  let localCallStream: MediaStream | null = null;
+  let localVideoRef: HTMLVideoElement | null = null;
+  let callMicMuted = false;
+  let callCameraOff = false;
 
   let readDebounce: ReturnType<typeof setTimeout> | null = null;
   let typingStopTimer: ReturnType<typeof setTimeout> | null = null;
@@ -808,6 +831,86 @@
     }
   };
 
+  const syncLocalVideo = () => {
+    if (!localVideoRef) return;
+    localVideoRef.srcObject = callMode === 'video' ? localCallStream : null;
+  };
+
+  const stopLocalCallStream = () => {
+    if (localCallStream) {
+      localCallStream.getTracks().forEach((track) => track.stop());
+    }
+    localCallStream = null;
+    syncLocalVideo();
+  };
+
+  const startCall = async (mode: 'voice' | 'video') => {
+    if (!browser || !activeConversationId) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      callError = 'Calls are not supported in this browser.';
+      callOpen = true;
+      callMode = mode;
+      return;
+    }
+
+    callMode = mode;
+    callOpen = true;
+    callStarting = true;
+    callError = null;
+    callMicMuted = false;
+    callCameraOff = false;
+    stopLocalCallStream();
+
+    try {
+      localCallStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: mode === 'video'
+          ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user'
+            }
+          : false
+      });
+      syncLocalVideo();
+    } catch (err) {
+      callError =
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'Camera or microphone permission was denied.'
+          : 'Could not start the call. Check your device permissions and try again.';
+      stopLocalCallStream();
+    } finally {
+      callStarting = false;
+    }
+  };
+
+  const endCall = () => {
+    callOpen = false;
+    callStarting = false;
+    callError = null;
+    callMicMuted = false;
+    callCameraOff = false;
+    stopLocalCallStream();
+  };
+
+  const toggleMic = () => {
+    callMicMuted = !callMicMuted;
+    localCallStream?.getAudioTracks().forEach((track) => {
+      track.enabled = !callMicMuted;
+    });
+  };
+
+  const toggleCamera = () => {
+    callCameraOff = !callCameraOff;
+    localCallStream?.getVideoTracks().forEach((track) => {
+      track.enabled = !callCameraOff;
+    });
+  };
+
+  $: if (localVideoRef || localCallStream || callMode) {
+    syncLocalVideo();
+  }
+
   const sendTyping = async (typing: boolean, force = false) => {
     if (!presenceVisible || !activeMessagesChannel || !activeConversationId || !currentUserId) return;
 
@@ -1172,6 +1275,7 @@
       teardownCompactLayoutListener();
       teardownCompactLayoutListener = null;
     }
+    endCall();
   });
 </script>
 
@@ -1310,8 +1414,12 @@
               </div>
             </div>
             <div class="chat-actions">
-              <button type="button" aria-label="Start voice call"><Phone size={18} /></button>
-              <button type="button" aria-label="Start video call"><Video size={18} /></button>
+              <button type="button" aria-label="Start voice call" on:click={() => startCall('voice')} disabled={!activeConversationId}>
+                <Phone size={18} />
+              </button>
+              <button type="button" aria-label="Start video call" on:click={() => startCall('video')} disabled={!activeConversationId}>
+                <Video size={18} />
+              </button>
               <button type="button" aria-label="More actions"><MoreHorizontal size={18} /></button>
             </div>
           </div>
@@ -1444,6 +1552,86 @@
       </aside>
     </div>
   </main>
+
+  {#if callOpen}
+    <div class="call-overlay" role="dialog" aria-modal="true" aria-label={`${callMode === 'video' ? 'Video' : 'Voice'} call`}>
+      <div class="call-card">
+        <header class="call-card__header">
+          <div class="call-peer">
+            <span class="avatar-wrap avatar-wrap--large">
+              {#if activeConversation && conversationAvatar(activeConversation)}
+                <img src={conversationAvatar(activeConversation)} alt="" />
+              {:else}
+                <span>{activeConversation ? conversationInitial(activeConversation) : 'M'}</span>
+              {/if}
+            </span>
+            <div>
+              <p>{callMode === 'video' ? 'Video Call' : 'Voice Call'}</p>
+              <h2>{threadTitle}</h2>
+              <span>
+                {#if callStarting}
+                  Connecting devices...
+                {:else if callError}
+                  Needs attention
+                {:else}
+                  Waiting for {threadTitle} to join
+                {/if}
+              </span>
+            </div>
+          </div>
+          <button type="button" class="call-close" on:click={endCall} aria-label="Close call"><PhoneOff size={19} /></button>
+        </header>
+
+        <div class="call-stage" class:call-stage--voice={callMode === 'voice'}>
+          {#if callMode === 'video' && localCallStream && !callCameraOff}
+            <video bind:this={localVideoRef} autoplay muted playsinline></video>
+          {:else}
+            <div class="call-orb" aria-hidden="true">
+              <span>{threadTitle.slice(0, 1).toUpperCase()}</span>
+            </div>
+          {/if}
+
+          <div class="call-status">
+            {#if callError}
+              <strong>{callError}</strong>
+              <span>Use the controls below to close the call and try again.</span>
+            {:else if callStarting}
+              <strong>Starting {callMode === 'video' ? 'camera' : 'voice'} chat...</strong>
+              <span>Your browser may ask for permission.</span>
+            {:else}
+              <strong>{callMode === 'video' ? 'Camera ready' : 'Voice ready'}</strong>
+              <span>Peer connection signaling is ready to attach here.</span>
+            {/if}
+          </div>
+        </div>
+
+        <footer class="call-controls">
+          <button type="button" class:muted={callMicMuted} on:click={toggleMic} disabled={!localCallStream || Boolean(callError)}>
+            {#if callMicMuted}
+              <MicOff size={20} />
+            {:else}
+              <Mic size={20} />
+            {/if}
+            <span>{callMicMuted ? 'Unmute' : 'Mute'}</span>
+          </button>
+          {#if callMode === 'video'}
+            <button type="button" class:muted={callCameraOff} on:click={toggleCamera} disabled={!localCallStream || Boolean(callError)}>
+              {#if callCameraOff}
+                <VideoOff size={20} />
+              {:else}
+                <Video size={20} />
+              {/if}
+              <span>{callCameraOff ? 'Camera On' : 'Camera Off'}</span>
+            </button>
+          {/if}
+          <button type="button" class="end-call" on:click={endCall}>
+            <PhoneOff size={20} />
+            <span>End</span>
+          </button>
+        </footer>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <StartChatModal
@@ -2064,6 +2252,190 @@
     color: #fda4af;
     padding: 0.55rem 0.7rem;
     text-align: center;
+  }
+
+  .call-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9200;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(126, 92, 255, 0.24), transparent 24rem),
+      rgba(3, 5, 18, 0.82);
+    padding: 1.25rem;
+    backdrop-filter: blur(18px);
+  }
+
+  .call-card {
+    width: min(44rem, 100%);
+    overflow: hidden;
+    border: 1px solid rgba(186, 153, 255, 0.26);
+    border-radius: 1.15rem;
+    background:
+      radial-gradient(circle at 72% 14%, rgba(167, 92, 255, 0.28), transparent 18rem),
+      linear-gradient(180deg, rgba(11, 14, 38, 0.98), rgba(5, 8, 24, 0.98));
+    color: white;
+    box-shadow:
+      0 34px 100px rgba(0, 0, 0, 0.58),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .call-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(153, 130, 236, 0.14);
+    padding: 1rem;
+  }
+
+  .call-peer {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .call-peer p,
+  .call-peer h2,
+  .call-peer span {
+    margin: 0;
+  }
+
+  .call-peer p {
+    color: #d7a8ff;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .call-peer h2 {
+    margin-top: 0.18rem;
+    font-size: 1.35rem;
+  }
+
+  .call-peer span {
+    display: block;
+    margin-top: 0.2rem;
+    color: rgba(220, 215, 242, 0.68);
+    font-size: 0.85rem;
+  }
+
+  .call-close,
+  .call-controls button {
+    border: 1px solid rgba(186, 153, 255, 0.22);
+    color: white;
+    cursor: pointer;
+  }
+
+  .call-close {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255, 84, 117, 0.12);
+  }
+
+  .call-stage {
+    position: relative;
+    display: grid;
+    min-height: min(55vh, 27rem);
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(98, 232, 255, 0.1), transparent 15rem),
+      rgba(2, 5, 18, 0.68);
+  }
+
+  .call-stage video {
+    width: 100%;
+    height: min(55vh, 27rem);
+    display: block;
+    object-fit: cover;
+    background: #050714;
+  }
+
+  .call-stage--voice {
+    min-height: 22rem;
+  }
+
+  .call-orb {
+    display: grid;
+    width: 9rem;
+    height: 9rem;
+    place-items: center;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.56), transparent 16%),
+      linear-gradient(135deg, #a75cff, #2f1f7a);
+    box-shadow:
+      0 0 34px rgba(167, 92, 255, 0.62),
+      0 0 90px rgba(98, 232, 255, 0.16);
+    font-size: 3rem;
+    font-weight: 900;
+  }
+
+  .call-status {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    gap: 0.2rem;
+    border: 1px solid rgba(186, 153, 255, 0.18);
+    border-radius: 0.8rem;
+    background: rgba(4, 7, 22, 0.72);
+    padding: 0.75rem 0.9rem;
+    text-align: center;
+    backdrop-filter: blur(14px);
+  }
+
+  .call-status strong {
+    color: white;
+  }
+
+  .call-status span {
+    color: rgba(220, 215, 242, 0.68);
+    font-size: 0.82rem;
+  }
+
+  .call-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.65rem;
+    border-top: 1px solid rgba(153, 130, 236, 0.14);
+    padding: 1rem;
+  }
+
+  .call-controls button {
+    display: inline-flex;
+    min-height: 2.85rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background: rgba(14, 18, 47, 0.9);
+    padding: 0 1rem;
+    font-weight: 800;
+  }
+
+  .call-controls button.muted {
+    background: rgba(255, 184, 77, 0.14);
+    border-color: rgba(255, 184, 77, 0.34);
+  }
+
+  .call-controls .end-call {
+    background: linear-gradient(135deg, #ef4444, #a21d3a);
+    border-color: rgba(255, 142, 160, 0.42);
+  }
+
+  .chat-actions button:disabled,
+  .call-controls button:disabled {
+    opacity: 0.48;
+    cursor: default;
   }
 
   :global(.chat-panel .thread) {
