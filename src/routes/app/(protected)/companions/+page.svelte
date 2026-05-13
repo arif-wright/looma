@@ -1295,28 +1295,53 @@
 
           {#if activeDetailTab === 'overview'}
             <div class="detail-tab-panel">
-              <div class="detail-section element-profile-section" title={detailIdentity.archetype.overviewIdentity}>
+              <div
+                class="detail-section element-profile-section tooltip-host"
+                aria-label={`Element profile. ${detailIdentity.archetype.overviewIdentity}`}
+              >
                 <div class="element-profile-head">
                   <span>Element Profile</span>
                   <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
                 </div>
                 <p class="identity-copy">{detailIdentity.archetype.overviewIdentity}</p>
                 <div class="element-pair">
-                  <article title={detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}>
+                  <article
+                    class="tooltip-host"
+                    aria-label={`Primary element. ${detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}`}
+                  >
                     <span>Primary</span>
                     <strong><Gem size={18} /> {detailPrimaryElement?.label ?? 'Sound'}</strong>
                     <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>Primary Element</span>
+                      <strong>{detailPrimaryElement?.label ?? 'Sound'}</strong>
+                      <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
+                    </div>
                   </article>
-                  <article title={detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}>
+                  <article
+                    class="tooltip-host"
+                    aria-label={`Secondary element. ${detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}`}
+                  >
                     <span>Secondary</span>
                     <strong><Sparkles size={18} /> {detailSecondaryElement?.label ?? 'Light'}</strong>
                     <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>Secondary Element</span>
+                      <strong>{detailSecondaryElement?.label ?? 'Light'}</strong>
+                      <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
+                    </div>
                   </article>
                 </div>
                 <div class="element-domain">
                   <span>Emotional Domain</span>
                   <strong>{detailElementProfile.emotionalDomain}</strong>
                   <p>{detailElementProfile.expressionLine}</p>
+                </div>
+                <div class="tooltip-card profile-tooltip" role="tooltip">
+                  <span>Element Profile</span>
+                  <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
+                  <p>{detailIdentity.archetype.overviewIdentity}</p>
+                  <small>{detailElementProfile.expressionLine}</small>
                 </div>
                 <div class="ritual-row" aria-label="Preferred rituals">
                   {#each detailElementProfile.preferredRituals as ritual}
@@ -1339,9 +1364,8 @@
                     {@const preview = calculateGiftBondGain(detailCompanion, gift)}
                     <button
                       type="button"
-                      class="favorite-gift-item"
+                      class="favorite-gift-item tooltip-host"
                       aria-label={`${gift.name}, ${preview.preference} gift`}
-                      title={`${gift.name} (${gift.rarity} ${gift.category}). ${gift.description} ${preview.response} Expected bond: +${preview.bondGain}`}
                     >
                       <img
                         src={gift.icon}
@@ -1353,6 +1377,13 @@
                       />
                       <span>{gift.name}</span>
                       <small>{gift.categoryDefinition.label}</small>
+                      <div class="tooltip-card gift-tooltip" role="tooltip">
+                        <span>{gift.rarity} {gift.categoryDefinition.label}</span>
+                        <strong>{gift.name}</strong>
+                        <p>{gift.description}</p>
+                        <em>{preview.response}</em>
+                        <b>Expected bond +{preview.bondGain}</b>
+                      </div>
                     </button>
                   {/each}
                 </div>
@@ -1449,7 +1480,7 @@
             </div>
           {/if}
           <div class="detail-actions">
-            <button type="button" class="primary-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
+            <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
             <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
           </div>
           <p class="active-note"><span></span> {activeCompanion?.id === detailCompanion.id ? 'Active Companion' : 'Ready to activate'}</p>
@@ -2395,12 +2426,20 @@
   }
 
   .element-profile-section {
+    position: relative;
     border: 1px solid rgba(153, 130, 236, 0.16);
     border-radius: 1rem;
     background:
       radial-gradient(circle at 20% 0%, rgba(183, 92, 255, 0.13), transparent 52%),
       rgba(255, 255, 255, 0.035);
     padding: 0.68rem;
+  }
+
+  .element-profile-section:focus-visible,
+  .element-pair article:focus-visible,
+  .favorite-gift-item:focus-visible {
+    outline: 2px solid rgba(183, 92, 255, 0.72);
+    outline-offset: 2px;
   }
 
   .identity-copy {
@@ -2442,11 +2481,141 @@
   .element-pair article,
   .element-domain {
     display: grid;
+    position: relative;
     gap: 0.3rem;
     border: 1px solid rgba(153, 130, 236, 0.12);
     border-radius: 0.78rem;
     background: rgba(9, 10, 29, 0.38);
     padding: 0.58rem;
+  }
+
+  .tooltip-host {
+    isolation: isolate;
+  }
+
+  .tooltip-card {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.58rem);
+    z-index: 90;
+    display: grid;
+    width: min(18.5rem, calc(100vw - 2rem));
+    gap: 0.34rem;
+    padding: 0.84rem 0.9rem;
+    border: 1px solid rgba(153, 130, 236, 0.28);
+    border-radius: 0.92rem;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(183, 92, 255, 0.24), transparent 58%),
+      radial-gradient(circle at 92% 12%, rgba(221, 170, 92, 0.14), transparent 48%),
+      rgba(10, 11, 31, 0.97);
+    box-shadow: 0 1.1rem 2.6rem rgba(3, 5, 14, 0.58), 0 0 1.2rem rgba(183, 92, 255, 0.16);
+    color: rgba(235, 231, 248, 0.86);
+    font-size: 0.78rem;
+    line-height: 1.42;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.38rem) scale(0.98);
+    transform-origin: bottom center;
+    transition: opacity 150ms ease, transform 150ms ease;
+    visibility: hidden;
+    backdrop-filter: blur(16px);
+    text-align: left;
+  }
+
+  .tooltip-card::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 0;
+    height: 0;
+    border-left: 0.42rem solid transparent;
+    border-right: 0.42rem solid transparent;
+    border-top: 0.42rem solid rgba(10, 11, 31, 0.97);
+    transform: translateX(-50%);
+  }
+
+  .tooltip-host:hover > .tooltip-card,
+  .tooltip-host:focus-within > .tooltip-card,
+  .tooltip-host:focus-visible > .tooltip-card {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    visibility: visible;
+  }
+
+  .tooltip-card > span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    color: #ddaa5c;
+    font-size: 0.64rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .tooltip-card strong {
+    color: rgba(255, 250, 242, 0.98);
+    font-size: 0.9rem;
+    line-height: 1.25;
+  }
+
+  .tooltip-card p,
+  .tooltip-card small,
+  .tooltip-card em,
+  .tooltip-card b {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: rgba(220, 216, 237, 0.76);
+    font-size: 0.78rem;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 1.42;
+  }
+
+  .tooltip-card small {
+    border-top: 1px solid rgba(153, 130, 236, 0.16);
+    margin-top: 0.18rem;
+    padding-top: 0.48rem;
+  }
+
+  .tooltip-card em {
+    color: rgba(255, 234, 196, 0.9);
+  }
+
+  .tooltip-card b {
+    width: fit-content;
+    border: 1px solid rgba(221, 170, 92, 0.22);
+    border-radius: 999px;
+    background: rgba(221, 170, 92, 0.09);
+    color: rgba(255, 234, 196, 0.94);
+    padding: 0.26rem 0.54rem;
+    font-size: 0.7rem;
+  }
+
+  .profile-tooltip {
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(100% + 0.64rem);
+    width: auto;
+    transform: translateY(0.38rem) scale(0.98);
+    transform-origin: bottom left;
+  }
+
+  .tooltip-host:hover > .profile-tooltip,
+  .tooltip-host:focus-within > .profile-tooltip,
+  .tooltip-host:focus-visible > .profile-tooltip {
+    transform: translateY(0) scale(1);
+  }
+
+  .compact-tooltip {
+    width: min(15.5rem, calc(100vw - 2rem));
   }
 
   .element-pair article p,
@@ -2683,6 +2852,19 @@
     clip: rect(0 0 0 0);
   }
 
+  .element-pair article .tooltip-card p,
+  .favorite-gift-item .tooltip-card > span,
+  .favorite-gift-item .tooltip-card p,
+  .favorite-gift-item .tooltip-card em,
+  .favorite-gift-item .tooltip-card b {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+
   .detail-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2691,14 +2873,57 @@
   .primary-action,
   .secondary-action {
     min-height: 2.72rem;
+    border: 1px solid rgba(153, 130, 236, 0.24);
+    border-radius: 0.82rem;
+    color: rgba(255, 255, 255, 0.96);
     font-weight: 900;
     font-size: 0.82rem;
+    cursor: pointer;
+    transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, filter 150ms ease;
   }
 
   .primary-action {
     border-color: rgba(207, 100, 255, 0.5);
     background: linear-gradient(135deg, #745cff, #cf55ff);
     box-shadow: 0 0.8rem 1.7rem rgba(158, 82, 255, 0.3);
+  }
+
+  .primary-action:hover,
+  .secondary-action:hover {
+    transform: translateY(-1px);
+  }
+
+  .primary-action:focus-visible,
+  .secondary-action:focus-visible {
+    outline: 2px solid rgba(183, 92, 255, 0.72);
+    outline-offset: 2px;
+  }
+
+  .interact-action {
+    min-height: 3.18rem;
+    border: 1px solid rgba(190, 145, 255, 0.68);
+    border-radius: 1.02rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 42%),
+      linear-gradient(135deg, #5d45f5 0%, #7f35ee 48%, #b23df0 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+      inset 0 0.08rem 0 rgba(255, 255, 255, 0.24),
+      0 0 0.72rem rgba(128, 92, 255, 0.4),
+      0 0.92rem 1.7rem rgba(83, 42, 190, 0.36);
+    font-size: 1.02rem;
+    letter-spacing: 0;
+    text-shadow: 0 0.08rem 0.18rem rgba(20, 10, 56, 0.45);
+  }
+
+  .interact-action:hover {
+    border-color: rgba(221, 205, 255, 0.86);
+    filter: saturate(1.08) brightness(1.06);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+      inset 0 0.08rem 0 rgba(255, 255, 255, 0.28),
+      0 0 0.92rem rgba(144, 104, 255, 0.5),
+      0 1rem 1.9rem rgba(83, 42, 190, 0.42);
   }
 
   .active-note {
