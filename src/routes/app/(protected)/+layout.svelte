@@ -52,6 +52,7 @@
   let isImmersiveShell = false;
   let isGames = false;
   let isShop = false;
+  let isMessages = false;
   let isProfileSurface = false;
   let hideCompanionDock = false;
   let walletBalance: number | null = null;
@@ -103,9 +104,10 @@
   $: isImmersiveShell = isHome || isCompanions;
   $: isGames = currentPath.startsWith('/app/games');
   $: isShop = currentPath.startsWith('/app/shop');
+  $: isMessages = currentPath.startsWith('/app/messages');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
-  $: hideCompanionDock = isHome || currentPath.startsWith('/app/companions');
+  $: hideCompanionDock = isHome || currentPath.startsWith('/app/companions') || isMessages;
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
@@ -553,7 +555,7 @@
     class={`app-surface ${isHome ? 'app-surface--home' : ''}`}
     style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
   >
-    {#if !isImmersiveShell}
+    {#if !isImmersiveShell && !isMessages}
       {#if FLAGS.NEW_BRAND_HEADER}
         <BrandHeader
           iconNavItems={iconNavItems}
@@ -590,8 +592,8 @@
       {/if}
     {/if}
 
-    <main class={`app-main ${isImmersiveShell ? 'app-main--home' : 'app-main--sanctuary'}`}>
-      {#if isImmersiveShell}
+    <main class={`app-main ${isImmersiveShell ? 'app-main--home' : 'app-main--sanctuary'} ${isMessages ? 'app-main--messages' : ''}`}>
+      {#if isImmersiveShell || isMessages}
         <slot />
       {:else}
         <div class="route-shell">
@@ -602,7 +604,9 @@
   </div>
 </div>
 
-<MobileDock items={iconNavItems} />
+{#if !isMessages}
+  <MobileDock items={iconNavItems} />
+{/if}
 {#if !hideCompanionDock}
   <div class="hidden md:block">
     <CompanionDock
@@ -669,6 +673,10 @@
     grid-template-rows: 1fr;
   }
 
+  .app-surface:has(.app-main--messages) {
+    grid-template-rows: 1fr;
+  }
+
   .app-surface::before {
     content: '';
     position: absolute;
@@ -691,6 +699,11 @@
 
   .app-main--sanctuary {
     padding: clamp(0.7rem, 2.2vw, 1.3rem) clamp(0.65rem, 2vw, 1.2rem) calc(5.6rem + env(safe-area-inset-bottom));
+  }
+
+  .app-main--messages {
+    padding: 0;
+    overflow: hidden;
   }
 
   .route-shell {

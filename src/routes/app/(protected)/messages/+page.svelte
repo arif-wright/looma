@@ -3,6 +3,8 @@
   import { onDestroy, onMount } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
   import {
+    ImageIcon,
+    MessageCircle,
     Mic,
     MicOff,
     MoreHorizontal,
@@ -16,7 +18,6 @@
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
-  import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
@@ -197,12 +198,12 @@
   $: threadTitle =
     activeConversation?.peer?.display_name ??
     (activeConversation?.peer?.handle ? `@${activeConversation.peer.handle}` : activeConversation?.group_name ?? 'Conversation');
-  $: playerName =
-    (data as any)?.profile?.display_name ??
-    (data as any)?.profile?.username ??
-    (data as any)?.user?.user_metadata?.name ??
-    (data as any)?.user?.email?.split('@')?.[0] ??
-    'Alex';
+  $: onlineFriends = conversations
+    .filter((conversation) => conversation.peer?.presence?.status === 'online')
+    .slice(0, 5);
+  $: recentActivity = conversations
+    .filter((conversation) => conversation.last_message_at)
+    .slice(0, 4);
   $: inboxTabs = [
     { key: 'all', label: 'All' },
     { key: 'friends', label: 'Friends' },
@@ -1485,8 +1486,6 @@
 </svelte:head>
 
 <div class="messages-app">
-  <FantasySidebar activePath="/app/messages" {playerName} level={24} xp={3200} xpNext={5000} />
-
   <main class="messages-workspace" aria-label="Messages">
     <div class="messages-grid">
       {#if showConversationPanel}
@@ -1639,6 +1638,54 @@
         </section>
       {/if}
 
+      <aside class="right-rail" aria-label="Message details">
+        <section class="rail-card">
+          <header class="rail-card__header">
+            <h2>Active Friends <span>• {onlineFriends.length} Online</span></h2>
+            <a href="/app/friends">View All</a>
+          </header>
+          <div class="friend-list">
+            {#each onlineFriends as conversation}
+              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="friend-row">
+                <span class="avatar-wrap">
+                  {#if conversationAvatar(conversation)}
+                    <img src={conversationAvatar(conversation)} alt="" loading="lazy" />
+                  {:else}
+                    <span>{conversationInitial(conversation)}</span>
+                  {/if}
+                  <i class="presence-dot online" aria-hidden="true"></i>
+                </span>
+                <span>
+                  <strong>{conversationTitle(conversation)}</strong>
+                  <small>{presenceLabel ?? 'In Looma Prime'}</small>
+                </span>
+                <MessageCircle size={17} />
+              </a>
+            {:else}
+              <p class="empty-state">No friends online yet.</p>
+            {/each}
+          </div>
+        </section>
+
+        <section class="rail-card">
+          <header class="rail-card__header">
+            <h2>Recent Activity</h2>
+            <a href="/app/notifications">View All</a>
+          </header>
+          <div class="activity-list">
+            {#each recentActivity as conversation}
+              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="activity-row">
+                <span class="activity-icon"><ImageIcon size={16} /></span>
+                <span>{conversationTitle(conversation)} sent a message</span>
+                <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
+              </a>
+            {:else}
+              <p class="empty-state">No recent message activity.</p>
+            {/each}
+          </div>
+          <a class="rail-primary" href="/app/notifications">See All Activity</a>
+        </section>
+      </aside>
     </div>
   </main>
 
@@ -1788,8 +1835,7 @@
   }
 
   .messages-app {
-    display: grid;
-    grid-template-columns: 14.5rem minmax(0, 1fr);
+    display: block;
     min-height: 100vh;
     overflow: hidden;
     background:
@@ -1808,7 +1854,10 @@
 
   .chat-header,
   .chat-person,
-  .chat-actions {
+  .chat-actions,
+  .rail-card__header,
+  .friend-row,
+  .activity-row {
     display: flex;
     align-items: center;
   }
@@ -1830,13 +1879,16 @@
 
   .messages-grid {
     display: grid;
-    grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr);
+    grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr) minmax(18rem, 23rem);
+    gap: 1rem;
     height: 100vh;
     min-height: 0;
+    padding: 1rem;
   }
 
   .inbox-panel,
-  .chat-panel {
+  .chat-panel,
+  .rail-card {
     border: 1px solid rgba(153, 130, 236, 0.17);
     background:
       radial-gradient(circle at 70% 0%, rgba(126, 92, 255, 0.12), transparent 28rem),
@@ -2070,6 +2122,119 @@
   .thread-empty {
     display: grid;
     place-items: center;
+  }
+
+  .right-rail {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    display: grid;
+    align-content: start;
+    gap: 0.82rem;
+  }
+
+  .rail-card {
+    border-radius: 0.95rem;
+    padding: 1rem;
+  }
+
+  .rail-card h2 {
+    margin: 0;
+    color: white;
+  }
+
+  .rail-card h2 {
+    font-size: 0.95rem;
+  }
+
+  .rail-card__header {
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .rail-card__header h2 span {
+    color: rgba(214, 208, 239, 0.58);
+    font-weight: 500;
+  }
+
+  .rail-card__header a {
+    color: rgba(211, 185, 255, 0.76);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .rail-primary {
+    display: flex;
+    min-height: 2.55rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(186, 153, 255, 0.28);
+    border-radius: 0.55rem;
+    background: linear-gradient(135deg, rgba(74, 36, 151, 0.9), rgba(91, 40, 160, 0.86));
+    color: white;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .friend-list,
+  .activity-list {
+    display: grid;
+    gap: 0.72rem;
+  }
+
+  .friend-row {
+    gap: 0.72rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .friend-row .avatar-wrap {
+    width: 2.55rem;
+    height: 2.55rem;
+  }
+
+  .friend-row span:nth-child(2) {
+    min-width: 0;
+    flex: 1;
+    display: grid;
+  }
+
+  .friend-row small {
+    overflow: hidden;
+    color: #74db78;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .friend-row > :global(svg) {
+    color: rgba(214, 208, 239, 0.78);
+  }
+
+  .activity-row {
+    gap: 0.64rem;
+    color: rgba(232, 228, 248, 0.84);
+    font-size: 0.82rem;
+    text-decoration: none;
+  }
+
+  .activity-row span:nth-child(2) {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, rgba(167, 92, 255, 0.38), rgba(98, 232, 255, 0.16));
+    color: white;
   }
 
   .load-older {
@@ -2431,11 +2596,11 @@
   }
 
   @media (max-width: 1020px) {
-    .messages-app {
-      grid-template-columns: 1fr;
+    .messages-grid {
+      grid-template-columns: minmax(18rem, 24rem) minmax(27rem, 1fr);
     }
 
-    .messages-app :global(.fantasy-sidebar) {
+    .right-rail {
       display: none;
     }
   }
