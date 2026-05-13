@@ -4,21 +4,17 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
   import {
-    Bell,
     ChevronDown,
     Gem,
     Heart,
-    MessageCircle,
     Pencil,
     Plus,
     Search,
-    Settings,
     Shield,
     SlidersHorizontal,
     Smile,
     Sparkles,
-    Star,
-    UserRound
+    Star
   } from 'lucide-svelte';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
@@ -35,8 +31,7 @@
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
-  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
-  import type { MessengerConversation } from '$lib/components/messenger/types';
+  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { getCompanionIdentity, getElementById, type GiftCategory } from '$lib/companions/identity';
@@ -44,7 +39,6 @@
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
   import { logEvent } from '$lib/analytics';
-  import { relativeTime } from '$lib/social/commentHelpers';
   import { isProbablyNonBlankPortrait, isProbablyValidPortrait } from '$lib/companions/portrait';
   import {
     markPortraitUploaded,
@@ -277,15 +271,6 @@
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let switchMessage: string | null = null;
   let switchTimer: ReturnType<typeof setTimeout> | null = null;
-  let notificationsOpen = false;
-  let messagesOpen = false;
-  let profileMenuOpen = false;
-  let markingNotifications = false;
-  let conversations: MessengerConversation[] = [];
-  let conversationsLoading = false;
-  let conversationsLoaded = false;
-  let conversationsError: string | null = null;
-  let topbarActionsRef: HTMLDivElement | null = null;
 
   let discoverModal: DiscoverCompanionDefinition | null = null;
   let museHostRef: MuseModel | null = null;
@@ -877,137 +862,6 @@
     }
   };
 
-  type TopbarNotification = {
-    id: string;
-    kind?: string | null;
-    read?: boolean | null;
-    created_at: string;
-    metadata?: Record<string, unknown> | null;
-    target_kind?: string | null;
-    target_id?: string | null;
-  };
-
-  const getMetaString = (meta: Record<string, unknown> | null | undefined, ...keys: string[]) => {
-    if (!meta) return null;
-    for (const key of keys) {
-      const value = meta[key];
-      if (typeof value === 'string' && value.trim()) return value.trim();
-    }
-    return null;
-  };
-
-  const notificationTitle = (item: TopbarNotification) => {
-    const meta = item.metadata ?? {};
-    if (item.kind === 'achievement_unlocked') {
-      return getMetaString(meta, 'name', 'achievementName', 'title') ?? 'Achievement unlocked';
-    }
-    if (item.kind === 'companion_nudge') {
-      return getMetaString(meta, 'companionName', 'companion_name') ?? 'Companion update';
-    }
-    if (item.kind === 'comment') return 'New comment';
-    if (item.kind === 'reaction') return 'New reaction';
-    if (item.kind === 'share') return 'Post shared';
-    if (item.kind === 'event_reminder') return getMetaString(meta, 'title', 'eventTitle') ?? 'Event reminder';
-    return 'New notification';
-  };
-
-  const notificationBody = (item: TopbarNotification) => {
-    const meta = item.metadata ?? {};
-    if (item.kind === 'companion_nudge') {
-      const reason = getMetaString(meta, 'reason');
-      if (reason === 'low_energy') return 'Energy is running low.';
-      if (reason === 'care_due') return 'Ready for a care check-in.';
-      return 'A new companion moment is ready.';
-    }
-    if (item.kind === 'achievement_unlocked') return 'A reward opened in your journey.';
-    if (item.kind === 'comment') return 'Someone added to a thread.';
-    if (item.kind === 'reaction') return 'Someone reacted to your post.';
-    if (item.kind === 'share') return 'Someone shared something you made.';
-    return getMetaString(meta, 'body', 'message', 'description') ?? 'Open notifications to view details.';
-  };
-
-  const notificationHref = (item: TopbarNotification) => {
-    if (item.target_kind === 'companion') return `/app/companions?focus=${item.target_id ?? ''}`;
-    if (item.target_kind === 'event') return `/app/events?eventId=${encodeURIComponent(item.target_id ?? '')}`;
-    return '/app/notifications';
-  };
-
-  const closeTopbarMenus = () => {
-    notificationsOpen = false;
-    messagesOpen = false;
-    profileMenuOpen = false;
-  };
-
-  const toggleNotifications = () => {
-    notificationsOpen = !notificationsOpen;
-    messagesOpen = false;
-    profileMenuOpen = false;
-  };
-
-  const conversationName = (conversation: MessengerConversation) =>
-    conversation.type === 'group'
-      ? conversation.group_name ?? 'Group conversation'
-      : conversation.peer?.display_name ?? conversation.peer?.handle ?? 'Someone';
-
-  const conversationPreview = (conversation: MessengerConversation) =>
-    conversation.blocked ? 'This conversation is blocked.' : conversation.preview?.trim() || 'No messages yet.';
-
-  const conversationInitial = (conversation: MessengerConversation) =>
-    conversationName(conversation).trim().slice(0, 1).toUpperCase() || 'M';
-
-  const fetchConversations = async () => {
-    if (conversationsLoading || conversationsLoaded) return;
-    conversationsLoading = true;
-    conversationsError = null;
-    try {
-      const response = await fetch('/api/messenger/conversations', { headers: { 'cache-control': 'no-store' } });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        conversationsError = typeof payload?.message === 'string' ? payload.message : 'Could not load messages.';
-        return;
-      }
-      conversations = Array.isArray(payload?.items) ? payload.items.slice(0, 5) : [];
-      conversationsLoaded = true;
-    } catch {
-      conversationsError = 'Could not load messages.';
-    } finally {
-      conversationsLoading = false;
-    }
-  };
-
-  const toggleMessages = () => {
-    messagesOpen = !messagesOpen;
-    notificationsOpen = false;
-    profileMenuOpen = false;
-    if (messagesOpen) void fetchConversations();
-  };
-
-  const toggleProfileMenu = () => {
-    profileMenuOpen = !profileMenuOpen;
-    notificationsOpen = false;
-    messagesOpen = false;
-  };
-
-  const handleTopbarDocumentClick = (event: MouseEvent) => {
-    if (!topbarActionsRef || !(event.target instanceof Node)) return;
-    if (!topbarActionsRef.contains(event.target)) closeTopbarMenus();
-  };
-
-  const markNotificationsRead = async () => {
-    if (markingNotifications || unreadNotifications === 0) return;
-    markingNotifications = true;
-    try {
-      const response = await fetch('/api/notifications', { method: 'POST' });
-      if (!response.ok) throw new Error('mark_read_failed');
-      notificationItems = notificationItems.map((item) => ({ ...item, read: true }));
-    } catch (err) {
-      console.error('[companions] failed to mark notifications read', err);
-      showToast(SAFE_LOAD_ERROR, 'error');
-    } finally {
-      markingNotifications = false;
-    }
-  };
-
   $: ownedArchetypeTokens = new Set(
     ownedInstances.flatMap((instance) => [normalizeToken(instance.species), normalizeToken(cleanArchetype(instance.species))])
   );
@@ -1196,13 +1050,6 @@
     ($page.data?.profile as any)?.username ??
     ($page.data?.user as any)?.email?.split('@')[0] ??
     'Traveler';
-  let notificationItems: TopbarNotification[] = (((data as any)?.notifications ?? []) as TopbarNotification[]).map((item) => ({
-    ...item,
-    metadata: (item.metadata ?? {}) as Record<string, unknown>
-  }));
-  $: unreadNotifications = notificationItems.filter((item) => !item.read).length;
-  $: notificationPreview = notificationItems.slice(0, 5);
-  $: unreadMessages = conversations.reduce((total, conversation) => total + Math.max(0, conversation.unreadCount ?? 0), 0);
   $: shardBalance =
     typeof ($page.data?.wallet as any)?.shards === 'number' ? (($page.data?.wallet as any).shards as number) : 0;
   $: activeCompanionCount = activeCompanion ? 1 : 0;
@@ -1249,7 +1096,6 @@
     if (!browser) return;
     hydrated = true;
     logEvent('companions_page_view');
-    document.addEventListener('click', handleTopbarDocumentClick, true);
 
     nowTimer = window.setInterval(() => {
       nowTick = Date.now();
@@ -1262,7 +1108,6 @@
     if (switchTimer) clearTimeout(switchTimer);
     if (nowTimer) window.clearInterval(nowTimer);
     if (browser) {
-      document.removeEventListener('click', handleTopbarDocumentClick, true);
       portraitUploadRetryTimers.forEach((timer) => window.clearTimeout(timer));
       portraitUploadRetryTimers.clear();
     }
@@ -1297,7 +1142,7 @@
           on:input={(event) => updateFilters({ search: (event.currentTarget as HTMLInputElement).value })}
         />
       </label>
-      <div class="topbar-controls" bind:this={topbarActionsRef}>
+      <div class="topbar-controls">
         <label class="select-field">
           <span>Sort companions</span>
           <select
@@ -1333,162 +1178,12 @@
         >
           <SlidersHorizontal size={18} />
         </button>
-        <a class="shard-pill topbar-action" href="/app/wallet" aria-label={`Open wallet, ${shardBalance.toLocaleString()} shards`}>
-          <ShardIcon size={18} />
-          <span>{shardBalance.toLocaleString()}</span>
-        </a>
-        <div class="topbar-menu" class:open={notificationsOpen}>
-          <button
-            type="button"
-            class="icon-button topbar-action"
-            aria-label={unreadNotifications > 0 ? `Notifications (${unreadNotifications} unread)` : 'Notifications'}
-            aria-expanded={notificationsOpen}
-            aria-haspopup="dialog"
-            on:click={toggleNotifications}
-          >
-            <Bell size={18} />
-            {#if unreadNotifications > 0}
-              <span class="topbar-badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>
-            {/if}
-          </button>
-          {#if notificationsOpen}
-            <div class="topbar-dropdown notification-dropdown" role="dialog" aria-label="Notifications">
-              <header>
-                <h2>Notifications</h2>
-                <button type="button" on:click={markNotificationsRead} disabled={markingNotifications || unreadNotifications === 0}>
-                  Mark all as read
-                </button>
-              </header>
-              <div class="dropdown-list">
-                {#if notificationPreview.length > 0}
-                  {#each notificationPreview as item, index (item.id)}
-                    <a class="dropdown-item" class:unread={!item.read} href={notificationHref(item)}>
-                      <span class="dropdown-icon" style={`--tone:${['#a75cff', '#ddaa5c', '#62e8ff', '#ff6fb8'][index % 4]}`}>
-                        <ShardIcon size={19} />
-                      </span>
-                      <span class="dropdown-copy">
-                        <strong>{notificationTitle(item)}</strong>
-                        <small>{notificationBody(item)}</small>
-                        <time datetime={item.created_at}>{relativeTime(item.created_at)}</time>
-                      </span>
-                      {#if !item.read}
-                        <i aria-hidden="true"></i>
-                      {/if}
-                    </a>
-                  {/each}
-                {:else}
-                  <p class="dropdown-empty">No notifications yet.</p>
-                {/if}
-              </div>
-              <a class="dropdown-footer" href="/app/notifications">
-                <span>View All Notifications</span>
-                <span aria-hidden="true">→</span>
-              </a>
-            </div>
-          {/if}
-        </div>
-        <div class="topbar-menu message-menu" class:open={messagesOpen}>
-          <button
-            type="button"
-            class="icon-button topbar-action"
-            aria-label={unreadMessages > 0 ? `Messages (${unreadMessages} unread)` : 'Messages'}
-            aria-expanded={messagesOpen}
-            aria-haspopup="dialog"
-            on:click={toggleMessages}
-          >
-            <MessageCircle size={18} />
-            {#if unreadMessages > 0}
-              <span class="topbar-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
-            {/if}
-          </button>
-          {#if messagesOpen}
-            <div class="topbar-dropdown message-dropdown" role="dialog" aria-label="Messages">
-              <header>
-                <h2>Messages</h2>
-                <a href="/app/messages">Open inbox</a>
-              </header>
-              <div class="dropdown-list">
-                {#if conversationsLoading}
-                  <p class="dropdown-empty">Loading messages...</p>
-                {:else if conversationsError}
-                  <p class="dropdown-empty">{conversationsError}</p>
-                {:else if conversations.length > 0}
-                  {#each conversations as conversation, index (conversation.conversationId)}
-                    <a
-                      class="dropdown-item message-item"
-                      class:unread={conversation.unreadCount > 0}
-                      href={`/app/messages?conversation=${conversation.conversationId}`}
-                    >
-                      <span class="message-avatar" style={`--tone:${['#a75cff', '#ddaa5c', '#62e8ff', '#ff6fb8'][index % 4]}`}>
-                        {#if conversation.peer?.avatar_url}
-                          <img src={conversation.peer.avatar_url} alt="" loading="lazy" />
-                        {:else}
-                          <span>{conversationInitial(conversation)}</span>
-                        {/if}
-                      </span>
-                      <span class="dropdown-copy">
-                        <strong>{conversationName(conversation)}</strong>
-                        <small>{conversationPreview(conversation)}</small>
-                        {#if conversation.last_message_at}
-                          <time datetime={conversation.last_message_at}>{relativeTime(conversation.last_message_at)}</time>
-                        {/if}
-                      </span>
-                      {#if conversation.unreadCount > 0}
-                        <i aria-label={`${conversation.unreadCount} unread`}>{conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}</i>
-                      {/if}
-                    </a>
-                  {/each}
-                {:else}
-                  <p class="dropdown-empty">No conversations yet.</p>
-                {/if}
-              </div>
-              <a class="dropdown-footer" href="/app/messages">
-                <span>View All Messages</span>
-                <span aria-hidden="true">→</span>
-              </a>
-            </div>
-          {/if}
-        </div>
-        <div class="topbar-menu profile-menu" class:open={profileMenuOpen}>
-          <button
-            type="button"
-            class="profile-pill topbar-action"
-            aria-label="Open profile menu"
-            aria-expanded={profileMenuOpen}
-            aria-haspopup="menu"
-            on:click={toggleProfileMenu}
-          >
-            {#if activeProfileAvatar}
-              <img src={activeProfileAvatar} alt="" />
-            {:else}
-              <span>{profileDisplayName.slice(0, 1).toUpperCase()}</span>
-            {/if}
-            <ChevronDown size={14} />
-          </button>
-          {#if profileMenuOpen}
-            <div class="topbar-dropdown profile-dropdown" role="menu" aria-label="Profile menu">
-              <header>
-                <h2>{profileDisplayName}</h2>
-              </header>
-              <div class="dropdown-list">
-                <a class="dropdown-item profile-link" href="/app/profile" role="menuitem">
-                  <span class="dropdown-icon" style="--tone:#a75cff"><UserRound size={18} /></span>
-                  <span class="dropdown-copy">
-                    <strong>View Profile</strong>
-                    <small>Open your public profile page.</small>
-                  </span>
-                </a>
-                <a class="dropdown-item profile-link" href="/app/preferences" role="menuitem">
-                  <span class="dropdown-icon" style="--tone:#ddaa5c"><Settings size={18} /></span>
-                  <span class="dropdown-copy">
-                    <strong>User Settings</strong>
-                    <small>Manage account and experience settings.</small>
-                  </span>
-                </a>
-              </div>
-            </div>
-          {/if}
-        </div>
+        <DesktopTopbarActions
+          {shardBalance}
+          notifications={(data as any)?.notifications ?? []}
+          {profileDisplayName}
+          profileAvatarUrl={activeProfileAvatar}
+        />
       </div>
     </header>
 
@@ -2137,7 +1832,7 @@
   }
 
   .select-field,
-  .topbar-action {
+  .icon-button {
     min-height: 2.75rem;
     border: 1px solid rgba(153, 130, 236, 0.18);
     border-radius: 0.95rem;
@@ -2170,18 +1865,10 @@
     font-size: 0.86rem;
   }
 
-  .icon-button,
-  .profile-pill,
-  .shard-pill {
+  .icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .topbar-menu {
-    position: relative;
-    display: inline-flex;
-    z-index: 80;
   }
 
   .icon-button {
@@ -2193,10 +1880,6 @@
 
   .icon-button:hover,
   .icon-button.is-active,
-  .topbar-menu.open .icon-button,
-  .topbar-menu.open .profile-pill,
-  .profile-pill:hover,
-  .profile-pill:focus-visible,
   .soft-button:hover,
   .upgrade-button:hover,
   .primary-action:hover,
@@ -2206,249 +1889,6 @@
   .collection-card:hover {
     border-color: rgba(179, 113, 255, 0.55);
     transform: translateY(-1px);
-  }
-
-  .topbar-badge {
-    position: absolute;
-    top: -0.22rem;
-    right: -0.12rem;
-    min-width: 1.08rem;
-    height: 1.08rem;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    background: #a75cff;
-    color: white;
-    font-size: 0.63rem;
-    font-weight: 900;
-    box-shadow: 0 0 16px rgba(167, 92, 255, 0.72);
-  }
-
-  .shard-pill {
-    gap: 0.55rem;
-    min-width: 6.2rem;
-    padding: 0 0.9rem;
-    font-weight: 800;
-  }
-
-  .shard-pill :global(svg) {
-    filter: drop-shadow(0 0 0.45rem rgba(178, 83, 255, 0.75));
-  }
-
-  .profile-pill {
-    gap: 0.45rem;
-    border-radius: 999px;
-    padding: 0 0.42rem;
-    cursor: pointer;
-  }
-
-  .profile-pill img,
-  .profile-pill span {
-    width: 2.15rem;
-    height: 2.15rem;
-    border-radius: 999px;
-  }
-
-  .profile-pill img {
-    object-fit: cover;
-  }
-
-  .profile-pill span {
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, #ddaa5c, #a75cff);
-    font-weight: 900;
-  }
-
-  .topbar-dropdown {
-    position: absolute;
-    top: calc(100% + 0.72rem);
-    right: -0.4rem;
-    z-index: 1000;
-    width: min(21.5rem, calc(100vw - 2rem));
-    border: 1px solid rgba(169, 123, 225, 0.24);
-    border-radius: 0.95rem;
-    background:
-      radial-gradient(circle at 12% 8%, rgba(126, 92, 255, 0.24), transparent 14rem),
-      linear-gradient(180deg, rgba(15, 16, 40, 0.98), rgba(8, 10, 27, 0.98));
-    box-shadow:
-      0 24px 70px rgba(2, 3, 14, 0.62),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    color: rgba(249, 247, 255, 0.95);
-    overflow: hidden;
-    backdrop-filter: blur(24px);
-  }
-
-  .profile-dropdown {
-    right: 0;
-    width: min(19rem, calc(100vw - 2rem));
-  }
-
-  .topbar-dropdown header {
-    min-height: 2.85rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    border-bottom: 1px solid rgba(169, 123, 225, 0.14);
-    padding: 0 0.85rem;
-  }
-
-  .topbar-dropdown h2 {
-    margin: 0;
-    font-size: 0.88rem;
-  }
-
-  .topbar-dropdown header button,
-  .topbar-dropdown header a {
-    border: 0;
-    background: transparent;
-    color: rgba(221, 211, 246, 0.74);
-    font: inherit;
-    font-size: 0.68rem;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  .topbar-dropdown header button:hover:not(:disabled),
-  .topbar-dropdown header button:focus-visible:not(:disabled),
-  .topbar-dropdown header a:hover,
-  .topbar-dropdown header a:focus-visible {
-    color: #ddaa5c;
-  }
-
-  .topbar-dropdown header button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .dropdown-list {
-    display: grid;
-    gap: 0.12rem;
-    padding: 0.52rem;
-  }
-
-  .dropdown-item {
-    min-height: 4.05rem;
-    border-radius: 0.6rem;
-    display: grid;
-    grid-template-columns: 2.35rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.72rem;
-    padding: 0.52rem 0.5rem;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .dropdown-item:hover,
-  .dropdown-item:focus-visible {
-    background: rgba(169, 123, 225, 0.09);
-    outline: none;
-  }
-
-  .dropdown-item.unread {
-    background: rgba(169, 123, 225, 0.08);
-  }
-
-  .dropdown-icon,
-  .message-avatar {
-    display: grid;
-    width: 2.15rem;
-    height: 2.15rem;
-    place-items: center;
-    border: 1px solid color-mix(in srgb, var(--tone), transparent 36%);
-    border-radius: 0.72rem;
-    background:
-      radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--tone), white 8%), transparent 46%),
-      rgba(10, 10, 29, 0.82);
-    color: white;
-    box-shadow: 0 0 18px color-mix(in srgb, var(--tone), transparent 52%);
-  }
-
-  .message-avatar {
-    border-radius: 999px;
-    overflow: hidden;
-    font-size: 0.78rem;
-    font-weight: 900;
-  }
-
-  .message-avatar img {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: cover;
-  }
-
-  .dropdown-copy {
-    min-width: 0;
-    display: grid;
-    gap: 0.16rem;
-  }
-
-  .dropdown-copy strong,
-  .dropdown-copy small,
-  .dropdown-copy time {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .dropdown-copy strong {
-    font-size: 0.78rem;
-  }
-
-  .dropdown-copy small,
-  .dropdown-copy time,
-  .dropdown-empty {
-    color: rgba(225, 222, 245, 0.7);
-    font-size: 0.7rem;
-  }
-
-  .dropdown-copy time {
-    color: rgba(225, 222, 245, 0.48);
-  }
-
-  .dropdown-item i {
-    min-width: 1.3rem;
-    height: 1.3rem;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    background: #a75cff;
-    color: white;
-    font-size: 0.64rem;
-    font-style: normal;
-    font-weight: 900;
-    box-shadow: 0 0 14px rgba(167, 92, 255, 0.7);
-  }
-
-  .dropdown-empty {
-    margin: 0;
-    padding: 1.6rem 0.75rem;
-    text-align: center;
-  }
-
-  .dropdown-footer {
-    min-height: 3.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    border-top: 1px solid rgba(169, 123, 225, 0.14);
-    padding: 0 1.1rem;
-    color: #c99cff;
-    font-size: 0.78rem;
-    font-weight: 800;
-    text-decoration: none;
-  }
-
-  .dropdown-footer:hover,
-  .dropdown-footer:focus-visible {
-    color: #ddaa5c;
-  }
-
-  .profile-link {
-    grid-template-columns: 2.35rem minmax(0, 1fr);
   }
 
   .roster-layout {
