@@ -3,18 +3,11 @@
   import { onDestroy, onMount } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
   import {
-    Heart,
-    ImageIcon,
-    MessageCircle,
     Mic,
     MicOff,
     MoreHorizontal,
-    Pencil,
     Phone,
     PhoneOff,
-    Search,
-    SlidersHorizontal,
-    Smile,
     Video,
     VideoOff
   } from 'lucide-svelte';
@@ -24,8 +17,6 @@
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
-  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
-  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
@@ -212,30 +203,6 @@
     (data as any)?.user?.user_metadata?.name ??
     (data as any)?.user?.email?.split('@')?.[0] ??
     'Alex';
-  $: profileAvatarUrl =
-    (data as any)?.profile?.avatar_url ??
-    (data as any)?.user?.user_metadata?.avatar_url ??
-    (data as any)?.user?.user_metadata?.picture ??
-    null;
-  $: shardBalance = Math.max(
-    0,
-    Math.floor((data as any)?.shardBalance ?? (data as any)?.wallet?.shards ?? (data as any)?.wallet?.balance ?? 0)
-  );
-  $: activeCompanion = (data as any)?.activeCompanion ?? null;
-  $: companionName = activeCompanion?.name ?? 'Lumi';
-  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? activeCompanion?.level ?? 18));
-  $: companionMood = activeCompanion?.mood_label ?? activeCompanion?.mood ?? 'Happy';
-  $: companionBond = Math.min(
-    100,
-    Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
-  );
-  $: companionAvatar = activeCompanion?.avatar_url ?? null;
-  $: onlineFriends = conversations
-    .filter((conversation) => conversation.peer?.presence?.status === 'online')
-    .slice(0, 5);
-  $: recentActivity = conversations
-    .filter((conversation) => conversation.last_message_at)
-    .slice(0, 4);
   $: inboxTabs = [
     { key: 'all', label: 'All' },
     { key: 'friends', label: 'Friends' },
@@ -1521,48 +1488,6 @@
   <FantasySidebar activePath="/app/messages" {playerName} level={24} xp={3200} xpNext={5000} />
 
   <main class="messages-workspace" aria-label="Messages">
-    <header class="messages-topbar">
-      <label class="global-search" aria-label="Search messages or users">
-        <Search size={18} />
-        <input
-          type="search"
-          placeholder="Search messages or users..."
-          value={searchQuery}
-          on:input={(event) => (searchQuery = (event.currentTarget as HTMLInputElement).value)}
-        />
-      </label>
-      <DesktopTopbarActions
-        {shardBalance}
-        notifications={(data as any)?.notifications ?? []}
-        profileDisplayName={playerName}
-        {profileAvatarUrl}
-      />
-    </header>
-
-    <section class="messages-heading">
-      <div>
-        <h1>Messages <span aria-hidden="true">✦</span></h1>
-        <p>Chat with friends, companions, and the Looma community.</p>
-      </div>
-      <div class="heading-actions">
-        <button
-          class="new-message"
-          type="button"
-          on:click={() => {
-            showStartModal = true;
-            startModalError = null;
-            void loadFriendOptions();
-          }}
-        >
-          <Pencil size={17} />
-          <span>New Message</span>
-        </button>
-        <button class="filter-button" type="button" aria-label="Filter messages">
-          <SlidersHorizontal size={18} />
-        </button>
-      </div>
-    </section>
-
     <div class="messages-grid">
       {#if showConversationPanel}
         <section class="inbox-panel" aria-label="Conversation list">
@@ -1714,76 +1639,6 @@
         </section>
       {/if}
 
-      <aside class="right-rail" aria-label="Message details">
-        <section class="rail-card companion-card">
-          <h2>Your Companion</h2>
-          <div class="companion-hero">
-            <div>
-              <h3>{companionName} <Pencil size={14} /></h3>
-              <p>Level {companionLevel}</p>
-              <span class="rarity"><ShardIcon size={14} /> Epic</span>
-            </div>
-            <div class="companion-art">
-              {#if companionAvatar}
-                <img src={companionAvatar} alt="" loading="lazy" />
-              {:else}
-                <ShardIcon size={92} />
-              {/if}
-            </div>
-          </div>
-          <div class="companion-stat"><Smile size={19} /> <span>{companionMood}</span></div>
-          <div class="companion-stat"><Heart size={19} fill="currentColor" /> <span>Bond {companionBond}%</span></div>
-          <div class="bond-meter"><span style={`width:${companionBond}%`}></span></div>
-          <a class="rail-primary" href="/app/companions">View Companion</a>
-        </section>
-
-        <section class="rail-card">
-          <header class="rail-card__header">
-            <h2>Active Friends <span>• {onlineFriends.length} Online</span></h2>
-            <a href="/app/friends">View All</a>
-          </header>
-          <div class="friend-list">
-            {#each onlineFriends as conversation}
-              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="friend-row">
-                <span class="avatar-wrap">
-                  {#if conversationAvatar(conversation)}
-                    <img src={conversationAvatar(conversation)} alt="" loading="lazy" />
-                  {:else}
-                    <span>{conversationInitial(conversation)}</span>
-                  {/if}
-                  <i class="presence-dot online" aria-hidden="true"></i>
-                </span>
-                <span>
-                  <strong>{conversationTitle(conversation)}</strong>
-                  <small>{presenceLabel ?? 'In Looma Prime'}</small>
-                </span>
-                <MessageCircle size={17} />
-              </a>
-            {:else}
-              <p class="empty-state">No friends online yet.</p>
-            {/each}
-          </div>
-        </section>
-
-        <section class="rail-card">
-          <header class="rail-card__header">
-            <h2>Recent Activity</h2>
-            <a href="/app/notifications">View All</a>
-          </header>
-          <div class="activity-list">
-            {#each recentActivity as conversation}
-              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="activity-row">
-                <span class="activity-icon"><ImageIcon size={16} /></span>
-                <span>{conversationTitle(conversation)} sent a message</span>
-                <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
-              </a>
-            {:else}
-              <p class="empty-state">No recent message activity.</p>
-            {/each}
-          </div>
-          <a class="rail-primary" href="/app/notifications">See All Activity</a>
-        </section>
-      </aside>
     </div>
   </main>
 
@@ -1948,86 +1803,16 @@
     min-width: 0;
     height: 100vh;
     overflow: hidden;
-    padding: 1.25rem 1.1rem 1rem 1.6rem;
+    padding: 0;
   }
 
-  .messages-topbar,
-  .messages-heading,
-  .heading-actions,
   .chat-header,
   .chat-person,
-  .chat-actions,
-  .rail-card__header,
-  .companion-stat,
-  .friend-row,
-  .activity-row {
+  .chat-actions {
     display: flex;
     align-items: center;
   }
 
-  .messages-topbar {
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .global-search {
-    display: flex;
-    width: min(100%, 27.5rem);
-    min-height: 2.95rem;
-    align-items: center;
-    gap: 0.78rem;
-    border: 1px solid rgba(153, 130, 236, 0.18);
-    border-radius: 1.05rem;
-    background: rgba(8, 10, 29, 0.74);
-    padding: 0 0.95rem;
-    color: rgba(203, 200, 232, 0.72);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  .global-search input {
-    min-width: 0;
-    flex: 1;
-    border: 0;
-    background: transparent;
-    color: white;
-    outline: 0;
-  }
-
-  .global-search input::placeholder {
-    color: rgba(210, 205, 235, 0.55);
-  }
-
-  .messages-heading {
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .messages-heading h1 {
-    margin: 0;
-    color: white;
-    font-size: clamp(1.75rem, 2.2vw, 2.2rem);
-    line-height: 1.05;
-    letter-spacing: 0;
-  }
-
-  .messages-heading h1 span {
-    color: #d66dff;
-    text-shadow: 0 0 22px rgba(194, 92, 255, 0.8);
-  }
-
-  .messages-heading p {
-    margin: 0.48rem 0 0;
-    color: rgba(213, 209, 236, 0.72);
-  }
-
-  .heading-actions {
-    gap: 0.7rem;
-  }
-
-  .new-message,
-  .filter-button,
   .chat-actions button {
     min-height: 2.75rem;
     border: 1px solid rgba(153, 130, 236, 0.2);
@@ -2036,17 +1821,6 @@
     cursor: pointer;
   }
 
-  .new-message {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0 1.1rem;
-    background: linear-gradient(135deg, rgba(96, 57, 184, 0.98), rgba(126, 59, 215, 0.94));
-    box-shadow: 0 0 28px rgba(125, 63, 222, 0.32);
-    font-weight: 800;
-  }
-
-  .filter-button,
   .chat-actions button {
     width: 2.75rem;
     display: grid;
@@ -2056,15 +1830,13 @@
 
   .messages-grid {
     display: grid;
-    grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr) minmax(18rem, 23rem);
-    gap: 1rem;
-    height: calc(100vh - 8.65rem);
+    grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr);
+    height: 100vh;
     min-height: 0;
   }
 
   .inbox-panel,
-  .chat-panel,
-  .rail-card {
+  .chat-panel {
     border: 1px solid rgba(153, 130, 236, 0.17);
     background:
       radial-gradient(circle at 70% 0%, rgba(126, 92, 255, 0.12), transparent 28rem),
@@ -2079,7 +1851,10 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    border-radius: 0.95rem;
+    border-radius: 0;
+    border-top: 0;
+    border-bottom: 0;
+    border-left: 0;
   }
 
   .inbox-tabs {
@@ -2205,7 +1980,7 @@
   }
 
   .conversation-title strong,
-  .friend-row strong {
+  .conversation-title strong {
     overflow: hidden;
     color: white;
     font-size: 0.95rem;
@@ -2214,7 +1989,7 @@
   }
 
   .conversation-title time,
-  .activity-row time {
+  .conversation-title time {
     flex: 0 0 auto;
     color: rgba(202, 197, 229, 0.56);
     font-size: 0.72rem;
@@ -2250,7 +2025,8 @@
     overflow: hidden;
     display: grid;
     grid-template-rows: auto 1fr;
-    border-radius: 0.95rem;
+    border-radius: 0;
+    border: 0;
   }
 
   .chat-header {
@@ -2294,201 +2070,6 @@
   .thread-empty {
     display: grid;
     place-items: center;
-  }
-
-  .right-rail {
-    min-width: 0;
-    min-height: 0;
-    overflow: auto;
-    display: grid;
-    align-content: start;
-    gap: 0.82rem;
-  }
-
-  .rail-card {
-    border-radius: 0.95rem;
-    padding: 1rem;
-  }
-
-  .rail-card h2,
-  .rail-card h3 {
-    margin: 0;
-    color: white;
-  }
-
-  .rail-card h2 {
-    font-size: 0.95rem;
-  }
-
-  .rail-card__header {
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin-bottom: 0.9rem;
-  }
-
-  .rail-card__header h2 span {
-    color: rgba(214, 208, 239, 0.58);
-    font-weight: 500;
-  }
-
-  .rail-card__header a {
-    color: rgba(211, 185, 255, 0.76);
-    font-size: 0.78rem;
-    text-decoration: none;
-  }
-
-  .companion-card {
-    overflow: hidden;
-    background:
-      radial-gradient(circle at 74% 16%, rgba(167, 92, 255, 0.34), transparent 12rem),
-      linear-gradient(180deg, rgba(11, 14, 38, 0.92), rgba(7, 10, 28, 0.9));
-  }
-
-  .companion-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 9rem;
-    gap: 0.5rem;
-    align-items: center;
-    margin: 1rem 0 0.8rem;
-  }
-
-  .companion-hero h3 {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.34rem;
-    font-size: 1.36rem;
-  }
-
-  .companion-hero p {
-    margin: 0.45rem 0 0;
-    color: rgba(216, 211, 236, 0.72);
-  }
-
-  .rarity {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-top: 0.7rem;
-    color: #d9a6ff;
-    font-size: 0.84rem;
-  }
-
-  .companion-art {
-    display: grid;
-    min-height: 8.25rem;
-    place-items: center;
-    color: #a75cff;
-    filter: drop-shadow(0 0 26px rgba(167, 92, 255, 0.6));
-  }
-
-  .companion-art img {
-    width: 8.5rem;
-    height: 8.5rem;
-    object-fit: cover;
-    border-radius: 1.2rem;
-  }
-
-  .companion-stat {
-    gap: 0.55rem;
-    min-height: 2.2rem;
-    color: rgba(244, 241, 255, 0.9);
-  }
-
-  .companion-stat:first-of-type {
-    color: #a4f39a;
-  }
-
-  .companion-stat:nth-of-type(2) {
-    color: #ff75a8;
-  }
-
-  .bond-meter {
-    height: 0.28rem;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.09);
-    margin: 0.35rem 0 1rem;
-  }
-
-  .bond-meter span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #a75cff, #ff5cdc);
-    box-shadow: 0 0 14px rgba(167, 92, 255, 0.74);
-  }
-
-  .rail-primary {
-    display: flex;
-    min-height: 2.55rem;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(186, 153, 255, 0.28);
-    border-radius: 0.55rem;
-    background: linear-gradient(135deg, rgba(74, 36, 151, 0.9), rgba(91, 40, 160, 0.86));
-    color: white;
-    font-weight: 800;
-    text-decoration: none;
-  }
-
-  .friend-list,
-  .activity-list {
-    display: grid;
-    gap: 0.72rem;
-  }
-
-  .friend-row {
-    gap: 0.72rem;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .friend-row .avatar-wrap {
-    width: 2.55rem;
-    height: 2.55rem;
-  }
-
-  .friend-row span:nth-child(2) {
-    min-width: 0;
-    flex: 1;
-    display: grid;
-  }
-
-  .friend-row small {
-    overflow: hidden;
-    color: #74db78;
-    font-size: 0.78rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .friend-row > :global(svg) {
-    color: rgba(214, 208, 239, 0.78);
-  }
-
-  .activity-row {
-    gap: 0.64rem;
-    color: rgba(232, 228, 248, 0.84);
-    font-size: 0.82rem;
-    text-decoration: none;
-  }
-
-  .activity-row span:nth-child(2) {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .activity-icon {
-    display: grid;
-    width: 2rem;
-    height: 2rem;
-    place-items: center;
-    border-radius: 0.5rem;
-    background: linear-gradient(135deg, rgba(167, 92, 255, 0.38), rgba(98, 232, 255, 0.16));
-    color: white;
   }
 
   .load-older {
@@ -2849,16 +2430,6 @@
     display: none;
   }
 
-  @media (max-width: 1280px) {
-    .messages-grid {
-      grid-template-columns: minmax(18rem, 24rem) minmax(27rem, 1fr);
-    }
-
-    .right-rail {
-      display: none;
-    }
-  }
-
   @media (max-width: 1020px) {
     .messages-app {
       grid-template-columns: 1fr;
@@ -2867,10 +2438,6 @@
     .messages-app :global(.fantasy-sidebar) {
       display: none;
     }
-
-    .messages-workspace {
-      padding: 1rem;
-    }
   }
 
   @media (max-width: 760px) {
@@ -2878,12 +2445,6 @@
       height: auto;
       min-height: 100vh;
       overflow: visible;
-    }
-
-    .messages-topbar,
-    .messages-heading {
-      align-items: stretch;
-      flex-direction: column;
     }
 
     .messages-grid {
@@ -2939,8 +2500,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .conversation-row,
-    .new-message,
-    .filter-button,
     .chat-actions button {
       transition: none;
     }
