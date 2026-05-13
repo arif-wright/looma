@@ -65,7 +65,7 @@
 
   type FilterState = {
     search: string;
-    archetype: string;
+    element: string;
     mood: string;
     sort: SortKey;
   };
@@ -258,7 +258,7 @@
   let activeDetailTab: DetailTabKey = 'overview';
   let filters: FilterState = {
     search: '',
-    archetype: 'all',
+    element: 'all',
     mood: 'all',
     sort: 'bond_desc'
   };
@@ -872,25 +872,113 @@
     return !ownedArchetypeTokens.has(byKey) && !ownedArchetypeTokens.has(byName);
   });
 
-  $: archetypeOptions = Array.from(
-    new Set([
-      ...ownedInstances.map((instance) => cleanArchetype(instance.species)),
-      ...discoverEntries.map((definition) => definition.name)
-    ])
-  )
-    .filter(Boolean)
-    .sort();
-
   $: moodOptions = Array.from(new Set(ownedInstances.map((instance) => getCompanionMoodMeta(instance.mood).label))).sort();
+  const searchTerms = (value: string) => value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesSearchTerms = (haystack: string, terms: string[]) => {
+    const normalized = haystack.toLowerCase();
+    return terms.every((term) => normalized.includes(term));
+  };
+  const searchableIdentityText = (identity: ReturnType<typeof getCompanionIdentity>) => {
+    const giftText = Object.values(identity.gifts)
+      .flat()
+      .map((gift) => `${gift.name} ${gift.category} ${gift.description} ${gift.effectSummary} ${gift.emotionalPurpose}`)
+      .join(' ');
+    const storyText = [
+      identity.story.origin,
+      ...identity.story.sharedMemories,
+      ...identity.story.unlockedFragments,
+      ...identity.story.lockedFragments
+    ]
+      .map((fragment) => `${fragment.title} ${fragment.type} ${fragment.unlockCondition} ${fragment.body}`)
+      .join(' ');
+    const primary = getElementById(identity.elementProfile.primary);
+    const secondary = getElementById(identity.elementProfile.secondary);
+    return [
+      identity.name,
+      identity.archetype.label,
+      identity.archetype.role,
+      identity.archetype.emotionalDomain,
+      identity.archetype.overviewIdentity,
+      identity.rarity,
+      identity.mood,
+      identity.elementProfile.variantId.replace(/_/g, ' '),
+      identity.elementProfile.emotionalDomain,
+      identity.elementProfile.expressionLine,
+      identity.elementProfile.bondExpression,
+      identity.elementProfile.preferredRituals.join(' '),
+      primary?.label,
+      primary?.description,
+      primary?.emotionalMeaning,
+      secondary?.label,
+      secondary?.description,
+      secondary?.emotionalMeaning,
+      identity.personality.join(' '),
+      identity.favoriteGifts.join(' '),
+      giftText,
+      storyText
+    ]
+      .filter(Boolean)
+      .join(' ');
+  };
+  const identityMatchesElement = (identity: ReturnType<typeof getCompanionIdentity>, selectedElement: string) => {
+    if (selectedElement === 'all') return true;
+    const token = normalizeToken(selectedElement);
+    const primary = getElementById(identity.elementProfile.primary);
+    const secondary = getElementById(identity.elementProfile.secondary);
+    return [
+      identity.elementProfile.primary,
+      identity.elementProfile.secondary,
+      identity.elementProfile.variantId,
+      identity.elementProfile.emotionalDomain,
+      primary?.label,
+      secondary?.label
+    ]
+      .filter(Boolean)
+      .some((value) => normalizeToken(value) === token);
+  };
+  const discoverIdentity = (entry: DiscoverCompanionDefinition) =>
+    getCompanionIdentity({
+      id: entry.key,
+      name: entry.name,
+      species: entry.name,
+      rarity: entry.locked ? 'Locked' : 'Epic',
+      level: 1,
+      mood: 'steady',
+      affection: 0,
+      trust: 0,
+      energy: 0
+    } as Companion);
+  $: elementOptions = Array.from(
+    new Set(
+      [...ownedInstances.map((instance) => getCompanionIdentity(instance)), ...discoverEntries.map(discoverIdentity)].flatMap(
+        (identity) => {
+          const primary = getElementById(identity.elementProfile.primary);
+          const secondary = getElementById(identity.elementProfile.secondary);
+          return [primary?.label, secondary?.label].filter(Boolean) as string[];
+        }
+      )
+    )
+  ).sort();
+  $: activeSearchTerms = searchTerms(filters.search);
+  $: hasActiveFilters =
+    filters.search.trim().length > 0 || filters.element !== 'all' || filters.mood !== 'all' || filters.sort !== 'bond_desc';
+  const updateFilters = (partial: Partial<FilterState>) => {
+    filters = { ...filters, ...partial };
+  };
+  const clearFilters = () => {
+    filters = { search: '', element: 'all', mood: 'all', sort: 'bond_desc' };
+  };
 
   $: filteredOwned = ownedInstances
     .filter((instance) => {
-      const term = filters.search.trim().toLowerCase();
-      if (term) {
-        const composite = `${instance.name} ${instance.species}`.toLowerCase();
-        if (!composite.includes(term)) return false;
+      const identity = getCompanionIdentity(instance);
+      const chapterText = (chapterRewardsByCompanionId[instance.id] ?? [])
+        .map((reward) => `${reward.title} ${reward.body} ${reward.tone ?? ''}`)
+        .join(' ');
+      if (activeSearchTerms.length && !matchesSearchTerms(`${searchableIdentityText(identity)} ${chapterText}`, activeSearchTerms)) {
+        return false;
       }
-      if (filters.archetype !== 'all' && cleanArchetype(instance.species) !== filters.archetype) return false;
+      if (!identityMatchesElement(identity, filters.element)) return false;
       if (filters.mood !== 'all' && getCompanionMoodMeta(instance.mood).label !== filters.mood) return false;
       return true;
     })
@@ -906,12 +994,10 @@
 
   $: filteredDiscover = discoverEntries
     .filter((entry) => {
-      const term = filters.search.trim().toLowerCase();
-      if (term) {
-        const composite = `${entry.name} ${entry.description} ${entry.seed}`.toLowerCase();
-        if (!composite.includes(term)) return false;
-      }
-      if (filters.archetype !== 'all' && entry.name !== filters.archetype) return false;
+      const identity = discoverIdentity(entry);
+      const composite = `${entry.name} ${entry.description} ${entry.seed} ${entry.renderHook} ${searchableIdentityText(identity)}`;
+      if (activeSearchTerms.length && !matchesSearchTerms(composite, activeSearchTerms)) return false;
+      if (!identityMatchesElement(identity, filters.element)) return false;
       return true;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -1039,12 +1125,20 @@
     <header class="topbar">
       <label class="search-field" aria-label="Search companions">
         <Search size={18} />
-        <input type="search" placeholder="Search companions..." bind:value={filters.search} />
+        <input
+          type="search"
+          placeholder="Search companions..."
+          value={filters.search}
+          on:input={(event) => updateFilters({ search: (event.currentTarget as HTMLInputElement).value })}
+        />
       </label>
       <div class="topbar-controls">
         <label class="select-field">
-          <span>Rarity</span>
-          <select bind:value={filters.sort}>
+          <span>Sort companions</span>
+          <select
+            value={filters.sort}
+            on:change={(event) => updateFilters({ sort: (event.currentTarget as HTMLSelectElement).value as SortKey })}
+          >
             <option value="bond_desc">Bond</option>
             <option value="recent_interaction">Recent</option>
             <option value="energy_desc">Spark</option>
@@ -1053,16 +1147,25 @@
           <ChevronDown size={16} />
         </label>
         <label class="select-field">
-          <span>All Elements</span>
-          <select bind:value={filters.archetype}>
+          <span>Filter by element</span>
+          <select
+            value={filters.element}
+            on:change={(event) => updateFilters({ element: (event.currentTarget as HTMLSelectElement).value })}
+          >
             <option value="all">All Elements</option>
-            {#each archetypeOptions as archetype}
-              <option value={archetype}>{archetype}</option>
+            {#each elementOptions as element}
+              <option value={element}>{element}</option>
             {/each}
           </select>
           <ChevronDown size={16} />
         </label>
-        <button type="button" class="icon-button" aria-label="Filters">
+        <button
+          type="button"
+          class={`icon-button ${hasActiveFilters ? 'is-active' : ''}`}
+          aria-label={hasActiveFilters ? 'Clear companion filters' : 'Companion filters are clear'}
+          aria-pressed={hasActiveFilters}
+          on:click={clearFilters}
+        >
           <SlidersHorizontal size={18} />
         </button>
         <div class="shard-pill" aria-label={`${shardBalance.toLocaleString()} shards`}>
@@ -1706,6 +1809,7 @@
   }
 
   .icon-button:hover,
+  .icon-button.is-active,
   .profile-pill:hover,
   .soft-button:hover,
   .upgrade-button:hover,
