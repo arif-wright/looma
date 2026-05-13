@@ -2,15 +2,15 @@
   import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+  import { Heart, ImageIcon, MessageCircle, MoreHorizontal, Pencil, Phone, Search, SlidersHorizontal, Smile, Video } from 'lucide-svelte';
   import { supabaseBrowser } from '$lib/supabaseClient';
-  import ConversationList from '$lib/components/messenger/ConversationList.svelte';
   import ChatThread from '$lib/components/messenger/ChatThread.svelte';
   import MessageComposer from '$lib/components/messenger/MessageComposer.svelte';
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
-  import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
-  import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
-  import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
+  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
+  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
@@ -37,6 +37,7 @@
   let viewerCanModerate = false;
   let nextCursor: string | null = null;
   let searchQuery = '';
+  let activeInboxFilter: 'all' | 'friends' | 'companions' | 'groups' | 'unread' = 'all';
   let isCompactLayout = false;
   let mobilePanel: 'list' | 'thread' = 'list';
 
@@ -76,6 +77,48 @@
     return bTime - aTime;
   };
 
+  const formatInboxTime = (iso: string | null) => {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    const deltaMs = Math.max(0, Date.now() - date.getTime());
+    const minutes = Math.floor(deltaMs / 60_000);
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const conversationTitle = (conversation: MessengerConversation) => {
+    if (conversation.type === 'group' && conversation.group_name) return conversation.group_name;
+    if (conversation.peer?.display_name) return conversation.peer.display_name;
+    if (conversation.peer?.handle) return `@${conversation.peer.handle}`;
+    return conversation.peer?.id ? conversation.peer.id.slice(0, 8) : 'Conversation';
+  };
+
+  const conversationSubtitle = (conversation: MessengerConversation) => {
+    if (conversation.blocked) return 'Blocked';
+    return conversation.preview?.trim() || 'No messages yet';
+  };
+
+  const conversationInitial = (conversation: MessengerConversation) =>
+    conversationTitle(conversation).trim().slice(0, 1).toUpperCase() || 'L';
+
+  const conversationAvatar = (conversation: MessengerConversation) => conversation.peer?.avatar_url ?? null;
+
+  const presenceClass = (conversation: MessengerConversation) => {
+    const status = conversation.peer?.presence?.status ?? null;
+    if (status === 'online') return 'online';
+    if (status === 'away') return 'away';
+    if (status === 'offline') return 'offline';
+    return 'hidden';
+  };
+
+  const isCompanionThread = (conversation: MessengerConversation) =>
+    /companion|lumi|echo|muse|zephyr|starlight/i.test(`${conversationTitle(conversation)} ${conversationSubtitle(conversation)}`);
+
   const clearTypingUsers = () => {
     for (const timer of typingUserTimers.values()) {
       clearTimeout(timer);
@@ -114,7 +157,13 @@
 
   $: filteredConversations = conversations.filter((conversation) => {
     const key = `${conversation.peer?.display_name ?? ''} ${conversation.peer?.handle ?? ''} ${conversation.preview ?? ''}`.toLowerCase();
-    return key.includes(searchQuery.toLowerCase());
+    const matchesSearch = key.includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (activeInboxFilter === 'unread') return conversation.unreadCount > 0;
+    if (activeInboxFilter === 'groups') return conversation.type === 'group';
+    if (activeInboxFilter === 'companions') return isCompanionThread(conversation);
+    if (activeInboxFilter === 'friends') return conversation.type !== 'group' && !isCompanionThread(conversation);
+    return true;
   });
 
   $: activeConversation =
@@ -127,6 +176,43 @@
   $: threadTitle =
     activeConversation?.peer?.display_name ??
     (activeConversation?.peer?.handle ? `@${activeConversation.peer.handle}` : activeConversation?.group_name ?? 'Conversation');
+  $: playerName =
+    (data as any)?.profile?.display_name ??
+    (data as any)?.profile?.username ??
+    (data as any)?.user?.user_metadata?.name ??
+    (data as any)?.user?.email?.split('@')?.[0] ??
+    'Alex';
+  $: profileAvatarUrl =
+    (data as any)?.profile?.avatar_url ??
+    (data as any)?.user?.user_metadata?.avatar_url ??
+    (data as any)?.user?.user_metadata?.picture ??
+    null;
+  $: shardBalance = Math.max(
+    0,
+    Math.floor((data as any)?.shardBalance ?? (data as any)?.wallet?.shards ?? (data as any)?.wallet?.balance ?? 0)
+  );
+  $: activeCompanion = (data as any)?.activeCompanion ?? null;
+  $: companionName = activeCompanion?.name ?? 'Lumi';
+  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? activeCompanion?.level ?? 18));
+  $: companionMood = activeCompanion?.mood_label ?? activeCompanion?.mood ?? 'Happy';
+  $: companionBond = Math.min(
+    100,
+    Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
+  );
+  $: companionAvatar = activeCompanion?.avatar_url ?? null;
+  $: onlineFriends = conversations
+    .filter((conversation) => conversation.peer?.presence?.status === 'online')
+    .slice(0, 5);
+  $: recentActivity = conversations
+    .filter((conversation) => conversation.last_message_at)
+    .slice(0, 4);
+  $: inboxTabs = [
+    { key: 'all', label: 'All' },
+    { key: 'friends', label: 'Friends' },
+    { key: 'companions', label: 'Companions' },
+    { key: 'groups', label: 'Groups' },
+    { key: 'unread', label: 'Unread' }
+  ] as const;
 
   const relativeLastActive = (iso: string) => {
     const ts = Date.parse(iso);
@@ -1089,91 +1175,146 @@
   });
 </script>
 
-<SanctuaryPageFrame
-  eyebrow="Companion Dialogue"
-  title="Messages"
-  subtitle="Keep close threads spacious, warm, and connected to the chapter your companion is living through."
->
-  <svelte:fragment slot="actions">
-    {#if presenceLabel}
-      <EmotionalChip tone="cool">{presenceLabel}</EmotionalChip>
-    {/if}
-  </svelte:fragment>
+<svelte:head>
+  <title>Memvoya | Messages</title>
+</svelte:head>
 
-  <GlassCard class={`message-chapter-card message-chapter-card--${data.messageChapterFrame?.tone ?? 'quiet'}`}>
-    <div class="message-chapter-card__head">
+<div class="messages-app">
+  <FantasySidebar activePath="/app/messages" {playerName} level={24} xp={3200} xpNext={5000} />
+
+  <main class="messages-workspace" aria-label="Messages">
+    <header class="messages-topbar">
+      <label class="global-search" aria-label="Search messages or users">
+        <Search size={18} />
+        <input
+          type="search"
+          placeholder="Search messages or users..."
+          value={searchQuery}
+          on:input={(event) => (searchQuery = (event.currentTarget as HTMLInputElement).value)}
+        />
+      </label>
+      <DesktopTopbarActions
+        {shardBalance}
+        notifications={(data as any)?.notifications ?? []}
+        profileDisplayName={playerName}
+        {profileAvatarUrl}
+      />
+    </header>
+
+    <section class="messages-heading">
       <div>
-        <p class="message-chapter-card__eyebrow">Current chapter</p>
-        <h2>{data.messageChapterFrame?.title ?? 'Keep the weave close'}</h2>
+        <h1>Messages <span aria-hidden="true">✦</span></h1>
+        <p>Chat with friends, companions, and the Looma community.</p>
       </div>
-      {#if data.activeCompanion?.name}
-        <EmotionalChip tone="muted">{data.activeCompanion.name}</EmotionalChip>
-      {/if}
-    </div>
-    <p class="message-chapter-card__body">
-      {data.messageChapterFrame?.body ?? 'Let the next conversation gather naturally.'}
-    </p>
-  </GlassCard>
+      <div class="heading-actions">
+        <button
+          class="new-message"
+          type="button"
+          on:click={() => {
+            showStartModal = true;
+            startModalError = null;
+            void loadFriendOptions();
+          }}
+        >
+          <Pencil size={17} />
+          <span>New Message</span>
+        </button>
+        <button class="filter-button" type="button" aria-label="Filter messages">
+          <SlidersHorizontal size={18} />
+        </button>
+      </div>
+    </section>
 
-  <GlassCard class="messenger-card">
-    <div class="messenger-shell">
+    <div class="messages-grid">
       {#if showConversationPanel}
-        <section class="conversation-panel">
-          {#if isCompactLayout}
-            <div class="mobile-inbox-intro">
-              <div>
-                <p class="mobile-inbox-intro__eyebrow">Inbox</p>
-                <h2>{data.messageChapterFrame?.inboxTitle ?? 'Keep the weave close'}</h2>
-                <p>
-                  {data.messageChapterFrame?.inboxBody ??
-                    'Reply with care, start one clear thread, and keep your closest people easy to reach.'}
-                </p>
-              </div>
-              <div class="mobile-inbox-intro__meta">
-                <span>{filteredConversations.length} thread{filteredConversations.length === 1 ? '' : 's'}</span>
-                {#if data.notificationsUnread}
-                  <span>{data.notificationsUnread} unread</span>
-                {/if}
-              </div>
-            </div>
-          {/if}
+        <section class="inbox-panel" aria-label="Conversation list">
+          <nav class="inbox-tabs" aria-label="Message filters">
+            {#each inboxTabs as tab}
+              <button
+                type="button"
+                class:is-active={activeInboxFilter === tab.key}
+                on:click={() => (activeInboxFilter = tab.key)}
+              >
+                {tab.label}
+              </button>
+            {/each}
+          </nav>
 
-          <ConversationList
-            conversations={filteredConversations}
-            {activeConversationId}
-            query={searchQuery}
-            on:select={(event) => handleSelectConversation(event.detail.conversationId)}
-            on:create={() => {
-              showStartModal = true;
-              startModalError = null;
-              void loadFriendOptions();
-            }}
-            on:query={(event) => {
-              searchQuery = event.detail.value;
-            }}
-          />
+          <div class="conversation-list" role="listbox" aria-label="Messages">
+            {#if loadingConversations && filteredConversations.length === 0}
+              <p class="empty-state">Loading messages...</p>
+            {:else if filteredConversations.length === 0}
+              <p class="empty-state">No messages found.</p>
+            {:else}
+              {#each filteredConversations as conversation (conversation.conversationId)}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={conversation.conversationId === activeConversationId}
+                  class="conversation-row"
+                  class:is-active={conversation.conversationId === activeConversationId}
+                  on:click={() => handleSelectConversation(conversation.conversationId)}
+                >
+                  <span class="avatar-wrap">
+                    {#if conversationAvatar(conversation)}
+                      <img src={conversationAvatar(conversation)} alt="" loading="lazy" />
+                    {:else}
+                      <span>{conversationInitial(conversation)}</span>
+                    {/if}
+                    <i class={`presence-dot ${presenceClass(conversation)}`} aria-hidden="true"></i>
+                  </span>
+                  <span class="conversation-copy">
+                    <span class="conversation-title">
+                      <strong>{conversationTitle(conversation)}</strong>
+                      <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
+                    </span>
+                    <span class="conversation-preview">{conversationSubtitle(conversation)}</span>
+                  </span>
+                  {#if conversation.unreadCount > 0}
+                    <span class="unread-badge">{conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}</span>
+                  {/if}
+                </button>
+              {/each}
+            {/if}
+          </div>
         </section>
       {/if}
 
       {#if showThreadPanel}
-        <section class="thread-panel">
+        <section class="chat-panel" aria-label="Active conversation">
           {#if isCompactLayout && activeConversationId}
             <div class="mobile-thread-bar">
-              <button type="button" class="mobile-thread-bar__back" on:click={returnToInbox}>
-                Back
-              </button>
+              <button type="button" class="mobile-thread-bar__back" on:click={returnToInbox}>Back</button>
               <div class="mobile-thread-bar__body">
                 <strong>{threadTitle}</strong>
-                {#if typingLabel}
-                  <span>{typingLabel}</span>
-                {:else if presenceLabel}
-                  <span>{presenceLabel}</span>
-                {:else}
-                  <span>{data.messageChapterFrame?.threadHint ?? 'Conversation'}</span>
-                {/if}
+                <span>{typingLabel ?? presenceLabel ?? 'Conversation'}</span>
               </div>
             </div>
           {/if}
+
+          <div class="chat-header">
+            <div class="chat-person">
+              <span class="avatar-wrap avatar-wrap--large">
+                {#if activeConversation && conversationAvatar(activeConversation)}
+                  <img src={conversationAvatar(activeConversation)} alt="" loading="lazy" />
+                {:else}
+                  <span>{activeConversation ? conversationInitial(activeConversation) : 'M'}</span>
+                {/if}
+                {#if activeConversation}
+                  <i class={`presence-dot ${presenceClass(activeConversation)}`} aria-hidden="true"></i>
+                {/if}
+              </span>
+              <div>
+                <h2>{threadTitle}</h2>
+                <p>{presenceLabel ?? data.messageChapterFrame?.threadHint ?? 'Conversation'}</p>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <button type="button" aria-label="Start voice call"><Phone size={18} /></button>
+              <button type="button" aria-label="Start video call"><Video size={18} /></button>
+              <button type="button" aria-label="More actions"><MoreHorizontal size={18} /></button>
+            </div>
+          </div>
 
           {#if !activeConversationId}
             <div class="thread-empty">
@@ -1199,11 +1340,6 @@
               on:openMedia={handleOpenMedia}
             >
               <svelte:fragment slot="composer">
-                {#if activeConversation?.peer?.id}
-                  <div class="thread-actions">
-                    <button type="button" on:click={handleBlock} disabled={activeConversation?.blocked}>Block user</button>
-                  </div>
-                {/if}
                 <MessageComposer
                   conversationId={activeConversationId}
                   disabled={(activeConversation?.blocked ?? false) || sendLocked}
@@ -1222,11 +1358,7 @@
           {/if}
 
           {#if nextCursor && activeConversationId}
-            <button
-              class="load-older"
-              type="button"
-              on:click={() => loadMessages(activeConversationId as string, true)}
-            >
+            <button class="load-older" type="button" on:click={() => loadMessages(activeConversationId as string, true)}>
               Load older messages
             </button>
           {/if}
@@ -1239,9 +1371,80 @@
           {/if}
         </section>
       {/if}
+
+      <aside class="right-rail" aria-label="Message details">
+        <section class="rail-card companion-card">
+          <h2>Your Companion</h2>
+          <div class="companion-hero">
+            <div>
+              <h3>{companionName} <Pencil size={14} /></h3>
+              <p>Level {companionLevel}</p>
+              <span class="rarity"><ShardIcon size={14} /> Epic</span>
+            </div>
+            <div class="companion-art">
+              {#if companionAvatar}
+                <img src={companionAvatar} alt="" loading="lazy" />
+              {:else}
+                <ShardIcon size={92} />
+              {/if}
+            </div>
+          </div>
+          <div class="companion-stat"><Smile size={19} /> <span>{companionMood}</span></div>
+          <div class="companion-stat"><Heart size={19} fill="currentColor" /> <span>Bond {companionBond}%</span></div>
+          <div class="bond-meter"><span style={`width:${companionBond}%`}></span></div>
+          <a class="rail-primary" href="/app/companions">View Companion</a>
+        </section>
+
+        <section class="rail-card">
+          <header class="rail-card__header">
+            <h2>Active Friends <span>• {onlineFriends.length} Online</span></h2>
+            <a href="/app/friends">View All</a>
+          </header>
+          <div class="friend-list">
+            {#each onlineFriends as conversation}
+              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="friend-row">
+                <span class="avatar-wrap">
+                  {#if conversationAvatar(conversation)}
+                    <img src={conversationAvatar(conversation)} alt="" loading="lazy" />
+                  {:else}
+                    <span>{conversationInitial(conversation)}</span>
+                  {/if}
+                  <i class="presence-dot online" aria-hidden="true"></i>
+                </span>
+                <span>
+                  <strong>{conversationTitle(conversation)}</strong>
+                  <small>{presenceLabel ?? 'In Looma Prime'}</small>
+                </span>
+                <MessageCircle size={17} />
+              </a>
+            {:else}
+              <p class="empty-state">No friends online yet.</p>
+            {/each}
+          </div>
+        </section>
+
+        <section class="rail-card">
+          <header class="rail-card__header">
+            <h2>Recent Activity</h2>
+            <a href="/app/notifications">View All</a>
+          </header>
+          <div class="activity-list">
+            {#each recentActivity as conversation}
+              <a href={`/app/messages?conversationId=${conversation.conversationId}`} class="activity-row">
+                <span class="activity-icon"><ImageIcon size={16} /></span>
+                <span>{conversationTitle(conversation)} sent a message</span>
+                <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
+              </a>
+            {:else}
+              <p class="empty-state">No recent message activity.</p>
+            {/each}
+          </div>
+          <a class="rail-primary" href="/app/notifications">See All Activity</a>
+        </section>
+      </aside>
     </div>
-  </GlassCard>
-</SanctuaryPageFrame>
+  </main>
+</div>
 
 <StartChatModal
   open={showStartModal}
@@ -1268,383 +1471,821 @@
 />
 
 <style>
-  :global(.message-chapter-card) {
-    margin-bottom: 0.85rem;
-    border-radius: 1.15rem;
-    border: 1px solid rgba(212, 190, 139, 0.14);
-    background:
-      linear-gradient(180deg, rgba(24, 29, 41, 0.86), rgba(12, 16, 24, 0.92)),
-      radial-gradient(circle at top left, rgba(214, 190, 141, 0.1), transparent 56%);
+  :global(body) {
+    background: #050714;
   }
 
-  .message-chapter-card__head {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    align-items: flex-start;
+  :global(.app-shell:has(.messages-app)) {
+    background: #050714;
   }
 
-  .message-chapter-card__eyebrow {
-    margin: 0 0 0.28rem;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(220, 203, 184, 0.76);
-  }
-
-  :global(.message-chapter-card h2) {
-    margin: 0;
-    font-size: clamp(1.04rem, 0.98rem + 0.4vw, 1.28rem);
-    color: rgba(248, 241, 235, 0.98);
-  }
-
-  .message-chapter-card__body {
-    margin: 0.6rem 0 0;
-    color: rgba(223, 215, 200, 0.84);
-    line-height: 1.5;
-  }
-
-  :global(.message-chapter-card--care) {
-    background:
-      linear-gradient(180deg, rgba(18, 35, 31, 0.86), rgba(11, 18, 20, 0.92)),
-      radial-gradient(circle at top left, rgba(132, 214, 179, 0.12), transparent 56%);
-  }
-
-  :global(.message-chapter-card--social) {
-    background:
-      linear-gradient(180deg, rgba(42, 26, 25, 0.86), rgba(16, 17, 21, 0.92)),
-      radial-gradient(circle at top left, rgba(233, 162, 122, 0.12), transparent 56%);
-  }
-
-  :global(.message-chapter-card--mission) {
-    background:
-      linear-gradient(180deg, rgba(38, 30, 19, 0.86), rgba(14, 18, 21, 0.92)),
-      radial-gradient(circle at top left, rgba(222, 186, 103, 0.12), transparent 56%);
-  }
-
-  :global(.message-chapter-card--play) {
-    background:
-      linear-gradient(180deg, rgba(18, 30, 37, 0.86), rgba(11, 17, 21, 0.92)),
-      radial-gradient(circle at top left, rgba(124, 220, 224, 0.12), transparent 56%);
-  }
-
-  :global(.message-chapter-card--bond) {
-    background:
-      linear-gradient(180deg, rgba(34, 28, 24, 0.86), rgba(14, 18, 21, 0.92)),
-      radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 56%);
-  }
-
-  :global(.messenger-card) {
-    padding: 0.35rem;
-    border-radius: 1.35rem;
-    border-color: rgba(210, 224, 247, 0.24);
-    background:
-      linear-gradient(164deg, rgba(20, 33, 72, 0.6), rgba(12, 20, 49, 0.52)),
-      radial-gradient(circle at 78% 0%, rgba(102, 184, 255, 0.14), transparent 58%);
-  }
-
-  .messenger-shell {
-    min-height: calc(100vh - 12.8rem);
-    margin: 0;
-    border: 1px solid rgba(196, 214, 241, 0.2);
-    border-radius: 1.15rem;
+  .messages-app {
+    display: grid;
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+    min-height: 100vh;
     overflow: hidden;
-    display: grid;
-    grid-template-columns: 340px 1fr;
     background:
-      linear-gradient(166deg, rgba(13, 22, 53, 0.8), rgba(10, 16, 39, 0.85)),
-      radial-gradient(circle at 82% 5%, rgba(109, 181, 255, 0.15), transparent 52%);
+      radial-gradient(circle at 78% 10%, rgba(88, 70, 205, 0.2), transparent 34rem),
+      radial-gradient(circle at 45% 92%, rgba(37, 103, 191, 0.12), transparent 34rem),
+      linear-gradient(180deg, #07091a 0%, #050714 100%);
+    color: rgba(248, 246, 255, 0.94);
   }
 
-  .conversation-panel {
-    min-height: 0;
+  .messages-workspace {
+    min-width: 0;
+    height: 100vh;
+    overflow: hidden;
+    padding: 1.25rem 1.1rem 1rem 1.6rem;
+  }
+
+  .messages-topbar,
+  .messages-heading,
+  .heading-actions,
+  .chat-header,
+  .chat-person,
+  .chat-actions,
+  .rail-card__header,
+  .companion-stat,
+  .friend-row,
+  .activity-row {
+    display: flex;
+    align-items: center;
+  }
+
+  .messages-topbar {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .global-search {
+    display: flex;
+    width: min(100%, 27.5rem);
+    min-height: 2.95rem;
+    align-items: center;
+    gap: 0.78rem;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 1.05rem;
+    background: rgba(8, 10, 29, 0.74);
+    padding: 0 0.95rem;
+    color: rgba(203, 200, 232, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .global-search input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: white;
+    outline: 0;
+  }
+
+  .global-search input::placeholder {
+    color: rgba(210, 205, 235, 0.55);
+  }
+
+  .messages-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .messages-heading h1 {
+    margin: 0;
+    color: white;
+    font-size: clamp(1.75rem, 2.2vw, 2.2rem);
+    line-height: 1.05;
+    letter-spacing: 0;
+  }
+
+  .messages-heading h1 span {
+    color: #d66dff;
+    text-shadow: 0 0 22px rgba(194, 92, 255, 0.8);
+  }
+
+  .messages-heading p {
+    margin: 0.48rem 0 0;
+    color: rgba(213, 209, 236, 0.72);
+  }
+
+  .heading-actions {
+    gap: 0.7rem;
+  }
+
+  .new-message,
+  .filter-button,
+  .chat-actions button {
+    min-height: 2.75rem;
+    border: 1px solid rgba(153, 130, 236, 0.2);
+    border-radius: 0.78rem;
+    color: white;
+    cursor: pointer;
+  }
+
+  .new-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0 1.1rem;
+    background: linear-gradient(135deg, rgba(96, 57, 184, 0.98), rgba(126, 59, 215, 0.94));
+    box-shadow: 0 0 28px rgba(125, 63, 222, 0.32);
+    font-weight: 800;
+  }
+
+  .filter-button,
+  .chat-actions button {
+    width: 2.75rem;
     display: grid;
-    grid-template-rows: auto 1fr;
+    place-items: center;
+    background: rgba(9, 11, 31, 0.82);
   }
 
-  .mobile-inbox-intro {
+  .messages-grid {
+    display: grid;
+    grid-template-columns: minmax(18rem, 30rem) minmax(27rem, 1fr) minmax(18rem, 23rem);
+    gap: 1rem;
+    height: calc(100vh - 8.65rem);
+    min-height: 0;
+  }
+
+  .inbox-panel,
+  .chat-panel,
+  .rail-card {
+    border: 1px solid rgba(153, 130, 236, 0.17);
+    background:
+      radial-gradient(circle at 70% 0%, rgba(126, 92, 255, 0.12), transparent 28rem),
+      rgba(7, 10, 28, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 22px 70px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(20px);
+  }
+
+  .inbox-panel {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 0.95rem;
+  }
+
+  .inbox-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.3rem;
+    padding: 0.58rem 0.58rem 0.45rem;
+  }
+
+  .inbox-tabs button {
+    min-height: 2.25rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(219, 215, 239, 0.72);
+    font-size: 0.84rem;
+    cursor: pointer;
+  }
+
+  .inbox-tabs button.is-active,
+  .inbox-tabs button:hover,
+  .inbox-tabs button:focus-visible {
+    border-color: rgba(167, 92, 255, 0.3);
+    background: rgba(24, 20, 52, 0.88);
+    color: white;
+    outline: none;
+  }
+
+  .conversation-list {
+    height: calc(100% - 3.2rem);
+    overflow: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .conversation-row {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: 5rem;
+    grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+    border: 0;
+    border-top: 1px solid rgba(153, 130, 236, 0.1);
+    background: transparent;
+    color: inherit;
+    padding: 0.72rem 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .conversation-row:hover,
+  .conversation-row:focus-visible,
+  .conversation-row.is-active {
+    background:
+      linear-gradient(90deg, rgba(124, 58, 237, 0.34), rgba(37, 21, 83, 0.62)),
+      rgba(14, 13, 38, 0.88);
+    outline: none;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.55), transparent 18%),
+      linear-gradient(135deg, #a75cff, #24356f);
+    color: white;
+    font-weight: 900;
+    box-shadow: 0 0 18px rgba(126, 92, 255, 0.38);
+  }
+
+  .avatar-wrap img {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    object-fit: cover;
+    display: block;
+  }
+
+  .avatar-wrap--large {
+    width: 4.05rem;
+    height: 4.05rem;
+    font-size: 1.18rem;
+  }
+
+  .presence-dot {
+    position: absolute;
+    right: 0.12rem;
+    bottom: 0.1rem;
+    width: 0.62rem;
+    height: 0.62rem;
+    border: 2px solid #07091a;
+    border-radius: 999px;
+    background: #64748b;
+  }
+
+  .presence-dot.online {
+    background: #64d95f;
+  }
+
+  .presence-dot.away {
+    background: #f6c453;
+  }
+
+  .presence-dot.hidden {
     display: none;
   }
 
-  .thread-panel {
-    min-height: 0;
+  .conversation-copy,
+  .conversation-title {
+    min-width: 0;
+  }
+
+  .conversation-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.55rem;
+    align-items: baseline;
+  }
+
+  .conversation-title strong,
+  .friend-row strong {
+    overflow: hidden;
+    color: white;
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conversation-title time,
+  .activity-row time {
+    flex: 0 0 auto;
+    color: rgba(202, 197, 229, 0.56);
+    font-size: 0.72rem;
+  }
+
+  .conversation-preview {
+    display: block;
+    overflow: hidden;
+    color: rgba(216, 211, 236, 0.72);
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 0.24rem;
+  }
+
+  .unread-badge {
+    min-width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
     display: grid;
-    grid-template-rows: 1fr auto;
+    place-items: center;
+    background: linear-gradient(135deg, #a75cff, #7c3aed);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 900;
+    box-shadow: 0 0 18px rgba(167, 92, 255, 0.6);
+  }
+
+  .chat-panel {
     position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border-radius: 0.95rem;
+  }
+
+  .chat-header {
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 5.45rem;
+    border-bottom: 1px solid rgba(153, 130, 236, 0.14);
+    background:
+      radial-gradient(circle at 66% 0%, rgba(167, 92, 255, 0.24), transparent 15rem),
+      linear-gradient(90deg, rgba(13, 17, 45, 0.96), rgba(17, 18, 48, 0.86));
+    padding: 0.8rem 1rem;
+  }
+
+  .chat-person {
+    min-width: 0;
+    gap: 0.82rem;
+  }
+
+  .chat-person h2 {
+    margin: 0;
+    color: white;
+    font-size: 1.1rem;
+  }
+
+  .chat-person p {
+    margin: 0.22rem 0 0;
+    color: rgba(211, 207, 236, 0.7);
+    font-size: 0.82rem;
+  }
+
+  .chat-actions {
+    gap: 0.55rem;
+  }
+
+  .thread-empty,
+  .empty-state {
+    margin: 0;
+    color: rgba(211, 207, 236, 0.68);
+  }
+
+  .thread-empty {
+    display: grid;
+    place-items: center;
+  }
+
+  .right-rail {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    display: grid;
+    align-content: start;
+    gap: 0.82rem;
+  }
+
+  .rail-card {
+    border-radius: 0.95rem;
+    padding: 1rem;
+  }
+
+  .rail-card h2,
+  .rail-card h3 {
+    margin: 0;
+    color: white;
+  }
+
+  .rail-card h2 {
+    font-size: 0.95rem;
+  }
+
+  .rail-card__header {
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .rail-card__header h2 span {
+    color: rgba(214, 208, 239, 0.58);
+    font-weight: 500;
+  }
+
+  .rail-card__header a {
+    color: rgba(211, 185, 255, 0.76);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .companion-card {
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 74% 16%, rgba(167, 92, 255, 0.34), transparent 12rem),
+      linear-gradient(180deg, rgba(11, 14, 38, 0.92), rgba(7, 10, 28, 0.9));
+  }
+
+  .companion-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 9rem;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 1rem 0 0.8rem;
+  }
+
+  .companion-hero h3 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    font-size: 1.36rem;
+  }
+
+  .companion-hero p {
+    margin: 0.45rem 0 0;
+    color: rgba(216, 211, 236, 0.72);
+  }
+
+  .rarity {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.7rem;
+    color: #d9a6ff;
+    font-size: 0.84rem;
+  }
+
+  .companion-art {
+    display: grid;
+    min-height: 8.25rem;
+    place-items: center;
+    color: #a75cff;
+    filter: drop-shadow(0 0 26px rgba(167, 92, 255, 0.6));
+  }
+
+  .companion-art img {
+    width: 8.5rem;
+    height: 8.5rem;
+    object-fit: cover;
+    border-radius: 1.2rem;
+  }
+
+  .companion-stat {
+    gap: 0.55rem;
+    min-height: 2.2rem;
+    color: rgba(244, 241, 255, 0.9);
+  }
+
+  .companion-stat:first-of-type {
+    color: #a4f39a;
+  }
+
+  .companion-stat:nth-of-type(2) {
+    color: #ff75a8;
+  }
+
+  .bond-meter {
+    height: 0.28rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    margin: 0.35rem 0 1rem;
+  }
+
+  .bond-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #a75cff, #ff5cdc);
+    box-shadow: 0 0 14px rgba(167, 92, 255, 0.74);
+  }
+
+  .rail-primary {
+    display: flex;
+    min-height: 2.55rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(186, 153, 255, 0.28);
+    border-radius: 0.55rem;
+    background: linear-gradient(135deg, rgba(74, 36, 151, 0.9), rgba(91, 40, 160, 0.86));
+    color: white;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .friend-list,
+  .activity-list {
+    display: grid;
+    gap: 0.72rem;
+  }
+
+  .friend-row {
+    gap: 0.72rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .friend-row .avatar-wrap {
+    width: 2.55rem;
+    height: 2.55rem;
+  }
+
+  .friend-row span:nth-child(2) {
+    min-width: 0;
+    flex: 1;
+    display: grid;
+  }
+
+  .friend-row small {
+    overflow: hidden;
+    color: #74db78;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .friend-row > :global(svg) {
+    color: rgba(214, 208, 239, 0.78);
+  }
+
+  .activity-row {
+    gap: 0.64rem;
+    color: rgba(232, 228, 248, 0.84);
+    font-size: 0.82rem;
+    text-decoration: none;
+  }
+
+  .activity-row span:nth-child(2) {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, rgba(167, 92, 255, 0.38), rgba(98, 232, 255, 0.16));
+    color: white;
+  }
+
+  .load-older {
+    position: absolute;
+    top: 5.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    border: 1px solid rgba(153, 130, 236, 0.24);
+    border-radius: 999px;
+    background: rgba(9, 11, 31, 0.88);
+    color: white;
+    padding: 0.45rem 0.85rem;
+  }
+
+  .surface-error {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 5.2rem;
+    z-index: 5;
+    margin: 0;
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    border-radius: 0.65rem;
+    background: rgba(43, 16, 31, 0.92);
+    color: #fda4af;
+    padding: 0.55rem 0.7rem;
+    text-align: center;
+  }
+
+  :global(.chat-panel .thread) {
+    min-height: 0;
+    background: transparent;
+    grid-template-rows: 1fr auto auto;
+  }
+
+  :global(.chat-panel .thread > header) {
+    display: none;
+  }
+
+  :global(.chat-panel .thread__messages) {
+    padding: 1.1rem 1rem;
+    gap: 0.9rem;
+    background:
+      radial-gradient(circle at 62% 18%, rgba(70, 40, 145, 0.12), transparent 22rem),
+      linear-gradient(180deg, rgba(3, 7, 23, 0.4), rgba(2, 6, 20, 0.54));
+  }
+
+  :global(.chat-panel .bubble) {
+    max-width: min(74%, 30rem);
+    border: 1px solid rgba(153, 130, 236, 0.17);
+    border-radius: 0.78rem;
+    background: rgba(15, 18, 47, 0.92);
+    color: rgba(248, 246, 255, 0.95);
+    box-shadow: 0 12px 30px rgba(2, 4, 16, 0.22);
+  }
+
+  :global(.chat-panel .bubble--own) {
+    border-color: rgba(167, 92, 255, 0.34);
+    background: linear-gradient(135deg, rgba(60, 31, 132, 0.96), rgba(76, 25, 151, 0.94));
+  }
+
+  :global(.chat-panel .reaction-strip) {
+    display: none;
+  }
+
+  :global(.chat-panel .reaction-summary) {
+    margin-top: 0.56rem;
+  }
+
+  :global(.chat-panel .attachment-card) {
+    border-radius: 0.85rem;
+    border-color: rgba(153, 130, 236, 0.18);
+    max-width: min(28rem, 100%);
+  }
+
+  :global(.chat-panel .seen) {
+    color: rgba(202, 197, 229, 0.62);
+    padding-right: 1rem;
+  }
+
+  :global(.chat-panel .composer) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.62rem;
+    border-top: 1px solid rgba(153, 130, 236, 0.12);
+    background: rgba(4, 8, 24, 0.82);
+    padding: 0.8rem;
+  }
+
+  :global(.chat-panel .composer .input-wrap) {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 999px;
+    background: rgba(12, 15, 38, 0.92);
+    padding: 0.35rem 0.5rem;
+  }
+
+  :global(.chat-panel .composer .toolbar) {
+    display: flex;
+    gap: 0.25rem;
+    order: 1;
+  }
+
+  :global(.chat-panel .composer textarea) {
+    order: 2;
+    min-height: 2.45rem;
+    max-height: 5rem;
+    border: 0;
+    background: transparent;
+    padding: 0.62rem 0.72rem;
+    color: white;
+    outline: none;
+  }
+
+  :global(.chat-panel .composer .tool) {
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(222, 216, 242, 0.8);
+    padding: 0;
+  }
+
+  :global(.chat-panel .composer > button) {
+    width: 2.9rem;
+    min-height: 2.9rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+    color: white;
+    font-size: 0;
+    box-shadow: 0 0 24px rgba(126, 92, 255, 0.45);
+  }
+
+  :global(.chat-panel .composer > button)::after {
+    content: '➤';
+    font-size: 1rem;
+  }
+
+  :global(.chat-panel .emoji-picker),
+  :global(.chat-panel .gif-picker),
+  :global(.chat-panel .attachment-preview),
+  :global(.chat-panel .inline-error),
+  :global(.chat-panel .edit-row) {
+    grid-column: 1 / -1;
+    order: 3;
   }
 
   .mobile-thread-bar {
     display: none;
   }
 
-  .thread-empty {
-    display: grid;
-    place-items: center;
-    color: rgba(203, 213, 225, 0.86);
+  @media (max-width: 1280px) {
+    .messages-grid {
+      grid-template-columns: minmax(18rem, 24rem) minmax(27rem, 1fr);
+    }
+
+    .right-rail {
+      display: none;
+    }
   }
 
-  .thread-actions {
-    padding: 0.75rem 0.95rem 0;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .thread-actions button,
-  .load-older {
-    border: 1px solid rgba(203, 217, 241, 0.28);
-    border-radius: 0.85rem;
-    background: rgba(30, 45, 93, 0.48);
-    color: rgba(234, 241, 252, 0.94);
-    padding: 0.5rem 0.88rem;
-    cursor: pointer;
-    transition: border-color 220ms var(--san-ease-out), transform 220ms var(--san-ease-out);
-  }
-
-  .thread-actions button:hover,
-  .thread-actions button:focus-visible,
-  .load-older:hover,
-  .load-older:focus-visible {
-    border-color: rgba(228, 237, 250, 0.58);
-    transform: translateY(-1px);
-    outline: none;
-  }
-
-  .load-older {
-    justify-self: center;
-    margin: 0.3rem 0 0.8rem;
-  }
-
-  .surface-error {
-    position: absolute;
-    left: 1rem;
-    bottom: calc(1rem + env(safe-area-inset-bottom));
-    margin: 0;
-    color: #fda4af;
-    background: rgba(51, 65, 85, 0.88);
-    border: 1px solid rgba(251, 113, 133, 0.35);
-    border-radius: 0.6rem;
-    padding: 0.45rem 0.65rem;
-  }
-
-  :global(.conversation-list) {
-    background: linear-gradient(180deg, rgba(19, 31, 68, 0.84), rgba(13, 22, 49, 0.88));
-    border-right: 1px solid rgba(196, 214, 241, 0.22);
-  }
-
-  :global(.conversation-list__header h2) {
-    font-family: var(--san-font-display);
-    font-size: 0.92rem;
-    letter-spacing: 0.12em;
-    color: rgba(235, 242, 252, 0.9);
-  }
-
-  :global(.conversation-list__header button) {
-    background: linear-gradient(130deg, rgba(101, 181, 255, 0.9), rgba(146, 121, 255, 0.9));
-    border-color: rgba(214, 230, 255, 0.45);
-    color: rgba(8, 18, 41, 0.94);
-  }
-
-  :global(.conversation-list__search input) {
-    border-radius: 0.95rem;
-    border-color: rgba(194, 212, 239, 0.28);
-    background: rgba(14, 24, 53, 0.68);
-  }
-
-  :global(.conversation-list__items li button) {
-    border-top-color: rgba(189, 207, 236, 0.14);
-    padding: 0.92rem 1rem;
-  }
-
-  :global(.conversation-list__items li button:hover),
-  :global(.conversation-list__items li button:focus-visible),
-  :global(.conversation-list__items li button.active) {
-    background: linear-gradient(105deg, rgba(92, 172, 255, 0.18), rgba(130, 120, 238, 0.16));
-  }
-
-  :global(.thread) {
-    grid-template-rows: auto 1fr auto auto;
-  }
-
-  :global(.thread header) {
-    border-bottom-color: rgba(193, 210, 238, 0.24);
-    background: linear-gradient(180deg, rgba(23, 35, 74, 0.58), rgba(15, 25, 56, 0.48));
-    padding: 1.05rem 1.05rem 0.95rem;
-  }
-
-  :global(.thread header h2) {
-    font-family: var(--san-font-display);
-    font-size: 1.18rem;
-    letter-spacing: -0.01em;
-    color: rgba(241, 246, 252, 0.98);
-  }
-
-  :global(.thread__messages) {
-    padding: 1.05rem;
-    gap: 0.88rem;
-    background:
-      radial-gradient(circle at 14% -6%, rgba(110, 184, 255, 0.12), transparent 48%),
-      radial-gradient(circle at 86% 102%, rgba(255, 174, 130, 0.11), transparent 42%),
-      rgba(7, 12, 31, 0.44);
-  }
-
-  :global(.composer) {
-    border-top: 1px solid rgba(193, 210, 238, 0.22);
-    background: rgba(10, 17, 42, 0.6);
-  }
-
-  @media (max-width: 960px) {
-    .messenger-shell {
-      min-height: calc(100vh - 13.2rem);
+  @media (max-width: 1020px) {
+    .messages-app {
       grid-template-columns: 1fr;
-      grid-template-rows: minmax(17rem, 37vh) 1fr;
+    }
+
+    .messages-app :global(.fantasy-sidebar) {
+      display: none;
+    }
+
+    .messages-workspace {
+      padding: 1rem;
     }
   }
 
-  @media (max-width: 640px) {
-    :global(.messenger-card) {
-      padding: 0.28rem;
-      border-radius: 1.05rem;
+  @media (max-width: 760px) {
+    .messages-workspace {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
     }
 
-    .messenger-shell {
-      border-radius: 0.95rem;
-      min-height: calc(100vh - 12.4rem);
+    .messages-topbar,
+    .messages-heading {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .messages-grid {
       grid-template-columns: 1fr;
-      grid-template-rows: 1fr;
+      height: auto;
+      min-height: calc(100vh - 12rem);
     }
 
-    .conversation-panel,
-    .thread-panel {
-      min-height: calc(100vh - 13.6rem);
+    .inbox-panel,
+    .chat-panel {
+      min-height: calc(100vh - 12rem);
     }
 
-    .mobile-inbox-intro {
-      display: grid;
-      gap: 0.6rem;
-      padding: 0.95rem 0.95rem 0.75rem;
-      border-bottom: 1px solid rgba(212, 190, 139, 0.14);
-      background:
-        radial-gradient(circle at top left, rgba(208, 170, 92, 0.14), transparent 40%),
-        linear-gradient(180deg, rgba(18, 24, 30, 0.94), rgba(10, 14, 18, 0.9));
-    }
-
-    .mobile-inbox-intro h2 {
-      margin: 0.12rem 0 0;
-      font-family: var(--san-font-display);
-      font-size: 1.2rem;
-      color: rgba(247, 239, 224, 0.98);
-    }
-
-    .mobile-inbox-intro p {
-      margin: 0;
-      color: rgba(225, 214, 194, 0.8);
-      font-size: 0.84rem;
-      line-height: 1.45;
-    }
-
-    .mobile-inbox-intro__eyebrow {
-      display: inline-flex;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(219, 189, 129, 0.78);
-    }
-
-    .mobile-inbox-intro__meta {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .mobile-inbox-intro__meta span {
-      border-radius: 999px;
-      border: 1px solid rgba(214, 193, 148, 0.18);
-      background: rgba(217, 189, 126, 0.08);
-      color: rgba(244, 232, 205, 0.88);
-      padding: 0.28rem 0.58rem;
-      font-size: 0.72rem;
-      font-weight: 700;
+    .chat-header {
+      display: none;
     }
 
     .mobile-thread-bar {
       display: flex;
       align-items: center;
       gap: 0.72rem;
-      padding: 0.82rem 0.82rem 0.74rem;
-      border-bottom: 1px solid rgba(212, 190, 139, 0.14);
-      background:
-        radial-gradient(circle at top left, rgba(208, 170, 92, 0.12), transparent 38%),
-        linear-gradient(180deg, rgba(18, 24, 30, 0.96), rgba(10, 14, 18, 0.92));
+      border-bottom: 1px solid rgba(153, 130, 236, 0.14);
+      background: rgba(7, 10, 28, 0.96);
+      padding: 0.8rem;
     }
 
     .mobile-thread-bar__back {
       min-height: 2.3rem;
-      padding: 0 0.8rem;
+      border: 1px solid rgba(153, 130, 236, 0.24);
       border-radius: 999px;
-      border: 1px solid rgba(219, 189, 129, 0.24);
-      background: rgba(217, 189, 126, 0.1);
-      color: rgba(249, 240, 221, 0.96);
-      font-size: 0.8rem;
-      font-weight: 700;
+      background: rgba(167, 92, 255, 0.1);
+      color: white;
+      padding: 0 0.8rem;
     }
 
     .mobile-thread-bar__body {
       min-width: 0;
       display: grid;
-      gap: 0.15rem;
+      gap: 0.1rem;
     }
 
     .mobile-thread-bar__body strong,
     .mobile-thread-bar__body span {
-      display: block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .mobile-thread-bar__body strong {
-      color: rgba(249, 242, 230, 0.98);
-      font-size: 0.94rem;
-    }
-
-    .mobile-thread-bar__body span {
-      color: rgba(208, 194, 167, 0.78);
-      font-size: 0.76rem;
-    }
-
-    :global(.thread header) {
-      display: none;
-    }
-
-    :global(.thread__messages) {
-      padding: 0.85rem;
-      gap: 0.74rem;
-    }
-
-    :global(.conversation-list) {
-      border-right: 0;
-      background:
-        linear-gradient(180deg, rgba(18, 24, 30, 0.94), rgba(10, 14, 18, 0.98)),
-        radial-gradient(circle at 18% -4%, rgba(213, 173, 89, 0.12), transparent 46%);
-    }
-
-    :global(.conversation-list__header) {
-      padding-top: 0.85rem;
-    }
-
-    .surface-error {
-      left: 0.7rem;
-      right: 0.7rem;
-      bottom: calc(0.7rem + env(safe-area-inset-bottom));
-      text-align: center;
+    :global(.chat-panel .bubble) {
+      max-width: 88%;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .thread-actions button,
-    .load-older {
-      transform: none !important;
+    .conversation-row,
+    .new-message,
+    .filter-button,
+    .chat-actions button {
+      transition: none;
     }
   }
 </style>
