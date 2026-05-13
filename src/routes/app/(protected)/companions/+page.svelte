@@ -1296,12 +1296,20 @@
           {#if activeDetailTab === 'overview'}
             <div class="detail-tab-panel">
               <div
-                class="detail-section element-profile-section tooltip-host"
+                class="detail-section element-profile-section"
                 aria-label={`Element profile. ${detailIdentity.archetype.overviewIdentity}`}
               >
                 <div class="element-profile-head">
                   <span>Element Profile</span>
-                  <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
+                  <strong class="profile-title-tooltip tooltip-host">
+                    {detailElementProfile.variantId.replace(/_/g, ' ')}
+                    <span class="tooltip-card profile-tooltip" role="tooltip">
+                      <span>Element Profile</span>
+                      <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
+                      <p>{detailIdentity.archetype.overviewIdentity}</p>
+                      <small>{detailElementProfile.expressionLine}</small>
+                    </span>
+                  </strong>
                 </div>
                 <p class="identity-copy">{detailIdentity.archetype.overviewIdentity}</p>
                 <div class="element-pair">
@@ -1336,12 +1344,6 @@
                   <span>Emotional Domain</span>
                   <strong>{detailElementProfile.emotionalDomain}</strong>
                   <p>{detailElementProfile.expressionLine}</p>
-                </div>
-                <div class="tooltip-card profile-tooltip" role="tooltip">
-                  <span>Element Profile</span>
-                  <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
-                  <p>{detailIdentity.archetype.overviewIdentity}</p>
-                  <small>{detailElementProfile.expressionLine}</small>
                 </div>
                 <div class="ritual-row" aria-label="Preferred rituals">
                   {#each detailElementProfile.preferredRituals as ritual}
@@ -2146,10 +2148,11 @@
 
   .detail-panel {
     position: sticky;
+    z-index: 30;
     top: 1.25rem;
     display: grid;
     gap: 0.48rem;
-    overflow: hidden;
+    overflow: visible;
     border-radius: 1.25rem;
     padding: 0;
     font-size: 0.92rem;
@@ -2472,6 +2475,11 @@
     font-size: 0.8rem;
   }
 
+  .profile-title-tooltip {
+    position: relative;
+    cursor: help;
+  }
+
   .element-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2497,7 +2505,7 @@
     position: absolute;
     left: 50%;
     bottom: calc(100% + 0.58rem);
-    z-index: 90;
+    z-index: 1000;
     display: grid;
     width: min(18.5rem, calc(100vw - 2rem));
     gap: 0.34rem;
@@ -2600,12 +2608,12 @@
   }
 
   .profile-tooltip {
-    left: 1rem;
-    right: 1rem;
+    left: auto;
+    right: 0;
     bottom: calc(100% + 0.64rem);
-    width: auto;
+    width: min(18.5rem, calc(100vw - 2rem));
     transform: translateY(0.38rem) scale(0.98);
-    transform-origin: bottom left;
+    transform-origin: bottom right;
   }
 
   .tooltip-host:hover > .profile-tooltip,
