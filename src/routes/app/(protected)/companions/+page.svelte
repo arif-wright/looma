@@ -8,7 +8,7 @@
     ChevronDown,
     Gem,
     Heart,
-    MessageSquare,
+    MessageCircle,
     Pencil,
     Plus,
     Search,
@@ -36,6 +36,7 @@
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
+  import type { MessengerConversation } from '$lib/components/messenger/types';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import { getCompanionIdentity, getElementById, type GiftCategory } from '$lib/companions/identity';
@@ -277,8 +278,13 @@
   let switchMessage: string | null = null;
   let switchTimer: ReturnType<typeof setTimeout> | null = null;
   let notificationsOpen = false;
+  let messagesOpen = false;
   let profileMenuOpen = false;
   let markingNotifications = false;
+  let conversations: MessengerConversation[] = [];
+  let conversationsLoading = false;
+  let conversationsLoaded = false;
+  let conversationsError: string | null = null;
   let topbarActionsRef: HTMLDivElement | null = null;
 
   let discoverModal: DiscoverCompanionDefinition | null = null;
@@ -928,17 +934,58 @@
 
   const closeTopbarMenus = () => {
     notificationsOpen = false;
+    messagesOpen = false;
     profileMenuOpen = false;
   };
 
   const toggleNotifications = () => {
     notificationsOpen = !notificationsOpen;
+    messagesOpen = false;
     profileMenuOpen = false;
+  };
+
+  const conversationName = (conversation: MessengerConversation) =>
+    conversation.type === 'group'
+      ? conversation.group_name ?? 'Group conversation'
+      : conversation.peer?.display_name ?? conversation.peer?.handle ?? 'Someone';
+
+  const conversationPreview = (conversation: MessengerConversation) =>
+    conversation.blocked ? 'This conversation is blocked.' : conversation.preview?.trim() || 'No messages yet.';
+
+  const conversationInitial = (conversation: MessengerConversation) =>
+    conversationName(conversation).trim().slice(0, 1).toUpperCase() || 'M';
+
+  const fetchConversations = async () => {
+    if (conversationsLoading || conversationsLoaded) return;
+    conversationsLoading = true;
+    conversationsError = null;
+    try {
+      const response = await fetch('/api/messenger/conversations', { headers: { 'cache-control': 'no-store' } });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        conversationsError = typeof payload?.message === 'string' ? payload.message : 'Could not load messages.';
+        return;
+      }
+      conversations = Array.isArray(payload?.items) ? payload.items.slice(0, 5) : [];
+      conversationsLoaded = true;
+    } catch {
+      conversationsError = 'Could not load messages.';
+    } finally {
+      conversationsLoading = false;
+    }
+  };
+
+  const toggleMessages = () => {
+    messagesOpen = !messagesOpen;
+    notificationsOpen = false;
+    profileMenuOpen = false;
+    if (messagesOpen) void fetchConversations();
   };
 
   const toggleProfileMenu = () => {
     profileMenuOpen = !profileMenuOpen;
     notificationsOpen = false;
+    messagesOpen = false;
   };
 
   const handleTopbarDocumentClick = (event: MouseEvent) => {
@@ -1155,6 +1202,7 @@
   }));
   $: unreadNotifications = notificationItems.filter((item) => !item.read).length;
   $: notificationPreview = notificationItems.slice(0, 5);
+  $: unreadMessages = conversations.reduce((total, conversation) => total + Math.max(0, conversation.unreadCount ?? 0), 0);
   $: shardBalance =
     typeof ($page.data?.wallet as any)?.shards === 'number' ? (($page.data?.wallet as any).shards as number) : 0;
   $: activeCompanionCount = activeCompanion ? 1 : 0;
@@ -1339,9 +1387,68 @@
             </div>
           {/if}
         </div>
-        <a class="icon-button topbar-action" href="/app/messages" aria-label="Messages">
-          <MessageSquare size={18} />
-        </a>
+        <div class="topbar-menu message-menu" class:open={messagesOpen}>
+          <button
+            type="button"
+            class="icon-button topbar-action"
+            aria-label={unreadMessages > 0 ? `Messages (${unreadMessages} unread)` : 'Messages'}
+            aria-expanded={messagesOpen}
+            aria-haspopup="dialog"
+            on:click={toggleMessages}
+          >
+            <MessageCircle size={18} />
+            {#if unreadMessages > 0}
+              <span class="topbar-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
+            {/if}
+          </button>
+          {#if messagesOpen}
+            <div class="topbar-dropdown message-dropdown" role="dialog" aria-label="Messages">
+              <header>
+                <h2>Messages</h2>
+                <a href="/app/messages">Open inbox</a>
+              </header>
+              <div class="dropdown-list">
+                {#if conversationsLoading}
+                  <p class="dropdown-empty">Loading messages...</p>
+                {:else if conversationsError}
+                  <p class="dropdown-empty">{conversationsError}</p>
+                {:else if conversations.length > 0}
+                  {#each conversations as conversation, index (conversation.conversationId)}
+                    <a
+                      class="dropdown-item message-item"
+                      class:unread={conversation.unreadCount > 0}
+                      href={`/app/messages?conversation=${conversation.conversationId}`}
+                    >
+                      <span class="message-avatar" style={`--tone:${['#a75cff', '#ddaa5c', '#62e8ff', '#ff6fb8'][index % 4]}`}>
+                        {#if conversation.peer?.avatar_url}
+                          <img src={conversation.peer.avatar_url} alt="" loading="lazy" />
+                        {:else}
+                          <span>{conversationInitial(conversation)}</span>
+                        {/if}
+                      </span>
+                      <span class="dropdown-copy">
+                        <strong>{conversationName(conversation)}</strong>
+                        <small>{conversationPreview(conversation)}</small>
+                        {#if conversation.last_message_at}
+                          <time datetime={conversation.last_message_at}>{relativeTime(conversation.last_message_at)}</time>
+                        {/if}
+                      </span>
+                      {#if conversation.unreadCount > 0}
+                        <i aria-label={`${conversation.unreadCount} unread`}>{conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}</i>
+                      {/if}
+                    </a>
+                  {/each}
+                {:else}
+                  <p class="dropdown-empty">No conversations yet.</p>
+                {/if}
+              </div>
+              <a class="dropdown-footer" href="/app/messages">
+                <span>View All Messages</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          {/if}
+        </div>
         <div class="topbar-menu profile-menu" class:open={profileMenuOpen}>
           <button
             type="button"
@@ -2192,17 +2299,21 @@
     font-size: 0.88rem;
   }
 
-  .topbar-dropdown header button {
+  .topbar-dropdown header button,
+  .topbar-dropdown header a {
     border: 0;
     background: transparent;
     color: rgba(221, 211, 246, 0.74);
     font: inherit;
     font-size: 0.68rem;
+    text-decoration: none;
     cursor: pointer;
   }
 
   .topbar-dropdown header button:hover:not(:disabled),
-  .topbar-dropdown header button:focus-visible:not(:disabled) {
+  .topbar-dropdown header button:focus-visible:not(:disabled),
+  .topbar-dropdown header a:hover,
+  .topbar-dropdown header a:focus-visible {
     color: #ddaa5c;
   }
 
@@ -2239,7 +2350,8 @@
     background: rgba(169, 123, 225, 0.08);
   }
 
-  .dropdown-icon {
+  .dropdown-icon,
+  .message-avatar {
     display: grid;
     width: 2.15rem;
     height: 2.15rem;
@@ -2251,6 +2363,20 @@
       rgba(10, 10, 29, 0.82);
     color: white;
     box-shadow: 0 0 18px color-mix(in srgb, var(--tone), transparent 52%);
+  }
+
+  .message-avatar {
+    border-radius: 999px;
+    overflow: hidden;
+    font-size: 0.78rem;
+    font-weight: 900;
+  }
+
+  .message-avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
   }
 
   .dropdown-copy {
@@ -2283,10 +2409,16 @@
   }
 
   .dropdown-item i {
-    width: 0.45rem;
-    height: 0.45rem;
+    min-width: 1.3rem;
+    height: 1.3rem;
     border-radius: 999px;
+    display: grid;
+    place-items: center;
     background: #a75cff;
+    color: white;
+    font-size: 0.64rem;
+    font-style: normal;
+    font-weight: 900;
     box-shadow: 0 0 14px rgba(167, 92, 255, 0.7);
   }
 
