@@ -189,6 +189,7 @@ export const POST: RequestHandler = async (event) => {
   ) {
     await trackLightweightUsage({
       supabase,
+      userId,
       type: trackableType,
       payload: eventPayload,
       sessionId,

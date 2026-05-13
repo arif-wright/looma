@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { Bell, ChevronDown, MessageCircle, Settings, UserRound } from 'lucide-svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import type { MessengerConversation } from '$lib/components/messenger/types';
@@ -164,10 +165,12 @@
   }
 
   onMount(() => {
+    if (!browser) return;
     document.addEventListener('click', handleDocumentClick, true);
   });
 
   onDestroy(() => {
+    if (!browser) return;
     document.removeEventListener('click', handleDocumentClick, true);
   });
 </script>

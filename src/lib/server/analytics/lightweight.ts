@@ -12,6 +12,7 @@ export type LightweightTrackedType =
 
 type TrackInput = {
   supabase: SupabaseClient;
+  userId: string;
   type: LightweightTrackedType;
   payload: unknown;
   sessionId?: string | null;
@@ -108,6 +109,7 @@ const sanitizePayload = (type: LightweightTrackedType, payload: unknown): Record
 
 export const trackLightweightUsage = async ({
   supabase,
+  userId,
   type,
   payload,
   sessionId = null,
@@ -131,7 +133,7 @@ export const trackLightweightUsage = async ({
   }
 
   const { error } = await supabase.from('analytics_events').insert({
-    user_id: null,
+    user_id: userId,
     kind: type,
     session_id: sessionId,
     game_id: null,
