@@ -35,7 +35,15 @@
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
-  import { getCompanionIdentity, getElementById } from '$lib/companions/identity';
+  import {
+    canStrengthenGift,
+    getCompanionIdentity,
+    getElementById,
+    getGiftStrengthenCost,
+    getGiftUnlockState,
+    type CompanionGift,
+    type GiftCategory
+  } from '$lib/companions/identity';
   import { getFavoriteGiftItemsForCompanion, calculateGiftBondGain } from '$lib/companions/giftPreferences';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
@@ -112,11 +120,10 @@
     href: string;
   };
 
-  type CompanionSkillDisplay = {
-    name: string;
-    description: string;
-    level: number;
-    element: string;
+  type GiftPathRow = CompanionGift & {
+    displayState: ReturnType<typeof getGiftUnlockState>;
+    displayLevel: number;
+    iconElement: string;
   };
 
   const elementProfileDisplayLabels: Record<string, string> = {
@@ -131,37 +138,11 @@
     echo_dream: 'Dream Archive Echo'
   };
 
-  const companionSkillPresets: Record<string, Omit<CompanionSkillDisplay, 'level'>[]> = {
-    muse: [
-      { name: 'Harmonic Mirror', description: 'Reflects feelings back with softer language and emotional clarity.', element: 'sound' },
-      { name: 'Resonance Pulse', description: 'Restores focus and steadies the bond through shared rhythm.', element: 'light' },
-      { name: 'Gentle Reframe', description: 'Helps difficult thoughts find a kinder shape.', element: 'sound' },
-      { name: 'Aura Bloom', description: 'Emits a calming presence that soothes nearby companions.', element: 'light' }
-    ],
-    guardian: [
-      { name: 'Safe Harbor', description: 'Creates a steady emotional space during stressful moments.', element: 'ember' },
-      { name: 'Boundary Watch', description: 'Helps protect attention, energy, and personal limits.', element: 'root' },
-      { name: 'Courage Ember', description: 'Turns small acts of bravery into durable momentum.', element: 'ember' },
-      { name: 'Steady Guard', description: 'Reduces overwhelm and keeps the companion bond anchored.', element: 'root' }
-    ],
-    spark: [
-      { name: 'Quickstart', description: 'Adds a bright nudge when starting feels harder than finishing.', element: 'spark' },
-      { name: 'Curiosity Ping', description: 'Highlights playful paths, discoveries, and small experiments.', element: 'light' },
-      { name: 'Momentum Loop', description: 'Builds energy through action, reward, and return.', element: 'spark' },
-      { name: 'Play Signal', description: 'Invites lightness when the day needs motion and color.', element: 'light' }
-    ],
-    root: [
-      { name: 'Grounding Pulse', description: 'Settles scattered energy into a slower, safer rhythm.', element: 'root' },
-      { name: 'Steady Return', description: 'Makes coming back feel gentle instead of overdue.', element: 'tide' },
-      { name: 'Quiet Growth', description: 'Turns consistent care into calm progress over time.', element: 'root' },
-      { name: 'Rest Root', description: 'Supports recovery, patience, and low-pressure reflection.', element: 'tide' }
-    ],
-    echo: [
-      { name: 'Mind Echo', description: 'Reflects emotions, restoring energy to you and your companion.', element: 'echo' },
-      { name: 'Dreamweave', description: 'Weaves a soft dreamscape that eases stress and promotes rest.', element: 'dream' },
-      { name: 'Insight Pulse', description: 'Detects emotional shifts and reveals hidden feelings.', element: 'echo' },
-      { name: 'Aura Bloom', description: 'Emits a calming aura that soothes nearby companions.', element: 'dream' }
-    ]
+  const giftCategoryLabels: Record<GiftCategory, string> = {
+    core: 'Core Gift',
+    element: 'Element Gift',
+    bond: 'Bond Gift',
+    story: 'Story Gift'
   };
 
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
@@ -186,13 +167,35 @@
     return normalized ? `/assets/Elements/element-${normalized}.png` : '/assets/Elements/element-light.png';
   };
 
-  const getCompanionSkillRows = (archetypeId: string, level: number): CompanionSkillDisplay[] => {
-    const presets = companionSkillPresets[archetypeId] ?? companionSkillPresets.muse ?? [];
-    const baseLevel = Math.max(1, Math.min(3, Math.ceil(level / 8)));
-    return presets.map((skill, index) => ({
-      ...skill,
-      level: archetypeId === 'echo' ? [3, 2, 3, 1][index] ?? baseLevel : Math.max(1, Math.min(3, baseLevel - (index === 3 ? 1 : 0)))
-    }));
+  const giftIconElement = (gift: CompanionGift, fallback: string) =>
+    gift.elementRequirement?.secondary ?? gift.elementRequirement?.primary ?? fallback;
+
+  const giftDisplayLevel = (gift: CompanionGift, bond: number, level: number) => {
+    if (gift.state === 'locked') return gift.level;
+    if (gift.category === 'core') return Math.max(gift.level, Math.min(gift.maxLevel, Math.ceil(level / 6)));
+    if (gift.category === 'element') return Math.max(gift.level, Math.min(gift.maxLevel, Math.ceil(bond / 25)));
+    if (gift.category === 'bond') return Math.max(gift.level, Math.min(gift.maxLevel, Math.ceil(bond / 20)));
+    return gift.level;
+  };
+
+  const buildGiftPathRows = (companion: Companion | null | undefined, identity: ReturnType<typeof getCompanionIdentity>) => {
+    const bond = identity.bond;
+    const fallbackElement = identity.elementProfile.secondary ?? identity.elementProfile.primary;
+    return (Object.entries(identity.gifts) as Array<[GiftCategory, CompanionGift[]]>).reduce(
+      (acc, [category, gifts]) => {
+        const rows = gifts
+          .map((gift) => ({
+            ...gift,
+            displayState: getGiftUnlockState(companion, gift),
+            displayLevel: giftDisplayLevel(gift, bond, identity.level),
+            iconElement: giftIconElement(gift, fallbackElement)
+          }))
+          .filter((gift) => category !== 'story' || gift.displayState !== 'locked');
+        if (rows.length) acc[category] = rows;
+        return acc;
+      },
+      {} as Partial<Record<GiftCategory, GiftPathRow[]>>
+    );
   };
 
   const toStamp = (value: string | null | undefined) => {
@@ -1150,7 +1153,10 @@
   $: detailElementProfileLabel = getElementProfileDisplayLabel(detailElementProfile.variantId);
   $: detailPrimaryElementAsset = getElementAssetPath(detailElementProfile.primary);
   $: detailSecondaryElementAsset = getElementAssetPath(detailElementProfile.secondary);
-  $: detailSkillRows = getCompanionSkillRows(detailIdentity.archetype.id, detailIdentity.level);
+  $: detailGiftPath = buildGiftPathRows(detailCompanion, detailIdentity);
+  $: detailGiftPathEntries = Object.entries(detailGiftPath) as Array<[GiftCategory, GiftPathRow[]]>;
+  $: selectedGift = detailGiftPath.core?.[0] ?? detailGiftPath.element?.[0] ?? detailGiftPath.bond?.[0] ?? null;
+  $: selectedGiftCost = selectedGift ? getGiftStrengthenCost(detailCompanion, selectedGift) : null;
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1584,25 +1590,49 @@
             </div>
           {:else if activeDetailTab === 'skills'}
             <div class="detail-tab-panel skills-panel">
-              {#each detailSkillRows as skill (skill.name)}
-                <button type="button" class="skill-row tooltip-host" aria-label={`${skill.name}, level ${skill.level}. ${skill.description}`}>
-                  <span class="skill-icon" aria-hidden="true">
-                    <img src={getElementAssetPath(skill.element)} alt="" loading="lazy" />
-                  </span>
-                  <span class="skill-copy">
-                    <span class="skill-title-line">
-                      <strong>{skill.name}</strong>
-                      <small>Lvl {skill.level}</small>
-                    </span>
-                    <span>{skill.description}</span>
-                  </span>
-                  <div class="tooltip-card compact-tooltip" role="tooltip">
-                    <span>Skill</span>
-                    <strong>{skill.name} · Lvl {skill.level}</strong>
-                    <p>{skill.description}</p>
-                  </div>
-                </button>
+              <div class="gift-path-head">
+                <strong>{detailCompanion.name}'s Gift Path</strong>
+              </div>
+              {#each detailGiftPathEntries as [category, gifts]}
+                <section class="gift-path-group" aria-label={giftCategoryLabels[category]}>
+                  <span>{giftCategoryLabels[category]}s</span>
+                  {#each gifts as gift (gift.id)}
+                    <button
+                      type="button"
+                      class="skill-row gift-path-row tooltip-host"
+                      class:is-locked={gift.displayState === 'locked'}
+                      aria-label={`${gift.name}, ${giftCategoryLabels[gift.category]}, ${gift.displayState === 'locked' ? gift.unlockConditionLabel : `level ${gift.displayLevel}`}. ${gift.description}`}
+                    >
+                      <span class="skill-icon" aria-hidden="true">
+                        <img src={getElementAssetPath(gift.iconElement)} alt="" loading="lazy" />
+                      </span>
+                      <span class="skill-copy">
+                        <span class="skill-title-line">
+                          <strong>{gift.name}</strong>
+                          <small>{gift.displayState === 'locked' ? gift.unlockConditionLabel : `Lvl ${gift.displayLevel}`}</small>
+                        </span>
+                        <span class="gift-meta-line">
+                          <b>{giftCategoryLabels[gift.category]}</b>
+                          {#if gift.displayState !== 'active'}
+                            <em>{titleCase(gift.displayState)}</em>
+                          {/if}
+                        </span>
+                        <span>{gift.displayState === 'locked' ? gift.unlockConditionLabel : gift.description}</span>
+                      </span>
+                      <div class="tooltip-card compact-tooltip" role="tooltip">
+                        <span>{giftCategoryLabels[gift.category]}</span>
+                        <strong>{gift.name} · {gift.displayState === 'locked' ? titleCase(gift.displayState) : `Lvl ${gift.displayLevel}`}</strong>
+                        <p>{gift.description}</p>
+                        <small>{gift.visualBehavior}</small>
+                      </div>
+                    </button>
+                  {/each}
+                </section>
               {/each}
+              {#if selectedGiftCost}
+                <p class="gift-path-note">Future strengthening uses {selectedGiftCost.amount} {selectedGiftCost.resource}.</p>
+              {/if}
+              <!-- TODO: Connect Strengthen Gift to the future gift economy once Ritual Resonance, Memory Shards, or Bond Tokens are available server-side. -->
             </div>
           {:else if activeDetailTab === 'growth'}
             <div class="detail-tab-panel">
@@ -1722,9 +1752,14 @@
           {/if}
           <div class="detail-actions">
             {#if activeDetailTab === 'skills'}
-              <button type="button" class="primary-action level-skill-action" on:click={() => openCareModal(detailCompanion)}>
+              <button
+                type="button"
+                class="primary-action level-skill-action"
+                disabled={!selectedGift || !canStrengthenGift(detailCompanion, selectedGift)}
+                on:click={() => openCareModal(detailCompanion)}
+              >
                 <ArrowUp size={18} />
-                <span>Level Up Skill</span>
+                <span>Strengthen Gift</span>
               </button>
             {:else}
               <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
@@ -3029,7 +3064,27 @@
   }
 
   .skills-panel {
-    gap: 0.7rem;
+    gap: 0.82rem;
+  }
+
+  .gift-path-head strong {
+    color: rgba(255, 250, 242, 0.98);
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .gift-path-group {
+    position: relative;
+    display: grid;
+    gap: 0.62rem;
+  }
+
+  .gift-path-group > span {
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .skill-row {
@@ -3046,6 +3101,21 @@
     font: inherit;
     padding: 0;
     text-align: left;
+  }
+
+  .gift-path-row::before {
+    content: '';
+    position: absolute;
+    left: 1.55rem;
+    top: 3.18rem;
+    bottom: -0.72rem;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(183, 92, 255, 0.38), transparent);
+    pointer-events: none;
+  }
+
+  .gift-path-row:last-child::before {
+    display: none;
   }
 
   .skill-row:hover .skill-icon,
@@ -3107,11 +3177,52 @@
     font-weight: 800;
   }
 
+  .gift-meta-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    flex-wrap: wrap;
+  }
+
+  .gift-meta-line b,
+  .gift-meta-line em {
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+    padding: 0.24rem 0.44rem;
+  }
+
+  .gift-meta-line b {
+    border: 1px solid rgba(183, 92, 255, 0.24);
+    background: rgba(183, 92, 255, 0.12);
+    color: rgba(229, 213, 255, 0.92);
+  }
+
+  .gift-meta-line em {
+    border: 1px solid rgba(221, 170, 92, 0.22);
+    background: rgba(221, 170, 92, 0.1);
+    color: rgba(255, 234, 196, 0.92);
+  }
+
   .skill-copy > span:last-child {
     color: rgba(220, 216, 237, 0.7);
     font-size: 0.78rem;
     font-weight: 650;
     line-height: 1.32;
+  }
+
+  .gift-path-row.is-locked {
+    opacity: 0.68;
+  }
+
+  .gift-path-note {
+    margin: -0.12rem 0 0;
+    color: rgba(220, 216, 237, 0.58);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.35;
   }
 
   .growth-summary {
@@ -3392,6 +3503,12 @@
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.1),
       0 0.78rem 1.45rem rgba(83, 42, 190, 0.34);
+  }
+
+  .level-skill-action:disabled {
+    cursor: default;
+    filter: grayscale(0.18);
+    opacity: 0.64;
   }
 
   .active-note {

@@ -34,7 +34,12 @@ export type CompanionGift = {
   archetypeId: CanonicalArchetypeId;
   category: GiftCategory;
   elementRequirement: { primary?: CompanionElementId; secondary?: CompanionElementId } | null;
+  requiredBond: number | undefined;
+  requiredLevel: number | undefined;
+  level: number;
+  maxLevel: number;
   unlockCondition: string;
+  unlockConditionLabel: string;
   state: GiftState;
   description: string;
   effectSummary: string;
@@ -170,14 +175,34 @@ const gift = (
   archetypeId: CanonicalArchetypeId,
   category: GiftCategory,
   description: string,
-  options: Partial<Pick<CompanionGift, 'elementRequirement' | 'unlockCondition' | 'state' | 'effectSummary' | 'visualBehavior' | 'emotionalPurpose'>> = {}
+  options: Partial<
+    Pick<
+      CompanionGift,
+      | 'elementRequirement'
+      | 'requiredBond'
+      | 'requiredLevel'
+      | 'level'
+      | 'maxLevel'
+      | 'unlockCondition'
+      | 'unlockConditionLabel'
+      | 'state'
+      | 'effectSummary'
+      | 'visualBehavior'
+      | 'emotionalPurpose'
+    >
+  > = {}
 ): CompanionGift => ({
   id,
   name,
   archetypeId,
   category,
   elementRequirement: options.elementRequirement ?? null,
+  requiredBond: options.requiredBond,
+  requiredLevel: options.requiredLevel,
+  level: options.level ?? 1,
+  maxLevel: options.maxLevel ?? 5,
   unlockCondition: options.unlockCondition ?? 'Available through the current bond.',
+  unlockConditionLabel: options.unlockConditionLabel ?? options.unlockCondition ?? 'Available through the current bond.',
   state: options.state ?? 'active',
   description,
   effectSummary: options.effectSummary ?? description,
@@ -464,6 +489,35 @@ export const getGiftsForCompanion = (companion: Companion | null | undefined): R
     ]
   };
 };
+
+export const getElementGiftsForProfile = (
+  primary: string | null | undefined,
+  secondary: string | null | undefined,
+  archetypeId?: string | null
+): CompanionGift[] => getElementGifts(primary, secondary, archetypeId ?? 'muse');
+
+export const getStoryGiftsForCompanion = (companion: Companion | null | undefined): CompanionGift[] =>
+  getGiftsForCompanion(companion).story;
+
+export const getGiftUnlockState = (companion: Companion | null | undefined, giftEntry: CompanionGift): GiftState => {
+  const bond = companionBond(companion);
+  const level = companionLevel(companion);
+  if (giftEntry.requiredBond != null && bond < giftEntry.requiredBond) return 'locked';
+  if (giftEntry.requiredLevel != null && level < giftEntry.requiredLevel) return 'locked';
+  if (giftEntry.state === 'locked' && /bond\s*(\d+)/i.test(giftEntry.unlockCondition)) {
+    const requiredBond = Number(giftEntry.unlockCondition.match(/bond\s*(\d+)/i)?.[1] ?? 0);
+    return bond >= requiredBond ? 'active' : 'locked';
+  }
+  return giftEntry.state;
+};
+
+export const canStrengthenGift = (companion: Companion | null | undefined, giftEntry: CompanionGift): boolean =>
+  getGiftUnlockState(companion, giftEntry) !== 'locked' && giftEntry.level < giftEntry.maxLevel;
+
+export const getGiftStrengthenCost = (_companion: Companion | null | undefined, giftEntry: CompanionGift) => ({
+  resource: 'Ritual Resonance',
+  amount: Math.max(1, giftEntry.level + 1) * 25
+});
 
 export const getGrowthMilestonesForArchetype = (
   archetypeId: string | null | undefined,
