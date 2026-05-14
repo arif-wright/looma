@@ -4,7 +4,6 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
   import {
-    ArrowUp,
     ChevronDown,
     Gem,
     Heart,
@@ -21,6 +20,7 @@
   import type { Companion } from '$lib/stores/companions';
   import { createCompanionRosterState } from '$lib/stores/companionRosterState';
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
+  import GiftPathModal from '$lib/components/companions/GiftPathModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
   import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
   import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
@@ -36,10 +36,8 @@
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import {
-    canStrengthenGift,
     getCompanionIdentity,
     getElementById,
-    getGiftStrengthenCost,
     getGiftUnlockState,
     type CompanionGift,
     type GiftCategory
@@ -126,6 +124,11 @@
     iconElement: string;
   };
 
+  type GiftPathSummaryRow = {
+    label: string;
+    value: string;
+  };
+
   const elementProfileDisplayLabels: Record<string, string> = {
     sound_light: 'Radiant Muse',
     sound_dream: 'Dreamsong Muse',
@@ -197,6 +200,60 @@
       {} as Partial<Record<GiftCategory, GiftPathRow[]>>
     );
   };
+
+  const flattenGiftPathEntries = (entries: Array<[GiftCategory, GiftPathRow[]]>) => entries.flatMap(([, gifts]) => gifts);
+
+  const getFeaturedGift = (entries: Array<[GiftCategory, GiftPathRow[]]>) => {
+    const gifts = flattenGiftPathEntries(entries);
+    const activeCore = gifts
+      .filter((gift) => gift.category === 'core' && gift.displayState === 'active')
+      .sort((a, b) => b.displayLevel - a.displayLevel);
+    return (
+      activeCore[0] ??
+      gifts.find((gift) => gift.displayState === 'active') ??
+      gifts.find((gift) => gift.displayState === 'evolving') ??
+      gifts[0] ??
+      null
+    );
+  };
+
+  const giftRequiredValue = (gift: GiftPathRow, key: 'Bond' | 'Level') => {
+    if (key === 'Bond' && gift.requiredBond != null) return gift.requiredBond;
+    if (key === 'Level' && gift.requiredLevel != null) return gift.requiredLevel;
+    const match = gift.unlockConditionLabel.match(new RegExp(`${key}\\s*(\\d+)`, 'i'));
+    return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+  };
+
+  const getNextUnlockableGift = (entries: Array<[GiftCategory, GiftPathRow[]]>) =>
+    flattenGiftPathEntries(entries)
+      .filter((gift) => gift.displayState === 'locked')
+      .sort((a, b) => {
+        const aBond = giftRequiredValue(a, 'Bond');
+        const bBond = giftRequiredValue(b, 'Bond');
+        if (aBond !== bBond) return aBond - bBond;
+        const aLevel = giftRequiredValue(a, 'Level');
+        const bLevel = giftRequiredValue(b, 'Level');
+        if (aLevel !== bLevel) return aLevel - bLevel;
+        if (a.category === 'bond' && b.category !== 'bond') return -1;
+        if (b.category === 'bond' && a.category !== 'bond') return 1;
+        return 0;
+      })[0] ?? null;
+
+  const getGiftPathSummary = (entries: Array<[GiftCategory, GiftPathRow[]]>): GiftPathSummaryRow[] =>
+    entries.map(([category, gifts]) => {
+      const activeCount = gifts.filter((gift) => gift.displayState === 'active').length;
+      const evolvingCount = gifts.filter((gift) => gift.displayState === 'evolving').length;
+      const lockedCount = gifts.filter((gift) => gift.displayState === 'locked').length;
+      const pieces = [
+        activeCount > 0 ? `${activeCount} active` : null,
+        evolvingCount > 0 ? `${evolvingCount} evolving` : null,
+        lockedCount > 0 ? `${lockedCount} locked` : null
+      ].filter(Boolean);
+      return {
+        label: `${giftCategoryLabels[category]}s`,
+        value: pieces.length ? pieces.join(' · ') : 'Quiet'
+      };
+    });
 
   const toStamp = (value: string | null | undefined) => {
     if (!value) return null;
@@ -357,6 +414,8 @@
   let museHostRef: MuseModel | null = null;
   let detailModelLoaded = false;
   let detailModelCompanionId: string | null = null;
+  let giftPathOpen = false;
+  let giftPathSelectedGiftId: string | null = null;
 
   const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
   const stableSig = (value: Record<string, unknown>) => {
@@ -650,6 +709,11 @@
 
   const closeCareModal = () => {
     selectedForCare = null;
+  };
+
+  const openGiftPath = (gift: GiftPathRow | null = null) => {
+    giftPathSelectedGiftId = gift?.id ?? featuredGift?.id ?? null;
+    giftPathOpen = true;
   };
 
   const applyCareUpdate = (id: string, updated: Companion) => {
@@ -1155,8 +1219,9 @@
   $: detailSecondaryElementAsset = getElementAssetPath(detailElementProfile.secondary);
   $: detailGiftPath = buildGiftPathRows(detailCompanion, detailIdentity);
   $: detailGiftPathEntries = Object.entries(detailGiftPath) as Array<[GiftCategory, GiftPathRow[]]>;
-  $: selectedGift = detailGiftPath.core?.[0] ?? detailGiftPath.element?.[0] ?? detailGiftPath.bond?.[0] ?? null;
-  $: selectedGiftCost = selectedGift ? getGiftStrengthenCost(detailCompanion, selectedGift) : null;
+  $: featuredGift = getFeaturedGift(detailGiftPathEntries);
+  $: nextUnlockGift = getNextUnlockableGift(detailGiftPathEntries);
+  $: giftPathSummary = getGiftPathSummary(detailGiftPathEntries);
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1592,46 +1657,79 @@
             <div class="detail-tab-panel skills-panel">
               <div class="gift-path-head">
                 <strong>{detailCompanion.name}'s Gift Path</strong>
+                <p>A quick look at how {detailCompanion.name} is growing.</p>
               </div>
-              {#each detailGiftPathEntries as [category, gifts]}
-                <section class="gift-path-group" aria-label={giftCategoryLabels[category]}>
-                  <span>{giftCategoryLabels[category]}s</span>
-                  {#each gifts as gift (gift.id)}
-                    <button
-                      type="button"
-                      class="skill-row gift-path-row tooltip-host"
-                      class:is-locked={gift.displayState === 'locked'}
-                      aria-label={`${gift.name}, ${giftCategoryLabels[gift.category]}, ${gift.displayState === 'locked' ? gift.unlockConditionLabel : `level ${gift.displayLevel}`}. ${gift.description}`}
-                    >
-                      <span class="skill-icon" aria-hidden="true">
-                        <img src={getElementAssetPath(gift.iconElement)} alt="" loading="lazy" />
+              {#if featuredGift}
+                <section class="gift-preview-card" aria-label="Featured Gift">
+                  <span>Featured Gift</span>
+                  <button
+                    type="button"
+                    class="skill-row gift-preview-row tooltip-host"
+                    aria-label={`Open Gift Path with ${featuredGift.name} selected`}
+                    on:click={() => openGiftPath(featuredGift)}
+                  >
+                    <span class="skill-icon" aria-hidden="true">
+                      <img src={getElementAssetPath(featuredGift.iconElement)} alt="" loading="lazy" />
+                    </span>
+                    <span class="skill-copy">
+                      <span class="skill-title-line">
+                        <strong>{featuredGift.name}</strong>
+                        <small>Lvl {featuredGift.displayLevel}</small>
                       </span>
-                      <span class="skill-copy">
-                        <span class="skill-title-line">
-                          <strong>{gift.name}</strong>
-                          <small>{gift.displayState === 'locked' ? gift.unlockConditionLabel : `Lvl ${gift.displayLevel}`}</small>
-                        </span>
-                        <span class="gift-meta-line">
-                          <b>{giftCategoryLabels[gift.category]}</b>
-                          {#if gift.displayState !== 'active'}
-                            <em>{titleCase(gift.displayState)}</em>
-                          {/if}
-                        </span>
-                        <span>{gift.displayState === 'locked' ? gift.unlockConditionLabel : gift.description}</span>
-                      </span>
-                      <div class="tooltip-card compact-tooltip" role="tooltip">
-                        <span>{giftCategoryLabels[gift.category]}</span>
-                        <strong>{gift.name} · {gift.displayState === 'locked' ? titleCase(gift.displayState) : `Lvl ${gift.displayLevel}`}</strong>
-                        <p>{gift.description}</p>
-                        <small>{gift.visualBehavior}</small>
-                      </div>
-                    </button>
-                  {/each}
+                      <span class="gift-meta-line"><b>{giftCategoryLabels[featuredGift.category]}</b></span>
+                      <span>{featuredGift.description}</span>
+                    </span>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>{giftCategoryLabels[featuredGift.category]}</span>
+                      <strong>{featuredGift.name} · Lvl {featuredGift.displayLevel}</strong>
+                      <p>{featuredGift.description}</p>
+                      <small>{featuredGift.visualBehavior}</small>
+                    </div>
+                  </button>
                 </section>
-              {/each}
-              {#if selectedGiftCost}
-                <p class="gift-path-note">Future strengthening uses {selectedGiftCost.amount} {selectedGiftCost.resource}.</p>
               {/if}
+
+              {#if nextUnlockGift}
+                <section class="gift-preview-card" aria-label="Next Unlock">
+                  <span>Next Unlock</span>
+                  <button
+                    type="button"
+                    class="skill-row gift-preview-row is-locked tooltip-host"
+                    aria-label={`Open Gift Path with ${nextUnlockGift.name} selected`}
+                    on:click={() => openGiftPath(nextUnlockGift)}
+                  >
+                    <span class="skill-icon" aria-hidden="true">
+                      <img src={getElementAssetPath(nextUnlockGift.iconElement)} alt="" loading="lazy" />
+                    </span>
+                    <span class="skill-copy">
+                      <span class="skill-title-line">
+                        <strong>{nextUnlockGift.name}</strong>
+                        <small>{nextUnlockGift.unlockConditionLabel}</small>
+                      </span>
+                      <span class="gift-meta-line">
+                        <b>{giftCategoryLabels[nextUnlockGift.category]}</b>
+                        <em>Locked</em>
+                      </span>
+                      <span>{nextUnlockGift.description}</span>
+                    </span>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>{giftCategoryLabels[nextUnlockGift.category]}</span>
+                      <strong>{nextUnlockGift.name} · Locked</strong>
+                      <p>{nextUnlockGift.description}</p>
+                      <small>{nextUnlockGift.unlockConditionLabel}</small>
+                    </div>
+                  </button>
+                </section>
+              {/if}
+
+              <section class="gift-summary-card" aria-label="Path Summary">
+                <span>Path Summary</span>
+                <div>
+                  {#each giftPathSummary as row}
+                    <p><strong>{row.label}</strong><small>{row.value}</small></p>
+                  {/each}
+                </div>
+              </section>
               <!-- TODO: Connect Strengthen Gift to the future gift economy once Ritual Resonance, Memory Shards, or Bond Tokens are available server-side. -->
             </div>
           {:else if activeDetailTab === 'growth'}
@@ -1755,11 +1853,10 @@
               <button
                 type="button"
                 class="primary-action level-skill-action"
-                disabled={!selectedGift || !canStrengthenGift(detailCompanion, selectedGift)}
-                on:click={() => openCareModal(detailCompanion)}
+                on:click={() => openGiftPath(featuredGift)}
               >
-                <ArrowUp size={18} />
-                <span>Strengthen Gift</span>
+                <Sparkles size={18} />
+                <span>Open Gift Path</span>
               </button>
             {:else}
               <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
@@ -1780,6 +1877,16 @@
   </main>
 </div>
 
+<GiftPathModal
+  open={giftPathOpen}
+  companion={detailCompanion}
+  companionName={detailCompanion?.name ?? 'Companion'}
+  giftPathEntries={detailGiftPathEntries}
+  selectedGiftId={giftPathSelectedGiftId}
+  {giftCategoryLabels}
+  {getElementAssetPath}
+  onClose={() => (giftPathOpen = false)}
+/>
 
 <CompanionModal
   open={Boolean(selectedForCare)}
@@ -3073,13 +3180,28 @@
     line-height: 1.2;
   }
 
-  .gift-path-group {
-    position: relative;
-    display: grid;
-    gap: 0.62rem;
+  .gift-path-head p {
+    margin: 0.26rem 0 0;
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.34;
   }
 
-  .gift-path-group > span {
+  .gift-preview-card,
+  .gift-summary-card {
+    display: grid;
+    gap: 0.55rem;
+    border: 1px solid rgba(153, 130, 236, 0.15);
+    border-radius: 0.88rem;
+    background:
+      radial-gradient(circle at 14% 0%, rgba(183, 92, 255, 0.12), transparent 58%),
+      rgba(255, 255, 255, 0.04);
+    padding: 0.68rem;
+  }
+
+  .gift-preview-card > span,
+  .gift-summary-card > span {
     color: rgba(220, 216, 237, 0.62);
     font-size: 0.68rem;
     font-weight: 900;
@@ -3101,21 +3223,6 @@
     font: inherit;
     padding: 0;
     text-align: left;
-  }
-
-  .gift-path-row::before {
-    content: '';
-    position: absolute;
-    left: 1.55rem;
-    top: 3.18rem;
-    bottom: -0.72rem;
-    width: 1px;
-    background: linear-gradient(180deg, rgba(183, 92, 255, 0.38), transparent);
-    pointer-events: none;
-  }
-
-  .gift-path-row:last-child::before {
-    display: none;
   }
 
   .skill-row:hover .skill-icon,
@@ -3213,16 +3320,33 @@
     line-height: 1.32;
   }
 
-  .gift-path-row.is-locked {
+  .gift-preview-row.is-locked {
     opacity: 0.68;
   }
 
-  .gift-path-note {
-    margin: -0.12rem 0 0;
-    color: rgba(220, 216, 237, 0.58);
+  .gift-summary-card > div {
+    display: grid;
+    gap: 0.42rem;
+  }
+
+  .gift-summary-card p {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0;
+    color: rgba(248, 246, 255, 0.9);
+  }
+
+  .gift-summary-card strong {
+    font-size: 0.78rem;
+  }
+
+  .gift-summary-card small {
+    color: rgba(220, 216, 237, 0.62);
     font-size: 0.72rem;
-    font-weight: 700;
-    line-height: 1.35;
+    font-weight: 800;
+    text-align: right;
   }
 
   .growth-summary {
