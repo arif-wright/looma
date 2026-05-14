@@ -240,6 +240,28 @@
     if (companion.bondScore != null) return clampPercent(companion.bondScore);
     return clampPercent(((companion.affection ?? 0) + (companion.trust ?? 0)) / 2);
   };
+  const companionCardFrom = (companion: any, index: number, forceActive = false) => {
+    const stats = companion?.stats ?? null;
+    const statsBondLevel = Array.isArray(stats) ? stats[0]?.bond_level : stats?.bond_level;
+    const id = companion?.id as string;
+    return {
+      id,
+      name: companion?.name ?? 'Companion',
+      level: Math.max(
+        1,
+        Math.floor(
+          numberOr(companion?.bondLevel ?? statsBondLevel, ((companion?.affection ?? 0) + (companion?.trust ?? 0)) / 10)
+        )
+      ),
+      bond: resolveBondPercent(companion),
+      mood: normalizedMood(companion?.mood_label ?? companion?.mood),
+      accent: companionAccent(companion?.species, index),
+      favorite: forceActive || id === activeCompanionId || Boolean(companion?.is_active),
+      avatarUrl: companion?.avatar_url ?? null,
+      activating: settingActiveCompanionId === id,
+      href: `/app/companions?focus=${encodeURIComponent(id)}`
+    };
+  };
   $: activeCompanion = data.activeCompanion ?? null;
   $: activeCompanionId = optimisticActiveCompanionId ?? activeCompanion?.id ?? null;
   $: playerName =
@@ -277,26 +299,11 @@
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 18));
   $: companionMood = normalizedMood(activeCompanion?.mood);
   $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 3));
+  $: rosterCompanionCards = (data.creatures ?? []).map((creature, index) => companionCardFrom(creature, index));
   $: companions =
-    data.creatures && data.creatures.length > 0
-      ? data.creatures.slice(0, 4).map((creature, index) => ({
-          id: creature.id,
-          name: creature.name ?? 'Companion',
-          level: Math.max(
-            1,
-            Math.floor(
-              numberOr((creature.stats as any)?.bond_level, ((creature.affection ?? 40) + (creature.trust ?? 40)) / 10)
-            )
-          ),
-          bond: resolveBondPercent(creature),
-          mood: normalizedMood(creature.mood_label ?? creature.mood),
-          accent: companionAccent(creature.species, index),
-          favorite: creature.id === activeCompanionId || Boolean(creature.is_active),
-          avatarUrl: creature.avatar_url ?? null,
-          activating: settingActiveCompanionId === creature.id,
-          href: `/app/companions?focus=${encodeURIComponent(creature.id)}`
-        }))
-      : [];
+    activeCompanion?.id && !rosterCompanionCards.some((companion) => companion.id === activeCompanion.id)
+      ? [companionCardFrom(activeCompanion, 0, true), ...rosterCompanionCards].slice(0, 4)
+      : rosterCompanionCards.slice(0, 4);
   $: showHomeSplash = !pageMounted || !heroModelLoaded;
 
   const activateHomeCompanion = async (id: string) => {
