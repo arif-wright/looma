@@ -553,7 +553,7 @@
     content: '';
     position: absolute;
     top: 0;
-    right: calc(19.75rem + 1.95rem);
+    right: 0;
     left: 0;
     height: clamp(31rem, 42vw, 36rem);
     pointer-events: none;
@@ -561,9 +561,15 @@
 
   .home-main::before {
     z-index: 0;
-    background-image: var(--home-bg-image);
-    background-position: var(--home-bg-position, center top);
-    background-size: cover;
+    background-image:
+      linear-gradient(90deg, transparent 0%, transparent 67%, rgba(5, 7, 20, 0.18) 80%, rgba(5, 7, 20, 0.74) 100%),
+      var(--home-bg-image);
+    background-position:
+      center,
+      var(--home-bg-position, center top);
+    background-size:
+      cover,
+      cover;
     opacity: 0.9;
     transform: scale(1.01);
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.78) 70%, transparent 100%);
