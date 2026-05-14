@@ -7,6 +7,9 @@
     ChevronDown,
     Gem,
     Heart,
+    BookOpen,
+    ChevronLeft,
+    ChevronRight,
     Pencil,
     Plus,
     Search,
@@ -14,7 +17,10 @@
     SlidersHorizontal,
     Smile,
     Sparkles,
-    Star
+    Star,
+    Trophy,
+    TrendingUp,
+    Leaf
   } from 'lucide-svelte';
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
@@ -148,6 +154,14 @@
     story: 'Story Gift'
   };
 
+  const growthStages = [
+    { label: 'Hatchling', unlockLevel: 1 },
+    { label: 'Youngling', unlockLevel: 4 },
+    { label: 'Companion', unlockLevel: 8 },
+    { label: 'Guardian', unlockLevel: 14 },
+    { label: 'Ascendant', unlockLevel: 20 }
+  ];
+
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
   const LOW_ENERGY_THRESHOLD = 25;
@@ -254,6 +268,22 @@
         value: pieces.length ? pieces.join(' · ') : 'Quiet'
       };
     });
+
+  const getGrowthStageIndex = (level: number) => {
+    let index = 0;
+    growthStages.forEach((stage, stageIndex) => {
+      if (level >= stage.unlockLevel) index = stageIndex;
+    });
+    return index;
+  };
+
+  const getPotentialGrade = (bond: number, level: number) => {
+    const score = bond * 0.7 + level * 2;
+    if (score >= 92) return { label: 'Exceptional', grade: 'S', rank: 'Elite' };
+    if (score >= 72) return { label: 'High', grade: 'A', rank: 'Excellent' };
+    if (score >= 42) return { label: 'Promising', grade: 'B', rank: 'Steady' };
+    return { label: 'Emerging', grade: 'C', rank: 'Growing' };
+  };
 
   const toStamp = (value: string | null | undefined) => {
     if (!value) return null;
@@ -1222,6 +1252,19 @@
   $: featuredGift = getFeaturedGift(detailGiftPathEntries);
   $: nextUnlockGift = getNextUnlockableGift(detailGiftPathEntries);
   $: giftPathSummary = getGiftPathSummary(detailGiftPathEntries);
+  $: detailLevel = companionLevel(detailCompanion);
+  $: detailBond = companionBondScore(detailCompanion);
+  $: growthStageIndex = getGrowthStageIndex(detailLevel);
+  $: currentGrowthStage = growthStages[growthStageIndex] ?? { label: 'Hatchling', unlockLevel: 1 };
+  $: nextGrowthStage = growthStages[growthStageIndex + 1] ?? null;
+  $: growthXpCurrent = Math.min(5000, Math.max(0, Math.round(detailLevel * 180 + detailBond * 12)));
+  $: growthXpTarget = 5000;
+  $: growthXpPercent = growthXpTarget > 0 ? Math.min(100, Math.round((growthXpCurrent / growthXpTarget) * 100)) : 0;
+  $: unlockedGiftCount = flattenGiftPathEntries(detailGiftPathEntries).filter((gift) => gift.displayState !== 'locked').length;
+  $: growthTraitCount = detailIdentity.personality.length + detailIdentity.growth.milestones.filter((milestone) => milestone.unlocked).length;
+  $: growthPotential = getPotentialGrade(detailBond, detailLevel);
+  $: bondGrowthPercent = Math.min(99, Math.max(0, Math.round(detailBond * 0.28)));
+  $: xpBonusPercent = Math.min(45, Math.max(0, Math.round(detailLevel * 0.72 + detailBond * 0.06)));
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1386,40 +1429,197 @@
           <p class="switch-message" role="status" aria-live="polite">{switchMessage}</p>
         {/if}
 
-        <section class="stats-grid" aria-label="Companion overview">
-          <article class="stat-cluster">
-            <div class="stat-segment">
-              <span class="stat-orb stat-orb--blue" style={`--progress:${activeCompanionProgress}%`}><Shield size={20} /></span>
+        {#if activeDetailTab === 'growth' && detailCompanion}
+          <section class="growth-stats-grid" aria-label="Companion growth overview">
+            <article class="growth-stat">
+              <span class="stat-orb stat-orb--violet"><Gem size={23} /></span>
               <div>
-                <strong>{activeCompanionCount}</strong>
-                <span>Active Companions</span>
+                <strong>Lvl {detailLevel}</strong>
+                <span>Current Level</span>
               </div>
-            </div>
-            <div class="stat-segment">
-              <span class="stat-orb stat-orb--gold" style={`--progress:${collectionProgress}%`}><Sparkles size={20} /></span>
+            </article>
+            <article class="growth-stat">
+              <span class="stat-orb stat-orb--heart" style={`--progress:${bondGrowthPercent}%`}><Heart size={22} fill="currentColor" /></span>
               <div>
-                <strong>{companionsCollected}</strong>
-                <span>Companions Collected</span>
+                <strong>+{bondGrowthPercent}%</strong>
+                <span>Bond Growth</span>
               </div>
-            </div>
-            <div class="stat-segment">
-              <span class="stat-orb stat-orb--heart" style={`--progress:${averageBond}%`}><Heart size={20} fill="currentColor" /></span>
+            </article>
+            <article class="growth-stat">
+              <span class="stat-orb stat-orb--xp"><span>XP</span></span>
               <div>
-                <strong>{averageBond}%</strong>
-                <span>Average Bond</span>
+                <strong>+{xpBonusPercent}%</strong>
+                <span>XP Bonus</span>
               </div>
-            </div>
-          </article>
-          <article class="stat-card mastery-card">
-            <span class="stat-orb stat-orb--violet"><Gem size={24} /></span>
-            <div>
-              <strong>Lvl {masteryLevel}</strong>
-              <span>Companion Mastery</span>
-            </div>
-          </article>
-        </section>
+            </article>
+            <article class="growth-stat">
+              <span class="stat-orb stat-orb--gold"><BookOpen size={22} /></span>
+              <div>
+                <strong>{unlockedGiftCount}</strong>
+                <span>Gifts Learned</span>
+              </div>
+            </article>
+            <article class="growth-stat">
+              <span class="stat-orb stat-orb--violet"><Trophy size={22} /></span>
+              <div>
+                <strong>Rank {growthPotential.grade}</strong>
+                <span>Growth Rank</span>
+              </div>
+            </article>
+          </section>
+        {:else}
+          <section class="stats-grid" aria-label="Companion overview">
+            <article class="stat-cluster">
+              <div class="stat-segment">
+                <span class="stat-orb stat-orb--blue" style={`--progress:${activeCompanionProgress}%`}><Shield size={20} /></span>
+                <div>
+                  <strong>{activeCompanionCount}</strong>
+                  <span>Active Companions</span>
+                </div>
+              </div>
+              <div class="stat-segment">
+                <span class="stat-orb stat-orb--gold" style={`--progress:${collectionProgress}%`}><Sparkles size={20} /></span>
+                <div>
+                  <strong>{companionsCollected}</strong>
+                  <span>Companions Collected</span>
+                </div>
+              </div>
+              <div class="stat-segment">
+                <span class="stat-orb stat-orb--heart" style={`--progress:${averageBond}%`}><Heart size={20} fill="currentColor" /></span>
+                <div>
+                  <strong>{averageBond}%</strong>
+                  <span>Average Bond</span>
+                </div>
+              </div>
+            </article>
+            <article class="stat-card mastery-card">
+              <span class="stat-orb stat-orb--violet"><Gem size={24} /></span>
+              <div>
+                <strong>Lvl {masteryLevel}</strong>
+                <span>Companion Mastery</span>
+              </div>
+            </article>
+          </section>
+        {/if}
 
-        {#if activeTab === 'owned'}
+        {#if activeTab === 'owned' && activeDetailTab === 'growth' && detailCompanion}
+          <section class="growth-dashboard" aria-label="Growth Journey">
+            <div class="growth-journey-head">
+              <div>
+                <h2>Growth Journey</h2>
+                <p>Track your companion's development and unlock new potential.</p>
+              </div>
+              <div class="growth-journey-controls" aria-hidden="true">
+                <span><ChevronLeft size={18} /></span>
+                <span><ChevronRight size={18} /></span>
+              </div>
+            </div>
+
+            <div class="growth-stage-track" aria-label="Growth stages">
+              {#each growthStages as stage, index}
+                <div
+                  class="growth-stage"
+                  class:is-complete={index < growthStageIndex}
+                  class:is-current={index === growthStageIndex}
+                  class:is-locked={index > growthStageIndex}
+                >
+                  <span class="growth-stage-orb">
+                    {#if index < growthStageIndex}
+                      <Shield size={19} />
+                    {:else if index === growthStageIndex}
+                      <Sparkles size={22} />
+                    {:else}
+                      <Trophy size={18} />
+                    {/if}
+                  </span>
+                  <strong>{stage.label}</strong>
+                  <small>{index < growthStageIndex ? 'Completed' : index === growthStageIndex ? 'Current Stage' : 'Locked'}</small>
+                </div>
+              {/each}
+            </div>
+
+            <div class="growth-card-grid">
+              <article class="growth-dashboard-card">
+                <span class="growth-card-icon growth-card-icon--violet"><TrendingUp size={31} /></span>
+                <strong>Level Progress</strong>
+                <p>Lvl {detailLevel} / {nextGrowthStage?.unlockLevel ?? 30}</p>
+                <div class="growth-meter"><span style={`width:${growthXpPercent}%`}></span></div>
+                <small>{growthXpCurrent.toLocaleString()} / {growthXpTarget.toLocaleString()} XP</small>
+                <em>Earn XP through adventures and daily activities.</em>
+              </article>
+              <article class="growth-dashboard-card">
+                <span class="growth-card-icon growth-card-icon--heart"><Heart size={31} fill="currentColor" /></span>
+                <strong>Bond</strong>
+                <p>{detailBond}%</p>
+                <b>Trusted Companion</b>
+                <em>Strengthen your bond through time spent together.</em>
+              </article>
+              <article class="growth-dashboard-card">
+                <span class="growth-card-icon growth-card-icon--violet"><Sparkles size={31} /></span>
+                <strong>Potential</strong>
+                <p>{growthPotential.label} <b>{growthPotential.grade}</b></p>
+                <em>Your companion shows {growthPotential.label.toLowerCase()} potential.</em>
+              </article>
+              <article class="growth-dashboard-card">
+                <span class="growth-card-icon growth-card-icon--green"><Leaf size={31} /></span>
+                <strong>Growth Traits</strong>
+                <p>{growthTraitCount} / 24</p>
+                <small>Traits Unlocked</small>
+                <em>Unlock new traits as your companion grows.</em>
+              </article>
+            </div>
+
+            <div class="growth-lower-grid">
+              <article class="recent-milestones-card">
+                <div class="growth-section-title">
+                  <strong>Recent Milestones</strong>
+                  <button type="button">View All Milestones <ChevronRight size={14} /></button>
+                </div>
+                <div class="recent-milestone-list">
+                  <div class="recent-milestone">
+                    <span class="milestone-icon milestone-icon--gold"><Trophy size={17} /></span>
+                    <p><strong>Reached Level {detailLevel}</strong><small>Your companion has grown stronger.</small></p>
+                    <time>2h ago</time>
+                  </div>
+                  {#if featuredGift}
+                    <div class="recent-milestone">
+                      <span class="milestone-icon milestone-icon--xp">XP</span>
+                      <p><strong>Learned {featuredGift.name}</strong><small>Opened a new companion gift.</small></p>
+                      <time>1d ago</time>
+                    </div>
+                  {/if}
+                  <div class="recent-milestone">
+                    <span class="milestone-icon milestone-icon--heart"><Heart size={17} fill="currentColor" /></span>
+                    <p><strong>Bond increased to {detailBond}%</strong><small>You and {detailCompanion.name} are growing closer.</small></p>
+                    <time>2d ago</time>
+                  </div>
+                  <div class="recent-milestone">
+                    <span class="milestone-icon milestone-icon--green"><Leaf size={17} /></span>
+                    <p><strong>Unlocked Growth Trait: {detailIdentity.personality[0] ?? 'Intuitive'}</strong><small>{detailCompanion.name} gained a new trait.</small></p>
+                    <time>3d ago</time>
+                  </div>
+                </div>
+              </article>
+
+              <article class="next-milestone-card">
+                <strong>Next Milestone</strong>
+                <div class="next-milestone-hero">
+                  <span><Sparkles size={42} /></span>
+                  <div>
+                    <h3>{nextGrowthStage ? `Reach ${nextGrowthStage.label}` : 'Growth Path Complete'}</h3>
+                    <p>{nextGrowthStage ? `Reach Level ${nextGrowthStage.unlockLevel}` : 'All current stages are open.'}</p>
+                  </div>
+                </div>
+                <div class="growth-meter"><span style={`width:${growthXpPercent}%`}></span></div>
+                <small>{growthXpCurrent.toLocaleString()} / {growthXpTarget.toLocaleString()}</small>
+                <div class="reward-row">
+                  <span><Trophy size={16} /> + Gift Slot</span>
+                  <span><Heart size={16} fill="currentColor" /> +10% Bond Cap</span>
+                </div>
+              </article>
+            </div>
+          </section>
+        {:else if activeTab === 'owned'}
           <section class="companion-grid" aria-label="My companions">
             {#if filteredOwned.length === 0}
               <p class="empty-copy">No companions match this filter yet.</p>
@@ -1733,61 +1933,60 @@
               <!-- TODO: Connect Strengthen Gift to the future gift economy once Ritual Resonance, Memory Shards, or Bond Tokens are available server-side. -->
             </div>
           {:else if activeDetailTab === 'growth'}
-            <div class="detail-tab-panel">
-              <button type="button" class="compact-tile growth-summary tooltip-host">
-                <span class="tile-icon" aria-hidden="true"><Sparkles size={17} /></span>
-                <span class="tile-copy">
-                  <strong>{detailIdentity.growth.currentPath}</strong>
-                  <small>Current Growth Path</small>
+            <div class="detail-tab-panel growth-detail-panel">
+              <button type="button" class="growth-detail-row tooltip-host">
+                <span class="growth-detail-icon" aria-hidden="true"><Sparkles size={22} /></span>
+                <span class="growth-detail-copy">
+                  <small>Growth Stage</small>
+                  <strong>{currentGrowthStage.label}</strong>
+                  <em>Next: {nextGrowthStage?.label ?? 'Complete'}</em>
                 </span>
-                <div class="tooltip-card growth-tooltip" role="tooltip">
-                  <span>Current Growth Path</span>
-                  <strong>{detailIdentity.growth.currentPath}</strong>
-                  <p>Next: {detailIdentity.growth.nextMilestone?.label ?? 'All current milestones are open.'}</p>
+                <div class="tooltip-card compact-tooltip" role="tooltip">
+                  <span>Growth Stage</span>
+                  <strong>{currentGrowthStage.label}</strong>
+                  <p>{detailIdentity.growth.currentPath}</p>
                 </div>
               </button>
-              <div class="compact-section-head">
-                <span>Influence</span>
-                <strong>Secondary Element</strong>
-              </div>
-              <div class="influence-bars compact-tile-grid" aria-label="Secondary element influence">
-                {#each detailIdentity.growth.secondaryElementInfluence as influence}
-                  <button type="button" class="compact-tile influence-row tooltip-host" aria-label={`${influence.label}: ${influence.value}%`}>
-                    <span class="tile-icon" aria-hidden="true"><Gem size={17} /></span>
-                    <span class="tile-copy">
-                      <strong>{influence.label}</strong>
-                      <small>{influence.value}%</small>
-                    </span>
-                    <div class="influence-track"><span style={`width:${influence.value}%`}></span></div>
-                    <div class="tooltip-card compact-tooltip" role="tooltip">
-                      <span>Influence</span>
-                      <strong>{influence.label} · {influence.value}%</strong>
-                      <p>{influence.description}</p>
-                    </div>
-                  </button>
-                {/each}
-              </div>
-              <div class="compact-section-head">
-                <span>Milestones</span>
-                <strong>Growth Track</strong>
-              </div>
-              <div class="milestone-track compact-tile-grid">
-                {#each detailIdentity.growth.milestones as milestone}
-                  <button type="button" class="compact-tile milestone-tile tooltip-host" class:unlocked={milestone.unlocked}>
-                    <span class="milestone-dot" aria-hidden="true"></span>
-                    <span class="tile-copy">
-                      <strong>{milestone.label}</strong>
-                      <small>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</small>
-                    </span>
-                    <div class="tooltip-card compact-tooltip" role="tooltip">
-                      <span>{milestone.unlocked ? 'Opened Milestone' : 'Locked Milestone'}</span>
-                      <strong>{milestone.label}</strong>
-                      <p>{milestone.description}</p>
-                      <b>{milestone.unlocked ? 'Opened' : `Level ${milestone.unlockLevel} or Bond ${milestone.unlockBond}`}</b>
-                    </div>
-                  </button>
-                {/each}
-              </div>
+              <button type="button" class="growth-detail-row tooltip-host">
+                <span class="growth-detail-icon growth-detail-icon--xp" aria-hidden="true">XP</span>
+                <span class="growth-detail-copy">
+                  <small>Level</small>
+                  <strong>{detailLevel} / {nextGrowthStage?.unlockLevel ?? 30}</strong>
+                  <span class="growth-detail-meter"><i style={`width:${growthXpPercent}%`}></i></span>
+                  <em>{growthXpCurrent.toLocaleString()} / {growthXpTarget.toLocaleString()} XP</em>
+                </span>
+                <div class="tooltip-card compact-tooltip" role="tooltip">
+                  <span>Level Progress</span>
+                  <strong>Lvl {detailLevel}</strong>
+                  <p>Daily activity and companion time continue this path.</p>
+                </div>
+              </button>
+              <button type="button" class="growth-detail-row tooltip-host">
+                <span class="growth-detail-icon" aria-hidden="true"><Sparkles size={22} /></span>
+                <span class="growth-detail-copy">
+                  <small>Potential</small>
+                  <strong class="green-copy">{growthPotential.label} · {growthPotential.grade}</strong>
+                  <em>Top {growthPotential.grade === 'S' ? '5' : '15'}% of companions</em>
+                </span>
+                <div class="tooltip-card compact-tooltip" role="tooltip">
+                  <span>Potential</span>
+                  <strong>{growthPotential.label}</strong>
+                  <p>Potential reflects bond, level, opened gifts, and growth milestones.</p>
+                </div>
+              </button>
+              <button type="button" class="growth-detail-row tooltip-host">
+                <span class="growth-detail-icon growth-detail-icon--rank" aria-hidden="true">{growthPotential.grade}</span>
+                <span class="growth-detail-copy">
+                  <small>Growth Rank</small>
+                  <strong class="green-copy">{growthPotential.rank}</strong>
+                  <em>Above average growth rate</em>
+                </span>
+                <div class="tooltip-card compact-tooltip" role="tooltip">
+                  <span>Growth Rank</span>
+                  <strong>Rank {growthPotential.grade}</strong>
+                  <p>{detailCompanion.name}'s growth rank updates as your bond and stage progress.</p>
+                </div>
+              </button>
             </div>
           {:else}
             <div class="detail-tab-panel story-panel">
@@ -1857,6 +2056,15 @@
               >
                 <Sparkles size={18} />
                 <span>Open Gift Path</span>
+              </button>
+            {:else if activeDetailTab === 'growth'}
+              <button
+                type="button"
+                class="primary-action level-skill-action"
+                on:click={() => showToast('Growth guide is coming soon')}
+              >
+                <TrendingUp size={18} />
+                <span>View Growth Guide</span>
               </button>
             {:else}
               <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
@@ -2228,6 +2436,19 @@
     margin: 1.55rem 0 1.45rem;
   }
 
+  .growth-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    margin: 1.55rem 0 1.45rem;
+    overflow: hidden;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 1.08rem;
+    background:
+      radial-gradient(circle at 14% 0%, rgba(139, 82, 255, 0.16), transparent 56%),
+      rgba(13, 15, 39, 0.84);
+  }
+
   .stat-cluster,
   .stat-card {
     border: 1px solid rgba(153, 130, 236, 0.18);
@@ -2271,15 +2492,37 @@
     padding: 1rem 1.1rem;
   }
 
+  .growth-stat {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.72rem;
+    min-height: 5.15rem;
+    padding: 1rem 1.05rem;
+  }
+
+  .growth-stat + .growth-stat::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1rem;
+    bottom: 1rem;
+    width: 1px;
+    background: rgba(183, 164, 255, 0.1);
+  }
+
   .stat-card strong,
-  .stat-segment strong {
+  .stat-segment strong,
+  .growth-stat strong {
     display: block;
     font-size: 1.34rem;
     line-height: 1;
   }
 
   .stat-card div > span,
-  .stat-segment div > span {
+  .stat-segment div > span,
+  .growth-stat div > span {
     color: rgba(220, 216, 237, 0.78);
     font-size: 0.72rem;
   }
@@ -2307,6 +2550,12 @@
 
   .stat-orb--heart {
     color: #ff6fb8;
+  }
+
+  .stat-orb--xp {
+    color: #a75cff;
+    font-size: 0.82rem;
+    font-weight: 950;
   }
 
   .stat-orb--violet {
@@ -2506,6 +2755,370 @@
     gap: 0.75rem;
     align-content: start;
     padding: 1.1rem;
+  }
+
+  .growth-dashboard {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .growth-journey-head,
+  .growth-section-title,
+  .recent-milestone,
+  .reward-row,
+  .growth-journey-controls {
+    display: flex;
+    align-items: center;
+  }
+
+  .growth-journey-head {
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .growth-journey-head h2 {
+    margin: 0 0 0.36rem;
+    font-size: 1.08rem;
+  }
+
+  .growth-journey-head p,
+  .growth-dashboard-card em,
+  .recent-milestone small,
+  .next-milestone-card p,
+  .next-milestone-card small {
+    margin: 0;
+    color: rgba(220, 216, 237, 0.66);
+    font-size: 0.82rem;
+    font-style: normal;
+    font-weight: 650;
+    line-height: 1.42;
+  }
+
+  .growth-journey-controls {
+    justify-content: space-between;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .growth-journey-controls span {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    place-items: center;
+    border: 1px solid rgba(153, 130, 236, 0.16);
+    border-radius: 999px;
+    background: rgba(10, 11, 31, 0.72);
+    color: rgba(220, 216, 237, 0.72);
+  }
+
+  .growth-stage-track {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: start;
+    gap: 0.7rem;
+    position: relative;
+    padding: 0.25rem 2.8rem 0.45rem;
+  }
+
+  .growth-stage-track::before {
+    content: '';
+    position: absolute;
+    left: 6.3rem;
+    right: 6.3rem;
+    top: 1.78rem;
+    height: 0.18rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #934dff 0%, #b75cff 48%, rgba(153, 130, 236, 0.12) 48%);
+  }
+
+  .growth-stage {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    gap: 0.34rem;
+    text-align: center;
+  }
+
+  .growth-stage-orb {
+    display: grid;
+    width: 3.2rem;
+    height: 3.2rem;
+    place-items: center;
+    border: 1px solid rgba(153, 130, 236, 0.28);
+    border-radius: 999px;
+    background: rgba(13, 15, 39, 0.96);
+    color: rgba(220, 216, 237, 0.62);
+    box-shadow: inset 0 0 1rem rgba(183, 92, 255, 0.12);
+  }
+
+  .growth-stage.is-complete .growth-stage-orb,
+  .growth-stage.is-current .growth-stage-orb {
+    border-color: rgba(183, 92, 255, 0.72);
+    background:
+      radial-gradient(circle at 50% 32%, rgba(183, 92, 255, 0.42), transparent 62%),
+      rgba(28, 18, 67, 0.96);
+    color: white;
+    box-shadow: 0 0 1.4rem rgba(183, 92, 255, 0.36), inset 0 0 1rem rgba(183, 92, 255, 0.18);
+  }
+
+  .growth-stage.is-current .growth-stage-orb {
+    width: 4.05rem;
+    height: 4.05rem;
+  }
+
+  .growth-stage strong {
+    color: rgba(248, 246, 255, 0.92);
+    font-size: 0.82rem;
+  }
+
+  .growth-stage small {
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.72rem;
+    font-weight: 750;
+  }
+
+  .growth-stage.is-complete small {
+    color: #7df38f;
+  }
+
+  .growth-stage.is-current small {
+    color: #db63ff;
+  }
+
+  .growth-stage.is-locked {
+    opacity: 0.52;
+  }
+
+  .growth-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .growth-dashboard-card,
+  .recent-milestones-card,
+  .next-milestone-card {
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(183, 92, 255, 0.13), transparent 58%),
+      rgba(13, 15, 38, 0.84);
+    box-shadow: 0 1.35rem 3rem rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  }
+
+  .growth-dashboard-card {
+    display: grid;
+    align-content: start;
+    gap: 0.45rem;
+    min-height: 13rem;
+    padding: 1.25rem 1.12rem;
+  }
+
+  .growth-card-icon {
+    display: grid;
+    width: 3.8rem;
+    height: 3.8rem;
+    place-items: center;
+    border: 1px solid rgba(153, 130, 236, 0.28);
+    border-radius: 999px;
+    background: rgba(10, 11, 31, 0.62);
+    margin: 0 auto 0.6rem;
+  }
+
+  .growth-card-icon--violet {
+    color: #b75cff;
+    box-shadow: 0 0 1.5rem rgba(183, 92, 255, 0.24);
+  }
+
+  .growth-card-icon--heart {
+    color: #ff6fb8;
+    box-shadow: 0 0 1.5rem rgba(255, 111, 184, 0.18);
+  }
+
+  .growth-card-icon--green {
+    color: #77e878;
+    box-shadow: 0 0 1.5rem rgba(119, 232, 120, 0.14);
+  }
+
+  .growth-dashboard-card strong,
+  .recent-milestones-card strong,
+  .next-milestone-card strong,
+  .next-milestone-card h3 {
+    color: rgba(255, 250, 242, 0.98);
+  }
+
+  .growth-dashboard-card > strong {
+    font-size: 1rem;
+  }
+
+  .growth-dashboard-card p {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  .growth-dashboard-card b {
+    width: fit-content;
+    border-radius: 999px;
+    color: #ff6fb8;
+    font-size: 0.9rem;
+  }
+
+  .growth-dashboard-card small {
+    color: rgba(220, 216, 237, 0.68);
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+
+  .growth-meter {
+    height: 0.36rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  .growth-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7d4dff, #db63ff);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.5);
+  }
+
+  .growth-lower-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(16rem, 0.95fr);
+    gap: 1rem;
+  }
+
+  .recent-milestones-card,
+  .next-milestone-card {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  .growth-section-title {
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .growth-section-title button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    border: 0;
+    background: transparent;
+    color: #c87bff;
+    cursor: pointer;
+    font-weight: 800;
+  }
+
+  .recent-milestone-list {
+    display: grid;
+  }
+
+  .recent-milestone {
+    gap: 0.7rem;
+    border-top: 1px solid rgba(153, 130, 236, 0.1);
+    padding: 0.72rem 0;
+  }
+
+  .recent-milestone:first-child {
+    border-top: 0;
+  }
+
+  .recent-milestone p {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 0.16rem;
+    margin: 0;
+  }
+
+  .recent-milestone time {
+    color: rgba(220, 216, 237, 0.58);
+    font-size: 0.74rem;
+    font-weight: 750;
+  }
+
+  .milestone-icon {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 0.72rem;
+    background: rgba(255, 255, 255, 0.055);
+    font-weight: 950;
+  }
+
+  .milestone-icon--gold {
+    color: #ffcc4c;
+  }
+
+  .milestone-icon--xp {
+    color: #a75cff;
+  }
+
+  .milestone-icon--heart {
+    color: #ff6fb8;
+  }
+
+  .milestone-icon--green {
+    color: #77e878;
+  }
+
+  .next-milestone-hero {
+    display: grid;
+    place-items: center;
+    gap: 0.7rem;
+    text-align: center;
+  }
+
+  .next-milestone-hero > span {
+    display: grid;
+    width: 5.4rem;
+    height: 5.4rem;
+    place-items: center;
+    border: 1px solid rgba(183, 92, 255, 0.44);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 50% 36%, rgba(183, 92, 255, 0.35), transparent 62%),
+      rgba(10, 11, 31, 0.7);
+    color: #db63ff;
+    box-shadow: 0 0 1.9rem rgba(183, 92, 255, 0.26);
+  }
+
+  .next-milestone-card h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.02rem;
+  }
+
+  .next-milestone-card > small {
+    justify-self: end;
+  }
+
+  .reward-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .reward-row span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 0.7rem;
+    background: rgba(255, 255, 255, 0.055);
+    color: rgba(248, 246, 255, 0.88);
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 0.52rem 0.62rem;
   }
 
   .slots-panel {
@@ -3060,45 +3673,10 @@
   }
 
   .section-heading,
-  .growth-summary,
   .gift-group,
-  .influence-row,
-  .milestone-track,
   .story-card {
     display: grid;
     gap: 0.55rem;
-  }
-
-  .compact-section-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .compact-section-head span,
-  .compact-group > span {
-    color: #a97be1;
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .compact-section-head strong {
-    color: rgba(248, 246, 255, 0.94);
-    font-size: 0.86rem;
-  }
-
-  .compact-group {
-    display: grid;
-    gap: 0.45rem;
-  }
-
-  .compact-tile-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem;
   }
 
   .compact-tile {
@@ -3349,40 +3927,104 @@
     text-align: right;
   }
 
-  .growth-summary {
+  .growth-detail-panel {
+    gap: 0.72rem;
+  }
+
+  .growth-detail-row {
+    position: relative;
+    display: grid;
     grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 4.35rem;
+    border: 0;
+    background: transparent;
+    color: rgba(248, 246, 255, 0.94);
+    cursor: help;
+    font: inherit;
+    padding: 0;
+    text-align: left;
   }
 
-  .influence-row {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-content: center;
+  .growth-detail-row:hover .growth-detail-icon,
+  .growth-detail-row:focus-visible .growth-detail-icon {
+    border-color: rgba(183, 92, 255, 0.64);
+    box-shadow: 0 0 1.2rem rgba(183, 92, 255, 0.3), inset 0 0 1rem rgba(183, 92, 255, 0.18);
   }
 
-  .influence-row .influence-track {
-    grid-column: 1 / -1;
+  .growth-detail-row:focus-visible {
+    outline: 2px solid rgba(183, 92, 255, 0.72);
+    outline-offset: 3px;
+    border-radius: 0.78rem;
   }
 
-  .milestone-tile {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .milestone-dot {
-    width: 0.78rem;
-    height: 0.78rem;
-    border: 1px solid rgba(153, 130, 236, 0.44);
+  .growth-detail-icon {
+    display: grid;
+    width: 3.18rem;
+    height: 3.18rem;
+    place-items: center;
+    border: 1px solid rgba(153, 88, 255, 0.36);
     border-radius: 999px;
-    background: rgba(13, 15, 38, 0.95);
-    box-shadow: 0 0 0.9rem rgba(183, 92, 255, 0.22);
+    background:
+      radial-gradient(circle at 50% 34%, rgba(183, 92, 255, 0.34), transparent 58%),
+      rgba(13, 15, 38, 0.92);
+    color: #b75cff;
+    font-size: 0.9rem;
+    font-weight: 950;
   }
 
-  .milestone-tile.unlocked .milestone-dot {
-    background: #a75cff;
-    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.72);
+  .growth-detail-icon--xp,
+  .growth-detail-icon--rank {
+    font-size: 1rem;
+  }
+
+  .growth-detail-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+  }
+
+  .growth-detail-copy small {
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.7rem;
+    font-weight: 900;
+  }
+
+  .growth-detail-copy strong {
+    color: rgba(255, 250, 242, 0.98);
+    font-size: 0.88rem;
+  }
+
+  .growth-detail-copy .green-copy {
+    color: #7df38f;
+  }
+
+  .growth-detail-copy em {
+    color: rgba(220, 216, 237, 0.66);
+    font-size: 0.75rem;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .growth-detail-meter {
+    display: block;
+    height: 0.34rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  .growth-detail-meter i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7d4dff, #db63ff);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.5);
   }
 
   .section-heading > span,
   .gift-group > span,
-  .growth-summary > span,
   .story-card > span {
     color: #a97be1;
     font-size: 0.72rem;
@@ -3391,13 +4033,11 @@
     text-transform: uppercase;
   }
 
-  .section-heading strong,
-  .growth-summary strong {
+  .section-heading strong {
     color: rgba(248, 246, 255, 0.96);
     font-size: 1rem;
   }
 
-  .growth-summary,
   .story-card {
     border: 1px solid rgba(153, 130, 236, 0.15);
     border-radius: 0.85rem;
@@ -3405,60 +4045,15 @@
     padding: 0.78rem;
   }
 
-  .story-card strong,
-  .milestone-track strong {
+  .story-card strong {
     color: rgba(255, 250, 242, 0.96);
   }
 
-  .growth-summary p,
-  .influence-row p,
-  .milestone-track p,
   .story-card p {
     margin: 0;
     color: rgba(220, 216, 237, 0.66);
     font-size: 0.8rem;
     line-height: 1.45;
-  }
-
-  .milestone-track small {
-    width: fit-content;
-    border: 1px solid rgba(153, 130, 236, 0.16);
-    border-radius: 999px;
-    background: rgba(10, 11, 31, 0.56);
-    color: rgba(230, 225, 244, 0.74);
-    font-size: 0.7rem;
-    font-style: normal;
-    font-weight: 800;
-    padding: 0.26rem 0.5rem;
-    text-transform: capitalize;
-  }
-
-  .influence-row > div:first-child {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    color: rgba(248, 246, 255, 0.9);
-    font-size: 0.82rem;
-    font-weight: 800;
-  }
-
-  .influence-track {
-    height: 0.34rem;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .influence-track span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #7d4dff, #ddaa5c);
-    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.5);
-  }
-
-  .milestone-track {
-    position: relative;
   }
 
   .story-panel {
@@ -3476,7 +4071,6 @@
     opacity: 0.78;
   }
 
-  .growth-summary.compact-tile,
   .story-card.compact-tile {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
