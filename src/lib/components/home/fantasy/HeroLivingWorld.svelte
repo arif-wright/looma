@@ -243,20 +243,20 @@
   .hero-actions {
     display: flex;
     flex-wrap: nowrap;
-    gap: 1.05rem;
-    margin-top: 1.55rem;
+    gap: 0.7rem;
+    margin-top: 1.3rem;
   }
 
   .hero-actions a {
     display: inline-flex;
-    min-height: 4.2rem;
+    min-height: 3.15rem;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    border-radius: 1.28rem;
-    padding: 0 1.25rem 0 1.85rem;
+    gap: 0.72rem;
+    border-radius: 0.9rem;
+    padding: 0 0.86rem 0 1.25rem;
     color: white;
-    font-size: clamp(1.05rem, 1.55vw, 1.32rem);
+    font-size: clamp(0.9rem, 1.1vw, 1rem);
     font-weight: 850;
     text-decoration: none;
     white-space: nowrap;
@@ -270,7 +270,7 @@
   }
 
   .primary {
-    min-width: min(19rem, 54vw);
+    min-width: 9.8rem;
     border: 1px solid rgba(223, 201, 255, 0.48);
     background:
       radial-gradient(circle at 28% 20%, rgba(255, 255, 255, 0.22), transparent 28%),
@@ -279,16 +279,16 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.28),
       inset 0 -1px 0 rgba(55, 22, 110, 0.24),
       0 0 0 1px rgba(132, 101, 255, 0.2),
-      0 18px 44px rgba(119, 72, 255, 0.38),
-      0 0 34px rgba(171, 92, 255, 0.44);
+      0 12px 30px rgba(119, 72, 255, 0.32),
+      0 0 24px rgba(171, 92, 255, 0.34);
   }
 
   .arrow-chip {
     display: grid;
-    width: 2.55rem;
-    height: 2.55rem;
+    width: 2rem;
+    height: 2rem;
     place-items: center;
-    border-radius: 0.78rem;
+    border-radius: 0.65rem;
     background:
       radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55), transparent 28%),
       rgba(255, 255, 255, 0.13);
@@ -299,7 +299,7 @@
   }
 
   .secondary {
-    min-width: min(13.25rem, 38vw);
+    min-width: 7.7rem;
     border: 1px solid rgba(229, 224, 255, 0.24);
     background:
       radial-gradient(circle at 20% 8%, rgba(255, 255, 255, 0.08), transparent 32%),
@@ -307,7 +307,7 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       0 12px 34px rgba(2, 4, 18, 0.28);
-    padding: 0 1.8rem;
+    padding: 0 1.25rem;
   }
 
   .companion-stage {
