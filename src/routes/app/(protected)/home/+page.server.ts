@@ -1027,8 +1027,8 @@ export const load: PageServerLoad = async (event) => {
         trust: row.trust ?? 0,
         energy: row.energy ?? 0,
         avatar_url: row.avatar_url ?? null,
-        bondLevel: 0,
-        bondScore: 0,
+        bondLevel: (statsRow?.bond_level as number | null) ?? 0,
+        bondScore: (statsRow?.bond_score as number | null) ?? 0,
         updated_at: row.updated_at ?? null,
         stats: statsRow
           ? {

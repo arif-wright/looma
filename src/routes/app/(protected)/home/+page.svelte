@@ -231,6 +231,15 @@
     const parsed = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   };
+  const clampPercent = (value: unknown, fallback = 0) => Math.min(100, Math.max(0, Math.round(numberOr(value, fallback))));
+  const resolveBondPercent = (companion: any) => {
+    if (!companion) return 0;
+    const stats = companion.stats ?? null;
+    const statsBondScore = Array.isArray(stats) ? stats[0]?.bond_score : stats?.bond_score;
+    if (statsBondScore != null) return clampPercent(statsBondScore);
+    if (companion.bondScore != null) return clampPercent(companion.bondScore);
+    return clampPercent(((companion.affection ?? 0) + (companion.trust ?? 0)) / 2);
+  };
   $: activeCompanion = data.activeCompanion ?? null;
   $: activeCompanionId = optimisticActiveCompanionId ?? activeCompanion?.id ?? null;
   $: playerName =
@@ -264,10 +273,7 @@
     ...(heroScenePlacementByArchetype[companionArchetype] ?? {})
   };
   $: heroSceneStyle = buildHeroSceneStyle(heroScenePlacement, heroBackgroundUrl);
-  $: companionBond = Math.min(
-    100,
-    Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
-  );
+  $: companionBond = resolveBondPercent(activeCompanion);
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 18));
   $: companionMood = normalizedMood(activeCompanion?.mood);
   $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 3));
@@ -282,13 +288,7 @@
               numberOr((creature.stats as any)?.bond_level, ((creature.affection ?? 40) + (creature.trust ?? 40)) / 10)
             )
           ),
-          bond: Math.min(
-            100,
-            Math.max(
-              0,
-              Math.round(numberOr((creature.stats as any)?.bond_score, ((creature.affection ?? 60) + (creature.trust ?? 60)) / 2))
-            )
-          ),
+          bond: resolveBondPercent(creature),
           mood: normalizedMood(creature.mood_label ?? creature.mood),
           accent: companionAccent(creature.species, index),
           favorite: creature.id === activeCompanionId || Boolean(creature.is_active),
