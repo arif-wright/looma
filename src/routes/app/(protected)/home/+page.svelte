@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
   import { Gamepad2, Gift, Heart, Home, Leaf, Menu, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
@@ -18,6 +19,8 @@
   export let data: PageData;
   let pageMounted = false;
   let heroModelLoaded = false;
+  let settingActiveCompanionId: string | null = null;
+  let optimisticActiveCompanionId: string | null = null;
 
   const gameCards = [
     { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
@@ -228,6 +231,7 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   };
   $: activeCompanion = data.activeCompanion ?? null;
+  $: activeCompanionId = optimisticActiveCompanionId ?? activeCompanion?.id ?? null;
   $: playerName =
     (data as any)?.profile?.display_name ??
     (data as any)?.user?.user_metadata?.name ??
@@ -268,6 +272,7 @@
   $: companions =
     data.creatures && data.creatures.length > 0
       ? data.creatures.slice(0, 4).map((creature, index) => ({
+          id: creature.id,
           name: creature.name ?? 'Companion',
           level: Math.max(
             1,
@@ -284,12 +289,38 @@
           ),
           mood: normalizedMood(creature.mood_label ?? creature.mood),
           accent: companionAccent(creature.species, index),
-          favorite: Boolean(creature.is_active),
+          favorite: creature.id === activeCompanionId || Boolean(creature.is_active),
           avatarUrl: creature.avatar_url ?? null,
+          activating: settingActiveCompanionId === creature.id,
           href: `/app/companions?focus=${encodeURIComponent(creature.id)}`
         }))
       : [];
   $: showHomeSplash = !pageMounted || !heroModelLoaded;
+
+  const activateHomeCompanion = async (id: string) => {
+    const targetId = typeof id === 'string' ? id.trim() : '';
+    if (!targetId || settingActiveCompanionId || targetId === activeCompanionId) return;
+    settingActiveCompanionId = targetId;
+    optimisticActiveCompanionId = targetId;
+
+    try {
+      const response = await fetch('/api/companions/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: targetId })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Failed to set active companion');
+      }
+      await invalidateAll();
+    } catch (error) {
+      console.error('[home] set active companion failed', error);
+      optimisticActiveCompanionId = activeCompanion?.id ?? null;
+    } finally {
+      settingActiveCompanionId = null;
+    }
+  };
 
   onMount(() => {
     pageMounted = true;
@@ -384,7 +415,7 @@
           </div>
           <div class="companion-grid">
             {#each companions as companion}
-              <CompanionCard {...companion} />
+              <CompanionCard {...companion} onActivate={activateHomeCompanion} />
             {/each}
             <a class="summon-card" href="/app/companions" aria-label="Summon new companion">
               <span><Plus size={30} /></span>

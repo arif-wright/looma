@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Heart, Star } from 'lucide-svelte';
 
+  export let id: string | null = null;
   export let name: string;
   export let level = 1;
   export let bond = 50;
@@ -9,6 +10,8 @@
   export let favorite = false;
   export let avatarUrl: string | null = null;
   export let href: string | null = null;
+  export let activating = false;
+  export let onActivate: (id: string) => void = () => {};
 
   $: hue =
     accent === 'ember'
@@ -24,7 +27,16 @@
   {#if href}
     <a class="card-link" href={href} aria-label={`Open ${name}`}></a>
   {/if}
-  <button class="favorite" type="button" aria-label={favorite ? `${name} is a favorite` : `Favorite ${name}`}>
+  <button
+    class="favorite"
+    type="button"
+    aria-label={favorite ? `${name} is your active companion` : `Make ${name} your active companion`}
+    aria-pressed={favorite}
+    disabled={activating || favorite || !id}
+    on:click|preventDefault|stopPropagation={() => {
+      if (id) onActivate(id);
+    }}
+  >
     <Star size={16} fill={favorite ? 'currentColor' : 'none'} />
   </button>
   <div class="portrait">
@@ -65,7 +77,7 @@
     position: absolute;
     right: 0.75rem;
     top: 0.75rem;
-    z-index: 2;
+    z-index: 4;
     display: grid;
     width: 1.8rem;
     height: 1.8rem;
@@ -80,13 +92,18 @@
   .card-link {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 3;
     border-radius: inherit;
   }
 
   .card-link:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--accent), white 18%);
     outline-offset: -3px;
+  }
+
+  .favorite:disabled {
+    cursor: default;
+    opacity: 0.82;
   }
 
   .portrait {

@@ -164,39 +164,55 @@
   .hero-actions {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0.75rem;
-    margin-top: 1.45rem;
+    gap: 1.05rem;
+    margin-top: 1.55rem;
   }
 
   .hero-actions a {
     display: inline-flex;
-    min-height: 2.95rem;
+    min-height: 4.2rem;
     align-items: center;
     justify-content: center;
-    gap: 0.7rem;
-    border-radius: 0.74rem;
-    padding: 0 1.05rem 0 1.45rem;
+    gap: 1rem;
+    border-radius: 1.28rem;
+    padding: 0 1.25rem 0 1.85rem;
     color: white;
-    font-weight: 800;
+    font-size: clamp(1.05rem, 1.55vw, 1.32rem);
+    font-weight: 850;
     text-decoration: none;
     white-space: nowrap;
+    backdrop-filter: blur(18px);
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  .hero-actions a:hover,
+  .hero-actions a:focus-visible {
+    transform: translateY(-1px);
   }
 
   .primary {
-    border: 1px solid rgba(226, 189, 255, 0.36);
-    background: linear-gradient(135deg, #805cff, #b45cff 58%, #ff70df);
-    box-shadow: 0 0 34px rgba(155, 92, 255, 0.58);
+    min-width: min(19rem, 54vw);
+    border: 1px solid rgba(223, 201, 255, 0.48);
+    background:
+      radial-gradient(circle at 28% 20%, rgba(255, 255, 255, 0.22), transparent 28%),
+      linear-gradient(135deg, rgba(119, 98, 255, 0.96), rgba(157, 72, 239, 0.97) 62%, rgba(185, 60, 222, 0.95));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 rgba(55, 22, 110, 0.24),
+      0 0 0 1px rgba(132, 101, 255, 0.2),
+      0 18px 44px rgba(119, 72, 255, 0.38),
+      0 0 34px rgba(171, 92, 255, 0.44);
   }
 
   .arrow-chip {
     display: grid;
-    width: 1.85rem;
-    height: 1.85rem;
+    width: 2.55rem;
+    height: 2.55rem;
     place-items: center;
-    border-radius: 0.55rem;
+    border-radius: 0.78rem;
     background:
       radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55), transparent 28%),
-      rgba(255, 255, 255, 0.14);
+      rgba(255, 255, 255, 0.13);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       0 0 18px rgba(255, 255, 255, 0.16);
@@ -204,10 +220,15 @@
   }
 
   .secondary {
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(8, 10, 29, 0.64);
-    backdrop-filter: blur(18px);
-    padding: 0 1.45rem;
+    min-width: min(13.25rem, 38vw);
+    border: 1px solid rgba(229, 224, 255, 0.24);
+    background:
+      radial-gradient(circle at 20% 8%, rgba(255, 255, 255, 0.08), transparent 32%),
+      rgba(15, 16, 35, 0.74);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 12px 34px rgba(2, 4, 18, 0.28);
+    padding: 0 1.8rem;
   }
 
   .companion-stage {
