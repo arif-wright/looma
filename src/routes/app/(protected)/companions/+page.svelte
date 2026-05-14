@@ -111,14 +111,6 @@
     href: string;
   };
 
-  const emotionalDomainDisplayLabels: Record<string, string> = {
-    harmony: 'Harmony & Expression',
-    protection: 'Safety & Courage',
-    momentum: 'Motivation & Play',
-    grounding: 'Calm & Stability',
-    memory: 'Memory & Reflection'
-  };
-
   const elementProfileDisplayLabels: Record<string, string> = {
     sound_light: 'Radiant Muse',
     sound_dream: 'Dreamsong Muse',
@@ -142,11 +134,6 @@
       .replace(/[_-]+/g, ' ')
       .trim()
       .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-
-  const getEmotionalDomainDisplayLabel = (domain: string | null | undefined) => {
-    const key = (domain ?? '').trim().toLowerCase();
-    return emotionalDomainDisplayLabels[key] ?? titleCase(domain ?? 'Support');
-  };
 
   const getElementProfileDisplayLabel = (variantId: string | null | undefined) => {
     const key = (variantId ?? '').trim().toLowerCase();
@@ -1117,7 +1104,6 @@
   $: detailPrimaryElement = getElementById(detailElementProfile.primary);
   $: detailSecondaryElement = getElementById(detailElementProfile.secondary);
   $: detailElementProfileLabel = getElementProfileDisplayLabel(detailElementProfile.variantId);
-  $: detailEmotionalSupportLabel = getEmotionalDomainDisplayLabel(detailElementProfile.emotionalDomain);
   $: detailPrimaryElementAsset = getElementAssetPath(detailElementProfile.primary);
   $: detailSecondaryElementAsset = getElementAssetPath(detailElementProfile.secondary);
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
@@ -1481,7 +1467,6 @@
                     class="tooltip-host"
                     aria-label={`Primary essence. ${detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}`}
                   >
-                    <span>Primary Essence</span>
                     <strong class="element-value">
                       <img class="element-image" src={detailPrimaryElementAsset} alt="" loading="lazy" />
                       {detailPrimaryElement?.label ?? 'Sound'}
@@ -1498,7 +1483,6 @@
                     class="tooltip-host"
                     aria-label={`Secondary expression. ${detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}`}
                   >
-                    <span>Secondary Expression</span>
                     <strong class="element-value">
                       <img class="element-image" src={detailSecondaryElementAsset} alt="" loading="lazy" />
                       {detailSecondaryElement?.label ?? 'Light'}
@@ -1511,24 +1495,6 @@
                       <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
                     </div>
                   </article>
-                </div>
-                <div class="element-domain tooltip-host">
-                  <span>Supports</span>
-                  <strong>{detailEmotionalSupportLabel}</strong>
-                  <p>{detailElementProfile.expressionLine}</p>
-                  <div class="tooltip-card compact-tooltip" role="tooltip">
-                    <span>Supports</span>
-                    <strong>{detailEmotionalSupportLabel}</strong>
-                    <p>The kind of emotional support this companion naturally offers.</p>
-                  </div>
-                </div>
-                <div class="ritual-block">
-                  <span>Preferred Rituals</span>
-                  <div class="ritual-row" aria-label="Preferred rituals">
-                    {#each detailElementProfile.preferredRituals as ritual}
-                      <b>{ritual}</b>
-                    {/each}
-                  </div>
                 </div>
               </div>
               <div class="detail-section">
@@ -2731,10 +2697,7 @@
     gap: 0.75rem;
   }
 
-  .element-profile-head > span,
-  .element-pair article > span,
-  .element-domain > span,
-  .ritual-block > span {
+  .element-profile-head > span {
     color: rgba(220, 216, 237, 0.68);
     font-size: 0.66rem;
     font-weight: 800;
@@ -2753,20 +2716,16 @@
   }
 
   .element-pair {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.48rem;
+    display: flex;
+    align-items: center;
+    gap: 0.82rem;
+    flex-wrap: wrap;
   }
 
-  .element-pair article,
-  .element-domain {
-    display: grid;
+  .element-pair article {
+    display: inline-flex;
     position: relative;
-    gap: 0.3rem;
-    border: 1px solid rgba(153, 130, 236, 0.12);
-    border-radius: 0.78rem;
-    background: rgba(9, 10, 29, 0.38);
-    padding: 0.58rem;
+    align-items: center;
   }
 
   .element-value {
@@ -2913,45 +2872,22 @@
     width: min(15.5rem, calc(100vw - 2rem));
   }
 
-  .element-pair article p,
-  .element-domain p {
+  .element-pair article p {
     display: none;
   }
 
-  .element-domain strong {
-    color: rgba(248, 246, 255, 0.95);
-  }
-
-  .element-domain {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .ritual-block {
-    display: grid;
-    gap: 0.42rem;
-  }
-
   .tag-row,
-  .ritual-row,
   .detail-actions {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
 
-  .tag-row b,
-  .ritual-row b {
+  .tag-row b {
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.075);
     padding: 0.3rem 0.62rem;
     font-size: 0.78rem;
-  }
-
-  .ritual-row b {
-    border: 1px solid rgba(221, 170, 92, 0.22);
-    background: rgba(221, 170, 92, 0.08);
-    color: rgba(255, 234, 196, 0.94);
   }
 
   .section-heading,
