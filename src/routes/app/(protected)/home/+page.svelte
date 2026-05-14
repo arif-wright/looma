@@ -21,6 +21,7 @@
   let heroModelLoaded = false;
   let settingActiveCompanionId: string | null = null;
   let optimisticActiveCompanionId: string | null = null;
+  let optimisticCompanionName: string | null = null;
 
   const gameCards = [
     { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
@@ -254,7 +255,8 @@
   $: playerLevel = Math.max(1, Math.floor((data.stats as any)?.level ?? activeCompanion?.bondLevel ?? 24));
   $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
   $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
-  $: companionName = activeCompanion?.name ?? 'Lumi';
+  $: companionName = optimisticCompanionName ?? activeCompanion?.name ?? 'Lumi';
+  $: activeCompanionHref = activeCompanion?.id ? `/app/companions?focus=${encodeURIComponent(activeCompanion.id)}` : '/app/companions';
   $: companionArchetype = resolveSceneArchetype(activeCompanion?.species);
   $: heroBackgroundUrl = backgroundByArchetype[companionArchetype] ?? '/assets/muse_background.png';
   $: heroScenePlacement = {
@@ -322,6 +324,31 @@
     }
   };
 
+  const renameHomeCompanion = async (id: string, name: string) => {
+    const targetId = typeof id === 'string' ? id.trim() : '';
+    const nextName = typeof name === 'string' ? name.trim() : '';
+    if (!targetId || nextName.length < 1 || nextName.length > 32) return;
+    const previousName = optimisticCompanionName;
+    optimisticCompanionName = nextName;
+
+    try {
+      const response = await fetch('/api/companions/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId: targetId, name: nextName })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Failed to rename companion');
+      }
+      await invalidateAll();
+      optimisticCompanionName = null;
+    } catch (error) {
+      optimisticCompanionName = previousName;
+      throw error;
+    }
+  };
+
   onMount(() => {
     pageMounted = true;
   });
@@ -375,11 +402,14 @@
       <section class="center-stack">
         <HeroLivingWorld
           bind:modelLoaded={heroModelLoaded}
+          companionId={activeCompanion?.id ?? null}
+          companionHref={activeCompanionHref}
           playerName={playerName}
           companionName={companionName}
           level={companionLevel}
           mood={companionMood}
           bond={companionBond}
+          onRename={renameHomeCompanion}
         />
 
         <section class="mobile-loop" aria-label="Today's companion loop">

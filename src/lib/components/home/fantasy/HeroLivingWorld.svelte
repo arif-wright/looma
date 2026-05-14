@@ -2,12 +2,20 @@
   import { ArrowRight, Pencil } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
+  export let companionId: string | null = null;
+  export let companionHref = '/app/companions';
   export let playerName = 'Alex';
   export let companionName = 'Lumi';
   export let level = 18;
   export let mood = 'Happy';
   export let bond = 87;
   export let modelLoaded = false;
+  export let onRename: (id: string, name: string) => Promise<void> = async () => {};
+
+  let renameMode = false;
+  let renameValue = '';
+  let renameBusy = false;
+  let renameError: string | null = null;
 
   const moodIconByKey: Record<string, string> = {
     calm: '/assets/steady.png',
@@ -30,6 +38,47 @@
   const moodIconFor = (value: string) => {
     const key = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
     return moodIconByKey[key] ?? '/assets/steady.png';
+  };
+
+  const startRename = () => {
+    renameValue = companionName;
+    renameError = null;
+    renameMode = true;
+  };
+
+  const cancelRename = () => {
+    renameMode = false;
+    renameError = null;
+    renameValue = '';
+  };
+
+  const submitRename = async () => {
+    const nextName = renameValue.trim();
+    if (!companionId) {
+      renameError = 'Choose a companion first.';
+      return;
+    }
+    if (nextName.length < 1 || nextName.length > 32) {
+      renameError = 'Use 1-32 characters.';
+      return;
+    }
+    if (nextName === companionName) {
+      cancelRename();
+      return;
+    }
+
+    renameBusy = true;
+    renameError = null;
+    try {
+      await onRename(companionId, nextName);
+      renameMode = false;
+      renameValue = '';
+    } catch (error) {
+      console.error('[HeroLivingWorld] rename failed', error);
+      renameError = 'Could not save name.';
+    } finally {
+      renameBusy = false;
+    }
   };
 
   $: moodIconUrl = moodIconFor(mood);
@@ -95,9 +144,39 @@
   </div>
 
   <aside class="status-card" aria-label={`${companionName} status`}>
+    {#if !renameMode}
+      <a class="status-card__link" href={companionHref} aria-label={`Open ${companionName} companion profile`}></a>
+    {/if}
     <header>
-      <strong>{companionName}</strong>
-      <Pencil size={14} />
+      {#if renameMode}
+        <form class="rename-form" on:submit|preventDefault={submitRename}>
+          <label class="sr-only" for="hero-companion-name">Companion name</label>
+          <input
+            id="hero-companion-name"
+            bind:value={renameValue}
+            maxlength="32"
+            autocomplete="off"
+            disabled={renameBusy}
+            on:keydown={(event) => {
+              if (event.key === 'Escape') cancelRename();
+            }}
+          />
+          <div class="rename-actions">
+            <button type="button" on:click={cancelRename} disabled={renameBusy}>Cancel</button>
+            <button type="submit" disabled={renameBusy}>{renameBusy ? 'Saving...' : 'Save'}</button>
+          </div>
+          {#if renameError}
+            <small>{renameError}</small>
+          {/if}
+        </form>
+      {:else}
+        <div class="status-title">
+          <strong>{companionName}</strong>
+          <button type="button" class="rename-trigger" aria-label={`Rename ${companionName}`} on:click={startRename}>
+            <Pencil size={14} />
+          </button>
+        </div>
+      {/if}
     </header>
     <span>Level {level}</span>
     <div class="mini-meter"><span style={`width: ${Math.min(100, level * 4)}%`}></span></div>
@@ -459,6 +538,29 @@
       0 24px 60px rgba(3, 5, 20, 0.36);
   }
 
+  .status-card__link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+
+  .status-card__link:focus-visible {
+    outline: 2px solid rgba(185, 158, 255, 0.68);
+    outline-offset: 3px;
+  }
+
+  .status-card > :not(.status-card__link) {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .status-card button,
+  .status-card input {
+    pointer-events: auto;
+  }
+
   .status-card header,
   .status-row {
     display: flex;
@@ -467,12 +569,110 @@
   }
 
   .status-card header {
-    justify-content: space-between;
+    justify-content: flex-start;
+  }
+
+  .status-title {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.42rem;
+  }
+
+  .status-title strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rename-trigger {
+    display: grid;
+    width: 1.45rem;
+    height: 1.45rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(244, 242, 255, 0.9);
+    cursor: pointer;
+  }
+
+  .rename-trigger:hover,
+  .rename-trigger:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+
+  .rename-form {
+    display: grid;
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .rename-form input {
+    min-width: 0;
+    width: 100%;
+    border: 1px solid rgba(185, 158, 255, 0.28);
+    border-radius: 0.55rem;
+    background: rgba(8, 10, 29, 0.68);
+    color: white;
+    font: inherit;
+    font-weight: 800;
+    padding: 0.42rem 0.5rem;
+    outline: none;
+  }
+
+  .rename-form input:focus {
+    border-color: rgba(206, 184, 255, 0.68);
+    box-shadow: 0 0 0 2px rgba(155, 92, 255, 0.18);
+  }
+
+  .rename-actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .rename-actions button {
+    min-height: 1.8rem;
+    flex: 1;
+    border: 1px solid rgba(185, 158, 255, 0.2);
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(244, 242, 255, 0.9);
+    cursor: pointer;
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+
+  .rename-actions button[type='submit'] {
+    background: linear-gradient(135deg, rgba(126, 92, 255, 0.82), rgba(180, 92, 255, 0.74));
+    color: white;
+  }
+
+  .rename-actions button:disabled {
+    cursor: wait;
+    opacity: 0.68;
+  }
+
+  .rename-form small {
+    color: #ff9fbe;
+    font-size: 0.72rem;
   }
 
   .status-card > span {
     color: rgba(221, 218, 244, 0.68);
     font-size: 0.78rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .mini-meter {
