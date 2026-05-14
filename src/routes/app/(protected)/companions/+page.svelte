@@ -111,11 +111,52 @@
     href: string;
   };
 
+  const emotionalDomainDisplayLabels: Record<string, string> = {
+    harmony: 'Harmony & Expression',
+    protection: 'Safety & Courage',
+    momentum: 'Motivation & Play',
+    grounding: 'Calm & Stability',
+    memory: 'Memory & Reflection'
+  };
+
+  const elementProfileDisplayLabels: Record<string, string> = {
+    sound_light: 'Radiant Muse',
+    sound_dream: 'Dreamsong Muse',
+    sound_tide: 'Tidal Muse',
+    sound_spark: 'Pulse Muse',
+    sound_echo: 'Echo Muse',
+    ember_root: 'Hearth Guardian',
+    spark_light: 'Radiant Spark',
+    root_tide: 'Tidal Root',
+    echo_dream: 'Dream Archive Echo'
+  };
+
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
   const CARE_STALE_HOURS = 18;
   const LOW_ENERGY_THRESHOLD = 25;
   let nowTick = Date.now();
   let nowTimer: number | null = null;
+
+  const titleCase = (value: string) =>
+    value
+      .replace(/[_-]+/g, ' ')
+      .trim()
+      .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+
+  const getEmotionalDomainDisplayLabel = (domain: string | null | undefined) => {
+    const key = (domain ?? '').trim().toLowerCase();
+    return emotionalDomainDisplayLabels[key] ?? titleCase(domain ?? 'Support');
+  };
+
+  const getElementProfileDisplayLabel = (variantId: string | null | undefined) => {
+    const key = (variantId ?? '').trim().toLowerCase();
+    return elementProfileDisplayLabels[key] ?? titleCase(variantId ?? 'Element Profile');
+  };
+
+  const getElementAssetPath = (elementId: string | null | undefined) => {
+    const normalized = (elementId ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return normalized ? `/assets/Elements/element-${normalized}.png` : '/assets/Elements/element-light.png';
+  };
 
   const toStamp = (value: string | null | undefined) => {
     if (!value) return null;
@@ -1075,6 +1116,10 @@
   $: detailElementProfile = detailIdentity.elementProfile;
   $: detailPrimaryElement = getElementById(detailElementProfile.primary);
   $: detailSecondaryElement = getElementById(detailElementProfile.secondary);
+  $: detailElementProfileLabel = getElementProfileDisplayLabel(detailElementProfile.variantId);
+  $: detailEmotionalSupportLabel = getEmotionalDomainDisplayLabel(detailElementProfile.emotionalDomain);
+  $: detailPrimaryElementAsset = getElementAssetPath(detailElementProfile.primary);
+  $: detailSecondaryElementAsset = getElementAssetPath(detailElementProfile.secondary);
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1421,10 +1466,10 @@
                 <div class="element-profile-head">
                   <span>Element Profile</span>
                   <strong class="profile-title-tooltip tooltip-host">
-                    {detailElementProfile.variantId.replace(/_/g, ' ')}
+                    {detailElementProfileLabel}
                     <span class="tooltip-card profile-tooltip" role="tooltip">
                       <span>Element Profile</span>
-                      <strong>{detailElementProfile.variantId.replace(/_/g, ' ')}</strong>
+                      <strong>{detailElementProfileLabel}</strong>
                       <p>{detailIdentity.archetype.overviewIdentity}</p>
                       <small>{detailElementProfile.expressionLine}</small>
                     </span>
@@ -1434,40 +1479,56 @@
                 <div class="element-pair">
                   <article
                     class="tooltip-host"
-                    aria-label={`Primary element. ${detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}`}
+                    aria-label={`Primary essence. ${detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}`}
                   >
-                    <span>Primary</span>
-                    <strong><Gem size={18} /> {detailPrimaryElement?.label ?? 'Sound'}</strong>
+                    <span>Primary Essence</span>
+                    <strong class="element-value">
+                      <img class="element-image" src={detailPrimaryElementAsset} alt="" loading="lazy" />
+                      {detailPrimaryElement?.label ?? 'Sound'}
+                    </strong>
                     <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
                     <div class="tooltip-card compact-tooltip" role="tooltip">
-                      <span>Primary Element</span>
+                      <span>Primary Essence</span>
                       <strong>{detailPrimaryElement?.label ?? 'Sound'}</strong>
+                      <em>The companion's fixed core identity.</em>
                       <p>{detailPrimaryElement?.emotionalMeaning ?? 'Harmony, resonance, expression, and being emotionally heard.'}</p>
                     </div>
                   </article>
                   <article
                     class="tooltip-host"
-                    aria-label={`Secondary element. ${detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}`}
+                    aria-label={`Secondary expression. ${detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}`}
                   >
-                    <span>Secondary</span>
-                    <strong><Sparkles size={18} /> {detailSecondaryElement?.label ?? 'Light'}</strong>
+                    <span>Secondary Expression</span>
+                    <strong class="element-value">
+                      <img class="element-image" src={detailSecondaryElementAsset} alt="" loading="lazy" />
+                      {detailSecondaryElement?.label ?? 'Light'}
+                    </strong>
                     <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
                     <div class="tooltip-card compact-tooltip" role="tooltip">
-                      <span>Secondary Element</span>
+                      <span>Secondary Expression</span>
                       <strong>{detailSecondaryElement?.label ?? 'Light'}</strong>
+                      <em>The companion's current emotional style and evolution path.</em>
                       <p>{detailSecondaryElement?.emotionalMeaning ?? 'Hope, warmth, emotional openness, and gentle clarity.'}</p>
                     </div>
                   </article>
                 </div>
-                <div class="element-domain">
-                  <span>Emotional Domain</span>
-                  <strong>{detailElementProfile.emotionalDomain}</strong>
+                <div class="element-domain tooltip-host">
+                  <span>Supports</span>
+                  <strong>{detailEmotionalSupportLabel}</strong>
                   <p>{detailElementProfile.expressionLine}</p>
+                  <div class="tooltip-card compact-tooltip" role="tooltip">
+                    <span>Supports</span>
+                    <strong>{detailEmotionalSupportLabel}</strong>
+                    <p>The kind of emotional support this companion naturally offers.</p>
+                  </div>
                 </div>
-                <div class="ritual-row" aria-label="Preferred rituals">
-                  {#each detailElementProfile.preferredRituals as ritual}
-                    <b>{ritual}</b>
-                  {/each}
+                <div class="ritual-block">
+                  <span>Preferred Rituals</span>
+                  <div class="ritual-row" aria-label="Preferred rituals">
+                    {#each detailElementProfile.preferredRituals as ritual}
+                      <b>{ritual}</b>
+                    {/each}
+                  </div>
                 </div>
               </div>
               <div class="detail-section">
@@ -2672,7 +2733,8 @@
 
   .element-profile-head > span,
   .element-pair article > span,
-  .element-domain > span {
+  .element-domain > span,
+  .ritual-block > span {
     color: rgba(220, 216, 237, 0.68);
     font-size: 0.66rem;
     font-weight: 800;
@@ -2705,6 +2767,21 @@
     border-radius: 0.78rem;
     background: rgba(9, 10, 29, 0.38);
     padding: 0.58rem;
+  }
+
+  .element-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+  }
+
+  .element-image {
+    width: 1.42rem;
+    height: 1.42rem;
+    flex: 0 0 auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 0.55rem rgba(183, 92, 255, 0.34));
   }
 
   .tooltip-host {
@@ -2848,6 +2925,11 @@
   .element-domain {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
+  }
+
+  .ritual-block {
+    display: grid;
+    gap: 0.42rem;
   }
 
   .tag-row,
