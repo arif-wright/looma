@@ -244,6 +244,7 @@
     const stats = companion?.stats ?? null;
     const statsBondLevel = Array.isArray(stats) ? stats[0]?.bond_level : stats?.bond_level;
     const id = companion?.id as string;
+    const archetype = resolveSceneArchetype(companion?.species);
     return {
       id,
       name: companion?.name ?? 'Companion',
@@ -256,6 +257,7 @@
       bond: resolveBondPercent(companion),
       mood: normalizedMood(companion?.mood_label ?? companion?.mood),
       accent: companionAccent(companion?.species, index),
+      backgroundUrl: backgroundByArchetype[archetype] ?? '/assets/muse_background.png',
       favorite: forceActive || id === activeCompanionId || Boolean(companion?.is_active),
       avatarUrl: companion?.avatar_url ?? null,
       activating: settingActiveCompanionId === id,

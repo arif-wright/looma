@@ -9,6 +9,7 @@
   export let accent = 'violet';
   export let favorite = false;
   export let avatarUrl: string | null = null;
+  export let backgroundUrl: string | null = null;
   export let href: string | null = null;
   export let activating = false;
   export let onActivate: (id: string) => void = () => {};
@@ -21,9 +22,12 @@
         : accent === 'silver'
           ? 'rgba(188, 199, 220, 0.88)'
           : 'rgba(118, 220, 255, 0.94)';
+  $: cardStyle = backgroundUrl
+    ? `--accent: ${hue}; --card-bg: url('${backgroundUrl}')`
+    : `--accent: ${hue}`;
 </script>
 
-<article class="companion-card" style={`--accent: ${hue}`}>
+<article class="companion-card" style={cardStyle}>
   {#if href}
     <a class="card-link" href={href} aria-label={`Open ${name}`}></a>
   {/if}
@@ -73,6 +77,31 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
+  .companion-card::before,
+  .companion-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .companion-card::before {
+    z-index: 0;
+    background-image: var(--card-bg, none);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.52;
+    filter: saturate(1.2) contrast(1.06);
+    transform: scale(1.04);
+  }
+
+  .companion-card::after {
+    z-index: 1;
+    background:
+      radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--accent), transparent 38%), transparent 38%),
+      linear-gradient(180deg, rgba(7, 8, 24, 0.14), rgba(7, 8, 24, 0.84) 72%, rgba(5, 6, 18, 0.94));
+  }
+
   .favorite {
     position: absolute;
     right: 0.75rem;
@@ -107,6 +136,8 @@
   }
 
   .portrait {
+    position: relative;
+    z-index: 2;
     display: grid;
     height: 7.1rem;
     place-items: center;
