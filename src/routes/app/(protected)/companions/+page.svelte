@@ -7,7 +7,10 @@
     ChevronDown,
     Gem,
     Heart,
+    BookOpen,
+    Lock,
     Pencil,
+    Play,
     Plus,
     Search,
     Shield,
@@ -136,6 +139,15 @@
     description: string;
     time: string;
     type: 'level' | 'bond' | 'gift' | 'trait' | 'story' | 'ritual';
+  };
+
+  type StoryMemoryView = {
+    index: number;
+    title: string;
+    label: string;
+    body: string;
+    unlocked: boolean;
+    unlockCondition: string;
   };
 
   const elementProfileDisplayLabels: Record<string, string> = {
@@ -287,6 +299,35 @@
     if (score >= 42) return { potential: 'Steady', harmony: 'Steady' };
     if (score >= 14) return { potential: 'Steady', harmony: 'Stirring' };
     return { potential: 'Low', harmony: 'Dormant' };
+  };
+
+  const buildStoryMemories = (identity: ReturnType<typeof getCompanionIdentity>): StoryMemoryView[] => {
+    const unlockedFragments = [identity.story.origin, ...identity.story.sharedMemories, ...identity.story.unlockedFragments];
+    const lockedFragments = identity.story.lockedFragments;
+    const defaults = [
+      'A Spark of Life',
+      'First Awakening',
+      'Bonds Formed',
+      'Trials of Trust',
+      'Embracing Purpose',
+      'A Future Together'
+    ];
+    return defaults.map((title, index) => {
+      const unlocked = unlockedFragments[index] ?? null;
+      const locked = lockedFragments[index - unlockedFragments.length] ?? null;
+      const fragment = unlocked ?? locked;
+      const isUnlocked = Boolean(unlocked);
+      return {
+        index: index + 1,
+        title: index === 0 ? title : fragment?.title ?? title,
+        label: isUnlocked ? (index === 0 ? 'The beginning' : fragment?.type ?? 'Memory') : 'Locked',
+        body:
+          fragment?.body ??
+          `${identity.name}'s next memory is still gathering. Return through rituals, gifts, and shared moments to open it.`,
+        unlocked: isUnlocked,
+        unlockCondition: isUnlocked ? 'Unlocked' : fragment?.unlockCondition ?? 'Continue the bond'
+      };
+    });
   };
 
   const toStamp = (value: string | null | undefined) => {
@@ -451,6 +492,8 @@
   let giftPathOpen = false;
   let giftPathSelectedGiftId: string | null = null;
   let growthPathOpen = false;
+  let storyMemoriesOpen = false;
+  let selectedStoryMemoryIndex = 1;
 
   const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
   const stableSig = (value: Record<string, unknown>) => {
@@ -753,6 +796,11 @@
 
   const openGrowthPath = () => {
     growthPathOpen = true;
+  };
+
+  const openStoryMemories = () => {
+    selectedStoryMemoryIndex = activeStoryMemory?.index ?? 1;
+    storyMemoriesOpen = true;
   };
 
   const applyCareUpdate = (id: string, updated: Companion) => {
@@ -1302,6 +1350,13 @@
       }
     ].filter(Boolean) as GrowthMilestoneView[]
   );
+  $: storyMemories = buildStoryMemories(detailIdentity);
+  $: unlockedStoryMemories = storyMemories.filter((memory) => memory.unlocked);
+  $: storyProgressPercent =
+    storyMemories.length > 0 ? Math.min(100, Math.round((unlockedStoryMemories.length / storyMemories.length) * 100)) : 0;
+  $: activeStoryMemory =
+    storyMemories.find((memory) => memory.index === selectedStoryMemoryIndex) ?? unlockedStoryMemories[0] ?? storyMemories[0] ?? null;
+  $: nextStoryMemory = storyMemories.find((memory) => !memory.unlocked) ?? null;
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1870,61 +1925,53 @@
             </div>
           {:else}
             <div class="detail-tab-panel story-panel">
-              <button type="button" class="compact-tile story-card origin tooltip-host">
-                <span class="tile-icon" aria-hidden="true"><Sparkles size={17} /></span>
-                <span class="tile-copy">
-                  <strong>{detailIdentity.story.origin.title}</strong>
-                  <small>Origin</small>
+              <section class="story-progress-card">
+                <strong>Story Progress</strong>
+                <p>{unlockedStoryMemories.length} / {storyMemories.length} Memories Unlocked</p>
+                <div class="story-progress-meter">
+                  <span><i style={`width:${storyProgressPercent}%`}></i></span>
+                  <small>{storyProgressPercent}%</small>
+                </div>
+              </section>
+
+              <button type="button" class="story-bonus-card tooltip-host" on:click={openStoryMemories}>
+                <span class="story-orb" aria-hidden="true"><BookOpen size={24} /></span>
+                <span>
+                  <strong>Lore Bonus</strong>
+                  <small>Unlock more memories to gain +5% Bond Growth</small>
                 </span>
-                <div class="tooltip-card story-tooltip" role="tooltip">
-                  <span>Origin</span>
-                  <strong>{detailIdentity.story.origin.title}</strong>
-                  <p>{detailIdentity.story.origin.body}</p>
+                <div class="tooltip-card compact-tooltip" role="tooltip">
+                  <span>Lore Bonus</span>
+                  <strong>Memories deepen the bond</strong>
+                  <p>Story memories shape companion reactions, rituals, and emotional continuity.</p>
                 </div>
               </button>
-              {#each detailIdentity.story.sharedMemories as memory}
-                <button type="button" class="compact-tile story-card tooltip-host">
-                  <span class="tile-icon" aria-hidden="true"><Heart size={17} fill="currentColor" /></span>
-                  <span class="tile-copy">
-                    <strong>{memory.title}</strong>
-                    <small>Shared Memory</small>
-                  </span>
-                  <div class="tooltip-card story-tooltip" role="tooltip">
-                    <span>Shared Memory</span>
-                    <strong>{memory.title}</strong>
-                    <p>{memory.body}</p>
-                  </div>
-                </button>
-              {/each}
-              {#each detailIdentity.story.unlockedFragments as fragment}
-                <button type="button" class="compact-tile story-card tooltip-host">
-                  <span class="tile-icon" aria-hidden="true"><Star size={17} /></span>
-                  <span class="tile-copy">
-                    <strong>{fragment.title}</strong>
-                    <small>{fragment.type}</small>
-                  </span>
-                  <div class="tooltip-card story-tooltip" role="tooltip">
-                    <span>{fragment.type}</span>
-                    <strong>{fragment.title}</strong>
-                    <p>{fragment.body}</p>
-                    <b>{fragment.unlockCondition}</b>
-                  </div>
-                </button>
-              {/each}
-              {#each detailIdentity.story.lockedFragments as fragment}
-                <button type="button" class="compact-tile story-card locked tooltip-host">
-                  <span class="tile-icon" aria-hidden="true"><Shield size={17} /></span>
-                  <span class="tile-copy">
-                    <strong>{fragment.title}</strong>
-                    <small>{fragment.unlockCondition}</small>
-                  </span>
-                  <div class="tooltip-card story-tooltip" role="tooltip">
-                    <span>{fragment.unlockCondition}</span>
-                    <strong>{fragment.title}</strong>
-                    <p>{fragment.body}</p>
-                  </div>
-                </button>
-              {/each}
+
+              <section class="next-memory-card">
+                <span>Next Memory</span>
+                {#if nextStoryMemory}
+                  <button type="button" class="memory-preview-row tooltip-host" on:click={openStoryMemories}>
+                    <span class="memory-lock" aria-hidden="true"><Lock size={16} /></span>
+                    <span>
+                      <strong>{nextStoryMemory.index}. {nextStoryMemory.title}</strong>
+                      <small>{nextStoryMemory.body}</small>
+                    </span>
+                    <div class="tooltip-card compact-tooltip" role="tooltip">
+                      <span>{nextStoryMemory.unlockCondition}</span>
+                      <strong>{nextStoryMemory.title}</strong>
+                      <p>{nextStoryMemory.body}</p>
+                    </div>
+                  </button>
+                {:else if activeStoryMemory}
+                  <button type="button" class="memory-preview-row tooltip-host" on:click={openStoryMemories}>
+                    <span class="memory-lock is-open" aria-hidden="true"><Sparkles size={16} /></span>
+                    <span>
+                      <strong>{activeStoryMemory.index}. {activeStoryMemory.title}</strong>
+                      <small>All current memories are open.</small>
+                    </span>
+                  </button>
+                {/if}
+              </section>
             </div>
           {/if}
           <div class="detail-actions">
@@ -1945,6 +1992,15 @@
               >
                 <TrendingUp size={18} />
                 <span>View Growth Path</span>
+              </button>
+            {:else if activeDetailTab === 'story'}
+              <button
+                type="button"
+                class="primary-action level-skill-action"
+                on:click={openStoryMemories}
+              >
+                <BookOpen size={18} />
+                <span>View All Memories</span>
               </button>
             {:else}
               <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
@@ -1993,6 +2049,61 @@
   nextStageLevel={nextGrowthStage?.unlockLevel ?? null}
   onClose={() => (growthPathOpen = false)}
 />
+
+<Modal
+  open={storyMemoriesOpen}
+  title={detailCompanion ? `${detailCompanion.name}'s Story` : 'Companion Story'}
+  onClose={() => (storyMemoriesOpen = false)}
+>
+  {#if detailCompanion && activeStoryMemory}
+    <section class="story-memories-modal">
+      <aside class="story-memory-list" aria-label={`${detailCompanion.name}'s memories`}>
+        {#each storyMemories as memory}
+          <button
+            type="button"
+            class:is-active={memory.index === activeStoryMemory.index}
+            class:is-locked={!memory.unlocked}
+            on:click={() => {
+              if (memory.unlocked) selectedStoryMemoryIndex = memory.index;
+            }}
+          >
+            <span>
+              {#if memory.unlocked}
+                <Sparkles size={18} />
+              {:else}
+                <Lock size={16} />
+              {/if}
+            </span>
+            <strong>{memory.index}. {memory.title}</strong>
+            <small>{memory.label}</small>
+          </button>
+        {/each}
+      </aside>
+
+      <article class="story-feature-card">
+        <div class="story-feature-art" aria-hidden="true">
+          <img src={detailCompanion.avatar_url ?? '/avatar-fallback.png'} alt="" />
+        </div>
+        <div class="story-feature-copy">
+          <h3>{activeStoryMemory.index}. {activeStoryMemory.title}</h3>
+          <p>{activeStoryMemory.body}</p>
+          <div class="memory-unlocked-row">
+            <span><Sparkles size={20} /></span>
+            <div>
+              <strong>Memory Unlocked</strong>
+              <small>You discovered {detailCompanion.name}'s origin.</small>
+            </div>
+            <b>Unlocked</b>
+          </div>
+          <button type="button" class="watch-memory-button" on:click={() => showToast('Memory playback is coming soon')}>
+            <Play size={16} />
+            Watch Memory
+          </button>
+        </div>
+      </article>
+    </section>
+  {/if}
+</Modal>
 
 <CompanionModal
   open={Boolean(selectedForCare)}
@@ -3172,75 +3283,6 @@
     gap: 0.55rem;
   }
 
-  .compact-tile {
-    position: relative;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 0.55rem;
-    min-height: 3.45rem;
-    border: 1px solid rgba(153, 130, 236, 0.16);
-    border-radius: 0.8rem;
-    background:
-      radial-gradient(circle at 50% 0%, rgba(183, 92, 255, 0.12), transparent 60%),
-      rgba(255, 255, 255, 0.045);
-    color: rgba(248, 246, 255, 0.92);
-    cursor: help;
-    font: inherit;
-    padding: 0.52rem 0.58rem;
-    text-align: left;
-  }
-
-  .compact-tile:hover,
-  .compact-tile:focus-visible {
-    border-color: rgba(183, 92, 255, 0.48);
-    outline: none;
-    box-shadow: 0 0 1.1rem rgba(183, 92, 255, 0.16);
-  }
-
-  .tile-icon {
-    display: grid;
-    width: 2.12rem;
-    height: 2.12rem;
-    place-items: center;
-    border: 1px solid rgba(221, 170, 92, 0.22);
-    border-radius: 0.7rem;
-    background:
-      radial-gradient(circle at 50% 34%, rgba(221, 170, 92, 0.22), transparent 52%),
-      rgba(10, 11, 31, 0.58);
-    color: #ddaa5c;
-  }
-
-  .tile-copy {
-    display: grid;
-    min-width: 0;
-    gap: 0.18rem;
-  }
-
-  .tile-copy strong,
-  .tile-copy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tile-copy strong {
-    color: rgba(255, 250, 242, 0.96);
-    font-size: 0.78rem;
-    line-height: 1.18;
-  }
-
-  .tile-copy small {
-    color: rgba(220, 216, 237, 0.64);
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: capitalize;
-  }
-
-  .compact-tile .tooltip-card {
-    bottom: calc(100% + 0.5rem);
-  }
-
   .skills-panel {
     gap: 0.82rem;
   }
@@ -3517,8 +3559,7 @@
   }
 
   .section-heading > span,
-  .gift-group > span,
-  .story-card > span {
+  .gift-group > span {
     color: #a97be1;
     font-size: 0.72rem;
     font-weight: 900;
@@ -3531,51 +3572,124 @@
     font-size: 1rem;
   }
 
-  .story-card {
+  .story-panel {
+    gap: 0.78rem;
+  }
+
+  .story-progress-card,
+  .story-bonus-card,
+  .next-memory-card,
+  .memory-preview-row {
     border: 1px solid rgba(153, 130, 236, 0.15);
-    border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.045);
+    border-radius: 0.92rem;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(183, 92, 255, 0.12), transparent 58%),
+      rgba(255, 255, 255, 0.04);
+  }
+
+  .story-progress-card,
+  .next-memory-card {
+    display: grid;
+    gap: 0.52rem;
     padding: 0.78rem;
   }
 
-  .story-card strong {
+  .story-progress-card strong,
+  .story-bonus-card strong,
+  .next-memory-card > span,
+  .memory-preview-row strong {
     color: rgba(255, 250, 242, 0.96);
   }
 
-  .story-card p {
+  .story-progress-card p,
+  .story-bonus-card small,
+  .memory-preview-row small {
     margin: 0;
     color: rgba(220, 216, 237, 0.66);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 700;
     line-height: 1.45;
   }
 
-  .story-panel {
-    max-height: 24rem;
+  .story-progress-meter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.6rem;
   }
 
-  .story-card.origin {
-    background:
-      radial-gradient(circle at 18% 0%, rgba(221, 170, 92, 0.13), transparent 52%),
-      rgba(255, 255, 255, 0.045);
+  .story-progress-meter > span {
+    display: block;
+    height: 0.34rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
   }
 
-  .story-card.locked {
-    border-style: dashed;
-    opacity: 0.78;
+  .story-progress-meter i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7d4dff, #db63ff);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.5);
   }
 
-  .story-card.compact-tile {
+  .story-progress-meter small {
+    color: rgba(220, 216, 237, 0.7);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .story-bonus-card,
+  .memory-preview-row {
+    position: relative;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.55rem;
-    min-height: 3.45rem;
-    padding: 0.52rem 0.58rem;
+    align-items: center;
+    gap: 0.72rem;
+    color: rgba(248, 246, 255, 0.94);
+    cursor: pointer;
+    font: inherit;
+    padding: 0.72rem;
+    text-align: left;
   }
 
-  .story-card.origin.compact-tile {
+  .story-orb,
+  .memory-lock {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    border: 1px solid rgba(153, 88, 255, 0.34);
+    border-radius: 999px;
     background:
-      radial-gradient(circle at 18% 0%, rgba(221, 170, 92, 0.16), transparent 56%),
-      rgba(255, 255, 255, 0.045);
+      radial-gradient(circle at 50% 34%, rgba(183, 92, 255, 0.34), transparent 58%),
+      rgba(13, 15, 38, 0.92);
+    color: #b75cff;
+  }
+
+  .memory-lock {
+    width: 2.75rem;
+    height: 2.75rem;
+    color: rgba(220, 216, 237, 0.7);
+  }
+
+  .memory-lock.is-open {
+    color: #b75cff;
+  }
+
+  .story-bonus-card:hover,
+  .memory-preview-row:hover,
+  .story-bonus-card:focus-visible,
+  .memory-preview-row:focus-visible {
+    border-color: rgba(183, 92, 255, 0.55);
+    outline: none;
+    box-shadow: 0 0 1.1rem rgba(183, 92, 255, 0.16);
+  }
+
+  .next-memory-card > span {
+    font-size: 0.82rem;
+    font-weight: 900;
   }
 
   .favorite-gift-grid {
@@ -3637,6 +3751,174 @@
     height: auto;
     overflow: visible;
     clip: auto;
+  }
+
+  .story-memories-modal {
+    display: grid;
+    grid-template-columns: minmax(13rem, 0.82fr) minmax(0, 1.35fr);
+    gap: 1rem;
+  }
+
+  .story-memory-list {
+    display: grid;
+    gap: 0.65rem;
+    align-content: start;
+  }
+
+  .story-memory-list button {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 4.6rem;
+    border: 1px solid rgba(153, 130, 236, 0.14);
+    border-radius: 0.86rem;
+    background: rgba(255, 255, 255, 0.035);
+    color: rgba(248, 246, 255, 0.9);
+    cursor: pointer;
+    font: inherit;
+    padding: 0.72rem;
+    text-align: left;
+  }
+
+  .story-memory-list button.is-active {
+    border-color: rgba(183, 92, 255, 0.78);
+    background:
+      radial-gradient(circle at 18% 0%, rgba(183, 92, 255, 0.18), transparent 60%),
+      rgba(93, 57, 202, 0.12);
+    box-shadow: 0 0 1rem rgba(183, 92, 255, 0.14);
+  }
+
+  .story-memory-list button.is-locked {
+    opacity: 0.55;
+  }
+
+  .story-memory-list button > span {
+    display: grid;
+    grid-row: span 2;
+    width: 2.55rem;
+    height: 2.55rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(183, 92, 255, 0.12);
+    color: #b75cff;
+  }
+
+  .story-memory-list strong,
+  .story-memory-list small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .story-memory-list strong {
+    color: rgba(255, 250, 242, 0.96);
+    font-size: 0.86rem;
+  }
+
+  .story-memory-list small {
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.76rem;
+    font-weight: 750;
+  }
+
+  .story-feature-card {
+    overflow: hidden;
+    border: 1px solid rgba(153, 130, 236, 0.18);
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(183, 92, 255, 0.12), transparent 64%),
+      rgba(10, 11, 31, 0.7);
+  }
+
+  .story-feature-art {
+    display: grid;
+    min-height: 16rem;
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 44%, rgba(183, 92, 255, 0.36), transparent 32%),
+      radial-gradient(circle at 20% 20%, rgba(102, 216, 255, 0.12), transparent 25%),
+      linear-gradient(135deg, rgba(20, 10, 56, 0.95), rgba(7, 9, 28, 0.95));
+  }
+
+  .story-feature-art img {
+    width: min(15rem, 70%);
+    height: 15rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 1.6rem rgba(183, 92, 255, 0.48));
+  }
+
+  .story-feature-copy {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .story-feature-copy h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.18rem;
+  }
+
+  .story-feature-copy p {
+    margin: 0;
+    color: rgba(220, 216, 237, 0.76);
+    font-size: 0.88rem;
+    font-weight: 650;
+    line-height: 1.48;
+  }
+
+  .memory-unlocked-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    border-top: 1px solid rgba(153, 130, 236, 0.12);
+    border-bottom: 1px solid rgba(153, 130, 236, 0.12);
+    padding: 0.75rem 0;
+  }
+
+  .memory-unlocked-row > span {
+    display: grid;
+    width: 2.7rem;
+    height: 2.7rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(183, 92, 255, 0.13);
+    color: #b75cff;
+  }
+
+  .memory-unlocked-row strong {
+    display: block;
+    color: rgba(255, 250, 242, 0.96);
+    font-size: 0.82rem;
+  }
+
+  .memory-unlocked-row small {
+    color: rgba(220, 216, 237, 0.62);
+    font-size: 0.76rem;
+    font-weight: 750;
+  }
+
+  .memory-unlocked-row b {
+    color: #7df38f;
+    font-size: 0.78rem;
+  }
+
+  .watch-memory-button {
+    display: inline-flex;
+    min-height: 2.8rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    border: 1px solid rgba(207, 100, 255, 0.52);
+    border-radius: 0.82rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 44%),
+      linear-gradient(135deg, #5c39f0 0%, #7f35ee 52%, #9c42f1 100%);
+    color: white;
+    cursor: pointer;
+    font-weight: 900;
   }
 
   .detail-actions {
