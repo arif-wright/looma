@@ -359,6 +359,14 @@ export const sampleCompanionIdentityProfiles = {
   Aqua: { archetype: 'root', primary: 'root', secondary: 'tide' }
 } satisfies Record<string, { archetype: CanonicalArchetypeId; primary: CompanionElementId; secondary: CompanionElementId }>;
 
+const defaultPersonalityByArchetype: Record<CanonicalArchetypeId, string[]> = {
+  muse: ['Empathetic', 'Expressive', 'Soothing'],
+  guardian: ['Loyal', 'Steady', 'Protective'],
+  spark: ['Playful', 'Curious', 'Energetic'],
+  root: ['Patient', 'Grounded', 'Nurturing'],
+  echo: ['Reflective', 'Observant', 'Sentimental']
+};
+
 const clampPercent = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
 const companionBond = (companion: Companion | null | undefined) => {
@@ -378,6 +386,16 @@ const sampleOverride = (companion: Companion | null | undefined) =>
 
 export const getCompanionArchetype = (archetypeId: string | null | undefined): CompanionArchetypeDefinition =>
   companionArchetypes[resolveCanonicalArchetypeId(archetypeId, 'muse')] ?? companionArchetypes.muse;
+
+export const getCompanionPersonality = (
+  archetypeId: CanonicalArchetypeId,
+  elementProfile: CompanionElementProfile
+): string[] => {
+  if (archetypeId === 'echo' && elementProfile.secondary === 'dream') {
+    return ['Reflective', 'Gentle', 'Observant'];
+  }
+  return [...(defaultPersonalityByArchetype[archetypeId] ?? defaultPersonalityByArchetype.muse)];
+};
 
 export const getCompanionElementProfile = (companion: Companion | string | null | undefined): CompanionElementProfile => {
   if (typeof companion === 'string' || companion == null) return getElementProfileForArchetype(companion ?? 'muse');
@@ -548,7 +566,7 @@ export const getCompanionIdentity = (companion: Companion | null | undefined): C
     mood: companion?.mood ?? 'steady',
     bond: companionBond(companion),
     elementProfile,
-    personality: [archetype.label, elementProfile.emotionalDomain, getElementById(elementProfile.secondary)?.label ?? 'Light'],
+    personality: getCompanionPersonality(archetype.id, elementProfile),
     favoriteGifts: elementProfile.preferredRituals,
     gifts: getGiftsForCompanion(companion),
     growth: getGrowthForCompanion(companion),

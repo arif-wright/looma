@@ -4,6 +4,7 @@ import {
   getCompanionArchetype,
   getCompanionElementProfile,
   getCompanionIdentity,
+  getCompanionPersonality,
   getElementGifts,
   getGiftsForCompanion,
   getGrowthMilestonesForArchetype,
@@ -42,6 +43,7 @@ describe('companion identity framework', () => {
     expect(identity.elementProfile.primary).toBe('sound');
     expect(identity.elementProfile.secondary).toBe('light');
     expect(identity.elementProfile.variantId).toBe('sound_light');
+    expect(identity.personality).toEqual(['Empathetic', 'Expressive', 'Soothing']);
     expect(identity.gifts.core.map((gift) => gift.id)).toContain('emotional_mirror');
     expect(identity.gifts.element.map((gift) => gift.id)).toContain('radiant_harmony');
     expect(identity.growth.milestones.length).toBe(5);
@@ -52,6 +54,29 @@ describe('companion identity framework', () => {
     expect(getCompanionElementProfile(companion({ name: 'Nova', species: 'muse' })).secondary).toBe('dream');
     expect(getCompanionElementProfile(companion({ name: 'Ember', species: 'guardian' })).primary).toBe('ember');
     expect(getCompanionElementProfile(companion({ name: 'Aqua', species: 'root' })).secondary).toBe('tide');
+  });
+
+  it('keeps elements and emotional domains out of personality tags', () => {
+    const identity = getCompanionIdentity(companion({ name: 'Fay', species: 'echo' }));
+
+    expect(identity.elementProfile.primary).toBe('echo');
+    expect(identity.elementProfile.secondary).toBe('dream');
+    expect(identity.elementProfile.emotionalDomain).toBe('Memory');
+    expect(identity.personality).toEqual(['Reflective', 'Gentle', 'Observant']);
+    expect(identity.personality).not.toContain('Echo');
+    expect(identity.personality).not.toContain('Memory');
+    expect(identity.personality).not.toContain('Dream');
+  });
+
+  it('resolves behavioral personality defaults by archetype', () => {
+    const sparkProfile = getCompanionElementProfile(companion({ name: 'Zephyr', species: 'spark' }));
+
+    expect(getCompanionPersonality('guardian', getCompanionElementProfile(companion({ name: 'Ember', species: 'guardian' })))).toEqual([
+      'Loyal',
+      'Steady',
+      'Protective'
+    ]);
+    expect(getCompanionPersonality('spark', sparkProfile)).toEqual(['Playful', 'Curious', 'Energetic']);
   });
 
   it('exposes typed helper slices for tab rendering', () => {
