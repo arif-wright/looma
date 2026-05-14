@@ -27,6 +27,7 @@
   import { createCompanionRosterState } from '$lib/stores/companionRosterState';
   import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
   import GiftPathModal from '$lib/components/companions/GiftPathModal.svelte';
+  import GrowthPathModal from '$lib/components/companions/GrowthPathModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
   import CompanionRitualList from '$lib/components/companions/CompanionRitualList.svelte';
   import BondMilestonesPanel from '$lib/components/companions/BondMilestonesPanel.svelte';
@@ -133,6 +134,13 @@
   type GiftPathSummaryRow = {
     label: string;
     value: string;
+  };
+
+  type GrowthMilestoneView = {
+    title: string;
+    description: string;
+    time: string;
+    type: 'level' | 'bond' | 'gift' | 'trait' | 'story' | 'ritual';
   };
 
   const elementProfileDisplayLabels: Record<string, string> = {
@@ -277,12 +285,13 @@
     return index;
   };
 
-  const getPotentialGrade = (bond: number, level: number) => {
+  const getGrowthResonance = (bond: number, level: number) => {
     const score = bond * 0.7 + level * 2;
-    if (score >= 92) return { label: 'Exceptional', grade: 'S', rank: 'Elite' };
-    if (score >= 72) return { label: 'High', grade: 'A', rank: 'Excellent' };
-    if (score >= 42) return { label: 'Promising', grade: 'B', rank: 'Steady' };
-    return { label: 'Emerging', grade: 'C', rank: 'Growing' };
+    if (score >= 92) return { potential: 'Exceptional', harmony: 'Radiant' };
+    if (score >= 72) return { potential: 'High', harmony: 'Flourishing' };
+    if (score >= 42) return { potential: 'Steady', harmony: 'Steady' };
+    if (score >= 14) return { potential: 'Steady', harmony: 'Stirring' };
+    return { potential: 'Low', harmony: 'Dormant' };
   };
 
   const toStamp = (value: string | null | undefined) => {
@@ -446,6 +455,7 @@
   let detailModelCompanionId: string | null = null;
   let giftPathOpen = false;
   let giftPathSelectedGiftId: string | null = null;
+  let growthPathOpen = false;
 
   const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
   const stableSig = (value: Record<string, unknown>) => {
@@ -744,6 +754,10 @@
   const openGiftPath = (gift: GiftPathRow | null = null) => {
     giftPathSelectedGiftId = gift?.id ?? featuredGift?.id ?? null;
     giftPathOpen = true;
+  };
+
+  const openGrowthPath = () => {
+    growthPathOpen = true;
   };
 
   const applyCareUpdate = (id: string, updated: Companion) => {
@@ -1262,9 +1276,39 @@
   $: growthXpPercent = growthXpTarget > 0 ? Math.min(100, Math.round((growthXpCurrent / growthXpTarget) * 100)) : 0;
   $: unlockedGiftCount = flattenGiftPathEntries(detailGiftPathEntries).filter((gift) => gift.displayState !== 'locked').length;
   $: growthTraitCount = detailIdentity.personality.length + detailIdentity.growth.milestones.filter((milestone) => milestone.unlocked).length;
-  $: growthPotential = getPotentialGrade(detailBond, detailLevel);
+  $: growthResonance = getGrowthResonance(detailBond, detailLevel);
   $: bondGrowthPercent = Math.min(99, Math.max(0, Math.round(detailBond * 0.28)));
   $: xpBonusPercent = Math.min(45, Math.max(0, Math.round(detailLevel * 0.72 + detailBond * 0.06)));
+  $: recentGrowthMilestones = (
+    [
+      {
+        title: `Reached Level ${detailLevel}`,
+        description: 'Your shared journey has opened a new stage.',
+        time: '2h ago',
+        type: 'level'
+      },
+      featuredGift
+        ? {
+            title: `Learned ${featuredGift.name}`,
+            description: 'Opened a new companion Gift.',
+            time: '1d ago',
+            type: 'gift'
+          }
+        : null,
+      {
+        title: `Bond increased to ${detailBond}%`,
+        description: `You and ${detailCompanion?.name ?? 'your companion'} are growing closer.`,
+        time: '2d ago',
+        type: 'bond'
+      },
+      {
+        title: `Unlocked Growth Trait: ${detailIdentity.personality[0] ?? 'Intuitive'}`,
+        description: `${detailCompanion?.name ?? 'Your companion'} gained a new trait.`,
+        time: '3d ago',
+        type: 'trait'
+      }
+    ].filter(Boolean) as GrowthMilestoneView[]
+  );
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1446,10 +1490,10 @@
               </div>
             </article>
             <article class="growth-stat">
-              <span class="stat-orb stat-orb--xp"><span>XP</span></span>
+              <span class="stat-orb stat-orb--xp"><Sparkles size={21} /></span>
               <div>
                 <strong>+{xpBonusPercent}%</strong>
-                <span>XP Bonus</span>
+                <span>Growth Bonus</span>
               </div>
             </article>
             <article class="growth-stat">
@@ -1462,8 +1506,8 @@
             <article class="growth-stat">
               <span class="stat-orb stat-orb--violet"><Trophy size={22} /></span>
               <div>
-                <strong>Rank {growthPotential.grade}</strong>
-                <span>Growth Rank</span>
+                <strong>{growthResonance.harmony}</strong>
+                <span>Growth Harmony</span>
               </div>
             </article>
           </section>
@@ -1507,7 +1551,7 @@
             <div class="growth-journey-head">
               <div>
                 <h2>Growth Journey</h2>
-                <p>Track your companion's development and unlock new potential.</p>
+                <p>Follow {detailCompanion.name}'s life stage, bond maturity, and shared memories.</p>
               </div>
               <div class="growth-journey-controls" aria-hidden="true">
                 <span><ChevronLeft size={18} /></span>
@@ -1545,27 +1589,27 @@
                 <p>Lvl {detailLevel} / {nextGrowthStage?.unlockLevel ?? 30}</p>
                 <div class="growth-meter"><span style={`width:${growthXpPercent}%`}></span></div>
                 <small>{growthXpCurrent.toLocaleString()} / {growthXpTarget.toLocaleString()} XP</small>
-                <em>Earn XP through adventures and daily activities.</em>
+                <em>Growth builds through daily returns, games, rituals, and shared time.</em>
               </article>
               <article class="growth-dashboard-card">
                 <span class="growth-card-icon growth-card-icon--heart"><Heart size={31} fill="currentColor" /></span>
                 <strong>Bond</strong>
                 <p>{detailBond}%</p>
                 <b>Trusted Companion</b>
-                <em>Strengthen your bond through time spent together.</em>
+                <em>Your relationship deepens through care, gifts, and remembered moments.</em>
               </article>
               <article class="growth-dashboard-card">
                 <span class="growth-card-icon growth-card-icon--violet"><Sparkles size={31} /></span>
-                <strong>Potential</strong>
-                <p>{growthPotential.label} <b>{growthPotential.grade}</b></p>
-                <em>Your companion shows {growthPotential.label.toLowerCase()} potential.</em>
+                <strong>Resonance Potential</strong>
+                <p>{growthResonance.potential}</p>
+                <em>{detailCompanion.name} responds strongly to rituals, gifts, and shared memories.</em>
               </article>
               <article class="growth-dashboard-card">
                 <span class="growth-card-icon growth-card-icon--green"><Leaf size={31} /></span>
                 <strong>Growth Traits</strong>
                 <p>{growthTraitCount} / 24</p>
                 <small>Traits Unlocked</small>
-                <em>Unlock new traits as your companion grows.</em>
+                <em>{detailCompanion.name} has learned traits that shape rituals, reactions, and story memories.</em>
               </article>
             </div>
 
@@ -1578,13 +1622,13 @@
                 <div class="recent-milestone-list">
                   <div class="recent-milestone">
                     <span class="milestone-icon milestone-icon--gold"><Trophy size={17} /></span>
-                    <p><strong>Reached Level {detailLevel}</strong><small>Your companion has grown stronger.</small></p>
+                    <p><strong>Reached Level {detailLevel}</strong><small>Your shared journey has opened a new stage.</small></p>
                     <time>2h ago</time>
                   </div>
                   {#if featuredGift}
                     <div class="recent-milestone">
                       <span class="milestone-icon milestone-icon--xp">XP</span>
-                      <p><strong>Learned {featuredGift.name}</strong><small>Opened a new companion gift.</small></p>
+                      <p><strong>Learned {featuredGift.name}</strong><small>Opened a new companion Gift.</small></p>
                       <time>1d ago</time>
                     </div>
                   {/if}
@@ -1614,7 +1658,7 @@
                 <small>{growthXpCurrent.toLocaleString()} / {growthXpTarget.toLocaleString()}</small>
                 <div class="reward-row">
                   <span><Trophy size={16} /> + Gift Slot</span>
-                  <span><Heart size={16} fill="currentColor" /> +10% Bond Cap</span>
+                  <span><Heart size={16} fill="currentColor" /> Deeper Bond</span>
                 </div>
               </article>
             </div>
@@ -1964,27 +2008,27 @@
               <button type="button" class="growth-detail-row tooltip-host">
                 <span class="growth-detail-icon" aria-hidden="true"><Sparkles size={22} /></span>
                 <span class="growth-detail-copy">
-                  <small>Potential</small>
-                  <strong class="green-copy">{growthPotential.label} · {growthPotential.grade}</strong>
-                  <em>Top {growthPotential.grade === 'S' ? '5' : '15'}% of companions</em>
+                  <small>Resonance Potential</small>
+                  <strong class="green-copy">{growthResonance.potential}</strong>
+                  <em>{detailCompanion.name} responds strongly to rituals and gifts.</em>
                 </span>
                 <div class="tooltip-card compact-tooltip" role="tooltip">
-                  <span>Potential</span>
-                  <strong>{growthPotential.label}</strong>
-                  <p>Potential reflects bond, level, opened gifts, and growth milestones.</p>
+                  <span>Resonance Potential</span>
+                  <strong>{growthResonance.potential}</strong>
+                  <p>{detailCompanion.name} responds strongly to rituals, gifts, and shared memories.</p>
                 </div>
               </button>
               <button type="button" class="growth-detail-row tooltip-host">
-                <span class="growth-detail-icon growth-detail-icon--rank" aria-hidden="true">{growthPotential.grade}</span>
+                <span class="growth-detail-icon growth-detail-icon--rank" aria-hidden="true"><Heart size={21} fill="currentColor" /></span>
                 <span class="growth-detail-copy">
-                  <small>Growth Rank</small>
-                  <strong class="green-copy">{growthPotential.rank}</strong>
-                  <em>Above average growth rate</em>
+                  <small>Growth Harmony</small>
+                  <strong class="green-copy">{growthResonance.harmony}</strong>
+                  <em>Your bond is helping {detailCompanion.name} grow steadily.</em>
                 </span>
                 <div class="tooltip-card compact-tooltip" role="tooltip">
-                  <span>Growth Rank</span>
-                  <strong>Rank {growthPotential.grade}</strong>
-                  <p>{detailCompanion.name}'s growth rank updates as your bond and stage progress.</p>
+                  <span>Growth Harmony</span>
+                  <strong>{growthResonance.harmony}</strong>
+                  <p>{detailCompanion.name} is growing with steady resonance.</p>
                 </div>
               </button>
             </div>
@@ -2061,10 +2105,10 @@
               <button
                 type="button"
                 class="primary-action level-skill-action"
-                on:click={() => showToast('Growth guide is coming soon')}
+                on:click={openGrowthPath}
               >
                 <TrendingUp size={18} />
-                <span>View Growth Guide</span>
+                <span>View Growth Path</span>
               </button>
             {:else}
               <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
@@ -2094,6 +2138,24 @@
   {giftCategoryLabels}
   {getElementAssetPath}
   onClose={() => (giftPathOpen = false)}
+/>
+
+<GrowthPathModal
+  open={growthPathOpen}
+  companionName={detailCompanion?.name ?? 'Companion'}
+  stages={growthStages}
+  currentStageIndex={growthStageIndex}
+  level={detailLevel}
+  bond={detailBond}
+  growthBonus={xpBonusPercent}
+  giftsLearned={unlockedGiftCount}
+  resonancePotential={growthResonance.potential}
+  growthHarmony={growthResonance.harmony}
+  traits={detailIdentity.personality}
+  milestones={recentGrowthMilestones}
+  nextStageLabel={nextGrowthStage?.label ?? null}
+  nextStageLevel={nextGrowthStage?.unlockLevel ?? null}
+  onClose={() => (growthPathOpen = false)}
 />
 
 <CompanionModal
