@@ -4,6 +4,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
   import {
+    ArrowUp,
     ChevronDown,
     Gem,
     Heart,
@@ -34,7 +35,7 @@
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
-  import { getCompanionIdentity, getElementById, type GiftCategory } from '$lib/companions/identity';
+  import { getCompanionIdentity, getElementById } from '$lib/companions/identity';
   import { getFavoriteGiftItemsForCompanion, calculateGiftBondGain } from '$lib/companions/giftPreferences';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
@@ -111,6 +112,13 @@
     href: string;
   };
 
+  type CompanionSkillDisplay = {
+    name: string;
+    description: string;
+    level: number;
+    element: string;
+  };
+
   const elementProfileDisplayLabels: Record<string, string> = {
     sound_light: 'Radiant Muse',
     sound_dream: 'Dreamsong Muse',
@@ -121,6 +129,39 @@
     spark_light: 'Radiant Spark',
     root_tide: 'Tidal Root',
     echo_dream: 'Dream Archive Echo'
+  };
+
+  const companionSkillPresets: Record<string, Omit<CompanionSkillDisplay, 'level'>[]> = {
+    muse: [
+      { name: 'Harmonic Mirror', description: 'Reflects feelings back with softer language and emotional clarity.', element: 'sound' },
+      { name: 'Resonance Pulse', description: 'Restores focus and steadies the bond through shared rhythm.', element: 'light' },
+      { name: 'Gentle Reframe', description: 'Helps difficult thoughts find a kinder shape.', element: 'sound' },
+      { name: 'Aura Bloom', description: 'Emits a calming presence that soothes nearby companions.', element: 'light' }
+    ],
+    guardian: [
+      { name: 'Safe Harbor', description: 'Creates a steady emotional space during stressful moments.', element: 'ember' },
+      { name: 'Boundary Watch', description: 'Helps protect attention, energy, and personal limits.', element: 'root' },
+      { name: 'Courage Ember', description: 'Turns small acts of bravery into durable momentum.', element: 'ember' },
+      { name: 'Steady Guard', description: 'Reduces overwhelm and keeps the companion bond anchored.', element: 'root' }
+    ],
+    spark: [
+      { name: 'Quickstart', description: 'Adds a bright nudge when starting feels harder than finishing.', element: 'spark' },
+      { name: 'Curiosity Ping', description: 'Highlights playful paths, discoveries, and small experiments.', element: 'light' },
+      { name: 'Momentum Loop', description: 'Builds energy through action, reward, and return.', element: 'spark' },
+      { name: 'Play Signal', description: 'Invites lightness when the day needs motion and color.', element: 'light' }
+    ],
+    root: [
+      { name: 'Grounding Pulse', description: 'Settles scattered energy into a slower, safer rhythm.', element: 'root' },
+      { name: 'Steady Return', description: 'Makes coming back feel gentle instead of overdue.', element: 'tide' },
+      { name: 'Quiet Growth', description: 'Turns consistent care into calm progress over time.', element: 'root' },
+      { name: 'Rest Root', description: 'Supports recovery, patience, and low-pressure reflection.', element: 'tide' }
+    ],
+    echo: [
+      { name: 'Mind Echo', description: 'Reflects emotions, restoring energy to you and your companion.', element: 'echo' },
+      { name: 'Dreamweave', description: 'Weaves a soft dreamscape that eases stress and promotes rest.', element: 'dream' },
+      { name: 'Insight Pulse', description: 'Detects emotional shifts and reveals hidden feelings.', element: 'echo' },
+      { name: 'Aura Bloom', description: 'Emits a calming aura that soothes nearby companions.', element: 'dream' }
+    ]
   };
 
   const SAFE_LOAD_ERROR = 'Something didn\'t load. Try again.';
@@ -143,6 +184,15 @@
   const getElementAssetPath = (elementId: string | null | undefined) => {
     const normalized = (elementId ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
     return normalized ? `/assets/Elements/element-${normalized}.png` : '/assets/Elements/element-light.png';
+  };
+
+  const getCompanionSkillRows = (archetypeId: string, level: number): CompanionSkillDisplay[] => {
+    const presets = companionSkillPresets[archetypeId] ?? companionSkillPresets.muse ?? [];
+    const baseLevel = Math.max(1, Math.min(3, Math.ceil(level / 8)));
+    return presets.map((skill, index) => ({
+      ...skill,
+      level: archetypeId === 'echo' ? [3, 2, 3, 1][index] ?? baseLevel : Math.max(1, Math.min(3, baseLevel - (index === 3 ? 1 : 0)))
+    }));
   };
 
   const toStamp = (value: string | null | undefined) => {
@@ -1064,12 +1114,6 @@
     { key: 'growth', label: 'Growth' },
     { key: 'story', label: 'Story' }
   ];
-  const giftGroups: Array<{ key: GiftCategory; label: string }> = [
-    { key: 'core', label: 'Core Gifts' },
-    { key: 'element', label: 'Element Gifts' },
-    { key: 'bond', label: 'Bond Gifts' },
-    { key: 'story', label: 'Story Gifts' }
-  ];
   const activeProfileAvatar =
     ($page.data?.profile as any)?.avatar_url ??
     ($page.data?.user as any)?.user_metadata?.avatar_url ??
@@ -1106,6 +1150,7 @@
   $: detailElementProfileLabel = getElementProfileDisplayLabel(detailElementProfile.variantId);
   $: detailPrimaryElementAsset = getElementAssetPath(detailElementProfile.primary);
   $: detailSecondaryElementAsset = getElementAssetPath(detailElementProfile.secondary);
+  $: detailSkillRows = getCompanionSkillRows(detailIdentity.archetype.id, detailIdentity.level);
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
@@ -1538,50 +1583,25 @@
               </div>
             </div>
           {:else if activeDetailTab === 'skills'}
-            <div class="detail-tab-panel">
-              <div class="compact-section-head">
-                <span>Companion Gifts</span>
-                <strong>{detailCompanion.name}'s Gifts</strong>
-              </div>
-              {#each giftGroups as group}
-                {#if detailIdentity.gifts[group.key].length > 0}
-                  <div class="gift-group compact-group">
-                    <span>{group.label}</span>
-                    <div class="compact-tile-grid">
-                    {#each detailIdentity.gifts[group.key] as gift (gift.id)}
-                      <button type="button" class="compact-tile gift-card tooltip-host" aria-label={`${gift.name}. ${gift.description}`}>
-                        <span class="tile-icon" aria-hidden="true">
-                          {#if group.key === 'core'}
-                            <Sparkles size={17} />
-                          {:else if group.key === 'element'}
-                            <Gem size={17} />
-                          {:else if group.key === 'bond'}
-                            <Heart size={17} fill="currentColor" />
-                          {:else}
-                            <Star size={17} />
-                          {/if}
-                        </span>
-                        <span class="tile-copy">
-                          <strong>{gift.name}</strong>
-                          <small>{gift.state}</small>
-                        </span>
-                        <div class="tooltip-card gift-tooltip" role="tooltip">
-                          <span>{group.label}</span>
-                          <strong>{gift.name}</strong>
-                          <p>{gift.description}</p>
-                          <em>{gift.effectSummary}</em>
-                          <small>{gift.visualBehavior}</small>
-                          {#if gift.state === 'locked'}
-                            <b>{gift.unlockCondition}</b>
-                          {:else}
-                            <b>{gift.state}</b>
-                          {/if}
-                        </div>
-                      </button>
-                    {/each}
-                    </div>
+            <div class="detail-tab-panel skills-panel">
+              {#each detailSkillRows as skill (skill.name)}
+                <button type="button" class="skill-row tooltip-host" aria-label={`${skill.name}, level ${skill.level}. ${skill.description}`}>
+                  <span class="skill-icon" aria-hidden="true">
+                    <img src={getElementAssetPath(skill.element)} alt="" loading="lazy" />
+                  </span>
+                  <span class="skill-copy">
+                    <span class="skill-title-line">
+                      <strong>{skill.name}</strong>
+                      <small>Lvl {skill.level}</small>
+                    </span>
+                    <span>{skill.description}</span>
+                  </span>
+                  <div class="tooltip-card compact-tooltip" role="tooltip">
+                    <span>Skill</span>
+                    <strong>{skill.name} · Lvl {skill.level}</strong>
+                    <p>{skill.description}</p>
                   </div>
-                {/if}
+                </button>
               {/each}
             </div>
           {:else if activeDetailTab === 'growth'}
@@ -1701,8 +1721,15 @@
             </div>
           {/if}
           <div class="detail-actions">
-            <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
-            <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
+            {#if activeDetailTab === 'skills'}
+              <button type="button" class="primary-action level-skill-action" on:click={() => openCareModal(detailCompanion)}>
+                <ArrowUp size={18} />
+                <span>Level Up Skill</span>
+              </button>
+            {:else}
+              <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
+              <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
+            {/if}
           </div>
           <p class="active-note"><span></span> {activeCompanion?.id === detailCompanion.id ? 'Active Companion' : 'Ready to activate'}</p>
         {:else}
@@ -2893,7 +2920,6 @@
   .section-heading,
   .growth-summary,
   .gift-group,
-  .gift-card,
   .influence-row,
   .milestone-track,
   .story-card {
@@ -3002,6 +3028,92 @@
     bottom: calc(100% + 0.5rem);
   }
 
+  .skills-panel {
+    gap: 0.7rem;
+  }
+
+  .skill-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.78rem;
+    min-height: 4.1rem;
+    border: 0;
+    background: transparent;
+    color: rgba(248, 246, 255, 0.94);
+    cursor: help;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+  }
+
+  .skill-row:hover .skill-icon,
+  .skill-row:focus-visible .skill-icon {
+    border-color: rgba(183, 92, 255, 0.64);
+    box-shadow: 0 0 1.2rem rgba(183, 92, 255, 0.3), inset 0 0 1rem rgba(183, 92, 255, 0.18);
+  }
+
+  .skill-row:focus-visible {
+    outline: 2px solid rgba(183, 92, 255, 0.72);
+    outline-offset: 3px;
+    border-radius: 0.78rem;
+  }
+
+  .skill-icon {
+    display: grid;
+    width: 3.12rem;
+    height: 3.12rem;
+    place-items: center;
+    border: 1px solid rgba(153, 88, 255, 0.34);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 50% 34%, rgba(183, 92, 255, 0.34), transparent 58%),
+      radial-gradient(circle at 50% 100%, rgba(90, 45, 210, 0.42), transparent 64%),
+      rgba(13, 15, 38, 0.92);
+    box-shadow: inset 0 0 0.8rem rgba(183, 92, 255, 0.14);
+  }
+
+  .skill-icon img {
+    width: 2.18rem;
+    height: 2.18rem;
+    object-fit: contain;
+    filter: drop-shadow(0 0 0.52rem rgba(183, 92, 255, 0.54));
+  }
+
+  .skill-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+  }
+
+  .skill-title-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .skill-title-line strong {
+    color: rgba(255, 250, 242, 0.98);
+    font-size: 0.95rem;
+    line-height: 1.18;
+  }
+
+  .skill-title-line small {
+    flex: 0 0 auto;
+    color: rgba(220, 216, 237, 0.72);
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .skill-copy > span:last-child {
+    color: rgba(220, 216, 237, 0.7);
+    font-size: 0.78rem;
+    font-weight: 650;
+    line-height: 1.32;
+  }
+
   .growth-summary {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -3051,7 +3163,6 @@
   }
 
   .growth-summary,
-  .gift-card,
   .story-card {
     border: 1px solid rgba(153, 130, 236, 0.15);
     border-radius: 0.85rem;
@@ -3059,17 +3170,11 @@
     padding: 0.78rem;
   }
 
-  .gift-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .gift-card strong,
   .story-card strong,
   .milestone-track strong {
     color: rgba(255, 250, 242, 0.96);
   }
 
-  .gift-card p,
   .growth-summary p,
   .influence-row p,
   .milestone-track p,
@@ -3080,7 +3185,6 @@
     line-height: 1.45;
   }
 
-  .gift-card small,
   .milestone-track small {
     width: fit-content;
     border: 1px solid rgba(153, 130, 236, 0.16);
@@ -3138,7 +3242,6 @@
   }
 
   .growth-summary.compact-tile,
-  .gift-card.compact-tile,
   .story-card.compact-tile {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -3273,6 +3376,22 @@
       inset 0 0.08rem 0 rgba(255, 255, 255, 0.28),
       0 0 0.92rem rgba(144, 104, 255, 0.5),
       0 1rem 1.9rem rgba(83, 42, 190, 0.42);
+  }
+
+  .level-skill-action {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.58rem;
+    min-height: 2.72rem;
+    border-radius: 0.72rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 44%),
+      linear-gradient(135deg, #5c39f0 0%, #7f35ee 52%, #9c42f1 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 0.78rem 1.45rem rgba(83, 42, 190, 0.34);
   }
 
   .active-note {
