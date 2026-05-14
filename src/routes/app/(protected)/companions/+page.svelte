@@ -2736,8 +2736,8 @@
   }
 
   .element-image {
-    width: 1.42rem;
-    height: 1.42rem;
+    width: 1.9rem;
+    height: 1.9rem;
     flex: 0 0 auto;
     object-fit: contain;
     filter: drop-shadow(0 0 0.55rem rgba(183, 92, 255, 0.34));
