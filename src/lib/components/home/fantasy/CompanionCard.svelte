@@ -98,7 +98,6 @@
   .companion-card::after {
     z-index: 1;
     background:
-      radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--accent), transparent 38%), transparent 38%),
       linear-gradient(180deg, rgba(7, 8, 24, 0.14), rgba(7, 8, 24, 0.84) 72%, rgba(5, 6, 18, 0.94));
   }
 
