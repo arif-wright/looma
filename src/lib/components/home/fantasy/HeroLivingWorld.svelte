@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowRight, Pencil } from 'lucide-svelte';
+  import { ArrowRight, Camera, ChevronRight, Heart, Leaf, Pencil } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
 
   export let companionId: string | null = null;
@@ -9,6 +9,7 @@
   export let level = 18;
   export let mood = 'Happy';
   export let bond = 87;
+  export let shardBalance = 0;
   export let modelLoaded = false;
   export let onRename: (id: string, name: string) => Promise<void> = async () => {};
 
@@ -82,6 +83,8 @@
   };
 
   $: moodIconUrl = moodIconFor(mood);
+  $: bondProgress = Math.min(100, Math.max(0, Math.round((bond / 32) * 100)));
+  $: bondXp = Math.max(0, Math.round((bond / 100) * 1600));
 </script>
 
 <section class="living-world" aria-labelledby="living-world-title">
@@ -194,6 +197,48 @@
       <strong>{bond}%</strong>
     </div>
   </aside>
+
+  <div class="mobile-floating-card mobile-bond-card" aria-label={`${companionName} bond level`}>
+    <span class="mobile-card-icon mobile-card-icon--heart" aria-hidden="true"><Heart size={30} fill="currentColor" /></span>
+    <span>
+      <small>Bond Level</small>
+      <strong>{Math.max(1, level)}</strong>
+      <em>{bond >= 70 ? 'Close Friends' : bond > 0 ? 'Growing Bond' : 'New Bond'}</em>
+    </span>
+    <i class="mobile-card-meter"><b style={`width:${bondProgress}%`}></b></i>
+    <p>{bondXp.toLocaleString()} / 1,600 XP</p>
+  </div>
+
+  <div class="mobile-stat-stack" aria-label="Companion quick stats">
+    <a class="mobile-floating-card mobile-mini-card" href="/app/wallet" aria-label={`${shardBalance.toLocaleString()} shards`}>
+      <span class="mobile-card-icon mobile-card-icon--shard" aria-hidden="true">
+        <img src="/assets/shard-96.png" alt="" loading="eager" />
+      </span>
+      <span>
+        <strong>{shardBalance.toLocaleString()}</strong>
+        <small>Shards</small>
+      </span>
+      <ChevronRight size={20} />
+    </a>
+    <a class="mobile-floating-card mobile-mini-card" href="/app/worlds" aria-label={`World mood ${mood}`}>
+      <span class="mobile-card-icon mobile-card-icon--leaf" aria-hidden="true"><Leaf size={28} /></span>
+      <span>
+        <small>World Mood</small>
+        <strong class="mood-word">{mood}</strong>
+      </span>
+      <ChevronRight size={20} />
+    </a>
+  </div>
+
+  <div class="mobile-companion-nameplate">
+    <button type="button" aria-label={`${companionName} favorite`}><Heart size={18} fill="currentColor" /></button>
+    <a href={companionHref}>
+      <strong>{companionName}</strong>
+      <Pencil size={14} />
+      <span>Your Companion</span>
+    </a>
+    <button type="button" aria-label={`Take a photo of ${companionName}`}><Camera size={20} /></button>
+  </div>
 </section>
 
 <style>
@@ -739,6 +784,12 @@
     margin-left: auto;
   }
 
+  .mobile-floating-card,
+  .mobile-stat-stack,
+  .mobile-companion-nameplate {
+    display: none;
+  }
+
   @media (max-width: 900px) {
     .living-world {
       min-height: 43rem;
@@ -839,31 +890,207 @@
     }
 
     .status-card {
-      left: 1.05rem;
-      right: auto;
-      bottom: 12.5rem;
-      width: min(13.8rem, calc(100vw - 2.1rem));
-      border-radius: 1.15rem;
-      padding: 0.95rem;
-      background: rgba(14, 10, 34, 0.72);
+      display: none;
     }
 
-    .status-card header strong {
-      font-size: 0.9rem;
+    .mobile-floating-card {
+      position: absolute;
+      z-index: 5;
+      border: 1px solid rgba(201, 157, 255, 0.22);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(184, 115, 255, 0.22), transparent 42%),
+        rgba(23, 12, 42, 0.76);
+      color: rgba(255, 250, 255, 0.96);
+      text-decoration: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 18px 42px rgba(3, 3, 18, 0.42);
+      backdrop-filter: blur(22px);
     }
 
-    .status-card > span,
-    .status-row span,
-    .status-row strong {
-      font-size: 0.76rem;
+    .mobile-bond-card {
+      left: clamp(1rem, 4vw, 1.45rem);
+      top: min(22.2rem, 47svh);
+      display: grid;
+      width: min(14.5rem, 47vw);
+      min-height: 9.35rem;
+      grid-template-columns: 3.4rem minmax(0, 1fr);
+      gap: 0.58rem 0.8rem;
+      border-radius: 1.45rem;
+      padding: 1rem;
     }
 
-    .mini-meter {
-      margin: 0.45rem 0 0.65rem;
+    .mobile-card-icon {
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    .status-row {
-      margin-top: 0.48rem;
+    .mobile-card-icon--heart {
+      width: 3.4rem;
+      height: 3.4rem;
+      color: #c376ff;
+      background:
+        radial-gradient(circle at 45% 35%, rgba(255, 137, 230, 0.34), transparent 42%),
+        rgba(117, 77, 190, 0.24);
+    }
+
+    .mobile-card-icon--shard,
+    .mobile-card-icon--leaf {
+      width: 3.45rem;
+      height: 3.45rem;
+      flex: 0 0 auto;
+    }
+
+    .mobile-card-icon--shard img {
+      width: 2.15rem;
+      height: 2.15rem;
+      object-fit: contain;
+      filter: drop-shadow(0 0 14px rgba(192, 101, 255, 0.85));
+    }
+
+    .mobile-card-icon--leaf {
+      color: #8dd65e;
+      background: rgba(102, 188, 70, 0.14);
+    }
+
+    .mobile-bond-card small,
+    .mobile-mini-card small {
+      display: block;
+      color: rgba(244, 235, 255, 0.86);
+      font-size: clamp(0.74rem, 3vw, 0.92rem);
+      line-height: 1.15;
+    }
+
+    .mobile-bond-card strong {
+      display: block;
+      color: white;
+      font-size: clamp(1.75rem, 7vw, 2.25rem);
+      line-height: 1;
+    }
+
+    .mobile-bond-card em {
+      display: block;
+      color: rgba(238, 229, 255, 0.72);
+      font-size: clamp(0.74rem, 3vw, 0.92rem);
+      font-style: normal;
+      line-height: 1.1;
+    }
+
+    .mobile-card-meter {
+      grid-column: 1 / -1;
+      display: block;
+      height: 0.42rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .mobile-card-meter b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #9a5cff, #c35dff);
+      box-shadow: 0 0 16px rgba(171, 92, 255, 0.7);
+    }
+
+    .mobile-bond-card p {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: rgba(235, 226, 255, 0.62);
+      font-size: clamp(0.75rem, 3.3vw, 0.95rem);
+      line-height: 1;
+      text-align: center;
+    }
+
+    .mobile-stat-stack {
+      position: absolute;
+      top: min(13rem, 27svh);
+      right: clamp(1rem, 4vw, 1.35rem);
+      z-index: 6;
+      display: grid;
+      width: min(13.9rem, 44vw);
+      gap: 0.85rem;
+    }
+
+    .mobile-mini-card {
+      position: relative;
+      display: flex;
+      min-height: 4.95rem;
+      align-items: center;
+      gap: 0.82rem;
+      border-radius: 1.55rem;
+      padding: 0.72rem 0.78rem;
+    }
+
+    .mobile-mini-card strong {
+      display: block;
+      color: white;
+      font-size: clamp(1rem, 4.7vw, 1.45rem);
+      line-height: 1.05;
+    }
+
+    .mobile-mini-card .mood-word {
+      color: #9ee36f;
+      font-size: clamp(1rem, 4.2vw, 1.2rem);
+    }
+
+    .mobile-mini-card :global(svg:last-child) {
+      margin-left: auto;
+      color: rgba(244, 235, 255, 0.66);
+    }
+
+    .mobile-companion-nameplate {
+      position: absolute;
+      left: clamp(1rem, 4vw, 1.35rem);
+      right: clamp(1rem, 4vw, 1.35rem);
+      bottom: 2.15rem;
+      z-index: 7;
+      display: grid;
+      grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+      align-items: end;
+      gap: 0.75rem;
+      pointer-events: auto;
+    }
+
+    .mobile-companion-nameplate a {
+      display: grid;
+      justify-items: center;
+      color: white;
+      text-decoration: none;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.72);
+    }
+
+    .mobile-companion-nameplate strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(1.35rem, 5.6vw, 1.72rem);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .mobile-companion-nameplate span {
+      color: rgba(240, 232, 255, 0.7);
+      font-size: clamp(0.78rem, 3.5vw, 1rem);
+    }
+
+    .mobile-companion-nameplate button {
+      display: grid;
+      width: 3.25rem;
+      height: 3.25rem;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      background: rgba(11, 8, 27, 0.45);
+      color: rgba(255, 231, 244, 0.92);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 12px 30px rgba(0, 0, 0, 0.26);
+      backdrop-filter: blur(18px);
     }
 
   }
@@ -883,6 +1110,24 @@
 
     .status-card {
       bottom: 5rem;
+    }
+
+    .mobile-bond-card {
+      top: 18.8rem;
+      width: min(13rem, 47vw);
+      min-height: 8.6rem;
+      padding: 0.78rem;
+    }
+
+    .mobile-stat-stack {
+      top: 11.4rem;
+      width: min(12.4rem, 44vw);
+      gap: 0.6rem;
+    }
+
+    .mobile-mini-card {
+      min-height: 4.3rem;
+      padding: 0.6rem;
     }
   }
 </style>

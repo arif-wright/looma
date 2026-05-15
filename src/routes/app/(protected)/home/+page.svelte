@@ -2,7 +2,23 @@
   import { onMount } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
-  import { Gamepad2, Gift, Heart, Home, Leaf, Menu, MessageCircle, Plus, Search, Sparkles, UserRound } from 'lucide-svelte';
+  import {
+    Bell,
+    CalendarDays,
+    Compass,
+    Gamepad2,
+    Gift,
+    Heart,
+    Home,
+    Leaf,
+    Menu,
+    MessageCircle,
+    PawPrint,
+    Plus,
+    Search,
+    Sparkles,
+    ScrollText
+  } from 'lucide-svelte';
   import ActivityFeed from '$lib/components/home/fantasy/ActivityFeed.svelte';
   import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
@@ -38,10 +54,10 @@
 
   const mobileNav = [
     { label: 'Home', href: '/app/home', icon: Home },
-    { label: 'Bond', href: '/app/companions', icon: Heart },
-    { label: 'Play', href: '/app/games', icon: Gamepad2 },
-    { label: 'Messages', href: '/app/messages', icon: MessageCircle },
-    { label: 'Profile', href: '/app/profile', icon: UserRound }
+    { label: 'Companions', href: '/app/companions', icon: PawPrint },
+    { label: 'Worlds', href: '/app/worlds', icon: Compass },
+    { label: 'Games', href: '/app/games', icon: Gamepad2 },
+    { label: 'Messages', href: '/app/messages', icon: MessageCircle }
   ];
 
   const backgroundByArchetype: Record<string, string> = {
@@ -301,6 +317,12 @@
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 18));
   $: companionMood = normalizedMood(activeCompanion?.mood);
   $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 3));
+  $: ritualProgressPercent = Math.round((ritualCompleted / 3) * 100);
+  $: mobileQuestTitle = (data.dailyMissions as any)?.[0]?.title ?? 'The Forgotten Grove';
+  $: mobileQuestProgressPercent = Math.min(100, Math.max(18, Math.round(((data.dailyArcRecap as any)?.completedSteps ?? 2) * 25)));
+  $: energyCurrent = Math.max(0, Math.floor((data.momentum as any)?.current ?? (data.stats as any)?.energy ?? 85));
+  $: energyMax = Math.max(1, Math.floor((data.momentum as any)?.max ?? (data.stats as any)?.energy_max ?? 100));
+  $: energyProgressPercent = Math.min(100, Math.round((energyCurrent / energyMax) * 100));
   $: rosterCompanionCards = (data.creatures ?? []).map((creature, index) => companionCardFrom(creature, index));
   $: companions =
     activeCompanion?.id && !rosterCompanionCards.some((companion) => companion.id === activeCompanion.id)
@@ -403,6 +425,10 @@
           profileDisplayName={playerName}
           {profileAvatarUrl}
         />
+        <button class="mobile-bell-action" type="button" aria-label="Open notifications">
+          <Bell size={23} />
+          <span aria-hidden="true"></span>
+        </button>
         <button class="menu-action" type="button" aria-label="Open menu"><Menu size={27} /></button>
       </div>
     </header>
@@ -418,6 +444,7 @@
           level={companionLevel}
           mood={companionMood}
           bond={companionBond}
+          {shardBalance}
           onRename={renameHomeCompanion}
         />
 
@@ -444,7 +471,54 @@
               <small>1 Ready</small>
             </a>
           </div>
-          <RitualPanel completed={ritualCompleted} />
+
+          <section class="mobile-progress-card" aria-labelledby="mobile-progress-title">
+            <header>
+              <span><CalendarDays size={18} /></span>
+              <h2 id="mobile-progress-title">Today's Progress</h2>
+              <a href="/app/missions">View all</a>
+            </header>
+            <div class="mobile-progress-grid">
+              <article class="progress-item progress-item--ritual">
+                <span class="progress-orb"><Sparkles size={28} /></span>
+                <div>
+                  <strong>Daily Ritual</strong>
+                  <p>{ritualCompleted} / 3</p>
+                  <small>{ritualCompleted >= 3 ? 'Completed' : 'In progress'}</small>
+                </div>
+                <i><b style={`width:${ritualProgressPercent}%`}></b></i>
+              </article>
+              <article class="progress-item progress-item--quest">
+                <span class="progress-orb"><ScrollText size={28} /></span>
+                <div>
+                  <strong>Quest</strong>
+                  <p>{mobileQuestTitle}</p>
+                  <small>Step 2 of 4</small>
+                </div>
+                <i><b style={`width:${mobileQuestProgressPercent}%`}></b></i>
+              </article>
+              <article class="progress-item progress-item--energy">
+                <span class="progress-orb"><Leaf size={28} /></span>
+                <div>
+                  <strong>Energy</strong>
+                  <p>{energyCurrent} / {energyMax}</p>
+                  <small>{energyCurrent >= energyMax ? 'Full' : 'Full in 2h 15m'}</small>
+                </div>
+                <i><b style={`width:${energyProgressPercent}%`}></b></i>
+              </article>
+            </div>
+          </section>
+
+          <a class="mobile-reward-card" href="/app/memory" aria-label={`${companionName} found a shard`}>
+            <span class="reward-art" aria-hidden="true">
+              <img src="/assets/gifts/gift-story-rare-storyglass-shard.png" alt="" loading="lazy" />
+            </span>
+            <span class="reward-copy">
+              <strong>{companionName} found a Shard!</strong>
+              <small>Tap to see what memories it holds.</small>
+            </span>
+            <b>View</b>
+          </a>
         </section>
 
         <section class="glass-section companions-section" aria-labelledby="companions-title">
@@ -667,6 +741,7 @@
   }
 
   .mobile-brand,
+  .mobile-bell-action,
   .menu-action {
     display: none;
   }
@@ -900,7 +975,7 @@
       left: 1.25rem;
       right: 1.25rem;
       top: max(1.05rem, calc(env(safe-area-inset-top) + 0.45rem));
-      z-index: 20;
+      z-index: 90;
       margin: 0;
       pointer-events: auto;
     }
@@ -917,7 +992,35 @@
     .top-actions {
       width: auto;
       justify-content: flex-end;
-      gap: 0.65rem;
+      gap: 0.85rem;
+    }
+
+    .top-actions :global(.desktop-topbar-actions) {
+      display: none;
+    }
+
+    .mobile-bell-action {
+      position: relative;
+      display: inline-grid;
+      width: 2.55rem;
+      min-height: 2.55rem;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #fff3cf;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .mobile-bell-action span {
+      position: absolute;
+      right: 0.18rem;
+      top: 0.12rem;
+      width: 0.72rem;
+      height: 0.72rem;
+      border-radius: 999px;
+      background: #a55cff;
+      box-shadow: 0 0 16px rgba(165, 92, 255, 0.86);
     }
 
     .menu-action {
@@ -943,8 +1046,8 @@
 
     .mobile-loop {
       display: grid;
-      gap: 1rem;
-      margin: -0.25rem 1.05rem 1rem;
+      gap: 1.1rem;
+      margin: -0.2rem 1.05rem 1rem;
       position: relative;
       z-index: 4;
     }
@@ -952,12 +1055,12 @@
     .mobile-quick-actions {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.62rem;
+      gap: 0.7rem;
     }
 
     .mobile-quick-actions a {
       display: grid;
-      min-height: 7.1rem;
+      min-height: clamp(7.2rem, 31vw, 8.2rem);
       place-items: center;
       align-content: center;
       gap: 0.38rem;
@@ -995,13 +1098,13 @@
     }
 
     .mobile-quick-actions :global(svg) {
-      width: 2.15rem;
-      height: 2.15rem;
+      width: clamp(2rem, 8.6vw, 2.6rem);
+      height: clamp(2rem, 8.6vw, 2.6rem);
       filter: drop-shadow(0 0 16px currentColor);
     }
 
     .mobile-quick-actions span {
-      font-size: clamp(0.74rem, 3.4vw, 0.92rem);
+      font-size: clamp(0.76rem, 3.5vw, 1.05rem);
       font-weight: 800;
       line-height: 1.12;
     }
@@ -1023,6 +1126,203 @@
 
     .mobile-action-card--gift small {
       color: #e4b65a;
+    }
+
+    .mobile-progress-card,
+    .mobile-reward-card {
+      border: 1px solid rgba(184, 122, 255, 0.24);
+      border-radius: 1.35rem;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(144, 72, 255, 0.16), transparent 42%),
+        rgba(12, 9, 30, 0.78);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 20px 52px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(22px);
+    }
+
+    .mobile-progress-card {
+      padding: 1rem;
+    }
+
+    .mobile-progress-card header {
+      display: flex;
+      align-items: center;
+      gap: 0.72rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-progress-card header span {
+      display: grid;
+      width: 2.15rem;
+      height: 2.15rem;
+      place-items: center;
+      color: rgba(235, 226, 255, 0.82);
+    }
+
+    .mobile-progress-card h2 {
+      margin: 0;
+      color: white;
+      font-size: clamp(1rem, 4.4vw, 1.22rem);
+      line-height: 1.1;
+    }
+
+    .mobile-progress-card header a {
+      margin-left: auto;
+      color: #cc72ff;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .mobile-progress-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      padding-top: 1rem;
+    }
+
+    .progress-item {
+      display: grid;
+      min-width: 0;
+      grid-template-rows: auto 1fr auto;
+      gap: 0.55rem;
+    }
+
+    .progress-orb {
+      display: grid;
+      width: clamp(3.1rem, 13vw, 3.8rem);
+      height: clamp(3.1rem, 13vw, 3.8rem);
+      place-items: center;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 42% 30%, rgba(255, 255, 255, 0.18), transparent 32%),
+        rgba(126, 72, 255, 0.18);
+      color: #b65cff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-item--quest .progress-orb {
+      color: #d2a56a;
+      background: rgba(176, 130, 70, 0.15);
+    }
+
+    .progress-item--energy .progress-orb {
+      color: #8adf68;
+      background: rgba(108, 196, 85, 0.14);
+    }
+
+    .progress-item strong,
+    .progress-item p,
+    .progress-item small {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .progress-item strong {
+      color: white;
+      font-size: clamp(0.72rem, 3.2vw, 0.9rem);
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .progress-item p {
+      margin: 0.28rem 0 0;
+      color: white;
+      font-size: clamp(0.95rem, 4.4vw, 1.18rem);
+      line-height: 1.15;
+    }
+
+    .progress-item small {
+      color: rgba(235, 226, 255, 0.64);
+      font-size: clamp(0.68rem, 3vw, 0.82rem);
+      line-height: 1.25;
+    }
+
+    .progress-item i {
+      display: block;
+      height: 0.42rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .progress-item i b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #8f5cff, #c65cff);
+    }
+
+    .progress-item--quest i b {
+      background: linear-gradient(90deg, #447dff, #7c5cff);
+    }
+
+    .progress-item--energy i b {
+      background: linear-gradient(90deg, #6ac75d, #9ee36f);
+    }
+
+    .mobile-reward-card {
+      display: grid;
+      grid-template-columns: minmax(5.8rem, 25%) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.92rem;
+      min-height: 6.6rem;
+      overflow: hidden;
+      color: white;
+      text-decoration: none;
+    }
+
+    .reward-art {
+      align-self: stretch;
+      display: grid;
+      min-height: 6.6rem;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(196, 92, 255, 0.4), transparent 54%),
+        linear-gradient(135deg, rgba(52, 18, 84, 0.82), rgba(14, 8, 34, 0.28));
+    }
+
+    .reward-art img {
+      width: 4.8rem;
+      height: 4.8rem;
+      object-fit: contain;
+      filter: drop-shadow(0 0 20px rgba(191, 92, 255, 0.72));
+    }
+
+    .reward-copy {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .reward-copy strong {
+      color: #d57bff;
+      font-size: clamp(1rem, 4.4vw, 1.22rem);
+      line-height: 1.15;
+    }
+
+    .reward-copy small {
+      color: rgba(255, 249, 255, 0.84);
+      font-size: clamp(0.8rem, 3.7vw, 1rem);
+      line-height: 1.35;
+    }
+
+    .mobile-reward-card b {
+      display: inline-grid;
+      min-width: clamp(4.8rem, 20vw, 6.2rem);
+      min-height: 3.25rem;
+      place-items: center;
+      border-radius: 1rem;
+      background:
+        radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.13), transparent 36%),
+        rgba(105, 51, 151, 0.42);
+      color: #dc8cff;
+      font-size: clamp(1rem, 4.7vw, 1.25rem);
+      margin-right: 0.82rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .glass-section {
@@ -1085,26 +1385,31 @@
       display: block;
     }
 
+    .companions-section,
+    .lower-grid {
+      display: none;
+    }
+
     .mobile-bottom-nav {
       position: fixed;
-      left: 0.65rem;
-      right: 0.65rem;
-      bottom: max(0.6rem, env(safe-area-inset-bottom));
+      left: 0;
+      right: 0;
+      bottom: 0;
       z-index: 30;
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 0.18rem;
-      border: 1px solid rgba(183, 140, 255, 0.26);
-      border-radius: 1.35rem;
-      background: rgba(9, 10, 28, 0.82);
-      padding: 0.45rem;
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      gap: 0.1rem;
+      border: 1px solid rgba(183, 140, 255, 0.18);
+      border-radius: 1.45rem 1.45rem 0 0;
+      background: rgba(5, 6, 19, 0.9);
+      padding: 0.65rem 0.65rem max(0.9rem, env(safe-area-inset-bottom));
+      box-shadow: 0 -18px 56px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(24px);
     }
 
     .mobile-bottom-nav a {
       display: grid;
-      min-height: 3.45rem;
+      min-height: 3.95rem;
       place-items: center;
       align-content: center;
       gap: 0.18rem;
@@ -1114,14 +1419,20 @@
     }
 
     .mobile-bottom-nav a.active {
-      background: linear-gradient(180deg, rgba(142, 92, 255, 0.28), rgba(77, 244, 255, 0.08));
-      color: white;
-      box-shadow: inset 0 0 0 1px rgba(184, 154, 255, 0.18);
+      background: transparent;
+      color: #d08cff;
+      text-shadow: 0 0 18px rgba(192, 92, 255, 0.78);
+      box-shadow: none;
     }
 
     .mobile-bottom-nav span {
-      font-size: 0.62rem;
+      font-size: clamp(0.62rem, 2.8vw, 0.78rem);
       font-weight: 800;
+    }
+
+    .mobile-bottom-nav a :global(svg) {
+      width: clamp(1.32rem, 5.6vw, 1.72rem);
+      height: clamp(1.32rem, 5.6vw, 1.72rem);
     }
   }
 
@@ -1133,6 +1444,26 @@
     .game-grid,
     .world-grid {
       grid-auto-columns: minmax(9.6rem, 63vw);
+    }
+  }
+
+  @media (max-width: 390px) {
+    .mobile-progress-grid {
+      gap: 0.55rem;
+    }
+
+    .mobile-progress-card {
+      padding: 0.82rem;
+    }
+
+    .mobile-reward-card {
+      grid-template-columns: 5rem minmax(0, 1fr) auto;
+      gap: 0.65rem;
+    }
+
+    .mobile-reward-card b {
+      min-width: 4.4rem;
+      margin-right: 0.62rem;
     }
   }
 </style>
