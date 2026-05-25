@@ -7,7 +7,19 @@
   import { logout } from '$lib/auth/logout';
   import { page } from '$app/stores';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
-  import { Gamepad2, House, MessageSquare, UserRound, PawPrint, UsersRound, BookOpen } from 'lucide-svelte';
+  import {
+    Box,
+    Compass,
+    Gamepad2,
+    House,
+    MessageSquare,
+    Sparkles,
+    Store,
+    UserRound,
+    Users,
+    UsersRound,
+    WandSparkles
+  } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
   import { FLAGS } from '$lib/config/flags';
   import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
@@ -115,8 +127,13 @@
   $: walletCurrency = 'SHARDS';
 
   $: iconNavItems = [
-    { href: '/app/home', label: 'Sanctuary', icon: House, analyticsKey: 'sanctuary' },
-    { href: '/app/memory', label: 'Journal', icon: BookOpen, analyticsKey: 'memory' },
+    { href: '/app/home', label: 'Home', icon: House, analyticsKey: 'home' },
+    { href: '/app/companions', label: 'Companions', icon: Sparkles, analyticsKey: 'companions' },
+    { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
+    { href: '/app/worlds', label: 'Worlds', icon: Compass, analyticsKey: 'worlds' },
+    { href: '/app/missions', label: 'Quests', icon: WandSparkles, analyticsKey: 'quests' },
+    { href: '/app/inventory', label: 'Inventory', icon: Box, analyticsKey: 'inventory' },
+    { href: '/app/shop', label: 'Market', icon: Store, analyticsKey: 'market' },
     {
       href: '/app/messages',
       label: 'Messages',
@@ -124,9 +141,8 @@
       analyticsKey: 'messages',
       badgeCount: messageUnread
     },
+    { href: '/app/friends', label: 'Friends', icon: Users, analyticsKey: 'friends' },
     { href: '/app/circles', label: 'Circles', icon: UsersRound, analyticsKey: 'circles' },
-    { href: '/app/games', label: 'Play', icon: Gamepad2, analyticsKey: 'games' },
-    { href: '/app/companions', label: 'Companions', icon: PawPrint, analyticsKey: 'companions' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ] satisfies IconNavItem[];
 

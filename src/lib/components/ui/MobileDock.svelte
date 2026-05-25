@@ -5,6 +5,22 @@
   export let items: IconNavItem[] = [];
 
   const pageStore = page;
+  const mobileOrder = [
+    '/app/home',
+    '/app/companions',
+    '/app/games',
+    '/app/worlds',
+    '/app/missions',
+    '/app/inventory',
+    '/app/shop',
+    '/app/messages',
+    '/app/friends'
+  ];
+
+  $: mobileItems = mobileOrder
+    .map((href) => items.find((item) => item.href === href))
+    .filter((item): item is IconNavItem => Boolean(item))
+    .map((item) => ({ ...item }));
 
   const isActive = (href: string) => {
     const path = $pageStore.url.pathname;
@@ -19,18 +35,16 @@
   class="md:hidden"
   aria-label="Primary navigation"
 >
-  <div
-    class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-ink-900/85 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2.5 backdrop-blur-2xl"
-  >
+  <div class="mobile-dock-shell">
     <div class="dock-scroll no-scrollbar mx-auto max-w-md overflow-x-auto px-3">
-      <div class="inline-flex min-w-full items-center gap-1">
-        {#each items as item (item.href)}
+      <div class="mobile-dock-grid">
+        {#each mobileItems as item (item.href)}
           <a
             href={item.href}
-            class={`group flex w-[88px] shrink-0 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium tracking-[0.08em] text-white/75 transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 focus-visible:ring-offset-0 motion-reduce:transition-none ${
+            class={`group mobile-dock-link ${
               isActive(item.href)
-                ? 'bg-white/12 text-white shadow-[0_8px_26px_rgba(240,180,112,0.16)]'
-                : 'hover:bg-white/8 hover:text-white focus-visible:text-white'
+                ? 'is-active'
+                : ''
             }`}
             title={item.label}
             aria-current={isActive(item.href) ? 'page' : undefined}
@@ -48,7 +62,7 @@
                 </span>
               {/if}
             </span>
-            <span class="text-[10px] uppercase tracking-[0.18em] text-white/70">
+            <span class="dock-label">
               {item.label}
             </span>
           </a>
@@ -73,6 +87,75 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .mobile-dock-shell {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    border: 1px solid rgba(183, 140, 255, 0.18);
+    border-bottom: 0;
+    border-radius: 1.45rem 1.45rem 0 0;
+    background: rgba(5, 6, 19, 0.9);
+    padding: 0.65rem 0.45rem max(0.9rem, env(safe-area-inset-bottom));
+    box-shadow:
+      0 -18px 56px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
+  }
+
+  .mobile-dock-grid {
+    display: inline-flex;
+    min-width: 100%;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .mobile-dock-link {
+    position: relative;
+    display: grid;
+    width: 5.15rem;
+    flex: 0 0 5.15rem;
+    min-height: 3.95rem;
+    place-items: center;
+    align-content: center;
+    gap: 0.18rem;
+    border-radius: 1rem;
+    color: rgba(231, 228, 248, 0.68);
+    text-decoration: none;
+    transition: color 150ms ease, text-shadow 150ms ease, transform 150ms ease;
+  }
+
+  .mobile-dock-link:hover,
+  .mobile-dock-link:focus-visible {
+    color: rgba(255, 255, 255, 0.92);
+    outline: none;
+  }
+
+  .mobile-dock-link.is-active {
+    color: #d08cff;
+    text-shadow: 0 0 18px rgba(192, 92, 255, 0.78);
+  }
+
+  .mobile-dock-link.is-active .icon-wrap {
+    filter: drop-shadow(0 0 16px rgba(192, 92, 255, 0.72));
+  }
+
+  .mobile-dock-link :global(svg) {
+    width: clamp(1.32rem, 5.6vw, 1.72rem);
+    height: clamp(1.32rem, 5.6vw, 1.72rem);
+  }
+
+  .dock-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: currentColor;
+    font-size: clamp(0.62rem, 2.8vw, 0.78rem);
+    font-weight: 800;
+    line-height: 1.1;
+    white-space: nowrap;
   }
 
   .dock-badge {

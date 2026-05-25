@@ -1031,34 +1031,28 @@
     }
 
     .mobile-quick-actions {
-      display: flex;
-      gap: 0.65rem;
-      overflow-x: auto;
-      padding: 0.05rem 0 0.35rem;
-      scroll-padding-inline: 1rem;
-      scroll-snap-type: x proximity;
-      -webkit-overflow-scrolling: touch;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.7rem;
     }
 
     .mobile-quick-actions a {
       display: grid;
-      min-width: min(10.4rem, 42vw);
-      min-height: 5.35rem;
+      min-height: clamp(7.2rem, 31vw, 8.2rem);
+      place-items: center;
       align-content: center;
-      justify-items: start;
-      gap: 0.26rem;
+      gap: 0.38rem;
       border: 1px solid rgba(167, 92, 255, 0.32);
-      border-radius: 1rem;
+      border-radius: 1.1rem;
       background:
-        radial-gradient(circle at 18% 24%, rgba(171, 92, 255, 0.34), transparent 46%),
+        radial-gradient(circle at 50% 24%, rgba(171, 92, 255, 0.34), transparent 46%),
         rgba(10, 10, 29, 0.74);
       color: white;
       text-decoration: none;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(20px);
-      padding: 0.72rem;
-      text-align: left;
-      scroll-snap-align: start;
+      padding: 0.65rem 0.42rem;
+      text-align: center;
     }
 
     .mobile-action-card--energy {
@@ -1083,13 +1077,13 @@
     }
 
     .mobile-quick-actions :global(svg) {
-      width: 1.55rem;
-      height: 1.55rem;
+      width: clamp(2rem, 8.6vw, 2.6rem);
+      height: clamp(2rem, 8.6vw, 2.6rem);
       filter: drop-shadow(0 0 16px currentColor);
     }
 
     .mobile-quick-actions span {
-      font-size: clamp(0.78rem, 3.3vw, 0.96rem);
+      font-size: clamp(0.72rem, 3.2vw, 1rem);
       font-weight: 800;
       line-height: 1.12;
     }
@@ -1162,20 +1156,16 @@
 
     .mobile-progress-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.68rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
       padding-top: 1rem;
     }
 
     .progress-item {
       display: grid;
       min-width: 0;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 0.58rem 0.78rem;
-      align-items: center;
-      border-radius: 1rem;
-      background: rgba(255, 255, 255, 0.045);
-      padding: 0.72rem;
+      grid-template-rows: auto 1fr auto;
+      gap: 0.55rem;
     }
 
     .progress-orb {
@@ -1231,7 +1221,6 @@
     }
 
     .progress-item i {
-      grid-column: 1 / -1;
       display: block;
       height: 0.42rem;
       overflow: hidden;
@@ -1394,8 +1383,27 @@
   }
 
   @media (max-width: 390px) {
+    .mobile-quick-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .mobile-progress-grid {
+      grid-template-columns: 1fr;
       gap: 0.55rem;
+    }
+
+    .progress-item {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      gap: 0.55rem 0.7rem;
+      align-items: center;
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.045);
+      padding: 0.68rem;
+    }
+
+    .progress-item i {
+      grid-column: 1 / -1;
     }
 
     .mobile-progress-card {
