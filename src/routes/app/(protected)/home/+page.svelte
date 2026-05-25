@@ -5,15 +5,10 @@
   import {
     Bell,
     CalendarDays,
-    Compass,
     Gamepad2,
     Gift,
-    Heart,
-    Home,
     Leaf,
     Menu,
-    MessageCircle,
-    PawPrint,
     Plus,
     Search,
     Sparkles,
@@ -50,14 +45,6 @@
     { name: 'Memvoya Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
     { name: 'Crystal Shores', level: 18, players: '856', reward: 18, tone: 'shore' },
     { name: 'Voidspire', level: 29, players: '2.1K', reward: 29, tone: 'void' }
-  ];
-
-  const mobileNav = [
-    { label: 'Home', href: '/app/home', icon: Home },
-    { label: 'Companions', href: '/app/companions', icon: PawPrint },
-    { label: 'Worlds', href: '/app/worlds', icon: Compass },
-    { label: 'Games', href: '/app/games', icon: Gamepad2 },
-    { label: 'Messages', href: '/app/messages', icon: MessageCircle }
   ];
 
   const backgroundByArchetype: Record<string, string> = {
@@ -573,14 +560,6 @@
     </div>
   </main>
 
-  <nav class="mobile-bottom-nav" aria-label="Primary mobile navigation">
-    {#each mobileNav as item}
-      <a class:active={$page.url.pathname === item.href || (item.href !== '/app/home' && $page.url.pathname.startsWith(item.href))} href={item.href}>
-        <svelte:component this={item.icon} size={21} />
-        <span>{item.label}</span>
-      </a>
-    {/each}
-  </nav>
 </div>
 
 <style>
@@ -811,8 +790,7 @@
     transform: translateX(0.22rem);
   }
 
-  .mobile-loop,
-  .mobile-bottom-nav {
+  .mobile-loop {
     display: none;
   }
 
@@ -1047,33 +1025,40 @@
     .mobile-loop {
       display: grid;
       gap: 1.1rem;
-      margin: -0.2rem 1.05rem 1rem;
+      margin: 0 1.05rem 1rem;
       position: relative;
       z-index: 4;
     }
 
     .mobile-quick-actions {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.7rem;
+      display: flex;
+      gap: 0.65rem;
+      overflow-x: auto;
+      padding: 0.05rem 0 0.35rem;
+      scroll-padding-inline: 1rem;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
     }
 
     .mobile-quick-actions a {
       display: grid;
-      min-height: clamp(7.2rem, 31vw, 8.2rem);
-      place-items: center;
+      min-width: min(10.4rem, 42vw);
+      min-height: 5.35rem;
       align-content: center;
-      gap: 0.38rem;
+      justify-items: start;
+      gap: 0.26rem;
       border: 1px solid rgba(167, 92, 255, 0.32);
-      border-radius: 1.1rem;
+      border-radius: 1rem;
       background:
-        radial-gradient(circle at 50% 24%, rgba(171, 92, 255, 0.34), transparent 46%),
+        radial-gradient(circle at 18% 24%, rgba(171, 92, 255, 0.34), transparent 46%),
         rgba(10, 10, 29, 0.74);
       color: white;
       text-decoration: none;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(20px);
-      text-align: center;
+      padding: 0.72rem;
+      text-align: left;
+      scroll-snap-align: start;
     }
 
     .mobile-action-card--energy {
@@ -1098,13 +1083,13 @@
     }
 
     .mobile-quick-actions :global(svg) {
-      width: clamp(2rem, 8.6vw, 2.6rem);
-      height: clamp(2rem, 8.6vw, 2.6rem);
+      width: 1.55rem;
+      height: 1.55rem;
       filter: drop-shadow(0 0 16px currentColor);
     }
 
     .mobile-quick-actions span {
-      font-size: clamp(0.76rem, 3.5vw, 1.05rem);
+      font-size: clamp(0.78rem, 3.3vw, 0.96rem);
       font-weight: 800;
       line-height: 1.12;
     }
@@ -1177,16 +1162,20 @@
 
     .mobile-progress-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.85rem;
+      grid-template-columns: 1fr;
+      gap: 0.68rem;
       padding-top: 1rem;
     }
 
     .progress-item {
       display: grid;
       min-width: 0;
-      grid-template-rows: auto 1fr auto;
-      gap: 0.55rem;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.58rem 0.78rem;
+      align-items: center;
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.045);
+      padding: 0.72rem;
     }
 
     .progress-orb {
@@ -1242,6 +1231,7 @@
     }
 
     .progress-item i {
+      grid-column: 1 / -1;
       display: block;
       height: 0.42rem;
       overflow: hidden;
@@ -1390,50 +1380,6 @@
       display: none;
     }
 
-    .mobile-bottom-nav {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 30;
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 0.1rem;
-      border: 1px solid rgba(183, 140, 255, 0.18);
-      border-radius: 1.45rem 1.45rem 0 0;
-      background: rgba(5, 6, 19, 0.9);
-      padding: 0.65rem 0.65rem max(0.9rem, env(safe-area-inset-bottom));
-      box-shadow: 0 -18px 56px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(24px);
-    }
-
-    .mobile-bottom-nav a {
-      display: grid;
-      min-height: 3.95rem;
-      place-items: center;
-      align-content: center;
-      gap: 0.18rem;
-      border-radius: 1rem;
-      color: rgba(231, 228, 248, 0.68);
-      text-decoration: none;
-    }
-
-    .mobile-bottom-nav a.active {
-      background: transparent;
-      color: #d08cff;
-      text-shadow: 0 0 18px rgba(192, 92, 255, 0.78);
-      box-shadow: none;
-    }
-
-    .mobile-bottom-nav span {
-      font-size: clamp(0.62rem, 2.8vw, 0.78rem);
-      font-weight: 800;
-    }
-
-    .mobile-bottom-nav a :global(svg) {
-      width: clamp(1.32rem, 5.6vw, 1.72rem);
-      height: clamp(1.32rem, 5.6vw, 1.72rem);
-    }
   }
 
   @media (max-width: 520px) {

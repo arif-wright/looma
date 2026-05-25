@@ -819,7 +819,7 @@
 
   @media (max-width: 760px) {
     .living-world {
-      min-height: min(43.5rem, 86svh);
+      min-height: min(40rem, 82svh);
       border-width: 0 0 1px;
       border-radius: 0 0 1.6rem 1.6rem;
       background: transparent;
@@ -870,7 +870,7 @@
       left: 0;
       right: 0;
       top: var(--hero-stage-mobile-top, 8.5rem);
-      bottom: var(--hero-stage-mobile-bottom, 7.4rem);
+      bottom: 9.8rem;
       min-width: 0;
       place-items: center;
       overflow: visible;
@@ -909,15 +909,17 @@
     }
 
     .mobile-bond-card {
-      left: clamp(1rem, 4vw, 1.45rem);
-      top: min(22.2rem, 47svh);
+      left: clamp(1rem, 4vw, 1.35rem);
+      right: clamp(1rem, 4vw, 1.35rem);
+      bottom: 5.7rem;
       display: grid;
-      width: min(14.5rem, 47vw);
-      min-height: 9.35rem;
-      grid-template-columns: 3.4rem minmax(0, 1fr);
-      gap: 0.58rem 0.8rem;
-      border-radius: 1.45rem;
-      padding: 1rem;
+      width: auto;
+      min-height: 4.8rem;
+      grid-template-columns: 3rem minmax(0, 1fr);
+      gap: 0.36rem 0.72rem;
+      align-items: center;
+      border-radius: 1.25rem;
+      padding: 0.72rem 0.84rem;
     }
 
     .mobile-card-icon {
@@ -929,8 +931,8 @@
     }
 
     .mobile-card-icon--heart {
-      width: 3.4rem;
-      height: 3.4rem;
+      width: 3rem;
+      height: 3rem;
       color: #c376ff;
       background:
         radial-gradient(circle at 45% 35%, rgba(255, 137, 230, 0.34), transparent 42%),
@@ -967,7 +969,7 @@
     .mobile-bond-card strong {
       display: block;
       color: white;
-      font-size: clamp(1.75rem, 7vw, 2.25rem);
+      font-size: clamp(1.28rem, 5.4vw, 1.7rem);
       line-height: 1;
     }
 
@@ -982,7 +984,7 @@
     .mobile-card-meter {
       grid-column: 1 / -1;
       display: block;
-      height: 0.42rem;
+      height: 0.34rem;
       overflow: hidden;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.1);
@@ -997,32 +999,34 @@
     }
 
     .mobile-bond-card p {
+      display: none;
       grid-column: 1 / -1;
       margin: 0;
       color: rgba(235, 226, 255, 0.62);
-      font-size: clamp(0.75rem, 3.3vw, 0.95rem);
+      font-size: clamp(0.66rem, 2.9vw, 0.78rem);
       line-height: 1;
       text-align: center;
+      white-space: nowrap;
     }
 
     .mobile-stat-stack {
       position: absolute;
-      top: min(13rem, 27svh);
-      right: clamp(1rem, 4vw, 1.35rem);
+      top: max(8.45rem, calc(env(safe-area-inset-top) + 6.7rem));
+      right: clamp(0.9rem, 3.8vw, 1.25rem);
       z-index: 6;
       display: grid;
-      width: min(13.9rem, 44vw);
-      gap: 0.85rem;
+      width: min(11.7rem, 40vw);
+      gap: 0.55rem;
     }
 
     .mobile-mini-card {
       position: relative;
       display: flex;
-      min-height: 4.95rem;
+      min-height: 3.85rem;
       align-items: center;
-      gap: 0.82rem;
-      border-radius: 1.55rem;
-      padding: 0.72rem 0.78rem;
+      gap: 0.54rem;
+      border-radius: 1.15rem;
+      padding: 0.52rem 0.56rem;
     }
 
     .mobile-mini-card strong {
@@ -1046,7 +1050,7 @@
       position: absolute;
       left: clamp(1rem, 4vw, 1.35rem);
       right: clamp(1rem, 4vw, 1.35rem);
-      bottom: 2.15rem;
+      bottom: 1rem;
       z-index: 7;
       display: grid;
       grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
@@ -1097,7 +1101,7 @@
 
   @media (max-width: 390px) {
     .living-world {
-      min-height: 40.5rem;
+      min-height: 37.5rem;
     }
 
     .intro {
@@ -1105,7 +1109,8 @@
     }
 
     .companion-stage {
-      top: 7.6rem;
+      top: 7.8rem;
+      bottom: 9.4rem;
     }
 
     .status-card {
@@ -1113,16 +1118,15 @@
     }
 
     .mobile-bond-card {
-      top: 18.8rem;
-      width: min(13rem, 47vw);
-      min-height: 8.6rem;
-      padding: 0.78rem;
+      bottom: 5.35rem;
+      min-height: 4.5rem;
+      padding: 0.64rem;
     }
 
     .mobile-stat-stack {
-      top: 11.4rem;
-      width: min(12.4rem, 44vw);
-      gap: 0.6rem;
+      top: 7.5rem;
+      width: min(11rem, 40vw);
+      gap: 0.48rem;
     }
 
     .mobile-mini-card {

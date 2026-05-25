@@ -257,24 +257,7 @@
 
   @media (max-width: 1180px) {
     .fantasy-sidebar {
-      position: relative;
-      min-height: auto;
-      border-right: 0;
-      border-bottom: 1px solid rgba(174, 145, 255, 0.16);
-    }
-
-    .nav-list {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 700px) {
-    .fantasy-sidebar {
-      padding: 1rem;
-    }
-
-    .nav-list {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      display: none;
     }
   }
 </style>
