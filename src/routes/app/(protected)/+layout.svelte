@@ -620,9 +620,7 @@
   </div>
 </div>
 
-{#if !isMessages}
-  <MobileDock items={iconNavItems} />
-{/if}
+<MobileDock items={iconNavItems} />
 {#if !hideCompanionDock}
   <div class="hidden md:block">
     <CompanionDock

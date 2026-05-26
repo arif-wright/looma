@@ -3,8 +3,10 @@
   import { onDestroy, onMount } from 'svelte';
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
   import {
+    Bell,
     Heart,
     ImageIcon,
+    Menu,
     MessageCircle,
     Mic,
     MicOff,
@@ -24,6 +26,7 @@
   import StartChatModal from '$lib/components/messenger/StartChatModal.svelte';
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
+  import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
@@ -236,12 +239,13 @@
   $: recentActivity = conversations
     .filter((conversation) => conversation.last_message_at)
     .slice(0, 4);
+  $: unreadConversationsCount = conversations.reduce((sum, conversation) => sum + (conversation.unreadCount > 0 ? 1 : 0), 0);
   $: inboxTabs = [
-    { key: 'all', label: 'All' },
+    { key: 'all', label: 'Messages' },
     { key: 'friends', label: 'Friends' },
     { key: 'companions', label: 'Companions' },
     { key: 'groups', label: 'Groups' },
-    { key: 'unread', label: 'Unread' }
+    { key: 'unread', label: 'Notifications' }
   ] as const;
 
   const relativeLastActive = (iso: string) => {
@@ -1521,6 +1525,19 @@
   <FantasySidebar activePath="/app/messages" {playerName} level={24} xp={3200} xpNext={5000} />
 
   <main class="messages-workspace" aria-label="Messages">
+    <header class="mobile-chrome" aria-label="Messages header">
+      <MemvoyaBrand href="/app/home" size="sm" showMark={false} ariaLabel="Memvoya home" />
+      <div class="mobile-chrome__actions">
+        <button type="button" aria-label="Open notifications">
+          <Bell size={24} />
+          {#if unreadConversationsCount > 0}
+            <span aria-hidden="true"></span>
+          {/if}
+        </button>
+        <button type="button" aria-label="Open menu"><Menu size={27} /></button>
+      </div>
+    </header>
+
     <header class="messages-topbar">
       <label class="global-search" aria-label="Search messages or users">
         <Search size={18} />
@@ -1570,13 +1587,32 @@
             {#each inboxTabs as tab}
               <button
                 type="button"
+                class:mobile-tab-hidden={tab.key === 'friends' || tab.key === 'groups'}
                 class:is-active={activeInboxFilter === tab.key}
                 on:click={() => (activeInboxFilter = tab.key)}
               >
                 {tab.label}
+                {#if tab.key === 'unread' && unreadConversationsCount > 0}
+                  <span>{unreadConversationsCount > 9 ? '9+' : unreadConversationsCount}</span>
+                {/if}
               </button>
             {/each}
           </nav>
+
+          <div class="mobile-search-row">
+            <label class="global-search" aria-label="Search messages or users">
+              <Search size={24} />
+              <input
+                type="search"
+                placeholder="Search messages..."
+                value={searchQuery}
+                on:input={(event) => (searchQuery = (event.currentTarget as HTMLInputElement).value)}
+              />
+            </label>
+            <button class="filter-button" type="button" aria-label="Filter messages">
+              <SlidersHorizontal size={22} />
+            </button>
+          </div>
 
           <div class="conversation-list" role="listbox" aria-label="Messages">
             {#if loadingConversations && filteredConversations.length === 0}
@@ -1604,6 +1640,7 @@
                   <span class="conversation-copy">
                     <span class="conversation-title">
                       <strong>{conversationTitle(conversation)}</strong>
+                      <em>{isCompanionThread(conversation) ? 'Companion' : conversation.type === 'group' ? 'Group' : 'Message'}</em>
                       <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
                     </span>
                     <span class="conversation-preview">{conversationSubtitle(conversation)}</span>
@@ -1952,6 +1989,8 @@
   }
 
   .messages-topbar,
+  .mobile-chrome,
+  .mobile-chrome__actions,
   .messages-heading,
   .heading-actions,
   .chat-header,
@@ -1969,6 +2008,11 @@
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .mobile-chrome,
+  .mobile-search-row {
+    display: none;
   }
 
   .global-search {
@@ -2225,6 +2269,17 @@
     font-size: 0.95rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .conversation-title em {
+    flex: 0 0 auto;
+    border-radius: 0.45rem;
+    background: rgba(126, 60, 198, 0.26);
+    color: #d8a3ff;
+    font-size: 0.68rem;
+    font-style: normal;
+    line-height: 1;
+    padding: 0.28rem 0.44rem;
   }
 
   .conversation-title time,
@@ -2890,16 +2945,105 @@
   }
 
   @media (max-width: 760px) {
+    :global(.app-main--messages) {
+      overflow: auto;
+    }
+
     .messages-workspace {
       height: auto;
       min-height: 100vh;
       overflow: visible;
+      padding: max(1.35rem, calc(env(safe-area-inset-top) + 0.85rem)) 1.05rem calc(7.5rem + env(safe-area-inset-bottom));
     }
 
-    .messages-topbar,
+    .messages-app {
+      min-height: 100svh;
+      overflow: visible;
+      background:
+        radial-gradient(circle at 78% 9%, rgba(129, 60, 255, 0.23), transparent 15rem),
+        radial-gradient(circle at 16% 28%, rgba(93, 42, 168, 0.2), transparent 16rem),
+        linear-gradient(180deg, #040512 0%, #070719 52%, #050714 100%);
+    }
+
+    .mobile-chrome {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2.65rem;
+    }
+
+    .mobile-chrome__actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .mobile-chrome__actions button {
+      position: relative;
+      display: grid;
+      width: 2.55rem;
+      min-height: 2.55rem;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #fff3cf;
+      padding: 0;
+    }
+
+    .mobile-chrome__actions button span {
+      position: absolute;
+      right: 0.12rem;
+      top: 0.1rem;
+      width: 0.72rem;
+      height: 0.72rem;
+      border-radius: 999px;
+      background: #a55cff;
+      box-shadow: 0 0 16px rgba(165, 92, 255, 0.86);
+    }
+
+    .messages-topbar {
+      display: none;
+    }
+
     .messages-heading {
       align-items: stretch;
-      flex-direction: column;
+      flex-direction: row;
+      margin-bottom: 1.8rem;
+    }
+
+    .messages-heading h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(2.65rem, 10vw, 3.25rem);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .messages-heading h1 span {
+      display: none;
+    }
+
+    .messages-heading p {
+      max-width: 18rem;
+      margin-top: 0.8rem;
+      color: rgba(232, 228, 248, 0.76);
+      font-size: clamp(1.08rem, 4.6vw, 1.45rem);
+      line-height: 1.42;
+    }
+
+    .heading-actions {
+      align-self: start;
+      flex: 0 0 auto;
+      padding-top: 1.5rem;
+    }
+
+    .new-message {
+      min-height: 4.1rem;
+      border-radius: 1.35rem;
+      padding: 0 1.55rem;
+      font-size: clamp(1rem, 4vw, 1.25rem);
+    }
+
+    .heading-actions > .filter-button {
+      display: none;
     }
 
     .messages-grid {
@@ -2917,7 +3061,195 @@
 
     .inbox-panel,
     .chat-panel {
-      min-height: calc(100vh - 12rem);
+      min-height: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .inbox-tabs {
+      display: flex;
+      gap: 1.85rem;
+      overflow-x: auto;
+      border-bottom: 1px solid rgba(153, 130, 236, 0.18);
+      padding: 0 0 0.02rem;
+    }
+
+    .inbox-tabs button {
+      position: relative;
+      min-height: 3.2rem;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: rgba(232, 228, 248, 0.66);
+      font-size: clamp(1.08rem, 4.3vw, 1.35rem);
+      padding: 0 0 0.8rem;
+      white-space: nowrap;
+    }
+
+    .inbox-tabs button.mobile-tab-hidden {
+      display: none;
+    }
+
+    .inbox-tabs button.is-active,
+    .inbox-tabs button:hover,
+    .inbox-tabs button:focus-visible {
+      border-color: transparent;
+      background: transparent;
+      color: white;
+    }
+
+    .inbox-tabs button.is-active::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: -1.2rem;
+      bottom: -1px;
+      height: 0.18rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #d35cff, rgba(167, 92, 255, 0.28));
+      box-shadow: 0 0 16px rgba(195, 92, 255, 0.62);
+    }
+
+    .inbox-tabs button span {
+      display: inline-grid;
+      min-width: 1.55rem;
+      height: 1.55rem;
+      place-items: center;
+      border-radius: 0.58rem;
+      background: rgba(126, 60, 198, 0.62);
+      color: white;
+      font-size: 0.82rem;
+      margin-left: 0.42rem;
+      vertical-align: middle;
+    }
+
+    .mobile-search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 4.05rem;
+      gap: 1rem;
+      margin: 1.55rem 0 1.2rem;
+    }
+
+    .mobile-search-row .global-search {
+      display: flex;
+      width: auto;
+      min-height: 4.05rem;
+      border-color: rgba(153, 80, 240, 0.22);
+      border-radius: 1.8rem;
+      background: rgba(10, 9, 29, 0.72);
+      padding: 0 1.25rem;
+      color: rgba(231, 228, 248, 0.62);
+      backdrop-filter: blur(18px);
+    }
+
+    .mobile-search-row input {
+      font-size: clamp(1rem, 4.5vw, 1.25rem);
+    }
+
+    .mobile-search-row .filter-button {
+      display: grid;
+      width: 4.05rem;
+      min-height: 4.05rem;
+      border-radius: 1.35rem;
+      border-color: rgba(153, 80, 240, 0.22);
+      background: rgba(10, 9, 29, 0.72);
+      color: rgba(232, 228, 248, 0.78);
+    }
+
+    .conversation-list {
+      height: auto;
+      display: grid;
+      gap: 0.75rem;
+      overflow: visible;
+      padding-bottom: 0;
+    }
+
+    .conversation-row {
+      min-height: 8.55rem;
+      grid-template-columns: 5.8rem minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 1rem;
+      border: 1px solid rgba(153, 80, 240, 0.2);
+      border-radius: 1.25rem;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(146, 70, 255, 0.16), transparent 42%),
+        rgba(8, 10, 29, 0.62);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 18px 42px rgba(0, 0, 0, 0.24);
+      padding: 0.82rem 1rem;
+      backdrop-filter: blur(18px);
+    }
+
+    .conversation-row:hover,
+    .conversation-row:focus-visible,
+    .conversation-row.is-active {
+      background:
+        radial-gradient(circle at 12% 0%, rgba(146, 70, 255, 0.22), transparent 42%),
+        rgba(12, 12, 36, 0.8);
+    }
+
+    .avatar-wrap {
+      width: 5.25rem;
+      height: 5.25rem;
+      box-shadow: 0 0 0 1px rgba(167, 92, 255, 0.48), 0 0 24px rgba(126, 92, 255, 0.42);
+    }
+
+    .presence-dot {
+      left: -0.1rem;
+      right: auto;
+      bottom: 2.3rem;
+      width: 1rem;
+      height: 1rem;
+      border-width: 0;
+      background: #8b3cff;
+      box-shadow: 0 0 14px rgba(139, 60, 255, 0.84);
+    }
+
+    .conversation-title {
+      display: grid;
+      grid-template-columns: minmax(0, auto) auto minmax(max-content, 1fr);
+      justify-content: start;
+      gap: 0.55rem;
+      align-items: center;
+    }
+
+    .conversation-title strong {
+      font-size: clamp(1.26rem, 5vw, 1.55rem);
+    }
+
+    .conversation-title em {
+      border-radius: 0.48rem;
+      background: rgba(126, 60, 198, 0.36);
+      color: #d8a3ff;
+      font-size: clamp(0.72rem, 3vw, 0.9rem);
+      padding: 0.32rem 0.5rem;
+    }
+
+    .conversation-title time {
+      justify-self: end;
+      color: rgba(232, 228, 248, 0.72);
+      font-size: clamp(0.9rem, 3.8vw, 1.16rem);
+    }
+
+    .conversation-preview {
+      display: -webkit-box;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      color: rgba(232, 228, 248, 0.72);
+      font-size: clamp(1rem, 4.4vw, 1.25rem);
+      line-height: 1.36;
+      margin-top: 0.62rem;
+    }
+
+    .unread-badge {
+      min-width: 2.7rem;
+      height: 2.7rem;
+      font-size: 1.15rem;
     }
 
     .chat-header {
@@ -2957,6 +3289,46 @@
 
     :global(.chat-panel .bubble) {
       max-width: 88%;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .messages-heading {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .heading-actions {
+      align-self: stretch;
+      padding-top: 0;
+    }
+
+    .new-message {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .conversation-row {
+      grid-template-columns: 4.85rem minmax(0, 1fr) auto;
+      min-height: 7.8rem;
+      padding: 0.72rem;
+    }
+
+    .avatar-wrap {
+      width: 4.45rem;
+      height: 4.45rem;
+    }
+
+    .conversation-title {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .conversation-title em {
+      display: none;
+    }
+
+    .conversation-title time {
+      font-size: 0.9rem;
     }
   }
 
