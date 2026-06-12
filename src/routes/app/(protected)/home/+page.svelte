@@ -10,7 +10,6 @@
     Leaf,
     Menu,
     Plus,
-    Search,
     Sparkles,
     ScrollText
   } from 'lucide-svelte';
@@ -21,7 +20,7 @@
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
-  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
+  import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
   import type { PageData } from './$types';
 
@@ -381,22 +380,17 @@
   />
 
   <main class="home-main" aria-label="Memvoya companion home">
-    <header class="topbar">
+    <ProtectedTopbar
+      {shardBalance}
+      notifications={(data as any)?.notifications ?? []}
+      profileDisplayName={playerName}
+      {profileAvatarUrl}
+    />
+    <header class="mobile-topbar">
       <div class="mobile-brand">
         <MemvoyaBrand href="/app/home" size="sm" showMark={false} ariaLabel="Memvoya home" />
       </div>
-      <label class="search" aria-label="Search Memvoya">
-        <Search size={19} />
-        <input type="search" placeholder="Search companions, games, or friends..." />
-        <span>⌘K</span>
-      </label>
       <div class="top-actions">
-        <DesktopTopbarActions
-          {shardBalance}
-          notifications={(data as any)?.notifications ?? []}
-          profileDisplayName={playerName}
-          {profileAvatarUrl}
-        />
         <button class="mobile-bell-action" type="button" aria-label="Open notifications">
           <Bell size={23} />
           <span aria-hidden="true"></span>
@@ -669,61 +663,17 @@
     }
   }
 
-  .topbar,
+  .mobile-topbar,
   .content-grid {
     position: relative;
     z-index: 2;
   }
 
-  .topbar {
-    z-index: 80;
-  }
-
   .mobile-brand,
+  .mobile-topbar,
   .mobile-bell-action,
   .menu-action {
     display: none;
-  }
-
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .search {
-    display: flex;
-    width: min(27.5rem, 100%);
-    min-height: 2.9rem;
-    align-items: center;
-    gap: 0.8rem;
-    border: 1px solid rgba(170, 151, 255, 0.18);
-    border-radius: 1.45rem;
-    background: rgba(8, 10, 27, 0.58);
-    padding: 0 1rem;
-    color: rgba(231, 229, 246, 0.58);
-    backdrop-filter: blur(22px);
-  }
-
-  .search input {
-    min-width: 0;
-    flex: 1;
-    border: 0;
-    background: transparent;
-    color: white;
-    font: inherit;
-    outline: 0;
-  }
-
-  .search input::placeholder {
-    color: rgba(231, 229, 246, 0.48);
-  }
-
-  .search span {
-    color: rgba(231, 229, 246, 0.58);
-    font-size: 0.78rem;
   }
 
   .top-actions {
@@ -888,8 +838,11 @@
       padding: 0;
     }
 
-    .topbar {
+    .mobile-topbar {
       position: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       left: 1.25rem;
       right: 1.25rem;
       top: max(1.05rem, calc(env(safe-area-inset-top) + 0.45rem));
@@ -903,18 +856,10 @@
       align-items: center;
     }
 
-    .search {
-      display: none;
-    }
-
     .top-actions {
       width: auto;
       justify-content: flex-end;
       gap: 0.85rem;
-    }
-
-    .top-actions :global(.desktop-topbar-actions) {
-      display: none;
     }
 
     .mobile-bell-action {

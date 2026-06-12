@@ -12,7 +12,6 @@
     Pencil,
     Play,
     Plus,
-    Search,
     Shield,
     SlidersHorizontal,
     Smile,
@@ -36,7 +35,7 @@
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
-  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
+  import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
   import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
   import { DEFAULT_COMPANION_COSMETICS, normalizeCompanionCosmetics } from '$lib/companions/cosmetics';
   import {
@@ -1425,60 +1424,57 @@
   />
 
   <main class="companions-workspace" aria-label="Companions">
-    <header class="topbar">
-      <label class="search-field" aria-label="Search companions">
-        <Search size={18} />
-        <input
-          type="search"
-          placeholder="Search companions..."
-          value={filters.search}
-          on:input={(event) => updateFilters({ search: (event.currentTarget as HTMLInputElement).value })}
-        />
-      </label>
-      <div class="topbar-controls">
-        <label class="select-field">
-          <span>Sort companions</span>
-          <select
-            value={filters.sort}
-            on:change={(event) => updateFilters({ sort: (event.currentTarget as HTMLSelectElement).value as SortKey })}
+    <ProtectedTopbar
+      searchValue={filters.search}
+      searchPlaceholder="Search companions..."
+      searchAriaLabel="Search companions"
+      localSearch
+      onSearch={(search) => updateFilters({ search })}
+      {shardBalance}
+      notifications={(data as any)?.notifications ?? []}
+      {profileDisplayName}
+      profileAvatarUrl={activeProfileAvatar}
+    >
+      <svelte:fragment slot="controls">
+        <div class="companion-topbar-filters">
+          <label class="select-field">
+            <span>Sort companions</span>
+            <select
+              value={filters.sort}
+              on:change={(event) => updateFilters({ sort: (event.currentTarget as HTMLSelectElement).value as SortKey })}
+            >
+              <option value="bond_desc">Bond</option>
+              <option value="recent_interaction">Recent</option>
+              <option value="energy_desc">Spark</option>
+              <option value="name_asc">Name</option>
+            </select>
+            <ChevronDown size={16} />
+          </label>
+          <label class="select-field">
+            <span>Filter by element</span>
+            <select
+              value={filters.element}
+              on:change={(event) => updateFilters({ element: (event.currentTarget as HTMLSelectElement).value })}
+            >
+              <option value="all">All Elements</option>
+              {#each elementOptions as element}
+                <option value={element}>{element}</option>
+              {/each}
+            </select>
+            <ChevronDown size={16} />
+          </label>
+          <button
+            type="button"
+            class={`icon-button ${hasActiveFilters ? 'is-active' : ''}`}
+            aria-label={hasActiveFilters ? 'Clear companion filters' : 'Companion filters are clear'}
+            aria-pressed={hasActiveFilters}
+            on:click={clearFilters}
           >
-            <option value="bond_desc">Bond</option>
-            <option value="recent_interaction">Recent</option>
-            <option value="energy_desc">Spark</option>
-            <option value="name_asc">Name</option>
-          </select>
-          <ChevronDown size={16} />
-        </label>
-        <label class="select-field">
-          <span>Filter by element</span>
-          <select
-            value={filters.element}
-            on:change={(event) => updateFilters({ element: (event.currentTarget as HTMLSelectElement).value })}
-          >
-            <option value="all">All Elements</option>
-            {#each elementOptions as element}
-              <option value={element}>{element}</option>
-            {/each}
-          </select>
-          <ChevronDown size={16} />
-        </label>
-        <button
-          type="button"
-          class={`icon-button ${hasActiveFilters ? 'is-active' : ''}`}
-          aria-label={hasActiveFilters ? 'Clear companion filters' : 'Companion filters are clear'}
-          aria-pressed={hasActiveFilters}
-          on:click={clearFilters}
-        >
-          <SlidersHorizontal size={18} />
-        </button>
-        <DesktopTopbarActions
-          {shardBalance}
-          notifications={(data as any)?.notifications ?? []}
-          {profileDisplayName}
-          profileAvatarUrl={activeProfileAvatar}
-        />
-      </div>
-    </header>
+            <SlidersHorizontal size={18} />
+          </button>
+        </div>
+      </svelte:fragment>
+    </ProtectedTopbar>
 
     <section class="roster-layout">
       <div class="roster-main">
@@ -2207,8 +2203,6 @@
     padding: 1.5rem 1.25rem 1.75rem 1.85rem;
   }
 
-  .topbar,
-  .topbar-controls,
   .title-row,
   .detail-head,
   .bond-row,
@@ -2218,42 +2212,12 @@
     align-items: center;
   }
 
-  .topbar {
-    gap: 1rem;
-    justify-content: space-between;
-    margin-bottom: 1.85rem;
-  }
-
-  .search-field {
-    display: flex;
-    min-height: 3rem;
-    width: min(100%, 27rem);
-    align-items: center;
-    gap: 0.75rem;
-    border: 1px solid rgba(153, 130, 236, 0.18);
-    border-radius: 1rem;
-    background: rgba(9, 10, 29, 0.78);
-    padding: 0 1rem;
-    color: rgba(198, 193, 226, 0.76);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  .search-field input,
   .select-field select {
     width: 100%;
     border: 0;
     background: transparent;
     color: rgba(248, 246, 255, 0.9);
     outline: 0;
-  }
-
-  .search-field input::placeholder {
-    color: rgba(205, 200, 230, 0.56);
-  }
-
-  .topbar-controls {
-    gap: 0.75rem;
-    position: relative;
   }
 
   .select-field,
@@ -2274,6 +2238,12 @@
     align-items: center;
     gap: 0.45rem;
     padding: 0 0.85rem;
+  }
+
+  .companion-topbar-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
   }
 
   .select-field > span {
@@ -3990,21 +3960,14 @@
       padding: 1rem 1rem calc(5.5rem + env(safe-area-inset-bottom));
     }
 
-    .topbar,
-    .topbar-controls,
     .title-row,
     .slots-panel {
       align-items: stretch;
       flex-direction: column;
     }
 
-    .search-field {
-      width: 100%;
-    }
-
-    .topbar-controls {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .companion-topbar-filters {
+      display: none;
     }
 
     .stats-grid,
@@ -4015,7 +3978,6 @@
   }
 
   @media (max-width: 620px) {
-    .topbar-controls,
     .stats-grid,
     .companion-grid,
     .collection-grid,

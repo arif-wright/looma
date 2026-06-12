@@ -23,6 +23,7 @@
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
   import type { IconNavItem } from '$lib/components/ui/types';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
+  import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
@@ -115,6 +116,10 @@
     (data as any)?.user?.user_metadata?.name ??
     (data as any)?.user?.email?.split('@')?.[0] ??
     'Traveler';
+  $: shellProfileAvatar =
+    (data as any)?.profile?.avatar_url ??
+    (data as any)?.user?.user_metadata?.avatar_url ??
+    null;
   $: shellLevel = Math.max(1, Math.floor(data?.headerStats?.level ?? data?.activeCompanion?.bondLevel ?? 1));
   $: shellXp = Math.max(0, Math.floor(data?.headerStats?.xp ?? 0));
   $: shellXpNext = Math.max(shellXp + 1, Math.floor(data?.headerStats?.xp_next ?? 100));
@@ -573,6 +578,14 @@
         />
       {/if}
       <main class={`app-main ${usePageOwnedShell ? 'app-main--home' : 'app-main--unified'} ${isMessages ? 'app-main--messages' : ''}`}>
+        {#if !usePageOwnedShell}
+          <ProtectedTopbar
+            shardBalance={walletBalance ?? 0}
+            notifications={bellNotifications}
+            profileDisplayName={shellPlayerName}
+            profileAvatarUrl={shellProfileAvatar}
+          />
+        {/if}
         <slot />
       </main>
     </div>
@@ -641,7 +654,7 @@
   }
 
   .app-main--unified {
-    padding: 1rem 1rem calc(5.6rem + env(safe-area-inset-bottom));
+    padding: 0 1rem calc(5.6rem + env(safe-area-inset-bottom));
   }
 
   .app-main--messages {
@@ -665,7 +678,7 @@
     }
 
     .app-main--unified {
-      padding: 0.5rem 0.4rem calc(5.2rem + env(safe-area-inset-bottom));
+      padding: 0 0.4rem calc(5.2rem + env(safe-area-inset-bottom));
     }
   }
 

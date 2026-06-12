@@ -27,7 +27,7 @@
   import MediaViewerModal from '$lib/components/messenger/MediaViewerModal.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
-  import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
+  import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
@@ -1544,23 +1544,17 @@
       </div>
     </header>
 
-    <header class="messages-topbar">
-      <label class="global-search" aria-label="Search messages or users">
-        <Search size={18} />
-        <input
-          type="search"
-          placeholder="Search messages or users..."
-          value={searchQuery}
-          on:input={(event) => (searchQuery = (event.currentTarget as HTMLInputElement).value)}
-        />
-      </label>
-      <DesktopTopbarActions
-        {shardBalance}
-        notifications={(data as any)?.notifications ?? []}
-        profileDisplayName={playerName}
-        {profileAvatarUrl}
-      />
-    </header>
+    <ProtectedTopbar
+      searchValue={searchQuery}
+      searchPlaceholder="Search messages or users..."
+      searchAriaLabel="Search messages or users"
+      localSearch
+      onSearch={(search) => (searchQuery = search)}
+      {shardBalance}
+      notifications={(data as any)?.notifications ?? []}
+      profileDisplayName={playerName}
+      {profileAvatarUrl}
+    />
 
     <div class="messages-grid">
       <section class="messages-heading">
@@ -1994,7 +1988,6 @@
     padding: 1.25rem 1.1rem 1rem 1.6rem;
   }
 
-  .messages-topbar,
   .mobile-chrome,
   .mobile-chrome__actions,
   .messages-heading,
@@ -2008,12 +2001,6 @@
   .activity-row {
     display: flex;
     align-items: center;
-  }
-
-  .messages-topbar {
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
   }
 
   .mobile-chrome,
@@ -3004,10 +2991,6 @@
       border-radius: 999px;
       background: #a55cff;
       box-shadow: 0 0 16px rgba(165, 92, 255, 0.86);
-    }
-
-    .messages-topbar {
-      display: none;
     }
 
     .messages-heading {
