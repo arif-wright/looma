@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { Search } from 'lucide-svelte';
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import type { NotificationItem } from '$lib/components/ui/types';
@@ -54,8 +54,10 @@
     searchFocused = false;
   };
 
-  onMount(() => document.addEventListener('click', handleDocumentClick, true));
-  onDestroy(() => document.removeEventListener('click', handleDocumentClick, true));
+  onMount(() => {
+    document.addEventListener('click', handleDocumentClick, true);
+    return () => document.removeEventListener('click', handleDocumentClick, true);
+  });
 </script>
 
 <header class="protected-topbar" bind:this={rootRef}>
