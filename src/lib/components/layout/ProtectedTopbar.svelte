@@ -111,17 +111,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid rgba(169, 123, 225, 0.1);
     margin-bottom: 1rem;
     padding: 0.5rem 0.85rem;
-    background: rgba(7, 8, 25, 0.72);
-    backdrop-filter: blur(22px);
   }
 
   .search-wrap {
     position: relative;
     width: min(27rem, 100%);
-    flex: 1 1 18rem;
+    flex: 0 1 27rem;
   }
 
   .search-field {
