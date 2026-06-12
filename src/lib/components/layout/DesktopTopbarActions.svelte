@@ -192,7 +192,7 @@
     >
       <Bell size={19} />
       {#if unreadNotifications > 0}
-        <span class="badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>
+        <span class="badge" class:wide={unreadNotifications > 9}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>
       {/if}
     </button>
     {#if notificationsOpen}
@@ -245,7 +245,7 @@
     >
       <MessageCircle size={19} />
       {#if unreadMessages > 0}
-        <span class="badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
+        <span class="badge" class:wide={unreadMessages > 9}>{unreadMessages > 9 ? '9+' : unreadMessages}</span>
       {/if}
     </button>
     {#if messagesOpen}
@@ -439,8 +439,9 @@
     position: absolute;
     top: -0.2rem;
     right: -0.1rem;
-    min-width: 1.08rem;
+    width: 1.08rem;
     height: 1.08rem;
+    padding: 0;
     border-radius: 999px;
     display: grid;
     place-items: center;
@@ -448,7 +449,14 @@
     color: white;
     font-size: 0.63rem;
     font-weight: 900;
+    line-height: 1;
     box-shadow: 0 0 16px rgba(167, 92, 255, 0.72);
+  }
+
+  .badge.wide {
+    width: auto;
+    min-width: 1.08rem;
+    padding-inline: 0.24rem;
   }
 
   .dropdown {
