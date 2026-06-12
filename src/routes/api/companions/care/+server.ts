@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '$lib/server/supabase';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
+import { supabaseAdmin } from '$lib/server/supabase';
 
 type CareAction = 'feed' | 'play' | 'groom';
 type CompanionStatsRow = {
@@ -32,6 +33,75 @@ const deriveMood = (affection: number, trust: number, energy: number) => {
   if (affection > 70 && trust > 60) return 'happy';
   if (affection < 30 && trust < 30) return 'stressed';
   return 'neutral';
+};
+
+const unlockCareMossSeat = async (ownerId: string, companionId: string, companionName: string) => {
+  const { count, error: countError } = await supabaseAdmin
+    .from('companion_care_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', ownerId)
+    .eq('companion_id', companionId);
+  if (countError || (count ?? 0) < 3) return null;
+
+  const { data: item, error: itemError } = await supabaseAdmin
+    .from('item_catalog')
+    .select('id, item_key, title, description')
+    .eq('item_key', 'care-moss-seat')
+    .maybeSingle();
+  if (itemError || !item) return null;
+
+  const { data: existing } = await supabaseAdmin
+    .from('user_items')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .eq('companion_id', companionId)
+    .eq('item_id', item.id)
+    .eq('source_type', 'care_milestone')
+    .eq('source_key', 'care_3')
+    .maybeSingle();
+  if (existing) return null;
+
+  const { data: unlocked, error: unlockError } = await supabaseAdmin
+    .from('user_items')
+    .insert({
+      owner_id: ownerId,
+      companion_id: companionId,
+      item_id: item.id,
+      source_type: 'care_milestone',
+      source_key: 'care_3',
+      provenance_json: {
+        careMoments: count,
+        companionName,
+        reason: 'Earned after three moments of care.'
+      }
+    })
+    .select('id')
+    .single();
+  if (unlockError || !unlocked) {
+    console.error('[companion care] moss seat unlock failed', unlockError);
+    return null;
+  }
+
+  await supabaseAdmin.from('companion_journal_entries').insert({
+    owner_id: ownerId,
+    companion_id: companionId,
+    source_type: 'system',
+    title: `${companionName} found a Moss Seat`,
+    body: `After three moments of care, ${companionName} found a soft place that now belongs in your shared sanctuary.`,
+    meta_json: {
+      category: 'item_unlock',
+      itemKey: item.item_key,
+      sourceType: 'care_milestone',
+      sourceKey: 'care_3'
+    }
+  });
+
+  return {
+    id: unlocked.id,
+    itemKey: item.item_key,
+    title: item.title,
+    description: item.description
+  };
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -74,27 +144,6 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'forbidden' }, { status: 403 });
   }
 
-  if (companion.energy <= 0) {
-    return json({ error: 'low_energy', message: `${companion.name} is too tired right now.` }, { status: 400 });
-  }
-
-  const deltas = ACTION_DELTAS[action];
-  const affection = clamp((companion.affection ?? 0) + deltas.affection);
-  const trust = clamp((companion.trust ?? 0) + deltas.trust);
-  const energy = clamp((companion.energy ?? 0) + deltas.energy);
-  const mood = deriveMood(affection, trust, energy);
-
-  const { data: updated, error: updateError } = await supabase
-    .from('companions')
-    .update({ affection, trust, energy, mood })
-    .eq('id', companion.id)
-    .select('id, name, affection, trust, energy, mood, updated_at')
-    .maybeSingle();
-
-  if (updateError || !updated) {
-    return json({ error: updateError?.message ?? 'care_failed' }, { status: 400 });
-  }
-
   const statsBase = companion.stats ?? {
     companion_id: companion.id,
     care_streak: 0,
@@ -118,6 +167,38 @@ export const POST: RequestHandler = async (event) => {
     bond_level: null,
     bond_score: null
   };
+  const lastActionAt = action === 'feed' ? stats.fed_at : action === 'play' ? stats.played_at : stats.groomed_at;
+  const lastActionStamp = lastActionAt ? Date.parse(lastActionAt) : Number.NaN;
+  const cooldownMs = 10 * 60 * 1000;
+  if (Number.isFinite(lastActionStamp) && Date.now() - lastActionStamp < cooldownMs) {
+    const retryAfter = Math.max(1, Math.ceil((cooldownMs - (Date.now() - lastActionStamp)) / 1000));
+    return json(
+      { error: 'cooldown_active', message: `${companion.name} needs a little time before doing that again.`, retryAfter },
+      { status: 429 }
+    );
+  }
+
+  if (companion.energy <= 0) {
+    return json({ error: 'low_energy', message: `${companion.name} is too tired right now.` }, { status: 400 });
+  }
+
+  const deltas = ACTION_DELTAS[action];
+  const affection = clamp((companion.affection ?? 0) + deltas.affection);
+  const trust = clamp((companion.trust ?? 0) + deltas.trust);
+  const energy = clamp((companion.energy ?? 0) + deltas.energy);
+  const mood = deriveMood(affection, trust, energy);
+
+  const { data: updated, error: updateError } = await supabase
+    .from('companions')
+    .update({ affection, trust, energy, mood })
+    .eq('id', companion.id)
+    .select('id, name, affection, trust, energy, mood, updated_at')
+    .maybeSingle();
+
+  if (updateError || !updated) {
+    return json({ error: updateError?.message ?? 'care_failed' }, { status: 400 });
+  }
+
   const nowIso = new Date().toISOString();
   const nextStats = {
     companion_id: companion.id,
@@ -190,12 +271,17 @@ export const POST: RequestHandler = async (event) => {
     bond_level: bondLevel,
     bond_score: bondScore
   };
+  const itemUnlock = await unlockCareMossSeat(session.user.id, companion.id, companion.name).catch((err) => {
+    console.error('[companion care] item unlock evaluation failed', err);
+    return null;
+  });
 
   return json({
     ok: true,
     companion: { ...updated, bond_level: bondLevel, bond_score: bondScore, stats: statsWithBond },
     event: eventRow ?? null,
     milestones: milestoneEvents,
-    rituals: ritualUpdate
+    rituals: ritualUpdate,
+    itemUnlock
   });
 };

@@ -27,10 +27,44 @@
       species?: string | null;
     } | null;
   };
+  type UnifiedItemRow = {
+    id: string;
+    source_type: string;
+    source_key?: string | null;
+    provenance_json?: Record<string, unknown> | null;
+    acquired_at: string;
+    companion?: { id: string; name: string } | { id: string; name: string }[] | null;
+    item: {
+      id: string;
+      item_key: string;
+      title: string;
+      description: string;
+      kind: string;
+      tone: string;
+      visual_key: string;
+      capabilities: string[];
+    } | {
+      id: string;
+      item_key: string;
+      title: string;
+      description: string;
+      kind: string;
+      tone: string;
+      visual_key: string;
+      capabilities: string[];
+    }[];
+  };
 
-  export let data: { items: InventoryRow[]; companionRewards: CompanionRewardRow[]; error?: string | null };
+  export let data: { items: InventoryRow[]; unifiedItems: UnifiedItemRow[]; companionRewards: CompanionRewardRow[]; error?: string | null };
 
   const items = Array.isArray(data?.items) ? data.items : [];
+  const unifiedItems = Array.isArray(data?.unifiedItems)
+    ? data.unifiedItems.map((row) => ({
+        ...row,
+        item: Array.isArray(row.item) ? row.item[0] : row.item,
+        companion: Array.isArray(row.companion) ? row.companion[0] ?? null : row.companion ?? null
+      }))
+    : [];
   const companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
   const error = data?.error ?? null;
 
@@ -78,7 +112,7 @@
   subtitle="Keep companion rewards, cosmetics, boosts, and expression pieces visible without breaking the sanctuary flow."
 >
   <svelte:fragment slot="actions">
-    <EmotionalChip tone="warm">{items.length + companionRewards.length} owned</EmotionalChip>
+    <EmotionalChip tone="warm">{items.length + unifiedItems.length + companionRewards.length} owned</EmotionalChip>
     <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : 'Empty vault'}</EmotionalChip>
   </svelte:fragment>
 
@@ -86,7 +120,7 @@
     <section class="inventory-pulse" aria-label="Keepsakes pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
-        <h2>{items.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + companionRewards.length} keepsakes in your vault`}</h2>
+        <h2>{items.length + unifiedItems.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + unifiedItems.length + companionRewards.length} items in your collection`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
             Keepsakes could not be loaded right now. Your owned items are still safe.
@@ -130,7 +164,7 @@
         <h3>Keepsakes unavailable</h3>
         <p>Failed to load keepsakes: {error}</p>
       </section>
-    {:else if !items.length && !companionRewards.length}
+    {:else if !items.length && !unifiedItems.length && !companionRewards.length}
       <section class="inventory-state" aria-live="polite">
         <h3>Your vault is quiet</h3>
         <p>No items owned yet. Explore the atelier to pick up your first cosmetic, utility item, or bundle.</p>
@@ -154,6 +188,37 @@
           </div>
         </article>
       </section>
+
+      {#if unifiedItems.length > 0}
+        <section class="inventory-grid" aria-label="Meaningful items">
+          {#each unifiedItems as owned}
+            {#if owned.item}
+              <article class="inventory-card" aria-label={`${owned.item.title} meaningful item`}>
+                <div class="inventory-media">
+                  <div class="inventory-media__placeholder" aria-hidden="true">{owned.item.title.slice(0, 1)}</div>
+                  <span class="inventory-rarity">{titleCase(owned.item.tone)}</span>
+                </div>
+                <div class="inventory-body">
+                  <div class="inventory-body__heading">
+                    <div>
+                      <h3>{owned.item.title}</h3>
+                      <p class="subtitle">{owned.item.description}</p>
+                    </div>
+                    <span class="inventory-type">{titleCase(owned.item.kind)}</span>
+                  </div>
+                  <p class="meta">
+                    {owned.source_type === 'care_milestone' ? 'Earned through care' : 'Earned as a chapter keepsake'}
+                    {owned.companion?.name ? ` with ${owned.companion.name}` : ''}
+                  </p>
+                  {#if owned.item.capabilities.includes('placeable')}
+                    <a class="item-action" href="/app/sanctuary">Place in sanctuary</a>
+                  {/if}
+                </div>
+              </article>
+            {/if}
+          {/each}
+        </section>
+      {/if}
 
       {#if companionRewards.length > 0}
         <section class="inventory-overview" aria-label="Companion keepsakes">
@@ -325,6 +390,17 @@
 
   .quicklink--primary {
     background: linear-gradient(135deg, rgba(214, 190, 141, 0.2), rgba(125, 211, 252, 0.14));
+  }
+
+  .item-action {
+    justify-self: start;
+    border-radius: 999px;
+    background: rgba(125, 211, 252, 0.12);
+    padding: 0.5rem 0.7rem;
+    color: rgba(237, 246, 255, 0.94);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
   }
 
   .inventory-state {

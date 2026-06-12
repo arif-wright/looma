@@ -11,7 +11,15 @@
   type Placement = {
     id: string;
     slot_key: SanctuarySlot;
-    decor: SanctuaryDecor | SanctuaryDecor[] | null;
+    item: SanctuaryDecor | SanctuaryDecor[] | null;
+  };
+  type OwnedItem = {
+    id: string;
+    source_type: string;
+    source_key: string | null;
+    provenance_json: Record<string, unknown> | null;
+    acquired_at: string;
+    item: (SanctuaryDecor & { item_key?: string }) | (SanctuaryDecor & { item_key?: string })[] | null;
   };
 
   const slots: Array<{ key: SanctuarySlot; label: string }> = [
@@ -22,15 +30,19 @@
     { key: 'near_right', label: 'Near right' }
   ];
 
-  let selectedDecorId: string | null = data.decor?.[0]?.id ?? null;
+  const normalizedOwnedItems = (data.items as unknown as OwnedItem[]).map((owned) => ({
+    ...owned,
+    item: Array.isArray(owned.item) ? owned.item[0] ?? null : owned.item
+  }));
+  let selectedItemId: string | null = normalizedOwnedItems[0]?.item?.id ?? null;
   let savingSlot: SanctuarySlot | null = null;
   let reaction = data.latestReaction?.body ?? null;
   let status: string | null = null;
 
-  const normalizeDecor = (value: Placement['decor']) => (Array.isArray(value) ? value[0] ?? null : value);
+  const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
   const placementFor = (slot: SanctuarySlot) =>
-    (data.placements as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
-  const selectedDecor = () => (data.decor as SanctuaryDecor[]).find((decor) => decor.id === selectedDecorId) ?? null;
+    (data.placements as unknown as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
+  const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
 
   const iconFor = (visualKey: string) => {
     if (visualKey === 'lantern') return LampDesk;
@@ -42,18 +54,18 @@
   };
 
   const updateSlot = async (slot: SanctuarySlot, clear = false) => {
-    if (savingSlot || (!clear && !selectedDecorId)) return;
+    if (savingSlot || (!clear && !selectedItemId)) return;
     savingSlot = slot;
     status = clear ? 'Making space...' : 'Changing the sanctuary...';
     try {
       const response = await fetch('/api/sanctuary/placement', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slot, decorId: selectedDecorId, clear })
+        body: JSON.stringify({ slot, itemId: selectedItemId, clear })
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        status = payload?.error === 'decor_not_available' ? 'That decoration is not available.' : 'The sanctuary could not be changed.';
+        status = payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
         return;
       }
       reaction = payload?.reaction ?? reaction;
@@ -97,7 +109,7 @@
 
       {#each slots as slot}
         {@const placement = placementFor(slot.key)}
-        {@const placedDecor = normalizeDecor(placement?.decor ?? null)}
+        {@const placedDecor = normalizeItem(placement?.item ?? null)}
         <button
           class:occupied={Boolean(placedDecor)}
           class:saving={savingSlot === slot.key}
@@ -136,32 +148,44 @@
     <section class="decor-panel" aria-labelledby="decor-title">
       <header>
         <div>
-          <span>Starter collection</span>
-          <h2 id="decor-title">Choose something meaningful</h2>
+          <span>Owned collection</span>
+          <h2 id="decor-title">Place something you earned together</h2>
         </div>
         <p>Select a decoration, then choose a space in the sanctuary.</p>
       </header>
 
+      {#if normalizedOwnedItems.length > 0}
       <div class="decor-grid">
-        {#each data.decor as decor}
+        {#each normalizedOwnedItems as owned}
+          {@const decor = owned.item}
+          {#if decor}
           {@const DecorIcon = iconFor(decor.visual_key)}
           <button
-            class:selected={selectedDecorId === decor.id}
+            class:selected={selectedItemId === decor.id}
             type="button"
-            aria-pressed={selectedDecorId === decor.id}
-            on:click={() => (selectedDecorId = decor.id)}
+            aria-pressed={selectedItemId === decor.id}
+            on:click={() => (selectedItemId = decor.id)}
           >
             <span class={`decor-art decor-art--${decor.tone}`}><DecorIcon size={25} /></span>
             <strong>{decor.title}</strong>
             <small>{decor.description}</small>
+            <em>{owned.source_type === 'care_milestone' ? 'Earned through care' : 'Earned as a chapter keepsake'}</em>
           </button>
+          {/if}
         {/each}
       </div>
 
-      {#if selectedDecor()}
+      {#if selectedItem()}
         <div class="selection-bar">
-          <span><strong>{selectedDecor()?.title}</strong> selected</span>
+          <span><strong>{selectedItem()?.item?.title}</strong> selected</span>
           <span>Tap an occupied space to replace it.</span>
+        </div>
+      {/if}
+      {:else}
+        <div class="empty-collection">
+          <strong>No placeable keepsakes yet</strong>
+          <span>Complete three care moments with your companion to earn your first shared object.</span>
+          <a href="/app/companions">Care for companion</a>
         </div>
       {/if}
     </section>
@@ -171,9 +195,9 @@
         <h2 id="placed-title">Placed in your sanctuary</h2>
         <div>
           {#each data.placements as placement}
-            {@const placedDecor = normalizeDecor((placement as Placement).decor)}
+            {@const placedDecor = normalizeItem((placement as unknown as Placement).item)}
             {#if placedDecor}
-              <button type="button" disabled={Boolean(savingSlot)} on:click={() => updateSlot((placement as Placement).slot_key, true)}>
+              <button type="button" disabled={Boolean(savingSlot)} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
                 <span>{placedDecor.title}</span>
                 <small>Remove</small>
               </button>
@@ -231,7 +255,7 @@
     overflow: hidden;
     border: 1px solid rgba(215, 229, 255, 0.2);
     border-radius: 1.45rem;
-    background: #111b46;
+    background: #07081c;
     box-shadow: 0 24px 80px rgba(4, 8, 28, 0.42);
   }
 
@@ -245,24 +269,24 @@
 
   .sky {
     background:
-      radial-gradient(circle at 76% 18%, rgba(255, 233, 174, 0.74), transparent 6rem),
-      radial-gradient(circle at 22% 20%, rgba(112, 243, 224, 0.28), transparent 13rem),
-      linear-gradient(180deg, #293c82 0%, #5d6ca2 48%, #d39981 75%, #3b496f 100%);
+      radial-gradient(circle at 76% 18%, rgba(255, 112, 223, 0.24), transparent 8rem),
+      radial-gradient(circle at 22% 20%, rgba(94, 242, 255, 0.2), transparent 14rem),
+      linear-gradient(180deg, #111036 0%, #17183e 48%, #17152f 75%, #090b20 100%);
   }
 
   .horizon {
     top: 38%;
     background:
-      radial-gradient(ellipse at 15% 70%, rgba(25, 54, 69, 0.95) 0 25%, transparent 26%),
-      radial-gradient(ellipse at 83% 72%, rgba(32, 67, 70, 0.94) 0 27%, transparent 28%),
-      radial-gradient(ellipse at 53% 85%, rgba(50, 88, 86, 0.78) 0 28%, transparent 29%);
+      radial-gradient(ellipse at 15% 70%, rgba(18, 27, 55, 0.96) 0 25%, transparent 26%),
+      radial-gradient(ellipse at 83% 72%, rgba(24, 31, 64, 0.94) 0 27%, transparent 28%),
+      radial-gradient(ellipse at 53% 85%, rgba(44, 37, 82, 0.76) 0 28%, transparent 29%);
   }
 
   .ground {
     top: 57%;
     background:
-      radial-gradient(ellipse at 50% 10%, rgba(129, 181, 151, 0.74), transparent 42%),
-      linear-gradient(180deg, rgba(43, 91, 76, 0.88), #142f35);
+      radial-gradient(ellipse at 50% 10%, rgba(96, 112, 166, 0.48), transparent 42%),
+      linear-gradient(180deg, rgba(31, 39, 78, 0.9), #0a1029);
   }
 
   .scene-slot {
@@ -450,6 +474,37 @@
   .decor-grid small {
     color: rgba(215, 223, 243, 0.62);
     line-height: 1.35;
+  }
+
+  .decor-grid em {
+    color: rgba(172, 237, 224, 0.74);
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .empty-collection {
+    display: grid;
+    justify-items: start;
+    gap: 0.45rem;
+    margin-top: 0.9rem;
+    border: 1px dashed rgba(220, 227, 255, 0.2);
+    border-radius: 1rem;
+    padding: 1rem;
+    color: rgba(226, 232, 249, 0.76);
+  }
+
+  .empty-collection strong {
+    color: white;
+  }
+
+  .empty-collection a {
+    margin-top: 0.3rem;
+    border-radius: 999px;
+    background: rgba(126, 246, 231, 0.14);
+    padding: 0.55rem 0.8rem;
+    color: white;
+    text-decoration: none;
   }
 
   .selection-bar {

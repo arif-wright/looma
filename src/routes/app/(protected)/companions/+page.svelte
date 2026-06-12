@@ -23,7 +23,6 @@
   import type { PageData } from './$types';
   import type { Companion } from '$lib/stores/companions';
   import { createCompanionRosterState } from '$lib/stores/companionRosterState';
-  import CompanionModal from '$lib/components/companions/CompanionModal.svelte';
   import GiftPathModal from '$lib/components/companions/GiftPathModal.svelte';
   import GrowthPathModal from '$lib/components/companions/GrowthPathModal.svelte';
   import UnlockSlotModal from '$lib/components/companions/UnlockSlotModal.svelte';
@@ -465,7 +464,6 @@
   const companionState = createCompanionRosterState(sortBySlot((data.companions ?? []) as Companion[]), data.activeCompanionId ?? null);
   let rosterState = get(companionState);
 
-  let selectedForCare: Companion | null = null;
   let activeTab: TabKey = 'owned';
   let activeDetailTab: DetailTabKey = 'overview';
   let filters: FilterState = {
@@ -493,6 +491,7 @@
   let giftPathSelectedGiftId: string | null = null;
   let growthPathOpen = false;
   let storyMemoriesOpen = false;
+  let careActing: 'feed' | 'play' | 'groom' | null = null;
   let selectedStoryMemoryIndex = 1;
 
   const STORAGE_PORTRAIT_SIG_PREFIX = 'looma:companionPortraitCosSig:';
@@ -578,7 +577,6 @@
     },
     {}
   );
-  let prefetchedForModal: { version: number; events: PrefetchedEvent[] } = { version: 0, events: [] };
 
   const showToast = (message: string, kind: 'success' | 'error' = 'success') => {
     toast = { message, kind };
@@ -781,12 +779,45 @@
 
   const openCareModal = (companion: Companion | null) => {
     if (!companion) return;
-    selectedForCare = companion;
-    logEvent('companion_checkin_open', { id: companion.id });
+    showToast('Companion pop-up interactions are temporarily disabled while this page is rebuilt.');
+    logEvent('companion_interaction_deferred', { id: companion.id });
   };
 
-  const closeCareModal = () => {
-    selectedForCare = null;
+  const performInlineCare = async (companion: Companion, action: 'feed' | 'play' | 'groom') => {
+    if (careActing) return;
+    careActing = action;
+    try {
+      const response = await fetch('/api/companions/care', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ companionId: companion.id, action })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.companion) {
+        showToast(payload?.message ?? 'That care action is not available right now.', 'error');
+        return;
+      }
+      const updated = payload.companion as Companion;
+      companionState.updateCompanionStats(companion.id, {
+        affection: updated.affection,
+        trust: updated.trust,
+        energy: updated.energy,
+        mood: updated.mood,
+        bond_level: updated.bond_level ?? updated.stats?.bond_level ?? 0,
+        bond_score: updated.bond_score ?? updated.stats?.bond_score ?? 0,
+        stats: updated.stats ?? null
+      });
+      rosterState = get(companionState);
+      showToast(
+        payload.itemUnlock?.title
+          ? `${payload.itemUnlock.title} earned. It is now in your Inventory.`
+          : `${companion.name} received your care.`
+      );
+    } catch {
+      showToast('That care action could not be completed.', 'error');
+    } finally {
+      careActing = null;
+    }
   };
 
   const openGiftPath = (gift: GiftPathRow | null = null) => {
@@ -801,23 +832,6 @@
   const openStoryMemories = () => {
     selectedStoryMemoryIndex = activeStoryMemory?.index ?? 1;
     storyMemoriesOpen = true;
-  };
-
-  const applyCareUpdate = (id: string, updated: Companion) => {
-    const nextState = typeof updated.state === 'string' ? updated.state : undefined;
-    companionState.updateCompanionStats(id, {
-      affection: updated.affection,
-      trust: updated.trust,
-      energy: updated.energy,
-      mood: updated.mood,
-      ...(nextState ? { state: nextState } : {}),
-      updated_at: updated.updated_at,
-      bond_level: updated.bond_level ?? updated.stats?.bond_level ?? 0,
-      bond_score: updated.bond_score ?? updated.stats?.bond_score ?? 0,
-      stats: updated.stats ?? null
-    });
-    rosterState = get(companionState);
-    companionState.recordInteraction(id, 'check_in', new Date().toISOString());
   };
 
   const discoverDefinitions = (data.discoverCatalog ?? []) as DiscoverCompanionDefinition[];
@@ -1360,26 +1374,6 @@
   $: favoriteGiftItems = getFavoriteGiftItemsForCompanion(detailCompanion, 4);
   $: slotsPercent = maxSlots > 0 ? Math.min(100, Math.round((slotsUsed / maxSlots) * 100)) : 0;
 
-  $: if (selectedForCare) {
-    const refreshed = ownedInstances.find((entry) => entry.id === selectedForCare?.id);
-    if (refreshed) selectedForCare = refreshed;
-  }
-  $: selectedCompanionEvolutionStage =
-    selectedForCare?.id ? evolutionStagesByCompanionId[selectedForCare.id] ?? null : null;
-  $: selectedCompanionRenderHook =
-    selectedForCare?.id ? archetypeMetadataByCompanionId[selectedForCare.id]?.renderHook ?? null : null;
-
-  $: if (selectedForCare?.id) {
-    const seeds = pendingPrefetches[selectedForCare.id] ?? [];
-    if (seeds.length) {
-      prefetchedForModal = { version: prefetchedForModal.version + 1, events: seeds };
-      pendingPrefetches = { ...pendingPrefetches, [selectedForCare.id]: [] };
-    } else if (prefetchedForModal.events.length) {
-      prefetchedForModal = { ...prefetchedForModal, events: [] };
-    }
-  } else if (prefetchedForModal.events.length) {
-    prefetchedForModal = { ...prefetchedForModal, events: [] };
-  }
 
   onMount(() => {
     if (!browser) return;
@@ -1425,9 +1419,9 @@
   <FantasySidebar
     activePath="/app/companions"
     playerName={($page.data?.profile as any)?.display_name ?? ($page.data?.user as any)?.email?.split('@')[0] ?? 'Traveler'}
-    level={masteryLevel}
-    xp={Math.round(slotsPercent * 50)}
-    xpNext={5000}
+    level={Math.max(1, Math.floor(($page.data as any)?.headerStats?.level ?? masteryLevel ?? 1))}
+    xp={Math.max(0, Math.floor(($page.data as any)?.headerStats?.xp ?? 0))}
+    xpNext={Math.max(100, Math.floor(($page.data as any)?.headerStats?.xp_next ?? 100))}
   />
 
   <main class="companions-workspace" aria-label="Companions">
@@ -2003,8 +1997,11 @@
                 <span>View All Memories</span>
               </button>
             {:else}
-              <button type="button" class="primary-action interact-action" on:click={() => openCareModal(detailCompanion)}>Interact</button>
-              <button type="button" class="secondary-action" on:click={() => openCareModal(detailCompanion)}>Give Gift</button>
+              <button type="button" class="primary-action interact-action" disabled={Boolean(careActing)} on:click={() => performInlineCare(detailCompanion, 'feed')}>
+                {careActing === 'feed' ? 'Caring...' : 'Feed'}
+              </button>
+              <button type="button" class="secondary-action" disabled={Boolean(careActing)} on:click={() => performInlineCare(detailCompanion, 'play')}>Play</button>
+              <button type="button" class="secondary-action" disabled={Boolean(careActing)} on:click={() => performInlineCare(detailCompanion, 'groom')}>Groom</button>
             {/if}
           </div>
           <p class="active-note"><span></span> {activeCompanion?.id === detailCompanion.id ? 'Active Companion' : 'Ready to activate'}</p>
@@ -2104,65 +2101,6 @@
     </section>
   {/if}
 </Modal>
-
-<CompanionModal
-  open={Boolean(selectedForCare)}
-  companion={selectedForCare}
-  evolutionStageLabel={selectedCompanionEvolutionStage}
-  archetypeRenderHook={selectedCompanionRenderHook}
-  {maxSlots}
-  capturePortrait={() => museHostRef?.capturePortrait?.() ?? Promise.resolve(null)}
-  allowLivePortrait={true}
-  prefetched={prefetchedForModal}
-  onClose={closeCareModal}
-  renameCompanion={async (id, name) => {
-    const res = await fetch('/api/companions/rename', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companionId: id, name })
-    });
-    const payload = await res.json().catch(() => null);
-    if (!res.ok) {
-      console.error('[companions] rename failed', payload);
-      throw new Error(payload?.error ?? SAFE_LOAD_ERROR);
-    }
-    companionState.replaceInstances(
-      ownedInstances.map((entry) => (entry.id === id ? { ...entry, name } : entry)),
-      activeCompanion?.id ?? null
-    );
-  }}
-  setActive={async (id) => {
-    await activateCompanion(id);
-  }}
-  setState={async (id, state) => {
-    const previous = ownedInstances.find((entry) => entry.id === id);
-    if (!previous) return;
-    companionState.updateCompanionStats(id, { state });
-    try {
-      const res = await fetch('/api/companions/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId: id, state })
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? 'state_update_failed');
-    } catch (err) {
-      console.error('[companions] state update failed', err);
-      companionState.updateCompanionStats(id, { state: previous.state ?? 'idle' });
-      throw new Error(SAFE_LOAD_ERROR);
-    }
-  }}
-  on:careApplied={(event) => {
-    const { id, companion: updated } = event.detail;
-    applyCareUpdate(id, updated);
-  }}
-  on:milestone={(event) => {
-    showToast(event.detail?.message ?? 'Bond milestone reached!');
-  }}
-  on:toast={(event) => {
-    showToast(event.detail?.message ?? 'Update saved', event.detail?.kind ?? 'success');
-  }}
-/>
 
 <UnlockSlotModal open={showUnlock} onClose={() => (showUnlock = false)} onUnlocked={handleUnlocked} />
 

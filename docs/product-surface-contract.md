@@ -67,8 +67,11 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
 
 ## Design Strategy
 
-- Sanctuary styling is the default visual system for protected routes.
-- Warm, restrained, readable interfaces beat novelty or dashboard density.
+- The current `/app/home` layout is the visual source of truth for protected routes.
+- Desktop protected routes use the dark Home sidebar; mobile protected routes use the shared mobile dock.
+- Full-width legacy top navigation must not be introduced on protected routes.
+- The global companion dock and companion pop-up modal are disabled until their purpose and interaction model are rebuilt.
+- Dark violet, cyan, and restrained glass surfaces replace older warm, blue, or dashboard-specific shells.
 - Emotional framing should stay clear and human, not vague or ornamental.
 
 ## Shipping Rule

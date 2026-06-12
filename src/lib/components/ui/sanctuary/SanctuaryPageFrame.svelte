@@ -52,9 +52,9 @@
   .base {
     z-index: 0;
     background:
-      radial-gradient(80% 65% at 85% 14%, rgba(140, 236, 236, 0.26), transparent 72%),
-      radial-gradient(80% 70% at 12% 90%, rgba(255, 189, 142, 0.3), transparent 74%),
-      linear-gradient(160deg, rgba(26, 42, 122, 0.62), rgba(47, 70, 153, 0.58) 36%, rgba(102, 79, 152, 0.54) 66%, rgba(218, 161, 127, 0.44));
+      radial-gradient(80% 65% at 85% 14%, rgba(123, 77, 255, 0.22), transparent 72%),
+      radial-gradient(80% 70% at 12% 90%, rgba(74, 244, 255, 0.08), transparent 74%),
+      linear-gradient(145deg, rgba(9, 8, 29, 0.96), rgba(8, 10, 29, 0.94) 56%, rgba(5, 7, 20, 0.98));
   }
 
   .chroma {
@@ -62,9 +62,9 @@
     mix-blend-mode: soft-light;
     opacity: 0.34;
     background:
-      radial-gradient(65% 50% at 20% 24%, rgba(72, 220, 215, 0.38), transparent 72%),
-      radial-gradient(60% 48% at 74% 74%, rgba(255, 177, 136, 0.34), transparent 68%),
-      radial-gradient(50% 40% at 52% 44%, rgba(92, 77, 178, 0.3), transparent 64%);
+      radial-gradient(65% 50% at 20% 24%, rgba(94, 242, 255, 0.18), transparent 72%),
+      radial-gradient(60% 48% at 74% 74%, rgba(255, 112, 223, 0.12), transparent 68%),
+      radial-gradient(50% 40% at 52% 44%, rgba(155, 92, 255, 0.22), transparent 64%);
   }
 
   .drift {
@@ -164,4 +164,3 @@
     }
   }
 </style>
-

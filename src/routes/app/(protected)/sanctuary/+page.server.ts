@@ -5,10 +5,10 @@ export const load: PageServerLoad = async ({ locals }) => {
   const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
 
   if (!supabase || !userId) {
-    return { companion: null, decor: [], placements: [], latestReaction: null, error: 'unauthorized' };
+    return { companion: null, items: [], placements: [], latestReaction: null, error: 'unauthorized' };
   }
 
-  const [companionRes, decorRes, placementsRes, reactionRes] = await Promise.all([
+  const [companionRes, itemsRes, placementsRes, reactionRes] = await Promise.all([
     supabase
       .from('companions')
       .select('id, name, species, avatar_url, mood, is_active')
@@ -18,14 +18,16 @@ export const load: PageServerLoad = async ({ locals }) => {
       .limit(1)
       .maybeSingle(),
     supabase
-      .from('sanctuary_decor_catalog')
-      .select('id, slug, title, description, tone, visual_key')
-      .eq('starter', true)
-      .order('sort', { ascending: true }),
+      .from('user_items')
+      .select(
+        'id, source_type, source_key, provenance_json, acquired_at, item:item_id (id, item_key, title, description, tone, visual_key, capabilities)'
+      )
+      .eq('owner_id', userId)
+      .order('acquired_at', { ascending: false }),
     supabase
       .from('sanctuary_placements')
       .select(
-        'id, slot_key, placed_at, updated_at, decor:decor_id (id, slug, title, description, tone, visual_key)'
+        'id, slot_key, placed_at, updated_at, item:item_id (id, item_key, title, description, tone, visual_key)'
       )
       .eq('owner_id', userId),
     supabase
@@ -40,14 +42,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   const error =
     companionRes.error?.message ??
-    decorRes.error?.message ??
+    itemsRes.error?.message ??
     placementsRes.error?.message ??
     reactionRes.error?.message ??
     null;
 
   return {
     companion: companionRes.data ?? null,
-    decor: decorRes.data ?? [],
+    items: (itemsRes.data ?? []).filter((row: any) => {
+      const item = Array.isArray(row.item) ? row.item[0] : row.item;
+      return Array.isArray(item?.capabilities) && item.capabilities.includes('placeable');
+    }),
     placements: placementsRes.data ?? [],
     latestReaction: reactionRes.data ?? null,
     error

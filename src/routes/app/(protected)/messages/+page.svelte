@@ -1522,7 +1522,13 @@
 </svelte:head>
 
 <div class="messages-app">
-  <FantasySidebar activePath="/app/messages" {playerName} level={24} xp={3200} xpNext={5000} />
+  <FantasySidebar
+    activePath="/app/messages"
+    {playerName}
+    level={Math.max(1, Math.floor((data as any)?.headerStats?.level ?? (data as any)?.activeCompanion?.bondLevel ?? 1))}
+    xp={Math.max(0, Math.floor((data as any)?.headerStats?.xp ?? 0))}
+    xpNext={Math.max(100, Math.floor((data as any)?.headerStats?.xpNext ?? 100))}
+  />
 
   <main class="messages-workspace" aria-label="Messages">
     <header class="mobile-chrome" aria-label="Messages header">

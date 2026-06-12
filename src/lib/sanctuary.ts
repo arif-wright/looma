@@ -7,11 +7,11 @@ export const SANCTUARY_SLOTS = [
 ] as const;
 
 export type SanctuarySlot = (typeof SANCTUARY_SLOTS)[number];
-export type SanctuaryTone = 'care' | 'memory' | 'play' | 'wonder' | 'bond';
+export type SanctuaryTone = 'care' | 'memory' | 'play' | 'wonder' | 'bond' | 'social' | 'mission';
 
 export type SanctuaryDecor = {
   id: string;
-  slug: string;
+  slug?: string;
   title: string;
   description: string;
   tone: SanctuaryTone;
@@ -28,7 +28,9 @@ export const buildSanctuaryReaction = (companionName: string, decor: Pick<Sanctu
     memory: `${name} studies the ${decor.title}, as if it is holding onto something you shared.`,
     play: `${name} circles the ${decor.title} with a sudden burst of bright energy.`,
     wonder: `${name} pauses beside the ${decor.title}, completely absorbed in its strange light.`,
-    bond: `${name} rests near the ${decor.title}. It already feels like something that belongs to both of you.`
+    bond: `${name} rests near the ${decor.title}. It already feels like something that belongs to both of you.`,
+    social: `${name} follows the movement of the ${decor.title}, remembering the connections that shaped it.`,
+    mission: `${name} studies the ${decor.title}, ready for the next path you choose together.`
   };
   return reactions[decor.tone];
 };

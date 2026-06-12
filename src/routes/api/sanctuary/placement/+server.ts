@@ -4,7 +4,7 @@ import { buildSanctuaryReaction, isSanctuarySlot, type SanctuaryDecor } from '$l
 
 type Payload = {
   slot?: unknown;
-  decorId?: unknown;
+  itemId?: unknown;
   clear?: unknown;
 };
 
@@ -40,17 +40,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ ok: true, slot: payload.slot, placement: null });
   }
 
-  const decorId = typeof payload.decorId === 'string' ? payload.decorId.trim() : '';
-  if (!decorId) {
-    return json({ error: 'invalid_decor' }, { status: 400 });
+  const itemId = typeof payload.itemId === 'string' ? payload.itemId.trim() : '';
+  if (!itemId) {
+    return json({ error: 'invalid_item' }, { status: 400 });
   }
 
-  const [{ data: decor, error: decorError }, { data: companion, error: companionError }] = await Promise.all([
+  const [{ data: ownedItem, error: itemError }, { data: companion, error: companionError }] = await Promise.all([
     supabase
-      .from('sanctuary_decor_catalog')
-      .select('id, slug, title, description, tone, visual_key')
-      .eq('id', decorId)
-      .eq('starter', true)
+      .from('user_items')
+      .select('item:item_id (id, item_key, title, description, tone, visual_key, capabilities)')
+      .eq('owner_id', userId)
+      .eq('item_id', itemId)
+      .limit(1)
       .maybeSingle(),
     supabase
       .from('companions')
@@ -62,17 +63,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       .maybeSingle()
   ]);
 
-  if (decorError || companionError) {
-    console.error('[sanctuary] placement lookup failed', decorError ?? companionError);
+  if (itemError || companionError) {
+    console.error('[sanctuary] placement lookup failed', itemError ?? companionError);
     return json({ error: 'lookup_failed' }, { status: 500 });
   }
-  if (!decor) {
-    return json({ error: 'decor_not_available' }, { status: 404 });
+  const item = Array.isArray(ownedItem?.item) ? ownedItem.item[0] ?? null : ownedItem?.item ?? null;
+  if (!item || !Array.isArray(item.capabilities) || !item.capabilities.includes('placeable')) {
+    return json({ error: 'item_not_placeable' }, { status: 404 });
   }
 
   const { data: currentPlacement, error: currentPlacementError } = await supabase
     .from('sanctuary_placements')
-    .select('id, decor_id')
+    .select('id, item_id')
     .eq('owner_id', userId)
     .eq('slot_key', payload.slot)
     .maybeSingle();
@@ -82,9 +84,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ error: 'lookup_failed' }, { status: 500 });
   }
 
-  const typedDecor = decor as SanctuaryDecor;
+  const typedDecor = {
+    id: item.id,
+    slug: item.item_key,
+    title: item.title,
+    description: item.description,
+    tone: item.tone,
+    visual_key: item.visual_key
+  } as SanctuaryDecor;
   const reaction = buildSanctuaryReaction(companion?.name ?? 'Your companion', typedDecor);
-  if (currentPlacement?.decor_id === decor.id) {
+  if (currentPlacement?.item_id === item.id) {
     return json({ ok: true, unchanged: true, reaction });
   }
 
@@ -94,7 +103,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       {
         owner_id: userId,
         companion_id: companion?.id ?? null,
-        decor_id: decor.id,
+        item_id: item.id,
+        decor_id: null,
         slot_key: payload.slot
       },
       { onConflict: 'owner_id,slot_key', ignoreDuplicates: false }
@@ -112,12 +122,12 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       owner_id: userId,
       companion_id: companion.id,
       source_type: 'system',
-      title: `${decor.title} found a place`,
+      title: `${item.title} found a place`,
       body: reaction,
       meta_json: {
         category: 'sanctuary',
-        decorSlug: decor.slug,
-        decorTitle: decor.title,
+        itemKey: item.item_key,
+        itemTitle: item.title,
         slot: payload.slot
       }
     });
@@ -128,7 +138,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
   return json({
     ok: true,
-    placement: { ...placement, decor },
+    placement: { ...placement, item: typedDecor },
     reaction
   });
 };

@@ -8,25 +8,27 @@ The Personal Sanctuary makes the companion relationship tangible:
 
 The sanctuary is intentionally smaller than a world builder. Expansion should follow demonstrated relationship value rather than editor complexity.
 
-## MVP: One Shared Space
+## Foundation: One Shared Space
 
 Status: implemented
 
 - One private sanctuary per user
 - Five clear decoration spaces
-- Free starter decoration collection
+- Owned placeable items sourced from the unified item system
 - Persistent placement and removal
 - Active companion presence
 - Companion reaction after placement
 - Reactions recorded in the companion journal
+- Moss Seat earned after three care moments
 
 Success signal:
 
 - Players return to change the sanctuary and revisit recorded reactions.
 
-## Next: Meaningful Objects
+## Next: Meaningful Object Interactions
 
-- Unlock decorations through care, missions, play, and relationship milestones
+- Make the placed Moss Seat unlock a shared-rest interaction
+- Continue unlocking objects through care, missions, play, and relationship milestones
 - Give placed objects a small companion interaction
 - Let selected journal keepsakes appear as sanctuary objects
 - Allow the companion to leave a note or gift near an object

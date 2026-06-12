@@ -4,7 +4,6 @@
   import { onDestroy, onMount } from 'svelte';
   import type { NotificationItem } from '$lib/components/ui/types';
   import { sendAnalytics } from '$lib/utils/analytics';
-  import { logout } from '$lib/auth/logout';
   import { page } from '$app/stores';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
   import {
@@ -22,11 +21,8 @@
     WandSparkles
   } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
-  import { FLAGS } from '$lib/config/flags';
-  import BrandHeader from '$lib/components/layout/BrandHeader.svelte';
-  import LeanHeader from '$lib/components/layout/LeanHeader.svelte';
   import type { IconNavItem } from '$lib/components/ui/types';
-  import CompanionDock from '$lib/components/companion/CompanionDock.svelte';
+  import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import { sendEvent } from '$lib/client/events/sendEvent';
   import { companionPrefs, hydrateCompanionPrefs } from '$lib/stores/companionPrefs';
   import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
@@ -54,20 +50,14 @@
     }
   }
 
-  function handleLogout() {
-    void logout();
-  }
-
   const pageStore = page;
   let currentPath = '';
   let isHome = false;
   let isCompanions = false;
-  let isImmersiveShell = false;
   let isGames = false;
   let isShop = false;
   let isMessages = false;
   let isProfileSurface = false;
-  let hideCompanionDock = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
   let ambientHue = 224;
@@ -114,13 +104,20 @@
   $: currentPath = $pageStore.url.pathname;
   $: isHome = currentPath === '/app/home';
   $: isCompanions = currentPath.startsWith('/app/companions');
-  $: isImmersiveShell = isHome || isCompanions;
   $: isGames = currentPath.startsWith('/app/games');
   $: isShop = currentPath.startsWith('/app/shop');
   $: isMessages = currentPath.startsWith('/app/messages');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
-  $: hideCompanionDock = isHome || currentPath.startsWith('/app/companions') || isMessages;
+  $: usePageOwnedShell = isHome || isMessages || isCompanions;
+  $: shellPlayerName =
+    (data as any)?.profile?.display_name ??
+    (data as any)?.user?.user_metadata?.name ??
+    (data as any)?.user?.email?.split('@')?.[0] ??
+    'Traveler';
+  $: shellLevel = Math.max(1, Math.floor(data?.headerStats?.level ?? data?.activeCompanion?.bondLevel ?? 1));
+  $: shellXp = Math.max(0, Math.floor(data?.headerStats?.xp ?? 0));
+  $: shellXpNext = Math.max(shellXp + 1, Math.floor(data?.headerStats?.xp_next ?? 100));
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
@@ -556,15 +553,7 @@
       class="app-surface"
       style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
     >
-      <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--sanctuary'}`}>
-        {#if isHome}
-          <slot />
-        {:else}
-          <div class="route-shell">
-            <slot />
-          </div>
-        {/if}
-      </main>
+      <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--unified'}`}><slot /></main>
     </div>
   </div>
 {:else}
@@ -573,80 +562,28 @@
     class={`app-surface ${isHome ? 'app-surface--home' : ''}`}
     style={`--ambient-hue:${ambientHue};--ambient-secondary-hue:${ambientSecondaryHue};--ambient-intensity:${ambientIntensity};--ambient-drift:${ambientDrift}px;--ambientIntensity:${ambientIntensity};--ambientGlow:${ambientGlow};--ambientMotion:${ambientMotion};--ambientAccent:${ambientAccent};`}
   >
-    {#if !isImmersiveShell && !isMessages}
-      {#if FLAGS.NEW_BRAND_HEADER}
-        <BrandHeader
-          iconNavItems={iconNavItems}
-          energy={$playerProgress.energy}
-          energyMax={$playerProgress.energyMax}
-          level={$playerProgress.level}
-          xp={$playerProgress.xp}
-          xpNext={$playerProgress.xpNext}
-          walletBalance={walletBalance}
-          walletCurrency={walletCurrency}
-          notifications={bellNotifications}
-          unreadCount={bellUnread}
-          userEmail={userEmail}
-          activeCompanion={data?.activeCompanion ?? null}
-          onLogout={handleLogout}
-        />
-      {:else}
-        <LeanHeader
-          energy={$playerProgress.energy}
-          energyMax={$playerProgress.energyMax}
-          level={$playerProgress.level}
-          xp={$playerProgress.xp}
-          xpNext={$playerProgress.xpNext}
-          walletBalance={walletBalance}
-          walletCurrency={walletCurrency}
-          notifications={bellNotifications}
-          unreadCount={bellUnread}
-          userEmail={userEmail}
-          onLogout={handleLogout}
-          iconNavItems={iconNavItems}
-          profile={data?.profile ?? null}
-          activeCompanion={data?.activeCompanion ?? null}
+    <div class:page-owned-shell={usePageOwnedShell} class="unified-app-layout">
+      {#if !usePageOwnedShell}
+        <FantasySidebar
+          playerName={shellPlayerName}
+          level={shellLevel}
+          xp={shellXp}
+          xpNext={shellXpNext}
+          activePath={currentPath}
         />
       {/if}
-    {/if}
-
-    <main class={`app-main ${isImmersiveShell ? 'app-main--home' : 'app-main--sanctuary'} ${isMessages ? 'app-main--messages' : ''}`}>
-      {#if isImmersiveShell || isMessages}
+      <main class={`app-main ${usePageOwnedShell ? 'app-main--home' : 'app-main--unified'} ${isMessages ? 'app-main--messages' : ''}`}>
         <slot />
-      {:else}
-        <div class="route-shell">
-          <slot />
-        </div>
-      {/if}
-    </main>
+      </main>
+    </div>
   </div>
 </div>
 
 <MobileDock items={iconNavItems} />
-{#if !hideCompanionDock}
-  <div class="hidden md:block">
-    <CompanionDock
-      visible={$companionPrefs.visible}
-      motionEnabled={$companionPrefs.motion}
-      transparent={$companionPrefs.transparent}
-      reactionsEnabled={$companionPrefs.reactionsEnabled}
-      companionId={data?.activeCompanion?.id ?? data?.portableActiveCompanion?.id ?? 'muse'}
-      companionName={data?.activeCompanion?.name ?? data?.portableActiveCompanion?.name ?? 'Muse'}
-      evolutionStageLabel={data?.portableActiveCompanion?.evolutionStage ?? null}
-      companionCosmetics={data?.portableActiveCompanion?.cosmetics ?? null}
-      moodKey={activeEffective?.moodKey ?? null}
-      worldMood={$ambient.accentVariant === 'luminous' ? 'bright' : $ambient.accentVariant === 'dim' ? 'low' : 'steady'}
-      bondLevel={data?.activeCompanion?.bondLevel ?? 0}
-      ambientMotionScale={prefersReducedMotion ? 1 : ambientMotion}
-      ambientGlowScale={ambientGlow}
-    />
-  </div>
-{/if}
 {/if}
 
 <style>
   .app-shell {
-    min-height: 100vh;
     min-height: 100vh;
     background: var(--brand-obsidian, #100d12);
     overflow-x: clip;
@@ -657,28 +594,12 @@
     --ambient-secondary-hue: 192;
     --ambient-intensity: 0.1;
     --ambient-drift: 14px;
-    display: grid;
-    grid-template-rows: auto 1fr;
+    display: block;
     min-height: 100vh;
     background:
-      radial-gradient(
-        circle at 18% 10%,
-        hsl(var(--ambient-hue) 70% 68% / calc(var(--ambient-intensity) * 0.9)),
-        transparent 50%
-      ),
-      radial-gradient(
-        circle at 84% 14%,
-        rgba(240, 180, 112, calc(var(--ambient-intensity) * 0.72)),
-        transparent 38%
-      ),
-      radial-gradient(
-        circle at 74% 86%,
-        hsl(var(--ambient-secondary-hue) 62% 62% / calc(var(--ambient-intensity) * 0.66)),
-        transparent 42%
-      ),
-      radial-gradient(circle at bottom, rgba(93, 164, 142, calc(var(--ambient-intensity) * 0.38)), transparent 48%),
-      linear-gradient(180deg, rgba(24, 19, 28, 0.96), rgba(15, 13, 20, 0.985)),
-      var(--brand-obsidian, #100d12);
+      radial-gradient(circle at 78% 12%, rgba(123, 77, 255, 0.22), transparent 28rem),
+      radial-gradient(circle at 44% 48%, rgba(74, 244, 255, 0.07), transparent 26rem),
+      linear-gradient(135deg, #080719, #070a19 52%, #050714);
     transition: background 360ms ease;
     background-position: 0 0, var(--ambient-drift) 0, 0 0, 0 0;
     overflow-x: clip;
@@ -686,11 +607,7 @@
   }
 
   .app-surface--home {
-    grid-template-rows: 1fr;
-  }
-
-  .app-surface:has(.app-main--messages) {
-    grid-template-rows: 1fr;
+    min-height: 100vh;
   }
 
   .app-surface::before {
@@ -713,28 +630,23 @@
     width: 100%;
   }
 
-  .app-main--sanctuary {
-    padding: clamp(0.7rem, 2.2vw, 1.3rem) clamp(0.65rem, 2vw, 1.2rem) calc(5.6rem + env(safe-area-inset-bottom));
+  .unified-app-layout {
+    display: grid;
+    min-height: 100vh;
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+  }
+
+  .unified-app-layout.page-owned-shell {
+    display: block;
+  }
+
+  .app-main--unified {
+    padding: 1rem 1rem calc(5.6rem + env(safe-area-inset-bottom));
   }
 
   .app-main--messages {
     padding: 0;
     overflow: hidden;
-  }
-
-  .route-shell {
-    width: min(100%, 1680px);
-    margin: 0 auto;
-    border-radius: 1.4rem;
-    border: 1px solid rgba(231, 214, 193, 0.14);
-    background:
-      linear-gradient(162deg, rgba(33, 25, 36, 0.72), rgba(20, 17, 26, 0.72)),
-      radial-gradient(circle at 82% 0%, rgba(240, 180, 112, 0.08), transparent 44%),
-      radial-gradient(circle at 18% 100%, rgba(104, 180, 167, 0.08), transparent 40%);
-    box-shadow: 0 30px 80px rgba(9, 8, 12, 0.34);
-    backdrop-filter: blur(10px);
-    min-height: calc(100dvh - 8rem);
-    padding: clamp(0.2rem, 0.9vw, 0.55rem);
   }
 
   .app-main :global(*) {
@@ -747,19 +659,13 @@
     box-shadow: 0 0 calc(18px * var(--ambientGlow)) color-mix(in oklab, var(--ambientAccent) 14%, transparent);
   }
 
-  @media (max-width: 960px) {
-    .app-surface {
-      grid-template-rows: auto 1fr;
+  @media (max-width: 1180px) {
+    .unified-app-layout {
+      display: block;
     }
 
-    .app-main--sanctuary {
+    .app-main--unified {
       padding: 0.5rem 0.4rem calc(5.2rem + env(safe-area-inset-bottom));
-    }
-
-    .route-shell {
-      border-radius: 1.05rem;
-      min-height: calc(100dvh - 7.2rem);
-      padding: 0.14rem;
     }
   }
 
@@ -767,14 +673,6 @@
     .app-surface {
       transition: none;
     }
-  }
-
-  :global(body.looma-game-fullscreen) .app-surface {
-    grid-template-rows: 0 1fr;
-  }
-
-  :global(body.looma-game-fullscreen) .app-surface > :first-child {
-    display: none;
   }
 
   :global(body.looma-game-fullscreen) .app-main {

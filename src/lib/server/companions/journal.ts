@@ -3,6 +3,7 @@ import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
 import { createCompanionDigestNotification } from '$lib/server/notifications';
 import type { OptionalCompanionRitualKey } from '$lib/companions/optionalRituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
+import { supabaseAdmin } from '$lib/server/supabase';
 
 type ActiveCompanionRow = {
   id: string;
@@ -945,6 +946,38 @@ export const unlockChapterRewards = async (
   if (error) {
     console.error('[companion-journal] chapter reward unlock failed', error);
     return [];
+  }
+
+  const rewardKeys = args.rewards.map((reward) => reward.rewardKey);
+  const { data: catalogItems, error: catalogError } = await supabaseAdmin
+    .from('item_catalog')
+    .select('id, item_key')
+    .in('item_key', rewardKeys);
+  if (catalogError) {
+    console.error('[companion-journal] unified item catalog lookup failed', catalogError);
+  } else if (catalogItems?.length) {
+    const rewardByKey = new Map(args.rewards.map((reward) => [reward.rewardKey, reward]));
+    const { error: itemUnlockError } = await supabaseAdmin.from('user_items').upsert(
+      catalogItems.map((item) => {
+        const reward = rewardByKey.get(item.item_key);
+        return {
+          owner_id: args.ownerId,
+          companion_id: args.companionId,
+          item_id: item.id,
+          source_type: 'chapter_reward',
+          source_key: item.item_key,
+          provenance_json: {
+            title: reward?.title ?? item.item_key,
+            body: reward?.body ?? '',
+            tone: reward?.tone ?? 'bond'
+          }
+        };
+      }),
+      { onConflict: 'owner_id,companion_id,item_id,source_type,source_key', ignoreDuplicates: false }
+    );
+    if (itemUnlockError) {
+      console.error('[companion-journal] unified item unlock failed', itemUnlockError);
+    }
   }
 
   const { data, error: readError } = await client
