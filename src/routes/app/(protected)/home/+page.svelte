@@ -22,6 +22,8 @@
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
+  import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+  import type { Companion } from '$lib/stores/companions';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -287,6 +289,22 @@
   $: companionBond = resolveBondPercent(activeCompanion);
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 1));
   $: companionMood = normalizedMood(activeCompanion?.mood);
+  $: activeCompanionEffective = activeCompanion
+    ? computeCompanionEffectiveState(
+        {
+          ...activeCompanion,
+          species: activeCompanion.species ?? 'Muse',
+          rarity: 'common',
+          level: 1,
+          xp: 0,
+          mood: activeCompanion.mood ?? 'steady',
+          avatar_url: activeCompanion.avatar_url ?? null,
+          created_at: activeCompanion.updated_at ?? new Date().toISOString(),
+          updated_at: activeCompanion.updated_at ?? new Date().toISOString()
+        } as Companion
+      )
+    : null;
+  $: companionNeedsRest = (activeCompanionEffective?.energy ?? activeCompanion?.energy ?? 100) <= 25;
   $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 0));
   $: ritualProgressPercent = Math.round((ritualCompleted / 3) * 100);
   $: mobileQuestTitle = (data.dailyMissions as any)?.[0]?.title ?? 'Choose a journey';
@@ -421,10 +439,10 @@
               <span>Play Together</span>
               <small>+ Bond</small>
             </a>
-            <a class="mobile-action-card mobile-action-card--energy" href="/app/companions">
+            <a class="mobile-action-card mobile-action-card--energy" href={companionNeedsRest ? '/app/sanctuary' : '/app/companions'}>
               <Leaf size={19} />
-              <span>Feed {companionName}</span>
-              <small>+ Energy</small>
+              <span>{companionNeedsRest ? `Rest with ${companionName}` : `Feed ${companionName}`}</span>
+              <small>{companionNeedsRest ? 'Use the Moss Seat' : '+ Energy'}</small>
             </a>
             <a class="mobile-action-card mobile-action-card--world" href="/app/sanctuary">
               <Gamepad2 size={19} />
@@ -507,6 +525,13 @@
       </section>
 
       <aside class="right-stack" aria-label="Daily panels">
+        {#if companionNeedsRest}
+          <a class="rest-invitation" href="/app/sanctuary">
+            <span><Leaf size={20} /></span>
+            <strong>Rest with {companionName}</strong>
+            <small>The Moss Seat can turn this quiet moment into shared recovery.</small>
+          </a>
+        {/if}
         <RitualPanel completed={ritualCompleted} />
         <FriendStatusPanel />
         <ActivityFeed notifications={(data as any)?.notifications ?? []} />
@@ -698,6 +723,40 @@
 
   .right-stack {
     transform: translateX(0.22rem);
+  }
+
+  .rest-invitation {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    gap: 0.2rem 0.7rem;
+    border: 1px solid rgba(126, 246, 231, 0.24);
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(46, 107, 112, 0.24), rgba(38, 29, 79, 0.42));
+    padding: 0.8rem;
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 0 26px rgba(94, 242, 255, 0.08);
+  }
+
+  .rest-invitation > span {
+    grid-row: 1 / 3;
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    place-items: center;
+    border-radius: 0.78rem;
+    background: rgba(126, 246, 231, 0.12);
+    color: #9ff7e8;
+  }
+
+  .rest-invitation strong {
+    font-size: 0.82rem;
+  }
+
+  .rest-invitation small {
+    color: rgba(224, 235, 247, 0.66);
+    font-size: 0.68rem;
+    line-height: 1.4;
   }
 
   .mobile-loop {

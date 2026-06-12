@@ -34,3 +34,15 @@ export const buildSanctuaryReaction = (companionName: string, decor: Pick<Sanctu
   };
   return reactions[decor.tone];
 };
+
+export const buildSharedRestReaction = (companionName: string, energyBefore: number, energyAfter: number) => {
+  const name = companionName.trim() || 'Your companion';
+  const restored = Math.max(0, Math.round(energyAfter) - Math.round(energyBefore));
+  if (energyBefore <= 20) {
+    return `${name} curls into the Moss Seat beside you. After a quiet while, their breathing steadies and ${restored} spark returns.`;
+  }
+  if (energyBefore <= 55) {
+    return `${name} settles into the Moss Seat with you. The sanctuary grows still, and ${restored} spark returns.`;
+  }
+  return `${name} rests beside you on the Moss Seat. Nothing was urgent; the quiet itself became the memory.`;
+};

@@ -11,7 +11,10 @@
   type Placement = {
     id: string;
     slot_key: SanctuarySlot;
-    item: SanctuaryDecor | SanctuaryDecor[] | null;
+    item:
+      | (SanctuaryDecor & { item_key?: string; capabilities?: string[] })
+      | (SanctuaryDecor & { item_key?: string; capabilities?: string[] })[]
+      | null;
   };
   type OwnedItem = {
     id: string;
@@ -36,6 +39,7 @@
   }));
   let selectedItemId: string | null = normalizedOwnedItems[0]?.item?.id ?? null;
   let savingSlot: SanctuarySlot | null = null;
+  let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
   let status: string | null = null;
 
@@ -43,6 +47,10 @@
   const placementFor = (slot: SanctuarySlot) =>
     (data.placements as unknown as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
   const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
+  $: mossSeatPlacement = (data.placements as unknown as Placement[]).find((placement) => {
+    const item = normalizeItem(placement.item);
+    return item?.item_key === 'care-moss-seat' && item.capabilities?.includes('interactive');
+  }) ?? null;
 
   const iconFor = (visualKey: string) => {
     if (visualKey === 'lantern') return LampDesk;
@@ -75,6 +83,35 @@
       status = 'The sanctuary could not be changed.';
     } finally {
       savingSlot = null;
+    }
+  };
+
+  const restTogether = async () => {
+    if (interactionPending || !mossSeatPlacement) return;
+    interactionPending = true;
+    status = `Settling in with ${data.companion?.name ?? 'your companion'}...`;
+    try {
+      const response = await fetch('/api/sanctuary/interact', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'shared_rest' })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        status =
+          payload?.message ??
+          (payload?.error === 'moss_seat_must_be_placed'
+            ? 'Place the Moss Seat before resting together.'
+            : 'This quiet moment is not available right now.');
+        return;
+      }
+      reaction = payload.reaction ?? reaction;
+      status = payload.restoredEnergy > 0 ? `${payload.restoredEnergy} spark restored.` : 'A quiet memory was made.';
+      await invalidateAll();
+    } catch {
+      status = 'This quiet moment could not be completed.';
+    } finally {
+      interactionPending = false;
     }
   };
 </script>
@@ -140,9 +177,17 @@
     </section>
 
     <section class="reaction-card" aria-live="polite">
-      <span class="reaction-label">Companion response</span>
-      <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
-      {#if status}<small>{status}</small>{/if}
+      <div>
+        <span class="reaction-label">Companion response</span>
+        <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
+        {#if status}<small>{status}</small>{/if}
+      </div>
+      {#if mossSeatPlacement}
+        <button type="button" disabled={interactionPending} on:click={restTogether}>
+          <Armchair size={18} />
+          <span>{interactionPending ? 'Resting...' : 'Rest Together'}</span>
+        </button>
+      {/if}
     </section>
 
     <section class="decor-panel" aria-labelledby="decor-title">
@@ -382,7 +427,33 @@
   }
 
   .reaction-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     padding: 1rem 1.1rem;
+  }
+
+  .reaction-card button {
+    display: inline-flex;
+    min-height: 2.7rem;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba(174, 240, 229, 0.38);
+    border-radius: 999px;
+    background: rgba(111, 203, 194, 0.12);
+    padding: 0 0.9rem;
+    color: white;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .reaction-card button:disabled {
+    opacity: 0.58;
+    cursor: wait;
   }
 
   .reaction-label,
@@ -555,6 +626,7 @@
     .scene-slot--near_right { right: 5%; bottom: 5%; }
 
     .decor-panel header,
+    .reaction-card,
     .selection-bar {
       display: grid;
     }

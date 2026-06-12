@@ -27,7 +27,11 @@ Success signal:
 
 ## Next: Meaningful Object Interactions
 
-- Make the placed Moss Seat unlock a shared-rest interaction
+Status: in progress
+
+- Placed Moss Seat unlocks a shared-rest interaction
+- Shared rest restores the companion's effective energy and records a Journal memory
+- Tired companions invite the user toward the Sanctuary from Home and Companions
 - Continue unlocking objects through care, missions, play, and relationship milestones
 - Give placed objects a small companion interaction
 - Let selected journal keepsakes appear as sanctuary objects

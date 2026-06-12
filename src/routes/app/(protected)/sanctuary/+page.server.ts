@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     supabase
       .from('sanctuary_placements')
       .select(
-        'id, slot_key, placed_at, updated_at, item:item_id (id, item_key, title, description, tone, visual_key)'
+        'id, slot_key, placed_at, updated_at, item:item_id (id, item_key, title, description, tone, visual_key, capabilities)'
       )
       .eq('owner_id', userId),
     supabase

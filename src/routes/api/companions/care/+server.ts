@@ -5,6 +5,8 @@ import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
 import { supabaseAdmin } from '$lib/server/supabase';
+import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+import type { Companion } from '$lib/stores/companions';
 
 type CareAction = 'feed' | 'play' | 'groom';
 type CompanionStatsRow = {
@@ -127,7 +129,7 @@ export const POST: RequestHandler = async (event) => {
   const { data: companion, error: fetchError } = await supabase
     .from('companions')
     .select(
-      'id, owner_id, name, affection, trust, energy, mood, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+      'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
     )
     .eq('id', companionId)
     .maybeSingle();
@@ -178,19 +180,25 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  if (companion.energy <= 0) {
+  const normalizedCompanion = {
+    ...companion,
+    stats: Array.isArray(companion.stats) ? companion.stats[0] ?? null : companion.stats
+  } as Companion;
+  const effective = computeCompanionEffectiveState(normalizedCompanion);
+
+  if (effective.energy <= 0 && action !== 'feed') {
     return json({ error: 'low_energy', message: `${companion.name} is too tired right now.` }, { status: 400 });
   }
 
   const deltas = ACTION_DELTAS[action];
-  const affection = clamp((companion.affection ?? 0) + deltas.affection);
-  const trust = clamp((companion.trust ?? 0) + deltas.trust);
-  const energy = clamp((companion.energy ?? 0) + deltas.energy);
+  const affection = clamp(effective.affection + deltas.affection);
+  const trust = clamp(effective.trust + deltas.trust);
+  const energy = clamp(effective.energy + deltas.energy);
   const mood = deriveMood(affection, trust, energy);
 
   const { data: updated, error: updateError } = await supabase
     .from('companions')
-    .update({ affection, trust, energy, mood })
+    .update({ affection, trust, energy, mood, state: 'idle' })
     .eq('id', companion.id)
     .select('id, name, affection, trust, energy, mood, updated_at')
     .maybeSingle();

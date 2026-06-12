@@ -1305,6 +1305,7 @@
       : 0;
   $: masteryLevel = ownedInstances.length > 0 ? Math.max(...ownedInstances.map((companion) => companionLevel(companion))) : 1;
   $: detailCompanion = activeCompanion ?? filteredOwned[0] ?? ownedInstances[0] ?? null;
+  $: detailEffective = detailCompanion ? computeCompanionEffectiveState(detailCompanion, new Date(nowTick)) : null;
   $: if ((detailCompanion?.id ?? null) !== detailModelCompanionId) {
     detailModelCompanionId = detailCompanion?.id ?? null;
     detailModelLoaded = !detailCompanion;
@@ -1998,6 +1999,9 @@
               </button>
               <button type="button" class="secondary-action" disabled={Boolean(careActing)} on:click={() => performInlineCare(detailCompanion, 'play')}>Play</button>
               <button type="button" class="secondary-action" disabled={Boolean(careActing)} on:click={() => performInlineCare(detailCompanion, 'groom')}>Groom</button>
+              {#if (detailEffective?.energy ?? detailCompanion.energy ?? 100) <= LOW_ENERGY_THRESHOLD}
+                <a class="secondary-action rest-action" href="/app/sanctuary">Rest in Sanctuary</a>
+              {/if}
             {/if}
           </div>
           <p class="active-note"><span></span> {activeCompanion?.id === detailCompanion.id ? 'Active Companion' : 'Ready to activate'}</p>
@@ -3844,6 +3848,13 @@
     font-size: 0.82rem;
     cursor: pointer;
     transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+  }
+
+  .rest-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
   }
 
   .primary-action {
