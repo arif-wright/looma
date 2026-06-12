@@ -86,7 +86,7 @@
 
 <nav class="lean-appbar md:hidden">
   <div class="appbar-row">
-    <a href="/app/home" aria-label="Open Sanctuary" class="brand-button">
+    <a href="/app/home" aria-label="Open home" class="brand-button">
       <div class="brand-glyph"></div>
     </a>
 

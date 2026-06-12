@@ -330,7 +330,7 @@ const buildJournalGuidance = (args: {
         primaryLabel: args.ritualGuide?.ctaLabel ?? 'Begin ritual',
         primaryHref: '/app/companions',
         secondaryLabel: 'Open sanctuary',
-        secondaryHref: '/app/home',
+        secondaryHref: '/app/sanctuary',
         ritualKey: args.ritualGuide?.ritualKey ?? 'listen',
         ritualLabel: args.ritualGuide?.ctaLabel ?? 'Begin ritual'
       } satisfies JournalGuidance;
@@ -352,7 +352,7 @@ const buildJournalGuidance = (args: {
         primaryLabel: 'Open missions',
         primaryHref: '/app/missions',
         secondaryLabel: 'Visit sanctuary',
-        secondaryHref: '/app/home',
+        secondaryHref: '/app/sanctuary',
         ritualKey: null,
         ritualLabel: null
       } satisfies JournalGuidance;
@@ -363,7 +363,7 @@ const buildJournalGuidance = (args: {
         primaryLabel: 'Play together',
         primaryHref: '/app/play',
         secondaryLabel: 'Open sanctuary',
-        secondaryHref: '/app/home',
+        secondaryHref: '/app/sanctuary',
         ritualKey: null,
         ritualLabel: null
       } satisfies JournalGuidance;
@@ -374,7 +374,7 @@ const buildJournalGuidance = (args: {
         primaryLabel: args.ritualGuide?.ctaLabel ?? 'Return gently',
         primaryHref: '/app/home',
         secondaryLabel: 'Open sanctuary',
-        secondaryHref: '/app/companions',
+        secondaryHref: '/app/sanctuary',
         ritualKey: args.ritualGuide?.ritualKey ?? 'listen',
         ritualLabel: args.ritualGuide?.ctaLabel ?? 'Return gently'
       } satisfies JournalGuidance;

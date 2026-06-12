@@ -7,6 +7,7 @@
     MessageCircle,
     Sparkles,
     Store,
+    Trees,
     Users,
     WandSparkles
   } from 'lucide-svelte';
@@ -26,6 +27,7 @@
 
   const navItems: NavItem[] = [
     { label: 'Home', href: '/app/home', icon: Home },
+    { label: 'Sanctuary', href: '/app/sanctuary', icon: Trees },
     { label: 'Companions', href: '/app/companions', icon: Sparkles },
     { label: 'Games', href: '/app/games', icon: Gamepad2 },
     { label: 'Journal', href: '/app/memory', icon: MessageCircle },
@@ -40,7 +42,7 @@
     { label: 'Play a game', href: '/app/games', icon: Gamepad2 },
     { label: 'Summon companion', href: '/app/companions', icon: Sparkles },
     { label: 'Start a quest', href: '/app/missions', icon: WandSparkles },
-    { label: 'Open journal', href: '/app/memory', icon: MessageCircle }
+    { label: 'Shape sanctuary', href: '/app/sanctuary', icon: Trees }
   ];
 
   $: xpPercent = xpNext > 0 ? Math.min(100, Math.round((xp / xpNext) * 100)) : 0;

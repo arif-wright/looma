@@ -16,6 +16,7 @@ Looma is a mobile-first modern virtual companion platform. The easiest way to ex
   - Companion care due defaults to `/app/companions?focus={id}`.
   - Legacy `creatures` and `dashboard` preferences/context values normalize into canonical companion or home surfaces.
   - Primary app model is `Sanctuary`, `Journal`, `Messages`, `Circles`, `Missions`, `Companions`, `Profile`.
+  - The customizable Personal Sanctuary lives at `/app/sanctuary`; `/app/home` remains the relationship-first daily landing surface.
 - The resolver can be bypassed with `?forceHome=1` for QA.
 - `/app/home` is the mobile-first sanctuary surface built around:
   - active companion presence and check-in/reconnect

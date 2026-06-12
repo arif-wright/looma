@@ -220,7 +220,7 @@
       </span>
       <ChevronRight size={20} />
     </a>
-    <a class="mobile-floating-card mobile-mini-card" href="/app/memory" aria-label={`Open journal. Current mood ${mood}`}>
+    <a class="mobile-floating-card mobile-mini-card" href="/app/sanctuary" aria-label={`Open sanctuary. Current mood ${mood}`}>
       <span class="mobile-card-icon mobile-card-icon--leaf" aria-hidden="true"><Leaf size={28} /></span>
       <span>
         <small>Shared Mood</small>

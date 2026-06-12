@@ -432,10 +432,10 @@
               <span>Feed {companionName}</span>
               <small>+ Energy</small>
             </a>
-            <a class="mobile-action-card mobile-action-card--world" href="/app/memory">
+            <a class="mobile-action-card mobile-action-card--world" href="/app/sanctuary">
               <Gamepad2 size={19} />
-              <span>Open Journal</span>
-              <small>Remember together</small>
+              <span>Shape Sanctuary</span>
+              <small>Create together</small>
             </a>
             <a class="mobile-action-card mobile-action-card--gift" href="/app/inventory">
               <Gift size={19} />

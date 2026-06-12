@@ -84,7 +84,7 @@
             {/if}
           </p>
           <div class="button-row">
-            <a class="btn btn--ghost" href="/app/home">Open Sanctuary</a>
+            <a class="btn btn--ghost" href="/app/sanctuary">Open Sanctuary</a>
             {#if activeCompanion?.id}
               <a class="btn btn--ghost" href={`/app/memory?companion=${encodeURIComponent(activeCompanion.id)}`}>Open Journal</a>
             {/if}

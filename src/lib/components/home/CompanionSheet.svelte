@@ -46,7 +46,7 @@
 
     <div class="actions">
       <a class="cta cta--ghost" href={companionId ? `/app/memory?companion=${encodeURIComponent(companionId)}` : '/app/memory'}>Open journal</a>
-      <a class="cta" href="/app/companions">Visit sanctuary</a>
+      <a class="cta" href="/app/companions">Visit companion</a>
     </div>
   </section>
 </BottomSheet>

@@ -12,9 +12,12 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
 
 ## Canonical Protected Surfaces
 
-- `Sanctuary` at `/app/home`
+- `Home` at `/app/home`
   - Primary daily surface.
   - Owns check-in, reconnect, companion presence, and the first action of the session.
+- `Personal Sanctuary` at `/app/sanctuary`
+  - Owns persistent space customization and companion reactions to placed objects.
+  - Starts as one small private space, not a general-purpose world editor.
 - `Journal` at `/app/memory`
   - Owns memory summaries, event history, and the visible record of what Looma remembers.
 - `Messages` at `/app/messages`

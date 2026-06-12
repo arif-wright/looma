@@ -15,6 +15,7 @@
     MessageSquare,
     Sparkles,
     Store,
+    Trees,
     UserRound,
     Users,
     UsersRound,
@@ -128,6 +129,7 @@
 
   $: iconNavItems = [
     { href: '/app/home', label: 'Home', icon: House, analyticsKey: 'home' },
+    { href: '/app/sanctuary', label: 'Sanctuary', icon: Trees, analyticsKey: 'sanctuary' },
     { href: '/app/companions', label: 'Companions', icon: Sparkles, analyticsKey: 'companions' },
     { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
     { href: '/app/memory', label: 'Journal', icon: Compass, analyticsKey: 'journal' },

@@ -7,6 +7,7 @@
   const pageStore = page;
   const mobileOrder = [
     '/app/home',
+    '/app/sanctuary',
     '/app/companions',
     '/app/games',
     '/app/memory',

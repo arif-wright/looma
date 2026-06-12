@@ -851,7 +851,7 @@
   $: relationshipState = relationshipCopy(activeCompanion);
   $: activeCompanionJournalHref =
     activeCompanion?.id ? `/app/memory?companion=${activeCompanion.id}` : '/app/memory';
-  $: activeCompanionSanctuaryHref = '/app/home';
+  $: activeCompanionSanctuaryHref = '/app/sanctuary';
   $: activeChapterRewards = activeCompanion?.id ? chapterRewardsByCompanionId[activeCompanion.id] ?? [] : [];
   $: activeChapterHistory = activeCompanion?.id ? chapterRevealHistoryByCompanionId[activeCompanion.id] ?? [] : [];
   $: activeShelfRewards =

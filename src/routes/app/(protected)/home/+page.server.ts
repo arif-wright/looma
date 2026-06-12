@@ -259,7 +259,7 @@ const buildSanctuaryNudge = (args: {
     title: 'Begin with a small ritual',
     body: `${companionName} responds best to small repeated care. Start with a check-in, then keep the sanctuary warm.`,
     ctaLabel: 'Open sanctuary',
-    href: '/app/companions'
+    href: '/app/sanctuary'
   } satisfies SanctuaryNudge;
 };
 
@@ -428,7 +428,7 @@ const buildEraAction = (args: {
         primaryLabel: 'Begin gently',
         primaryHref: '/app/companions',
         secondaryLabel: 'Open sanctuary',
-        secondaryHref: '/app/home'
+        secondaryHref: '/app/sanctuary'
       } satisfies EraAction;
   }
 };
