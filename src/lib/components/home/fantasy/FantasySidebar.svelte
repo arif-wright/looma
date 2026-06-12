@@ -4,7 +4,6 @@
     Gamepad2,
     Gem,
     Home,
-    Map,
     MessageCircle,
     Sparkles,
     Store,
@@ -29,7 +28,7 @@
     { label: 'Home', href: '/app/home', icon: Home },
     { label: 'Companions', href: '/app/companions', icon: Sparkles },
     { label: 'Games', href: '/app/games', icon: Gamepad2 },
-    { label: 'Worlds', href: '/app/worlds', icon: Map },
+    { label: 'Journal', href: '/app/memory', icon: MessageCircle },
     { label: 'Quests', href: '/app/missions', icon: WandSparkles },
     { label: 'Inventory', href: '/app/inventory', icon: Box },
     { label: 'Market', href: '/app/shop', icon: Store },
@@ -41,7 +40,7 @@
     { label: 'Play a game', href: '/app/games', icon: Gamepad2 },
     { label: 'Summon companion', href: '/app/companions', icon: Sparkles },
     { label: 'Start a quest', href: '/app/missions', icon: WandSparkles },
-    { label: 'Create a world', href: '/app/worlds', icon: Store }
+    { label: 'Open journal', href: '/app/memory', icon: MessageCircle }
   ];
 
   $: xpPercent = xpNext > 0 ? Math.min(100, Math.round((xp / xpNext) * 100)) : 0;
@@ -58,18 +57,6 @@
       </a>
     {/each}
   </nav>
-
-  <div class="world-card">
-    <span class="eyebrow">Your World</span>
-    <div class="world-row">
-      <div class="world-thumb" aria-hidden="true"></div>
-      <div>
-        <strong>Memvoya Prime</strong>
-        <span>Level {level}</span>
-      </div>
-    </div>
-    <div class="meter"><span style={`width: ${xpPercent}%`}></span></div>
-  </div>
 
   <div class="quick-actions">
     <span class="eyebrow">Quick Actions</span>
@@ -163,7 +150,6 @@
     transform: translateX(2px);
   }
 
-  .world-card,
   .player-card {
     border: 1px solid rgba(164, 139, 255, 0.18);
     border-radius: 0.9rem;
@@ -180,32 +166,18 @@
     margin-bottom: 0.75rem;
   }
 
-  .world-row,
   .player-card {
     display: flex;
     align-items: center;
     gap: 0.75rem;
   }
 
-  .world-thumb {
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: 0 0 auto;
-    border-radius: 0.8rem;
-    background:
-      linear-gradient(180deg, transparent, rgba(3, 6, 22, 0.36)),
-      radial-gradient(circle at 58% 22%, rgba(255, 94, 216, 0.58), transparent 21%),
-      linear-gradient(135deg, #352b83, #153f6b 46%, #0b112c);
-  }
-
-  .world-row strong,
   .player-copy strong {
     display: block;
     color: white;
     font-size: 0.92rem;
   }
 
-  .world-row span,
   .player-copy span,
   .player-copy small {
     color: rgba(224, 223, 244, 0.68);

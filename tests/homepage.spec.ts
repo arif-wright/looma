@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Marketing homepage', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/*', async (route) => {
+      const type = route.request().resourceType();
+      if (type === 'image' || type === 'media' || type === 'font') {
+        await route.abort();
+        return;
+      }
+      await route.continue();
+    });
+  });
+
   test('shows hero and CTA', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
@@ -11,7 +22,7 @@ test.describe('Marketing homepage', () => {
   test('CTA navigates to login', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.getByRole('link', { name: 'Begin the bond' }).first().click();
-    await expect(page).toHaveURL(/\/app\/login$/);
+    await expect(page).toHaveURL(/\/app\/auth$/);
   });
 
   test('sections render for worlds and support copy', async ({ page }) => {

@@ -27,6 +27,14 @@ const generatePostSlug = (body: string) => {
   return `${base}-${randomUUID().slice(0, 8)}`;
 };
 
+const sanitizePostMeta = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([key]) => key !== 'html')
+    .slice(0, 20);
+  return Object.fromEntries(entries);
+};
+
 export const GET: RequestHandler = async (event) => {
   const supabase = supabaseServer(event);
   const limit = parseLimit(event.url.searchParams.get('limit'));
@@ -86,10 +94,7 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'Body is required' }, { status: 400 });
   }
 
-  const meta =
-    payload.meta && typeof payload.meta === 'object' && !Array.isArray(payload.meta)
-      ? (payload.meta as Record<string, unknown>)
-      : {};
+  const meta = sanitizePostMeta(payload.meta);
 
   const {
     data: inserted,

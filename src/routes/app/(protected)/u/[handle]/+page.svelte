@@ -138,9 +138,7 @@ import type { PageData } from './$types';
                     {/if}
                   </header>
                   <div class="mt-3">
-                    {#if item.html}
-                      {@html item.html}
-                    {:else if item.text}
+                    {#if item.text}
                       <p class="text-white/80 whitespace-pre-wrap">{item.text}</p>
                     {/if}
                   </div>

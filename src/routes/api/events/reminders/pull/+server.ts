@@ -30,7 +30,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const rate = enforceReminderPullRateLimit(session.user.id, getClientIp(event));
-  if (!rate.ok) {
+  if (rate.ok === false) {
     return json(
       { error: rate.code, message: rate.message, retryAfter: rate.retryAfter },
       { status: rate.status, headers: EVENTS_CACHE_HEADERS }

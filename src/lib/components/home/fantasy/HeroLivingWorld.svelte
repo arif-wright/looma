@@ -93,8 +93,8 @@
     <h1 id="living-world-title">{playerName}<span aria-hidden="true">+</span></h1>
     <p class="intro">Your companions missed you. Jump back in and continue your adventure.</p>
     <div class="hero-actions">
-      <a class="primary" href="/app/worlds">
-        <span>Enter World</span>
+      <a class="primary" href={companionHref}>
+        <span>Visit {companionName}</span>
         <i class="arrow-chip" aria-hidden="true"><ArrowRight size={16} /></i>
       </a>
       <a class="secondary" href="/app/games">
@@ -220,10 +220,10 @@
       </span>
       <ChevronRight size={20} />
     </a>
-    <a class="mobile-floating-card mobile-mini-card" href="/app/worlds" aria-label={`World mood ${mood}`}>
+    <a class="mobile-floating-card mobile-mini-card" href="/app/memory" aria-label={`Open journal. Current mood ${mood}`}>
       <span class="mobile-card-icon mobile-card-icon--leaf" aria-hidden="true"><Leaf size={28} /></span>
       <span>
-        <small>World Mood</small>
+        <small>Shared Mood</small>
         <strong class="mood-word">{mood}</strong>
       </span>
       <ChevronRight size={20} />

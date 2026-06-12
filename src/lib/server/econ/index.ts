@@ -39,13 +39,10 @@ type SpendArgs = {
   client?: Supabase;
 };
 
-const withClient = (client?: Supabase) => client ?? supabaseAdmin;
-
 const normalizeMeta = (meta?: Record<string, unknown>) => (meta ? meta : {});
 
-export const walletGrant = async ({ userId, amount, source, refId = null, meta, client }: GrantArgs) => {
-  const supabase = withClient(client);
-  const { error } = await supabase.rpc('fn_wallet_grant', {
+export const walletGrant = async ({ userId, amount, source, refId = null, meta }: GrantArgs) => {
+  const { error } = await supabaseAdmin.rpc('fn_wallet_grant', {
     p_user: userId,
     p_amount: Math.floor(amount),
     p_source: source,
@@ -59,9 +56,8 @@ export const walletGrant = async ({ userId, amount, source, refId = null, meta, 
   }
 };
 
-export const walletSpend = async ({ userId, amount, source, refId = null, meta, client }: SpendArgs) => {
-  const supabase = withClient(client);
-  const { error } = await supabase.rpc('fn_wallet_spend', {
+export const walletSpend = async ({ userId, amount, source, refId = null, meta }: SpendArgs) => {
+  const { error } = await supabaseAdmin.rpc('fn_wallet_spend', {
     p_user: userId,
     p_amount: Math.floor(amount),
     p_source: source,

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { grant } from '$lib/server/economy/transactions';
+import { supabaseAdmin } from '$lib/server/supabase';
 
 type GrantArgs = {
   supabase: SupabaseClient;
@@ -37,7 +38,7 @@ export const grantMissionRewards = async ({
       { xp: xpAmount, energy: energyAmount, ...(cap !== null ? { energyCap: cap } : {}) },
       meta ?? {},
       idempotencyKey,
-      supabase
+      supabaseAdmin
     );
     if (!result.ok) {
       return { ok: false, status: 500, code: 'reward_grant_failed', message: 'Unable to grant mission rewards.' };

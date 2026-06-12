@@ -57,7 +57,7 @@ export const recalculateBondsForPlayer = async (
   playerId: string
 ): Promise<BondStatsRow[]> => {
   if (!playerId) return [];
-  const { data, error } = await client.rpc('recalculate_bonds_for_player', {
+  const { data, error } = await supabaseAdmin.rpc('recalculate_bonds_for_player', {
     p_player_id: playerId
   });
 

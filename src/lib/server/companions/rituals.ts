@@ -3,6 +3,7 @@ import { walletGrant } from '$lib/server/econ/index';
 import type { CompanionRitual, CompanionRitualKey, CompanionRitualUpdate } from '$lib/companions/rituals';
 import { COMPANION_RITUALS, mapRitualRow, ritualDefinitionMap } from '$lib/companions/rituals';
 import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
+import { supabaseAdmin } from '$lib/server/supabase';
 
 const table = 'companion_rituals';
 
@@ -134,7 +135,7 @@ export const incrementCompanionRitual = async (
   }
   if (completed && !row.reward_claimed) {
     if (def.xpReward > 0) {
-      const { error: xpGrantError } = await client.rpc('fn_award_game_xp', {
+      const { error: xpGrantError } = await supabaseAdmin.rpc('fn_award_game_xp', {
         p_user: userId,
         p_xp: def.xpReward
       });
@@ -149,7 +150,7 @@ export const incrementCompanionRitual = async (
         source: 'companion_ritual',
         refId: `${key}-${ritualDate}`,
         meta: { ritual: key },
-        client
+        client: supabaseAdmin
       }).catch((err) => console.error('[rituals] shard grant failed', err));
     }
     await awardAffection(client, userId, def.affectionReward, def.trustReward);

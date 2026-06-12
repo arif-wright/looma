@@ -130,7 +130,7 @@
     { href: '/app/home', label: 'Home', icon: House, analyticsKey: 'home' },
     { href: '/app/companions', label: 'Companions', icon: Sparkles, analyticsKey: 'companions' },
     { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
-    { href: '/app/worlds', label: 'Worlds', icon: Compass, analyticsKey: 'worlds' },
+    { href: '/app/memory', label: 'Journal', icon: Compass, analyticsKey: 'journal' },
     { href: '/app/missions', label: 'Quests', icon: WandSparkles, analyticsKey: 'quests' },
     { href: '/app/inventory', label: 'Inventory', icon: Box, analyticsKey: 'inventory' },
     { href: '/app/shop', label: 'Market', icon: Store, analyticsKey: 'market' },

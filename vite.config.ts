@@ -7,8 +7,10 @@ const usingVitest = Boolean(process.env.VITEST);
 const alias = {
   $lib: fileURLToPath(new URL('./src/lib', import.meta.url)),
   ...(usingVitest
-    ? {
-        '$app/environment': fileURLToPath(new URL('./tests/mocks/app-environment.ts', import.meta.url))
+      ? {
+        '$app/environment': fileURLToPath(new URL('./tests/mocks/app-environment.ts', import.meta.url)),
+        '$env/dynamic/private': fileURLToPath(new URL('./tests/mocks/env-dynamic-private.ts', import.meta.url)),
+        '$env/dynamic/public': fileURLToPath(new URL('./tests/mocks/env-dynamic-public.ts', import.meta.url))
       }
     : {})
 };

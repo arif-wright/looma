@@ -18,10 +18,8 @@
   import CompanionCard from '$lib/components/home/fantasy/CompanionCard.svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import FriendStatusPanel from '$lib/components/home/fantasy/FriendStatusPanel.svelte';
-  import GameCard from '$lib/components/home/fantasy/GameCard.svelte';
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import RitualPanel from '$lib/components/home/fantasy/RitualPanel.svelte';
-  import WorldCard from '$lib/components/home/fantasy/WorldCard.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import { resolveCanonicalArchetypeId } from '$lib/onboarding/archetypes';
@@ -33,19 +31,6 @@
   let settingActiveCompanionId: string | null = null;
   let optimisticActiveCompanionId: string | null = null;
   let optimisticCompanionName: string | null = null;
-
-  const gameCards = [
-    { title: 'Arcane Realms', level: 'Lv. 24', progress: 87, stat: '87%', cover: 'arcane' },
-    { title: 'Battle Stadium', level: 'Lv. 18', progress: 65, stat: '65%', cover: 'ember' },
-    { title: 'Skybound Odyssey', level: 'Lv. 12', progress: 40, stat: '40%', cover: 'sky' },
-    { title: 'Mystic Mayhem', level: 'Lv. 9', progress: 20, stat: '20%', cover: 'void' }
-  ];
-
-  const worldCards = [
-    { name: 'Memvoya Prime', level: 24, players: '1.2K', reward: 24, tone: 'violet' },
-    { name: 'Crystal Shores', level: 18, players: '856', reward: 18, tone: 'shore' },
-    { name: 'Voidspire', level: 29, players: '2.1K', reward: 29, tone: 'void' }
-  ];
 
   const backgroundByArchetype: Record<string, string> = {
     echo: '/assets/echo_background.png',
@@ -288,9 +273,9 @@
         0
     )
   );
-  $: playerLevel = Math.max(1, Math.floor((data.stats as any)?.level ?? activeCompanion?.bondLevel ?? 24));
-  $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 3200));
-  $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 5000));
+  $: playerLevel = Math.max(1, Math.floor((data.stats as any)?.level ?? activeCompanion?.bondLevel ?? 1));
+  $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 0));
+  $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 100));
   $: companionName = optimisticCompanionName ?? activeCompanion?.name ?? 'Lumi';
   $: activeCompanionHref = activeCompanion?.id ? `/app/companions?focus=${encodeURIComponent(activeCompanion.id)}` : '/app/companions';
   $: companionArchetype = resolveSceneArchetype(activeCompanion?.species);
@@ -301,13 +286,13 @@
   };
   $: heroSceneStyle = buildHeroSceneStyle(heroScenePlacement, heroBackgroundUrl);
   $: companionBond = resolveBondPercent(activeCompanion);
-  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 18));
+  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 1));
   $: companionMood = normalizedMood(activeCompanion?.mood);
-  $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 3));
+  $: ritualCompleted = Math.min(3, Math.max(0, data.rituals?.filter((ritual) => ritual.status === 'completed').length ?? 0));
   $: ritualProgressPercent = Math.round((ritualCompleted / 3) * 100);
-  $: mobileQuestTitle = (data.dailyMissions as any)?.[0]?.title ?? 'The Forgotten Grove';
-  $: mobileQuestProgressPercent = Math.min(100, Math.max(18, Math.round(((data.dailyArcRecap as any)?.completedSteps ?? 2) * 25)));
-  $: energyCurrent = Math.max(0, Math.floor((data.momentum as any)?.current ?? (data.stats as any)?.energy ?? 85));
+  $: mobileQuestTitle = (data.dailyMissions as any)?.[0]?.title ?? 'Choose a journey';
+  $: mobileQuestProgressPercent = Math.min(100, Math.max(0, Math.round(((data.dailyArcRecap as any)?.completedSteps ?? 0) * 25)));
+  $: energyCurrent = Math.max(0, Math.floor((data.momentum as any)?.current ?? (data.stats as any)?.energy ?? 0));
   $: energyMax = Math.max(1, Math.floor((data.momentum as any)?.max ?? (data.stats as any)?.energy_max ?? 100));
   $: energyProgressPercent = Math.min(100, Math.round((energyCurrent / energyMax) * 100));
   $: rosterCompanionCards = (data.creatures ?? []).map((creature, index) => companionCardFrom(creature, index));
@@ -402,7 +387,7 @@
       </div>
       <label class="search" aria-label="Search Memvoya">
         <Search size={19} />
-        <input type="search" placeholder="Search worlds, games, companions, or friends..." />
+        <input type="search" placeholder="Search companions, games, or friends..." />
         <span>⌘K</span>
       </label>
       <div class="top-actions">
@@ -447,10 +432,10 @@
               <span>Feed {companionName}</span>
               <small>+ Energy</small>
             </a>
-            <a class="mobile-action-card mobile-action-card--world" href="/app/worlds">
+            <a class="mobile-action-card mobile-action-card--world" href="/app/memory">
               <Gamepad2 size={19} />
-              <span>Enter World</span>
-              <small>+ Adventure</small>
+              <span>Open Journal</span>
+              <small>Remember together</small>
             </a>
             <a class="mobile-action-card mobile-action-card--gift" href="/app/inventory">
               <Gift size={19} />
@@ -480,7 +465,7 @@
                 <div>
                   <strong>Quest</strong>
                   <p>{mobileQuestTitle}</p>
-                  <small>Step 2 of 4</small>
+                  <small>{mobileQuestProgressPercent > 0 ? 'In progress' : 'Not started'}</small>
                 </div>
                 <i><b style={`width:${mobileQuestProgressPercent}%`}></b></i>
               </article>
@@ -489,7 +474,7 @@
                 <div>
                   <strong>Energy</strong>
                   <p>{energyCurrent} / {energyMax}</p>
-                  <small>{energyCurrent >= energyMax ? 'Full' : 'Full in 2h 15m'}</small>
+                  <small>{energyCurrent >= energyMax ? 'Full' : 'Restoring over time'}</small>
                 </div>
                 <i><b style={`width:${energyProgressPercent}%`}></b></i>
               </article>
@@ -525,31 +510,6 @@
           </div>
         </section>
 
-        <div class="lower-grid">
-          <section class="glass-section" aria-labelledby="games-title">
-            <div class="section-header">
-              <h2 id="games-title">Continue Playing</h2>
-              <a href="/app/games">View All</a>
-            </div>
-            <div class="card-grid game-grid">
-              {#each gameCards as game}
-                <GameCard {...game} />
-              {/each}
-            </div>
-          </section>
-
-          <section class="glass-section" aria-labelledby="worlds-title">
-            <div class="section-header">
-              <h2 id="worlds-title">Explore Worlds</h2>
-              <a href="/app/worlds">View All</a>
-            </div>
-            <div class="card-grid world-grid">
-              {#each worldCards as world}
-                <WorldCard {...world} />
-              {/each}
-            </div>
-          </section>
-        </div>
       </section>
 
       <aside class="right-stack" aria-label="Daily panels">
@@ -868,25 +828,6 @@
     font-size: 0.78rem;
   }
 
-  .lower-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: 1rem;
-  }
-
-  .card-grid {
-    display: grid;
-    gap: 0.65rem;
-  }
-
-  .game-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .world-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   @media (max-width: 1380px) {
     .home-main::before,
     .home-main::after {
@@ -916,7 +857,6 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .lower-grid,
     .right-stack {
       grid-template-columns: 1fr;
     }
@@ -1330,9 +1270,7 @@
       padding: 0 0.35rem;
     }
 
-    .companion-grid,
-    .game-grid,
-    .world-grid {
+    .companion-grid {
       display: grid;
       grid-auto-flow: column;
       grid-auto-columns: minmax(10.5rem, 68vw);
@@ -1345,14 +1283,7 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    .game-grid,
-    .world-grid {
-      grid-auto-columns: minmax(9.8rem, 58vw);
-    }
-
-    .companion-grid > :global(*),
-    .game-grid > :global(*),
-    .world-grid > :global(*) {
+    .companion-grid > :global(*) {
       scroll-snap-align: start;
     }
 
@@ -1360,12 +1291,7 @@
       min-height: 13.4rem;
     }
 
-    .lower-grid {
-      display: block;
-    }
-
-    .companions-section,
-    .lower-grid {
+    .companions-section {
       display: none;
     }
 
@@ -1376,10 +1302,6 @@
       grid-auto-columns: minmax(10.5rem, 74vw);
     }
 
-    .game-grid,
-    .world-grid {
-      grid-auto-columns: minmax(9.6rem, 63vw);
-    }
   }
 
   @media (max-width: 390px) {

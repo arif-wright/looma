@@ -9,7 +9,7 @@
     '/app/home',
     '/app/companions',
     '/app/games',
-    '/app/worlds',
+    '/app/memory',
     '/app/missions',
     '/app/inventory',
     '/app/shop',

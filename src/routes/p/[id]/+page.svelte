@@ -12,8 +12,6 @@
     meta?: { title?: string; description?: string };
   };
 
-  export const csr = true;
-
   let post: PostRow = { ...data.post };
   let commentCount = data.post.comment_count ?? 0;
   let initialComments = data.comments ?? [];

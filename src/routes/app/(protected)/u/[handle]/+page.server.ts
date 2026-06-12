@@ -226,7 +226,6 @@ export const load: PageServerLoad = async (event) => {
     ? posts.items.map((item) => ({
         id: item.id,
         text: item.text ?? item.body ?? '',
-        html: (item.meta as Record<string, any> | undefined)?.html ?? null,
         when_label: formatWhenLabel(item.created_at),
         kind: item.kind ?? null,
         media: (item.meta as Record<string, any> | undefined)?.media ?? [],

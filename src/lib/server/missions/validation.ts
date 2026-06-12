@@ -69,12 +69,21 @@ export const validateMissionStart = (
   }
 
   const repeatable = mission.requirements?.repeatable !== false;
-  if (!repeatable && lastSession?.status === 'active') {
+  if (!repeatable && (lastSession?.status === 'active' || lastSession?.status === 'started')) {
     return {
       ok: false,
       status: 409,
       code: 'mission_already_active',
       message: 'This mission is already active.'
+    };
+  }
+
+  if (mission.type === 'identity' && mission.cost) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'identity_cost_forbidden',
+      message: 'Identity missions cannot spend resources.'
     };
   }
 
@@ -123,7 +132,7 @@ export const validateMissionComplete = (
     return { ok: false, status: 403, code: 'forbidden', message: 'Mission session ownership mismatch.' };
   }
 
-  if (session.status !== 'active') {
+  if (session.status !== 'active' && session.status !== 'started') {
     return {
       ok: false,
       status: 409,

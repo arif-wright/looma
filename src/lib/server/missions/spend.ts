@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { spend as spendTransaction } from '$lib/server/economy/transactions';
+import { supabaseAdmin } from '$lib/server/supabase';
 
 type SpendArgs = {
   supabase: SupabaseClient;
@@ -33,7 +34,7 @@ export const spend = async ({
       { energy: cost },
       meta ?? {},
       idempotencyKey,
-      supabase
+      supabaseAdmin
     );
     if (!result.ok) {
       return {
