@@ -199,7 +199,7 @@
       </div>
     </section>
 
-    <section class="reaction-card" aria-live="polite">
+    <section class="reaction-card" id="shared-rest" aria-live="polite">
       <div>
         <span class="reaction-label">{mossSeatPlacement ? 'A shared ritual' : 'Companion response'}</span>
         <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
@@ -650,6 +650,11 @@
   }
 
   @media (max-width: 760px) {
+    .reaction-card {
+      order: -1;
+      scroll-margin-top: 1rem;
+    }
+
     .scene-card {
       min-height: 31rem;
     }

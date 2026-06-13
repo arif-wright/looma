@@ -2,13 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
-  import {
-    Bell,
-    BookOpen,
-    Leaf,
-    Menu,
-    Sparkles
-  } from 'lucide-svelte';
+  import { BookOpen, Leaf, Sparkles } from 'lucide-svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
@@ -39,6 +33,7 @@
   let checkinReaction: string | null = null;
   let formedMemory: { id: string; title: string; body: string; href: string; persisted: true; createdAt?: string } | null = null;
   let bondActionElement: HTMLElement | null = null;
+  let reflectionInput: HTMLTextAreaElement | null = null;
   let continuityElement: HTMLElement | null = null;
   let beganAsFirstBond = false;
   const recordedVisibilityEvents = new Set<string>();
@@ -328,6 +323,11 @@
     });
   };
 
+  const keepReflectionVisible = () => {
+    if (!reflectionInput || document.activeElement !== reflectionInput || window.innerWidth > 760) return;
+    window.setTimeout(() => bondActionElement?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80);
+  };
+
   const submitCheckin = async () => {
     if (!activeCompanion?.id || checkinPending) return;
     const reflection = checkinReflection.trim();
@@ -430,10 +430,12 @@
     const recordVisibleContent = () => recordContinuityVisibility();
     window.addEventListener('scroll', recordVisibleContent, { passive: true });
     window.addEventListener('resize', recordVisibleContent);
+    window.visualViewport?.addEventListener('resize', keepReflectionVisible);
     void tick().then(recordVisibleContent);
     return () => {
       window.removeEventListener('scroll', recordVisibleContent);
       window.removeEventListener('resize', recordVisibleContent);
+      window.visualViewport?.removeEventListener('resize', keepReflectionVisible);
     };
   });
 </script>
@@ -470,13 +472,6 @@
     <header class="mobile-topbar">
       <div class="mobile-brand">
         <MemvoyaBrand href="/app/home" size="sm" showMark={false} ariaLabel="Memvoya home" />
-      </div>
-      <div class="top-actions">
-        <button class="mobile-bell-action" type="button" aria-label="Open notifications">
-          <Bell size={23} />
-          <span aria-hidden="true"></span>
-        </button>
-        <button class="menu-action" type="button" aria-label="Open menu"><Menu size={27} /></button>
       </div>
     </header>
 
@@ -516,7 +511,14 @@
                     <option value="numb">Quiet</option>
                   </select>
                 </label>
-                <textarea bind:value={checkinReflection} rows="2" maxlength="480" placeholder={`Share a few words with ${companionName}...`}></textarea>
+                <textarea
+                  bind:this={reflectionInput}
+                  bind:value={checkinReflection}
+                  rows="2"
+                  maxlength="480"
+                  placeholder={`Share a few words with ${companionName}...`}
+                  on:focus={keepReflectionVisible}
+                ></textarea>
                 {#if checkinRecoveryPending}
                   <div class="bond-action__pending" role="status">
                     <strong>This moment is still waiting safely on this screen.</strong>
@@ -550,7 +552,7 @@
           <a href={activeCompanionHref}><Sparkles size={18} /><span>Companion</span></a>
           <a href="/app/memory"><BookOpen size={18} /><span>Journal</span></a>
           {#if canCompleteSharedRest}
-            <a href="/app/sanctuary"><Leaf size={18} /><span>Rest together</span></a>
+            <a href="/app/sanctuary#shared-rest"><Leaf size={18} /><span>Rest together</span></a>
           {/if}
         </nav>
 
@@ -715,16 +717,8 @@
   }
 
   .mobile-brand,
-  .mobile-topbar,
-  .mobile-bell-action,
-  .menu-action {
+  .mobile-topbar {
     display: none;
-  }
-
-  .top-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
   }
 
   .content-grid {
@@ -965,51 +959,23 @@
       align-items: center;
     }
 
-    .top-actions {
-      width: auto;
-      justify-content: flex-end;
-      gap: 0.85rem;
-    }
-
-    .mobile-bell-action {
-      position: relative;
-      display: inline-grid;
-      width: 2.55rem;
-      min-height: 2.55rem;
-      place-items: center;
-      border: 0;
-      background: transparent;
-      color: #fff3cf;
-      padding: 0;
-      cursor: pointer;
-    }
-
-    .mobile-bell-action span {
-      position: absolute;
-      right: 0.18rem;
-      top: 0.12rem;
-      width: 0.72rem;
-      height: 0.72rem;
-      border-radius: 999px;
-      background: #a55cff;
-      box-shadow: 0 0 16px rgba(165, 92, 255, 0.86);
-    }
-
-    .menu-action {
-      display: inline-grid;
-      width: 2.55rem;
-      min-height: 2.55rem;
-      place-items: center;
-      border: 0;
-      background: transparent;
-      color: #fff3cf;
-      padding: 0;
-      cursor: pointer;
-    }
-
     .content-grid,
     .center-stack {
       display: block;
+    }
+
+    .bond-action {
+      scroll-margin-block: 5rem calc(6rem + env(safe-area-inset-bottom));
+    }
+
+    .bond-action textarea {
+      min-height: 4.5rem;
+      resize: none;
+      font-size: 16px;
+    }
+
+    .bond-action button {
+      min-height: 3rem;
     }
 
   }

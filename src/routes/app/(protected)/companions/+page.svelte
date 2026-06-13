@@ -3987,6 +3987,17 @@
   }
 
   @media (max-width: 620px) {
+    .detail-panel {
+      order: -1;
+    }
+
+    .stats-grid,
+    .tabs-row,
+    .summon-card,
+    .slots-panel {
+      display: none;
+    }
+
     .stats-grid,
     .companion-grid,
     .collection-grid,
@@ -3995,9 +4006,8 @@
     }
 
     .roster-card,
-    .summon-card,
     .collection-card {
-      min-height: 14rem;
+      min-height: 9rem;
     }
 
     .stat-cluster {

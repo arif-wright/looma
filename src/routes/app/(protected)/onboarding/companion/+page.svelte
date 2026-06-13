@@ -949,6 +949,13 @@
   }
 
   @media (max-width: 900px) {
+    .bond-shell {
+      min-height: 100svh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding-bottom: calc(6.6rem + env(safe-area-inset-bottom));
+    }
+
     .onboarding-top {
       grid-template-columns: 1fr auto;
       min-height: auto;
@@ -990,8 +997,21 @@
     }
 
     .bottom-bar {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 5;
+      width: 100%;
       gap: 1rem;
-      padding-bottom: 1.1rem;
+      border-top: 1px solid rgba(198, 132, 255, 0.24);
+      background: rgba(5, 4, 13, 0.94);
+      padding: 0.7rem 1rem max(0.8rem, env(safe-area-inset-bottom));
+      backdrop-filter: blur(22px);
+    }
+
+    .insight-note {
+      display: none;
     }
 
     .bottom-actions,
@@ -1002,6 +1022,7 @@
 
     .nav-button {
       min-width: 0;
+      min-height: 3.5rem;
     }
 
     .inline-error {

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { Bell, ChevronDown, MessageCircle, Settings, UserRound } from 'lucide-svelte';
+  import { Bell, ChevronDown, LogOut, MessageCircle, Settings, UserRound } from 'lucide-svelte';
+  import { logout } from '$lib/auth/logout';
   import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import type { MessengerConversation } from '$lib/components/messenger/types';
   import type { NotificationItem } from '$lib/components/ui/types';
@@ -28,6 +29,7 @@
   let conversationsLoading = false;
   let conversationsLoaded = false;
   let conversationsError: string | null = null;
+  let loggingOut = false;
 
   $: if (notifications !== lastNotifications) {
     lastNotifications = notifications;
@@ -163,6 +165,12 @@
     } finally {
       conversationsLoading = false;
     }
+  }
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    loggingOut = true;
+    await logout();
   }
 
   onMount(() => {
@@ -338,6 +346,19 @@
               <small>Manage account and experience settings.</small>
             </span>
           </a>
+          <button
+            class="dropdown-item profile-link logout-link"
+            type="button"
+            role="menuitem"
+            disabled={loggingOut}
+            on:click={handleLogout}
+          >
+            <span class="dropdown-icon" style="--tone: #ff7f9c"><LogOut size={18} /></span>
+            <span class="dropdown-copy">
+              <strong>{loggingOut ? 'Logging out...' : 'Log out'}</strong>
+              <small>End this Memvoya session.</small>
+            </span>
+          </button>
         </div>
       </div>
     {/if}
@@ -655,6 +676,20 @@
 
   .profile-link {
     grid-template-columns: 2.35rem minmax(0, 1fr);
+  }
+
+  .logout-link {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .logout-link:disabled {
+    cursor: wait;
+    opacity: 0.68;
   }
 
   @media (max-width: 720px) {

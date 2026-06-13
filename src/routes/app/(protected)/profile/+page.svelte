@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
+  import { logout } from '$lib/auth/logout';
   import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
   import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
   import ProfileAbout from '$lib/components/profile/ProfileAbout.svelte';
@@ -100,6 +101,13 @@ let editOpen = false;
   let keepsakeError: string | null = null;
   let premiumStyleSaving = false;
   let premiumStyleError: string | null = null;
+  let loggingOut = false;
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    loggingOut = true;
+    await logout();
+  };
 
   const premiumStyles = [
     { key: 'gilded_dawn', label: 'Gilded Dawn', body: 'Warm gold light and steadier sanctuary glow.' },
@@ -266,6 +274,18 @@ let editOpen = false;
           <a class="pulse-action" href="/app/home">Go to sanctuary</a>
           <a class="pulse-action" href="/app/preferences">Preferences</a>
         </div>
+
+        {#if data.isOwner}
+          <div class="session-actions" aria-label="Account session">
+            <div>
+              <strong>Account session</strong>
+              <span>Log out when you are finished on this device.</span>
+            </div>
+            <button type="button" disabled={loggingOut} on:click={handleLogout}>
+              {loggingOut ? 'Logging out...' : 'Log out'}
+            </button>
+          </div>
+        {/if}
 
         {#if keepsakeShelfItems.length > 0}
           <div class="profile-shelf" aria-label="Featured keepsake shelf">
@@ -471,6 +491,49 @@ let editOpen = false;
     background:
       linear-gradient(165deg, rgba(24, 20, 15, 0.76), rgba(14, 17, 19, 0.86)),
       radial-gradient(circle at top left, rgba(214, 190, 141, 0.12), transparent 46%);
+  }
+
+  .session-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid rgba(214, 190, 141, 0.16);
+    padding-top: 1rem;
+  }
+
+  .session-actions > div {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .session-actions strong {
+    color: rgba(248, 241, 227, 0.98);
+    font-size: 0.88rem;
+  }
+
+  .session-actions span {
+    color: rgba(208, 196, 171, 0.72);
+    font-size: 0.78rem;
+  }
+
+  .session-actions button {
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 127, 156, 0.28);
+    border-radius: 0.85rem;
+    background: rgba(255, 127, 156, 0.08);
+    padding: 0 1rem;
+    color: rgba(255, 218, 226, 0.96);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .session-actions button:disabled {
+    cursor: wait;
+    opacity: 0.68;
   }
 
   .profile-pulse__intro h2 {
@@ -902,6 +965,16 @@ let editOpen = false;
     .pulse-action {
       min-height: 2.9rem;
       width: 100%;
+    }
+
+    .session-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .session-actions button {
+      width: 100%;
+      min-height: 3rem;
     }
   }
 

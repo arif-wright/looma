@@ -15,6 +15,7 @@ Automated launch smoke coverage lives in:
 
 - `tests/e2e/bond_genesis.spec.ts`
 - `tests/e2e/launch-readiness-smoke.spec.ts`
+- `tests/e2e/mobile-core-journey.spec.ts`
 - `src/lib/__tests__/launchProofIntegrity.spec.ts`
 - `src/lib/__tests__/relationshipState.spec.ts`
 
@@ -60,6 +61,7 @@ Apply the complete migration history to the target environment before deploying 
 5. `supabase/migrations/20260612213000_unified_items_and_sanctuary_purpose.sql`
 6. `supabase/migrations/20260612223000_sanctuary_shared_rest.sql`
 7. `supabase/migrations/20260613190000_companion_first_bond_state.sql`
+8. `supabase/migrations/20260613201500_fix_companion_journal_upsert_conflict.sql`
 
 Also confirm the analytics and billing foundations from:
 
@@ -90,6 +92,17 @@ select to_regclass('public.user_daily_checkins') as daily_checkins,
 ```
 
 Expected: `first_bond_completed_at` exists and every `to_regclass` value is non-null.
+
+Confirm Journal retries have a conflict-compatible unique index:
+
+```sql
+select indexdef
+from pg_indexes
+where schemaname = 'public'
+  and indexname = 'companion_journal_entries_source_unique_idx';
+```
+
+Expected: the unique index covers `owner_id`, `companion_id`, `source_type`, and `source_id` without a `where` clause.
 
 ### Required production configuration
 

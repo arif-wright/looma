@@ -27,7 +27,7 @@
   aria-label="Primary navigation"
 >
   <div class="mobile-dock-shell">
-    <div class="dock-scroll no-scrollbar mx-auto max-w-md overflow-x-auto px-3">
+    <div class="dock-scroll no-scrollbar mx-auto max-w-md px-2">
       <div class="mobile-dock-grid">
         {#each mobileItems as item (item.href)}
           <a
@@ -97,8 +97,9 @@
   }
 
   .mobile-dock-grid {
-    display: inline-flex;
-    min-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
     align-items: center;
     gap: 0.2rem;
   }
@@ -106,8 +107,8 @@
   .mobile-dock-link {
     position: relative;
     display: grid;
-    width: 5.15rem;
-    flex: 0 0 5.15rem;
+    width: 100%;
+    min-width: 0;
     min-height: 3.95rem;
     place-items: center;
     align-content: center;

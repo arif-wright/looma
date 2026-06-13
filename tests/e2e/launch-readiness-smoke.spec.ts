@@ -70,4 +70,10 @@ test.describe('Reduced Phase 2 launch readiness', () => {
       ).toBeVisible();
     }
   });
+
+  test('desktop profile menu exposes logout', async ({ page }) => {
+    await page.goto('/app/home');
+    await page.getByRole('button', { name: 'Open profile menu' }).click();
+    await expect(page.getByRole('menuitem', { name: /Log out/i })).toBeVisible();
+  });
 });
