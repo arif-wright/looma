@@ -48,6 +48,7 @@
   import { getFavoriteGiftItemsForCompanion, calculateGiftBondGain } from '$lib/companions/giftPreferences';
   import { computeCompanionEffectiveState, formatLastCareLabel } from '$lib/companions/effectiveState';
   import { pickMuseAnimationForMood } from '$lib/companions/museAnimations';
+  import { bondClosenessFromScore } from '$lib/companions/relationshipState';
   import { logEvent } from '$lib/analytics';
   import { isProbablyNonBlankPortrait, isProbablyValidPortrait } from '$lib/companions/portrait';
   import {
@@ -1661,11 +1662,11 @@
             </div>
           </div>
           <div class="mood-row">
-            <span><Smile size={23} fill="currentColor" /> {getCompanionMoodMeta(detailCompanion.mood).label}</span>
+            <span><Smile size={23} fill="currentColor" /> Current mood: {getCompanionMoodMeta(detailCompanion.mood).label}</span>
           </div>
           <div class="bond-row">
-            <div><Heart size={22} fill="currentColor" /> <span>Bond</span></div>
-            <strong>{companionBondScore(detailCompanion)}%</strong>
+            <div><Heart size={22} fill="currentColor" /> <span>Bond closeness</span></div>
+            <strong>{bondClosenessFromScore(companionBondScore(detailCompanion))} · {companionBondScore(detailCompanion)}%</strong>
           </div>
           <div class="bond-meter"><span style={`width:${companionBondScore(detailCompanion)}%`}></span></div>
 

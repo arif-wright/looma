@@ -15,9 +15,10 @@ Purpose: keep `/app/home` focused on Memvoya's core loop (relationship with one 
 - User should immediately understand: "This is my companion."
 
 2. Relational Status (human language)
-- One short status line (for example: "Mirae feels distant.").
+- One short bond-closeness line (for example: "Your bond with Mirae feels distant.").
 - One short reason line (for example: "She hasn't heard from you today.").
 - One compact state indicator with only 3 states: `Distant`, `Near`, `Resonant`.
+- Current companion mood is a separate labeled dimension and must not be presented as bond closeness.
 
 3. Primary Relational Action (single CTA)
 - Exactly one primary CTA on Home: reconnect/check-in action.

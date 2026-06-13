@@ -11,6 +11,8 @@ test.describe('Reduced Phase 2 launch readiness', () => {
 
     await expect(page.getByRole('main', { name: 'Memvoya companion home' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Supporting relationship actions' })).toBeVisible();
+    await expect(page.getByText(/Your bond with .* feels (distant|near|resonant)/i)).toBeVisible();
+    await expect(page.getByText(/Current mood:/i).first()).toBeVisible();
     await expect(page.locator('a[href="/app/games"]')).toHaveCount(0);
     await expect(page.locator('a[href="/app/missions"]')).toHaveCount(0);
     await expect(page.locator('a[href="/app/messages"]')).toHaveCount(0);
@@ -22,6 +24,28 @@ test.describe('Reduced Phase 2 launch readiness', () => {
       await expect(continuity.getByText(/persisted in your Journal/i)).toBeVisible();
     } else {
       await expect(continuity.getByText(/Share one honest moment above/i)).toBeVisible();
+    }
+  });
+
+  test('a recoverable first-bond persistence failure keeps the moment available for retry', async ({ page }) => {
+    await page.route('**/api/home/reconnect', async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'memory_persistence_failed', recoverable: true })
+      });
+    });
+    await page.goto('/app/home');
+
+    const reflection = page.getByPlaceholder(/Share a few words with/i);
+    const firstMomentButton = page.getByRole('button', { name: /Share your first moment/i });
+    if ((await reflection.count()) && (await firstMomentButton.count())) {
+      await reflection.fill('I want this first moment to stay with us.');
+      await firstMomentButton.click();
+      await expect(page.getByText(/still waiting safely on this screen/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /Try saving this moment again/i })).toBeVisible();
+      await expect(reflection).toHaveValue('I want this first moment to stay with us.');
+      await expect(page.getByText(/safely remembered yet/i)).toHaveCount(0);
     }
   });
 

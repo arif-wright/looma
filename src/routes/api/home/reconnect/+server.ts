@@ -276,7 +276,7 @@ export const POST: RequestHandler = async (event) => {
     return json(
       {
         error: 'memory_persistence_failed',
-        message: 'Your moment was not safely remembered yet. Please try sharing it again.',
+        message: 'This moment is still waiting to be added safely to the Journal.',
         recoverable: true
       },
       { status: 503, headers: CACHE_HEADERS }

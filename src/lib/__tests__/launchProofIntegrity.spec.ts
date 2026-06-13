@@ -3,9 +3,11 @@ import {
   canCompleteSharedRest,
   canSpawnCompanion,
   buildReflectionAcknowledgement,
+  firstBondPendingCopy,
   clipRememberedReflection,
   isFirstBondPending,
   isFirstBondMoment,
+  isRecoverableMemoryFailure,
   isReconnectComplete,
   journalMomentToContinuity,
   persistedReflectionToContinuity,
@@ -144,6 +146,10 @@ describe('launch proof integrity', () => {
     expect(result.ok).toBe(false);
     expect(isReconnectComplete(result.ok)).toBe(false);
     expect(isFirstBondMoment(true, result.ok)).toBe(true);
+    expect(isRecoverableMemoryFailure({ error: 'memory_persistence_failed', recoverable: true })).toBe(true);
+    expect(isRecoverableMemoryFailure({ error: 'server_error', recoverable: true })).toBe(false);
+    expect(firstBondPendingCopy('Mira')).toContain('nothing is being called remembered');
+    expect(firstBondPendingCopy('Mira')).toContain('Try saving this moment again');
   });
 
   it('defines measurable launch and premium funnels', () => {

@@ -19,10 +19,13 @@
   import type { PageData } from './$types';
   import { sendAnalytics } from '$lib/utils/analytics';
   import {
+    firstBondPendingCopy,
     isFirstBondMoment,
+    isRecoverableMemoryFailure,
     journalMomentToContinuity,
     persistedReflectionToContinuity
   } from '$lib/launch/proofIntegrity';
+  import { bondClosenessFromScore } from '$lib/companions/relationshipState';
 
   export let data: PageData;
   let pageMounted = false;
@@ -32,6 +35,7 @@
   let checkinReflection = '';
   let checkinPending = false;
   let checkinError: string | null = null;
+  let checkinRecoveryPending = false;
   let checkinReaction: string | null = null;
   let formedMemory: { id: string; title: string; body: string; href: string; persisted: true; createdAt?: string } | null = null;
   let bondActionElement: HTMLElement | null = null;
@@ -279,10 +283,7 @@
     : null;
   $: companionNeedsRest = (activeCompanionEffective?.energy ?? activeCompanion?.energy ?? 100) <= 25;
   $: canCompleteSharedRest = companionNeedsRest && Boolean(data.canSharedRest);
-  $: relationalState = (companionBond >= 70 ? 'Resonant' : companionBond >= 35 ? 'Near' : 'Distant') as
-    | 'Distant'
-    | 'Near'
-    | 'Resonant';
+  $: relationalState = bondClosenessFromScore(companionBond);
   $: latestRememberedMoment =
     formedMemory ??
     persistedReflectionToContinuity((data.persistedReflection as any) ?? null) ??
@@ -337,15 +338,31 @@
     }
     checkinPending = true;
     checkinError = null;
+    checkinRecoveryPending = false;
     try {
-      const response = await fetch('/api/home/reconnect', {
+      const requestBody = JSON.stringify({ companionId: activeCompanion.id, mood: checkinMood, reflection });
+      let response = await fetch('/api/home/reconnect', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ companionId: activeCompanion.id, mood: checkinMood, reflection })
+        body: requestBody
       });
-      const payload = await response.json().catch(() => null);
+      let payload = await response.json().catch(() => null);
+      if (!response.ok && isRecoverableMemoryFailure(payload)) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        response = await fetch('/api/home/reconnect', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: requestBody
+        });
+        payload = await response.json().catch(() => null);
+      }
       if (!response.ok) {
-        checkinError = payload?.message ?? 'This moment could not be shared right now.';
+        if (completingFirstBond && isRecoverableMemoryFailure(payload)) {
+          checkinRecoveryPending = true;
+          checkinError = null;
+        } else {
+          checkinError = payload?.message ?? 'This moment could not be shared right now.';
+        }
         return;
       }
       checkinReaction = payload?.reaction?.text ?? `${companionName} is glad you came back.`;
@@ -500,9 +517,15 @@
                   </select>
                 </label>
                 <textarea bind:value={checkinReflection} rows="2" maxlength="480" placeholder={`Share a few words with ${companionName}...`}></textarea>
+                {#if checkinRecoveryPending}
+                  <div class="bond-action__pending" role="status">
+                    <strong>This moment is still waiting safely on this screen.</strong>
+                    <span>{firstBondPendingCopy(companionName)}</span>
+                  </div>
+                {/if}
                 {#if checkinError}<small role="alert">{checkinError}</small>{/if}
                 <button type="button" disabled={checkinPending || !activeCompanion?.id} on:click={submitCheckin}>
-                  {checkinPending ? 'Sharing...' : firstBond ? 'Share your first moment' : `Check in with ${companionName}`}
+                  {checkinPending ? 'Sharing...' : checkinRecoveryPending ? 'Try saving this moment again' : firstBond ? 'Share your first moment' : `Check in with ${companionName}`}
                 </button>
               {/if}
             </section>
@@ -784,6 +807,22 @@
     margin: 0;
     color: rgba(238, 233, 255, 0.82);
     line-height: 1.45;
+  }
+
+  .bond-action__pending {
+    display: grid;
+    gap: 0.25rem;
+    border: 1px solid rgba(224, 194, 255, 0.24);
+    border-radius: 0.75rem;
+    background: rgba(120, 91, 190, 0.12);
+    padding: 0.65rem 0.75rem;
+    color: rgba(238, 233, 255, 0.82);
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
+  .bond-action__pending strong {
+    color: rgba(255, 255, 255, 0.96);
   }
 
   .continuity-card {

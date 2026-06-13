@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Pencil } from 'lucide-svelte';
   import MuseModel from '$lib/components/companion/MuseModel.svelte';
+  import { bondClosenessSentence } from '$lib/companions/relationshipState';
 
   export let companionId: string | null = null;
   export let companionHref = '/app/companions';
@@ -89,7 +90,7 @@
   <div class="hero-copy">
     <p>{playerName}, this is your shared place with</p>
     <h1 id="living-world-title">{companionName}<span aria-hidden="true">+</span></h1>
-    <p class="relationship-state">{companionName} feels {relationalState.toLowerCase()}.</p>
+    <p class="relationship-state">{bondClosenessSentence(companionName, relationalState)}</p>
     <p class="intro">{relationalReason}</p>
     <slot name="primary-action" />
   </div>
@@ -176,13 +177,13 @@
       <i class="stat-icon stat-icon--mood" aria-hidden="true">
         <img src={moodIconUrl} alt="" loading="eager" />
       </i>
-      <span>{mood}</span>
+      <span>Current mood: {mood}</span>
     </div>
     <div class="status-row">
       <i class="stat-icon stat-icon--bond" aria-hidden="true">
         <img src="/assets/heart.png" alt="" loading="eager" />
       </i>
-      <span>Bond</span>
+      <span>Bond closeness</span>
       <strong>{bond}%</strong>
     </div>
     <a class="companion-link" href={companionHref}>Open companion</a>

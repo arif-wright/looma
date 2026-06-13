@@ -40,6 +40,15 @@ export const isFirstBondPending = (hasCompanion: boolean, firstBondCompletedAt: 
 
 export const isReconnectComplete = (memoryPersisted: boolean) => memoryPersisted;
 
+export const isRecoverableMemoryFailure = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') return false;
+  const record = payload as Record<string, unknown>;
+  return record.error === 'memory_persistence_failed' && record.recoverable === true;
+};
+
+export const firstBondPendingCopy = (companionName: string) =>
+  `Your words are still here. ${companionName.trim() || 'Your companion'} could not safely add them to the Journal yet, so nothing is being called remembered. Try saving this moment again when you are ready.`;
+
 export const persistedReflectionToContinuity = (reflection: PersistedReflectionRow | null) =>
   reflection
     ? {
