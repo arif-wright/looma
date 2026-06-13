@@ -17,4 +17,9 @@ describe('sanctuary helpers', () => {
     expect(reaction).toContain('Mira');
     expect(reaction).toContain('35 spark');
   });
+
+  it('keeps a high-energy shared rest relational instead of presenting it as resource grinding', () => {
+    const reaction = buildSharedRestReaction('Mira', 80, 100);
+    expect(reaction).toContain('the quiet itself became the memory');
+  });
 });

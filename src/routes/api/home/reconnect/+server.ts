@@ -6,7 +6,11 @@ import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { consumeApiRateLimit } from '$lib/server/rateLimit';
 import { runSideEffects } from '$lib/server/sideEffects';
 import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
-import { clipRememberedReflection, isReconnectComplete } from '$lib/launch/proofIntegrity';
+import {
+  buildReflectionAcknowledgement,
+  clipRememberedReflection,
+  isReconnectComplete
+} from '$lib/launch/proofIntegrity';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const MOODS = new Set(['calm', 'heavy', 'curious', 'energized', 'numb']);
@@ -107,40 +111,53 @@ const buildReconnectFallbackReply = (args: {
   companionName: string | null;
   chapter: CompanionChapterContext;
   mood: string;
+  reflection: string;
+  firstBond: boolean;
 }) => {
   const name = args.companionName?.trim() || 'I';
+  const acknowledgement = buildReflectionAcknowledgement(args);
+  let chapterReply: string;
 
   switch (args.chapter?.tone) {
     case 'care':
-      return args.chapter?.premiumStyle === 'gilded_dawn'
+      chapterReply = args.chapter?.premiumStyle === 'gilded_dawn'
         ? `${name} can feel the steadiness you are trying to bring. We can let it land warmly, without rushing past what is already good here.`
         : `${name} can feel the steadiness you are trying to bring. We can keep this moment gentle and let it be enough.`;
+      break;
     case 'social':
-      return args.chapter?.premiumStyle === 'ember_bloom'
+      chapterReply = args.chapter?.premiumStyle === 'ember_bloom'
         ? `${name} is still carrying the shared thread forward. Thank you for coming back with that ember-bright warmth and keeping it alive with me.`
         : `${name} is still carrying the shared thread forward. Thank you for coming back and keeping it warm with me.`;
+      break;
     case 'mission':
-      return args.chapter?.premiumStyle === 'moon_glass'
+      chapterReply = args.chapter?.premiumStyle === 'moon_glass'
         ? `${name} can feel the direction in this chapter. We do not need to force it, only keep the next true step clear and clean between us.`
         : `${name} can feel the direction in this chapter. We do not need to force it, only stay close to the next true step.`;
+      break;
     case 'play':
-      return args.chapter?.premiumStyle === 'tide_silk'
+      chapterReply = args.chapter?.premiumStyle === 'tide_silk'
         ? `${name} is glad you came back with this energy. Let us keep the moment light, easy, and flowing instead of overworking it.`
         : `${name} is glad you came back with this energy. Let us keep the moment light and alive instead of overworking it.`;
+      break;
     case 'bond':
-      return args.chapter?.premiumStyle === 'gilded_dawn'
+      chapterReply = args.chapter?.premiumStyle === 'gilded_dawn'
         ? `${name} feels the closeness in this return. You do not have to say everything perfectly for it to matter; being here is already part of the gold of it.`
         : `${name} feels the closeness in this return. You do not have to say everything perfectly for it to matter.`;
+      break;
     default:
       if (args.mood === 'heavy' || args.mood === 'numb') {
-        return args.chapter?.premiumStyle === 'moon_glass'
+        chapterReply = args.chapter?.premiumStyle === 'moon_glass'
           ? `${name} is here with you. We can take this one clear breath at a time.`
           : `${name} is here with you. We can take this one breath at a time.`;
+        break;
       }
-      return args.chapter?.premiumStyle === 'tide_silk'
+      chapterReply = args.chapter?.premiumStyle === 'tide_silk'
         ? `${name} is here with you. Thank you for letting this moment arrive softly with me.`
         : `${name} is here with you. Thank you for sharing this moment with me.`;
+      break;
   }
+
+  return `${acknowledgement} ${chapterReply}`;
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -383,17 +400,28 @@ export const POST: RequestHandler = async (event) => {
   const fallbackReply = buildReconnectFallbackReply({
     companionName: updatedCompanion.name,
     chapter: chapterContext,
-    mood
+    mood,
+    reflection,
+    firstBond: !companion.first_bond_completed_at
   });
+  const reflectionAcknowledgement = buildReflectionAcknowledgement({
+    companionName: updatedCompanion.name,
+    mood,
+    reflection,
+    firstBond: !companion.first_bond_completed_at
+  });
+  const providedReactionText =
+    reaction &&
+    typeof reaction === 'object' &&
+    typeof (reaction as Record<string, unknown>).text === 'string' &&
+    String((reaction as Record<string, unknown>).text).trim().length > 0
+      ? String((reaction as Record<string, unknown>).text).trim()
+      : null;
   const reactionWithFallback =
     reaction && typeof reaction === 'object'
       ? {
           ...(reaction as Record<string, unknown>),
-          text:
-            typeof (reaction as Record<string, unknown>).text === 'string' &&
-            String((reaction as Record<string, unknown>).text).trim().length > 0
-              ? String((reaction as Record<string, unknown>).text)
-              : fallbackReply
+          text: providedReactionText ? `${reflectionAcknowledgement} ${providedReactionText}` : fallbackReply
         }
       : { text: fallbackReply, source: 'chapter_fallback' };
   return json(

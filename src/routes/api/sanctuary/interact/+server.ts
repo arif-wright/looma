@@ -163,22 +163,26 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       energy_delta: energy - effective.energy,
       note: reaction
     }),
-    supabase.from('companion_journal_entries').insert({
-      owner_id: userId,
-      companion_id: companion.id,
-      source_type: 'system',
-      source_id: interaction.id,
-      title: `A quiet rest with ${companion.name}`,
-      body: reaction,
-      meta_json: {
-        category: 'sanctuary',
-        interactionType: 'shared_rest',
-        action: 'shared_rest',
-        itemKey: 'care-moss-seat',
-        energyBefore: effective.energy,
-        energyAfter: energy
-      }
-    })
+    supabase
+      .from('companion_journal_entries')
+      .insert({
+        owner_id: userId,
+        companion_id: companion.id,
+        source_type: 'system',
+        source_id: interaction.id,
+        title: `A quiet rest with ${companion.name}`,
+        body: reaction,
+        meta_json: {
+          category: 'sanctuary',
+          interactionType: 'shared_rest',
+          action: 'shared_rest',
+          itemKey: 'care-moss-seat',
+          energyBefore: effective.energy,
+          energyAfter: energy
+        }
+      })
+      .select('id, title, body, created_at')
+      .single()
   ]);
   if (careEventResult.error) {
     console.error('[sanctuary interaction] care event record failed', careEventResult.error);
@@ -196,6 +200,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     companion: updated,
     reaction,
     restoredEnergy: energy - effective.energy,
+    memory: journalResult.data ?? null,
     nextAvailableAt: new Date(Date.now() + SHARED_REST_COOLDOWN_MS).toISOString()
   });
 };

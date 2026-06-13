@@ -31,6 +31,8 @@ Status: in progress
 
 - Placed Moss Seat unlocks a shared-rest interaction
 - Shared rest restores the companion's effective energy and records a Journal memory
+- The rest action only appears while it is currently available; cooldown state should explain that the last quiet moment is still being carried.
+- After a successful persisted rest memory, Sanctuary links directly to the Journal entry.
 - Tired companions invite the user toward the Sanctuary from Home and Companions
 - Continue unlocking objects through care, missions, play, and relationship milestones
 - Give placed objects a small companion interaction

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canCompleteSharedRest,
   canSpawnCompanion,
+  buildReflectionAcknowledgement,
   clipRememberedReflection,
   isFirstBondPending,
   isFirstBondMoment,
@@ -72,6 +73,19 @@ describe('launch proof integrity', () => {
       persisted: true
     });
     expect(clipRememberedReflection('  I am   nervous, but hopeful.  ')).toBe('I am nervous, but hopeful.');
+  });
+
+  it('makes the first companion response specific to the reflection and emotional state', () => {
+    const response = buildReflectionAcknowledgement({
+      companionName: 'Mira',
+      mood: 'heavy',
+      reflection: 'I am worried about tomorrow, but I still want to try.',
+      firstBond: true
+    });
+
+    expect(response).toContain('I am worried about tomorrow');
+    expect(response).toContain('the weight in what you shared');
+    expect(response).toContain('the first thing we remember together');
   });
 
   it('uses a journal moment headline rather than its internal category label on Home', () => {

@@ -75,6 +75,13 @@ What it must not unlock:
 - the ability to maintain the relationship at all
 - access to journal, check-ins, or basic care
 
+Launch presentation:
+
+- Describe Sanctuary+ through benefits that are already implemented and visible.
+- Lead with deeper Journal chapter readings, selectable Home atmosphere, and optional Spark capacity.
+- State plainly that the core companion bond remains complete without a subscription.
+- Avoid urgency, loss framing, or implying that affection depends on payment.
+
 ## Shard Rules
 
 Shards should primarily fund:

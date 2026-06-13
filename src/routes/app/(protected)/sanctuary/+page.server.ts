@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { canCompleteSharedRest, SHARED_REST_COOLDOWN_MS } from '$lib/launch/proofIntegrity';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const supabase = locals.supabase as App.Locals['supabase'];
@@ -8,7 +9,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     return { companion: null, items: [], placements: [], latestReaction: null, error: 'unauthorized' };
   }
 
-  const [companionRes, itemsRes, placementsRes, reactionRes] = await Promise.all([
+  const [companionRes, itemsRes, placementsRes, reactionRes, latestRestRes] = await Promise.all([
     supabase
       .from('companions')
       .select('id, name, species, avatar_url, mood, is_active')
@@ -37,6 +38,14 @@ export const load: PageServerLoad = async ({ locals }) => {
       .contains('meta_json', { category: 'sanctuary' })
       .order('created_at', { ascending: false })
       .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('sanctuary_interactions')
+      .select('created_at')
+      .eq('owner_id', userId)
+      .eq('action', 'shared_rest')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
   ]);
 
@@ -45,7 +54,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     itemsRes.error?.message ??
     placementsRes.error?.message ??
     reactionRes.error?.message ??
+    latestRestRes.error?.message ??
     null;
+
+  const placements = placementsRes.data ?? [];
+  const latestRestAt = typeof latestRestRes.data?.created_at === 'string' ? latestRestRes.data.created_at : null;
+  const restAvailable = canCompleteSharedRest(placements as any, latestRestAt);
 
   return {
     companion: companionRes.data ?? null,
@@ -53,8 +67,13 @@ export const load: PageServerLoad = async ({ locals }) => {
       const item = Array.isArray(row.item) ? row.item[0] : row.item;
       return Array.isArray(item?.capabilities) && item.capabilities.includes('placeable');
     }),
-    placements: placementsRes.data ?? [],
+    placements,
     latestReaction: reactionRes.data ?? null,
+    restAvailable,
+    nextRestAvailableAt:
+      latestRestAt && !restAvailable
+        ? new Date(Date.parse(latestRestAt) + SHARED_REST_COOLDOWN_MS).toISOString()
+        : null,
     error
   };
 };

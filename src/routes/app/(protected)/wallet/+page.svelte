@@ -113,9 +113,9 @@
 <div class="wallet-root">
   <InlineToast show={toastShow} message={toastMsg} onClose={() => (toastShow = false)} />
   <SanctuaryPageFrame
-    eyebrow="Economy"
-    title="Shard Wallet"
-    subtitle="Hold expression currency, review your trail, and keep paid systems separate from the core companion bond."
+    eyebrow="Optional expression"
+    title="Make your shared space feel more like yours"
+    subtitle="The companion bond stays free. Sanctuary+ adds deeper reflection and atmosphere around the relationship you are already building."
   >
     <svelte:fragment slot="actions">
       <EmotionalChip tone="cool">{formatShards(data.shards)} available</EmotionalChip>
@@ -149,10 +149,15 @@
       <section class="wallet-pulse panel" aria-label="Subscription pulse">
         <div>
           <p class="wallet-pulse__eyebrow">Sanctuary+</p>
-          <h2>{subscriptionActive ? formatSubscriptionTier(subscription?.tier) : 'Unlock deeper sanctuary perks'}</h2>
+          <h2>{subscriptionActive ? formatSubscriptionTier(subscription?.tier) : 'Give the bond more room to unfold'}</h2>
           <p class="wallet-pulse__lede">
-            Keep the bond loop free. Use premium for smoother Spark flow, richer chapter depth, and a more expressive sanctuary.
+            Sanctuary+ deepens how your shared history is reflected and how Home feels, without putting check-ins, care, or your Journal behind a paywall.
           </p>
+          <ul class="premium-benefits" aria-label="Sanctuary+ benefits">
+            <li>Deeper chapter readings in your Journal</li>
+            <li>Choose a richer atmosphere for Home</li>
+            <li>{data.momentum?.subscriptionBonus ? `+${data.momentum.subscriptionBonus} optional Spark capacity` : 'More optional Spark capacity'}</li>
+          </ul>
         </div>
 
         <div class="wallet-pulse__stats">
@@ -163,7 +168,7 @@
               {#if subscriptionActive}
                 Renews or ends {subscription?.renewal_at ? new Date(subscription.renewal_at).toLocaleDateString() : 'later'}.
               {:else}
-                Smoother Spark and premium chapter depth live here.
+                Your core relationship stays complete without a subscription.
               {/if}
             </span>
           </article>
@@ -196,7 +201,7 @@
             </div>
           {:else}
             <button class="wallet-subscribe-button" type="button" on:click={buySubscription}>
-              Start Sanctuary+
+              Explore Sanctuary+
             </button>
           {/if}
         </div>
@@ -289,6 +294,21 @@
     color: rgba(223, 211, 188, 0.78);
     line-height: 1.5;
     max-width: 42rem;
+  }
+
+  .premium-benefits {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    color: rgba(246, 238, 222, 0.88);
+    list-style: none;
+  }
+
+  .premium-benefits li::before {
+    content: '✓';
+    margin-right: 0.55rem;
+    color: rgba(215, 191, 143, 0.96);
   }
 
   .wallet-pulse__stats {

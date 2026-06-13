@@ -68,6 +68,29 @@ export const clipRememberedReflection = (reflection: string, limit = 320) => {
   return `${normalized.slice(0, limit - 1).trimEnd()}…`;
 };
 
+export const buildReflectionAcknowledgement = (args: {
+  companionName: string | null | undefined;
+  mood: string;
+  reflection: string;
+  firstBond: boolean;
+}) => {
+  const name = args.companionName?.trim() || 'Your companion';
+  const anchor = clipRememberedReflection(args.reflection, 96);
+  const moodMeaning: Record<string, string> = {
+    calm: 'the steadiness in what you shared',
+    curious: 'the curiosity in what you shared',
+    energized: 'the bright energy in what you shared',
+    heavy: 'the weight in what you shared',
+    numb: 'the quiet underneath what you shared'
+  };
+  const meaning = moodMeaning[args.mood] ?? 'what this moment means to you';
+  const beginning = args.firstBond
+    ? 'This can be the first thing we remember together.'
+    : 'I will carry that into the next time you return.';
+
+  return `${name} holds onto "${anchor}" and notices ${meaning}. ${beginning}`;
+};
+
 export const hasUsableSharedRestPlacement = (placements: SanctuaryPlacementRow[] | null | undefined) =>
   (placements ?? []).some((placement) => {
     const item = Array.isArray(placement.item) ? placement.item[0] : placement.item;

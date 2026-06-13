@@ -37,6 +37,8 @@ Purpose: keep `/app/home` focused on Memvoya's core loop (relationship with one 
 - A companion response and a remembered moment are separate outcomes.
 - Visibility analytics fire only when the relevant response or persisted continuity is actually visible.
 - Sanctuary appears contextually only when its intended relationship interaction can currently be completed.
+- Returning continuity should clearly distinguish an older carried-forward memory from a moment created in the current visit.
+- Fallback companion responses should acknowledge a specific part of the user's reflection rather than rely on generic reassurance alone.
 
 ## UX Principles
 

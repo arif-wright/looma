@@ -42,6 +42,9 @@
   let savingSlot: SanctuarySlot | null = null;
   let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
+  let restMemory: { id: string; title: string } | null = null;
+  let restAvailable = Boolean(data.restAvailable);
+  let nextRestAvailableAt = data.nextRestAvailableAt ?? null;
   let status: string | null = null;
   let appliedRequestedItem: string | null = null;
 
@@ -119,7 +122,14 @@
         return;
       }
       reaction = payload.reaction ?? reaction;
-      status = payload.restoredEnergy > 0 ? `${payload.restoredEnergy} spark restored.` : 'A quiet memory was made.';
+      restMemory = payload.memory?.id ? { id: payload.memory.id, title: payload.memory.title } : null;
+      restAvailable = false;
+      nextRestAvailableAt = payload.nextAvailableAt ?? null;
+      status = payload.restoredEnergy > 0
+        ? `${payload.restoredEnergy} spark restored. ${restMemory ? 'This rest is now in your Journal.' : 'The rest was completed, but the Journal could not hold it.'}`
+        : restMemory
+          ? 'The quiet itself became a remembered moment.'
+          : 'The quiet moment was completed.';
       await invalidateAll();
     } catch {
       status = 'This quiet moment could not be completed.';
@@ -191,11 +201,18 @@
 
     <section class="reaction-card" aria-live="polite">
       <div>
-        <span class="reaction-label">Companion response</span>
+        <span class="reaction-label">{mossSeatPlacement ? 'A shared ritual' : 'Companion response'}</span>
         <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
         {#if status}<small>{status}</small>{/if}
+        {#if restMemory}
+          <a class="rest-memory-link" href="/app/memory">Revisit “{restMemory.title}” in your Journal</a>
+        {:else if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
+          <small>The Moss Seat is holding your last quiet moment. Rest together again after {new Date(nextRestAvailableAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</small>
+        {:else if mossSeatPlacement}
+          <small>Rest together to restore spark and create a durable Journal memory.</small>
+        {/if}
       </div>
-      {#if mossSeatPlacement}
+      {#if mossSeatPlacement && restAvailable}
         <button type="button" disabled={interactionPending} on:click={restTogether}>
           <Armchair size={18} />
           <span>{interactionPending ? 'Resting...' : 'Rest Together'}</span>
@@ -279,6 +296,15 @@
     color: rgba(247, 244, 255, 0.9);
     text-decoration: none;
     font-size: 0.8rem;
+  }
+
+  .rest-memory-link {
+    display: inline-flex;
+    margin-top: 0.55rem;
+    color: rgba(239, 216, 164, 0.94);
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-decoration: none;
   }
 
   .builder-shell {

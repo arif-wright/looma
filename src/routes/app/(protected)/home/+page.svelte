@@ -33,7 +33,7 @@
   let checkinPending = false;
   let checkinError: string | null = null;
   let checkinReaction: string | null = null;
-  let formedMemory: { id: string; title: string; body: string; href: string; persisted: true } | null = null;
+  let formedMemory: { id: string; title: string; body: string; href: string; persisted: true; createdAt?: string } | null = null;
   let bondActionElement: HTMLElement | null = null;
   let continuityElement: HTMLElement | null = null;
   let beganAsFirstBond = false;
@@ -355,7 +355,8 @@
             title: payload.memory.title,
             body: payload.memory.body,
             href: '/app/memory',
-            persisted: true
+            persisted: true,
+            createdAt: payload.memory.createdAt
           }
         : null;
       recordLaunchEvent(completingFirstBond ? 'first_checkin_completed' : 'return_checkin_completed', {
@@ -479,7 +480,7 @@
           <svelte:fragment slot="primary-action">
             <section class="bond-action" aria-label="Primary companion action" bind:this={bondActionElement}>
               {#if checkinReaction}
-                <span class="bond-action__eyebrow">What {companionName} said</span>
+                <span class="bond-action__eyebrow">{firstBond || beganAsFirstBond ? 'Your first moment together' : `What ${companionName} noticed`}</span>
                 <p>{checkinReaction}</p>
                 {#if formedMemory}
                   <a href="/app/memory">See the moment {companionName} remembered</a>
@@ -510,11 +511,16 @@
 
         <section class="continuity-card" aria-label="Remembered continuity" bind:this={continuityElement}>
           <div>
-            <span>{formedMemory ? 'Just remembered' : latestRememberedMoment ? 'Carried forward' : 'Begin your shared history'}</span>
+            <span>{formedMemory ? 'Remembered from this visit' : latestRememberedMoment ? `${companionName} carried this back to you` : 'Your shared history begins here'}</span>
             <h2>{latestRememberedMoment?.title ?? `${companionName} is ready for a first remembered moment`}</h2>
-            <p>{latestRememberedMoment?.body ?? `When a check-in is safely added to your Journal, it will appear here on a later visit.`}</p>
+            <p>{latestRememberedMoment?.body ?? `Share one honest moment above. Once it is safely in your Journal, ${companionName} can carry it into a later visit.`}</p>
+            {#if latestRememberedMoment}
+              <small>This is persisted in your Journal, not generated just for this screen.</small>
+            {/if}
           </div>
-          <a href="/app/memory"><BookOpen size={18} /> Open Journal</a>
+          {#if latestRememberedMoment}
+            <a href="/app/memory"><BookOpen size={18} /> Revisit in Journal</a>
+          {/if}
         </section>
 
         <nav class="relationship-links" aria-label="Supporting relationship actions">
@@ -795,6 +801,13 @@
   .continuity-card h2,
   .continuity-card p {
     margin: 0;
+  }
+
+  .continuity-card small {
+    display: block;
+    margin-top: 0.45rem;
+    color: rgba(196, 185, 235, 0.62);
+    font-size: 0.72rem;
   }
 
   .continuity-card h2 {

@@ -21,10 +21,9 @@ Messages remains directly reachable as a supporting human and group communicatio
 
 ## Deferred
 
-- Conditional Sanctuary navigation after a meaningful unlock
 - Journal information-architecture simplification
-- Contextual Sanctuary+ conversion polish
-- Broader launch-journey end-to-end coverage
+- New premium entitlements beyond the benefits already implemented
+- Broader Sanctuary building, world-building, and social visits
 
 ## Phase 1.5: Proof Integrity And Journey Polish
 
@@ -38,6 +37,16 @@ Messages remains directly reachable as a supporting human and group communicatio
 - First-bond status remains pending until a Home reconnect reflection is durably persisted.
 - Messages is demoted from primary launch navigation and clearly represents human and group communication.
 - Protected-route search defaults to launch-primary destinations only.
+
+## Reduced Phase 2: Relational Polish
+
+- Fallback companion responses acknowledge a specific part of the user's reflection and emotional state.
+- First-bond responses explicitly frame the check-in as the beginning of a remembered relationship.
+- Home distinguishes a newly persisted moment from continuity carried into a return visit.
+- Home explains that visible continuity is backed by the Journal.
+- Sanctuary+ is presented through concrete existing benefits while explicitly keeping the core bond free.
+- Shared rest explains its relational purpose, only offers an action when available, and links to its Journal memory when persistence succeeds.
+- A focused launch-readiness smoke suite covers Home restraint, continuity truth, premium clarity, and conditional shared rest.
 
 Launch proof events:
 
