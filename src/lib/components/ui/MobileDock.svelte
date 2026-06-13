@@ -1,22 +1,12 @@
 <script lang="ts">
   import type { IconNavItem } from './types';
   import { page } from '$app/stores';
+  import { LAUNCH_PRIMARY_PATHS } from '$lib/launch/navigation';
 
   export let items: IconNavItem[] = [];
 
   const pageStore = page;
-  const mobileOrder = [
-    '/app/home',
-    '/app/sanctuary',
-    '/app/companions',
-    '/app/games',
-    '/app/memory',
-    '/app/missions',
-    '/app/inventory',
-    '/app/shop',
-    '/app/messages',
-    '/app/friends'
-  ];
+  const mobileOrder = LAUNCH_PRIMARY_PATHS;
 
   $: mobileItems = mobileOrder
     .map((href) => items.find((item) => item.href === href))

@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { ensureAuth, getAdminClient } from '$lib/server/games/guard';
+import { LAUNCH_PROOF_EVENTS, PREMIUM_CONVERSION_EVENTS } from '$lib/launch/funnels';
 
 const parseList = (value: string | null | undefined) =>
   (value ?? '')
@@ -33,7 +34,7 @@ export const load: PageServerLoad = async (event) => {
   const windowStart = new Date(now.getTime() - (DAYS - 1) * 24 * 60 * 60 * 1000);
   const windowIso = windowStart.toISOString();
 
-  const [{ data: games, error: gamesError }, { data: funnelsData, error: funnelsError }, { data: durationData, error: durationError }, { data: sharesData, error: sharesError }, { data: recentEvents, error: eventsError }] =
+  const [{ data: games, error: gamesError }, { data: funnelsData, error: funnelsError }, { data: durationData, error: durationError }, { data: sharesData, error: sharesError }, { data: recentEvents, error: eventsError }, { data: launchProofData, error: launchProofError }] =
     await Promise.all([
       admin
         .from('game_titles')
@@ -59,16 +60,22 @@ export const load: PageServerLoad = async (event) => {
         .from('analytics_events')
         .select('inserted_at, kind, user_id, game_id, score, duration_ms, amount, currency, meta')
         .order('inserted_at', { ascending: false })
-        .limit(100)
+        .limit(100),
+      admin
+        .from('analytics_events')
+        .select('kind')
+        .in('kind', [...LAUNCH_PROOF_EVENTS, ...PREMIUM_CONVERSION_EVENTS])
+        .gte('inserted_at', windowIso)
     ]);
 
-  if (gamesError || funnelsError || durationError || sharesError || eventsError) {
+  if (gamesError || funnelsError || durationError || sharesError || eventsError || launchProofError) {
     console.error('[admin:analytics] query failed', {
       gamesError,
       funnelsError,
       durationError,
       sharesError,
-      eventsError
+      eventsError,
+      launchProofError
     });
     throw error(500, { message: 'Unable to load analytics data.' });
   }
@@ -184,6 +191,11 @@ export const load: PageServerLoad = async (event) => {
       meta: row.meta ?? {}
     };
   });
+  const countEvents = (events: readonly string[]) =>
+    events.map((kind) => ({
+      kind,
+      count: (launchProofData ?? []).filter((row) => row.kind === kind).length
+    }));
 
   return {
     games: gameList,
@@ -192,6 +204,8 @@ export const load: PageServerLoad = async (event) => {
     scoreDistribution,
     averageDurationMs,
     shares: shareSeries,
+    launchProofFunnel: countEvents(LAUNCH_PROOF_EVENTS),
+    premiumConversionFunnel: countEvents(PREMIUM_CONVERSION_EVENTS),
     recentEvents: recent
   };
 };

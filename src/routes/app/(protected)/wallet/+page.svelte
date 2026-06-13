@@ -13,6 +13,7 @@
   import InlineToast from '$lib/components/ui/InlineToast.svelte';
   import { walletBalance, walletTx, formatShards, setWalletBalance } from '$lib/stores/economy';
   import { formatSubscriptionStatus, formatSubscriptionTier, isSubscriptionActive } from '$lib/subscriptions';
+  import { sendAnalytics } from '$lib/utils/analytics';
 
   export let data: {
     shards: number;
@@ -46,6 +47,10 @@
   }
 
   onMount(() => {
+    sendAnalytics('premium_offer_viewed', {
+      surface: 'wallet',
+      payload: { tier: 'sanctuary_plus', subscriptionActive }
+    });
     const url = get(page).url;
     const status = url.searchParams.get('status');
     if (status === 'success') {
@@ -78,6 +83,10 @@
   }
 
   async function buySubscription() {
+    sendAnalytics('premium_upgrade_clicked', {
+      surface: 'wallet',
+      payload: { tier: 'sanctuary_plus' }
+    });
     const res = await fetch('/api/billing/create-checkout-session', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

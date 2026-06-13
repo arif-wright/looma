@@ -7,18 +7,10 @@
   import { page } from '$app/stores';
   import MobileDock from '$lib/components/ui/MobileDock.svelte';
   import {
-    Box,
-    Compass,
-    Gamepad2,
+    BookOpen,
     House,
-    MessageSquare,
     Sparkles,
-    Store,
-    Trees,
     UserRound,
-    Users,
-    UsersRound,
-    WandSparkles
   } from 'lucide-svelte';
   import { applyHeaderStats, playerProgress } from '$lib/games/state';
   import type { IconNavItem } from '$lib/components/ui/types';
@@ -37,7 +29,6 @@
   const presenceVisible = data?.preferences?.presence_visible !== false;
   let bellNotifications: NotificationItem[] = (data?.notifications ?? []) as NotificationItem[];
   let bellUnread = data?.notificationsUnread ?? 0;
-  let messageUnread = 0;
   let previousPath: string | null = null;
   const initialWalletBalance =
     typeof data?.wallet?.shards === 'number' ? (data.wallet.shards as number) : null;
@@ -74,7 +65,6 @@
   let nowTimer: number | null = null;
   let presenceAwayTimer: number | null = null;
   let presenceHeartbeatTimer: number | null = null;
-  let unreadPollTimer: number | null = null;
   let currentPresenceStatus: 'online' | 'away' | 'offline' = 'offline';
   let lastPresenceHeartbeatAt = 0;
   let iconNavItems: IconNavItem[] = [];
@@ -120,9 +110,6 @@
     (data as any)?.profile?.avatar_url ??
     (data as any)?.user?.user_metadata?.avatar_url ??
     null;
-  $: shellLevel = Math.max(1, Math.floor(data?.headerStats?.level ?? data?.activeCompanion?.bondLevel ?? 1));
-  $: shellXp = Math.max(0, Math.floor(data?.headerStats?.xp ?? 0));
-  $: shellXpNext = Math.max(shellXp + 1, Math.floor(data?.headerStats?.xp_next ?? 100));
   $: walletBalance =
     typeof $playerProgress?.currency === 'number' && Number.isFinite($playerProgress.currency)
       ? ($playerProgress.currency as number)
@@ -131,37 +118,10 @@
 
   $: iconNavItems = [
     { href: '/app/home', label: 'Home', icon: House, analyticsKey: 'home' },
-    { href: '/app/sanctuary', label: 'Sanctuary', icon: Trees, analyticsKey: 'sanctuary' },
-    { href: '/app/companions', label: 'Companions', icon: Sparkles, analyticsKey: 'companions' },
-    { href: '/app/games', label: 'Games', icon: Gamepad2, analyticsKey: 'games' },
-    { href: '/app/memory', label: 'Journal', icon: Compass, analyticsKey: 'journal' },
-    { href: '/app/missions', label: 'Quests', icon: WandSparkles, analyticsKey: 'quests' },
-    { href: '/app/inventory', label: 'Inventory', icon: Box, analyticsKey: 'inventory' },
-    { href: '/app/shop', label: 'Market', icon: Store, analyticsKey: 'market' },
-    {
-      href: '/app/messages',
-      label: 'Messages',
-      icon: MessageSquare,
-      analyticsKey: 'messages',
-      badgeCount: messageUnread
-    },
-    { href: '/app/friends', label: 'Friends', icon: Users, analyticsKey: 'friends' },
-    { href: '/app/circles', label: 'Circles', icon: UsersRound, analyticsKey: 'circles' },
+    { href: '/app/companions', label: 'Companion', icon: Sparkles, analyticsKey: 'companion' },
+    { href: '/app/memory', label: 'Journal', icon: BookOpen, analyticsKey: 'journal' },
     { href: '/app/profile', label: 'Profile', icon: UserRound, analyticsKey: 'profile' }
   ] satisfies IconNavItem[];
-
-  const refreshMessageUnread = async () => {
-    if (!browser || isAlphaDenied()) return;
-    try {
-      const res = await fetch('/api/messenger/unread', { headers: { 'cache-control': 'no-store' } });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) return;
-      const count = Number(payload?.totalUnread ?? 0);
-      messageUnread = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
-    } catch {
-      // keep current unread count
-    }
-  };
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -449,7 +409,6 @@
       }
 
       await refreshAmbientContext();
-      await refreshMessageUnread();
 
       try {
         const res = await fetch('/api/context/portable');
@@ -461,9 +420,6 @@
         // keep defaults
       }
 
-      unreadPollTimer = window.setInterval(() => {
-        void refreshMessageUnread();
-      }, 15_000);
     });
 
     afterNavigate((nav) => {
@@ -481,7 +437,6 @@
         });
       }
       previousPath = nextPath;
-      void refreshMessageUnread();
     });
   }
 
@@ -527,10 +482,6 @@
       window.clearInterval(presenceHeartbeatTimer);
       presenceHeartbeatTimer = null;
     }
-    if (unreadPollTimer) {
-      window.clearInterval(unreadPollTimer);
-      unreadPollTimer = null;
-    }
     if (presenceVisible) {
       void postPresence('offline', true);
     }
@@ -571,9 +522,6 @@
       {#if !usePageOwnedShell}
         <FantasySidebar
           playerName={shellPlayerName}
-          level={shellLevel}
-          xp={shellXp}
-          xpNext={shellXpNext}
           activePath={currentPath}
         />
       {/if}

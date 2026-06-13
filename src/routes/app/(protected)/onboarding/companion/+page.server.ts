@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env as privateEnv } from '$env/dynamic/private';
+import { canSpawnCompanion } from '$lib/launch/proofIntegrity';
 
 const getAdminClient = () => {
   const url = publicEnv.PUBLIC_SUPABASE_URL;
@@ -24,20 +25,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const retake = url.searchParams.get('retake') === '1';
   const userId = locals.user.id;
 
-  const { data: flag, error } = await adminClient
-    .from('feature_flags')
-    .select('key, enabled')
-    .eq('key', 'bond_genesis')
-    .maybeSingle();
-
-  if (error) {
-    console.error('[bond-genesis] failed to fetch flag', error);
-  }
-
-  if (!flag?.enabled) {
-    throw redirect(302, '/app/home');
-  }
-
   const [{ data: traits }, { count: companionCount, error: companionError }] = await Promise.all([
     adminClient
       .from('player_traits')
@@ -56,7 +43,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   return {
     consentDefault: traits?.consent ?? true,
-    hasCompanion: (companionCount ?? 0) > 0,
+    hasCompanion: !companionError && (companionCount ?? 0) > 0,
+    spawnEligible: canSpawnCompanion(companionCount, Boolean(companionError)),
+    spawnEligibilityUnknown: Boolean(companionError),
     retake
   };
 };

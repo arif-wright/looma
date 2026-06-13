@@ -35,6 +35,8 @@ export const POST: RequestHandler = async (event) => {
     typeof body.surface === 'string' && body.surface.trim().length > 0 ? body.surface : null;
   const variant =
     typeof body.variant === 'string' && body.variant.trim().length > 0 ? body.variant : null;
+  const sessionId =
+    typeof body.sessionId === 'string' && body.sessionId.trim().length > 0 ? body.sessionId : null;
   const dataPayload =
     body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
       ? (body.payload as Record<string, unknown>)
@@ -43,6 +45,7 @@ export const POST: RequestHandler = async (event) => {
   await recordAnalyticsEvent(supabase, user.id, eventType, {
     surface,
     variant,
+    sessionId,
     payload: dataPayload
   });
 

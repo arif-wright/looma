@@ -1,6 +1,6 @@
-# Looma Economy Contract
+# Memvoya Economy Contract
 
-Looma monetizes acceleration, expression, and premium depth. It does not monetize emotional access to the companion.
+Memvoya monetizes acceleration, expression, and premium depth. It does not monetize emotional access to the companion. Looma remains the internal project name.
 
 ## Core Rules
 

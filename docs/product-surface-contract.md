@@ -1,10 +1,10 @@
 # Product Surface Contract
 
-Purpose: define what Looma is now, which surfaces are canonical, and which older routes remain only for compatibility.
+Purpose: define what Memvoya is now, which surfaces are canonical, and which older routes remain only for compatibility. Looma remains the internal project name.
 
 ## Product Truth
 
-- Looma is a mobile-first modern virtual companion product.
+- Memvoya is a mobile-first modern virtual companion product.
 - The core of the product is the relationship between the user and their companion.
 - Social, missions, play, economy, and memory exist to deepen that relationship, not compete with it.
 - The category anchor is closer to Tamagotchi and Neopets than to therapy, journaling, or chat utility apps.
@@ -18,10 +18,9 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
 - `Personal Sanctuary` at `/app/sanctuary`
   - Owns persistent space customization and companion reactions to placed objects.
   - Starts as one small private space, not a general-purpose world editor.
+  - During launch validation, remains contextual until the user can complete a meaningful object interaction.
 - `Journal` at `/app/memory`
-  - Owns memory summaries, event history, and the visible record of what Looma remembers.
-- `Messages` at `/app/messages`
-  - Owns one-to-one conversation flow.
+  - Owns memory summaries, event history, and the visible record of what Memvoya remembers.
 - `Circles` at `/app/circles`
   - Owns intimate group connection and shared support.
 - `Missions` at `/app/missions`
@@ -40,6 +39,9 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
   - Supports momentum, energy, and progression.
 - `Wallet`, `Shop`, `Inventory`, `Notifications`, `Preferences`
   - Utility surfaces that should inherit sanctuary language and mobile hierarchy.
+- `Messages` at `/app/messages`
+  - Owns human and group conversation flow.
+  - Remains directly reachable but outside primary launch navigation until companion messaging has a trustworthy explicit model.
 
 ## Compatibility-Only Surfaces
 
@@ -60,9 +62,9 @@ Purpose: define what Looma is now, which surfaces are canonical, and which older
 
 ## Route Strategy
 
-- `/app` should resolve users into the best canonical surface.
-- Active mission continuity wins over everything else.
-- If no mission is active, companion care and recent relationship context should pull users toward Sanctuary or Companions.
+- `/app` resolves launch users to Home so every return begins with companion presence and remembered continuity.
+- Active mission and care context remain available through direct links and quiet Home context rather than bypassing the relationship return.
+- Sanctuary should only be promoted when its intended relationship interaction is currently usable.
 - Legacy route values may be read for compatibility, but should normalize into canonical surfaces.
 
 ## Design Strategy

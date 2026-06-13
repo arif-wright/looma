@@ -1,6 +1,7 @@
 <script lang="ts">
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import { capabilityLabel, itemSourceDetail, itemSourceLabel, sanctuarySlotLabel } from '$lib/items/presentation';
 
   type InventoryRow = {
     acquired_at: string;
@@ -54,8 +55,19 @@
       capabilities: string[];
     }[];
   };
+  type PlacementRow = {
+    id: string;
+    item_id: string | null;
+    slot_key: string;
+  };
 
-  export let data: { items: InventoryRow[]; unifiedItems: UnifiedItemRow[]; companionRewards: CompanionRewardRow[]; error?: string | null };
+  export let data: {
+    items: InventoryRow[];
+    unifiedItems: UnifiedItemRow[];
+    companionRewards: CompanionRewardRow[];
+    placements: PlacementRow[];
+    error?: string | null;
+  };
 
   const items = Array.isArray(data?.items) ? data.items : [];
   const unifiedItems = Array.isArray(data?.unifiedItems)
@@ -66,6 +78,7 @@
       }))
     : [];
   const companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
+  const placements = Array.isArray(data?.placements) ? data.placements : [];
   const error = data?.error ?? null;
 
   const formatDate = (value: string) => {
@@ -104,6 +117,10 @@
 
   $: latestAcquiredAt = items[0]?.acquired_at ?? null;
   $: latestRewardAt = companionRewards[0]?.unlocked_at ?? null;
+  $: unifiedItemKeys = new Set(unifiedItems.map((owned) => owned.item?.item_key).filter(Boolean));
+  $: legacyCompanionRewards = companionRewards.filter((reward) => !unifiedItemKeys.has(reward.reward_key));
+  $: collectionCount = items.length + unifiedItems.length + legacyCompanionRewards.length;
+  $: placementByItemId = new Map(placements.filter((placement) => placement.item_id).map((placement) => [placement.item_id, placement]));
 </script>
 
 <SanctuaryPageFrame
@@ -112,7 +129,7 @@
   subtitle="Keep companion rewards, cosmetics, boosts, and expression pieces visible without breaking the sanctuary flow."
 >
   <svelte:fragment slot="actions">
-    <EmotionalChip tone="warm">{items.length + unifiedItems.length + companionRewards.length} owned</EmotionalChip>
+    <EmotionalChip tone="warm">{collectionCount} owned</EmotionalChip>
     <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : 'Empty vault'}</EmotionalChip>
   </svelte:fragment>
 
@@ -120,7 +137,7 @@
     <section class="inventory-pulse" aria-label="Keepsakes pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
-        <h2>{items.length + unifiedItems.length + companionRewards.length === 0 ? 'Nothing stored yet' : `${items.length + unifiedItems.length + companionRewards.length} items in your collection`}</h2>
+        <h2>{collectionCount === 0 ? 'Nothing stored yet' : `${collectionCount} items in your collection`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
             Keepsakes could not be loaded right now. Your owned items are still safe.
@@ -164,7 +181,7 @@
         <h3>Keepsakes unavailable</h3>
         <p>Failed to load keepsakes: {error}</p>
       </section>
-    {:else if !items.length && !unifiedItems.length && !companionRewards.length}
+    {:else if collectionCount === 0}
       <section class="inventory-state" aria-live="polite">
         <h3>Your vault is quiet</h3>
         <p>No items owned yet. Explore the atelier to pick up your first cosmetic, utility item, or bundle.</p>
@@ -207,11 +224,27 @@
                     <span class="inventory-type">{titleCase(owned.item.kind)}</span>
                   </div>
                   <p class="meta">
-                    {owned.source_type === 'care_milestone' ? 'Earned through care' : 'Earned as a chapter keepsake'}
+                    {itemSourceLabel(owned.source_type, owned.item.tone)}
                     {owned.companion?.name ? ` with ${owned.companion.name}` : ''}
                   </p>
+                  {#if itemSourceDetail(owned.provenance_json)}
+                    <p class="provenance">{itemSourceDetail(owned.provenance_json)}</p>
+                  {/if}
+                  <div class="capability-list" aria-label="Item capabilities">
+                    {#each owned.item.capabilities as capability}
+                      <span>{capabilityLabel(capability)}</span>
+                    {/each}
+                  </div>
                   {#if owned.item.capabilities.includes('placeable')}
-                    <a class="item-action" href="/app/sanctuary">Place in sanctuary</a>
+                    {@const placement = placementByItemId.get(owned.item.id)}
+                    {#if placement}
+                      <p class="placement-state">Placed in {sanctuarySlotLabel(placement.slot_key)}</p>
+                    {:else if owned.item.capabilities.includes('interactive')}
+                      <p class="placement-state">Place this object to unlock its shared interaction.</p>
+                    {/if}
+                    <a class="item-action" href={`/app/sanctuary?item=${encodeURIComponent(owned.item.id)}`}>
+                      {placement ? 'View in Sanctuary' : 'Place in Sanctuary'}
+                    </a>
                   {/if}
                 </div>
               </article>
@@ -220,12 +253,12 @@
         </section>
       {/if}
 
-      {#if companionRewards.length > 0}
+      {#if legacyCompanionRewards.length > 0}
         <section class="inventory-overview" aria-label="Companion keepsakes">
           <article class="overview-card">
             <span class="overview-card__label">Companion keepsakes</span>
             <div class="overview-card__chips">
-              {#each companionRewards.slice(0, 4) as reward}
+              {#each legacyCompanionRewards.slice(0, 4) as reward}
                 <span class="overview-chip">{reward.companion?.name ?? 'Companion'} · {reward.reward_title}</span>
               {/each}
             </div>
@@ -233,7 +266,7 @@
         </section>
 
         <section class="inventory-grid" aria-label="Companion keepsakes">
-          {#each companionRewards as reward}
+          {#each legacyCompanionRewards as reward}
             <article class="inventory-card" aria-label={`${reward.reward_title} companion keepsake`}>
               <div class="inventory-media">
                 <div class="inventory-media__placeholder" aria-hidden="true">
@@ -401,6 +434,34 @@
     font-size: 0.75rem;
     font-weight: 700;
     text-decoration: none;
+  }
+
+  .capability-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .capability-list span {
+    border: 1px solid rgba(125, 211, 252, 0.18);
+    border-radius: 999px;
+    background: rgba(125, 211, 252, 0.07);
+    padding: 0.3rem 0.55rem;
+    color: rgba(224, 240, 255, 0.8);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .provenance,
+  .placement-state {
+    margin: 0;
+    color: rgba(220, 208, 186, 0.74);
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  .placement-state {
+    color: rgba(174, 224, 255, 0.86);
   }
 
   .inventory-state {

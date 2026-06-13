@@ -8,6 +8,7 @@
   import { relativeTime } from '$lib/social/commentHelpers';
 
   export let shardBalance = 0;
+  export let showWallet = true;
   export let notifications: NotificationItem[] = [];
   export let profileAvatarUrl: string | null = null;
   export let profileDisplayName = 'Traveler';
@@ -176,10 +177,12 @@
 </script>
 
 <div class={`desktop-topbar-actions ${className}`.trim()} bind:this={rootRef}>
-  <a class="currency action-control" href="/app/wallet" aria-label={`Open wallet, ${shardBalance.toLocaleString()} shards`}>
-    <ShardIcon size={20} />
-    <span>{shardBalance.toLocaleString()}</span>
-  </a>
+  {#if showWallet}
+    <a class="currency action-control" href="/app/wallet" aria-label={`Open wallet, ${shardBalance.toLocaleString()} shards`}>
+      <ShardIcon size={20} />
+      <span>{shardBalance.toLocaleString()}</span>
+    </a>
+  {/if}
 
   <div class="action-menu" class:open={notificationsOpen}>
     <button

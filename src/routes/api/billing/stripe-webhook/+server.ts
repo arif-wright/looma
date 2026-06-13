@@ -5,6 +5,7 @@ import {
   revokeStripeSubscription,
   syncStripeSubscription
 } from '$lib/server/subscriptions';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
 
 export const POST: RequestHandler = async ({ request }) => {
   const signature = request.headers.get('stripe-signature');
@@ -84,6 +85,13 @@ export const POST: RequestHandler = async ({ request }) => {
         console.error('[stripe-webhook] sync subscription from checkout failed', error);
         return new Response(`Subscription sync error: ${error.message}`, { status: 400 });
       }
+      await recordAnalyticsEvent(supabase as any, userId, 'premium_subscription_converted', {
+        surface: 'stripe_webhook',
+        payload: {
+          tier: session.metadata?.tier ?? null,
+          checkoutSessionId: session.id
+        }
+      });
     }
   }
 

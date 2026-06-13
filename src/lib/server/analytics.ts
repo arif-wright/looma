@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 type AnalyticsPayload = {
   surface?: string | null;
   variant?: string | null;
+  sessionId?: string | null;
   payload?: Record<string, unknown> | null;
 };
 
@@ -16,9 +17,12 @@ export async function recordAnalyticsEvent(
     const { error } = await supabase.from('analytics_events').insert({
       user_id: userId,
       event_type: eventType,
+      kind: eventType,
+      session_id: data.sessionId ?? null,
       surface: data.surface ?? null,
       variant: data.variant ?? null,
-      payload: data.payload ?? null
+      payload: data.payload ?? null,
+      meta: data.payload ?? {}
     });
 
     if (error) {

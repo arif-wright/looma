@@ -49,28 +49,26 @@ describe('shouldResolveLanding', () => {
 describe('computeLanding', () => {
   const mission: MissionCandidate = { id: 'mission-1', status: 'active', updated_at: new Date().toISOString() };
 
-  it('prioritises active mission', () => {
+  it('keeps active mission continuity behind the relationship-first Home return', () => {
     const decision = computeLanding(basePrefs(), 'C', mission, null, null);
-    expect(decision.surface).toBe('mission');
-    expect(decision.target).toBe('/app/missions/mission-1');
-    expect(decision.reason).toBe('mission');
+    expect(decision.surface).toBe('home');
+    expect(decision.target).toBe('/app/home');
   });
 
-  it('uses care due when no mission', () => {
+  it('keeps care due visible through Home instead of bypassing the return moment', () => {
     const decision = computeLanding(basePrefs(), 'C', null, { creatureId: 'creature-1' }, null);
-    expect(decision.surface).toBe('creatures');
-    expect(decision.target).toBe('/app/companions?focus=creature-1');
-    expect(decision.reason).toBe('care');
+    expect(decision.surface).toBe('home');
+    expect(decision.target).toBe('/app/home');
   });
 
   it('honours recent feed context', () => {
     const prefs = basePrefs({ last_context: 'feed', updated_at: new Date().toISOString() });
     const decision = computeLanding(prefs, 'A', null, null, null);
     expect(decision.surface).toBe('home');
-    expect(decision.reason).toBe('context');
+    expect(decision.reason).toBe('variant');
   });
 
-  it('uses structured mission context when available', () => {
+  it('keeps structured mission context behind Home', () => {
     const payload = { missionId: 'mission-x' };
     const prefs = basePrefs({
       last_context: { context: 'mission', trigger: 'mission_click' } as any,
@@ -79,9 +77,8 @@ describe('computeLanding', () => {
     });
 
     const decision = computeLanding(prefs, 'C', null, null, payload);
-    expect(decision.surface).toBe('mission');
-    expect(decision.target).toBe('/app/missions/mission-x');
-    expect(decision.reason).toBe('context');
+    expect(decision.surface).toBe('home');
+    expect(decision.target).toBe('/app/home');
   });
 
   it('normalizes legacy dashboard start preference to home', () => {

@@ -6,6 +6,7 @@ import {
   canonicalArchetypes,
   resolveCanonicalArchetypeId
 } from '$lib/onboarding/archetypes';
+import { canSpawnCompanion } from '$lib/launch/proofIntegrity';
 
 export const POST: RequestHandler = async (event) => {
   const { supabase, session } = await createSupabaseServerClient(event);
@@ -20,9 +21,10 @@ export const POST: RequestHandler = async (event) => {
 
   if (countError) {
     console.error('[persona/spawn] companion count failed', countError);
+    return json({ error: 'spawn_eligibility_unconfirmed' }, { status: 503 });
   }
 
-  if ((count ?? 0) > 0) {
+  if (!canSpawnCompanion(count, false)) {
     return json({ error: 'already_spawned' }, { status: 400 });
   }
 

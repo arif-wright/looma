@@ -4,10 +4,10 @@ export const load: PageServerLoad = async ({ locals }) => {
   const supabase = (locals as any)?.supabase;
 
   if (!supabase) {
-    return { items: [], unifiedItems: [], companionRewards: [], error: 'Missing Supabase client' };
+    return { items: [], unifiedItems: [], companionRewards: [], placements: [], error: 'Missing Supabase client' };
   }
 
-  const [inventoryRes, unifiedItemsRes, rewardsRes] = await Promise.all([
+  const [inventoryRes, unifiedItemsRes, rewardsRes, placementsRes] = await Promise.all([
     supabase
       .from('shop_inventory')
       .select('acquired_at, item:item_id (id, slug, title, subtitle, image_url, rarity, type)')
@@ -23,13 +23,22 @@ export const load: PageServerLoad = async ({ locals }) => {
       .select(
         'reward_key, reward_title, reward_body, reward_tone, unlocked_at, companion:companion_id (id, name, species)'
       )
-      .order('unlocked_at', { ascending: false })
+      .order('unlocked_at', { ascending: false }),
+    supabase
+      .from('sanctuary_placements')
+      .select('id, slot_key, item_id')
   ]);
 
   return {
     items: inventoryRes.data ?? [],
     unifiedItems: unifiedItemsRes.data ?? [],
     companionRewards: rewardsRes.data ?? [],
-    error: inventoryRes.error?.message ?? unifiedItemsRes.error?.message ?? rewardsRes.error?.message ?? null
+    placements: placementsRes.data ?? [],
+    error:
+      inventoryRes.error?.message ??
+      unifiedItemsRes.error?.message ??
+      rewardsRes.error?.message ??
+      placementsRes.error?.message ??
+      null
   };
 };

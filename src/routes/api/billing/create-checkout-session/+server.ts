@@ -2,6 +2,7 @@ import type { RequestHandler } from './$types';
 import { getStripe, productCatalog, subscriptionCatalog } from '$lib/server/billing';
 import { env } from '$env/dynamic/private';
 import { DEFAULT_SUBSCRIPTION_TIER } from '$lib/subscriptions';
+import { recordAnalyticsEvent } from '$lib/server/analytics';
 
 const jsonResponse = (body: Record<string, unknown>, init: ResponseInit = {}) =>
   new Response(JSON.stringify(body), {
@@ -68,6 +69,10 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
             user_id: user.id
           }
         }
+      });
+      await recordAnalyticsEvent(supabase, user.id, 'premium_checkout_started', {
+        surface: 'wallet',
+        payload: { tier: item.tier, checkoutSessionId: session.id }
       });
     } else {
       const catalog = productCatalog();

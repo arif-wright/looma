@@ -90,92 +90,13 @@ const extractContextKind = (entry: ContextRecord | string | null): string | null
 export const computeLanding = (
   prefs: PreferenceRow,
   variant: 'A' | 'B' | 'C',
-  mission: MissionCandidate | null,
-  careDue: CareCandidate,
-  contextPayload: Record<string, unknown> | null
+  _mission: MissionCandidate | null,
+  _careDue: CareCandidate,
+  _contextPayload: Record<string, unknown> | null
 ): LandingDecision => {
-  if (mission?.id) {
-    return {
-      surface: 'mission',
-      target: surfaceToPath('mission', { missionId: mission.id }),
-      variant,
-      reason: 'mission'
-    };
-  }
-
-  if (careDue?.creatureId) {
-    return {
-      surface: 'creatures',
-      target: surfaceToPath('creatures', { creatureId: careDue.creatureId }),
-      variant,
-      reason: 'care'
-    };
-  }
-
-  const updatedRecently = withinWindow(prefs.updated_at, HOURS_24);
-  const contextKind = extractContextKind(prefs.last_context ?? null);
-
-  if (updatedRecently && contextKind) {
-    switch (contextKind) {
-      case 'feed':
-      case 'social':
-        return {
-          surface: 'home',
-          target: surfaceToPath('home'),
-          variant,
-          reason: 'context'
-        };
-      case 'mission': {
-        const missionId =
-          contextPayload?.missionId ??
-          contextPayload?.mission_id ??
-          contextPayload?.id ??
-          null;
-        return {
-          surface: 'mission',
-          target: surfaceToPath('mission', missionId ? { missionId } : undefined),
-          variant,
-          reason: 'context'
-        };
-      }
-      case 'creature':
-      case 'companion': {
-        const creatureId =
-          contextPayload?.companionId ??
-          contextPayload?.creatureId ??
-          contextPayload?.creature_id ??
-          contextPayload?.id ??
-          null;
-        return {
-          surface: 'creatures',
-          target: surfaceToPath('creatures', creatureId ? { creatureId } : undefined),
-          variant,
-          reason: 'context'
-        };
-      }
-      case 'dashboard':
-        return {
-          surface: 'home',
-          target: surfaceToPath('home'),
-          variant,
-          reason: 'context'
-        };
-      default:
-        break;
-    }
-  }
-
-  let surface: 'home' | 'creatures' = 'home';
-
-  if (prefs.start_on && prefs.start_on !== 'home') {
-    surface = normalizePreferredSurface(prefs.start_on);
-  } else {
-    surface = 'home';
-  }
-
   return {
-    surface,
-    target: surfaceToPath(surface),
+    surface: 'home',
+    target: surfaceToPath('home'),
     variant,
     reason: prefs.start_on !== 'home' ? 'preference' : 'variant'
   };

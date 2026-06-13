@@ -1,10 +1,10 @@
 # Companion Experience Contract
 
-Purpose: keep Looma relationship-first as new surfaces, copy, rewards, and systems evolve.
+Purpose: keep Memvoya relationship-first as new surfaces, copy, rewards, and systems evolve. Looma remains the internal project name.
 
 ## Product Promise
 
-Looma is a persistent companion world. The user should feel they are returning to a shared place with a being that remembers, changes, and responds over time.
+Memvoya is a persistent companion world. The user should feel they are returning to a shared place with a being that remembers, changes, and responds over time.
 
 Every user-facing surface should reinforce at least one of:
 
@@ -18,7 +18,8 @@ If a feature only adds dashboard density, generic social activity, or game rewar
 
 ## Language Rules
 
-- Use `Sanctuary` for the primary daily home.
+- Use `Home` for the primary daily return and relationship action.
+- Use `Sanctuary` for the tangible shared space where meaningful object interactions happen.
 - Use `Journal` or `Remembered moments` for memory.
 - Use `Spark` or `Momentum` for optional progression fuel.
 - Use `Keepsakes` for meaningful unlocks, collection items, and companion chapter rewards.
@@ -38,13 +39,15 @@ Some internal code and database names may remain unchanged until a schema-safe r
 
 ## Surface Rules
 
-- Sanctuary answers: what does my companion feel, remember, and invite next?
-- Journal answers: what has Looma remembered, and what can I control?
+- Home answers: how is my companion meeting me now, and what can we share next?
+- Sanctuary answers: how does our shared space make the relationship tangible?
+- Journal answers: what has Memvoya remembered, and what can I control?
 - Companions answers: how is this relationship changing?
 - Missions answers: what can we do together now?
 - Games answers: what did we experience together, not only what did I score?
 - Profile answers: what does this person's relationship and identity feel like?
 - Shop, wallet, and collection answer: how does expression deepen the world without selling emotional access?
+- Messages answers: which human and group conversations do I want to keep close? It must not imply direct companion conversation without a real companion messaging model.
 
 ## Trust Rules
 

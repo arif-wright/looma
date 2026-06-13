@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/stores';
   import { Armchair, Flower2, LampDesk, Sparkles, Waves, Wind } from 'lucide-svelte';
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
@@ -42,11 +43,23 @@
   let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
   let status: string | null = null;
+  let appliedRequestedItem: string | null = null;
 
   const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
   const placementFor = (slot: SanctuarySlot) =>
     (data.placements as unknown as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
   const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
+  $: requestedItem = $page.url.searchParams.get('item');
+  $: if (requestedItem && requestedItem !== appliedRequestedItem) {
+    const requestedOwnedItem = normalizedOwnedItems.find(
+      (owned) => owned.item?.id === requestedItem || owned.item?.item_key === requestedItem
+    );
+    if (requestedOwnedItem?.item) {
+      selectedItemId = requestedOwnedItem.item.id;
+      status = `${requestedOwnedItem.item.title} selected. Choose a space.`;
+    }
+    appliedRequestedItem = requestedItem;
+  }
   $: mossSeatPlacement = (data.placements as unknown as Placement[]).find((placement) => {
     const item = normalizeItem(placement.item);
     return item?.item_key === 'care-moss-seat' && item.capabilities?.includes('interactive');

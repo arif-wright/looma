@@ -23,6 +23,13 @@ import { getDailySet, getWeeklySet } from '$lib/server/missions/rotation';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
+import {
+  canCompleteSharedRest,
+  type HomeJournalMoment,
+  isFirstBondPending,
+  type PersistedReflectionRow,
+  type SanctuaryPlacementRow
+} from '$lib/launch/proofIntegrity';
 
 type MissionSummary = {
   id: string;
@@ -57,6 +64,7 @@ type CreatureMoment = {
   energy?: number | null;
   avatar_url?: string | null;
   updated_at?: string | null;
+  first_bond_completed_at?: string | null;
   stats?: Record<string, unknown> | Array<Record<string, unknown>> | null;
 };
 
@@ -73,12 +81,7 @@ type MemorySummary = {
   last_built_at: string | null;
 };
 
-type JournalMoment = {
-  id: string;
-  label: string;
-  body: string;
-  href: string;
-};
+type JournalMoment = HomeJournalMoment;
 
 type SanctuaryNudge = {
   title: string;
@@ -184,6 +187,7 @@ const buildJournalMoments = (args: {
   rituals: CompanionRitual[];
 }) => {
   const { activeCompanion, memorySummary, latestDailyCheckin, rituals } = args;
+  const companionName = activeCompanion?.name?.trim() || 'Your companion';
   const journalHref = activeCompanion?.id
     ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}`
     : '/app/memory';
@@ -198,6 +202,7 @@ const buildJournalMoments = (args: {
     pushMoment({
       id: `highlight-${index}`,
       label: 'Memory',
+      title: `${companionName} remembers this`,
       body: clipMomentBody(highlight),
       href: journalHref
     });
@@ -207,6 +212,7 @@ const buildJournalMoments = (args: {
     pushMoment({
       id: `checkin-${latestDailyCheckin.id}`,
       label: 'Check-in',
+      title: `${companionName} remembers how you arrived`,
       body: `You last arrived feeling ${formatCheckinMood(latestDailyCheckin.mood).toLowerCase()}.`,
       href: journalHref
     });
@@ -217,6 +223,7 @@ const buildJournalMoments = (args: {
     pushMoment({
       id: `ritual-${completedRitual.key}`,
       label: 'Ritual',
+      title: `${completedRitual.title} became part of your rhythm`,
       body: `${completedRitual.title} helped keep the sanctuary warm.`,
       href: journalHref
     });
@@ -691,6 +698,9 @@ export const load: PageServerLoad = async (event) => {
     dailyCheckinToday: null as DailyCheckin | null,
     latestDailyCheckin: null as DailyCheckin | null,
     memorySummary: null as MemorySummary | null,
+    persistedReflection: null as PersistedReflectionRow | null,
+    firstBondPending: false,
+    canSharedRest: false,
     journalMoments: [] as JournalMoment[],
     chapterReveal: null as ChapterRevealMoment | null,
     sanctuaryNudge: null as SanctuaryNudge | null,
@@ -845,7 +855,7 @@ export const load: PageServerLoad = async (event) => {
         const { data } = await supabase
           .from('companions')
           .select(
-            'id, name, species, mood, state, is_active, slot_index, created_at, updated_at, affection, trust, energy, avatar_url, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+            'id, name, species, mood, state, is_active, slot_index, created_at, updated_at, first_bond_completed_at, affection, trust, energy, avatar_url, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
           )
           .eq('owner_id', session.user.id)
           .order('is_active', { ascending: false })
@@ -1030,6 +1040,7 @@ export const load: PageServerLoad = async (event) => {
         bondLevel: (statsRow?.bond_level as number | null) ?? 0,
         bondScore: (statsRow?.bond_score as number | null) ?? 0,
         updated_at: row.updated_at ?? null,
+        first_bond_completed_at: row.first_bond_completed_at ?? null,
         stats: statsRow
           ? {
               fed_at: (statsRow.fed_at as string | null) ?? null,
@@ -1049,18 +1060,63 @@ export const load: PageServerLoad = async (event) => {
       parentActiveCompanion ?? (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null);
 
     let memorySummary: MemorySummary | null = null;
+    let persistedReflection: PersistedReflectionRow | null = null;
+    let canSharedRest = false;
     if (userId && activeCompanion?.id) {
       try {
-        const { data, error } = await supabase
-          .from('companion_memory_summary')
-          .select('summary_text, highlights_json, last_built_at')
-          .eq('user_id', userId)
-          .eq('companion_id', activeCompanion.id)
-          .maybeSingle();
-        if (error) {
-          throw error;
+        const [summaryRes, reflectionRes, placementsRes, latestRestRes] = await Promise.all([
+          supabase
+            .from('companion_memory_summary')
+            .select('summary_text, highlights_json, last_built_at')
+            .eq('user_id', userId)
+            .eq('companion_id', activeCompanion.id)
+            .maybeSingle(),
+          supabase
+            .from('companion_journal_entries')
+            .select('id, title, body, created_at, meta_json')
+            .eq('owner_id', userId)
+            .eq('companion_id', activeCompanion.id)
+            .contains('meta_json', { generatedBy: 'home_reconnect' })
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('sanctuary_placements')
+            .select('item:item_id (item_key, capabilities)')
+            .eq('owner_id', userId),
+          supabase
+            .from('sanctuary_interactions')
+            .select('created_at')
+            .eq('owner_id', userId)
+            .eq('companion_id', activeCompanion.id)
+            .eq('action', 'shared_rest')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        ]);
+        if (summaryRes.error) {
+          diagnostics.push('memory_summary_query_failed');
+          reportHomeLoadIssue('memory_summary_query_failed', { error: summaryRes.error.message });
+        } else {
+          memorySummary = (summaryRes.data as MemorySummary | null) ?? null;
         }
-        memorySummary = (data as MemorySummary | null) ?? null;
+        if (reflectionRes.error) {
+          diagnostics.push('persisted_reflection_query_failed');
+          reportHomeLoadIssue('persisted_reflection_query_failed', { error: reflectionRes.error.message });
+        } else {
+          persistedReflection = (reflectionRes.data as PersistedReflectionRow | null) ?? null;
+        }
+        if (placementsRes.error || latestRestRes.error) {
+          diagnostics.push('shared_rest_placement_query_failed');
+          reportHomeLoadIssue('shared_rest_placement_query_failed', {
+            error: placementsRes.error?.message ?? latestRestRes.error?.message ?? 'Shared rest lookup failed'
+          });
+        } else {
+          canSharedRest = canCompleteSharedRest(
+            placementsRes.data as SanctuaryPlacementRow[] | null,
+            typeof latestRestRes.data?.created_at === 'string' ? latestRestRes.data.created_at : null
+          );
+        }
       } catch (err) {
         diagnostics.push('memory_summary_query_failed');
         reportHomeLoadIssue('memory_summary_query_failed', {
@@ -1101,6 +1157,10 @@ export const load: PageServerLoad = async (event) => {
           journalMoments.unshift({
             id: `social-${String(latestSocial.id ?? 'recent')}`,
             label: 'Social',
+            title:
+              typeof latestSocial.title === 'string' && latestSocial.title.trim().length
+                ? latestSocial.title
+                : `${activeCompanion.name ?? 'Your companion'} carries a shared moment`,
             body: clipMomentBody(
               typeof latestSocial.body === 'string' && latestSocial.body.trim().length
                 ? latestSocial.body
@@ -1151,6 +1211,12 @@ export const load: PageServerLoad = async (event) => {
         journalMoments.unshift({
           id: `${generatedBy === 'chapter_reward_reveal' ? 'reveal' : 'notice'}-${String(latestNotice.id ?? 'recent')}`,
           label: generatedBy === 'chapter_reward_reveal' ? 'Reveal' : 'Noticed',
+          title:
+            typeof latestNotice.title === 'string' && latestNotice.title.trim().length
+              ? latestNotice.title
+              : generatedBy === 'chapter_reward_reveal'
+                ? `${activeCompanion.name ?? 'Your companion'} opened a new chapter`
+                : `${activeCompanion.name ?? 'Your companion'} noticed a new pattern`,
           body: clipMomentBody(
             typeof latestNotice.body === 'string' && latestNotice.body.trim().length
               ? latestNotice.body
@@ -1172,9 +1238,10 @@ export const load: PageServerLoad = async (event) => {
           checkins: latestDailyCheckin ? 1 : 0
         });
         if (derivedNotice) {
-        journalMoments.unshift({
+          journalMoments.unshift({
             id: `notice-derived-${derivedNotice.patternKey}`,
             label: 'Noticed',
+            title: derivedNotice.title,
             body: clipMomentBody(derivedNotice.body),
             href: activeCompanion.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'
           });
@@ -1320,6 +1387,12 @@ export const load: PageServerLoad = async (event) => {
       dailyCheckinToday,
       latestDailyCheckin,
       memorySummary,
+      persistedReflection,
+      firstBondPending: isFirstBondPending(
+        Boolean(activeCompanion?.id),
+        activeCompanion?.first_bond_completed_at
+      ),
+      canSharedRest,
       journalMoments: journalMoments.slice(0, 3),
       chapterReveal,
       sanctuaryNudge,

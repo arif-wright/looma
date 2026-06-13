@@ -4,7 +4,6 @@
   import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
   import {
     Bell,
-    Heart,
     ImageIcon,
     Menu,
     MessageCircle,
@@ -16,7 +15,6 @@
     PhoneOff,
     Search,
     SlidersHorizontal,
-    Smile,
     Video,
     VideoOff
   } from 'lucide-svelte';
@@ -28,7 +26,6 @@
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
   import ProtectedTopbar from '$lib/components/layout/ProtectedTopbar.svelte';
-  import ShardIcon from '$lib/components/ui/ShardIcon.svelte';
   import { clampIndex, type MediaViewerItem } from '$lib/components/messenger/useMediaViewer';
   import type {
     MessageReactionSummary,
@@ -55,7 +52,7 @@
   let viewerCanModerate = false;
   let nextCursor: string | null = null;
   let searchQuery = '';
-  let activeInboxFilter: 'all' | 'friends' | 'companions' | 'groups' | 'unread' = 'all';
+  let activeInboxFilter: 'all' | 'friends' | 'groups' | 'unread' = 'all';
   let isCompactLayout = false;
   let mobilePanel: 'list' | 'thread' = 'list';
 
@@ -149,9 +146,6 @@
     return 'hidden';
   };
 
-  const isCompanionThread = (conversation: MessengerConversation) =>
-    /companion|lumi|echo|muse|zephyr|starlight/i.test(`${conversationTitle(conversation)} ${conversationSubtitle(conversation)}`);
-
   const clearTypingUsers = () => {
     for (const timer of typingUserTimers.values()) {
       clearTimeout(timer);
@@ -194,8 +188,7 @@
     if (!matchesSearch) return false;
     if (activeInboxFilter === 'unread') return conversation.unreadCount > 0;
     if (activeInboxFilter === 'groups') return conversation.type === 'group';
-    if (activeInboxFilter === 'companions') return isCompanionThread(conversation);
-    if (activeInboxFilter === 'friends') return conversation.type !== 'group' && !isCompanionThread(conversation);
+    if (activeInboxFilter === 'friends') return conversation.type !== 'group';
     return true;
   });
 
@@ -224,15 +217,6 @@
     0,
     Math.floor((data as any)?.shardBalance ?? (data as any)?.wallet?.shards ?? (data as any)?.wallet?.balance ?? 0)
   );
-  $: activeCompanion = (data as any)?.activeCompanion ?? null;
-  $: companionName = activeCompanion?.name ?? 'Lumi';
-  $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? activeCompanion?.level ?? 18));
-  $: companionMood = activeCompanion?.mood_label ?? activeCompanion?.mood ?? 'Happy';
-  $: companionBond = Math.min(
-    100,
-    Math.max(0, Math.round(((activeCompanion?.affection ?? 84) + (activeCompanion?.trust ?? 90)) / 2))
-  );
-  $: companionAvatar = activeCompanion?.avatar_url ?? null;
   $: onlineFriends = conversations
     .filter((conversation) => conversation.peer?.presence?.status === 'online')
     .slice(0, 5);
@@ -243,7 +227,6 @@
   $: inboxTabs = [
     { key: 'all', label: 'Messages' },
     { key: 'friends', label: 'Friends' },
-    { key: 'companions', label: 'Companions' },
     { key: 'groups', label: 'Groups' },
     { key: 'unread', label: 'Notifications' }
   ] as const;
@@ -1525,9 +1508,6 @@
   <FantasySidebar
     activePath="/app/messages"
     {playerName}
-    level={Math.max(1, Math.floor((data as any)?.headerStats?.level ?? (data as any)?.activeCompanion?.bondLevel ?? 1))}
-    xp={Math.max(0, Math.floor((data as any)?.headerStats?.xp ?? 0))}
-    xpNext={Math.max(100, Math.floor((data as any)?.headerStats?.xpNext ?? 100))}
   />
 
   <main class="messages-workspace" aria-label="Messages">
@@ -1560,7 +1540,7 @@
       <section class="messages-heading">
         <div>
           <h1>Messages <span aria-hidden="true">✦</span></h1>
-          <p>Chat with friends, companions, and the Looma community.</p>
+          <p>Keep close human conversations and group threads easy to reach.</p>
         </div>
         <div class="heading-actions">
           <button
@@ -1640,7 +1620,7 @@
                   <span class="conversation-copy">
                     <span class="conversation-title">
                       <strong>{conversationTitle(conversation)}</strong>
-                      <em>{isCompanionThread(conversation) ? 'Companion' : conversation.type === 'group' ? 'Group' : 'Message'}</em>
+                      <em>{conversation.type === 'group' ? 'Group' : 'Message'}</em>
                       <time datetime={conversation.last_message_at ?? undefined}>{formatInboxTime(conversation.last_message_at)}</time>
                     </span>
                     <span class="conversation-preview">{conversationSubtitle(conversation)}</span>
@@ -1681,7 +1661,7 @@
               </span>
               <div>
                 <h2>{threadTitle}</h2>
-                <p>{presenceLabel ?? data.messageChapterFrame?.threadHint ?? 'Conversation'}</p>
+                <p>{presenceLabel ?? 'Human conversation'}</p>
               </div>
             </div>
             <div class="chat-actions">
@@ -1752,28 +1732,6 @@
       {/if}
 
       <aside class="right-rail" aria-label="Message details">
-        <section class="rail-card companion-card">
-          <h2>Your Companion</h2>
-          <div class="companion-hero">
-            <div>
-              <h3>{companionName} <Pencil size={14} /></h3>
-              <p>Level {companionLevel}</p>
-              <span class="rarity"><ShardIcon size={14} /> Epic</span>
-            </div>
-            <div class="companion-art">
-              {#if companionAvatar}
-                <img src={companionAvatar} alt="" loading="lazy" />
-              {:else}
-                <ShardIcon size={92} />
-              {/if}
-            </div>
-          </div>
-          <div class="companion-stat"><Smile size={19} /> <span>{companionMood}</span></div>
-          <div class="companion-stat"><Heart size={19} fill="currentColor" /> <span>Bond {companionBond}%</span></div>
-          <div class="bond-meter"><span style={`width:${companionBond}%`}></span></div>
-          <a class="rail-primary" href="/app/companions">View Companion</a>
-        </section>
-
         <section class="rail-card">
           <header class="rail-card__header">
             <h2>Active Friends <span>• {onlineFriends.length} Online</span></h2>
@@ -1996,7 +1954,6 @@
   .chat-person,
   .chat-actions,
   .rail-card__header,
-  .companion-stat,
   .friend-row,
   .activity-row {
     display: flex;
@@ -2374,8 +2331,7 @@
     padding: 1rem;
   }
 
-  .rail-card h2,
-  .rail-card h3 {
+  .rail-card h2 {
     margin: 0;
     color: white;
   }
@@ -2399,87 +2355,6 @@
     color: rgba(211, 185, 255, 0.76);
     font-size: 0.78rem;
     text-decoration: none;
-  }
-
-  .companion-card {
-    overflow: hidden;
-    background:
-      radial-gradient(circle at 74% 16%, rgba(167, 92, 255, 0.34), transparent 12rem),
-      linear-gradient(180deg, rgba(11, 14, 38, 0.92), rgba(7, 10, 28, 0.9));
-  }
-
-  .companion-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 10.75rem;
-    gap: 0.35rem;
-    align-items: center;
-    margin: 0.72rem 0 0.65rem;
-  }
-
-  .companion-hero h3 {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.34rem;
-    font-size: 1.36rem;
-  }
-
-  .companion-hero p {
-    margin: 0.45rem 0 0;
-    color: rgba(216, 211, 236, 0.72);
-  }
-
-  .rarity {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-top: 0.7rem;
-    color: #d9a6ff;
-    font-size: 0.84rem;
-  }
-
-  .companion-art {
-    display: grid;
-    min-height: 10.2rem;
-    place-items: center;
-    color: #a75cff;
-    filter: drop-shadow(0 0 26px rgba(167, 92, 255, 0.6));
-  }
-
-  .companion-art img {
-    width: 10.65rem;
-    height: 10.65rem;
-    object-fit: cover;
-    border-radius: 1.2rem;
-  }
-
-  .companion-stat {
-    gap: 0.55rem;
-    min-height: 2.2rem;
-    color: rgba(244, 241, 255, 0.9);
-  }
-
-  .companion-stat:first-of-type {
-    color: #a4f39a;
-  }
-
-  .companion-stat:nth-of-type(2) {
-    color: #ff75a8;
-  }
-
-  .bond-meter {
-    height: 0.28rem;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.09);
-    margin: 0.35rem 0 1rem;
-  }
-
-  .bond-meter span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #a75cff, #ff5cdc);
-    box-shadow: 0 0 14px rgba(167, 92, 255, 0.74);
   }
 
   .rail-primary {

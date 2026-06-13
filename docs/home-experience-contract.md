@@ -1,10 +1,10 @@
 # Home Experience Contract (V1)
 
-Purpose: keep `/app/home` focused on Looma's core loop (relationship with companion), and prevent future UI drift.
+Purpose: keep `/app/home` focused on Memvoya's core loop (relationship with one companion), and prevent future UI drift. Looma remains the internal project name.
 
 ## Product Truths
 
-- Looma is a companion-first emotional platform.
+- Memvoya is a companion-first emotional platform.
 - Home is not feed-first, game-first, or mechanics-first.
 - Clarity beats novelty.
 
@@ -26,11 +26,17 @@ Purpose: keep `/app/home` focused on Looma's core loop (relationship with compan
 
 4. Secondary Navigation (visible but quiet)
 - Clear labeled actions to:
-  - Circles
-  - Messages
-  - Games
   - Companion details
+  - Journal
+- Messages remains a supporting direct-link surface until it has a trustworthy companion-specific role.
+- Sanctuary appears contextually when it reinforces a current relationship need.
 - Secondary actions must not compete with the primary CTA.
+
+5. Proof Integrity
+- Home may say a moment was remembered only after a persisted Journal record exists.
+- A companion response and a remembered moment are separate outcomes.
+- Visibility analytics fire only when the relevant response or persisted continuity is actually visible.
+- Sanctuary appears contextually only when its intended relationship interaction can currently be completed.
 
 ## UX Principles
 
@@ -63,7 +69,7 @@ Purpose: keep `/app/home` focused on Looma's core loop (relationship with compan
 - [ ] Companion is still the visual focal point above the fold.
 - [ ] Exactly one primary relational CTA is present and obvious.
 - [ ] Relational status + reason are visible in plain language.
-- [ ] Secondary nav includes Circles, Messages, Games, Companion.
+- [ ] Secondary nav includes Journal and Companion.
 - [ ] No hidden gesture is required for core usage.
 - [ ] No confusing floating interactive elements are introduced.
 - [ ] Mobile layout is clear and thumb-friendly.

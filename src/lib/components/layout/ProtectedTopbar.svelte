@@ -4,6 +4,7 @@
   import { Search } from 'lucide-svelte';
   import DesktopTopbarActions from '$lib/components/layout/DesktopTopbarActions.svelte';
   import type { NotificationItem } from '$lib/components/ui/types';
+  import { LAUNCH_PRIMARY_PATHS } from '$lib/launch/navigation';
 
   export let searchValue = '';
   export let searchPlaceholder = 'Search Memvoya...';
@@ -11,6 +12,8 @@
   export let localSearch = false;
   export let onSearch: ((value: string) => void) | null = null;
   export let shardBalance = 0;
+  export let launchFocused = true;
+  export let showWallet = true;
   export let notifications: NotificationItem[] = [];
   export let profileDisplayName = 'Traveler';
   export let profileAvatarUrl: string | null = null;
@@ -34,11 +37,16 @@
   let searchFocused = false;
 
   $: normalizedSearch = searchValue.trim().toLowerCase();
-  $: matchingDestinations = normalizedSearch
+  $: availableDestinations = launchFocused
     ? destinations.filter((destination) =>
+        LAUNCH_PRIMARY_PATHS.includes(destination.href as (typeof LAUNCH_PRIMARY_PATHS)[number])
+      )
+    : destinations;
+  $: matchingDestinations = normalizedSearch
+    ? availableDestinations.filter((destination) =>
         `${destination.label} ${destination.detail}`.toLowerCase().includes(normalizedSearch)
       )
-    : destinations.slice(0, 6);
+    : availableDestinations.slice(0, 6);
   $: showDestinationResults = !localSearch && searchFocused && matchingDestinations.length > 0;
 
   const handleDocumentClick = (event: MouseEvent) => {
@@ -94,6 +102,7 @@
     <slot name="controls"></slot>
     <DesktopTopbarActions
       {shardBalance}
+      {showWallet}
       {notifications}
       {profileDisplayName}
       {profileAvatarUrl}

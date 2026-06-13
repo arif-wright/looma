@@ -36,6 +36,7 @@ export type Companion = {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  first_bond_completed_at?: string | null;
   stats?: CompanionStats | null;
   bond_level?: number | null;
   bond_score?: number | null;
@@ -64,6 +65,7 @@ export type ActiveCompanionSnapshot = {
   bondScore: number;
   // Optional fields used by derived mood/state logic on surfaces like /app/home.
   updated_at?: string | null;
+  first_bond_completed_at?: string | null;
   stats?: Pick<
     CompanionStats,
     'fed_at' | 'played_at' | 'groomed_at' | 'last_passive_tick' | 'last_daily_bonus_at' | 'bond_level' | 'bond_score'
@@ -96,6 +98,7 @@ const deriveActiveSnapshot = (list: Companion[]): ActiveCompanionSnapshot | null
     bondLevel,
     bondScore,
     updated_at: preferred.updated_at ?? null,
+    first_bond_completed_at: preferred.first_bond_completed_at ?? null,
     stats: preferred.stats ?? null
   };
 };

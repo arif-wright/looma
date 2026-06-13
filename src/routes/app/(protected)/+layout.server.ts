@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
+import { shouldRedirectToBondGenesis } from '$lib/launch/proofIntegrity';
 import { recordAnalyticsEvent } from '$lib/server/analytics';
 import {
   computeLanding,
@@ -264,20 +265,15 @@ export const load: LayoutServerLoad = async (event) => {
   const supabase = locals.supabase ?? supabaseServer(event);
   const shouldCheckBondGenesis = !normalizedPath.startsWith(BOND_GENESIS_PATH);
   if (shouldCheckBondGenesis) {
-    const [{ data: bondFlag, error: bondFlagError }, { count: companionCount, error: companionCountError }] =
-      await Promise.all([
-        supabase.from('feature_flags').select('enabled').eq('key', 'bond_genesis').maybeSingle(),
-        supabase.from('companions').select('id', { count: 'exact', head: true }).eq('owner_id', user.id)
-      ]);
-
-    if (bondFlagError) {
-      console.error('[resolver] bond genesis flag lookup failed', bondFlagError);
-    }
+    const { count: companionCount, error: companionCountError } = await supabase
+      .from('companions')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user.id);
     if (companionCountError) {
       console.error('[resolver] bond genesis companion count failed', companionCountError);
     }
 
-    if (bondFlag?.enabled && (companionCount ?? 0) === 0) {
+    if (shouldRedirectToBondGenesis(companionCount, Boolean(companionCountError))) {
       throw redirect(302, BOND_GENESIS_PATH);
     }
   }
@@ -333,7 +329,7 @@ export const load: LayoutServerLoad = async (event) => {
     const { data: activeRows, error: activeError } = await supabase
       .from('companions')
       .select(
-        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, updated_at, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, updated_at, first_bond_completed_at, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
       )
       .eq('owner_id', user.id)
       .order('is_active', { ascending: false })
@@ -358,6 +354,7 @@ export const load: LayoutServerLoad = async (event) => {
         bondLevel: (statsRow?.bond_level as number | null) ?? 0,
         bondScore: (statsRow?.bond_score as number | null) ?? 0,
         updated_at: (row.updated_at as string | null) ?? null,
+        first_bond_completed_at: (row.first_bond_completed_at as string | null) ?? null,
         stats: statsRow
           ? {
               fed_at: (statsRow.fed_at as string | null) ?? null,

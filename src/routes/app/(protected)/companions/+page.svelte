@@ -1419,9 +1419,6 @@
   <FantasySidebar
     activePath="/app/companions"
     playerName={($page.data?.profile as any)?.display_name ?? ($page.data?.user as any)?.email?.split('@')[0] ?? 'Traveler'}
-    level={Math.max(1, Math.floor(($page.data as any)?.headerStats?.level ?? masteryLevel ?? 1))}
-    xp={Math.max(0, Math.floor(($page.data as any)?.headerStats?.xp ?? 0))}
-    xpNext={Math.max(100, Math.floor(($page.data as any)?.headerStats?.xp_next ?? 100))}
   />
 
   <main class="companions-workspace" aria-label="Companions">

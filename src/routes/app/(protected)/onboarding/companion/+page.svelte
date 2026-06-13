@@ -32,6 +32,8 @@
   }
 
   const hasCompanion = data.hasCompanion ?? false;
+  const spawnEligible = data.spawnEligible ?? false;
+  const spawnEligibilityUnknown = data.spawnEligibilityUnknown ?? false;
 
   let answers: Record<string, AnswerRecord> = {};
   let consent = data.consentDefault ?? true;
@@ -237,7 +239,7 @@
   }
 
   async function spawn() {
-    if (!result) return;
+    if (!result || !spawnEligible) return;
 
     try {
       const res = await fetch('/api/persona/spawn', { method: 'POST' });
@@ -417,6 +419,8 @@
 
             {#if hasCompanion}
               <p class="result-note">You already have a companion. Retaking updates your personalization only.</p>
+            {:else if spawnEligibilityUnknown}
+              <p class="result-note">We could not safely confirm your companion status. Please try again before beginning your bond.</p>
             {/if}
           </article>
         </div>
@@ -460,7 +464,7 @@
           class="nav-button nav-button--primary"
           type="button"
           on:click={spawn}
-          disabled={hasCompanion}
+          disabled={!spawnEligible}
           data-testid="quiz-spawn"
         >
           Begin your bond

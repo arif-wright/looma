@@ -4,8 +4,8 @@ import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
 import { buildSharedRestReaction } from '$lib/sanctuary';
 import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
 import type { Companion } from '$lib/stores/companions';
+import { SHARED_REST_COOLDOWN_MS } from '$lib/launch/proofIntegrity';
 
-const REST_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 const REST_ENERGY = 35;
 
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
@@ -81,8 +81,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   }
 
   const latestStamp = latestInteraction?.created_at ? Date.parse(latestInteraction.created_at) : Number.NaN;
-  if (Number.isFinite(latestStamp) && Date.now() - latestStamp < REST_COOLDOWN_MS) {
-    const retryAfter = Math.ceil((REST_COOLDOWN_MS - (Date.now() - latestStamp)) / 1000);
+  if (Number.isFinite(latestStamp) && Date.now() - latestStamp < SHARED_REST_COOLDOWN_MS) {
+    const retryAfter = Math.ceil((SHARED_REST_COOLDOWN_MS - (Date.now() - latestStamp)) / 1000);
     return json(
       { error: 'rest_cooldown', message: `${companion.name} is still carrying the quiet from your last rest.`, retryAfter },
       { status: 429 }
@@ -196,6 +196,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     companion: updated,
     reaction,
     restoredEnergy: energy - effective.energy,
-    nextAvailableAt: new Date(Date.now() + REST_COOLDOWN_MS).toISOString()
+    nextAvailableAt: new Date(Date.now() + SHARED_REST_COOLDOWN_MS).toISOString()
   });
 };

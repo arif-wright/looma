@@ -6,6 +6,8 @@
     scoreDistribution: Array<{ bucket: number; start: number; end: number; count: number }>;
     averageDurationMs: number | null;
     shares: Array<{ day: string; count: number }>;
+    launchProofFunnel: Array<{ kind: string; count: number }>;
+    premiumConversionFunnel: Array<{ kind: string; count: number }>;
     recentEvents: Array<{
       inserted_at: string;
       kind: string;
@@ -51,7 +53,7 @@
   <header class="analytics-header">
     <div>
       <h1>Analytics Overview</h1>
-      <p>Game and economy signals across the last seven days.</p>
+      <p>Launch proof, premium conversion, game, and economy signals across the last seven days.</p>
     </div>
     <form method="get" class="game-filter">
       <label>
@@ -69,6 +71,36 @@
   </header>
 
   <section class="grid-cards">
+    <article class="card" data-testid="admin-analytics-launch-funnel">
+      <header>
+        <h2>Launch proof funnel</h2>
+        <p>Companion bond and remembered-return events</p>
+      </header>
+      <ul class="chart chart-single">
+        {#each data.launchProofFunnel as entry}
+          <li>
+            <span class="chart-label">{entry.kind}</span>
+            <div class="chart-values"><span>{entry.count}</span></div>
+          </li>
+        {/each}
+      </ul>
+    </article>
+
+    <article class="card" data-testid="admin-analytics-premium-funnel">
+      <header>
+        <h2>Premium conversion funnel</h2>
+        <p>Offer exposure through successful subscription</p>
+      </header>
+      <ul class="chart chart-single">
+        {#each data.premiumConversionFunnel as entry}
+          <li>
+            <span class="chart-label">{entry.kind}</span>
+            <div class="chart-values"><span>{entry.count}</span></div>
+          </li>
+        {/each}
+      </ul>
+    </article>
+
     <article class="card" data-testid="admin-analytics-funnel">
       <header>
         <h2>Game funnel</h2>

@@ -5,6 +5,8 @@ import { ingestServerEvent } from '$lib/server/events/ingest';
 import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { consumeApiRateLimit } from '$lib/server/rateLimit';
 import { runSideEffects } from '$lib/server/sideEffects';
+import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
+import { clipRememberedReflection, isReconnectComplete } from '$lib/launch/proofIntegrity';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const MOODS = new Set(['calm', 'heavy', 'curious', 'energized', 'numb']);
@@ -221,7 +223,7 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: companion, error: companionError } = await db
     .from('companions')
-    .select('id, owner_id, name, affection, trust, energy, mood, updated_at')
+    .select('id, owner_id, name, affection, trust, energy, mood, updated_at, first_bond_completed_at')
     .eq('id', companionId)
     .maybeSingle();
 
@@ -234,6 +236,34 @@ export const POST: RequestHandler = async (event) => {
 
   if (!companion || companion.owner_id !== userId) {
     return json({ error: 'forbidden', message: 'Companion not available.' }, { status: 403, headers: CACHE_HEADERS });
+  }
+
+  const checkInAt = new Date().toISOString();
+  const rememberedBody = clipRememberedReflection(reflection);
+  const rememberedReflection = await appendCompanionJournalEntry(db, {
+    ownerId: userId,
+    companionId: companion.id,
+    sourceType: 'system',
+    sourceId: checkin.id,
+    title: `${companion.name} remembered your check-in`,
+    body: rememberedBody,
+    meta: {
+      category: 'checkin',
+      generatedBy: 'home_reconnect',
+      mood,
+      checkInAt
+    },
+    rebuildSummary: false
+  });
+  if (!isReconnectComplete(rememberedReflection.ok)) {
+    return json(
+      {
+        error: 'memory_persistence_failed',
+        message: 'Your moment was not safely remembered yet. Please try sharing it again.',
+        recoverable: true
+      },
+      { status: 503, headers: CACHE_HEADERS }
+    );
   }
 
   const reflectionWeight = reflection.length >= 140 ? 2 : reflection.length >= 60 ? 1 : 0;
@@ -251,7 +281,8 @@ export const POST: RequestHandler = async (event) => {
       trust: nextTrust,
       affection: nextAffection,
       energy: nextEnergy,
-      mood
+      mood,
+      first_bond_completed_at: companion.first_bond_completed_at ?? checkInAt
     })
     .eq('id', companion.id)
     .select('id, name, trust, affection, energy, mood, updated_at')
@@ -264,7 +295,6 @@ export const POST: RequestHandler = async (event) => {
     );
   }
 
-  const checkInAt = new Date().toISOString();
   const [chapterContextResult, companionStatsResult, ritualResult] = await runSideEffects([
     {
       label: 'home/reconnect:chapter_context',
@@ -366,7 +396,6 @@ export const POST: RequestHandler = async (event) => {
               : fallbackReply
         }
       : { text: fallbackReply, source: 'chapter_fallback' };
-
   return json(
     {
       ok: true,
@@ -380,6 +409,12 @@ export const POST: RequestHandler = async (event) => {
       },
       rituals,
       reaction: reactionWithFallback,
+      memory: {
+        id: checkin.id,
+        title: `${updatedCompanion.name} remembered your check-in`,
+        body: rememberedBody,
+        createdAt: checkInAt
+      },
       chapter: chapterContext,
       sideEffects: {
         companionStatsSynced: Boolean(companionStatsResult?.ok),
