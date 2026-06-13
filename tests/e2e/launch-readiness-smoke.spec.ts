@@ -76,4 +76,17 @@ test.describe('Reduced Phase 2 launch readiness', () => {
     await page.getByRole('button', { name: 'Open profile menu' }).click();
     await expect(page.getByRole('menuitem', { name: /Log out/i })).toBeVisible();
   });
+
+  test('onboarding is isolated from the protected app shell', async ({ page }) => {
+    await page.goto('/app/onboarding/companion');
+
+    await expect(page.locator('.fantasy-sidebar')).toHaveCount(0);
+    await expect(page.locator('.protected-topbar')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Notifications|Messages|Open profile menu/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Open wallet/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Exit Onboarding/i })).toHaveCount(0);
+    await expect(page.getByRole('img', { name: 'Memvoya' })).toBeVisible();
+    await expect(page.getByText(/Question 1 of 12/i)).toBeVisible();
+  });
 });

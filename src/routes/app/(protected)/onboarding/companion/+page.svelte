@@ -321,7 +321,7 @@
   <div class="scene-shade" aria-hidden="true"></div>
 
   <header class="onboarding-top">
-    <MemvoyaBrand href="/app/home" size="md" ariaLabel="Memvoya home" />
+    <MemvoyaBrand href={null} size="md" ariaLabel="Memvoya" />
     <div class="step-rail" aria-label="Onboarding progress">
       {#each onboardingSteps as step, index}
         <div class={`step ${index <= stageIndex ? 'is-active' : ''}`}>
@@ -330,7 +330,6 @@
         </div>
       {/each}
     </div>
-    <a class="exit-link" href="/app/home">Exit Onboarding <span aria-hidden="true">X</span></a>
   </header>
 
   <button
@@ -524,15 +523,10 @@
     margin: 0 auto;
     min-height: 6.4rem;
     display: grid;
-    grid-template-columns: auto minmax(20rem, 42rem) auto;
+    grid-template-columns: auto minmax(20rem, 42rem);
     align-items: start;
     gap: 2rem;
     padding-top: 1.6rem;
-  }
-
-  .exit-link {
-    color: inherit;
-    text-decoration: none;
   }
 
   .step-rail {
@@ -587,20 +581,6 @@
   p,
   h1 {
     margin: 0;
-  }
-
-  .exit-link {
-    justify-self: end;
-    min-height: 2.65rem;
-    padding: 0 1.05rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 236, 196, 0.22);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.7rem;
-    background: rgba(5, 4, 13, 0.44);
-    color: rgba(250, 244, 232, 0.82);
-    font-size: 0.92rem;
   }
 
   .side-back {
@@ -957,7 +937,7 @@
     }
 
     .onboarding-top {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr;
       min-height: auto;
       gap: 1rem;
     }
@@ -965,11 +945,6 @@
     .step-rail {
       grid-column: 1 / -1;
       order: 3;
-    }
-
-    .exit-link {
-      min-height: 2.35rem;
-      font-size: 0.82rem;
     }
 
     .side-back {

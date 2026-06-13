@@ -14,6 +14,14 @@ test.describe('Mobile launch journey', () => {
     await page.setViewportSize(shortPhone);
     await page.goto('/app/onboarding/companion');
 
+    await expect(page.locator('.fantasy-sidebar')).toHaveCount(0);
+    await expect(page.locator('.protected-topbar')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Notifications|Messages|Open profile menu/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Open wallet/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Exit Onboarding/i })).toHaveCount(0);
+    await expect(page.getByRole('img', { name: 'Memvoya' })).toBeVisible();
+
     const next = page.getByTestId('quiz-next');
     await expect(next).toBeVisible();
     await expect(next).toBeInViewport();

@@ -50,6 +50,7 @@
   let isShop = false;
   let isMessages = false;
   let isProfileSurface = false;
+  let isOnboardingFocus = false;
   let walletBalance: number | null = null;
   let walletCurrency = 'SHARDS';
   let ambientHue = 224;
@@ -98,6 +99,7 @@
   $: isGames = currentPath.startsWith('/app/games');
   $: isShop = currentPath.startsWith('/app/shop');
   $: isMessages = currentPath.startsWith('/app/messages');
+  $: isOnboardingFocus = currentPath.startsWith('/app/onboarding/companion');
   $: isProfileSurface =
     currentPath.startsWith('/app/profile') || currentPath === '/app/u' || currentPath.startsWith('/app/u/');
   $: usePageOwnedShell = isHome || isMessages || isCompanions;
@@ -512,6 +514,8 @@
       <main class={`app-main ${isHome ? 'app-main--home' : 'app-main--unified'}`}><slot /></main>
     </div>
   </div>
+{:else if isOnboardingFocus}
+  <slot />
 {:else}
 <div class="app-shell">
   <div
