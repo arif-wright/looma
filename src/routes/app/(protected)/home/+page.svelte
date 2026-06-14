@@ -21,7 +21,8 @@
     journalMomentHref,
     journalMomentToContinuity,
     persistedReflectionToContinuity,
-    resolveHomeBondPercent
+    resolveHomeBondPercent,
+    shouldShowReturningPremiumInvitation
   } from '$lib/launch/proofIntegrity';
   import { bondClosenessFromScore } from '$lib/companions/relationshipState';
 
@@ -39,6 +40,7 @@
   let bondActionElement: HTMLElement | null = null;
   let reflectionInput: HTMLTextAreaElement | null = null;
   let continuityElement: HTMLElement | null = null;
+  let premiumInvitationElement: HTMLElement | null = null;
   let beganAsFirstBond = false;
   const recordedVisibilityEvents = new Set<string>();
 
@@ -314,6 +316,18 @@
         ? completedBondCopy.relationalReason
         : `${companionName} is waiting for your first shared moment.`);
   $: firstBond = isFirstBondMoment(Boolean(activeCompanion?.id), completedFirstBond);
+  $: rememberedReturn =
+    pageMounted &&
+    !beganAsFirstBond &&
+    !formedMemory &&
+    Boolean(data.persistedReflection?.id);
+  $: showPremiumInvitation = shouldShowReturningPremiumInvitation({
+    firstBondCompleted: completedFirstBond,
+    hasPersistedContinuity: Boolean(data.persistedReflection?.id),
+    rememberedReturn,
+    subscriptionActive: Boolean(data.subscriptionActive),
+    subscriptionStatusConfirmed: Boolean(data.subscriptionStatusConfirmed)
+  });
   $: showHomeSplash = !pageMounted || !heroModelLoaded;
 
   const recordLaunchEvent = (eventType: string, payload: Record<string, unknown> = {}) =>
@@ -325,10 +339,15 @@
     return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
   };
 
-  const recordShownOnce = (eventType: string, element: HTMLElement | null, payload: Record<string, unknown>) => {
+  const recordShownOnce = (
+    eventType: string,
+    element: HTMLElement | null,
+    payload: Record<string, unknown>,
+    surface = 'home'
+  ) => {
     if (recordedVisibilityEvents.has(eventType) || !isVisible(element)) return;
     recordedVisibilityEvents.add(eventType);
-    recordLaunchEvent(eventType, payload);
+    sendAnalytics(eventType, { surface, payload });
   };
 
   const recordContinuityVisibility = () => {
@@ -336,6 +355,31 @@
     recordShownOnce(firstBond || beganAsFirstBond ? 'first_memory_shown' : 'return_memory_shown', continuityElement, {
       companionId: activeCompanion?.id ?? null,
       memoryId: latestRememberedMoment.id
+    });
+  };
+
+  const recordPremiumInvitationVisibility = () => {
+    if (!showPremiumInvitation) return;
+    recordShownOnce(
+      'premium_offer_viewed',
+      premiumInvitationElement,
+      {
+        companionId: activeCompanion?.id ?? null,
+        rememberedReturn,
+        tier: 'sanctuary_plus'
+      },
+      'home_continuity'
+    );
+  };
+
+  const recordPremiumUpgradeClick = () => {
+    sendAnalytics('premium_upgrade_clicked', {
+      surface: 'home_continuity',
+      payload: {
+        companionId: activeCompanion?.id ?? null,
+        rememberedReturn,
+        tier: 'sanctuary_plus'
+      }
     });
   };
 
@@ -443,7 +487,10 @@
     pageMounted = true;
     beganAsFirstBond = firstBond;
     recordLaunchEvent('home_viewed', { companionId: activeCompanion?.id ?? null, firstBond });
-    const recordVisibleContent = () => recordContinuityVisibility();
+    const recordVisibleContent = () => {
+      recordContinuityVisibility();
+      recordPremiumInvitationVisibility();
+    };
     window.addEventListener('scroll', recordVisibleContent, { passive: true });
     window.addEventListener('resize', recordVisibleContent);
     window.visualViewport?.addEventListener('resize', keepReflectionVisible);
@@ -565,6 +612,17 @@
             <a href={activeCompanion?.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'}><BookOpen size={18} /> Open Journal</a>
           {/if}
         </section>
+
+        {#if showPremiumInvitation}
+          <aside class="premium-invitation" aria-label="Sanctuary+ invitation" bind:this={premiumInvitationElement}>
+            <div>
+              <span>Optional depth for your shared space</span>
+              <strong>Let your shared history live in a richer sanctuary.</strong>
+              <p>Sanctuary+ adds deeper Journal readings and atmosphere. Your core bond with {companionName} remains free.</p>
+            </div>
+            <a href="/app/wallet" on:click={recordPremiumUpgradeClick}>Explore Sanctuary+</a>
+          </aside>
+        {/if}
 
         <nav class="relationship-links" aria-label="Supporting relationship actions">
           <a href={activeCompanionHref}><Sparkles size={18} /><span>Companion</span></a>
@@ -891,6 +949,53 @@
     padding: 0.65rem 0.8rem;
   }
 
+  .premium-invitation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid rgba(184, 158, 255, 0.15);
+    border-radius: 1rem;
+    background: rgba(18, 17, 44, 0.56);
+    padding: 0.8rem 1rem;
+    color: rgba(236, 230, 255, 0.78);
+    backdrop-filter: blur(16px);
+  }
+
+  .premium-invitation div {
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .premium-invitation span {
+    color: rgba(194, 159, 255, 0.82);
+    font-size: 0.65rem;
+    font-weight: 850;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .premium-invitation strong {
+    color: rgba(250, 248, 255, 0.94);
+    font-size: 0.88rem;
+  }
+
+  .premium-invitation p {
+    margin: 0;
+    font-size: 0.76rem;
+  }
+
+  .premium-invitation a {
+    flex: 0 0 auto;
+    border: 1px solid rgba(209, 190, 255, 0.2);
+    border-radius: 999px;
+    padding: 0.55rem 0.72rem;
+    color: rgba(242, 238, 255, 0.9);
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
   .relationship-links {
     display: flex;
     flex-wrap: wrap;
@@ -994,6 +1099,16 @@
 
     .bond-action button {
       min-height: 3rem;
+    }
+
+    .premium-invitation {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .premium-invitation a {
+      justify-content: center;
+      min-height: 2.75rem;
     }
 
   }

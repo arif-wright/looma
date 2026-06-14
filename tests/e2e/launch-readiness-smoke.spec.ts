@@ -33,6 +33,14 @@ test.describe('Reduced Phase 2 launch readiness', () => {
       const reloadedJournalLink = reloadedContinuity.getByRole('link', { name: /Revisit in Journal/i });
       await expect(reloadedContinuity.getByText(/persisted in your Journal/i)).toBeVisible();
       await expect(reloadedJournalLink).toHaveAttribute('href', originalHref ?? '');
+      const premiumInvitation = page.getByRole('complementary', { name: 'Sanctuary+ invitation' });
+      if (await premiumInvitation.count()) {
+        await expect(premiumInvitation.getByText(/core bond with .* remains free/i)).toBeVisible();
+        await expect(premiumInvitation.getByRole('link', { name: 'Explore Sanctuary+' })).toHaveAttribute(
+          'href',
+          '/app/wallet'
+        );
+      }
       const href = await reloadedJournalLink.getAttribute('href');
       if (href?.includes('moment=')) {
         expect(href).toMatch(/\/app\/memory\?companion=.+&moment=.+#moment-.+/);
@@ -64,6 +72,7 @@ test.describe('Reduced Phase 2 launch readiness', () => {
       await expect(page.getByRole('button', { name: /Try saving this moment again/i })).toBeVisible();
       await expect(reflection).toHaveValue('I want this first moment to stay with us.');
       await expect(page.getByText(/safely remembered yet/i)).toHaveCount(0);
+      await expect(page.getByRole('complementary', { name: 'Sanctuary+ invitation' })).toHaveCount(0);
     }
   });
 

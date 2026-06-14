@@ -703,6 +703,8 @@ export const load: PageServerLoad = async (event) => {
     memorySummary: null as MemorySummary | null,
     persistedReflection: null as PersistedReflectionRow | null,
     firstBondPending: false,
+    subscriptionActive: Boolean(parent.subscription?.active),
+    subscriptionStatusConfirmed: !parent.subscriptionLookupFailed,
     canSharedRest: false,
     journalMoments: [] as JournalMoment[],
     chapterReveal: null as ChapterRevealMoment | null,
@@ -1412,6 +1414,8 @@ export const load: PageServerLoad = async (event) => {
         Boolean(activeCompanion?.id),
         activeCompanion?.first_bond_completed_at
       ),
+      subscriptionActive,
+      subscriptionStatusConfirmed: !parent.subscriptionLookupFailed,
       canSharedRest,
       journalMoments: journalMoments.slice(0, 3),
       chapterReveal,

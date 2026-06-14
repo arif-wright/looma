@@ -487,6 +487,7 @@ export const load: LayoutServerLoad = async (event) => {
           })
         }
       : null,
+    subscriptionLookupFailed: Boolean(subscriptionError),
     activeCompanion,
     portableActiveCompanion,
     isAdmin: adminFlags.isAdmin,

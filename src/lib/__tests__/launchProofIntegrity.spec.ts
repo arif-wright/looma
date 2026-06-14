@@ -19,6 +19,7 @@ import {
   reconcileFirstBondCompletedAt,
   resolveHomeBondPercent,
   selectJournalFreshnessMoment,
+  shouldShowReturningPremiumInvitation,
   shouldRedirectToBondGenesis
 } from '$lib/launch/proofIntegrity';
 import { LAUNCH_PROOF_EVENTS, PREMIUM_CONVERSION_EVENTS } from '$lib/launch/funnels';
@@ -237,8 +238,30 @@ describe('launch proof integrity', () => {
       expect.arrayContaining(['first_checkin_completed', 'first_memory_persisted', 'return_memory_shown'])
     );
     expect(PREMIUM_CONVERSION_EVENTS).toEqual(
-      expect.arrayContaining(['premium_offer_viewed', 'premium_checkout_started', 'premium_subscription_converted'])
+      expect.arrayContaining([
+        'premium_offer_viewed',
+        'premium_upgrade_clicked',
+        'premium_checkout_started',
+        'premium_subscription_converted'
+      ])
     );
+  });
+
+  it('only shows the quiet premium invitation on a persisted remembered return', () => {
+    const eligible = {
+      firstBondCompleted: true,
+      hasPersistedContinuity: true,
+      rememberedReturn: true,
+      subscriptionActive: false,
+      subscriptionStatusConfirmed: true
+    };
+
+    expect(shouldShowReturningPremiumInvitation(eligible)).toBe(true);
+    expect(shouldShowReturningPremiumInvitation({ ...eligible, firstBondCompleted: false })).toBe(false);
+    expect(shouldShowReturningPremiumInvitation({ ...eligible, hasPersistedContinuity: false })).toBe(false);
+    expect(shouldShowReturningPremiumInvitation({ ...eligible, rememberedReturn: false })).toBe(false);
+    expect(shouldShowReturningPremiumInvitation({ ...eligible, subscriptionActive: true })).toBe(false);
+    expect(shouldShowReturningPremiumInvitation({ ...eligible, subscriptionStatusConfirmed: false })).toBe(false);
   });
 
   it('keeps Messages supporting rather than primary for launch', () => {

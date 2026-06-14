@@ -54,6 +54,19 @@ export const hasCompletedFirstBond = (args: {
   persistedReflection?: PersistedReflectionRow | null | undefined;
 }) => args.hasCompanion && Boolean(args.firstBondCompletedAt || args.persistedReflection);
 
+export const shouldShowReturningPremiumInvitation = (args: {
+  firstBondCompleted: boolean;
+  hasPersistedContinuity: boolean;
+  rememberedReturn: boolean;
+  subscriptionActive: boolean;
+  subscriptionStatusConfirmed: boolean;
+}) =>
+  args.firstBondCompleted &&
+  args.hasPersistedContinuity &&
+  args.rememberedReturn &&
+  args.subscriptionStatusConfirmed &&
+  !args.subscriptionActive;
+
 export const completedBondContinuityCopy = (companionName: string) => {
   const name = companionName.trim() || 'Your companion';
   return {
