@@ -320,10 +320,10 @@
     pageMounted &&
     !beganAsFirstBond &&
     !formedMemory &&
-    Boolean(data.persistedReflection?.id);
+    Boolean(latestRememberedMoment?.persisted);
   $: showPremiumInvitation = shouldShowReturningPremiumInvitation({
     firstBondCompleted: completedFirstBond,
-    hasPersistedContinuity: Boolean(data.persistedReflection?.id),
+    hasPersistedContinuity: Boolean(latestRememberedMoment?.persisted),
     rememberedReturn,
     subscriptionActive: Boolean(data.subscriptionActive),
     subscriptionStatusConfirmed: Boolean(data.subscriptionStatusConfirmed)

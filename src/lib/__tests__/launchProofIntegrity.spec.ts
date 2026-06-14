@@ -264,6 +264,27 @@ describe('launch proof integrity', () => {
     expect(shouldShowReturningPremiumInvitation({ ...eligible, subscriptionStatusConfirmed: false })).toBe(false);
   });
 
+  it('allows any persisted Home continuity source to qualify a remembered return', () => {
+    const journalContinuity = journalMomentToContinuity({
+      id: 'journal-memory-1',
+      label: 'Memory',
+      title: 'Mira remembers this',
+      body: 'A persisted Journal moment.',
+      href: '/app/memory?companion=companion-1'
+    });
+
+    expect(journalContinuity?.persisted).toBe(true);
+    expect(
+      shouldShowReturningPremiumInvitation({
+        firstBondCompleted: true,
+        hasPersistedContinuity: Boolean(journalContinuity?.persisted),
+        rememberedReturn: Boolean(journalContinuity?.persisted),
+        subscriptionActive: false,
+        subscriptionStatusConfirmed: true
+      })
+    ).toBe(true);
+  });
+
   it('keeps Messages supporting rather than primary for launch', () => {
     expect(LAUNCH_PRIMARY_PATHS).not.toContain('/app/messages');
     expect(LAUNCH_SUPPORTING_PATHS).toContain('/app/messages');
