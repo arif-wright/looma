@@ -19,6 +19,7 @@ import {
   reconcileFirstBondCompletedAt,
   resolveHomeBondPercent,
   selectJournalFreshnessMoment,
+  selectHomePersistedContinuityEntry,
   shouldShowReturningPremiumInvitation,
   shouldRedirectToBondGenesis
 } from '$lib/launch/proofIntegrity';
@@ -291,6 +292,36 @@ describe('launch proof integrity', () => {
         subscriptionStatusConfirmed: true
       })
     ).toBe(true);
+  });
+
+  it('keeps Home and Journal aligned on remembered continuity for the active companion', () => {
+    const activeCompanionEntries = [
+      {
+        id: 'generated-1',
+        source_type: 'system',
+        title: 'Generated pattern',
+        body: 'Internal pattern notice',
+        created_at: '2026-06-14T12:00:00.000Z',
+        meta_json: { generatedBy: 'pattern_notice' }
+      },
+      {
+        id: 'message-memory-1',
+        source_type: 'message',
+        title: 'Root carried this conversation forward',
+        body: 'A remembered moment associated with Root.',
+        created_at: '2026-06-14T11:00:00.000Z',
+        meta_json: {}
+      }
+    ];
+
+    const homeContinuity = selectHomePersistedContinuityEntry(activeCompanionEntries);
+    expect(homeContinuity?.id).toBe('message-memory-1');
+    expect(homeContinuity?.source_type).toBe('message');
+    expect(persistedReflectionToContinuity(homeContinuity, 'root-id')).toMatchObject({
+      id: 'message-memory-1',
+      title: 'Root carried this conversation forward',
+      persisted: true
+    });
   });
 
   it('keeps Messages supporting rather than primary for launch', () => {

@@ -25,10 +25,10 @@ import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
 import {
   canCompleteSharedRest,
-  isFirstBondJournalEntry,
   type HomeJournalMoment,
   isFirstBondPending,
   reconcileFirstBondCompletedAt,
+  selectHomePersistedContinuityEntry,
   type PersistedReflectionRow,
   type SanctuaryPlacementRow
 } from '$lib/launch/proofIntegrity';
@@ -1080,12 +1080,11 @@ export const load: PageServerLoad = async (event) => {
             .maybeSingle(),
           supabase
             .from('companion_journal_entries')
-            .select('id, title, body, created_at, meta_json')
+            .select('id, source_type, title, body, created_at, meta_json')
             .eq('owner_id', userId)
             .eq('companion_id', activeCompanion.id)
-            .eq('source_type', 'system')
             .order('created_at', { ascending: false })
-            .limit(20),
+            .limit(60),
           supabase
             .from('sanctuary_placements')
             .select('item:item_id (item_key, capabilities)')
@@ -1110,10 +1109,10 @@ export const load: PageServerLoad = async (event) => {
           diagnostics.push('persisted_reflection_query_failed');
           reportHomeLoadIssue('persisted_reflection_query_failed', { error: reflectionRes.error.message });
         } else {
-          hasPersistedContinuity = (reflectionRes.data ?? []).length > 0;
-          persistedReflection =
-            ((reflectionRes.data ?? []) as PersistedReflectionRow[]).find((entry) => isFirstBondJournalEntry(entry)) ??
-            null;
+          persistedReflection = selectHomePersistedContinuityEntry(
+            (reflectionRes.data ?? []) as PersistedReflectionRow[]
+          );
+          hasPersistedContinuity = Boolean(persistedReflection);
         }
         hasPersistedContinuity = hasPersistedContinuity || Boolean(memorySummary?.summary_text);
         if (placementsRes.error || latestRestRes.error) {

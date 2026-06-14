@@ -3,13 +3,26 @@ export type PersistedReflectionRow = {
   title: string;
   body: string;
   created_at: string;
+  source_type?: string | null;
   meta_json?: Record<string, unknown> | null;
 };
+
+const NON_USER_FACING_GENERATORS = new Set(['pattern_notice', 'chapter_digest']);
 
 export const isFirstBondJournalEntry = (entry: PersistedReflectionRow | null | undefined) => {
   const meta = entry?.meta_json;
   return meta?.generatedBy === 'home_reconnect' || meta?.category === 'checkin';
 };
+
+export const selectHomePersistedContinuityEntry = (
+  entries: PersistedReflectionRow[] | null | undefined
+) =>
+  (entries ?? []).find((entry) => isFirstBondJournalEntry(entry)) ??
+  (entries ?? []).find((entry) => {
+    const generatedBy = entry.meta_json?.generatedBy;
+    return typeof generatedBy !== 'string' || !NON_USER_FACING_GENERATORS.has(generatedBy);
+  }) ??
+  null;
 
 export type HomeJournalMoment = {
   id: string;
@@ -125,8 +138,6 @@ type JournalFreshnessCandidate = {
   journalEntryId?: string | null;
   generatedBy?: string | null;
 };
-
-const NON_USER_FACING_GENERATORS = new Set(['pattern_notice', 'chapter_digest']);
 
 export const selectJournalFreshnessMoment = <T extends JournalFreshnessCandidate>(
   moments: T[],
