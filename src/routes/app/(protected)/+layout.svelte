@@ -67,6 +67,7 @@
   let presenceAwayTimer: number | null = null;
   let presenceHeartbeatTimer: number | null = null;
   let currentPresenceStatus: 'online' | 'away' | 'offline' = 'offline';
+  let presenceOfflineSent = false;
   let lastPresenceHeartbeatAt = 0;
   let iconNavItems: IconNavItem[] = [];
 
@@ -316,8 +317,10 @@
 
   const postPresence = async (status: 'online' | 'away' | 'offline', keepalive = false) => {
     if (!browser || !presenceVisible) return;
+    if (status === 'offline' && presenceOfflineSent) return;
 
     currentPresenceStatus = status;
+    presenceOfflineSent = status === 'offline';
     const payload = JSON.stringify({ status });
 
     if (keepalive) {

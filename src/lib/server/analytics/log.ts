@@ -75,6 +75,7 @@ export async function logEvent(event: EventLike, kind: string, data: LogPayload)
     const client = resolveClient(event);
     await client.from('analytics_events').insert({
       user_id: data.userId ?? null,
+      event_type: kind,
       kind,
       session_id: data.sessionId ?? null,
       game_id: data.gameId ?? null,

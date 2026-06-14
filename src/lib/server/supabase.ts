@@ -60,8 +60,10 @@ export const createSupabaseServerClient = async (event: RequestEvent): Promise<S
     error
   } = await supabase.auth.getUser();
 
-  if (error) {
+  if (error && error.name !== 'AuthSessionMissingError') {
     console.error('[supabase] failed to fetch authenticated user', error);
+  }
+  if (error) {
     event.locals.session = null;
     return { supabase, session: null as Session | null };
   }

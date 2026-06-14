@@ -68,7 +68,7 @@ const sanitizePayload = (type: LightweightTrackedType, payload: unknown): Record
           return n === null ? null : clampInt(n, 0, 500);
         })(),
         dwellMs: (() => {
-          const n = toFiniteNumber(source.dwellMs);
+          const n = toFiniteNumber(source.dwellMs) ?? toFiniteNumber(source.durationMs);
           return n === null ? null : clampInt(n, 0, 8 * 60 * 60 * 1000);
         })()
       };
@@ -134,8 +134,11 @@ export const trackLightweightUsage = async ({
 
   const { error } = await supabase.from('analytics_events').insert({
     user_id: userId,
+    event_type: type,
     kind: type,
     session_id: sessionId,
+    surface: 'events_ingest',
+    payload: safePayload,
     game_id: null,
     score: null,
     duration_ms: null,
