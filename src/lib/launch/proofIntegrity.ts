@@ -19,10 +19,15 @@ export const isFirstBondJournalEntry = (entry: PersistedReflectionRow | null | u
   return meta?.generatedBy === 'home_reconnect' || meta?.category === 'checkin';
 };
 
+export const isRepairJournalEntry = (entry: PersistedReflectionRow | null | undefined) => {
+  const meta = entry?.meta_json;
+  return meta?.generatedBy === 'home_presence' || meta?.category === 'repair';
+};
+
 export const selectHomePersistedContinuityEntry = (
   entries: PersistedReflectionRow[] | null | undefined
 ) =>
-  (entries ?? []).find((entry) => isFirstBondJournalEntry(entry)) ??
+  (entries ?? []).find((entry) => isRepairJournalEntry(entry) || isFirstBondJournalEntry(entry)) ??
   (entries ?? []).find((entry) => {
     const generatedBy = entry.meta_json?.generatedBy;
     return typeof generatedBy !== 'string' || !NON_USER_FACING_GENERATORS.has(generatedBy);

@@ -7,6 +7,7 @@ import { consumeApiRateLimit } from '$lib/server/rateLimit';
 import { runSideEffects } from '$lib/server/sideEffects';
 import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
+import { deriveAliveCompanionState } from '$lib/companions/effectiveState';
 import {
   buildReflectionAcknowledgement,
   clipRememberedReflection,
@@ -242,7 +243,9 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: companion, error: companionError } = await db
     .from('companions')
-    .select('id, owner_id, name, species, affection, trust, energy, mood, updated_at, first_bond_completed_at')
+    .select(
+      'id, owner_id, name, species, affection, trust, energy, mood, updated_at, first_bond_completed_at, stats:companion_stats(last_meaningful_interaction_at, repair_started_at, repair_completed_at)'
+    )
     .eq('id', companionId)
     .maybeSingle();
 
@@ -259,19 +262,30 @@ export const POST: RequestHandler = async (event) => {
 
   const checkInAt = new Date().toISOString();
   const firstBond = !companion.first_bond_completed_at;
+  const companionStats = (Array.isArray(companion.stats) ? companion.stats[0] : companion.stats) ?? null;
+  const aliveStateBefore = deriveAliveCompanionState(companion.name, companionStats);
+  const completesRepair = aliveStateBefore.state === 'softening';
+  const beginsRepair = aliveStateBefore.state === 'quiet';
   const rememberedBody = clipRememberedReflection(reflection);
+  const rememberedTitle = completesRepair
+    ? `You and ${companion.name} found your way back`
+    : `${companion.name} remembered your check-in`;
   const rememberedReflection = await appendCompanionJournalEntry(db, {
     ownerId: userId,
     companionId: companion.id,
     sourceType: 'system',
     sourceId: checkin.id,
-    title: `${companion.name} remembered your check-in`,
+    title: rememberedTitle,
     body: rememberedBody,
     meta: {
-      category: 'checkin',
+      category: completesRepair ? 'repair' : 'checkin',
       generatedBy: 'home_reconnect',
       mood,
-      checkInAt
+      checkInAt,
+      stateBefore: aliveStateBefore.state,
+      stateAfter: beginsRepair ? 'softening' : 'steady',
+      repairStartedAt: companionStats?.repair_started_at ?? (beginsRepair ? checkInAt : null),
+      repairCompletedAt: completesRepair ? checkInAt : null
     },
     rebuildSummary: false
   });
@@ -330,7 +344,10 @@ export const POST: RequestHandler = async (event) => {
             {
               companion_id: updatedCompanion.id,
               played_at: checkInAt,
-              last_passive_tick: checkInAt
+              last_passive_tick: checkInAt,
+              last_meaningful_interaction_at: checkInAt,
+              repair_started_at: beginsRepair ? checkInAt : companionStats?.repair_started_at ?? null,
+              repair_completed_at: completesRepair ? checkInAt : companionStats?.repair_completed_at ?? null
             },
             { onConflict: 'companion_id', ignoreDuplicates: false }
           );
@@ -460,10 +477,12 @@ export const POST: RequestHandler = async (event) => {
       reaction: reactionWithFallback,
       memory: {
         id: persistedMemory.id,
-        title: `${updatedCompanion.name} remembered your check-in`,
+        title: rememberedTitle,
         body: rememberedBody,
         createdAt: persistedMemory.created_at
       },
+      stateBefore: aliveStateBefore.state,
+      stateAfter: beginsRepair ? 'softening' : 'steady',
       chapter: chapterContext,
       sideEffects: {
         companionStatsSynced: Boolean(companionStatsResult?.ok),

@@ -12,6 +12,7 @@ import {
   isFirstBondPending,
   isFirstBondMoment,
   isFirstBondJournalEntry,
+  isRepairJournalEntry,
   isRecoverableMemoryFailure,
   isReconnectComplete,
   journalMomentHref,
@@ -126,6 +127,27 @@ describe('launch proof integrity', () => {
       'root-id'
     );
     expect(freshLogin).toEqual(immediate);
+  });
+
+  it('prioritizes a persisted repair as the active companion continuity moment', () => {
+    const firstBond = {
+      id: 'first-memory',
+      title: 'Root remembered your check-in',
+      body: 'The first moment.',
+      created_at: '2026-06-10T10:00:00.000Z',
+      meta_json: { category: 'checkin', generatedBy: 'home_reconnect' }
+    };
+    const repair = {
+      id: 'repair-memory',
+      title: 'You and Root found your way back',
+      body: 'The quiet between you settled again.',
+      created_at: '2026-06-14T10:00:00.000Z',
+      meta_json: { category: 'repair', generatedBy: 'home_presence' }
+    };
+
+    expect(isRepairJournalEntry(repair)).toBe(true);
+    expect(isRepairJournalEntry(firstBond)).toBe(false);
+    expect(selectHomePersistedContinuityEntry([repair, firstBond])).toBe(repair);
   });
 
   it('reconciles successful first bond state from the same persisted moment shown in Journal', () => {

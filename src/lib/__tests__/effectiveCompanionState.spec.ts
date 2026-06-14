@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
+import { computeCompanionEffectiveState, deriveAliveCompanionState } from '$lib/companions/effectiveState';
 import type { Companion } from '$lib/stores/companions';
 
 const makeCompanion = (overrides: Partial<Companion>): Companion => ({
@@ -50,7 +50,7 @@ describe('computeCompanionEffectiveState', () => {
     const effective = computeCompanionEffectiveState(companion, now);
     expect(effective.msSinceCare).not.toBeNull();
     expect(effective.moodLabel).not.toBe('Happy');
-    expect(effective.energy).toBeLessThan(companion.energy);
+    expect(effective.energy).toBe(companion.energy);
   });
 
   it('uses a bright mood shortly after care', () => {
@@ -76,5 +76,43 @@ describe('computeCompanionEffectiveState', () => {
     const effective = computeCompanionEffectiveState(companion, now);
     expect(['Radiant', 'Calm']).toContain(effective.moodLabel);
   });
-});
 
+  it('derives the Phase 1 alive return and repair states with repair taking precedence', () => {
+    const now = new Date('2026-06-14T12:00:00.000Z');
+    const recent = '2026-06-14T10:00:00.000Z';
+    const absent = '2026-06-10T10:00:00.000Z';
+
+    expect(
+      deriveAliveCompanionState('Root', { last_meaningful_interaction_at: recent }, now)
+    ).toMatchObject({ state: 'steady', primaryAction: 'check_in' });
+    expect(
+      deriveAliveCompanionState('Root', { last_meaningful_interaction_at: absent }, now)
+    ).toMatchObject({ state: 'quiet', primaryAction: 'sit' });
+    expect(
+      deriveAliveCompanionState(
+        'Root',
+        {
+          last_meaningful_interaction_at: recent,
+          repair_started_at: '2026-06-14T11:00:00.000Z',
+          repair_completed_at: null
+        },
+        now
+      )
+    ).toMatchObject({ state: 'softening', primaryAction: 'stay' });
+    expect(
+      deriveAliveCompanionState(
+        'Root',
+        {
+          last_meaningful_interaction_at: recent,
+          repair_started_at: '2026-06-14T10:00:00.000Z',
+          repair_completed_at: '2026-06-14T11:00:00.000Z'
+        },
+        now
+      )
+    ).toMatchObject({ state: 'steady', primaryAction: 'check_in' });
+    expect(deriveAliveCompanionState('Root', null, now)).toMatchObject({
+      state: 'steady',
+      primaryAction: 'check_in'
+    });
+  });
+});

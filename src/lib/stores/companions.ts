@@ -16,6 +16,9 @@ export type CompanionStats = {
   last_daily_bonus_at?: string | null;
   bond_level?: number | null;
   bond_score?: number | null;
+  last_meaningful_interaction_at?: string | null;
+  repair_started_at?: string | null;
+  repair_completed_at?: string | null;
 };
 
 export type Companion = {
@@ -68,7 +71,7 @@ export type ActiveCompanionSnapshot = {
   first_bond_completed_at?: string | null;
   stats?: Pick<
     CompanionStats,
-    'fed_at' | 'played_at' | 'groomed_at' | 'last_passive_tick' | 'last_daily_bonus_at' | 'bond_level' | 'bond_score'
+    'fed_at' | 'played_at' | 'groomed_at' | 'last_passive_tick' | 'last_daily_bonus_at' | 'bond_level' | 'bond_score' | 'last_meaningful_interaction_at' | 'repair_started_at' | 'repair_completed_at'
   > | null;
 };
 
@@ -143,7 +146,7 @@ const createCompanionsStore = () => {
       const { data, error } = await supabase
         .from('companions')
         .select(
-          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score, last_meaningful_interaction_at, repair_started_at, repair_completed_at)'
         )
         .order('created_at', { ascending: true });
 

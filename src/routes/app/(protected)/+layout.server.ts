@@ -329,7 +329,7 @@ export const load: LayoutServerLoad = async (event) => {
     const { data: activeRows, error: activeError } = await supabase
       .from('companions')
       .select(
-        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, updated_at, first_bond_completed_at, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+        'id, name, species, mood, state, affection, trust, energy, avatar_url, is_active, slot_index, created_at, updated_at, first_bond_completed_at, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score, last_meaningful_interaction_at, repair_started_at, repair_completed_at)'
       )
       .eq('owner_id', user.id)
       .order('is_active', { ascending: false })
@@ -363,7 +363,10 @@ export const load: LayoutServerLoad = async (event) => {
               last_passive_tick: (statsRow.last_passive_tick as string | null) ?? null,
               last_daily_bonus_at: (statsRow.last_daily_bonus_at as string | null) ?? null,
               bond_level: (statsRow.bond_level as number | null) ?? null,
-              bond_score: (statsRow.bond_score as number | null) ?? null
+              bond_score: (statsRow.bond_score as number | null) ?? null,
+              last_meaningful_interaction_at: (statsRow.last_meaningful_interaction_at as string | null) ?? null,
+              repair_started_at: (statsRow.repair_started_at as string | null) ?? null,
+              repair_completed_at: (statsRow.repair_completed_at as string | null) ?? null
             }
           : null
       };

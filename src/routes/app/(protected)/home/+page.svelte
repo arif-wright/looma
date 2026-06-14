@@ -36,6 +36,10 @@
   let checkinError: string | null = null;
   let checkinRecoveryPending = false;
   let checkinReaction: string | null = null;
+  let presencePending = false;
+  let presenceError: string | null = null;
+  let optimisticAliveState: 'steady' | 'quiet' | 'softening' | null = null;
+  let showPresenceReflection = false;
   let formedMemory: { id: string; title: string; body: string; href: string; persisted: true; createdAt?: string } | null = null;
   let bondActionElement: HTMLElement | null = null;
   let reflectionInput: HTMLTextAreaElement | null = null;
@@ -260,6 +264,15 @@
   $: playerXp = Math.max(0, Math.floor((data.stats as any)?.xp ?? 0));
   $: playerXpNext = Math.max(playerXp + 1, Math.floor((data.stats as any)?.xp_next ?? 100));
   $: companionName = optimisticCompanionName ?? activeCompanion?.name ?? 'Lumi';
+  $: aliveState = optimisticAliveState ?? data.aliveState?.state ?? 'steady';
+  $: aliveReason =
+    optimisticAliveState === 'quiet'
+      ? `${companionName} has settled into stillness, but notices that you are here.`
+      : optimisticAliveState === 'softening'
+        ? 'Your presence has changed the shape of this return.'
+        : optimisticAliveState === 'steady'
+          ? `${companionName} feels present and open to you.`
+          : data.aliveState?.reason ?? `${companionName} feels present and open to you.`;
   $: activeCompanionHref = activeCompanion?.id ? `/app/companions?focus=${encodeURIComponent(activeCompanion.id)}` : '/app/companions';
   $: companionArchetype = resolveSceneArchetype(activeCompanion?.species);
   $: heroBackgroundUrl = backgroundByArchetype[companionArchetype] ?? '/assets/muse_background.png';
@@ -270,7 +283,7 @@
   $: heroSceneStyle = buildHeroSceneStyle(heroScenePlacement, heroBackgroundUrl);
   $: companionBond = resolveBondPercent(activeCompanion);
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 1));
-  $: companionMood = normalizedMood(activeCompanion?.mood);
+  $: companionMood = aliveState === 'quiet' ? 'Quiet' : aliveState === 'softening' ? 'Softening' : normalizedMood(activeCompanion?.mood);
   $: activeCompanionEffective = activeCompanion
     ? computeCompanionEffectiveState(
         {
@@ -311,7 +324,9 @@
           }
         : null));
   $: relationalReason =
-    latestRememberedMoment?.body ??
+    aliveState !== 'steady'
+      ? aliveReason
+      : latestRememberedMoment?.body ??
     (data.latestDailyCheckin
       ? `${companionName} remembers that you last arrived feeling ${String(data.latestDailyCheckin.mood).toLowerCase()}.`
       : completedFirstBond
@@ -428,6 +443,7 @@
         return;
       }
       checkinReaction = payload?.reaction?.text ?? `${companionName} is glad you came back.`;
+      optimisticAliveState = payload?.stateAfter ?? 'steady';
       formedMemory = payload?.memory
         ? {
             id: payload.memory.id,
@@ -457,6 +473,51 @@
       checkinError = 'This moment could not be shared right now.';
     } finally {
       checkinPending = false;
+    }
+  };
+
+  const focusPresenceReflection = async () => {
+    showPresenceReflection = true;
+    await tick();
+    reflectionInput?.focus();
+  };
+
+  const submitPresence = async (action: 'sit' | 'stay') => {
+    if (!activeCompanion?.id || presencePending) return;
+    presencePending = true;
+    presenceError = null;
+    try {
+      const response = await fetch('/api/home/presence', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ companionId: activeCompanion.id, action })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        presenceError =
+          payload?.error === 'memory_persistence_failed'
+            ? `This return is still here with ${companionName}. Stay a little longer when you are ready to help it settle into memory.`
+            : payload?.message ?? 'This moment could not settle right now.';
+        return;
+      }
+      optimisticAliveState = payload.stateAfter;
+      checkinReaction = payload?.reaction?.text ?? `${companionName} moves a little closer.`;
+      formedMemory = payload?.memory
+        ? {
+            id: payload.memory.id,
+            title: payload.memory.title,
+            body: payload.memory.body,
+            href: journalMomentHref(activeCompanion.id, payload.memory.id),
+            persisted: true,
+            createdAt: payload.memory.createdAt
+          }
+        : null;
+      showPresenceReflection = false;
+      await invalidateAll();
+    } catch {
+      presenceError = 'This moment could not settle right now.';
+    } finally {
+      presencePending = false;
     }
   };
 
@@ -509,7 +570,7 @@
   <title>Memvoya | Home</title>
 </svelte:head>
 
-<div class="fantasy-home" style={heroSceneStyle}>
+<div class={`fantasy-home fantasy-home--${aliveState}`} style={heroSceneStyle}>
   {#if showHomeSplash}
     <div class="page-splash" role="status" aria-live="polite" aria-label="Loading Memvoya home">
       <div class="page-splash__orb" aria-hidden="true"></div>
@@ -555,8 +616,8 @@
           {relationalReason}
         >
           <svelte:fragment slot="primary-action">
-            <section class="bond-action" aria-label="Primary companion action" bind:this={bondActionElement}>
-              {#if checkinReaction}
+            <section class="bond-action" aria-label="Primary companion action" aria-live="polite" bind:this={bondActionElement}>
+              {#if checkinReaction && aliveState === 'steady'}
                 <span class="bond-action__eyebrow">{firstBond || beganAsFirstBond ? 'Your first moment together' : `What ${companionName} noticed`}</span>
                 <p>{checkinReaction}</p>
                 {#if formedMemory}
@@ -564,6 +625,22 @@
                 {:else}
                   <small>Your check-in was shared, but it has not been added to remembered moments yet.</small>
                 {/if}
+              {:else if aliveState === 'quiet' && !showPresenceReflection}
+                <span class="bond-action__eyebrow">A quiet return</span>
+                <p>{aliveReason}</p>
+                {#if presenceError}<small role="alert">{presenceError}</small>{/if}
+                <button type="button" disabled={presencePending || !activeCompanion?.id} on:click={() => submitPresence('sit')}>
+                  {presencePending ? 'Sitting together...' : `Sit with ${companionName}`}
+                </button>
+                <button type="button" class="bond-action__secondary" on:click={focusPresenceReflection}>Share what is here</button>
+              {:else if aliveState === 'softening' && !showPresenceReflection}
+                <span class="bond-action__eyebrow">Your return is settling</span>
+                <p>{checkinReaction ?? aliveReason}</p>
+                {#if presenceError}<small role="alert">{presenceError}</small>{/if}
+                <button type="button" disabled={presencePending || !activeCompanion?.id} on:click={() => submitPresence('stay')}>
+                  {presencePending ? 'Staying...' : 'Stay a little longer'}
+                </button>
+                <button type="button" class="bond-action__secondary" on:click={focusPresenceReflection}>Share what is here</button>
               {:else}
                 <span class="bond-action__eyebrow">{firstBond ? 'Your first shared moment' : 'Return gently'}</span>
                 <label>
@@ -594,6 +671,9 @@
                 <button type="button" disabled={checkinPending || !activeCompanion?.id} on:click={submitCheckin}>
                   {checkinPending ? 'Sharing...' : checkinRecoveryPending ? 'Try saving this moment again' : firstBond ? 'Share your first moment' : `Check in with ${companionName}`}
                 </button>
+                {#if showPresenceReflection}
+                  <button type="button" class="bond-action__secondary" on:click={() => (showPresenceReflection = false)}>Return to sitting together</button>
+                {/if}
               {/if}
             </section>
           </svelte:fragment>
@@ -662,6 +742,24 @@
       linear-gradient(135deg, #080719, #070a19 52%, #050714);
     color: rgba(249, 247, 255, 0.95);
     font-family: var(--font-body, 'Manrope', system-ui, sans-serif);
+  }
+
+  .fantasy-home--quiet {
+    --hero-bridge-intensity: 0.46;
+  }
+
+  .fantasy-home--quiet .home-main::before {
+    opacity: 0.68;
+    filter: saturate(0.72) brightness(0.76);
+  }
+
+  .fantasy-home--softening {
+    --hero-bridge-intensity: 0.72;
+  }
+
+  .fantasy-home--softening .home-main::before {
+    opacity: 0.84;
+    filter: saturate(0.9) brightness(0.92);
   }
 
   .page-splash {
@@ -867,6 +965,14 @@
     font-weight: 850;
     text-align: center;
     text-decoration: none;
+  }
+
+  .bond-action button.bond-action__secondary {
+    min-height: 2.45rem;
+    border-color: rgba(211, 196, 255, 0.22);
+    background: rgba(255, 255, 255, 0.045);
+    color: rgba(238, 233, 255, 0.78);
+    font-size: 0.78rem;
   }
 
   .bond-action a {

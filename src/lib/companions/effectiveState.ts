@@ -14,6 +14,18 @@ export type CompanionEffectiveState = {
   moodLabel: string;
 };
 
+export type AliveCompanionState = 'steady' | 'quiet' | 'softening';
+
+export type AliveCompanionSnapshot = {
+  state: AliveCompanionState;
+  reason: string;
+  primaryAction: 'check_in' | 'sit' | 'stay';
+  lastMeaningfulInteractionAt: string | null;
+  repairStartedAt: string | null;
+  repairCompletedAt: string | null;
+  absenceHours: number | null;
+};
+
 const clamp = (value: number) => Math.max(0, Math.min(100, value));
 
 const parseIso = (iso: string | null | undefined) => {
@@ -37,10 +49,10 @@ const pickLatestIso = (values: Array<string | null | undefined>) => {
 };
 
 const computeDecay = (elapsedDays: number) => {
-  // Gentle, non-punitive drift. Energy moves fastest; trust is slowest.
-  const energy = Math.min(60, Math.max(0, elapsedDays - 0.5) * 6);
+  // Absence changes relational availability, not physical capacity.
+  const energy = 0;
   const affection = Math.min(25, Math.max(0, elapsedDays - 2) * 1);
-  const trust = Math.min(15, Math.max(0, elapsedDays - 7) * 0.5);
+  const trust = 0;
   return { energy, affection, trust };
 };
 
@@ -112,6 +124,61 @@ export const computeCompanionEffectiveState = (instance: Companion, now: Date = 
     energy,
     moodKey,
     moodLabel: moodLabelFor(moodKey)
+  };
+};
+
+export const deriveAliveCompanionState = (
+  companionName: string | null | undefined,
+  stats: Pick<
+    CompanionStats,
+    'last_meaningful_interaction_at' | 'repair_started_at' | 'repair_completed_at'
+  > | null | undefined,
+  now: Date = new Date()
+): AliveCompanionSnapshot => {
+  const name = companionName?.trim() || 'Your companion';
+  const lastMeaningfulInteractionAt = stats?.last_meaningful_interaction_at ?? null;
+  const repairStartedAt = stats?.repair_started_at ?? null;
+  const repairCompletedAt = stats?.repair_completed_at ?? null;
+  const interactionStamp = parseIso(lastMeaningfulInteractionAt);
+  const repairStartedStamp = parseIso(repairStartedAt);
+  const repairCompletedStamp = parseIso(repairCompletedAt);
+  const absenceHours =
+    interactionStamp === null ? null : Math.max(0, (now.getTime() - interactionStamp) / 3_600_000);
+  const repairActive =
+    repairStartedStamp !== null && (repairCompletedStamp === null || repairStartedStamp > repairCompletedStamp);
+
+  if (repairActive) {
+    return {
+      state: 'softening',
+      reason: 'Your presence has changed the shape of this return.',
+      primaryAction: 'stay',
+      lastMeaningfulInteractionAt,
+      repairStartedAt,
+      repairCompletedAt,
+      absenceHours
+    };
+  }
+
+  if (absenceHours !== null && absenceHours >= 72) {
+    return {
+      state: 'quiet',
+      reason: `${name} has settled into stillness, but notices that you are here.`,
+      primaryAction: 'sit',
+      lastMeaningfulInteractionAt,
+      repairStartedAt,
+      repairCompletedAt,
+      absenceHours
+    };
+  }
+
+  return {
+    state: 'steady',
+    reason: `${name} feels present and open to you.`,
+    primaryAction: 'check_in',
+    lastMeaningfulInteractionAt,
+    repairStartedAt,
+    repairCompletedAt,
+    absenceHours
   };
 };
 
