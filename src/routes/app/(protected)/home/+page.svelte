@@ -14,6 +14,8 @@
   import { sendAnalytics } from '$lib/utils/analytics';
   import {
     firstBondPendingCopy,
+    completedBondContinuityCopy,
+    hasCompletedFirstBond,
     isFirstBondMoment,
     isRecoverableMemoryFailure,
     journalMomentHref,
@@ -285,6 +287,12 @@
   $: companionNeedsRest = (activeCompanionEffective?.energy ?? activeCompanion?.energy ?? 100) <= 25;
   $: canCompleteSharedRest = companionNeedsRest && Boolean(data.canSharedRest);
   $: relationalState = bondClosenessFromScore(companionBond);
+  $: completedFirstBond = hasCompletedFirstBond({
+    hasCompanion: Boolean(activeCompanion?.id),
+    firstBondCompletedAt: activeCompanion?.first_bond_completed_at,
+    persistedReflection: (data.persistedReflection as any) ?? null
+  });
+  $: completedBondCopy = completedBondContinuityCopy(companionName);
   $: latestRememberedMoment =
     formedMemory ??
     persistedReflectionToContinuity((data.persistedReflection as any) ?? null, activeCompanion?.id) ??
@@ -302,8 +310,10 @@
     latestRememberedMoment?.body ??
     (data.latestDailyCheckin
       ? `${companionName} remembers that you last arrived feeling ${String(data.latestDailyCheckin.mood).toLowerCase()}.`
-      : `${companionName} is waiting for your first shared moment.`);
-  $: firstBond = isFirstBondMoment(Boolean(activeCompanion?.id), !Boolean(data.firstBondPending));
+      : completedFirstBond
+        ? completedBondCopy.relationalReason
+        : `${companionName} is waiting for your first shared moment.`);
+  $: firstBond = isFirstBondMoment(Boolean(activeCompanion?.id), completedFirstBond);
   $: showHomeSplash = !pageMounted || !heroModelLoaded;
 
   const recordLaunchEvent = (eventType: string, payload: Record<string, unknown> = {}) =>
@@ -542,15 +552,17 @@
 
         <section class="continuity-card" aria-label="Remembered continuity" bind:this={continuityElement}>
           <div>
-            <span>{formedMemory ? 'Remembered from this visit' : latestRememberedMoment ? `${companionName} carried this back to you` : 'Your shared history begins here'}</span>
-            <h2>{latestRememberedMoment?.title ?? `${companionName} is ready for a first remembered moment`}</h2>
-            <p>{latestRememberedMoment?.body ?? `Share one honest moment above. Once it is safely in your Journal, ${companionName} can carry it into a later visit.`}</p>
+            <span>{formedMemory ? 'Remembered from this visit' : latestRememberedMoment ? `${companionName} carried this back to you` : completedFirstBond ? 'Your shared history is already underway' : 'Your shared history begins here'}</span>
+            <h2>{latestRememberedMoment?.title ?? (completedFirstBond ? completedBondCopy.title : `${companionName} is ready for a first remembered moment`)}</h2>
+            <p>{latestRememberedMoment?.body ?? (completedFirstBond ? completedBondCopy.body : `Share one honest moment above. Once it is safely in your Journal, ${companionName} can carry it into a later visit.`)}</p>
             {#if latestRememberedMoment}
               <small>This is persisted in your Journal, not generated just for this screen.</small>
             {/if}
           </div>
           {#if latestRememberedMoment}
             <a href={latestRememberedMoment.href}><BookOpen size={18} /> Revisit in Journal</a>
+          {:else if completedFirstBond}
+            <a href={activeCompanion?.id ? `/app/memory?companion=${encodeURIComponent(activeCompanion.id)}` : '/app/memory'}><BookOpen size={18} /> Open Journal</a>
           {/if}
         </section>
 

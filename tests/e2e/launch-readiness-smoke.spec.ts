@@ -20,10 +20,13 @@ test.describe('Reduced Phase 2 launch readiness', () => {
     const continuity = page.getByRole('region', { name: 'Remembered continuity' });
     await expect(continuity).toBeVisible();
     const journalLink = continuity.getByRole('link', { name: /Revisit in Journal/i });
-    if (await journalLink.count()) {
-      await expect(continuity.getByText(/persisted in your Journal/i)).toBeVisible();
+    const anyJournalLink = continuity.getByRole('link', { name: /Revisit in Journal|Open Journal/i });
+    if (await anyJournalLink.count()) {
       await expect(page.getByText(/waiting for your first shared moment/i)).toHaveCount(0);
       await expect(continuity.getByText(/ready for a first remembered moment/i)).toHaveCount(0);
+    }
+    if (await journalLink.count()) {
+      await expect(continuity.getByText(/persisted in your Journal/i)).toBeVisible();
       const originalHref = await journalLink.getAttribute('href');
       await page.reload();
       const reloadedContinuity = page.getByRole('region', { name: 'Remembered continuity' });

@@ -25,6 +25,7 @@ import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
 import {
   canCompleteSharedRest,
+  isFirstBondJournalEntry,
   type HomeJournalMoment,
   isFirstBondPending,
   reconcileFirstBondCompletedAt,
@@ -1078,10 +1079,9 @@ export const load: PageServerLoad = async (event) => {
             .select('id, title, body, created_at, meta_json')
             .eq('owner_id', userId)
             .eq('companion_id', activeCompanion.id)
-            .contains('meta_json', { generatedBy: 'home_reconnect' })
+            .eq('source_type', 'system')
             .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+            .limit(20),
           supabase
             .from('sanctuary_placements')
             .select('item:item_id (item_key, capabilities)')
@@ -1106,7 +1106,9 @@ export const load: PageServerLoad = async (event) => {
           diagnostics.push('persisted_reflection_query_failed');
           reportHomeLoadIssue('persisted_reflection_query_failed', { error: reflectionRes.error.message });
         } else {
-          persistedReflection = (reflectionRes.data as PersistedReflectionRow | null) ?? null;
+          persistedReflection =
+            ((reflectionRes.data ?? []) as PersistedReflectionRow[]).find((entry) => isFirstBondJournalEntry(entry)) ??
+            null;
         }
         if (placementsRes.error || latestRestRes.error) {
           diagnostics.push('shared_rest_placement_query_failed');

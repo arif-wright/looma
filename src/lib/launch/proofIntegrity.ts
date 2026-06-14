@@ -6,6 +6,11 @@ export type PersistedReflectionRow = {
   meta_json?: Record<string, unknown> | null;
 };
 
+export const isFirstBondJournalEntry = (entry: PersistedReflectionRow | null | undefined) => {
+  const meta = entry?.meta_json;
+  return meta?.generatedBy === 'home_reconnect' || meta?.category === 'checkin';
+};
+
 export type HomeJournalMoment = {
   id: string;
   label: string;
@@ -42,6 +47,21 @@ export const reconcileFirstBondCompletedAt = (
   firstBondCompletedAt: string | null | undefined,
   persistedReflection: PersistedReflectionRow | null | undefined
 ) => firstBondCompletedAt ?? persistedReflection?.created_at ?? null;
+
+export const hasCompletedFirstBond = (args: {
+  hasCompanion: boolean;
+  firstBondCompletedAt?: string | null | undefined;
+  persistedReflection?: PersistedReflectionRow | null | undefined;
+}) => args.hasCompanion && Boolean(args.firstBondCompletedAt || args.persistedReflection);
+
+export const completedBondContinuityCopy = (companionName: string) => {
+  const name = companionName.trim() || 'Your companion';
+  return {
+    relationalReason: `${name} is carrying your shared history forward.`,
+    title: `Your shared history with ${name} has begun`,
+    body: `Return to your Journal to revisit the moments that have already shaped this bond.`
+  };
+};
 
 export const resolveHomeBondPercent = (args: {
   bondScore?: number | null;

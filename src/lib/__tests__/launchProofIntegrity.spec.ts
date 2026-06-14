@@ -3,11 +3,14 @@ import {
   canCompleteSharedRest,
   canSpawnCompanion,
   buildReflectionAcknowledgement,
+  completedBondContinuityCopy,
   firstBondCheckinCopy,
   firstBondPendingCopy,
+  hasCompletedFirstBond,
   clipRememberedReflection,
   isFirstBondPending,
   isFirstBondMoment,
+  isFirstBondJournalEntry,
   isRecoverableMemoryFailure,
   isReconnectComplete,
   journalMomentHref,
@@ -108,6 +111,25 @@ describe('launch proof integrity', () => {
     expect(completedAt).toBe(persisted.created_at);
     expect(isFirstBondPending(true, completedAt)).toBe(false);
     expect(persistedReflectionToContinuity(persisted, 'companion-1')?.id).toBe(persisted.id);
+    expect(isFirstBondJournalEntry(persisted)).toBe(true);
+    expect(isFirstBondJournalEntry({ ...persisted, meta_json: { category: 'checkin' } })).toBe(true);
+    expect(isFirstBondJournalEntry({ ...persisted, meta_json: { generatedBy: 'chapter_digest' } })).toBe(false);
+  });
+
+  it('never uses pre-first-bond Home copy after persisted or completed bond truth exists', () => {
+    const persisted = {
+      id: 'memory-1',
+      title: 'Mira remembered your check-in',
+      body: 'I am nervous, but hopeful.',
+      created_at: '2026-06-13T10:00:00.000Z'
+    };
+    const copy = completedBondContinuityCopy('Mira');
+
+    expect(hasCompletedFirstBond({ hasCompanion: true, firstBondCompletedAt: persisted.created_at })).toBe(true);
+    expect(hasCompletedFirstBond({ hasCompanion: true, persistedReflection: persisted })).toBe(true);
+    expect(hasCompletedFirstBond({ hasCompanion: true })).toBe(false);
+    expect(copy.relationalReason).not.toContain('waiting for your first shared moment');
+    expect(copy.title).not.toContain('ready for a first remembered moment');
   });
 
   it('does not let a stale zero bond score hide first-bond trust and affection', () => {
