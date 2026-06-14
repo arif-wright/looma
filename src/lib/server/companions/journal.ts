@@ -12,6 +12,11 @@ type ActiveCompanionRow = {
 
 type CompanionJournalSourceType = 'post' | 'message' | 'circle_announcement' | 'system';
 
+type PersistedCompanionJournalEntry = {
+  id: string;
+  created_at: string;
+};
+
 type AppendCompanionJournalEntryArgs = {
   ownerId: string;
   companionId: string;
@@ -129,20 +134,24 @@ export const appendCompanionJournalEntry = async (
   const body = clip(args.body, 320);
   const meta = args.meta && typeof args.meta === 'object' ? args.meta : {};
 
-  const { error } = await client.from('companion_journal_entries').upsert(
-    {
-      owner_id: args.ownerId,
-      companion_id: args.companionId,
-      source_type: args.sourceType,
-      source_id: args.sourceId ?? null,
-      title,
-      body,
-      meta_json: meta
-    },
-    { onConflict: 'owner_id,companion_id,source_type,source_id', ignoreDuplicates: false }
-  );
+  const { data, error } = await client
+    .from('companion_journal_entries')
+    .upsert(
+      {
+        owner_id: args.ownerId,
+        companion_id: args.companionId,
+        source_type: args.sourceType,
+        source_id: args.sourceId ?? null,
+        title,
+        body,
+        meta_json: meta
+      },
+      { onConflict: 'owner_id,companion_id,source_type,source_id', ignoreDuplicates: false }
+    )
+    .select('id, created_at')
+    .single();
 
-  if (error) {
+  if (error || !data?.id || !data?.created_at) {
     console.error('[companion-journal] append failed', error);
     return { ok: false as const };
   }
@@ -157,7 +166,7 @@ export const appendCompanionJournalEntry = async (
     }
   }
 
-  return { ok: true as const };
+  return { ok: true as const, entry: data as PersistedCompanionJournalEntry };
 };
 
 export const appendJournalEntryForActiveCompanion = async (
@@ -179,7 +188,7 @@ export const appendJournalEntryForActiveCompanion = async (
   });
 
   return result.ok
-    ? { ok: true as const, companionId: activeCompanion.id }
+    ? { ok: true as const, companionId: activeCompanion.id, entry: result.entry }
     : { ok: false as const, skipped: 'write_failed' as const };
 };
 

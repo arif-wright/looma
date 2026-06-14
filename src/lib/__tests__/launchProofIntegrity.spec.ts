@@ -3,14 +3,19 @@ import {
   canCompleteSharedRest,
   canSpawnCompanion,
   buildReflectionAcknowledgement,
+  firstBondCheckinCopy,
   firstBondPendingCopy,
   clipRememberedReflection,
   isFirstBondPending,
   isFirstBondMoment,
   isRecoverableMemoryFailure,
   isReconnectComplete,
+  journalMomentHref,
   journalMomentToContinuity,
   persistedReflectionToContinuity,
+  reconcileFirstBondCompletedAt,
+  resolveHomeBondPercent,
+  selectJournalFreshnessMoment,
   shouldRedirectToBondGenesis
 } from '$lib/launch/proofIntegrity';
 import { LAUNCH_PROOF_EVENTS, PREMIUM_CONVERSION_EVENTS } from '$lib/launch/funnels';
@@ -30,9 +35,16 @@ describe('launch proof integrity', () => {
     let persisted: Record<string, unknown> | null = null;
     const client = {
       from: () => ({
-        upsert: async (payload: Record<string, unknown>) => {
+        upsert: (payload: Record<string, unknown>) => {
           persisted = payload;
-          return { error: null };
+          return {
+            select: () => ({
+              single: async () => ({
+                data: { id: 'memory-1', created_at: '2026-06-13T10:00:00.000Z' },
+                error: null
+              })
+            })
+          };
         }
       })
     };
@@ -48,6 +60,9 @@ describe('launch proof integrity', () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(result).toMatchObject({
+      entry: { id: 'memory-1', created_at: '2026-06-13T10:00:00.000Z' }
+    });
     expect(persisted).toMatchObject({
       owner_id: 'user-1',
       companion_id: 'companion-1',
@@ -67,14 +82,53 @@ describe('launch proof integrity', () => {
       })
     );
 
-    expect(persistedReflectionToContinuity(persisted)).toEqual({
+    expect(persistedReflectionToContinuity(persisted, 'companion-1')).toEqual({
       id: 'memory-1',
       title: 'Mira remembered your check-in',
       body: 'I am nervous, but hopeful.',
-      href: '/app/memory',
+      href: '/app/memory?companion=companion-1&moment=memory-1#moment-memory-1',
       persisted: true
     });
+    expect(journalMomentHref('companion one', 'memory/1')).toBe(
+      '/app/memory?companion=companion%20one&moment=memory%2F1#moment-memory%2F1'
+    );
     expect(clipRememberedReflection('  I am   nervous, but hopeful.  ')).toBe('I am nervous, but hopeful.');
+  });
+
+  it('reconciles successful first bond state from the same persisted moment shown in Journal', () => {
+    const persisted = {
+      id: 'memory-1',
+      title: 'Mira remembered your check-in',
+      body: 'I am nervous, but hopeful.',
+      created_at: '2026-06-13T10:00:00.000Z',
+      meta_json: { generatedBy: 'home_reconnect' }
+    };
+
+    const completedAt = reconcileFirstBondCompletedAt(null, persisted);
+    expect(completedAt).toBe(persisted.created_at);
+    expect(isFirstBondPending(true, completedAt)).toBe(false);
+    expect(persistedReflectionToContinuity(persisted, 'companion-1')?.id).toBe(persisted.id);
+  });
+
+  it('does not let a stale zero bond score hide first-bond trust and affection', () => {
+    expect(resolveHomeBondPercent({ bondScore: 0, affection: 8, trust: 10 })).toBe(9);
+    expect(resolveHomeBondPercent({ bondScore: 40, affection: 8, trust: 10 })).toBe(40);
+    expect(resolveHomeBondPercent({ bondScore: null, affection: 0, trust: 0 })).toBe(0);
+  });
+
+  it('keeps Journal dates consistent and surfaces an exact targeted remembered moment', () => {
+    const checkinCopy = firstBondCheckinCopy('Steady');
+    expect(checkinCopy).toBe(
+      'You arrived feeling steady, and this check-in became part of your shared history.'
+    );
+    expect(checkinCopy).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+
+    const targeted = { journalEntryId: 'memory-1', generatedBy: 'home_reconnect', title: 'First moment' };
+    const generated = { journalEntryId: null, generatedBy: 'chapter_digest', title: 'Generated digest' };
+    const other = { journalEntryId: 'memory-2', generatedBy: 'home_reconnect', title: 'Later moment' };
+
+    expect(selectJournalFreshnessMoment([generated, other, targeted], 'memory-1')).toBe(targeted);
+    expect(selectJournalFreshnessMoment([generated, other], null)).toBe(other);
   });
 
   it('makes the first companion response specific to the reflection and emotional state', () => {
@@ -129,7 +183,11 @@ describe('launch proof integrity', () => {
   it('treats a failed first-bond Journal write as recoverable and incomplete', async () => {
     const client = {
       from: () => ({
-        upsert: async () => ({ error: { message: 'journal unavailable' } })
+        upsert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { message: 'journal unavailable' } })
+          })
+        })
       })
     };
     const result = await appendCompanionJournalEntry(client as any, {

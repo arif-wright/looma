@@ -22,6 +22,21 @@ test.describe('Reduced Phase 2 launch readiness', () => {
     const journalLink = continuity.getByRole('link', { name: /Revisit in Journal/i });
     if (await journalLink.count()) {
       await expect(continuity.getByText(/persisted in your Journal/i)).toBeVisible();
+      await expect(page.getByText(/waiting for your first shared moment/i)).toHaveCount(0);
+      await expect(continuity.getByText(/ready for a first remembered moment/i)).toHaveCount(0);
+      const originalHref = await journalLink.getAttribute('href');
+      await page.reload();
+      const reloadedContinuity = page.getByRole('region', { name: 'Remembered continuity' });
+      const reloadedJournalLink = reloadedContinuity.getByRole('link', { name: /Revisit in Journal/i });
+      await expect(reloadedContinuity.getByText(/persisted in your Journal/i)).toBeVisible();
+      await expect(reloadedJournalLink).toHaveAttribute('href', originalHref ?? '');
+      const href = await reloadedJournalLink.getAttribute('href');
+      if (href?.includes('moment=')) {
+        expect(href).toMatch(/\/app\/memory\?companion=.+&moment=.+#moment-.+/);
+        await reloadedJournalLink.click();
+        await expect(page.getByRole('region', { name: 'Remembered moment' })).toBeVisible();
+        await expect(page.locator('[id^="moment-"].timeline-item--targeted')).toHaveCount(1);
+      }
     } else {
       await expect(continuity.getByText(/Share one honest moment above/i)).toBeVisible();
     }

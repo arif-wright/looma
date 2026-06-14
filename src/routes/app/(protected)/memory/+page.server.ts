@@ -4,6 +4,7 @@ import {
   type EmotionalStateSnapshot
 } from '$lib/server/emotionalState';
 import { isSubscriptionActive } from '$lib/subscriptions';
+import { firstBondCheckinCopy } from '$lib/launch/proofIntegrity';
 import {
   deriveChapterMilestones,
   deriveChapterRewards,
@@ -131,6 +132,8 @@ type TimelineItem = {
   body: string;
   occurredAt: string;
   meta?: string | null;
+  journalEntryId?: string | null;
+  generatedBy?: string | null;
 };
 
 type JournalEntryRow = {
@@ -635,8 +638,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   }
 
   const selectedCompanionId = selectedCompanion.id;
+  const requestedMomentId = url.searchParams.get('moment');
 
-  const [summaryRes, emotionalRes, careRes, checkinsRes, missionRes, gameRes, journalEntriesRes, subscriptionRes, premiumStyleRes] = await Promise.all([
+  const [
+    summaryRes,
+    emotionalRes,
+    careRes,
+    checkinsRes,
+    missionRes,
+    gameRes,
+    journalEntriesRes,
+    targetedJournalEntryRes,
+    subscriptionRes,
+    premiumStyleRes
+  ] = await Promise.all([
     supabase
       .from('companion_memory_summary')
       .select('summary_text, highlights_json, last_built_at, source_window_json')
@@ -684,6 +699,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('companion_id', selectedCompanionId)
       .order('created_at', { ascending: false })
       .limit(60),
+    requestedMomentId
+      ? supabase
+          .from('companion_journal_entries')
+          .select('id, source_type, title, body, created_at, meta_json')
+          .eq('owner_id', userId)
+          .eq('companion_id', selectedCompanionId)
+          .eq('id', requestedMomentId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     supabase
       .from('user_subscriptions')
       .select('tier, status, ends_at, renewal_at, source')
@@ -695,6 +719,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('user_id', userId)
       .maybeSingle()
   ]);
+  const journalEntryRows = [...((journalEntriesRes.data ?? []) as JournalEntryRow[])];
+  const targetedJournalEntry = targetedJournalEntryRes.data as JournalEntryRow | null;
+  if (targetedJournalEntry && !journalEntryRows.some((row) => row.id === targetedJournalEntry.id)) {
+    journalEntryRows.push(targetedJournalEntry);
+  }
 
   const subscription = subscriptionRes.data
     ? {
@@ -800,8 +829,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     timeline.push({
       id: `checkin-${row.id}`,
       kind: 'checkin',
-      title: `Check-in: ${formatMood(row.mood)}`,
-      body: `You checked in on ${row.checkin_date}.`,
+      title: `You arrived feeling ${formatMood(row.mood)}`,
+      body: firstBondCheckinCopy(formatMood(row.mood)),
       occurredAt: row.created_at,
       meta: null
     });
@@ -841,7 +870,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
-  for (const row of (journalEntriesRes.data ?? []) as JournalEntryRow[]) {
+  for (const row of journalEntryRows) {
     const body = clipText(row.body ?? 'A companion moment was captured.');
     const isSocial =
       row.source_type === 'message' || row.source_type === 'circle_announcement' || row.source_type === 'post';
@@ -867,7 +896,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           : row.title?.trim() || 'Shared moment',
       body,
       occurredAt: row.created_at,
-      meta: sourceLabel
+      meta: sourceLabel,
+      journalEntryId: row.id,
+      generatedBy
     });
   }
 
@@ -901,7 +932,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     socialMoments: timeline.filter((item) => item.kind === 'social').length,
     checkins: checkinRows.length
   });
-  const hasStoredPatternNotice = ((journalEntriesRes.data ?? []) as JournalEntryRow[]).some(
+  const hasStoredPatternNotice = journalEntryRows.some(
     (row) => row.source_type === 'system'
   );
   const ritualGuide = deriveRitualGuideFromPattern(patternNotice, selectedCompanion.name);
@@ -1017,7 +1048,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       title: patternNotice.title,
       body: patternNotice.body,
       occurredAt: new Date().toISOString(),
-      meta: 'Noticed by companion'
+      meta: 'Noticed by companion',
+      generatedBy: 'pattern_notice'
     });
     timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
   }
@@ -1029,12 +1061,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       title: chapterDigestResult.digest.title,
       body: chapterDigestResult.digest.body,
       occurredAt: new Date().toISOString(),
-      meta: 'Chapter digest'
+      meta: 'Chapter digest',
+      generatedBy: 'chapter_digest'
     });
     timeline.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
   }
 
-  const chapterHistory = ((journalEntriesRes.data ?? []) as JournalEntryRow[])
+  const chapterHistory = journalEntryRows
     .filter((row) => row.meta_json?.generatedBy === 'chapter_reward_reveal')
     .map((row) => ({
       id: row.id,
@@ -1091,6 +1124,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const relationshipEraLimit = isSubscriber ? 6 : 4;
   const archivedMoments = Math.max(0, timeline.length - timelineLimit);
   const archivedOpenings = Math.max(0, chapterHistory.length - chapterHistoryLimit);
+  const targetedTimelineItem = requestedMomentId
+    ? timeline.find((item) => item.journalEntryId === requestedMomentId) ?? null
+    : null;
+  const visibleTimeline = targetedTimelineItem
+    ? [targetedTimelineItem, ...timeline.filter((item) => item.id !== targetedTimelineItem.id)].slice(0, timelineLimit)
+    : timeline.slice(0, timelineLimit);
 
   return {
     companions,
@@ -1114,7 +1153,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     weeklyPulse,
     chapterHistory: chapterHistory.slice(0, chapterHistoryLimit),
     relationshipEras: relationshipEras.slice(0, relationshipEraLimit),
-    timeline: timeline.slice(0, timelineLimit),
+    timeline: visibleTimeline,
     premiumArchivePreview: {
       archivedMoments,
       archivedOpenings,

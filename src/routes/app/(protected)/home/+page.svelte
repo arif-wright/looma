@@ -16,8 +16,10 @@
     firstBondPendingCopy,
     isFirstBondMoment,
     isRecoverableMemoryFailure,
+    journalMomentHref,
     journalMomentToContinuity,
-    persistedReflectionToContinuity
+    persistedReflectionToContinuity,
+    resolveHomeBondPercent
   } from '$lib/launch/proofIntegrity';
   import { bondClosenessFromScore } from '$lib/companions/relationshipState';
 
@@ -222,9 +224,13 @@
     if (!companion) return 0;
     const stats = companion.stats ?? null;
     const statsBondScore = Array.isArray(stats) ? stats[0]?.bond_score : stats?.bond_score;
-    if (statsBondScore != null) return clampPercent(statsBondScore);
-    if (companion.bondScore != null) return clampPercent(companion.bondScore);
-    return clampPercent(((companion.affection ?? 0) + (companion.trust ?? 0)) / 2);
+    return clampPercent(
+      resolveHomeBondPercent({
+        bondScore: statsBondScore ?? companion.bondScore,
+        affection: companion.affection,
+        trust: companion.trust
+      })
+    );
   };
   $: activeCompanion = data.activeCompanion ?? null;
   $: playerName =
@@ -281,7 +287,7 @@
   $: relationalState = bondClosenessFromScore(companionBond);
   $: latestRememberedMoment =
     formedMemory ??
-    persistedReflectionToContinuity((data.persistedReflection as any) ?? null) ??
+    persistedReflectionToContinuity((data.persistedReflection as any) ?? null, activeCompanion?.id) ??
     (journalMomentToContinuity(data.journalMoments?.[0]) ??
       ((data.memorySummary as any)?.summary_text
         ? {
@@ -371,7 +377,7 @@
             id: payload.memory.id,
             title: payload.memory.title,
             body: payload.memory.body,
-            href: '/app/memory',
+            href: journalMomentHref(activeCompanion.id, payload.memory.id),
             persisted: true,
             createdAt: payload.memory.createdAt
           }
@@ -495,7 +501,7 @@
                 <span class="bond-action__eyebrow">{firstBond || beganAsFirstBond ? 'Your first moment together' : `What ${companionName} noticed`}</span>
                 <p>{checkinReaction}</p>
                 {#if formedMemory}
-                  <a href="/app/memory">See the moment {companionName} remembered</a>
+                  <a href={formedMemory.href}>See the moment {companionName} remembered</a>
                 {:else}
                   <small>Your check-in was shared, but it has not been added to remembered moments yet.</small>
                 {/if}
@@ -544,7 +550,7 @@
             {/if}
           </div>
           {#if latestRememberedMoment}
-            <a href="/app/memory"><BookOpen size={18} /> Revisit in Journal</a>
+            <a href={latestRememberedMoment.href}><BookOpen size={18} /> Revisit in Journal</a>
           {/if}
         </section>
 

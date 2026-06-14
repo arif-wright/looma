@@ -27,6 +27,7 @@ import {
   canCompleteSharedRest,
   type HomeJournalMoment,
   isFirstBondPending,
+  reconcileFirstBondCompletedAt,
   type PersistedReflectionRow,
   type SanctuaryPlacementRow
 } from '$lib/launch/proofIntegrity';
@@ -667,6 +668,7 @@ const upsertMissionAssignment = async (args: {
 };
 
 export const load: PageServerLoad = async (event) => {
+  event.setHeaders({ 'cache-control': 'private, no-store' });
   const parent = await event.parent();
   const session = event.locals.session ?? null;
   const userId = session?.user?.id ?? null;
@@ -1056,8 +1058,8 @@ export const load: PageServerLoad = async (event) => {
     };
 
     const fallbackCompanion = creatureMoments.find((c) => c.is_active) ?? creatureMoments[0] ?? null;
-    const activeCompanion =
-      parentActiveCompanion ?? (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null);
+    let activeCompanion =
+      (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null) ?? parentActiveCompanion;
 
     let memorySummary: MemorySummary | null = null;
     let persistedReflection: PersistedReflectionRow | null = null;
@@ -1124,6 +1126,22 @@ export const load: PageServerLoad = async (event) => {
         });
       }
     }
+    if (activeCompanion) {
+      activeCompanion = {
+        ...activeCompanion,
+        first_bond_completed_at: reconcileFirstBondCompletedAt(
+          activeCompanion.first_bond_completed_at,
+          persistedReflection
+        )
+      };
+    }
+    safe.activeCompanion = activeCompanion;
+    safe.memorySummary = memorySummary;
+    safe.persistedReflection = persistedReflection;
+    safe.firstBondPending = isFirstBondPending(
+      Boolean(activeCompanion?.id),
+      activeCompanion?.first_bond_completed_at
+    );
 
     const journalMoments = buildJournalMoments({
       activeCompanion,
@@ -1414,6 +1432,6 @@ export const load: PageServerLoad = async (event) => {
       error: err instanceof Error ? err.message : String(err)
     });
 
-    return { ...safe, activeCompanion: parentActiveCompanion ?? null };
+    return safe;
   }
 };

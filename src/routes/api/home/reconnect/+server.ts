@@ -6,6 +6,7 @@ import { incrementCompanionRitual } from '$lib/server/companions/rituals';
 import { consumeApiRateLimit } from '$lib/server/rateLimit';
 import { runSideEffects } from '$lib/server/sideEffects';
 import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
+import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import {
   buildReflectionAcknowledgement,
   clipRememberedReflection,
@@ -272,7 +273,7 @@ export const POST: RequestHandler = async (event) => {
     },
     rebuildSummary: false
   });
-  if (!isReconnectComplete(rememberedReflection.ok)) {
+  if (!isReconnectComplete(rememberedReflection.ok) || !rememberedReflection.entry) {
     return json(
       {
         error: 'memory_persistence_failed',
@@ -282,6 +283,7 @@ export const POST: RequestHandler = async (event) => {
       { status: 503, headers: CACHE_HEADERS }
     );
   }
+  const persistedMemory = rememberedReflection.entry;
 
   const reflectionWeight = reflection.length >= 140 ? 2 : reflection.length >= 60 ? 1 : 0;
   const trustDelta = 4 + reflectionWeight + (mood === 'heavy' || mood === 'numb' ? 2 : 0);
@@ -330,7 +332,8 @@ export const POST: RequestHandler = async (event) => {
             },
             { onConflict: 'companion_id', ignoreDuplicates: false }
           );
-        return true;
+        const { rows } = await syncPlayerBondState(db, userId);
+        return rows.find((row) => row.companion_id === updatedCompanion.id) ?? null;
       }
     },
     {
@@ -438,10 +441,10 @@ export const POST: RequestHandler = async (event) => {
       rituals,
       reaction: reactionWithFallback,
       memory: {
-        id: checkin.id,
+        id: persistedMemory.id,
         title: `${updatedCompanion.name} remembered your check-in`,
         body: rememberedBody,
-        createdAt: checkInAt
+        createdAt: persistedMemory.created_at
       },
       chapter: chapterContext,
       sideEffects: {

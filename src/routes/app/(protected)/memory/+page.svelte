@@ -4,6 +4,7 @@
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import GlassCard from '$lib/components/ui/sanctuary/GlassCard.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
+  import { selectJournalFreshnessMoment } from '$lib/launch/proofIntegrity';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -176,7 +177,11 @@
           `${item.title} ${item.body} ${item.meta ?? ''}`.toLowerCase().includes(normalizedQuery)
         );
   $: selectedName = data.selectedCompanion?.name ?? 'Your companion';
-  $: latestMoment = data.timeline[0] ?? null;
+  $: targetedMomentId = $page.url.searchParams.get('moment');
+  $: targetedMoment = targetedMomentId
+    ? data.timeline.find((item) => item.journalEntryId === targetedMomentId) ?? null
+    : null;
+  $: latestMoment = selectJournalFreshnessMoment(data.timeline, targetedMomentId);
   $: latestMomentAge = latestMoment ? formatWhen(latestMoment.occurredAt) : null;
   $: evidenceCounts = {
     care: data.weeklyPulse?.careMoments ?? data.timeline.filter((item) => item.kind === 'care').length,
@@ -187,13 +192,13 @@
   };
   $: continuitySignals = [
     {
-      label: 'Freshness',
-      title: latestMomentAge ? `Latest moment ${latestMomentAge}` : 'No moments yet',
+      label: 'Latest remembered',
+      title: latestMomentAge ? `Remembered ${latestMomentAge}` : 'No remembered moments yet',
       body: latestMoment
-        ? `${latestMoment.title} is the newest signal in ${selectedName}'s journal.`
-        : 'Start with a check-in so the journal can form its first current signal.',
+        ? `${latestMoment.title} is part of the history you share with ${selectedName}.`
+        : 'Start with a check-in so your shared history has a first moment.',
       state: latestMoment ? 'alive' : 'waiting',
-      href: latestMoment ? '#journal-timeline' : '/app/home'
+      href: latestMoment?.journalEntryId ? `#moment-${latestMoment.journalEntryId}` : latestMoment ? '#journal-timeline' : '/app/home'
     },
     {
       label: 'Evidence',
@@ -223,8 +228,6 @@
       href: journalGuidance?.primaryHref ?? '/app/home'
     }
   ] satisfies ContinuitySignal[];
-  $: continuityStrength = continuitySignals.filter((signal) => signal.state === 'alive').length;
-
   $: milestoneCards = (() => {
     const cards: Array<{ id: string; label: string; title: string; body: string }> = [];
     for (const milestone of data.chapterMilestones ?? []) {
@@ -386,7 +389,7 @@
   <SanctuaryPageFrame
     eyebrow="Companion Journal"
     title="Journal"
-    subtitle="Inspect what your companion has been carrying forward from rituals, play, check-ins, and mission progress."
+    subtitle="The moments your companion carries forward, and the shared history taking shape between you."
   >
     <svelte:fragment slot="actions">
       {#if data.selectedCompanion}
@@ -395,11 +398,25 @@
     </svelte:fragment>
 
     <div class="memory-shell">
+      {#if targetedMoment}
+        <section class="targeted-memory" aria-label="Remembered moment">
+          <div>
+            <p class="eyebrow">Remembered together</p>
+            <h2>{targetedMoment.title}</h2>
+            <p>{targetedMoment.body}</p>
+            <span>{formatWhen(targetedMoment.occurredAt)}</span>
+          </div>
+          <a class="btn btn--primary btn--link" href={`#moment-${targetedMoment.journalEntryId}`}>
+            See it in your shared history
+          </a>
+        </section>
+      {/if}
+
       <GlassCard class="memory-card memory-card--switcher">
         <div class="card-head">
           <div>
             <p class="eyebrow">Companion</p>
-            <h2>Choose whose journal you want to inspect</h2>
+            <h2>Choose whose shared history you want to revisit</h2>
           </div>
         </div>
 
@@ -427,10 +444,10 @@
       <section class="trust-band" aria-label="Memory transparency">
         <article class="trust-band__copy">
           <p class="eyebrow">Memory transparency</p>
-          <h2>You can inspect the read before you trust the magic.</h2>
+          <h2>See what your companion truly remembers.</h2>
           <p>
-            This journal is built from companion care, check-ins, missions, play, social moments, and saved summaries.
-            Refreshing rebuilds the current snapshot. Clearing removes this companion's summary card, not your whole account history.
+            This journal keeps the moments that shape your relationship. Refreshing updates the current reflection.
+            Clearing removes this companion's summary card, not the shared moments underneath it.
           </p>
         </article>
         <div class="trust-band__rules" aria-label="Journal rules">
@@ -443,8 +460,8 @@
       <section class="continuity-ledger" aria-label="Relationship continuity ledger">
         <div class="continuity-ledger__head">
           <div>
-            <p class="eyebrow">Continuity ledger</p>
-            <h2>{continuityStrength}/4 signals are giving {selectedName} continuity</h2>
+            <p class="eyebrow">Shared continuity</p>
+            <h2>{selectedName}'s shared history is taking shape</h2>
           </div>
           <a class="btn btn--ghost btn--link" href="/app/home">Return to sanctuary</a>
         </div>
@@ -914,7 +931,11 @@
         {#if filteredTimeline.length > 0}
           <ol class="timeline">
             {#each filteredTimeline as item}
-              <li class="timeline-item">
+              <li
+                id={item.journalEntryId ? `moment-${item.journalEntryId}` : undefined}
+                class:timeline-item--targeted={targetedMoment?.id === item.id}
+                class="timeline-item"
+              >
                 <div class={`timeline-dot timeline-dot--${item.kind}`}></div>
                 <div class="timeline-copy">
                   <div class="timeline-head">
@@ -955,6 +976,39 @@
   .memory-shell {
     display: grid;
     gap: 1rem;
+  }
+
+  .targeted-memory {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid rgba(214, 190, 141, 0.32);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(145deg, rgba(54, 42, 24, 0.8), rgba(15, 21, 26, 0.9)),
+      radial-gradient(circle at top left, rgba(214, 190, 141, 0.16), transparent 50%);
+    padding: 1rem;
+  }
+
+  .targeted-memory > div {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .targeted-memory h2,
+  .targeted-memory p {
+    margin: 0;
+  }
+
+  .targeted-memory p:not(.eyebrow) {
+    color: rgba(226, 232, 240, 0.88);
+    line-height: 1.55;
+  }
+
+  .targeted-memory span {
+    color: rgba(226, 232, 240, 0.64);
+    font-size: 0.82rem;
   }
 
   .memory-grid {
@@ -1272,6 +1326,19 @@
     grid-template-columns: auto 1fr;
     gap: 0.8rem;
     align-items: start;
+  }
+
+  .timeline-item--targeted {
+    border-color: rgba(214, 190, 141, 0.46);
+    background: rgba(214, 190, 141, 0.08);
+    scroll-margin-top: 1rem;
+  }
+
+  @media (max-width: 680px) {
+    .targeted-memory {
+      align-items: stretch;
+      flex-direction: column;
+    }
   }
 
   .timeline-dot {

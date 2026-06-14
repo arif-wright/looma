@@ -38,6 +38,22 @@ export const isFirstBondMoment = (hasCompanion: boolean, hasPersistedReconnectMe
 export const isFirstBondPending = (hasCompanion: boolean, firstBondCompletedAt: string | null | undefined) =>
   hasCompanion && !firstBondCompletedAt;
 
+export const reconcileFirstBondCompletedAt = (
+  firstBondCompletedAt: string | null | undefined,
+  persistedReflection: PersistedReflectionRow | null | undefined
+) => firstBondCompletedAt ?? persistedReflection?.created_at ?? null;
+
+export const resolveHomeBondPercent = (args: {
+  bondScore?: number | null;
+  affection?: number | null;
+  trust?: number | null;
+}) => {
+  const score = typeof args.bondScore === 'number' && Number.isFinite(args.bondScore) ? args.bondScore : 0;
+  const affection = typeof args.affection === 'number' && Number.isFinite(args.affection) ? args.affection : 0;
+  const trust = typeof args.trust === 'number' && Number.isFinite(args.trust) ? args.trust : 0;
+  return Math.min(100, Math.max(0, Math.round(Math.max(score, (affection + trust) / 2))));
+};
+
 export const isReconnectComplete = (memoryPersisted: boolean) => memoryPersisted;
 
 export const isRecoverableMemoryFailure = (payload: unknown) => {
@@ -49,16 +65,40 @@ export const isRecoverableMemoryFailure = (payload: unknown) => {
 export const firstBondPendingCopy = (companionName: string) =>
   `Your words are still here. ${companionName.trim() || 'Your companion'} could not safely add them to the Journal yet, so nothing is being called remembered. Try saving this moment again when you are ready.`;
 
-export const persistedReflectionToContinuity = (reflection: PersistedReflectionRow | null) =>
+export const journalMomentHref = (companionId: string, memoryId: string) =>
+  `/app/memory?companion=${encodeURIComponent(companionId)}&moment=${encodeURIComponent(memoryId)}#moment-${encodeURIComponent(memoryId)}`;
+
+export const persistedReflectionToContinuity = (
+  reflection: PersistedReflectionRow | null,
+  companionId?: string | null
+) =>
   reflection
     ? {
         id: reflection.id,
         title: reflection.title,
         body: reflection.body,
-        href: '/app/memory',
+        href: companionId ? journalMomentHref(companionId, reflection.id) : '/app/memory',
         persisted: true as const
       }
     : null;
+
+export const firstBondCheckinCopy = (mood: string) =>
+  `You arrived feeling ${mood.trim().toLowerCase() || 'present'}, and this check-in became part of your shared history.`;
+
+type JournalFreshnessCandidate = {
+  journalEntryId?: string | null;
+  generatedBy?: string | null;
+};
+
+const NON_USER_FACING_GENERATORS = new Set(['pattern_notice', 'chapter_digest']);
+
+export const selectJournalFreshnessMoment = <T extends JournalFreshnessCandidate>(
+  moments: T[],
+  targetedMomentId?: string | null
+) =>
+  (targetedMomentId ? moments.find((moment) => moment.journalEntryId === targetedMomentId) : null) ??
+  moments.find((moment) => !moment.generatedBy || !NON_USER_FACING_GENERATORS.has(moment.generatedBy)) ??
+  null;
 
 export const journalMomentToContinuity = (moment: HomeJournalMoment | null | undefined) =>
   moment
