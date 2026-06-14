@@ -40,6 +40,13 @@ test.describe('Reduced Phase 2 launch readiness', () => {
           'href',
           '/app/wallet'
         );
+      } else {
+        await page.goto('/app/wallet');
+        const subscriptionActive = await page.locator('.wallet-subscription-badge').count();
+        await page.goto('/app/home');
+        if (!subscriptionActive) {
+          await expect(page.getByRole('complementary', { name: 'Sanctuary+ invitation' })).toBeVisible();
+        }
       }
       const href = await reloadedJournalLink.getAttribute('href');
       if (href?.includes('moment=')) {

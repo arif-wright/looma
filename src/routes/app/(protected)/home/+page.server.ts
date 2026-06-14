@@ -702,6 +702,7 @@ export const load: PageServerLoad = async (event) => {
     latestDailyCheckin: null as DailyCheckin | null,
     memorySummary: null as MemorySummary | null,
     persistedReflection: null as PersistedReflectionRow | null,
+    hasPersistedContinuity: false,
     firstBondPending: false,
     subscriptionActive: Boolean(parent.subscription?.active),
     subscriptionStatusConfirmed: !parent.subscriptionLookupFailed,
@@ -1066,6 +1067,7 @@ export const load: PageServerLoad = async (event) => {
 
     let memorySummary: MemorySummary | null = null;
     let persistedReflection: PersistedReflectionRow | null = null;
+    let hasPersistedContinuity = false;
     let canSharedRest = false;
     if (userId && activeCompanion?.id) {
       try {
@@ -1108,10 +1110,12 @@ export const load: PageServerLoad = async (event) => {
           diagnostics.push('persisted_reflection_query_failed');
           reportHomeLoadIssue('persisted_reflection_query_failed', { error: reflectionRes.error.message });
         } else {
+          hasPersistedContinuity = (reflectionRes.data ?? []).length > 0;
           persistedReflection =
             ((reflectionRes.data ?? []) as PersistedReflectionRow[]).find((entry) => isFirstBondJournalEntry(entry)) ??
             null;
         }
+        hasPersistedContinuity = hasPersistedContinuity || Boolean(memorySummary?.summary_text);
         if (placementsRes.error || latestRestRes.error) {
           diagnostics.push('shared_rest_placement_query_failed');
           reportHomeLoadIssue('shared_rest_placement_query_failed', {
@@ -1142,6 +1146,7 @@ export const load: PageServerLoad = async (event) => {
     safe.activeCompanion = activeCompanion;
     safe.memorySummary = memorySummary;
     safe.persistedReflection = persistedReflection;
+    safe.hasPersistedContinuity = hasPersistedContinuity;
     safe.firstBondPending = isFirstBondPending(
       Boolean(activeCompanion?.id),
       activeCompanion?.first_bond_completed_at
@@ -1410,6 +1415,7 @@ export const load: PageServerLoad = async (event) => {
       latestDailyCheckin,
       memorySummary,
       persistedReflection,
+      hasPersistedContinuity,
       firstBondPending: isFirstBondPending(
         Boolean(activeCompanion?.id),
         activeCompanion?.first_bond_completed_at

@@ -128,6 +128,7 @@ describe('launch proof integrity', () => {
 
     expect(hasCompletedFirstBond({ hasCompanion: true, firstBondCompletedAt: persisted.created_at })).toBe(true);
     expect(hasCompletedFirstBond({ hasCompanion: true, persistedReflection: persisted })).toBe(true);
+    expect(hasCompletedFirstBond({ hasCompanion: true, hasPersistedContinuity: true })).toBe(true);
     expect(hasCompletedFirstBond({ hasCompanion: true })).toBe(false);
     expect(copy.relationalReason).not.toContain('waiting for your first shared moment');
     expect(copy.title).not.toContain('ready for a first remembered moment');
@@ -274,9 +275,16 @@ describe('launch proof integrity', () => {
     });
 
     expect(journalContinuity?.persisted).toBe(true);
+    const completedFirstBond = hasCompletedFirstBond({
+      hasCompanion: true,
+      firstBondCompletedAt: null,
+      persistedReflection: null,
+      hasPersistedContinuity: Boolean(journalContinuity?.persisted)
+    });
+    expect(completedFirstBond).toBe(true);
     expect(
       shouldShowReturningPremiumInvitation({
-        firstBondCompleted: true,
+        firstBondCompleted: completedFirstBond,
         hasPersistedContinuity: Boolean(journalContinuity?.persisted),
         rememberedReturn: Boolean(journalContinuity?.persisted),
         subscriptionActive: false,

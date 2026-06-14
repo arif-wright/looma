@@ -289,10 +289,12 @@
   $: companionNeedsRest = (activeCompanionEffective?.energy ?? activeCompanion?.energy ?? 100) <= 25;
   $: canCompleteSharedRest = companionNeedsRest && Boolean(data.canSharedRest);
   $: relationalState = bondClosenessFromScore(companionBond);
+  $: loadedPersistedContinuity = Boolean(data.hasPersistedContinuity);
   $: completedFirstBond = hasCompletedFirstBond({
     hasCompanion: Boolean(activeCompanion?.id),
     firstBondCompletedAt: activeCompanion?.first_bond_completed_at,
-    persistedReflection: (data.persistedReflection as any) ?? null
+    persistedReflection: (data.persistedReflection as any) ?? null,
+    hasPersistedContinuity: loadedPersistedContinuity
   });
   $: completedBondCopy = completedBondContinuityCopy(companionName);
   $: latestRememberedMoment =
@@ -320,10 +322,10 @@
     pageMounted &&
     !beganAsFirstBond &&
     !formedMemory &&
-    Boolean(latestRememberedMoment?.persisted);
+    loadedPersistedContinuity;
   $: showPremiumInvitation = shouldShowReturningPremiumInvitation({
     firstBondCompleted: completedFirstBond,
-    hasPersistedContinuity: Boolean(latestRememberedMoment?.persisted),
+    hasPersistedContinuity: loadedPersistedContinuity,
     rememberedReturn,
     subscriptionActive: Boolean(data.subscriptionActive),
     subscriptionStatusConfirmed: Boolean(data.subscriptionStatusConfirmed)

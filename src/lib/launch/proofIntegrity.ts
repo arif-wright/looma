@@ -52,7 +52,10 @@ export const hasCompletedFirstBond = (args: {
   hasCompanion: boolean;
   firstBondCompletedAt?: string | null | undefined;
   persistedReflection?: PersistedReflectionRow | null | undefined;
-}) => args.hasCompanion && Boolean(args.firstBondCompletedAt || args.persistedReflection);
+  hasPersistedContinuity?: boolean;
+}) =>
+  args.hasCompanion &&
+  Boolean(args.firstBondCompletedAt || args.persistedReflection || args.hasPersistedContinuity);
 
 export const shouldShowReturningPremiumInvitation = (args: {
   firstBondCompleted: boolean;
