@@ -17,6 +17,7 @@ import {
   journalMomentToContinuity,
   persistedReflectionToContinuity,
   reconcileFirstBondCompletedAt,
+  resolveAuthenticatedUserId,
   resolveHomeBondPercent,
   selectJournalFreshnessMoment,
   selectHomePersistedContinuityEntry,
@@ -98,6 +99,32 @@ describe('launch proof integrity', () => {
       '/app/memory?companion=companion%20one&moment=memory%2F1#moment-memory%2F1'
     );
     expect(clipRememberedReflection('  I am   nervous, but hopeful.  ')).toBe('I am nervous, but hopeful.');
+  });
+
+  it('reconstructs the same remembered first moment after refresh and fresh login', () => {
+    const persisted = {
+      id: 'memory-1',
+      source_type: 'system',
+      title: 'Root remembered your check-in',
+      body: 'I am nervous, but hopeful.',
+      created_at: '2026-06-14T10:00:00.000Z',
+      meta_json: { category: 'checkin', generatedBy: 'home_reconnect' }
+    };
+    const immediate = persistedReflectionToContinuity(persisted, 'root-id');
+
+    expect(resolveAuthenticatedUserId(undefined, 'user-1')).toBe('user-1');
+    const refreshed = persistedReflectionToContinuity(
+      selectHomePersistedContinuityEntry([persisted]),
+      'root-id'
+    );
+    expect(refreshed).toEqual(immediate);
+
+    expect(resolveAuthenticatedUserId(null, 'user-1')).toBe('user-1');
+    const freshLogin = persistedReflectionToContinuity(
+      selectHomePersistedContinuityEntry([persisted]),
+      'root-id'
+    );
+    expect(freshLogin).toEqual(immediate);
   });
 
   it('reconciles successful first bond state from the same persisted moment shown in Journal', () => {

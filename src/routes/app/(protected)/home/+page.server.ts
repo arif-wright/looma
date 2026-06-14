@@ -28,6 +28,7 @@ import {
   type HomeJournalMoment,
   isFirstBondPending,
   reconcileFirstBondCompletedAt,
+  resolveAuthenticatedUserId,
   selectHomePersistedContinuityEntry,
   type PersistedReflectionRow,
   type SanctuaryPlacementRow
@@ -671,8 +672,7 @@ const upsertMissionAssignment = async (args: {
 export const load: PageServerLoad = async (event) => {
   event.setHeaders({ 'cache-control': 'private, no-store' });
   const parent = await event.parent();
-  const session = event.locals.session ?? null;
-  const userId = session?.user?.id ?? null;
+  const userId = resolveAuthenticatedUserId(event.locals.session?.user?.id, event.locals.user?.id);
   const parentActiveCompanion: ActiveCompanionSnapshot | null = (parent as Record<string, any>).activeCompanion ?? null;
 
   const diagnostics: string[] = [];
@@ -856,14 +856,14 @@ export const load: PageServerLoad = async (event) => {
     }
 
     let creatureMoments: CreatureMoment[] = [];
-    if (session?.user?.id) {
+    if (userId) {
       try {
         const { data } = await supabase
           .from('companions')
           .select(
             'id, name, species, mood, state, is_active, slot_index, created_at, updated_at, first_bond_completed_at, affection, trust, energy, avatar_url, stats:companion_stats(fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
           )
-          .eq('owner_id', session.user.id)
+          .eq('owner_id', userId)
           .order('is_active', { ascending: false })
           .order('slot_index', { ascending: true, nullsFirst: false })
           .order('created_at', { ascending: true })
@@ -895,9 +895,9 @@ export const load: PageServerLoad = async (event) => {
     let dailyCheckinToday: DailyCheckin | null = null;
     let latestDailyCheckin: DailyCheckin | null = null;
 
-    if (session?.user?.id) {
+    if (userId) {
       try {
-        const summary = await getWalletWithTransactions(supabase, session.user.id, 10);
+        const summary = await getWalletWithTransactions(supabase, userId, 10);
         wallet = summary.wallet;
         walletTx = summary.transactions;
       } catch (err) {
@@ -911,7 +911,7 @@ export const load: PageServerLoad = async (event) => {
         const { data, error } = await supabase
           .from('user_wallets')
           .select('shards')
-          .eq('user_id', session.user.id)
+          .eq('user_id', userId)
           .maybeSingle();
         if (error) {
           throw error;
@@ -933,7 +933,7 @@ export const load: PageServerLoad = async (event) => {
         const { count, error } = await supabase
           .from('companions')
           .select('id', { count: 'exact', head: true })
-          .eq('owner_id', session.user.id);
+          .eq('owner_id', userId);
         if (error) {
           throw error;
         }
@@ -951,14 +951,14 @@ export const load: PageServerLoad = async (event) => {
           supabase
             .from('user_daily_checkins')
             .select('id, mood, checkin_date, created_at')
-            .eq('user_id', session.user.id)
+            .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle(),
           supabase
             .from('user_daily_checkins')
             .select('id, mood, checkin_date, created_at')
-            .eq('user_id', session.user.id)
+            .eq('user_id', userId)
             .eq('checkin_date', today)
             .limit(1)
             .maybeSingle()

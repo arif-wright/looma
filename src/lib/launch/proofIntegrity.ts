@@ -9,6 +9,11 @@ export type PersistedReflectionRow = {
 
 const NON_USER_FACING_GENERATORS = new Set(['pattern_notice', 'chapter_digest']);
 
+export const resolveAuthenticatedUserId = (
+  sessionUserId: string | null | undefined,
+  localUserId: string | null | undefined
+) => sessionUserId ?? localUserId ?? null;
+
 export const isFirstBondJournalEntry = (entry: PersistedReflectionRow | null | undefined) => {
   const meta = entry?.meta_json;
   return meta?.generatedBy === 'home_reconnect' || meta?.category === 'checkin';
