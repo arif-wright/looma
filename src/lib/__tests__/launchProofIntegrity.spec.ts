@@ -4,6 +4,7 @@ import {
   canSpawnCompanion,
   buildReflectionAcknowledgement,
   completedBondContinuityCopy,
+  composeReconnectReactionText,
   firstBondCheckinCopy,
   firstBondPendingCopy,
   hasCompletedFirstBond,
@@ -194,6 +195,28 @@ describe('launch proof integrity', () => {
     expect(response).toContain('I am worried about tomorrow');
     expect(response).toContain('the weight in what you shared');
     expect(response).toContain('the first thing we remember together');
+  });
+
+  it('lets a first-bond LLM response remain cohesive while preserving fallback acknowledgement', () => {
+    const acknowledgement = 'Root holds onto your words.';
+    const llmText = 'We can let this be the first small root we tend together.';
+
+    expect(
+      composeReconnectReactionText({
+        source: 'llm',
+        generatedText: llmText,
+        deterministicAcknowledgement: acknowledgement,
+        fallbackText: 'Fallback'
+      })
+    ).toBe(llmText);
+    expect(
+      composeReconnectReactionText({
+        source: 'fallback',
+        generatedText: 'I am here with you.',
+        deterministicAcknowledgement: acknowledgement,
+        fallbackText: 'Fallback'
+      })
+    ).toBe(`${acknowledgement} I am here with you.`);
   });
 
   it('uses a journal moment headline rather than its internal category label on Home', () => {

@@ -192,6 +192,19 @@ export const buildReflectionAcknowledgement = (args: {
   return `${name} holds onto "${anchor}" and notices ${meaning}. ${beginning}`;
 };
 
+export const composeReconnectReactionText = (args: {
+  source: string | null | undefined;
+  generatedText: string | null | undefined;
+  deterministicAcknowledgement: string;
+  fallbackText: string;
+}) => {
+  const generated = args.generatedText?.trim();
+  if (!generated) return args.fallbackText;
+  return args.source === 'llm'
+    ? generated
+    : `${args.deterministicAcknowledgement} ${generated}`.trim();
+};
+
 export const hasUsableSharedRestPlacement = (placements: SanctuaryPlacementRow[] | null | undefined) =>
   (placements ?? []).some((placement) => {
     const item = Array.isArray(placement.item) ? placement.item[0] : placement.item;

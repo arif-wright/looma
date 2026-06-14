@@ -91,3 +91,12 @@ LOOMA_LLM_PEAK_DAILY_CAP=2
   - Companion agent falls back to existing deterministic templates.
 - LLM is server-side only.
 - No tools are used in LLM requests.
+
+## First-bond outcome verification
+
+First-bond responses use the peak model tier and write both successful and fallback outcomes to
+`public.llm_usage_logs`. Filter with `first_bond = true` and inspect:
+
+- `outcome`: `success` or `fallback`
+- `reason`: `ok`, `llm_disabled`, `missing_api_key`, `http_*`, `network_error`, or parsing failure
+- `model`, `archetype`, `companion_id`, and `event_type`

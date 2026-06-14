@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { agentRegistry, __resetCompanionAgentRateLimits } from '$lib/agents/registry';
 import type { AgentEvent } from '$lib/agents/types';
+import {
+  buildCompanionPromptContext,
+  buildCompanionSystemPrompt,
+  buildLlmOutcomeRecord,
+  classifyCompanionLlmIntensity,
+  resolveCompanionPromptProfile
+} from '$lib/server/llm/companionText';
 
 const baseEvent = (overrides: Partial<AgentEvent> = {}): AgentEvent => ({
   id: 'evt-1',
@@ -20,6 +27,71 @@ const baseEvent = (overrides: Partial<AgentEvent> = {}): AgentEvent => ({
 });
 
 describe('companion agent game reactions', () => {
+  it('uses archetype-specific first-bond prompts and the peak response tier', () => {
+    const voices = {
+      root: 'earthy',
+      muse: 'melodic',
+      guardian: 'protective',
+      spark: 'lively',
+      echo: 'memory-holding'
+    };
+
+    for (const [archetype, marker] of Object.entries(voices)) {
+      const prompt = buildCompanionSystemPrompt(archetype, true);
+      expect(resolveCompanionPromptProfile(archetype).archetype).toBe(archetype);
+      expect(prompt).toContain(marker);
+      expect(prompt).toContain('first remembered moment');
+    }
+
+    const event = baseEvent({
+      type: 'companion.ritual.listen',
+      scope: 'companion',
+      payload: {
+        companionId: 'root-id',
+        companionName: 'Root',
+        companionArchetype: 'root',
+        firstBond: true,
+        chapterTone: 'care',
+        relationshipState: { trust: 8, affection: 7 },
+        mood: 'calm',
+        reflection: 'I want somewhere quiet to begin.'
+      }
+    });
+
+    expect(classifyCompanionLlmIntensity({ event, context: event.context ?? null })).toBe('peak');
+    expect(buildCompanionPromptContext({ event, context: event.context ?? null, intensity: 'peak' })).toMatchObject({
+      companionName: 'Root',
+      companionArchetype: 'root',
+      firstBond: true,
+      chapterTone: 'care',
+      relationshipState: { trust: 8, affection: 7 }
+    });
+  });
+
+  it('records enough first-bond outcome metadata to distinguish success and fallback causes', () => {
+    expect(
+      buildLlmOutcomeRecord({
+        userId: 'user-1',
+        intensity: 'peak',
+        model: 'gpt-5-mini',
+        outputChars: 0,
+        outcome: 'fallback',
+        reason: 'missing_api_key',
+        eventType: 'companion.ritual.listen',
+        companionId: 'root-id',
+        archetype: 'root',
+        firstBond: true
+      })
+    ).toMatchObject({
+      outcome: 'fallback',
+      reason: 'missing_api_key',
+      event_type: 'companion.ritual.listen',
+      companion_id: 'root-id',
+      archetype: 'root',
+      first_bond: true
+    });
+  });
+
   it('suppresses reactions when suppressReactions is true', async () => {
     __resetCompanionAgentRateLimits();
     const event = baseEvent({

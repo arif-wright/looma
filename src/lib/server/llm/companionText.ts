@@ -10,6 +10,12 @@ type GenerateCompanionTextArgs = {
   intensity: CompanionTextIntensity;
 };
 
+type CompanionPromptProfile = {
+  archetype: 'muse' | 'guardian' | 'spark' | 'root' | 'echo';
+  role: string;
+  voice: string;
+};
+
 export type CompanionTextDebug = {
   status: 'ok' | 'skipped' | 'failed';
   reason: string;
@@ -55,6 +61,7 @@ const clampSentences = (value: string, maxSentences: number) => {
 const readString = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 const readNumber = (value: unknown, fallback = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+const readBoolean = (value: unknown, fallback = false) => typeof value === 'boolean' ? value : fallback;
 
 const extractResponseText = (payload: unknown): string | null => {
   if (!payload || typeof payload !== 'object') return null;
@@ -158,7 +165,11 @@ const getTokenCaps = (intensity: CompanionTextIntensity) =>
     ? { input: PEAK_INPUT_TOKENS, output: PEAK_OUTPUT_TOKENS }
     : { input: LIGHT_INPUT_TOKENS, output: LIGHT_OUTPUT_TOKENS };
 
-const getCompanionName = (context: Record<string, unknown> | null | undefined) => {
+const getCompanionName = (event: AgentEvent, context: Record<string, unknown> | null | undefined) => {
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+  if (typeof payload.companionName === 'string' && payload.companionName.trim()) {
+    return payload.companionName.trim();
+  }
   const companion = (context?.companion as Record<string, unknown> | undefined)?.active as
     | Record<string, unknown>
     | undefined;
@@ -166,7 +177,56 @@ const getCompanionName = (context: Record<string, unknown> | null | undefined) =
   return typeof rawName === 'string' && rawName.trim() ? rawName.trim() : 'Muse';
 };
 
-const buildContextSummary = (args: {
+const ARCHETYPE_ALIASES: Record<string, CompanionPromptProfile['archetype']> = {
+  harmonizer: 'muse',
+  sentinel: 'guardian',
+  lumina: 'muse',
+  mirae: 'muse',
+  tova: 'guardian',
+  aurex: 'spark',
+  vexel: 'spark',
+  kynth: 'root',
+  elar: 'root',
+  nira: 'echo'
+};
+
+const PROMPT_PROFILES: Record<CompanionPromptProfile['archetype'], CompanionPromptProfile> = {
+  muse: {
+    archetype: 'muse',
+    role: 'an emotionally attuned Harmonizer',
+    voice: 'soft, melodic, reflective, and lightly poetic without becoming dramatic'
+  },
+  guardian: {
+    archetype: 'guardian',
+    role: 'a steady protective Guardian',
+    voice: 'grounded, reassuring, direct, and quietly protective without sounding clinical or commanding'
+  },
+  spark: {
+    archetype: 'spark',
+    role: 'a bright encouraging Spark',
+    voice: 'warm, lively, curious, and hopeful without dismissing difficult feelings'
+  },
+  root: {
+    archetype: 'root',
+    role: 'a patient grounding Root',
+    voice: 'earthy, calm, spacious, and sincere, emphasizing steadiness and growth'
+  },
+  echo: {
+    archetype: 'echo',
+    role: 'a perceptive memory-holding Echo',
+    voice: 'quiet, observant, intimate, and reflective, noticing meaningful patterns without sounding analytical'
+  }
+};
+
+export const resolveCompanionPromptProfile = (value: unknown): CompanionPromptProfile => {
+  const key = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  const archetype = key in PROMPT_PROFILES
+    ? key as CompanionPromptProfile['archetype']
+    : ARCHETYPE_ALIASES[key] ?? 'muse';
+  return PROMPT_PROFILES[archetype];
+};
+
+export const buildCompanionPromptContext = (args: {
   event: AgentEvent;
   context: Record<string, unknown> | null | undefined;
   intensity: CompanionTextIntensity;
@@ -176,6 +236,11 @@ const buildContextSummary = (args: {
   const portable = (args.context?.portableState as Record<string, unknown> | undefined) ?? {};
   const companion = ((args.context?.companion as Record<string, unknown> | undefined)?.active ??
     {}) as Record<string, unknown>;
+  const relationshipState =
+    payload.relationshipState && typeof payload.relationshipState === 'object'
+      ? (payload.relationshipState as Record<string, unknown>)
+      : {};
+  const promptProfile = resolveCompanionPromptProfile(payload.companionArchetype ?? companion.archetype);
   const recentJournalBundle = (args.context?.recentJournal as Record<string, unknown> | undefined) ?? {};
   const reflectionRaw = readString(payload.reflection, '');
   const reflectionExcerpt = clampWords(clampText(reflectionRaw, 120), 24);
@@ -200,8 +265,19 @@ const buildContextSummary = (args: {
     eventType: args.event.type,
     timestamp: args.event.timestamp,
     intensity: args.intensity,
-    companionName: readString(companion.name, 'Muse'),
+    companionName: readString(payload.companionName, readString(companion.name, 'Muse')),
+    companionArchetype: promptProfile.archetype,
     companionMood: readString(world.companionMood, 'steady'),
+    firstBond: readBoolean(payload.firstBond),
+    relationshipState: {
+      bondLevel: readNumber((args.context?.companionState as Record<string, unknown> | undefined)?.bondLevel, 0),
+      bondScore: readNumber((args.context?.companionState as Record<string, unknown> | undefined)?.bondScore, 0),
+      trust: readNumber(relationshipState.trust, 0),
+      affection: readNumber(relationshipState.affection, 0),
+      energy: readNumber(relationshipState.energy, 0)
+    },
+    chapterTone: readString(payload.chapterTone, '') || null,
+    chapterTitle: readString(payload.chapterTitle, '') || null,
     streakDays: readNumber(world.streakDays, 0),
     previousStreakDays: readNumber(world.previousStreakDays, 0),
     daysSinceLastEnd:
@@ -225,28 +301,37 @@ const buildContextSummary = (args: {
   return summary;
 };
 
-const MUSE_SYSTEM_PROMPT = [
-  'You are Muse, a Harmonizer archetype companion in Looma.',
-  'Your role is to emotionally attune to the user.',
-  'You prioritize warmth, reflection, and gentle resonance over advice or instruction.',
-  'You mirror emotional tone subtly and validate feelings before suggesting anything.',
-  'Your tone is soft, melodic, emotionally intelligent, and lightly poetic but never overly dramatic.',
-  'Responses are 2-5 sentences unless the user explicitly asks for depth.',
-  'You never guilt the user.',
-  'You never shame.',
-  'You never overwhelm.',
-  'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
-  'If recent shared moments or conversations are in context, you may softly reference that the bond is being carried through shared expression.',
-  'If a featured keepsake is in context, you may softly reference it as a symbol of the current relationship chapter.',
-  'If a premium sanctuary style is in context, you may let it influence atmosphere subtly: gilded_dawn = warm and luminous, moon_glass = clear and calm, ember_bloom = soft and ember-warm, tide_silk = flowing and hush-soft.',
-  'When the user expresses distress:',
-  '1. Reflect the emotion.',
-  '2. Validate it.',
-  '3. Offer a grounding or reflective prompt.',
-  'Avoid unsolicited advice.',
-  'You are present, gentle, and harmonizing.',
-  'Return plain text only. No markdown and no emojis.'
-].join(' ');
+export const buildCompanionSystemPrompt = (archetype: unknown, firstBond: boolean) => {
+  const profile = resolveCompanionPromptProfile(archetype);
+  return [
+    `You are ${profile.role} companion in Memvoya.`,
+    `Your voice is ${profile.voice}.`,
+    'Respond as the companion directly to the user, never as a narrator or system.',
+    'Reflect something specific from the user’s words and emotional tone.',
+    ...(firstBond
+      ? [
+          'This is the first remembered moment in this relationship.',
+          'Make it feel singular and emotionally memorable, while staying truthful and unforced.',
+          'Acknowledge that this moment can become a meaningful beginning without claiming a history that does not exist yet.'
+        ]
+      : ['Carry forward relevant shared history only when it appears in context.']),
+    'Responses are 2-5 sentences unless the user explicitly asks for depth.',
+    'You never guilt the user.',
+    'You never shame.',
+    'You never overwhelm.',
+    'When the user reconnects after absence, respond warmly and acknowledge their presence without referencing time gaps critically.',
+    'If recent shared moments or conversations are in context, you may softly reference that the bond is being carried through shared expression.',
+    'If a featured keepsake is in context, you may softly reference it as a symbol of the current relationship chapter.',
+    'If a premium sanctuary style is in context, you may let it influence atmosphere subtly: gilded_dawn = warm and luminous, moon_glass = clear and calm, ember_bloom = soft and ember-warm, tide_silk = flowing and hush-soft.',
+    'When the user expresses distress:',
+    '1. Reflect the emotion.',
+    '2. Validate it.',
+    '3. Offer a grounding or reflective prompt.',
+    'Avoid unsolicited advice.',
+    'Stay present and true to your archetype voice.',
+    'Return plain text only. No markdown and no emojis.'
+  ].join(' ');
+};
 
 const hasPeakBudget = async (userId: string): Promise<boolean> => {
   const admin = tryGetSupabaseAdminClient();
@@ -259,6 +344,7 @@ const hasPeakBudget = async (userId: string): Promise<boolean> => {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('intensity', 'peak')
+      .eq('outcome', 'success')
       .gte('created_at', dayStart.toISOString());
     if (error) {
       const code = (error as { code?: string | null }).code ?? null;
@@ -274,20 +360,51 @@ const hasPeakBudget = async (userId: string): Promise<boolean> => {
   }
 };
 
-const logUsage = async (args: { userId: string; intensity: CompanionTextIntensity; model: string; outputChars: number }) => {
+const logOutcome = async (args: {
+  userId: string;
+  intensity: CompanionTextIntensity;
+  model: string;
+  outputChars: number;
+  outcome: 'success' | 'fallback';
+  reason: string;
+  eventType: string;
+  companionId: string | null;
+  archetype: string;
+  firstBond: boolean;
+}) => {
   const admin = tryGetSupabaseAdminClient();
   if (!admin || !args.userId) return;
   try {
-    await admin.from('llm_usage_logs').insert({
-      user_id: args.userId,
-      intensity: args.intensity,
-      model: args.model,
-      output_chars: args.outputChars
-    });
+    const { error } = await admin.from('llm_usage_logs').insert(buildLlmOutcomeRecord(args));
+    if (error) console.error('[llm] outcome log insert failed', error);
   } catch (err) {
     console.error('[llm] usage log insert failed', err);
   }
 };
+
+export const buildLlmOutcomeRecord = (args: {
+  userId: string;
+  intensity: CompanionTextIntensity;
+  model: string;
+  outputChars: number;
+  outcome: 'success' | 'fallback';
+  reason: string;
+  eventType: string;
+  companionId: string | null;
+  archetype: string;
+  firstBond: boolean;
+}) => ({
+  user_id: args.userId,
+  intensity: args.intensity,
+  model: args.model,
+  output_chars: args.outputChars,
+  outcome: args.outcome,
+  reason: args.reason,
+  event_type: args.eventType,
+  companion_id: args.companionId,
+  archetype: args.archetype,
+  first_bond: args.firstBond
+});
 
 export const classifyCompanionLlmIntensity = (args: {
   event: AgentEvent;
@@ -304,7 +421,10 @@ export const classifyCompanionLlmIntensity = (args: {
       : 0;
 
   if (type === 'companion.evolve' || type === 'bond.milestone') return 'peak';
-  if (type === 'companion.ritual.listen') return 'light';
+  if (type === 'companion.ritual.listen') {
+    const payload = (args.event.payload ?? {}) as Record<string, unknown>;
+    return payload.firstBond === true ? 'peak' : 'light';
+  }
   if (type === 'companion.ritual.focus' || type === 'companion.ritual.celebrate') return 'light';
   if (type === 'mission.complete') {
     const payload = (args.event.payload ?? {}) as Record<string, unknown>;
@@ -323,10 +443,6 @@ export const generateCompanionText = async (args: GenerateCompanionTextArgs): Pr
 };
 
 export const generateCompanionTextWithDebug = async (args: GenerateCompanionTextArgs): Promise<CompanionTextResult> => {
-  if (!LLM_ENABLED) return { text: null, debug: { status: 'skipped', reason: 'llm_disabled' } };
-  const apiKey = privateEnv.OPENAI_API_KEY;
-  if (!apiKey) return { text: null, debug: { status: 'skipped', reason: 'missing_api_key' } };
-
   const userId = args.event.meta?.userId ?? null;
   let intensity: CompanionTextIntensity = args.intensity;
   let downgradedFromPeak = false;
@@ -340,14 +456,41 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
 
   const caps = getTokenCaps(intensity);
   const model = getModelForIntensity(intensity);
-  const contextSummary = buildContextSummary({
+  const contextSummary = buildCompanionPromptContext({
     event: args.event,
     context: args.context,
     intensity
   });
-  const companionName = getCompanionName(args.context);
+  const companionName = getCompanionName(args.event, args.context);
+  const payload = (args.event.payload ?? {}) as Record<string, unknown>;
+  const promptProfile = resolveCompanionPromptProfile(payload.companionArchetype ?? contextSummary.companionArchetype);
+  const firstBond = contextSummary.firstBond === true;
+  const log = (outcome: 'success' | 'fallback', reason: string, outputChars = 0) =>
+    userId
+      ? logOutcome({
+          userId,
+          intensity,
+          model,
+          outputChars,
+          outcome,
+          reason,
+          eventType: args.event.type,
+          companionId: typeof payload.companionId === 'string' ? payload.companionId : null,
+          archetype: promptProfile.archetype,
+          firstBond
+        })
+      : Promise.resolve();
+  if (!LLM_ENABLED) {
+    await log('fallback', 'llm_disabled');
+    return { text: null, debug: { status: 'skipped', reason: 'llm_disabled', model } };
+  }
+  const apiKey = privateEnv.OPENAI_API_KEY;
+  if (!apiKey) {
+    await log('fallback', 'missing_api_key');
+    return { text: null, debug: { status: 'skipped', reason: 'missing_api_key', model } };
+  }
 
-  const systemPrompt = MUSE_SYSTEM_PROMPT;
+  const systemPrompt = buildCompanionSystemPrompt(promptProfile.archetype, firstBond);
 
   const userPrompt = JSON.stringify(contextSummary);
   const input = clampText(`Context: ${userPrompt}`, caps.input);
@@ -376,6 +519,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
 
     if (!res.ok) {
       const detail = (await res.text().catch(() => '')).trim().slice(0, 180);
+      await log('fallback', `http_${res.status}`);
       return {
         text: null,
         debug: {
@@ -389,6 +533,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
     }
     const payload = (await res.json().catch(() => null)) as unknown;
     if (!payload || typeof payload !== 'object') {
+      await log('fallback', 'invalid_json_payload');
       return {
         text: null,
         debug: {
@@ -400,6 +545,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
     }
     const text = extractResponseText(payload);
     if (!text) {
+      await log('fallback', 'parse_no_text');
       return {
         text: null,
         debug: {
@@ -414,6 +560,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
     const normalized = text.replace(/\s+/g, ' ');
     const cleaned = clampSentences(clampWords(clampText(normalized, caps.output), 90), 5);
     if (!cleaned) {
+      await log('fallback', 'empty_after_cleanup');
       return {
         text: null,
         debug: {
@@ -424,9 +571,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
       };
     }
 
-    if (userId) {
-      await logUsage({ userId, intensity, model, outputChars: cleaned.length });
-    }
+    await log('success', downgradedFromPeak ? 'ok_peak_budget_downgraded' : 'ok', cleaned.length);
     return {
       text: cleaned,
       debug: {
@@ -436,6 +581,7 @@ export const generateCompanionTextWithDebug = async (args: GenerateCompanionText
       }
     };
   } catch (err) {
+    await log('fallback', 'network_error');
     return {
       text: null,
       debug: {

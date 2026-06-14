@@ -10,6 +10,7 @@ import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import {
   buildReflectionAcknowledgement,
   clipRememberedReflection,
+  composeReconnectReactionText,
   isReconnectComplete
 } from '$lib/launch/proofIntegrity';
 
@@ -241,7 +242,7 @@ export const POST: RequestHandler = async (event) => {
 
   const { data: companion, error: companionError } = await db
     .from('companions')
-    .select('id, owner_id, name, affection, trust, energy, mood, updated_at, first_bond_completed_at')
+    .select('id, owner_id, name, species, affection, trust, energy, mood, updated_at, first_bond_completed_at')
     .eq('id', companionId)
     .maybeSingle();
 
@@ -257,6 +258,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const checkInAt = new Date().toISOString();
+  const firstBond = !companion.first_bond_completed_at;
   const rememberedBody = clipRememberedReflection(reflection);
   const rememberedReflection = await appendCompanionJournalEntry(db, {
     ownerId: userId,
@@ -359,9 +361,16 @@ export const POST: RequestHandler = async (event) => {
       {
         companionId: updatedCompanion.id,
         companionName: updatedCompanion.name,
+        companionArchetype: companion.species,
         chapterTitle: chapterContext?.title ?? null,
         chapterTone: chapterContext?.tone ?? null,
         premiumStyle: chapterContext?.premiumStyle ?? null,
+        firstBond,
+        relationshipState: {
+          trust: updatedCompanion.trust,
+          affection: updatedCompanion.affection,
+          energy: updatedCompanion.energy
+        },
         mood,
         reflection,
         reflectionChars: reflection.length
@@ -405,13 +414,13 @@ export const POST: RequestHandler = async (event) => {
     chapter: chapterContext,
     mood,
     reflection,
-    firstBond: !companion.first_bond_completed_at
+    firstBond
   });
   const reflectionAcknowledgement = buildReflectionAcknowledgement({
     companionName: updatedCompanion.name,
     mood,
     reflection,
-    firstBond: !companion.first_bond_completed_at
+    firstBond
   });
   const providedReactionText =
     reaction &&
@@ -420,11 +429,20 @@ export const POST: RequestHandler = async (event) => {
     String((reaction as Record<string, unknown>).text).trim().length > 0
       ? String((reaction as Record<string, unknown>).text).trim()
       : null;
+  const reactionSource =
+    reaction && typeof reaction === 'object' && typeof (reaction as Record<string, unknown>).source === 'string'
+      ? String((reaction as Record<string, unknown>).source)
+      : null;
   const reactionWithFallback =
     reaction && typeof reaction === 'object'
       ? {
           ...(reaction as Record<string, unknown>),
-          text: providedReactionText ? `${reflectionAcknowledgement} ${providedReactionText}` : fallbackReply
+          text: composeReconnectReactionText({
+            source: reactionSource,
+            generatedText: providedReactionText,
+            deterministicAcknowledgement: reflectionAcknowledgement,
+            fallbackText: fallbackReply
+          })
         }
       : { text: fallbackReply, source: 'chapter_fallback' };
   return json(
