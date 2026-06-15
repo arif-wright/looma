@@ -64,6 +64,7 @@ describe('companionRosterState', () => {
     expect(active?.energy).toBe(71);
     expect(active?.mood).toBe('happy');
     expect(active?.stats?.fed_at).toBe('2026-02-09T10:30:00.000Z');
+    expect(active?.stats?.last_meaningful_interaction_at).toBe('2026-02-09T10:30:00.000Z');
     expect(active?.stats?.bond_level).toBe(4);
     expect(active?.stats?.bond_score).toBe(220);
   });

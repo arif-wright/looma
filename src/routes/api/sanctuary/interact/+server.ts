@@ -5,6 +5,7 @@ import { buildSharedRestReaction } from '$lib/sanctuary';
 import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState';
 import type { Companion } from '$lib/stores/companions';
 import { SHARED_REST_COOLDOWN_MS } from '$lib/launch/proofIntegrity';
+import { meaningfulInteractionPatch } from '$lib/companions/meaningfulInteraction';
 
 const REST_ENERGY = 35;
 
@@ -41,7 +42,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       supabase
         .from('companions')
         .select(
-          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+          'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score, last_meaningful_interaction_at, repair_started_at, repair_completed_at)'
         )
         .eq('owner_id', userId)
         .order('is_active', { ascending: false })
@@ -124,7 +125,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       last_passive_tick: nowIso,
       last_daily_bonus_at: stats?.last_daily_bonus_at ?? null,
       bond_level: stats?.bond_level ?? null,
-      bond_score: stats?.bond_score ?? null
+      bond_score: stats?.bond_score ?? null,
+      ...meaningfulInteractionPatch('shared_rest', nowIso),
+      repair_started_at: stats?.repair_started_at ?? null,
+      repair_completed_at: stats?.repair_completed_at ?? null
     },
     { onConflict: 'companion_id' }
   );

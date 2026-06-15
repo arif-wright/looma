@@ -846,6 +846,7 @@
   $: activeCompanionRenderHook =
     activeCompanion?.id ? archetypeMetadataByCompanionId[activeCompanion.id]?.renderHook ?? null : null;
   $: activeEffective = activeCompanion ? computeCompanionEffectiveState(activeCompanion, new Date(nowTick)) : null;
+  $: activeAliveState = activeCompanion?.id ? data.aliveStateByCompanionId?.[activeCompanion.id] ?? null : null;
   $: museAnimation = pickMuseAnimationForMood(activeEffective?.moodKey, { nowMs: nowTick, seed: activeCompanion?.id ?? '' });
   $: slotsUsed = Math.min(ownedInstances.length, maxSlots);
   $: portableActiveCompanion = (data as any)?.portableActiveCompanion ?? null;
@@ -906,9 +907,10 @@
       ? formatElapsed(lastInteractionAt(activeCompanion))
       : formatLastCareLabel(activeEffective.msSinceCheckIn)
     : 'Not yet';
-  $: activeMoodLabel = activeCompanion
-    ? activeEffective?.moodLabel ?? getCompanionMoodMeta(activeCompanion.mood).label
-    : 'Quiet';
+  $: activeMoodLabel = activeCompanion ? getCompanionMoodMeta(activeCompanion.mood).label : 'Quiet';
+  $: activeRelationshipLabel = activeAliveState
+    ? activeAliveState.state.charAt(0).toUpperCase() + activeAliveState.state.slice(1)
+    : 'Steady';
   $: activeBondLabel = activeCompanion ? `Bond Lv ${getBondLevel(activeCompanion)}` : 'Bond unavailable';
   $: activeIdentitySignals = activeCompanion
     ? ([
@@ -919,6 +921,12 @@
             activeChapterHistory[0]?.body ??
             activeKeepsake?.body ??
             `${activeCompanion.name} is still waiting for enough shared moments to form a stronger continuity anchor.`,
+          href: activeCompanionJournalHref
+        },
+        {
+          label: 'Relationship state',
+          title: activeRelationshipLabel,
+          body: activeAliveState?.reason ?? `${activeCompanion.name} feels present and open to you.`,
           href: activeCompanionJournalHref
         },
         {
@@ -1307,6 +1315,7 @@
   $: masteryLevel = ownedInstances.length > 0 ? Math.max(...ownedInstances.map((companion) => companionLevel(companion))) : 1;
   $: detailCompanion = activeCompanion ?? filteredOwned[0] ?? ownedInstances[0] ?? null;
   $: detailEffective = detailCompanion ? computeCompanionEffectiveState(detailCompanion, new Date(nowTick)) : null;
+  $: detailAliveState = detailCompanion?.id ? data.aliveStateByCompanionId?.[detailCompanion.id] ?? null : null;
   $: if ((detailCompanion?.id ?? null) !== detailModelCompanionId) {
     detailModelCompanionId = detailCompanion?.id ?? null;
     detailModelLoaded = !detailCompanion;
@@ -1660,6 +1669,9 @@
               />
               <img class="model-platform" src="/assets/platform.png" alt="" aria-hidden="true" />
             </div>
+          </div>
+          <div class="mood-row relationship-state-row">
+            <span><Heart size={23} fill="currentColor" /> Relationship state: {detailAliveState ? detailAliveState.state.charAt(0).toUpperCase() + detailAliveState.state.slice(1) : 'Steady'}</span>
           </div>
           <div class="mood-row">
             <span><Smile size={23} fill="currentColor" /> Current mood: {getCompanionMoodMeta(detailCompanion.mood).label}</span>

@@ -18,11 +18,11 @@ test.describe.serial('Companion roster APIs', () => {
   const fetchRosterRows = async () => {
     const { data, error } = await adminClient
       .from('companions')
-      .select('id, name, created_at')
+      .select('id, name, created_at, is_active')
       .eq('owner_id', seed.viewer.id)
       .order('created_at', { ascending: true });
     if (error) throw error;
-    return (data as { id: string; name: string | null }[]) ?? [];
+    return (data as { id: string; name: string | null; is_active: boolean }[]) ?? [];
   };
 
   const ensureRoster = async () => {
@@ -142,6 +142,8 @@ test.describe.serial('Companion roster APIs', () => {
     const previous = await fetchCompanion(second);
     expect(current.is_active).toBe(true);
     expect(previous.is_active).toBe(false);
+    const rows = await fetchRosterRows();
+    expect(rows.filter((row) => row.is_active)).toHaveLength(1);
     await viewerCtx.dispose();
   });
 

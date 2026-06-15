@@ -6,6 +6,8 @@ test('companion view follows canonical active instance and discover is non-activ
   await page.goto('/app/companions');
   await expect(page.getByRole('heading', { name: /Your Companions/i })).toBeVisible();
   await expect(page.getByText(/^Companion View$/i)).toBeVisible();
+  await expect(page.getByText(/Relationship state: (Steady|Quiet|Softening)/i).first()).toBeVisible();
+  await expect(page.getByText(/Current mood:/i).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: /Switcher/i })).toBeVisible();
   await expect(page.locator('[data-hydrated=\"true\"]')).toHaveCount(1);
 

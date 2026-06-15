@@ -8,6 +8,7 @@ import { runSideEffects } from '$lib/server/sideEffects';
 import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
 import { syncPlayerBondState } from '$lib/server/companions/bonds';
 import { deriveAliveCompanionState } from '$lib/companions/effectiveState';
+import { meaningfulInteractionPatch } from '$lib/companions/meaningfulInteraction';
 import {
   buildReflectionAcknowledgement,
   clipRememberedReflection,
@@ -345,7 +346,7 @@ export const POST: RequestHandler = async (event) => {
               companion_id: updatedCompanion.id,
               played_at: checkInAt,
               last_passive_tick: checkInAt,
-              last_meaningful_interaction_at: checkInAt,
+              ...meaningfulInteractionPatch('check_in', checkInAt),
               repair_started_at: beginsRepair ? checkInAt : companionStats?.repair_started_at ?? null,
               repair_completed_at: completesRepair ? checkInAt : companionStats?.repair_completed_at ?? null
             },

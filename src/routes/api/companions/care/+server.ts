@@ -7,6 +7,7 @@ import { syncEmotionalStateFromCompanionStats } from '$lib/server/emotionalState
 import { supabaseAdmin } from '$lib/server/supabase';
 import { computeCompanionEffectiveState } from '$lib/companions/effectiveState';
 import type { Companion } from '$lib/stores/companions';
+import { meaningfulInteractionPatch } from '$lib/companions/meaningfulInteraction';
 
 type CareAction = 'feed' | 'play' | 'groom';
 type CompanionStatsRow = {
@@ -19,6 +20,9 @@ type CompanionStatsRow = {
   last_daily_bonus_at: string | null;
   bond_level: number | null;
   bond_score: number | null;
+  last_meaningful_interaction_at: string | null;
+  repair_started_at: string | null;
+  repair_completed_at: string | null;
 };
 
 const ACTION_DELTAS: Record<CareAction, { affection: number; trust: number; energy: number }> = {
@@ -129,7 +133,7 @@ export const POST: RequestHandler = async (event) => {
   const { data: companion, error: fetchError } = await supabase
     .from('companions')
     .select(
-      'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)'
+      'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score, last_meaningful_interaction_at, repair_started_at, repair_completed_at)'
     )
     .eq('id', companionId)
     .maybeSingle();
@@ -155,7 +159,10 @@ export const POST: RequestHandler = async (event) => {
     last_passive_tick: null,
     last_daily_bonus_at: null,
     bond_level: null,
-    bond_score: null
+    bond_score: null,
+    last_meaningful_interaction_at: null,
+    repair_started_at: null,
+    repair_completed_at: null
   };
   const normalizedStats = (Array.isArray(statsBase) ? statsBase[0] : statsBase) as CompanionStatsRow | undefined;
   const stats = normalizedStats ?? {
@@ -167,7 +174,10 @@ export const POST: RequestHandler = async (event) => {
     last_passive_tick: null,
     last_daily_bonus_at: null,
     bond_level: null,
-    bond_score: null
+    bond_score: null,
+    last_meaningful_interaction_at: null,
+    repair_started_at: null,
+    repair_completed_at: null
   };
   const lastActionAt = action === 'feed' ? stats.fed_at : action === 'play' ? stats.played_at : stats.groomed_at;
   const lastActionStamp = lastActionAt ? Date.parse(lastActionAt) : Number.NaN;
@@ -217,7 +227,10 @@ export const POST: RequestHandler = async (event) => {
     last_passive_tick: stats.last_passive_tick ?? null,
     last_daily_bonus_at: stats.last_daily_bonus_at ?? null,
     bond_level: stats.bond_level ?? null,
-    bond_score: stats.bond_score ?? null
+    bond_score: stats.bond_score ?? null,
+    ...meaningfulInteractionPatch(action, nowIso),
+    repair_started_at: stats.repair_started_at ?? null,
+    repair_completed_at: stats.repair_completed_at ?? null
   };
 
   const { error: statsError } = await supabase.from('companion_stats').upsert(nextStats, { onConflict: 'companion_id' });

@@ -75,6 +75,12 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'forbidden', details: 'Companion is not unlocked.' }, { status: 403 });
   }
 
+  const { error: activeError } = await supabase.rpc('set_active_companion', { p_companion: target.id });
+  if (activeError) {
+    console.error('[companions/set-active] canonical activation failed', activeError);
+    return json({ error: 'update_failed' }, { status: 500 });
+  }
+
   const nextState: PortableState = {
     ...current,
     updatedAt: new Date().toISOString(),

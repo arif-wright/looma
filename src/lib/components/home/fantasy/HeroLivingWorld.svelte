@@ -8,6 +8,7 @@
   export let playerName = 'Alex';
   export let companionName = 'Lumi';
   export let mood = 'Happy';
+  export let aliveStateLabel = 'Steady';
   export let bond = 87;
   export let relationalState: 'Distant' | 'Near' | 'Resonant' = 'Near';
   export let relationalReason = 'A small moment together will help this bond keep growing.';
@@ -178,6 +179,9 @@
         <img src={moodIconUrl} alt="" loading="eager" />
       </i>
       <span>Current mood: {mood}</span>
+    </div>
+    <div class="status-row relationship">
+      <span>Relationship state: {aliveStateLabel}</span>
     </div>
     <div class="status-row">
       <i class="stat-icon stat-icon--bond" aria-hidden="true">

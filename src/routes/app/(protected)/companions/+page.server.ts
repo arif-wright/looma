@@ -7,9 +7,11 @@ import {
   buildCompanionArchetypeMetadataByCompanionId,
   buildCompanionDiscoverCatalog
 } from '$lib/companions/definitions';
+import { deriveAliveCompanionState } from '$lib/companions/effectiveState';
+import { resolveCanonicalActiveCompanionId } from '$lib/companions/activeCompanion';
 
 const COMPANION_COLUMNS =
-  'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score)';
+  'id, owner_id, name, species, rarity, level, xp, affection, trust, energy, mood, state, is_active, slot_index, avatar_url, created_at, updated_at, stats:companion_stats(companion_id, care_streak, fed_at, played_at, groomed_at, last_passive_tick, last_daily_bonus_at, bond_level, bond_score, last_meaningful_interaction_at, repair_started_at, repair_completed_at)';
 
 type TickSnapshot = {
   id: string;
@@ -42,9 +44,12 @@ type CompanionArchetypeRow = {
   seed: string;
 };
 
-export const load: PageServerLoad = async ({ locals, fetch }) => {
+export const load: PageServerLoad = async ({ locals, fetch, parent }) => {
   const supabase = locals.supabase as App.Locals['supabase'];
   const userId = locals.session?.user?.id ?? locals.user?.id ?? null;
+  const parentData = await parent();
+  const resolvedActiveCompanionId =
+    typeof parentData.activeCompanion?.id === 'string' ? parentData.activeCompanion.id : null;
 
   if (!supabase || !userId) {
     return { companions: [], maxSlots: 3, activeCompanionId: null, tickEvents: [], discoverCatalog: [] };
@@ -181,7 +186,16 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const maxSlotsRaw = slotsResult.data;
   const maxSlots = typeof maxSlotsRaw === 'number' && Number.isFinite(maxSlotsRaw) ? maxSlotsRaw : 3;
 
-  const activeCompanionId = companions.find((companion) => companion.is_active)?.id ?? companions[0]?.id ?? null;
+  const activeCompanionId = resolveCanonicalActiveCompanionId(resolvedActiveCompanionId, companions);
+  const aliveStateByCompanionId = companions.reduce<Record<string, ReturnType<typeof deriveAliveCompanionState>>>(
+    (states, companion) => {
+      const rawStats = companion.stats as Record<string, any> | Array<Record<string, any>> | null;
+      const stats = Array.isArray(rawStats) ? rawStats[0] ?? null : rawStats;
+      states[companion.id] = deriveAliveCompanionState(companion.name, stats);
+      return states;
+    },
+    {}
+  );
   const bondMilestones = await fetchBondAchievementsForUser(supabase, userId);
   const rituals = await getCompanionRituals(supabase, userId);
   const discoverCatalog = buildCompanionDiscoverCatalog((archetypesResult.data ?? []) as CompanionArchetypeRow[]);
@@ -243,6 +257,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     companions,
     maxSlots,
     activeCompanionId,
+    aliveStateByCompanionId,
     discoverCatalog,
     tickEvents,
     error: companionsResult.error?.message ?? slotsResult.error?.message ?? archetypesResult.error?.message ?? null,

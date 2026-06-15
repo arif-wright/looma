@@ -25,6 +25,7 @@
     shouldShowReturningPremiumInvitation
   } from '$lib/launch/proofIntegrity';
   import { bondClosenessFromScore } from '$lib/companions/relationshipState';
+  import { getCompanionMoodMeta } from '$lib/companions/moodMeta';
 
   export let data: PageData;
   let pageMounted = false;
@@ -216,12 +217,6 @@
       `--hero-bridge-ground-bottom: ${placement.bridgeGroundBottom}`
     ].join('; ');
 
-  const normalizedMood = (value: string | null | undefined) => {
-    const mood = value?.trim();
-    if (!mood) return 'Happy';
-    return mood.charAt(0).toUpperCase() + mood.slice(1);
-  };
-
   const resolveSceneArchetype = (value: string | null | undefined) => resolveCanonicalArchetypeId(value, 'muse');
   const numberOr = (value: unknown, fallback: number) => {
     const parsed = typeof value === 'number' ? value : Number(value);
@@ -283,7 +278,8 @@
   $: heroSceneStyle = buildHeroSceneStyle(heroScenePlacement, heroBackgroundUrl);
   $: companionBond = resolveBondPercent(activeCompanion);
   $: companionLevel = Math.max(1, Math.floor(activeCompanion?.bondLevel ?? 1));
-  $: companionMood = aliveState === 'quiet' ? 'Quiet' : aliveState === 'softening' ? 'Softening' : normalizedMood(activeCompanion?.mood);
+  $: companionMood = getCompanionMoodMeta(activeCompanion?.mood).label;
+  $: aliveStateLabel = aliveState.charAt(0).toUpperCase() + aliveState.slice(1);
   $: activeCompanionEffective = activeCompanion
     ? computeCompanionEffectiveState(
         {
@@ -610,6 +606,7 @@
           playerName={playerName}
           companionName={companionName}
           mood={companionMood}
+          {aliveStateLabel}
           bond={companionBond}
           onRename={renameHomeCompanion}
           {relationalState}

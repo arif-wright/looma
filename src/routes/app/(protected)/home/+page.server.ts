@@ -24,6 +24,7 @@ import { ingestServerEvent } from '$lib/server/events/ingest';
 import { getLoomaTuningConfig } from '$lib/server/tuning/config';
 import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
 import { deriveAliveCompanionState, type AliveCompanionSnapshot } from '$lib/companions/effectiveState';
+import { resolveCanonicalActiveCompanion } from '$lib/companions/activeCompanion';
 import {
   canCompleteSharedRest,
   type HomeJournalMoment,
@@ -1067,8 +1068,10 @@ export const load: PageServerLoad = async (event) => {
     };
 
     const fallbackCompanion = creatureMoments.find((c) => c.is_active) ?? creatureMoments[0] ?? null;
-    let activeCompanion =
-      (fallbackCompanion ? rowToSnapshot(fallbackCompanion) : null) ?? parentActiveCompanion;
+    let activeCompanion = resolveCanonicalActiveCompanion(
+      parentActiveCompanion,
+      creatureMoments.map(rowToSnapshot)
+    );
 
     let memorySummary: MemorySummary | null = null;
     let persistedReflection: PersistedReflectionRow | null = null;

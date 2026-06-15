@@ -70,13 +70,20 @@ export const POST: RequestHandler = async (event) => {
       energy: 100,
       mood: 'neutral',
       avatar_url: null,
-      is_active: true
+      is_active: false,
+      state: 'idle'
     })
     .select('id')
     .single();
 
   if (insertError || !inserted) {
     return json({ error: insertError?.message ?? 'spawn_failed' }, { status: 400 });
+  }
+
+  const { error: activationError } = await supabase.rpc('set_active_companion', { p_companion: inserted.id });
+  if (activationError) {
+    await supabase.from('companions').delete().eq('id', inserted.id).eq('owner_id', session.user.id);
+    return json({ error: activationError.message ?? 'activation_failed' }, { status: 500 });
   }
 
   return json({

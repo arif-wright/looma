@@ -34,7 +34,10 @@ const normalizeStats = (instance: Companion): CompanionStats => {
       last_passive_tick: instance.stats.last_passive_tick ?? null,
       last_daily_bonus_at: instance.stats.last_daily_bonus_at ?? null,
       bond_level: instance.stats.bond_level ?? instance.bond_level ?? 0,
-      bond_score: instance.stats.bond_score ?? instance.bond_score ?? 0
+      bond_score: instance.stats.bond_score ?? instance.bond_score ?? 0,
+      last_meaningful_interaction_at: instance.stats.last_meaningful_interaction_at ?? null,
+      repair_started_at: instance.stats.repair_started_at ?? null,
+      repair_completed_at: instance.stats.repair_completed_at ?? null
     };
   }
   return {
@@ -46,7 +49,10 @@ const normalizeStats = (instance: Companion): CompanionStats => {
     last_passive_tick: null,
     last_daily_bonus_at: null,
     bond_level: instance.bond_level ?? 0,
-    bond_score: instance.bond_score ?? 0
+    bond_score: instance.bond_score ?? 0,
+    last_meaningful_interaction_at: null,
+    repair_started_at: null,
+    repair_completed_at: null
   };
 };
 
@@ -153,7 +159,7 @@ export const createCompanionRosterState = (
     interactionType: CompanionInteractionType,
     timestamp: string = new Date().toISOString()
   ) => {
-    const statsPatch: Partial<CompanionStats> = {};
+    const statsPatch: Partial<CompanionStats> = { last_meaningful_interaction_at: timestamp };
     if (interactionType === 'feed') statsPatch.fed_at = timestamp;
     if (interactionType === 'play') statsPatch.played_at = timestamp;
     if (interactionType === 'groom') statsPatch.groomed_at = timestamp;

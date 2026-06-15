@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { deriveAliveCompanionState } from '$lib/companions/effectiveState';
 import { appendCompanionJournalEntry } from '$lib/server/companions/journal';
 import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/server/supabase';
+import { meaningfulInteractionPatch } from '$lib/companions/meaningfulInteraction';
 
 const CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 const ACTIONS = new Set(['sit', 'stay']);
@@ -130,13 +131,13 @@ export const POST: RequestHandler = async (event) => {
     action === 'sit'
       ? {
           companion_id: companion.id,
-          last_meaningful_interaction_at: nowIso,
+          ...meaningfulInteractionPatch('presence', nowIso),
           repair_started_at: nowIso,
           repair_completed_at: null
         }
       : {
           companion_id: companion.id,
-          last_meaningful_interaction_at: nowIso,
+          ...meaningfulInteractionPatch('presence', nowIso),
           repair_started_at: stats?.repair_started_at ?? nowIso,
           repair_completed_at: nowIso
         };

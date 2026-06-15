@@ -28,6 +28,16 @@ test.describe('Companion care API', () => {
     return data;
   };
 
+  const fetchLastMeaningfulInteractionAt = async () => {
+    const { data, error } = await adminClient
+      .from('companion_stats')
+      .select('last_meaningful_interaction_at')
+      .eq('companion_id', companionId)
+      .single();
+    if (error) throw error;
+    return data.last_meaningful_interaction_at as string | null;
+  };
+
   const resetCompanion = async (overrides?: { affection?: number; trust?: number; energy?: number }) => {
     await adminClient
       .from('companions')
@@ -47,7 +57,10 @@ test.describe('Companion care API', () => {
           care_streak: 0,
           fed_at: null,
           played_at: null,
-          groomed_at: null
+          groomed_at: null,
+          last_meaningful_interaction_at: null,
+          repair_started_at: null,
+          repair_completed_at: null
         },
         { onConflict: 'companion_id' }
       );
@@ -95,6 +108,7 @@ test.describe('Companion care API', () => {
     expect(payload?.companion?.trust).toBe(before.trust + 2);
     expect(payload?.companion?.energy).toBe(before.energy + 15);
     expect(payload?.event?.action).toBe('feed');
+    expect(await fetchLastMeaningfulInteractionAt()).toBeTruthy();
     await viewerCtx.dispose();
   });
 
