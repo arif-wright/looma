@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@colyseus/sdk':
+        specifier: 0.17.43
+        version: 0.17.43(typescript@5.9.3)(zod@3.25.76)
       '@google/model-viewer':
         specifier: ^4.0.0
         version: 4.1.0(three@0.172.0)
@@ -99,6 +102,45 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+
+  '@better-auth/utils@0.3.1':
+    resolution: {integrity: sha512-+CGp4UmZSUrHHnpHhLPYu6cV+wSUSvVbZbNykxhUDocpVNTo9uFFxw/NqJlh1iC4wQ9HKKWGCKuZ5wUgS0v6Kg==}
+
+  '@better-fetch/fetch@1.3.1':
+    resolution: {integrity: sha512-ABkD1WhyfPZprKRQI3bhATjeiFuNWC9PXhfGWqL+sg/gKrM977oFrYkdb4msM3hgUGonr7KlOsOFT5TU2rht9g==}
+
+  '@colyseus/better-call@1.3.3':
+    resolution: {integrity: sha512-ISJtvMx6fV0ABPQt/ljzPc4O2+mFvyVKeHKX02qBSWKR0VXOXzniAC64POea4pp8DxZTbgHoSPpXjdnNpUkeLw==}
+    peerDependencies:
+      zod: ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@colyseus/msgpackr@1.11.3':
+    resolution: {integrity: sha512-P86w/FrZWUaV7StxI7WuNg3wFlUrROSiBOrF378wyOgxS5+etcxUQMPe0OJZDEx+QUdu7QOPzsqE0Ziqwpjnug==}
+
+  '@colyseus/schema@4.0.30':
+    resolution: {integrity: sha512-5XupVTuaz2vMY7fKz9aZ7FW1NaZ8MEAUtKrRTunybhIiQkN4aGHvF48w+nzJb5AGbpOr6ZbEyFrbyw9XMW+8DA==}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@colyseus/sdk@0.17.43':
+    resolution: {integrity: sha512-aXefQuh7esEZbtd11TzKMqoLmUjKIfWVDr7ytPR7atV2QgnVyOHof3WIX7B8MDfr9ShyFFVEy2BseCGIfzzvBA==}
+    engines: {node: '>= 12.x'}
+    peerDependencies:
+      '@colyseus/core': 0.17.x
+    peerDependenciesMeta:
+      '@colyseus/core':
+        optional: true
+
+  '@colyseus/shared-types@0.17.6':
+    resolution: {integrity: sha512-GeBB9uNrjG+BWa4/LAVyAHj65ll0WKLNjWDieKiphhmbfGXgQOcmvWVxKQc8KKu+n7f5Hmrwr6IEk9Dm2Y0Qgw==}
+    engines: {node: '>= 22.x'}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -443,6 +485,36 @@ packages:
     resolution: {integrity: sha512-2Z0FATFHaoYJ8b+Y4y4Hgfn3FRFwuU5zRrk+9dFWp4uGAdHGqVEdP7HP+gLA3X469KXHmfupJaUbKo1b/aDKIg==}
     peerDependencies:
       three: '>= 0.159.0'
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
+    resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
+    resolution: {integrity: sha512-zExlW9zUJKZH/tOtVMttwjKa4Xm/3KcNjnE3dPN92uCktwavMxpgCA3MoJK/DOnTWsQgo224OaST27/mPNAf+w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
+    resolution: {integrity: sha512-dgX0P/9wGPJeHFBG+ZmhgE6bmtMt7NP5CRBGyyktpopdk/mW4POnrpQsSLtKI1dwpc+pPLuXHDh6vvskyQE/sw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
+    resolution: {integrity: sha512-Tg3yX65f5GbtXLkrYEHE5oibZG9epyYWas7FogTTEJeDEF9JlXJzKgXaNhT3UXlTOeA+AfZpYZYZ0uPj7Cfquw==}
+    cpu: [arm]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
+    resolution: {integrity: sha512-8TNXMEjJc3QEy7R/x1INhgiU+XakDAFUzBhaz7+Rbrs8NH5UQeHQxxmzsSBJGyV6I1jW79undiQm8tOI+D+8FQ==}
+    cpu: [x64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
+    resolution: {integrity: sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1267,6 +1339,7 @@ packages:
 
   lucide-svelte@0.552.0:
     resolution: {integrity: sha512-zynJ64KOsuQG3I4tSqfvvl7Kc9x4mWkppbxsuyrbegQwma9HFhBp4aE6HuQNF4c3pS0AHWHki5CAMs5m3QXA5w==}
+    deprecated: Package deprecated. Please use @lucide/svelte instead.
     peerDependencies:
       svelte: ^3 || ^4 || ^5.0.0-next.42
 
@@ -1321,6 +1394,10 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
+  msgpackr-extract@3.0.4:
+    resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
+    hasBin: true
+
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
@@ -1337,6 +1414,10 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
+
+  node-gyp-build-optional-packages@5.2.2:
+    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
+    hasBin: true
 
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
@@ -1578,6 +1659,9 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
+  rou3@0.7.12:
+    resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
+
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
@@ -1599,6 +1683,9 @@ packages:
 
   set-cookie-parser@2.7.2:
     resolution: {integrity: sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==}
+
+  set-cookie-parser@3.1.2:
+    resolution: {integrity: sha512-5/r/lTwbJ3zQ+qwdUFZYeRNqda7P5HD8zQKqlSjdGt1/S0cjLAphHusj4Y58ahDtWn/g32xrIS58/ikOvwl0Lw==}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -1974,6 +2061,45 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
+  '@better-auth/utils@0.3.1': {}
+
+  '@better-fetch/fetch@1.3.1': {}
+
+  '@colyseus/better-call@1.3.3(zod@3.25.76)':
+    dependencies:
+      '@better-auth/utils': 0.3.1
+      '@better-fetch/fetch': 1.3.1
+      rou3: 0.7.12
+      set-cookie-parser: 3.1.2
+    optionalDependencies:
+      zod: 3.25.76
+
+  '@colyseus/msgpackr@1.11.3':
+    optionalDependencies:
+      msgpackr-extract: 3.0.4
+
+  '@colyseus/schema@4.0.30(typescript@5.9.3)':
+    optionalDependencies:
+      typescript: 5.9.3
+
+  '@colyseus/sdk@0.17.43(typescript@5.9.3)(zod@3.25.76)':
+    dependencies:
+      '@colyseus/better-call': 1.3.3(zod@3.25.76)
+      '@colyseus/msgpackr': 1.11.3
+      '@colyseus/schema': 4.0.30(typescript@5.9.3)
+      '@colyseus/shared-types': 0.17.6
+      tslib: 2.8.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
+  '@colyseus/shared-types@0.17.6':
+    dependencies:
+      '@standard-schema/spec': 1.0.0
+
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
 
@@ -2186,6 +2312,24 @@ snapshots:
     dependencies:
       promise-worker-transferable: 1.0.4
       three: 0.172.0
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
+    optional: true
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -3034,6 +3178,18 @@ snapshots:
 
   ms@2.1.3: {}
 
+  msgpackr-extract@3.0.4:
+    dependencies:
+      node-gyp-build-optional-packages: 5.2.2
+    optionalDependencies:
+      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
+    optional: true
+
   mz@2.7.0:
     dependencies:
       any-promise: 1.3.0
@@ -3045,6 +3201,11 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+
+  node-gyp-build-optional-packages@5.2.2:
+    dependencies:
+      detect-libc: 2.1.2
+    optional: true
 
   node-gyp-build@4.8.4: {}
 
@@ -3261,6 +3422,8 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.53.0
       fsevents: 2.3.3
 
+  rou3@0.7.12: {}
+
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
@@ -3288,6 +3451,8 @@ snapshots:
   set-blocking@2.0.0: {}
 
   set-cookie-parser@2.7.2: {}
+
+  set-cookie-parser@3.1.2: {}
 
   shebang-command@2.0.0:
     dependencies:
