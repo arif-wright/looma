@@ -55,7 +55,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   state = new WorldState();
   patchRate = 50;
   maxMessagesPerSecond = 40;
-  private reconnectGraceSeconds = 10;
+  private reconnectGraceSeconds = 20;
   private log = createLogger('info');
   private joinSecret = '';
   private map: WorldMapDefinition = WORLD_MAPS['wilds-exploration'];
@@ -65,7 +65,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
 
   onCreate(options: WorldRoomOptions) {
     this.maxClients = options.maxClients ?? 32;
-    this.reconnectGraceSeconds = options.reconnectGraceSeconds ?? 10;
+    this.reconnectGraceSeconds = options.reconnectGraceSeconds ?? 20;
     this.log = createLogger(options.logLevel ?? 'info');
     this.joinSecret = options.joinSecret ?? '';
     this.map = options.map ?? WORLD_MAPS['wilds-exploration'];

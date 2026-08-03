@@ -26,6 +26,7 @@ export class WorldConnection {
   private stopped = false;
   private connected = false;
   private status: ConnectionStatus = 'offline';
+  private recoveryAttempted = false;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly pendingGathers = new Map<string, { requestId: string; nodeKey: 'moonberry-bush' }>();
 
@@ -41,8 +42,8 @@ export class WorldConnection {
     this.debug = options.debug ?? import.meta.env.DEV;
   }
 
-  async connect() {
-    this.setStatus('connecting');
+  async connect(recovering = false) {
+    this.setStatus(recovering ? 'reconnecting' : 'connecting');
     try {
       const ticketResponse = await fetch('/api/world/ticket', {
         method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
@@ -63,7 +64,9 @@ export class WorldConnection {
       this.room = room;
       this.connected = true;
       room.reconnection.minUptime = 0;
-      room.reconnection.maxRetries = 8;
+      // These delays total roughly 13.4 seconds, below the default
+      // server-side reconnection grace period.
+      room.reconnection.maxRetries = 15;
       room.reconnection.maxDelay = 1_000;
       room.onStateChange((state) => this.publishSnapshot(state));
       room.onMessage(GATHER_RESULT_MESSAGE, (result: GatherResult) => {
@@ -72,6 +75,7 @@ export class WorldConnection {
         this.callbacks.onGatherResult(result);
       });
       room.onDrop((code) => {
+        if (this.room !== room) return;
         this.connected = false;
         if (!this.stopped) {
           this.log('onDrop', { code });
@@ -80,6 +84,7 @@ export class WorldConnection {
         }
       });
       room.onReconnect(() => {
+        if (this.room !== room) return;
         this.connected = true;
         if (!this.stopped) {
           this.log('reconnect success');
@@ -89,14 +94,24 @@ export class WorldConnection {
         }
       });
       room.onLeave((code) => {
+        if (this.room !== room) return;
         this.connected = false;
         if (!this.stopped) {
           this.log('onLeave', { code });
+          if (this.status === 'reconnecting' && !this.recoveryAttempted) {
+            this.recoveryAttempted = true;
+            this.room = null;
+            this.clearRefreshTimer();
+            this.log('fresh session recovery');
+            void this.connect(true);
+            return;
+          }
           this.setStatus('unavailable');
           this.failPendingGathers();
         }
       });
       room.onError((code) => {
+        if (this.room !== room) return;
         if (this.stopped || this.connected) return;
         this.log('connection error', { code, reconnecting: this.status === 'reconnecting' });
         // Colyseus emits transport errors while its automatic token-based
@@ -106,6 +121,8 @@ export class WorldConnection {
       this.log('successful join');
       this.setStatus('connected');
       this.publishSnapshot(room.state);
+      for (const request of this.pendingGathers.values()) room.send(GATHER_MESSAGE, request);
+      this.clearRefreshTimer();
       this.refreshTimer = setInterval(() => void this.refreshCompanion(), 30_000);
     } catch (error) {
       if (!this.stopped) {
@@ -113,7 +130,7 @@ export class WorldConnection {
         if (code === 525) this.setStatus('unauthorized');
         else {
           // Do not serialize the error: SDK errors may include request metadata.
-          console.warn('[world] Realtime connection failed; continuing locally.');
+          console.warn('[world] Realtime connection is unavailable.');
           this.setStatus('unavailable');
         }
       }
@@ -141,8 +158,7 @@ export class WorldConnection {
     this.connected = false;
     const room = this.room;
     this.room = null;
-    if (this.refreshTimer) clearInterval(this.refreshTimer);
-    this.refreshTimer = null;
+    this.clearRefreshTimer();
     this.pendingGathers.clear();
     if (room) void room.leave(true);
   }
@@ -194,6 +210,11 @@ export class WorldConnection {
     if (this.stopped || this.status === status) return;
     this.status = status;
     this.callbacks.onStatus(status);
+  }
+
+  private clearRefreshTimer() {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = null;
   }
 
   private log(event: string, fields?: Record<string, unknown>) {

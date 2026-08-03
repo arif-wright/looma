@@ -17,7 +17,7 @@ export const readWorldServerConfig = (source: NodeJS.ProcessEnv = process.env) =
   port: parseInteger(source.PORT, 2567, 1, 65_535),
   allowedOrigins: parseOrigins(source.WORLD_ALLOWED_ORIGINS),
   logLevel: source.WORLD_LOG_LEVEL === 'debug' ? ('debug' as const) : ('info' as const),
-  reconnectGraceSeconds: parseInteger(source.WORLD_RECONNECT_GRACE_SECONDS, 10, 1, 60),
+  reconnectGraceSeconds: parseInteger(source.WORLD_RECONNECT_GRACE_SECONDS, 20, 1, 60),
   maxClients: parseInteger(source.WORLD_MAX_CLIENTS, 32, 2, 100),
   joinSecret: source.WORLD_JOIN_SECRET ?? '',
   production: source.NODE_ENV === 'production',

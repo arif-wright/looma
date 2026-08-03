@@ -82,15 +82,29 @@ describe('WorldConnection lifecycle', () => {
     connection.destroy('test teardown');
   });
 
-  it('falls back once only after reconnection is exhausted', async () => {
-    const { connection, room, statuses } = setup();
+  it('falls back once only after token and fresh-session recovery are exhausted', async () => {
+    const { connection, room, statuses, joinOrCreate } = setup();
     await connection.connect();
+    joinOrCreate.mockRejectedValueOnce(new Error('room remains unavailable'));
     room.onDrop.emit(1006);
     room.onError.emit(1006);
-    room.onLeave.emit(4004, 'reconnection exhausted');
-    room.onLeave.emit(4004, 'duplicate terminal callback');
+    room.onLeave.emit(4003, 'reconnection exhausted');
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('unavailable'));
 
     expect(statuses).toEqual(['connecting', 'connected', 'reconnecting', 'unavailable']);
+    expect(joinOrCreate).toHaveBeenCalledTimes(2);
+    connection.destroy('test teardown');
+  });
+
+  it('recovers with one fresh authenticated join after the prior session expires', async () => {
+    const { connection, room, statuses, joinOrCreate } = setup();
+    await connection.connect();
+    room.onDrop.emit(1006);
+    room.onLeave.emit(4003, 'reconnection exhausted');
+    await vi.waitFor(() => expect(joinOrCreate).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('connected'));
+
+    expect(statuses).toEqual(['connecting', 'connected', 'reconnecting', 'connected']);
     connection.destroy('test teardown');
   });
 
