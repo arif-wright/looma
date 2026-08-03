@@ -6,6 +6,7 @@ describe('item presentation', () => {
     expect(itemSourceLabel('care_milestone')).toBe('Earned through shared care');
     expect(itemSourceLabel('chapter_reward', 'mission')).toBe('Formed during a mission chapter');
     expect(itemSourceLabel('chapter_reward', 'bond')).toBe('Formed as your bond deepened');
+    expect(itemSourceLabel('world', 'wonder')).toBe('Gathered in The Wilds');
   });
 
   it('uses the most useful provenance detail', () => {

@@ -54,6 +54,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
             const headers = new Headers(response.headers);
             headers.set('content-type', 'application/json; charset=utf-8');
+            headers.delete('content-length');
             return new Response(JSON.stringify(next), {
               status: response.status,
               statusText: response.statusText,

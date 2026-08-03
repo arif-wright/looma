@@ -3,6 +3,7 @@ export type ItemProvenance = Record<string, unknown> | null | undefined;
 const textValue = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
 
 export const itemSourceLabel = (sourceType: string, tone?: string | null) => {
+  if (sourceType === 'world') return 'Gathered in The Wilds';
   if (sourceType === 'care_milestone') return 'Earned through shared care';
 
   if (sourceType === 'chapter_reward') {

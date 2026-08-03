@@ -13,7 +13,13 @@ const config: PlaywrightTestConfig = {
   globalSetup: hasSupabaseSeedEnv ? './tests/global.setup.ts' : undefined,
   testMatch: hasSupabaseSeedEnv
     ? undefined
-    : ['homepage.spec.ts', 'homepage.world.spec.ts', 'routing.spec.ts', 'permalink.spec.ts'],
+    : [
+        'homepage.spec.ts',
+        'homepage.world.spec.ts',
+        'routing.spec.ts',
+        'permalink.spec.ts',
+        'world-stage-1.spec.ts'
+      ],
   testIgnore: hasSupabaseSeedEnv
     ? undefined
     : [

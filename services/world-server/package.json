@@ -1,0 +1,30 @@
+{
+  "name": "@memvoya/world-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/src/index.js",
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@colyseus/schema": "4.0.30",
+    "@colyseus/tools": "0.17.19",
+    "@colyseus/ws-transport": "0.17.13",
+    "@supabase/supabase-js": "2.49.1",
+    "colyseus": "0.17.10"
+  },
+  "devDependencies": {
+    "@colyseus/testing": "0.17.11",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vitest": "^1.6.1"
+  }
+}

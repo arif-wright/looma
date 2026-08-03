@@ -30,6 +30,7 @@
   };
   type UnifiedItemRow = {
     id: string;
+    quantity: number;
     source_type: string;
     source_key?: string | null;
     provenance_json?: Record<string, unknown> | null;
@@ -219,6 +220,7 @@
                   <div class="inventory-body__heading">
                     <div>
                       <h3>{owned.item.title}</h3>
+                      {#if owned.quantity > 1}<span class="inventory-quantity">×{owned.quantity}</span>{/if}
                       <p class="subtitle">{owned.item.description}</p>
                     </div>
                     <span class="inventory-type">{titleCase(owned.item.kind)}</span>

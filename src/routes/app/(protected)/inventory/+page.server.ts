@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     supabase
       .from('user_items')
       .select(
-        'id, source_type, source_key, provenance_json, acquired_at, companion:companion_id (id, name), item:item_id (id, item_key, title, description, kind, tone, visual_key, capabilities)'
+        'id, quantity, source_type, source_key, provenance_json, acquired_at, companion:companion_id (id, name), item:item_id (id, item_key, title, description, kind, tone, visual_key, capabilities)'
       )
       .order('acquired_at', { ascending: false }),
     supabase
