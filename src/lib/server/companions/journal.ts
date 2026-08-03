@@ -950,7 +950,7 @@ export const unlockChapterRewards = async (
 
   const { error } = await client
     .from('companion_chapter_rewards')
-    .upsert(rows, { onConflict: 'owner_id,companion_id,reward_key', ignoreDuplicates: false });
+    .upsert(rows, { onConflict: 'owner_id,companion_id,reward_key', ignoreDuplicates: true });
 
   if (error) {
     console.error('[companion-journal] chapter reward unlock failed', error);

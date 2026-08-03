@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { onDestroy, onMount } from 'svelte';
   import { fitWorldViewport } from './config';
   import { GameLifecycle, type GameRuntime } from './lifecycle';
@@ -112,7 +113,7 @@
   });
 
   onDestroy(() => {
-    document.removeEventListener('visibilitychange', handleVisibility);
+    if (browser) document.removeEventListener('visibilitychange', handleVisibility);
     resizeObserver?.disconnect();
     resizeObserver = null;
     runtime = null;

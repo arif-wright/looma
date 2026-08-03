@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import type { PageData } from './$types';
   import WorldGameMount from '$lib/game/WorldGameMount.svelte';
 
@@ -24,7 +25,13 @@
   </header>
 
   {#if data.worldEnabled}
-    <WorldGameMount serverUrl={data.worldServerUrl} />
+    {#if browser}
+      <WorldGameMount serverUrl={data.worldServerUrl} />
+    {:else}
+      <div class="world-loading" data-testid="world-loading-state" role="status">
+        <p>Preparing The Wilds…</p>
+      </div>
+    {/if}
     <div class="world-help" data-testid="world-enabled-state">
       <p><strong>Move:</strong> WASD, arrow keys, or the on-screen direction pad.</p>
       <p>This preview uses anonymous local multiplayer when the world server is running and never saves progress.</p>
@@ -113,6 +120,18 @@
       radial-gradient(circle at 70% 20%, rgba(76, 165, 141, 0.16), transparent 18rem),
       rgba(8, 13, 25, 0.72);
   }
+
+  .world-loading {
+    min-height: 24rem;
+    display: grid;
+    place-content: center;
+    border: 1px solid rgba(185, 232, 220, 0.18);
+    border-radius: 1rem;
+    background: rgba(8, 13, 25, 0.72);
+    color: rgba(236, 238, 255, 0.76);
+  }
+
+  .world-loading p { margin: 0; }
 
   @media (max-width: 640px) {
     .world-header { align-items: flex-start; flex-direction: column; }

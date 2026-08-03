@@ -4,6 +4,7 @@
   import { createClient, type SupabaseClient } from '@supabase/supabase-js';
   import { env as publicEnv } from '$env/dynamic/public';
   import { devLog, safeUiMessage } from '$lib/utils/safeUiError';
+  import { resolveAuthCallbackUrl } from '$lib/auth/redirect';
 
   const providers = ['google', 'github'] as const;
 
@@ -15,7 +16,13 @@
   let envError = '';
 
   const getRedirectTarget = () =>
-    typeof window === 'undefined' ? undefined : `${window.location.origin}/auth/callback`;
+    typeof window === 'undefined'
+      ? undefined
+      : resolveAuthCallbackUrl(
+          publicEnv.PUBLIC_SITE_URL,
+          window.location.origin,
+          publicEnv.PUBLIC_AUTH_CALLBACK
+        );
 
   onMount(() => {
     if (!browser) return;

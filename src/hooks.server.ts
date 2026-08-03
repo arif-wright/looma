@@ -2,8 +2,17 @@ import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getUserServer } from '$lib/server/auth';
 import { SAFE_LOAD_MESSAGE, SAFE_UNAUTHORIZED_MESSAGE } from '$lib/safeMessages';
+import { resolveCanonicalDeploymentUrl } from '$lib/auth/redirect';
+import { env } from '$env/dynamic/public';
 
 export const handle: Handle = async ({ event, resolve }) => {
+  if (!dev) {
+    const canonical = resolveCanonicalDeploymentUrl(env.PUBLIC_SITE_URL, event.url);
+    if (canonical) {
+      return new Response(null, { status: 308, headers: { Location: canonical.toString() } });
+    }
+  }
+
   if (event.url.hostname === '127.0.0.1') {
     const url = new URL(event.request.url);
     url.hostname = 'localhost';

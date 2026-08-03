@@ -13,3 +13,5 @@ To enable additional providers later:
 3. Enable the provider inside Supabase Dashboard → Authentication → Providers and supply the callback URL (`/auth/callback`).
 
 Remember to keep `PUBLIC_SITE_URL`, `PUBLIC_SUPABASE_URL`, and `PUBLIC_SUPABASE_ANON_KEY` in sync across environments.
+
+Production uses `PUBLIC_SITE_URL=https://memvoya.com` and `PUBLIC_AUTH_CALLBACK=/auth/callback`. Add `https://memvoya.com/auth/callback` to the Supabase redirect allowlist. The `looma-omega.vercel.app` hostname is a deployment alias, not the canonical authentication return URL.
