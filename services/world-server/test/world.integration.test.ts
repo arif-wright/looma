@@ -55,6 +55,23 @@ describe('WorldRoom integration', () => {
     await client.leave(true);
   });
 
+  it('reconnects a dropped client into the same authoritative session', async () => {
+    const room = await server.createRoom<WorldRoom>(WORLD_ROOM_NAME);
+    const client = await server.connectTo(room, { ticket: createTestTicket() });
+    const sessionId = client.sessionId;
+    client.reconnection.minUptime = 0;
+    client.reconnection.maxDelay = 25;
+    const reconnected = new Promise<void>((resolve) => client.onReconnect(resolve));
+
+    client.connection.close();
+    await reconnected;
+
+    expect(client.sessionId).toBe(sessionId);
+    expect(room.state.players.size).toBe(1);
+    expect(room.state.players.get(sessionId)?.connected).toBe(true);
+    await client.leave(true);
+  });
+
   it('rejects malformed and excessive movement messages', async () => {
     const room = await server.createRoom<WorldRoom>(WORLD_ROOM_NAME);
     const client = await server.connectTo(room, { ticket: createTestTicket() });

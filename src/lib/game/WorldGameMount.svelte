@@ -26,8 +26,8 @@
     connectionStatus === 'connected' ? 'Multiplayer connected' :
     connectionStatus === 'connecting' ? 'Connecting…' :
     connectionStatus === 'reconnecting' ? 'Reconnecting…' :
-    connectionStatus === 'unauthorized' ? 'Session required · local mode' :
-    connectionStatus === 'unavailable' ? 'Server unavailable · local mode' : 'Local mode';
+    connectionStatus === 'unauthorized' ? 'Session required' :
+    connectionStatus === 'unavailable' ? 'Multiplayer unavailable' : 'World offline';
 
   const lifecycle = new GameLifecycle(async (target) => {
     const { createWorldGame } = await import('./worldGame');
@@ -98,7 +98,7 @@
   onMount(async () => {
     try {
       await lifecycle.mount(host);
-      status = 'The local world is ready.';
+      status = 'The Wilds is ready.';
       resizeObserver = new ResizeObserver(resize);
       resizeObserver.observe(viewport);
       resize();

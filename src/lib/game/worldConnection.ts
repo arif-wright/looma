@@ -16,23 +16,39 @@ export type WorldConnectionCallbacks = {
   onGatherResult: (result: GatherResult) => void;
 };
 
+type WorldConnectionOptions = {
+  createClient?: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
+  debug?: boolean;
+};
+
 export class WorldConnection {
   private room: Room<SyncedWorld> | null = null;
   private stopped = false;
   private connected = false;
+  private status: ConnectionStatus = 'offline';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly pendingGathers = new Map<string, { requestId: string; nodeKey: 'moonberry-bush' }>();
 
-  constructor(private readonly endpoint: string, private readonly callbacks: WorldConnectionCallbacks) {}
+  private readonly createClient: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
+  private readonly debug: boolean;
+
+  constructor(
+    private readonly endpoint: string,
+    private readonly callbacks: WorldConnectionCallbacks,
+    options: WorldConnectionOptions = {}
+  ) {
+    this.createClient = options.createClient ?? ((endpoint) => new Client(endpoint));
+    this.debug = options.debug ?? import.meta.env.DEV;
+  }
 
   async connect() {
-    this.callbacks.onStatus('connecting');
+    this.setStatus('connecting');
     try {
       const ticketResponse = await fetch('/api/world/ticket', {
         method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
       });
       if (ticketResponse.status === 401 || ticketResponse.status === 403) {
-        this.callbacks.onStatus('unauthorized');
+        this.setStatus('unauthorized');
         return;
       }
       if (!ticketResponse.ok) throw new Error('World ticket unavailable');
@@ -40,7 +56,7 @@ export class WorldConnection {
       if (typeof credential.ticket !== 'string' || !Number.isFinite(credential.expiresAt)) {
         throw new Error('World ticket malformed');
       }
-      const room = await new Client(this.endpoint).joinOrCreate<SyncedWorld>(WORLD_ROOM_NAME, {
+      const room = await this.createClient(this.endpoint).joinOrCreate<SyncedWorld>(WORLD_ROOM_NAME, {
         ticket: credential.ticket
       });
       if (this.stopped) { await room.leave(true); return; }
@@ -55,39 +71,50 @@ export class WorldConnection {
         this.pendingGathers.delete(result.requestId);
         this.callbacks.onGatherResult(result);
       });
-      room.onDrop(() => {
+      room.onDrop((code) => {
         this.connected = false;
-        if (!this.stopped) this.callbacks.onStatus('reconnecting');
+        if (!this.stopped) {
+          this.log('onDrop', { code });
+          this.setStatus('reconnecting');
+          this.log('reconnect attempt');
+        }
       });
       room.onReconnect(() => {
         this.connected = true;
         if (!this.stopped) {
-          this.callbacks.onStatus('connected');
+          this.log('reconnect success');
+          this.setStatus('connected');
           void this.refreshCompanion();
           for (const request of this.pendingGathers.values()) room.send(GATHER_MESSAGE, request);
         }
       });
-      room.onLeave(() => {
+      room.onLeave((code) => {
         this.connected = false;
         if (!this.stopped) {
-          this.callbacks.onStatus('unavailable');
+          this.log('onLeave', { code });
+          this.setStatus('unavailable');
           this.failPendingGathers();
         }
       });
-      room.onError(() => {
-        if (!this.stopped && !this.connected) this.callbacks.onStatus('unavailable');
+      room.onError((code) => {
+        if (this.stopped || this.connected) return;
+        this.log('connection error', { code, reconnecting: this.status === 'reconnecting' });
+        // Colyseus emits transport errors while its automatic token-based
+        // reconnection loop is still active. onLeave is the exhaustion signal.
+        if (this.status !== 'reconnecting') this.setStatus('unavailable');
       });
-      this.callbacks.onStatus('connected');
+      this.log('successful join');
+      this.setStatus('connected');
       this.publishSnapshot(room.state);
       this.refreshTimer = setInterval(() => void this.refreshCompanion(), 30_000);
     } catch (error) {
       if (!this.stopped) {
         const code = (error as { code?: unknown } | null)?.code;
-        if (code === 525) this.callbacks.onStatus('unauthorized');
+        if (code === 525) this.setStatus('unauthorized');
         else {
           // Do not serialize the error: SDK errors may include request metadata.
           console.warn('[world] Realtime connection failed; continuing locally.');
-          this.callbacks.onStatus('unavailable');
+          this.setStatus('unavailable');
         }
       }
     }
@@ -107,7 +134,9 @@ export class WorldConnection {
     this.room.send(GATHER_MESSAGE, request);
   }
 
-  destroy() {
+  destroy(source = 'navigation teardown') {
+    if (this.stopped) return;
+    this.log('connection destruction', { source });
     this.stopped = true;
     this.connected = false;
     const room = this.room;
@@ -148,7 +177,7 @@ export class WorldConnection {
         method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
       });
       if (response.status === 401 || response.status === 403) {
-        this.callbacks.onStatus('unauthorized');
+        this.setStatus('unauthorized');
         return;
       }
       if (!response.ok) return;
@@ -159,5 +188,15 @@ export class WorldConnection {
     } catch {
       // Companion refresh is best-effort and must not interrupt movement.
     }
+  }
+
+  private setStatus(status: ConnectionStatus) {
+    if (this.stopped || this.status === status) return;
+    this.status = status;
+    this.callbacks.onStatus(status);
+  }
+
+  private log(event: string, fields?: Record<string, unknown>) {
+    if (this.debug) console.debug(`[world] ${event}`, fields ?? {});
   }
 }

@@ -9,23 +9,39 @@ export type GameRuntimeFactory = (host: HTMLElement) => GameRuntime | Promise<Ga
 
 export class GameLifecycle {
   private runtime: GameRuntime | null = null;
+  private host: HTMLElement | null = null;
+  private mounting: Promise<void> | null = null;
   private generation = 0;
   private paused = false;
 
   constructor(private readonly createRuntime: GameRuntimeFactory) {}
 
   async mount(host: HTMLElement) {
-    const generation = ++this.generation;
-    this.destroyRuntime();
-    const runtime = await this.createRuntime(host);
-
-    if (generation !== this.generation) {
-      runtime.destroy();
-      return;
+    if (this.host === host) {
+      if (this.runtime) return;
+      if (this.mounting) return this.mounting;
     }
 
-    this.runtime = runtime;
-    if (this.paused) runtime.pause();
+    this.host = host;
+    const generation = ++this.generation;
+    this.destroyRuntime();
+    const mounting = (async () => {
+      const runtime = await this.createRuntime(host);
+
+      if (generation !== this.generation) {
+        runtime.destroy();
+        return;
+      }
+
+      this.runtime = runtime;
+      if (this.paused) runtime.pause();
+    })();
+    this.mounting = mounting;
+    try {
+      await mounting;
+    } finally {
+      if (this.mounting === mounting) this.mounting = null;
+    }
   }
 
   resize(width: number, height: number) {
@@ -45,6 +61,8 @@ export class GameLifecycle {
 
   destroy() {
     this.generation += 1;
+    this.host = null;
+    this.mounting = null;
     this.destroyRuntime();
   }
 

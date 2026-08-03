@@ -34,7 +34,7 @@
     {/if}
     <div class="world-help" data-testid="world-enabled-state">
       <p><strong>Move:</strong> WASD, arrow keys, or the on-screen direction pad.</p>
-      <p>This preview uses anonymous local multiplayer when the world server is running and never saves progress.</p>
+      <p>Authenticated multiplayer keeps exploration progress and earned rewards safely in sync.</p>
     </div>
   {:else}
     <div class="unavailable" data-testid="world-disabled-state" role="status">

@@ -146,13 +146,18 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     applyPresenceTransition(player, 'drop');
     if (client.userData) client.userData.input = { sequence: client.userData.input.sequence, x: 0, y: 0 };
     this.log.warn('world.player.dropped', { playerId: client.sessionId, code });
-    await this.queueCheckpoint(client, true);
+    const checkpoint = this.queueCheckpoint(client, true);
     if (code === 4002 || code === 4003) {
+      await checkpoint;
       this.state.players.delete(client.sessionId);
       return;
     }
+    // Register the reconnect token immediately. A persistence checkpoint must
+    // not make a fast client retry miss its grace window.
+    const reconnection = this.allowReconnection(client, this.reconnectGraceSeconds);
+    await checkpoint;
     try {
-      await this.allowReconnection(client, this.reconnectGraceSeconds);
+      await reconnection;
     } catch {
       this.state.players.delete(client.sessionId);
       this.log.info('world.player.reconnect_expired', { playerId: client.sessionId });
