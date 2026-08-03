@@ -44,7 +44,7 @@ const setup = () => {
     onStatus: (status) => statuses.push(status),
     onSnapshot: vi.fn(),
     onGatherResult: (result) => gatherResults.push(result)
-  }, { createClient: () => ({ joinOrCreate }) as never, debug: false });
+  }, { createClient: () => ({ joinOrCreate }) as never, debug: false, recoveryDelaysMs: [0, 0] });
   return { connection, room, statuses, gatherResults, joinOrCreate };
 };
 
@@ -85,14 +85,14 @@ describe('WorldConnection lifecycle', () => {
   it('falls back once only after token and fresh-session recovery are exhausted', async () => {
     const { connection, room, statuses, joinOrCreate } = setup();
     await connection.connect();
-    joinOrCreate.mockRejectedValueOnce(new Error('room remains unavailable'));
+    joinOrCreate.mockRejectedValue(new Error('room remains unavailable'));
     room.onDrop.emit(1006);
     room.onError.emit(1006);
     room.onLeave.emit(4003, 'reconnection exhausted');
     await vi.waitFor(() => expect(statuses.at(-1)).toBe('unavailable'));
 
     expect(statuses).toEqual(['connecting', 'connected', 'reconnecting', 'unavailable']);
-    expect(joinOrCreate).toHaveBeenCalledTimes(2);
+    expect(joinOrCreate).toHaveBeenCalledTimes(4);
     connection.destroy('test teardown');
   });
 

@@ -19,6 +19,7 @@ export type WorldConnectionCallbacks = {
 type WorldConnectionOptions = {
   createClient?: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
   debug?: boolean;
+  recoveryDelaysMs?: readonly number[];
 };
 
 export class WorldConnection {
@@ -27,11 +28,14 @@ export class WorldConnection {
   private connected = false;
   private status: ConnectionStatus = 'offline';
   private recoveryAttempted = false;
+  private recoveryAttempt = 0;
+  private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly pendingGathers = new Map<string, { requestId: string; nodeKey: 'moonberry-bush' }>();
 
   private readonly createClient: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
   private readonly debug: boolean;
+  private readonly recoveryDelaysMs: readonly number[];
 
   constructor(
     private readonly endpoint: string,
@@ -40,6 +44,7 @@ export class WorldConnection {
   ) {
     this.createClient = options.createClient ?? ((endpoint) => new Client(endpoint));
     this.debug = options.debug ?? import.meta.env.DEV;
+    this.recoveryDelaysMs = options.recoveryDelaysMs ?? [1_000, 2_000, 4_000, 8_000, 15_000];
   }
 
   async connect(recovering = false) {
@@ -63,6 +68,8 @@ export class WorldConnection {
       if (this.stopped) { await room.leave(true); return; }
       this.room = room;
       this.connected = true;
+      this.recoveryAttempt = 0;
+      this.recoveryAttempted = false;
       room.reconnection.minUptime = 0;
       // These delays total roughly 13.4 seconds, below the default
       // server-side reconnection grace period.
@@ -87,6 +94,8 @@ export class WorldConnection {
         if (this.room !== room) return;
         this.connected = true;
         if (!this.stopped) {
+          this.recoveryAttempt = 0;
+          this.recoveryAttempted = false;
           this.log('reconnect success');
           this.setStatus('connected');
           void this.refreshCompanion();
@@ -128,6 +137,7 @@ export class WorldConnection {
       if (!this.stopped) {
         const code = (error as { code?: unknown } | null)?.code;
         if (code === 525) this.setStatus('unauthorized');
+        else if (recovering && this.scheduleRecovery()) return;
         else {
           // Do not serialize the error: SDK errors may include request metadata.
           console.warn('[world] Realtime connection is unavailable.');
@@ -159,6 +169,7 @@ export class WorldConnection {
     const room = this.room;
     this.room = null;
     this.clearRefreshTimer();
+    this.clearRecoveryTimer();
     this.pendingGathers.clear();
     if (room) void room.leave(true);
   }
@@ -215,6 +226,24 @@ export class WorldConnection {
   private clearRefreshTimer() {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.refreshTimer = null;
+  }
+
+  private scheduleRecovery() {
+    const delay = this.recoveryDelaysMs[this.recoveryAttempt];
+    if (delay === undefined) return false;
+    this.recoveryAttempt += 1;
+    this.log('fresh session retry scheduled', { attempt: this.recoveryAttempt, delayMs: delay });
+    this.clearRecoveryTimer();
+    this.recoveryTimer = setTimeout(() => {
+      this.recoveryTimer = null;
+      if (!this.stopped) void this.connect(true);
+    }, delay);
+    return true;
+  }
+
+  private clearRecoveryTimer() {
+    if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
+    this.recoveryTimer = null;
   }
 
   private log(event: string, fields?: Record<string, unknown>) {
