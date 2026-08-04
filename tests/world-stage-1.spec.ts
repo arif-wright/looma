@@ -4,6 +4,7 @@ const hasAuthenticatedEnvironment = Boolean(
   process.env.PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 const worldEnabled = ['true', '1'].includes((process.env.PUBLIC_WORLD_ENABLED ?? '').trim().toLowerCase());
+const selectedRenderer = (process.env.PUBLIC_WORLD_RENDERER ?? '').trim().toLowerCase() === 'three' ? 'three' : 'phaser';
 
 test.describe('The Wilds protected route', () => {
   test.describe.configure({ timeout: 120_000 });
@@ -33,13 +34,33 @@ test.describe('The Wilds protected route', () => {
     await expect(page.getByRole('link', { name: 'Continue to Home' })).toBeVisible();
   });
 
-  test('mounts the local Phaser shell when enabled', async ({ page }) => {
+  test('mounts only the selected renderer when enabled', async ({ page }) => {
     test.skip(!hasAuthenticatedEnvironment, 'requires seeded authenticated storage state');
     test.skip(!worldEnabled, 'requires PUBLIC_WORLD_ENABLED=true');
 
     await page.goto('/app/world');
     await expect(page.getByTestId('world-enabled-state')).toBeVisible();
-    await expect(page.getByTestId('world-game-mount').locator('canvas')).toHaveCount(1);
+    const mount = page.getByTestId('world-game-mount');
+    await expect(mount).toHaveAttribute('data-renderer', selectedRenderer);
+    await expect(mount.locator('canvas')).toHaveCount(1);
     await expect(page.getByRole('link', { name: 'Return Home' })).toBeVisible();
+  });
+
+  test('Three camera controls update state and route teardown removes its canvas', async ({ page }) => {
+    test.skip(!hasAuthenticatedEnvironment || !worldEnabled || selectedRenderer !== 'three', 'requires enabled authenticated Three renderer');
+
+    await page.goto('/app/world');
+    const canvas = page.locator('canvas[data-renderer="three"]');
+    await expect(canvas).toHaveCount(1);
+    const initialYaw = await canvas.getAttribute('data-camera-yaw');
+    await page.getByRole('button', { name: 'Rotate camera right' }).click();
+    await expect.poll(() => canvas.getAttribute('data-camera-yaw')).not.toBe(initialYaw);
+    const initialPosition = await canvas.evaluate((element) => `${element.dataset.localPlayerX}:${element.dataset.localPlayerZ}`);
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(250);
+    await page.keyboard.up('KeyW');
+    await expect.poll(() => canvas.evaluate((element) => `${element.dataset.localPlayerX}:${element.dataset.localPlayerZ}`)).not.toBe(initialPosition);
+    await page.getByRole('link', { name: 'Return Home' }).click();
+    await expect(page.locator('canvas[data-renderer="three"]')).toHaveCount(0);
   });
 });

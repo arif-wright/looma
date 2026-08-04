@@ -10,7 +10,7 @@
   <title>The Wilds · Memvoya</title>
   <meta
     name="description"
-    content="A private preview of The Wilds, Memvoya's local 2D world prototype."
+    content="A private preview of The Wilds, Memvoya's authenticated shared world."
   />
 </svelte:head>
 
@@ -19,14 +19,14 @@
     <div>
       <p class="eyebrow">Private preview</p>
       <h1>The Wilds</h1>
-      <p class="intro">A small local place to explore. Nothing here changes your account yet.</p>
+      <p class="intro">A shared place to explore with your companion.</p>
     </div>
     <a class="escape-link" href="/app/home">Return Home</a>
   </header>
 
   {#if data.worldEnabled}
     {#if browser}
-      <WorldGameMount serverUrl={data.worldServerUrl} />
+      <WorldGameMount serverUrl={data.worldServerUrl} renderer={data.worldRenderer} />
     {:else}
       <div class="world-loading" data-testid="world-loading-state" role="status">
         <p>Preparing The Wilds…</p>
@@ -34,6 +34,7 @@
     {/if}
     <div class="world-help" data-testid="world-enabled-state">
       <p><strong>Move:</strong> WASD, arrow keys, or the on-screen direction pad.</p>
+      {#if data.worldRenderer === 'three'}<p><strong>Camera:</strong> right-drag, wheel, or camera buttons. Press R to reset.</p>{/if}
       <p>Authenticated multiplayer keeps exploration progress and earned rewards safely in sync.</p>
     </div>
   {:else}

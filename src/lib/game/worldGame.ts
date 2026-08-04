@@ -2,17 +2,7 @@ import Phaser from 'phaser';
 import { WORLD_HEIGHT, WORLD_WIDTH } from './config';
 import { WorldScene, type TouchDirection } from './WorldScene';
 import type { GameRuntime } from './lifecycle';
-import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
-import type { GatherResult } from './protocol';
-import { WorldConnection } from './worldConnection';
-
-const WORLD_GAME_KEY = Symbol.for('memvoya.world.phaser');
-
-type ActiveWorldGame = { destroy: () => void };
-
-const globalRegistry = globalThis as typeof globalThis & {
-  [WORLD_GAME_KEY]?: ActiveWorldGame;
-};
+import type { WorldSession } from './worldSession';
 
 export type WorldGameRuntime = GameRuntime & {
   setTouchDirection: (x: number, y: number) => void;
@@ -20,16 +10,11 @@ export type WorldGameRuntime = GameRuntime & {
 };
 
 export type WorldGameOptions = {
-  serverUrl: string | null;
-  onConnectionStatus: (status: ConnectionStatus) => void;
-  onConnectionDiagnostic: (diagnostic: ConnectionDiagnostic | null) => void;
+  session: WorldSession;
   onGatherPrompt: (visible: boolean) => void;
-  onGatherResult: (result: GatherResult) => void;
 };
 
 export const createWorldGame = (host: HTMLElement, options: WorldGameOptions): WorldGameRuntime => {
-  globalRegistry[WORLD_GAME_KEY]?.destroy();
-
   const touchDirection: TouchDirection = { x: 0, y: 0 };
   const scene = new WorldScene(touchDirection);
   const game = new Phaser.Game({
@@ -52,21 +37,9 @@ export const createWorldGame = (host: HTMLElement, options: WorldGameOptions): W
     },
     scene: [scene]
   });
-  const connection = options.serverUrl
-    ? new WorldConnection(options.serverUrl, {
-        onStatus: options.onConnectionStatus,
-        onDiagnostic: options.onConnectionDiagnostic,
-        onSnapshot: (snapshot) => scene.applyNetworkSnapshot(snapshot),
-        onGatherResult: options.onGatherResult
-      })
-    : null;
-  scene.setMovementSender((intent) => connection?.sendMovement(intent));
-  scene.setInteractionHandlers(() => connection?.gatherMoonberry(), options.onGatherPrompt);
-  if (connection) void connection.connect();
-  else {
-    options.onConnectionDiagnostic({ code: 'configuration_missing' });
-    options.onConnectionStatus('offline');
-  }
+  options.session.setSnapshotConsumer((snapshot) => scene.applyNetworkSnapshot(snapshot));
+  scene.setMovementSender((intent) => options.session.sendMovement(intent));
+  scene.setInteractionHandlers(() => options.session.gatherMoonberry(), options.onGatherPrompt);
 
   let destroyed = false;
   const runtime: WorldGameRuntime = {
@@ -81,20 +54,16 @@ export const createWorldGame = (host: HTMLElement, options: WorldGameOptions): W
       touchDirection.x = x;
       touchDirection.y = y;
     },
-    interact: () => connection?.gatherMoonberry(),
+    interact: () => options.session.gatherMoonberry(),
     destroy: () => {
       if (destroyed) return;
       destroyed = true;
       touchDirection.x = 0;
       touchDirection.y = 0;
-      connection?.destroy();
+      options.session.setSnapshotConsumer(null);
       game.destroy(true);
-      if (globalRegistry[WORLD_GAME_KEY] === runtime) {
-        delete globalRegistry[WORLD_GAME_KEY];
-      }
     }
   };
 
-  globalRegistry[WORLD_GAME_KEY] = runtime;
   return runtime;
 };

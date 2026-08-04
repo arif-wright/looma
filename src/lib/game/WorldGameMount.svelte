@@ -5,11 +5,20 @@
   import { GameLifecycle, type GameRuntime } from './lifecycle';
   import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
   import type { GatherResult } from './protocol';
+  import type { WorldRenderer } from './rendererSelection';
+  import { activateWorldRuntime, releaseWorldRuntime } from './worldRuntimeRegistry';
 
   export let serverUrl: string | null = null;
+  export let renderer: WorldRenderer = 'phaser';
 
   type Direction = 'up' | 'down' | 'left' | 'right';
-  type RuntimeWithTouch = GameRuntime & { setTouchDirection: (x: number, y: number) => void; interact: () => void };
+  type RuntimeWithTouch = GameRuntime & {
+    setTouchDirection: (x: number, y: number) => void;
+    interact: () => void;
+    orbitCamera?: (yaw: number, pitch: number) => void;
+    zoomCamera?: (delta: number) => void;
+    resetCamera?: () => void;
+  };
 
   let host: HTMLDivElement;
   let viewport: HTMLDivElement;
@@ -31,18 +40,46 @@
     connectionStatus === 'unavailable' ? 'Multiplayer unavailable' : 'World offline';
 
   const lifecycle = new GameLifecycle(async (target) => {
-    const { createWorldGame } = await import('./worldGame');
-    runtime = createWorldGame(target, {
-      serverUrl,
-      onConnectionStatus: (nextStatus) => (connectionStatus = nextStatus),
-      onConnectionDiagnostic: (diagnostic) => (connectionDiagnostic = diagnostic),
-      onGatherPrompt: (visible) => (gatherPrompt = visible),
+    const { WorldSession } = await import('./worldSession');
+    const session = new WorldSession(serverUrl, {
+      onStatus: (nextStatus) => (connectionStatus = nextStatus),
+      onDiagnostic: (diagnostic) => (connectionDiagnostic = diagnostic),
       onGatherResult: (result) => {
         gathering = false;
         gatherResult = result;
       }
     });
-    return runtime;
+    const rendererRuntime = renderer === 'three'
+      ? (await import('./renderers/three/threeWorld')).createThreeWorld(target, {
+          session,
+          onGatherPrompt: (visible) => (gatherPrompt = visible)
+        })
+      : (await import('./worldGame')).createWorldGame(target, {
+          session,
+          onGatherPrompt: (visible) => (gatherPrompt = visible)
+        });
+    let destroyed = false;
+    const mountedRuntime: RuntimeWithTouch = {
+      resize: rendererRuntime.resize,
+      pause: rendererRuntime.pause,
+      resume: rendererRuntime.resume,
+      setTouchDirection: rendererRuntime.setTouchDirection,
+      interact: rendererRuntime.interact,
+      orbitCamera: 'orbitCamera' in rendererRuntime ? rendererRuntime.orbitCamera : undefined,
+      zoomCamera: 'zoomCamera' in rendererRuntime ? rendererRuntime.zoomCamera : undefined,
+      resetCamera: 'resetCamera' in rendererRuntime ? rendererRuntime.resetCamera : undefined,
+      destroy: () => {
+        if (destroyed) return;
+        destroyed = true;
+        rendererRuntime.destroy();
+        session.destroy('world component teardown');
+        releaseWorldRuntime(mountedRuntime);
+      }
+    };
+    activateWorldRuntime(mountedRuntime);
+    runtime = mountedRuntime;
+    session.start();
+    return mountedRuntime;
   });
 
   const resize = () => {
@@ -118,7 +155,7 @@
       document.addEventListener('visibilitychange', handleVisibility);
       if (document.hidden) pause();
     } catch (error) {
-      console.error('[world] Phaser failed to mount', error);
+      console.error(`[world] ${renderer} renderer failed to mount`, error);
       loadError = true;
       status = 'The Wilds could not start in this browser.';
       lifecycle.destroy();
@@ -134,12 +171,13 @@
   });
 </script>
 
-<div class="world-viewport" bind:this={viewport} data-testid="world-game-mount">
+<div class="world-viewport" bind:this={viewport} data-testid="world-game-mount" data-renderer={renderer}>
   <div class="world-canvas" bind:this={host} aria-hidden="true"></div>
   <p class="sr-only" aria-live="polite">{status}</p>
   <p class="connection-status" class:connected={connectionStatus === 'connected'} aria-live="polite">
     {connectionLabel}
   </p>
+  {#if import.meta.env.DEV}<p class="renderer-label">Renderer: {renderer}</p>{/if}
   {#if connectionDiagnostic && (connectionStatus === 'unavailable' || connectionStatus === 'unauthorized' || connectionStatus === 'offline')}
     <p class="connection-diagnostic" role="alert">{diagnosticMessage(connectionDiagnostic)}</p>
   {/if}
@@ -211,6 +249,15 @@
         on:pointerleave={() => setDirection(null)}>→</button
       >
     </div>
+    {#if renderer === 'three'}
+      <div class="camera-controls" aria-label="Camera controls">
+        <button type="button" aria-label="Rotate camera left" on:click={() => runtime?.orbitCamera?.(-0.18, 0)}>↶</button>
+        <button type="button" aria-label="Reset camera" on:click={() => runtime?.resetCamera?.()}>R</button>
+        <button type="button" aria-label="Rotate camera right" on:click={() => runtime?.orbitCamera?.(0.18, 0)}>↷</button>
+        <button type="button" aria-label="Zoom camera out" on:click={() => runtime?.zoomCamera?.(-0.15)}>−</button>
+        <button type="button" aria-label="Zoom camera in" on:click={() => runtime?.zoomCamera?.(0.15)}>+</button>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -287,6 +334,34 @@
   }
 
   .connection-status.connected { color: #a9f3dd; }
+
+  .renderer-label {
+    position: absolute;
+    top: 3.25rem;
+    right: 0.9rem;
+    z-index: 2;
+    margin: 0;
+    color: rgba(239, 255, 249, 0.7);
+    font: 0.68rem/1 monospace;
+  }
+
+  .camera-controls {
+    position: absolute;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .camera-controls button {
+    min-width: 2.7rem;
+    min-height: 2.7rem;
+    border: 1px solid rgba(224, 255, 246, 0.42);
+    border-radius: 0.7rem;
+    background: rgba(8, 20, 28, 0.82);
+    color: #effff9;
+    font-weight: 700;
+  }
 
   .connection-diagnostic {
     position: absolute;

@@ -44,6 +44,9 @@ importers:
       stripe:
         specifier: ^14.25.0
         version: 14.25.0
+      three:
+        specifier: 0.172.0
+        version: 0.172.0
       ua-parser-js:
         specifier: ^1.0.41
         version: 1.0.41
