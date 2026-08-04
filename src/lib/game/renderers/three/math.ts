@@ -1,7 +1,8 @@
 import { normalizeMovement, WORLD_HEIGHT, WORLD_WIDTH } from '../../config';
 
 export const SERVER_UNITS_PER_WORLD_UNIT = 32;
-export const DEFAULT_CAMERA = { yaw: Math.PI / 4, pitch: Math.PI / 4, zoom: 1 } as const;
+export const CARDINAL_CAMERA_YAW = 0;
+export const DEFAULT_CAMERA = { yaw: CARDINAL_CAMERA_YAW, pitch: Math.PI / 4, zoom: 1 } as const;
 export const CAMERA_LIMITS = {
   pitchMin: Math.PI * 25 / 180,
   pitchMax: Math.PI * 65 / 180,
@@ -29,6 +30,13 @@ export const cameraRelativeMovement = (inputX: number, inputY: number, yaw: numb
     inputX * rightZ + -inputY * forwardZ
   );
 };
+
+// Inverse ground-plane projection used to verify how authored world motion reads on screen.
+// Negative screen Y is visually up; positive screen X is visually right.
+export const worldMovementToScreen = (worldX: number, worldZ: number, yaw: number) => ({
+  x: worldX * Math.cos(yaw) + worldZ * -Math.sin(yaw),
+  y: worldX * Math.sin(yaw) + worldZ * Math.cos(yaw)
+});
 
 export const clampPitch = (pitch: number) =>
   Math.min(CAMERA_LIMITS.pitchMax, Math.max(CAMERA_LIMITS.pitchMin, pitch));

@@ -52,6 +52,7 @@ test.describe('The Wilds protected route', () => {
     await page.goto('/app/world');
     const canvas = page.locator('canvas[data-renderer="three"]');
     await expect(canvas).toHaveCount(1);
+    await expect.poll(async () => Number(await canvas.getAttribute('data-camera-yaw'))).toBeCloseTo(0, 3);
     const initialYaw = await canvas.getAttribute('data-camera-yaw');
     await page.getByRole('button', { name: 'Rotate camera right' }).click();
     await expect.poll(() => canvas.getAttribute('data-camera-yaw')).not.toBe(initialYaw);

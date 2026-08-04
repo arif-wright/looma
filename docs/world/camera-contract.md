@@ -6,7 +6,7 @@ Initial prototype tuning:
 
 | Setting | Value |
 |---|---:|
-| Default yaw | 45° |
+| Default yaw | 0° cardinal alignment |
 | Default pitch | 45° |
 | Pitch range | 25°–65° |
 | Default zoom | 1.0 |
@@ -14,18 +14,20 @@ Initial prototype tuning:
 | Camera distance | 18 visual units |
 | Maximum target lag | 2.5 visual units |
 
-These are evaluation values, not final art-direction commitments. Right-drag changes target yaw/pitch using preset sensitivity, wheel changes target zoom, and R or the reset UI sets target values back to the selected preset at the default 45° yaw. Reset is interpolated, not snapped. The touch camera buttons avoid competing with movement gestures. Canvas pointer handling prevents context menus and wheel scrolling while operating the camera; Return Home remains ordinary accessible navigation.
+These are evaluation values, not final art-direction commitments. At yaw 0°, the camera is south of the target looking north: authored north reads as screen up and east as screen right. Right-drag changes target yaw/pitch using preset sensitivity, wheel changes target zoom, and R or the reset UI sets target values back to the selected preset's cardinal yaw. Reset is interpolated, not snapped. The touch camera buttons avoid competing with movement gestures. Canvas pointer handling prevents context menus and wheel scrolling while operating the camera; Return Home remains ordinary accessible navigation.
 
 Movement is camera-relative only at the input translation boundary. Forward means away from the camera in the ground plane. The translated vector is normalized and sent as the existing server X/Y intent. Camera state never enters the protocol and never changes server authority.
 
 ## Presets
 
-| Preset | Pitch | Zoom | Follow rate | Orbit px sensitivity | Pitch px sensitivity |
-|---|---:|---:|---:|---:|---:|
-| Classic | 45° | 1.00 | 8 | 0.007 | 0.005 |
-| Adventurer | 35° | 1.18 | 10 | 0.0065 | 0.0045 |
-| Wide | 55° | 0.78 | 6 | 0.008 | 0.0055 |
-| Close | 42° | 1.50 | 11 | 0.006 | 0.004 |
+| Preset | Default yaw | Pitch | Zoom | Follow rate | Orbit px sensitivity | Pitch px sensitivity |
+|---|---:|---:|---:|---:|---:|---:|
+| Classic | 0° | 45° | 1.00 | 8 | 0.007 | 0.005 |
+| Adventurer | 0° | 35° | 1.18 | 10 | 0.0065 | 0.0045 |
+| Wide | 0° | 55° | 0.78 | 6 | 0.008 | 0.0055 |
+| Close | 0° | 42° | 1.50 | 11 | 0.006 | 0.004 |
+
+Selecting or resetting a preset returns smoothly to its documented yaw. The user may then orbit continuously through the full 360° range; diagonal views are a camera choice, never baked into authored map placement.
 
 The selected preset is a non-sensitive browser-local preference (`memvoya.world.camera-preset`). No database row is created.
 

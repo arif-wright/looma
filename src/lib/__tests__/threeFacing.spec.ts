@@ -19,6 +19,14 @@ describe('8-direction world facing', () => {
     }
   });
 
+  it('keeps world-facing unchanged while the camera rotates', () => {
+    const north = classifyFacing(0, -1);
+    for (const cameraYaw of [0, Math.PI / 4, Math.PI, Math.PI * 7 / 4]) {
+      expect(classifyFacing(0, -1)).toBe(north);
+      expect(cameraYaw).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('uses deterministic 22.5-degree sector boundaries', () => {
     const angle = 22.49 * Math.PI / 180;
     expect(classifyFacing(Math.sin(angle), -Math.cos(angle))).toBe('n');

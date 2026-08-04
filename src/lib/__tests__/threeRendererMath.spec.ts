@@ -5,6 +5,7 @@ import {
   DEFAULT_CAMERA,
   cameraRelativeMovement,
   serverToWorld,
+  worldMovementToScreen,
   worldToServer
 } from '$lib/game/renderers/three/math';
 
@@ -69,7 +70,22 @@ describe('Three world coordinate and camera contracts', () => {
       expect(preset.zoom).toBeGreaterThanOrEqual(CAMERA_LIMITS.zoomMin);
       expect(preset.zoom).toBeLessThanOrEqual(CAMERA_LIMITS.zoomMax);
       expect(preset.followSmoothing).toBeGreaterThan(0);
+      expect(preset.yaw).toBe(0);
     }
+  });
+
+  it('starts Classic cardinal-aligned with north at screen top and east at screen right', () => {
+    const camera = new OrbitCameraState('classic');
+    expect(camera.yaw).toBe(0);
+    expect(camera.targetYaw).toBe(0);
+    expect(worldMovementToScreen(0, -1, camera.yaw)).toEqual({ x: 0, y: -1 });
+    expect(worldMovementToScreen(1, 0, camera.yaw)).toEqual({ x: 1, y: 0 });
+  });
+
+  it('continues to transform screen-relative movement after user camera rotation', () => {
+    expect(cameraRelativeMovement(0, -1, Math.PI / 2)).toEqual(expect.objectContaining({ x: -1 }));
+    const projected = worldMovementToScreen(-1, 0, Math.PI / 2);
+    expect(projected.y).toBeCloseTo(-1, 8);
   });
 
   it('normalizes diagonal input and treats equivalent wrapped angles identically', () => {
