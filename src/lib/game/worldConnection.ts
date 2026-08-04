@@ -50,7 +50,7 @@ export class WorldConnection {
 
   async connect(recovering = false) {
     this.setStatus(recovering ? 'reconnecting' : 'connecting');
-    let phase: 'ticket' | 'join' = 'ticket';
+    let phase: 'ticket' | 'join' | 'setup' = 'ticket';
     let failureReported = false;
     try {
       const ticketResponse = await fetch('/api/world/ticket', {
@@ -78,6 +78,7 @@ export class WorldConnection {
         ticket: credential.ticket
       });
       if (this.stopped) { await room.leave(true); return; }
+      phase = 'setup';
       this.room = room;
       this.connected = true;
       this.callbacks.onDiagnostic?.(null);
@@ -156,7 +157,15 @@ export class WorldConnection {
         }
         else if (recovering && this.scheduleRecovery()) return;
         else {
-          if (phase === 'join') {
+          if (phase === 'setup' && this.room && this.connected) {
+            // Matchmaking and the WebSocket handshake already succeeded. A
+            // presentation callback must never downgrade an open authoritative
+            // connection to local fallback.
+            console.warn('[world] Realtime joined, but client synchronization reported a nonfatal error. [W-CLIENT]');
+            this.callbacks.onDiagnostic?.(null);
+            this.setStatus('connected');
+            return;
+          } else if (phase === 'join') {
             this.callbacks.onDiagnostic?.({
               code: recovering ? 'recovery_exhausted' : 'join_failed',
               statusCode: this.safeCode(code)
@@ -210,18 +219,24 @@ export class WorldConnection {
 
   private publishSnapshot(state: SyncedWorld) {
     if (!this.room || this.stopped) return;
-    const players = new Map<string, PlayerSnapshot>();
-    state.players.forEach((player, id) => players.set(id, {
-      x: player.x, y: player.y, connected: player.connected,
-      acknowledgedSequence: player.acknowledgedSequence, colorIndex: player.colorIndex,
-      displayName: player.displayName, handle: player.handle,
-      companionPresent: player.companionPresent,
-      companionName: player.companionName,
-      companionKind: player.companionKind,
-      companionStatus: player.companionStatus,
-      companionRevision: player.companionRevision
-    }));
-    this.callbacks.onSnapshot({ localPlayerId: this.room.sessionId, tick: state.tick, players });
+    try {
+      const players = new Map<string, PlayerSnapshot>();
+      state.players.forEach((player, id) => players.set(id, {
+        x: player.x, y: player.y, connected: player.connected,
+        acknowledgedSequence: player.acknowledgedSequence, colorIndex: player.colorIndex,
+        displayName: player.displayName, handle: player.handle,
+        companionPresent: player.companionPresent,
+        companionName: player.companionName,
+        companionKind: player.companionKind,
+        companionStatus: player.companionStatus,
+        companionRevision: player.companionRevision
+      }));
+      this.callbacks.onSnapshot({ localPlayerId: this.room.sessionId, tick: state.tick, players });
+    } catch {
+      // Rendering/presentation failures are isolated from transport truth. The
+      // next state patch gets another opportunity to synchronize the scene.
+      console.warn('[world] Snapshot synchronization failed. [W-CLIENT]');
+    }
   }
 
   private async refreshCompanion() {

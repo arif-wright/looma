@@ -70,6 +70,20 @@ describe('WorldConnection lifecycle', () => {
     connection.destroy('test teardown');
   });
 
+  it('does not mark an open room unavailable when snapshot presentation throws', async () => {
+    const room = makeRoom();
+    const statuses: ConnectionStatus[] = [];
+    const connection = new WorldConnection('wss://world.example.test', {
+      onStatus: (status) => statuses.push(status),
+      onSnapshot: () => { throw new Error('scene not ready'); },
+      onGatherResult: vi.fn()
+    }, { createClient: () => ({ joinOrCreate: vi.fn(async () => room) }) as never, debug: false });
+
+    await connection.connect();
+    expect(statuses).toEqual(['connecting', 'connected']);
+    connection.destroy('test teardown');
+  });
+
   it('reports a safe diagnostic for ticket and terminal connection failures', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })));
     const ticketFailure = setup();
