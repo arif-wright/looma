@@ -52,6 +52,28 @@ const spawnFor = (index: number) => ({
 });
 
 export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> {
+  private static authJoinSecret = '';
+  private static authLog = createLogger('info');
+
+  static configureAuth(joinSecret: string, logLevel: 'debug' | 'info') {
+    WorldRoom.authJoinSecret = joinSecret;
+    WorldRoom.authLog = createLogger(logLevel);
+  }
+
+  static async onAuth(_token: string, options: unknown) {
+    const ticket = parseJoinCredential(options);
+    const result = verifyWorldTicket(ticket, WorldRoom.authJoinSecret);
+    if (!result.ok) {
+      WorldRoom.authLog.warn('world.auth.rejected', { reason: result.reason });
+      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+    }
+    if (!worldTicketReplayGuard.consume(result.auth)) {
+      WorldRoom.authLog.warn('world.auth.rejected', { reason: 'replayed' });
+      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+    }
+    return result.auth;
+  }
+
   state = new WorldState();
   patchRate = 50;
   maxMessagesPerSecond = 40;
@@ -79,27 +101,13 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     this.log.info('world.room.created', { maxClients: this.maxClients });
   }
 
-  onAuth(_client: WorldClient, options: unknown) {
-    const ticket = parseJoinCredential(options);
-    const result = verifyWorldTicket(ticket, this.joinSecret);
-    if (!result.ok) {
-      this.log.warn('world.auth.rejected', { reason: result.reason });
-      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
-    }
-    if (this.clients.some((client) => (client.auth as WorldAuth | undefined)?.userId === result.auth.userId)) {
-      this.log.warn('world.auth.rejected', { reason: 'duplicate_account' });
-      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
-    }
-    if (!worldTicketReplayGuard.consume(result.auth)) {
-      this.log.warn('world.auth.rejected', { reason: 'replayed' });
-      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
-    }
-    return result.auth;
-  }
-
   async onJoin(client: WorldClient) {
     const auth = client.auth;
     if (!auth) throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+    if (this.clients.some((other) => other !== client && (other.auth as WorldAuth | undefined)?.userId === auth.userId)) {
+      this.log.warn('world.auth.rejected', { reason: 'duplicate_account' });
+      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+    }
     const spawn = spawnFor(this.state.players.size);
     const player = new PlayerState();
     player.x = spawn.x;

@@ -14,7 +14,10 @@ describe('WorldRoom integration', () => {
       WORLD_JOIN_SECRET: TEST_JOIN_SECRET
     }));
   });
-  afterAll(async () => server.shutdown());
+  afterAll(async () => {
+    await server.cleanup();
+    await server.shutdown();
+  });
 
   it('synchronizes two clients and applies authoritative movement', async () => {
     const room = await server.createRoom<WorldRoom>(WORLD_ROOM_NAME);

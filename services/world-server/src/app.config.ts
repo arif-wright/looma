@@ -18,6 +18,7 @@ export const createAppConfig = (
   const persistence = overrides.persistence === undefined
     ? createWorldPersistence(config.supabaseUrl, config.supabaseServiceRoleKey)
     : overrides.persistence;
+  WorldRoom.configureAuth(config.joinSecret, config.logLevel);
 
   return defineServer({
     gracefullyShutdown: true,
