@@ -64,7 +64,7 @@ The node is per-player: a second account may gather while the first account is c
 Configure both deployments independently:
 
 - Vercel/SvelteKit: `PUBLIC_WORLD_ENABLED`, `PUBLIC_WORLD_SERVER_URL=https://…`, `WORLD_JOIN_SECRET`, plus the existing Supabase public/server configuration.
-- Realtime service: `NODE_ENV=production`, the same `WORLD_JOIN_SECRET`, exact HTTPS entries in `WORLD_ALLOWED_ORIGINS`, `PORT`, `WORLD_RECONNECT_GRACE_SECONDS`, `WORLD_MAX_CLIENTS`, `WORLD_LOG_LEVEL`, `WORLD_MAP_ID`, `WORLD_CHECKPOINT_SECONDS`, `WORLD_SUPABASE_URL`, and the server-only `WORLD_SUPABASE_SERVICE_ROLE_KEY`.
+- Realtime service: `NODE_ENV=production`, the same `WORLD_JOIN_SECRET`, exact HTTPS entries in `WORLD_ALLOWED_ORIGINS`, `PORT`, `WORLD_RECONNECT_GRACE_SECONDS`, `WORLD_PING_INTERVAL_MS`, `WORLD_PING_MAX_RETRIES`, `WORLD_MAX_CLIENTS`, `WORLD_LOG_LEVEL`, `WORLD_MAP_ID`, `WORLD_CHECKPOINT_SECONDS`, `WORLD_SUPABASE_URL`, and the server-only `WORLD_SUPABASE_SERVICE_ROLE_KEY`. The heartbeat defaults allow 30 seconds for a pong (`10000` × `3`) so brief browser scheduling stalls do not destroy a healthy session.
 
 `WORLD_SUPABASE_SERVICE_ROLE_KEY` must exist only in the realtime deployment. Production startup fails closed when persistence configuration is absent. Checkpoints default to 15 seconds and configuration is bounded to 5–60 seconds; frames are never written. The initial active map is `wilds-exploration`. Disconnect drops, graceful leaves, and shutdown trigger a final best-effort checkpoint.
 

@@ -18,6 +18,8 @@ export const readWorldServerConfig = (source: NodeJS.ProcessEnv = process.env) =
   allowedOrigins: parseOrigins(source.WORLD_ALLOWED_ORIGINS),
   logLevel: source.WORLD_LOG_LEVEL === 'debug' ? ('debug' as const) : ('info' as const),
   reconnectGraceSeconds: parseInteger(source.WORLD_RECONNECT_GRACE_SECONDS, 20, 1, 60),
+  pingIntervalMs: parseInteger(source.WORLD_PING_INTERVAL_MS, 10_000, 3_000, 30_000),
+  pingMaxRetries: parseInteger(source.WORLD_PING_MAX_RETRIES, 3, 2, 6),
   maxClients: parseInteger(source.WORLD_MAX_CLIENTS, 32, 2, 100),
   joinSecret: source.WORLD_JOIN_SECRET ?? '',
   production: source.NODE_ENV === 'production',

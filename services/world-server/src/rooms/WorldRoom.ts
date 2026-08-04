@@ -65,11 +65,11 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     const result = verifyWorldTicket(ticket, WorldRoom.authJoinSecret);
     if (!result.ok) {
       WorldRoom.authLog.warn('world.auth.rejected', { reason: result.reason });
-      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+      throw new ServerError(401, 'World authorization failed');
     }
     if (!worldTicketReplayGuard.consume(result.auth)) {
       WorldRoom.authLog.warn('world.auth.rejected', { reason: 'replayed' });
-      throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
+      throw new ServerError(401, 'World authorization failed');
     }
     return result.auth;
   }

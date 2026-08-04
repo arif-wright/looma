@@ -25,6 +25,8 @@ export const createAppConfig = (
     transport: new WebSocketTransport({
       maxPayload: 1024,
       perMessageDeflate: false,
+      pingInterval: config.pingIntervalMs,
+      pingMaxRetries: config.pingMaxRetries,
       verifyClient: (info, next) => {
         const origin = info.origin;
         const allowed = Boolean(origin && config.allowedOrigins.has(origin)) ||

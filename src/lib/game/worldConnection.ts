@@ -150,8 +150,8 @@ export class WorldConnection {
     } catch (error) {
       if (!this.stopped) {
         const code = (error as { code?: unknown } | null)?.code;
-        if (code === 525) {
-          this.callbacks.onDiagnostic?.({ code: 'ticket_rejected', statusCode: 525 });
+        if (code === 401 || code === 403 || code === 525) {
+          this.callbacks.onDiagnostic?.({ code: 'ticket_rejected', statusCode: this.safeCode(code) });
           this.setStatus('unauthorized');
         }
         else if (recovering && this.scheduleRecovery()) return;
