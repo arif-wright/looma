@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PLAYER_SPEED, WORLD_HEIGHT, WORLD_WIDTH, normalizeMovement } from './config';
+import { MovementIntentScheduler } from './movementIntentScheduler';
 import type { MovementIntent, WorldSnapshot } from './protocol';
 
 const MOONBERRY_NODE = { x: 800, y: 120, radius: 58 };
@@ -23,8 +24,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly followers = new Map<string, FollowerRuntime>();
   private reducedMotion = false;
   private movementSender: ((intent: MovementIntent) => void) | null = null;
-  private sendElapsed = 0;
-  private sequence = 0;
+  private readonly movementScheduler = new MovementIntentScheduler();
   private hasAuthoritativePosition = false;
   private ready = false;
   private pendingSnapshot: WorldSnapshot | null = null;
@@ -218,11 +218,8 @@ export class WorldScene extends Phaser.Scene {
       this.player.setRotation(Math.atan2(direction.y, direction.x) + Math.PI / 2);
     }
 
-    this.sendElapsed += Math.min(delta, 100);
-    if (this.sendElapsed >= 50 && this.movementSender) {
-      this.sendElapsed %= 50;
-      this.movementSender({ sequence: ++this.sequence, x: direction.x, y: direction.y });
-    }
+    const intent = this.movementScheduler.next(direction.x, direction.y, delta);
+    if (intent && this.movementSender) this.movementSender(intent);
     for (const sprite of this.remotePlayers.values()) {
       sprite.x = Phaser.Math.Linear(sprite.x, sprite.getData('targetX'), 0.22);
       sprite.y = Phaser.Math.Linear(sprite.y, sprite.getData('targetY'), 0.22);

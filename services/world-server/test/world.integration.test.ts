@@ -83,6 +83,7 @@ describe('WorldRoom integration', () => {
       client.send(MOVEMENT_MESSAGE, { sequence, x: 0, y: 0 });
     }
     await expect(limited).resolves.toMatchObject({ code: 'rate_limited' });
+    expect(client.state.players.has(client.sessionId)).toBe(true);
     await client.leave(true).catch(() => undefined);
   });
 

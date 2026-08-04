@@ -206,7 +206,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     if (!runtime.movementLimiter.accept()) {
       client.send(PROTOCOL_ERROR_MESSAGE, { code: 'rate_limited' });
       this.log.warn('world.input.rate_limited', { playerId: client.sessionId });
-      client.leave(4003, 'movement rate exceeded');
+      // Reject the excess intent without destroying an otherwise healthy room.
+      // Colyseus' room-level message cap remains the terminal flood protection.
       return;
     }
     if (input.sequence <= runtime.input.sequence) {
