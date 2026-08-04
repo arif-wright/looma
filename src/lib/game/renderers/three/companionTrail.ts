@@ -14,7 +14,7 @@ export class CompanionTrail {
     if (this.points.length === 0) return fallback;
     const latest = this.points.at(-1)!;
     for (let index = this.points.length - 2; index >= 0; index -= 1) {
-      const point = this.points[index];
+      const point = this.points[index]!;
       if (Math.hypot(latest.x - point.x, latest.z - point.z) >= this.followDistance) return point;
     }
     return fallback;

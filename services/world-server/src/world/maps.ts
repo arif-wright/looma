@@ -1,4 +1,5 @@
-import { OBSTACLE, PLAYER_RADIUS, WORLD_HEIGHT, WORLD_WIDTH, type Position } from '../simulation/movement.js';
+import { PLAYER_RADIUS, WORLD_HEIGHT, WORLD_WIDTH } from '../simulation/movement.js';
+import { EXPLORATION_TRAVERSAL, blockerAtPosition, type Position, type TraversalDefinition } from './traversal.js';
 
 export type WorldLandmarkDefinition = {
   key: string;
@@ -21,13 +22,14 @@ export type WorldMapDefinition = {
   spawn: Position;
   landmarks: readonly WorldLandmarkDefinition[];
   gatherNodes: readonly WorldGatherNodeDefinition[];
+  traversal: TraversalDefinition | null;
 };
 
 export const WORLD_MAPS: Record<WorldMapDefinition['id'], WorldMapDefinition> = {
   'wilds-town': {
     id: 'wilds-town', version: 1, spawn: { x: 160, y: 270 },
     landmarks: [{ key: 'town-well', x: 540, y: 270, radius: 56 }],
-    gatherNodes: []
+    gatherNodes: [], traversal: null
   },
   'wilds-exploration': {
     id: 'wilds-exploration', version: 1, spawn: { x: 120, y: 120 },
@@ -35,7 +37,8 @@ export const WORLD_MAPS: Record<WorldMapDefinition['id'], WorldMapDefinition> = 
       { key: 'moonberry-grove', x: 800, y: 120, radius: 72 },
       { key: 'ancient-grove', x: 800, y: 120, radius: 64 }
     ],
-    gatherNodes: [{ key: 'moonberry-bush', landmarkKey: 'moonberry-grove', x: 800, y: 120, radius: 58 }]
+    gatherNodes: [{ key: 'moonberry-bush', landmarkKey: 'moonberry-grove', x: 800, y: 120, radius: 58 }],
+    traversal: EXPLORATION_TRAVERSAL
   }
 };
 
@@ -48,13 +51,7 @@ export const isValidWorldPosition = (map: WorldMapDefinition, position: Position
     position.x < PLAYER_RADIUS || position.x > WORLD_WIDTH - PLAYER_RADIUS ||
     position.y < PLAYER_RADIUS || position.y > WORLD_HEIGHT - PLAYER_RADIUS
   ) return false;
-  if (map.id === 'wilds-exploration') {
-    return !(
-      position.x + PLAYER_RADIUS > OBSTACLE.left && position.x - PLAYER_RADIUS < OBSTACLE.right &&
-      position.y + PLAYER_RADIUS > OBSTACLE.top && position.y - PLAYER_RADIUS < OBSTACLE.bottom
-    );
-  }
-  return true;
+  return !map.traversal || !blockerAtPosition(map.traversal, position, PLAYER_RADIUS);
 };
 
 export const restoreWorldPosition = (

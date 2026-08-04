@@ -6,6 +6,7 @@ import type { GameRuntime } from '../../lifecycle';
 import type { PlayerSnapshot, WorldSnapshot } from '../../protocol';
 import type { WorldSession } from '../../worldSession';
 import { movementState, type PlayerVisualState } from '../../visualState';
+import { MOONBERRY_INTERACTION, WORLD_TRAVERSAL } from '../../traversal';
 import { isCameraPreset, OrbitCameraState, type CameraPresetName } from './cameraController';
 import { CompanionTrail } from './companionTrail';
 import { nextContextStatus, type WebglContextStatus } from './contextRecovery';
@@ -51,7 +52,7 @@ type ThreeWorldOptions = {
   onCameraPreset?: (preset: CameraPresetName) => void;
 };
 
-const MOONBERRY = { x: 800, y: 120, radius: 58 };
+const MOONBERRY = MOONBERRY_INTERACTION;
 const CAMERA_STORAGE_KEY = 'memvoya.world.camera-preset';
 const MAX_CAMERA_TARGET_LAG = 2.5;
 
@@ -176,7 +177,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     obstructables.push({ id, root, materials });
   };
 
-  for (const [index, [x, z]] of [[-11, -6], [-8, 5], [10, -5], [12, 4], [-4, -6]].entries()) {
+  for (const blocker of WORLD_TRAVERSAL.blockers.filter((item) => item.kind === 'tree')) {
+    const mapped = serverToWorld(blocker.x, blocker.y);
     const tree = new THREE.Group();
     const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x624a35 });
     const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2c654c });
@@ -185,22 +187,52 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     const crown = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.6, 10), leafMaterial);
     crown.position.y = 2.35;
     tree.add(trunk, crown);
-    tree.position.set(x, 0, z);
+    tree.position.set(mapped.x, 0, mapped.z);
     scene.add(tree);
-    registerObstructable(`tree-${index}`, tree, [trunkMaterial, leafMaterial]);
+    registerObstructable(blocker.id, tree, [trunkMaterial, leafMaterial]);
   }
-  for (const [index, [x, z, scale]] of [[-6, 3, 0.7], [4, -5, 1], [7, 4, 0.65]].entries()) {
+  for (const blocker of WORLD_TRAVERSAL.blockers.filter((item) => item.kind === 'rock')) {
+    const mapped = serverToWorld(blocker.x, blocker.y);
+    const scale = blocker.radius / 28;
     const material = new THREE.MeshStandardMaterial({ color: 0x67736f, roughness: 1 });
     const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(scale, 0), material);
     rock.scale.y = 0.65;
-    rock.position.set(x, scale * 0.42, z);
+    rock.position.set(mapped.x, scale * 0.42, mapped.z);
     scene.add(rock);
-    registerObstructable(`rock-${index}`, rock, [material]);
+    registerObstructable(blocker.id, rock, [material]);
   }
   const grovePosition = serverToWorld(MOONBERRY.x, MOONBERRY.y);
   const grove = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.25, 24), new THREE.MeshStandardMaterial({ color: 0x7a5bc1, emissive: 0x241447, emissiveIntensity: 0.5 }));
   grove.position.set(grovePosition.x, 0.14, grovePosition.z);
   scene.add(grove);
+
+  if (import.meta.env.DEV) {
+    const collisionDebug = new THREE.Group();
+    collisionDebug.name = 'collision-debug';
+    const bounds = WORLD_TRAVERSAL.bounds;
+    const corners = [
+      serverToWorld(bounds.minX, bounds.minY), serverToWorld(bounds.maxX, bounds.minY),
+      serverToWorld(bounds.maxX, bounds.maxY), serverToWorld(bounds.minX, bounds.maxY),
+      serverToWorld(bounds.minX, bounds.minY)
+    ];
+    const boundsGeometry = new THREE.BufferGeometry().setFromPoints(corners.map((point) => new THREE.Vector3(point.x, 0.035, point.z)));
+    collisionDebug.add(new THREE.Line(boundsGeometry, new THREE.LineBasicMaterial({ color: 0x5fffd2, depthTest: false })));
+    const addRing = (x: number, y: number, radius: number, color: number) => {
+      const mapped = serverToWorld(x, y);
+      const visualRadius = radius / SERVER_UNITS_PER_WORLD_UNIT;
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(Math.max(0.01, visualRadius - 0.025), visualRadius, 48),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthTest: false })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(mapped.x, 0.04, mapped.z);
+      collisionDebug.add(ring);
+    };
+    WORLD_TRAVERSAL.blockers.forEach((blocker) => addRing(blocker.x, blocker.y, blocker.radius + 16, 0xff6b6b));
+    addRing(WORLD_TRAVERSAL.spawn.x, WORLD_TRAVERSAL.spawn.y, 10, 0x62ff9a);
+    addRing(MOONBERRY.x, MOONBERRY.y, MOONBERRY.radius, 0xc9a7ff);
+    scene.add(collisionDebug);
+  }
 
   if (import.meta.env.DEV) {
     const density = parseSyntheticDensity(new URLSearchParams(location.search).get('worldDensity'));
@@ -209,7 +241,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const angle = index / Math.max(1, density) * Math.PI * 2;
       const radius = 4 + index % 4;
       billboard.sprite.position.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
-      billboard.setFacing((['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as FacingDirection[])[index % 8]);
+      billboard.setFacing((['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as FacingDirection[])[index % 8]!);
       synthetic.push(billboard);
       scene.add(billboard.sprite);
     }
@@ -301,9 +333,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       } else if (visual.follower) {
         scene.remove(visual.follower.sprite);
         disposeObject(visual.follower.sprite);
-        visual.follower = undefined;
-        visual.followerTarget = undefined;
-        visual.followerFacing = undefined;
+        delete visual.follower;
+        delete visual.followerTarget;
+        delete visual.followerFacing;
       }
     });
     for (const id of rosterDelta.removed) removePlayer(id);
@@ -467,7 +499,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (debug && fpsElapsed >= 0.5) {
       const localFacing = players.get(localPlayerId)?.facing.value ?? 's';
       const billboardCount = players.size + [...players.values()].filter((visual) => visual.follower).length + synthetic.length;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }

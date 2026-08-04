@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "mapId": "wilds-exploration",
+  "bounds": { "minX": 16, "maxX": 944, "minY": 16, "maxY": 524 },
+  "spawn": { "x": 120, "y": 120 },
+  "blockers": [
+    { "id": "tree-northwest", "kind": "tree", "shape": "circle", "x": 128, "y": 78, "radius": 20 },
+    { "id": "tree-southwest", "kind": "tree", "shape": "circle", "x": 224, "y": 430, "radius": 20 },
+    { "id": "tree-moonberry", "kind": "tree", "shape": "circle", "x": 800, "y": 110, "radius": 20 },
+    { "id": "tree-southeast", "kind": "tree", "shape": "circle", "x": 864, "y": 398, "radius": 20 },
+    { "id": "tree-north", "kind": "tree", "shape": "circle", "x": 352, "y": 78, "radius": 20 },
+    { "id": "rock-southwest", "kind": "rock", "shape": "circle", "x": 288, "y": 366, "radius": 24 },
+    { "id": "rock-northeast", "kind": "rock", "shape": "circle", "x": 608, "y": 110, "radius": 28 },
+    { "id": "rock-southeast", "kind": "rock", "shape": "circle", "x": 704, "y": 398, "radius": 22 }
+  ]
+}

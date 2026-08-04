@@ -19,6 +19,10 @@ serverY = worldZ * 32 + WORLD_HEIGHT / 2
 
 Terrain is at visual Y=0. Props and sprite anchors use small positive Y offsets solely to prevent z-fighting/sinking. There is no authoritative elevation. Input translation rotates the camera-relative vector into server X/Y, normalizes it, and sends only that intent. Collision, bounds, velocity, persistence, and proximity remain server-owned.
 
+## Traversal geometry
+
+The canonical exploration collision manifest is `services/world-server/src/world/traversalManifest.json`. Collision centers and radii are expressed only in server X/Y units. Phaser uses those values directly. Three maps each center through the formula above and scales a radius by 32; camera rotation does not transform the manifest. The server expands visible blocker circles by the player radius and is the only authority that accepts or rejects movement. See `docs/world/traversal-contract.md` for current shapes and authoring rules.
+
 ## Cardinal authored orientation
 
 The authored world is cardinal and is never rotated around Three Y to manufacture an isometric view:

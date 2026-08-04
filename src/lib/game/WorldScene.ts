@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { PLAYER_SPEED, WORLD_HEIGHT, WORLD_WIDTH, normalizeMovement } from './config';
 import { MovementIntentScheduler } from './movementIntentScheduler';
 import type { MovementIntent, WorldSnapshot } from './protocol';
+import { MOONBERRY_INTERACTION, WORLD_TRAVERSAL } from './traversal';
 
-const MOONBERRY_NODE = { x: 800, y: 120, radius: 58 };
+const MOONBERRY_NODE = MOONBERRY_INTERACTION;
 
 export type TouchDirection = { x: number; y: number };
 type FollowerRuntime = {
@@ -59,15 +60,21 @@ export class WorldScene extends Phaser.Scene {
     path.fillStyle(0x79684d, 0.62);
     path.fillRoundedRect(0, 218, WORLD_WIDTH, 104, 28);
 
-    const obstacle = this.physics.add.staticImage(540, 270, 'wilds-obstacle');
-    obstacle.setDisplaySize(150, 116).refreshBody();
+    const blockers = this.physics.add.staticGroup();
+    for (const blocker of WORLD_TRAVERSAL.blockers) {
+      const obstacle = blockers.create(blocker.x, blocker.y, 'wilds-obstacle') as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
+      const diameter = blocker.radius * 2;
+      obstacle.setDisplaySize(diameter, diameter).refreshBody();
+      obstacle.setTint(blocker.kind === 'tree' ? 0x477b58 : 0x77827e);
+      obstacle.body.setCircle(blocker.radius);
+    }
 
     this.player = this.physics.add.sprite(180, 270, 'wilds-player');
     this.player.setDisplaySize(48, 48);
     this.player.setTint(0x7ce8d0);
     this.player.setCollideWorldBounds(true);
     this.player.body.setSize(30, 34);
-    this.physics.add.collider(this.player, obstacle);
+    this.physics.add.collider(this.player, blockers);
 
     const grove = this.add.circle(MOONBERRY_NODE.x, MOONBERRY_NODE.y, 30, 0x6752a4, 0.92);
     grove.setStrokeStyle(4, 0xcab8ff, 0.8);

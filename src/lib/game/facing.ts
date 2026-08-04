@@ -9,7 +9,7 @@ export const classifyFacing = (worldX: number, worldZ: number, fallback: FacingD
   if (!Number.isFinite(worldX) || !Number.isFinite(worldZ) || Math.hypot(worldX, worldZ) < threshold) return fallback;
   const clockwiseFromNorth = Math.atan2(worldX, -worldZ);
   const index = (Math.round(clockwiseFromNorth / (Math.PI / 4)) + 8) % 8;
-  return FACING_DIRECTIONS[index];
+  return FACING_DIRECTIONS[index]!;
 };
 
 export class FacingState {

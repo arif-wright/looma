@@ -8,7 +8,7 @@
   import type { WorldRenderer } from './rendererSelection';
   import { activateWorldRuntime, releaseWorldRuntime } from './worldRuntimeRegistry';
   import type { CameraPresetName } from './renderers/three/cameraController';
-  import type { WebglContextStatus } from './renderers/three/threeWorld';
+  import type { ThreeWorldRuntime, WebglContextStatus } from './renderers/three/threeWorld';
 
   export let serverUrl: string | null = null;
   export let renderer: WorldRenderer = 'phaser';
@@ -67,17 +67,18 @@
           onGatherPrompt: (visible) => (gatherPrompt = visible)
         });
     let destroyed = false;
+    const cameraRuntime = rendererRuntime as Partial<ThreeWorldRuntime>;
     const mountedRuntime: RuntimeWithTouch = {
       resize: rendererRuntime.resize,
       pause: rendererRuntime.pause,
       resume: rendererRuntime.resume,
       setTouchDirection: rendererRuntime.setTouchDirection,
       interact: rendererRuntime.interact,
-      orbitCamera: 'orbitCamera' in rendererRuntime ? rendererRuntime.orbitCamera : undefined,
-      zoomCamera: 'zoomCamera' in rendererRuntime ? rendererRuntime.zoomCamera : undefined,
-      resetCamera: 'resetCamera' in rendererRuntime ? rendererRuntime.resetCamera : undefined,
-      selectCameraPreset: 'selectCameraPreset' in rendererRuntime ? rendererRuntime.selectCameraPreset : undefined,
-      simulateContextRestore: 'simulateContextRestore' in rendererRuntime ? rendererRuntime.simulateContextRestore : undefined,
+      ...(cameraRuntime.orbitCamera ? { orbitCamera: cameraRuntime.orbitCamera } : {}),
+      ...(cameraRuntime.zoomCamera ? { zoomCamera: cameraRuntime.zoomCamera } : {}),
+      ...(cameraRuntime.resetCamera ? { resetCamera: cameraRuntime.resetCamera } : {}),
+      ...(cameraRuntime.selectCameraPreset ? { selectCameraPreset: cameraRuntime.selectCameraPreset } : {}),
+      ...(cameraRuntime.simulateContextRestore ? { simulateContextRestore: cameraRuntime.simulateContextRestore } : {}),
       destroy: () => {
         if (destroyed) return;
         destroyed = true;

@@ -11,8 +11,16 @@ describe('world location validation and restore', () => {
   it('rejects invalid coordinates and obsolete map versions', () => {
     expect(isValidWorldPosition(map, { x: Number.NaN, y: 120 })).toBe(false);
     expect(isValidWorldPosition(map, { x: -1, y: 120 })).toBe(false);
-    expect(isValidWorldPosition(map, { x: 540, y: 270 })).toBe(false);
+    expect(isValidWorldPosition(map, { x: 128, y: 78 })).toBe(false);
+    expect(isValidWorldPosition(map, { x: 540, y: 270 })).toBe(true);
     expect(restoreWorldPosition(map, { mapId: map.id, mapVersion: 99, x: 200, y: 200 })).toEqual({
+      position: map.spawn, restored: false
+    });
+  });
+
+  it('keeps the canonical spawn valid and safely rejects persisted prop overlap', () => {
+    expect(isValidWorldPosition(map, map.spawn)).toBe(true);
+    expect(restoreWorldPosition(map, { mapId: map.id, mapVersion: map.version, x: 608, y: 110 })).toEqual({
       position: map.spawn, restored: false
     });
   });

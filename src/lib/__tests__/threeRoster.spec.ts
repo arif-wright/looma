@@ -3,9 +3,11 @@ import { calculateVisualRosterDelta } from '$lib/game/renderers/three/roster';
 import type { PlayerSnapshot } from '$lib/game/protocol';
 
 const player = (companionPresent: boolean): PlayerSnapshot => ({
-  x: 10, y: 20, connected: true, displayName: 'Explorer',
-  companionPresent, companionId: companionPresent ? 'safe-public-id' : '',
-  companionName: companionPresent ? 'Mirae' : '', companionArchetype: '', companionStatus: 'idle'
+  x: 10, y: 20, connected: true, acknowledgedSequence: 0, colorIndex: 0,
+  displayName: 'Explorer', handle: '',
+  companionPresent,
+  companionName: companionPresent ? 'Mirae' : '', companionKind: '',
+  companionStatus: 'idle', companionRevision: 0
 });
 
 describe('Three visual roster', () => {

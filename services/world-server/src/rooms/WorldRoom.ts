@@ -108,7 +108,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       this.log.warn('world.auth.rejected', { reason: 'duplicate_account' });
       throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
     }
-    const spawn = spawnFor(this.state.players.size);
+    const candidateSpawn = spawnFor(this.state.players.size);
+    const spawn = isValidWorldPosition(this.map, candidateSpawn) ? candidateSpawn : this.map.spawn;
     const player = new PlayerState();
     player.x = spawn.x;
     player.y = spawn.y;
@@ -230,7 +231,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     for (const client of this.clients) {
       const player = this.state.players.get(client.sessionId);
       if (!player?.connected || !client.userData) continue;
-      const next = applyMovement(player, client.userData.input, deltaMs);
+      const next = applyMovement(player, client.userData.input, deltaMs, this.map.traversal);
       player.x = next.x;
       player.y = next.y;
       player.acknowledgedSequence = client.userData.input.sequence;
