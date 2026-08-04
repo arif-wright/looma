@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { WORLD_HEIGHT, WORLD_WIDTH } from './config';
 import { WorldScene, type TouchDirection } from './WorldScene';
 import type { GameRuntime } from './lifecycle';
-import type { ConnectionStatus } from './protocol';
+import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
 import type { GatherResult } from './protocol';
 import { WorldConnection } from './worldConnection';
 
@@ -22,6 +22,7 @@ export type WorldGameRuntime = GameRuntime & {
 export type WorldGameOptions = {
   serverUrl: string | null;
   onConnectionStatus: (status: ConnectionStatus) => void;
+  onConnectionDiagnostic: (diagnostic: ConnectionDiagnostic | null) => void;
   onGatherPrompt: (visible: boolean) => void;
   onGatherResult: (result: GatherResult) => void;
 };
@@ -54,6 +55,7 @@ export const createWorldGame = (host: HTMLElement, options: WorldGameOptions): W
   const connection = options.serverUrl
     ? new WorldConnection(options.serverUrl, {
         onStatus: options.onConnectionStatus,
+        onDiagnostic: options.onConnectionDiagnostic,
         onSnapshot: (snapshot) => scene.applyNetworkSnapshot(snapshot),
         onGatherResult: options.onGatherResult
       })
@@ -61,7 +63,10 @@ export const createWorldGame = (host: HTMLElement, options: WorldGameOptions): W
   scene.setMovementSender((intent) => connection?.sendMovement(intent));
   scene.setInteractionHandlers(() => connection?.gatherMoonberry(), options.onGatherPrompt);
   if (connection) void connection.connect();
-  else options.onConnectionStatus('offline');
+  else {
+    options.onConnectionDiagnostic({ code: 'configuration_missing' });
+    options.onConnectionStatus('offline');
+  }
 
   let destroyed = false;
   const runtime: WorldGameRuntime = {

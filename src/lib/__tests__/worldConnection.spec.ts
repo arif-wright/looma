@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorldConnection } from '$lib/game/worldConnection';
-import type { ConnectionStatus, GatherResult } from '$lib/game/protocol';
+import type { ConnectionDiagnostic, ConnectionStatus, GatherResult } from '$lib/game/protocol';
 
 type Handler = (...args: any[]) => void;
 
@@ -39,13 +39,15 @@ const setup = () => {
   const room = makeRoom();
   const statuses: ConnectionStatus[] = [];
   const gatherResults: GatherResult[] = [];
+  const diagnostics: Array<ConnectionDiagnostic | null> = [];
   const joinOrCreate = vi.fn(async () => room);
   const connection = new WorldConnection('wss://world.example.test', {
     onStatus: (status) => statuses.push(status),
+    onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
     onSnapshot: vi.fn(),
     onGatherResult: (result) => gatherResults.push(result)
   }, { createClient: () => ({ joinOrCreate }) as never, debug: false, recoveryDelaysMs: [0, 0] });
-  return { connection, room, statuses, gatherResults, joinOrCreate };
+  return { connection, room, statuses, diagnostics, gatherResults, joinOrCreate };
 };
 
 describe('WorldConnection lifecycle', () => {
@@ -61,10 +63,27 @@ describe('WorldConnection lifecycle', () => {
   });
 
   it('keeps a successful authenticated join connected', async () => {
-    const { connection, statuses } = setup();
+    const { connection, statuses, diagnostics } = setup();
     await connection.connect();
     expect(statuses).toEqual(['connecting', 'connected']);
+    expect(diagnostics).toEqual([null]);
     connection.destroy('test teardown');
+  });
+
+  it('reports a safe diagnostic for ticket and terminal connection failures', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })));
+    const ticketFailure = setup();
+    await ticketFailure.connection.connect();
+    expect(ticketFailure.diagnostics).toEqual([{ code: 'ticket_unavailable', statusCode: 503 }]);
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ticket: 'redacted-world-ticket', expiresAt: Date.now() + 30_000
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const closed = setup();
+    await closed.connection.connect();
+    closed.room.onLeave.emit(4101);
+    expect(closed.diagnostics.at(-1)).toEqual({ code: 'connection_closed', statusCode: 4101 });
+    closed.connection.destroy('test teardown');
   });
 
   it('shows reconnecting through transient drop errors and reuses the existing room', async () => {

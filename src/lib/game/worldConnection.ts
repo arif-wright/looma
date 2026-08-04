@@ -1,7 +1,7 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
   GATHER_MESSAGE, GATHER_RESULT_MESSAGE, MOVE_MESSAGE, WORLD_ROOM_NAME,
-  type ConnectionStatus, type GatherResult, type MovementIntent, type PlayerSnapshot, type WorldSnapshot
+  type ConnectionDiagnostic, type ConnectionStatus, type GatherResult, type MovementIntent, type PlayerSnapshot, type WorldSnapshot
 } from './protocol';
 
 type SyncedWorld = {
@@ -12,6 +12,7 @@ type TicketResponse = { ticket: string; expiresAt: number };
 const COMPANION_REFRESH_MESSAGE = 'companion-refresh';
 export type WorldConnectionCallbacks = {
   onStatus: (status: ConnectionStatus) => void;
+  onDiagnostic?: (diagnostic: ConnectionDiagnostic | null) => void;
   onSnapshot: (snapshot: WorldSnapshot) => void;
   onGatherResult: (result: GatherResult) => void;
 };
@@ -49,25 +50,37 @@ export class WorldConnection {
 
   async connect(recovering = false) {
     this.setStatus(recovering ? 'reconnecting' : 'connecting');
+    let phase: 'ticket' | 'join' = 'ticket';
+    let failureReported = false;
     try {
       const ticketResponse = await fetch('/api/world/ticket', {
         method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
       });
       if (ticketResponse.status === 401 || ticketResponse.status === 403) {
+        this.callbacks.onDiagnostic?.({ code: 'ticket_rejected', statusCode: ticketResponse.status });
+        failureReported = true;
         this.setStatus('unauthorized');
         return;
       }
-      if (!ticketResponse.ok) throw new Error('World ticket unavailable');
+      if (!ticketResponse.ok) {
+        this.callbacks.onDiagnostic?.({ code: 'ticket_unavailable', statusCode: ticketResponse.status });
+        failureReported = true;
+        throw new Error('World ticket unavailable');
+      }
       const credential = await ticketResponse.json() as TicketResponse;
       if (typeof credential.ticket !== 'string' || !Number.isFinite(credential.expiresAt)) {
+        this.callbacks.onDiagnostic?.({ code: 'ticket_malformed' });
+        failureReported = true;
         throw new Error('World ticket malformed');
       }
+      phase = 'join';
       const room = await this.createClient(this.endpoint).joinOrCreate<SyncedWorld>(WORLD_ROOM_NAME, {
         ticket: credential.ticket
       });
       if (this.stopped) { await room.leave(true); return; }
       this.room = room;
       this.connected = true;
+      this.callbacks.onDiagnostic?.(null);
       this.recoveryAttempt = 0;
       this.recoveryAttempted = false;
       room.reconnection.minUptime = 0;
@@ -115,6 +128,7 @@ export class WorldConnection {
             void this.connect(true);
             return;
           }
+          this.callbacks.onDiagnostic?.({ code: 'connection_closed', statusCode: this.safeCode(code) });
           this.setStatus('unavailable');
           this.failPendingGathers();
         }
@@ -136,9 +150,22 @@ export class WorldConnection {
     } catch (error) {
       if (!this.stopped) {
         const code = (error as { code?: unknown } | null)?.code;
-        if (code === 525) this.setStatus('unauthorized');
+        if (code === 525) {
+          this.callbacks.onDiagnostic?.({ code: 'ticket_rejected', statusCode: 525 });
+          this.setStatus('unauthorized');
+        }
         else if (recovering && this.scheduleRecovery()) return;
         else {
+          if (phase === 'join') {
+            this.callbacks.onDiagnostic?.({
+              code: recovering ? 'recovery_exhausted' : 'join_failed',
+              statusCode: this.safeCode(code)
+            });
+          } else if (recovering) {
+            this.callbacks.onDiagnostic?.({ code: 'recovery_exhausted', statusCode: this.safeCode(code) });
+          } else if (!failureReported) {
+            this.callbacks.onDiagnostic?.({ code: 'ticket_unavailable', statusCode: this.safeCode(code) });
+          }
           // Do not serialize the error: SDK errors may include request metadata.
           console.warn('[world] Realtime connection is unavailable.');
           this.setStatus('unavailable');
@@ -248,5 +275,11 @@ export class WorldConnection {
 
   private log(event: string, fields?: Record<string, unknown>) {
     if (this.debug) console.debug(`[world] ${event}`, fields ?? {});
+  }
+
+  private safeCode(value: unknown) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 5999
+      ? value
+      : undefined;
   }
 }

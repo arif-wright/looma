@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { fitWorldViewport } from './config';
   import { GameLifecycle, type GameRuntime } from './lifecycle';
-  import type { ConnectionStatus } from './protocol';
+  import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
   import type { GatherResult } from './protocol';
 
   export let serverUrl: string | null = null;
@@ -19,6 +19,7 @@
   let status = 'Loading the local world…';
   let loadError = false;
   let connectionStatus: ConnectionStatus = 'offline';
+  let connectionDiagnostic: ConnectionDiagnostic | null = null;
   let gatherPrompt = false;
   let gathering = false;
   let gatherResult: GatherResult | null = null;
@@ -34,6 +35,7 @@
     runtime = createWorldGame(target, {
       serverUrl,
       onConnectionStatus: (nextStatus) => (connectionStatus = nextStatus),
+      onConnectionDiagnostic: (diagnostic) => (connectionDiagnostic = diagnostic),
       onGatherPrompt: (visible) => (gatherPrompt = visible),
       onGatherResult: (result) => {
         gathering = false;
@@ -50,6 +52,17 @@
     host.style.width = `${fitted.width}px`;
     host.style.height = `${fitted.height}px`;
     lifecycle.resize(fitted.width, fitted.height);
+  };
+
+  const diagnosticMessage = (diagnostic: ConnectionDiagnostic) => {
+    const suffix = diagnostic.statusCode ? ` (${diagnostic.statusCode})` : '';
+    if (diagnostic.code === 'configuration_missing') return 'The world server URL is not configured. [W-CONFIG]';
+    if (diagnostic.code === 'ticket_rejected') return `Your world authorization was rejected${suffix}. [W-AUTH]`;
+    if (diagnostic.code === 'ticket_unavailable') return `The world authorization service did not respond successfully${suffix}. [W-TICKET]`;
+    if (diagnostic.code === 'ticket_malformed') return 'The world authorization response was invalid. [W-TICKET-DATA]';
+    if (diagnostic.code === 'join_failed') return `The realtime server could not complete matchmaking${suffix}. [W-JOIN]`;
+    if (diagnostic.code === 'connection_closed') return `The realtime server closed the connection${suffix}. [W-CLOSE]`;
+    return `Realtime recovery was exhausted${suffix}. [W-RECOVERY]`;
   };
 
   export const pause = () => lifecycle.pause();
@@ -127,6 +140,9 @@
   <p class="connection-status" class:connected={connectionStatus === 'connected'} aria-live="polite">
     {connectionLabel}
   </p>
+  {#if connectionDiagnostic && (connectionStatus === 'unavailable' || connectionStatus === 'unauthorized' || connectionStatus === 'offline')}
+    <p class="connection-diagnostic" role="alert">{diagnosticMessage(connectionDiagnostic)}</p>
+  {/if}
   {#if connectionStatus === 'unauthorized'}
     <div class="auth-state" role="alert">
       <p>Your Memvoya session could not authorize multiplayer.</p>
@@ -271,6 +287,22 @@
   }
 
   .connection-status.connected { color: #a9f3dd; }
+
+  .connection-diagnostic {
+    position: absolute;
+    z-index: 4;
+    top: 4.25rem;
+    right: 1rem;
+    width: min(25rem, calc(100% - 2rem));
+    margin: 0;
+    border: 1px solid rgba(255, 188, 207, 0.32);
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.8rem;
+    background: rgba(26, 11, 23, 0.92);
+    color: #ffd6e2;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
 
   .auth-state {
     position: absolute;

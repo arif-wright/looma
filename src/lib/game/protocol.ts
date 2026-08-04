@@ -6,6 +6,12 @@ export const GATHER_RESULT_MESSAGE = 'gather-result';
 
 export type MovementIntent = { sequence: number; x: number; y: number };
 export type ConnectionStatus = 'offline' | 'connecting' | 'connected' | 'reconnecting' | 'unavailable' | 'unauthorized';
+
+export type ConnectionDiagnostic = {
+  code: 'configuration_missing' | 'ticket_rejected' | 'ticket_unavailable' | 'ticket_malformed' |
+    'join_failed' | 'connection_closed' | 'recovery_exhausted';
+  statusCode?: number | undefined;
+};
 export type PlayerSnapshot = {
   x: number;
   y: number;
