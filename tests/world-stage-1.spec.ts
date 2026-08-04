@@ -55,12 +55,30 @@ test.describe('The Wilds protected route', () => {
     const initialYaw = await canvas.getAttribute('data-camera-yaw');
     await page.getByRole('button', { name: 'Rotate camera right' }).click();
     await expect.poll(() => canvas.getAttribute('data-camera-yaw')).not.toBe(initialYaw);
+    const initialZoom = await canvas.getAttribute('data-camera-zoom');
+    await page.getByRole('button', { name: 'Zoom camera in' }).click();
+    await expect.poll(() => canvas.getAttribute('data-camera-zoom')).not.toBe(initialZoom);
+    await page.keyboard.press('KeyR');
+    await expect.poll(() => canvas.getAttribute('data-camera-yaw')).not.toBe(null);
     const initialPosition = await canvas.evaluate((element) => `${element.dataset.localPlayerX}:${element.dataset.localPlayerZ}`);
     await page.keyboard.down('KeyW');
     await page.waitForTimeout(250);
     await page.keyboard.up('KeyW');
     await expect.poll(() => canvas.evaluate((element) => `${element.dataset.localPlayerX}:${element.dataset.localPlayerZ}`)).not.toBe(initialPosition);
+    await expect(canvas).toHaveAttribute('data-facing', /^(n|ne|e|se|s|sw|w|nw)$/);
     await page.getByRole('link', { name: 'Return Home' }).click();
     await expect(page.locator('canvas[data-renderer="three"]')).toHaveCount(0);
+  });
+
+  test('Three context-loss hook presents recovery without duplicating canvas on re-entry', async ({ page }) => {
+    test.skip(!hasAuthenticatedEnvironment || !worldEnabled || selectedRenderer !== 'three', 'requires enabled authenticated Three renderer');
+    await page.goto('/app/world');
+    await page.evaluate(() => (window as any).__MEMVOYA_WORLD_THREE__.loseContext());
+    await expect(page.getByTestId('webgl-recovery-state')).toBeVisible();
+    await page.getByRole('button', { name: 'Restore display' }).click();
+    await expect(page.getByTestId('webgl-recovery-state')).toHaveCount(0);
+    await page.getByRole('link', { name: 'Return Home' }).click();
+    await page.goto('/app/world');
+    await expect(page.locator('canvas[data-renderer="three"]')).toHaveCount(1);
   });
 });

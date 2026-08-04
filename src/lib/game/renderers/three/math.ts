@@ -34,3 +34,16 @@ export const clampPitch = (pitch: number) =>
   Math.min(CAMERA_LIMITS.pitchMax, Math.max(CAMERA_LIMITS.pitchMin, pitch));
 export const clampZoom = (zoom: number) =>
   Math.min(CAMERA_LIMITS.zoomMax, Math.max(CAMERA_LIMITS.zoomMin, zoom));
+
+export const wrapAngle = (angle: number) => {
+  const full = Math.PI * 2;
+  return ((angle % full) + full) % full;
+};
+
+export const shortestAngleDelta = (from: number, to: number) => {
+  const full = Math.PI * 2;
+  return ((to - from + Math.PI) % full + full) % full - Math.PI;
+};
+
+export const lerpAngle = (from: number, to: number, alpha: number) =>
+  wrapAngle(from + shortestAngleDelta(from, to) * alpha);

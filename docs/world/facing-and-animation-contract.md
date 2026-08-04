@@ -1,0 +1,19 @@
+# Facing and animation contract
+
+`FacingDirection` is `n | ne | e | se | s | sw | w | nw`. Facing is computed from world-plane motion after camera-relative input becomes normalized world intent. Server X maps to visual X and server Y maps to visual Z; north is negative Z. Camera yaw never participates in facing classification.
+
+The clockwise sectors are centered on N, NE, E, SE, S, SW, W, NW. Each sector is 45° wide with boundaries at 22.5°, 67.5°, 112.5°, 157.5°, 202.5°, 247.5°, 292.5°, and 337.5°. Classification uses `atan2(worldX, -worldZ)` and nearest-sector rounding. Motion below the noise threshold retains the last non-zero facing, preventing idle reset and snapshot jitter.
+
+`PlayerVisualState` is the input contract for Phase 8C:
+
+- entity ID; authoritative/current, previous, and render world positions
+- facing and `idle | moving`
+- normalized visual movement magnitude
+- local/remote marker
+- public display name and handle
+- companion owner association
+- connected/reconnecting presentation state
+
+It excludes memories, journal text, hidden traits, prompts, tickets, roles, email, and other sensitive account data. Phase 8B draws a direction label and upright arrow on each billboard. Phase 8C may replace only that presentation with frame selection; it must not change facing or authority semantics.
+
+Remote facing derives from meaningful changes between synchronized world targets. Local facing derives from camera-transformed world intent. Both preserve the last meaningful direction while idle.

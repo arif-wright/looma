@@ -1,20 +1,72 @@
-import { clampPitch, clampZoom, DEFAULT_CAMERA } from './math';
+import { clampPitch, clampZoom, DEFAULT_CAMERA, lerpAngle } from './math';
+
+export type CameraPresetName = 'classic' | 'adventurer' | 'wide' | 'close';
+export type CameraPreset = {
+  pitch: number;
+  zoom: number;
+  followSmoothing: number;
+  orbitSensitivity: number;
+  pitchSensitivity: number;
+};
+
+const degrees = (value: number) => value * Math.PI / 180;
+
+export const CAMERA_PRESETS: Record<CameraPresetName, CameraPreset> = {
+  classic: { pitch: degrees(45), zoom: 1, followSmoothing: 8, orbitSensitivity: 0.007, pitchSensitivity: 0.005 },
+  adventurer: { pitch: degrees(35), zoom: 1.18, followSmoothing: 10, orbitSensitivity: 0.0065, pitchSensitivity: 0.0045 },
+  wide: { pitch: degrees(55), zoom: 0.78, followSmoothing: 6, orbitSensitivity: 0.008, pitchSensitivity: 0.0055 },
+  close: { pitch: degrees(42), zoom: 1.5, followSmoothing: 11, orbitSensitivity: 0.006, pitchSensitivity: 0.004 }
+};
+
+export const isCameraPreset = (value: unknown): value is CameraPresetName =>
+  typeof value === 'string' && value in CAMERA_PRESETS;
 
 export class OrbitCameraState {
+  preset: CameraPresetName;
   yaw = DEFAULT_CAMERA.yaw;
-  pitch = DEFAULT_CAMERA.pitch;
-  zoom = DEFAULT_CAMERA.zoom;
+  pitch: number;
+  zoom: number;
+  targetYaw = DEFAULT_CAMERA.yaw;
+  targetPitch: number;
+  targetZoom: number;
 
-  orbit(deltaYaw: number, deltaPitch: number) {
-    this.yaw = (this.yaw + deltaYaw) % (Math.PI * 2);
-    this.pitch = clampPitch(this.pitch + deltaPitch);
+  constructor(preset: CameraPresetName = 'classic') {
+    this.preset = preset;
+    this.pitch = CAMERA_PRESETS[preset].pitch;
+    this.zoom = CAMERA_PRESETS[preset].zoom;
+    this.targetPitch = this.pitch;
+    this.targetZoom = this.zoom;
   }
 
-  adjustZoom(delta: number) { this.zoom = clampZoom(this.zoom + delta); }
+  get settings() { return CAMERA_PRESETS[this.preset]; }
+
+  orbitPixels(deltaX: number, deltaY: number) {
+    this.orbit(-deltaX * this.settings.orbitSensitivity, deltaY * this.settings.pitchSensitivity);
+  }
+
+  orbit(deltaYaw: number, deltaPitch: number) {
+    this.targetYaw += deltaYaw;
+    this.targetPitch = clampPitch(this.targetPitch + deltaPitch);
+  }
+
+  adjustZoom(delta: number) { this.targetZoom = clampZoom(this.targetZoom + delta); }
+
+  selectPreset(preset: CameraPresetName) {
+    this.preset = preset;
+    this.targetPitch = CAMERA_PRESETS[preset].pitch;
+    this.targetZoom = CAMERA_PRESETS[preset].zoom;
+  }
 
   reset() {
-    this.yaw = DEFAULT_CAMERA.yaw;
-    this.pitch = DEFAULT_CAMERA.pitch;
-    this.zoom = DEFAULT_CAMERA.zoom;
+    this.targetYaw = DEFAULT_CAMERA.yaw;
+    this.targetPitch = CAMERA_PRESETS[this.preset].pitch;
+    this.targetZoom = CAMERA_PRESETS[this.preset].zoom;
+  }
+
+  update(deltaSeconds: number) {
+    const alpha = 1 - Math.exp(-10 * Math.max(0, deltaSeconds));
+    this.yaw = lerpAngle(this.yaw, this.targetYaw, alpha);
+    this.pitch += (this.targetPitch - this.pitch) * alpha;
+    this.zoom += (this.targetZoom - this.zoom) * alpha;
   }
 }

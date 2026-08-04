@@ -7,6 +7,8 @@
   import type { GatherResult } from './protocol';
   import type { WorldRenderer } from './rendererSelection';
   import { activateWorldRuntime, releaseWorldRuntime } from './worldRuntimeRegistry';
+  import type { CameraPresetName } from './renderers/three/cameraController';
+  import type { WebglContextStatus } from './renderers/three/threeWorld';
 
   export let serverUrl: string | null = null;
   export let renderer: WorldRenderer = 'phaser';
@@ -18,6 +20,8 @@
     orbitCamera?: (yaw: number, pitch: number) => void;
     zoomCamera?: (delta: number) => void;
     resetCamera?: () => void;
+    selectCameraPreset?: (preset: CameraPresetName) => void;
+    simulateContextRestore?: () => void;
   };
 
   let host: HTMLDivElement;
@@ -25,13 +29,15 @@
   let runtime: RuntimeWithTouch | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let activeTouch: Direction | null = null;
-  let status = 'Loading the local world…';
+  let status = 'Loading The Wilds…';
   let loadError = false;
   let connectionStatus: ConnectionStatus = 'offline';
   let connectionDiagnostic: ConnectionDiagnostic | null = null;
   let gatherPrompt = false;
   let gathering = false;
   let gatherResult: GatherResult | null = null;
+  let contextStatus: WebglContextStatus = 'ready';
+  let cameraPreset: CameraPresetName = 'classic';
   $: connectionLabel =
     connectionStatus === 'connected' ? 'Multiplayer connected' :
     connectionStatus === 'connecting' ? 'Connecting…' :
@@ -52,7 +58,9 @@
     const rendererRuntime = renderer === 'three'
       ? (await import('./renderers/three/threeWorld')).createThreeWorld(target, {
           session,
-          onGatherPrompt: (visible) => (gatherPrompt = visible)
+          onGatherPrompt: (visible) => (gatherPrompt = visible),
+          onContextStatus: (nextStatus) => (contextStatus = nextStatus),
+          onCameraPreset: (nextPreset) => (cameraPreset = nextPreset)
         })
       : (await import('./worldGame')).createWorldGame(target, {
           session,
@@ -68,6 +76,8 @@
       orbitCamera: 'orbitCamera' in rendererRuntime ? rendererRuntime.orbitCamera : undefined,
       zoomCamera: 'zoomCamera' in rendererRuntime ? rendererRuntime.zoomCamera : undefined,
       resetCamera: 'resetCamera' in rendererRuntime ? rendererRuntime.resetCamera : undefined,
+      selectCameraPreset: 'selectCameraPreset' in rendererRuntime ? rendererRuntime.selectCameraPreset : undefined,
+      simulateContextRestore: 'simulateContextRestore' in rendererRuntime ? rendererRuntime.simulateContextRestore : undefined,
       destroy: () => {
         if (destroyed) return;
         destroyed = true;
@@ -187,6 +197,12 @@
       <a href="/app/auth">Sign in again</a>
     </div>
   {/if}
+  {#if renderer === 'three' && contextStatus !== 'ready'}
+    <div class="context-state" role="status" aria-live="polite" data-testid="webgl-recovery-state">
+      <p>{contextStatus === 'lost' ? 'The world display paused after a graphics interruption.' : 'Restoring the world display…'}</p>
+      {#if contextStatus === 'lost'}<button type="button" on:click={() => runtime?.simulateContextRestore?.()}>Restore display</button>{/if}
+    </div>
+  {/if}
 
   {#if gatherPrompt && !loadError}
     <div class="interaction-prompt">
@@ -256,6 +272,15 @@
         <button type="button" aria-label="Rotate camera right" on:click={() => runtime?.orbitCamera?.(0.18, 0)}>↷</button>
         <button type="button" aria-label="Zoom camera out" on:click={() => runtime?.zoomCamera?.(-0.15)}>−</button>
         <button type="button" aria-label="Zoom camera in" on:click={() => runtime?.zoomCamera?.(0.15)}>+</button>
+        <label>
+          <span class="sr-only">Camera preset</span>
+          <select aria-label="Camera preset" value={cameraPreset} on:change={(event) => runtime?.selectCameraPreset?.(event.currentTarget.value as CameraPresetName)}>
+            <option value="classic">Classic</option>
+            <option value="adventurer">Adventurer</option>
+            <option value="wide">Wide</option>
+            <option value="close">Close</option>
+          </select>
+        </label>
       </div>
     {/if}
   {/if}
@@ -349,9 +374,12 @@
     position: absolute;
     right: max(1rem, env(safe-area-inset-right));
     bottom: max(1rem, env(safe-area-inset-bottom));
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 2.7rem);
     gap: 0.35rem;
   }
+
+  .camera-controls label { grid-column: 1 / -1; }
 
   .camera-controls button {
     min-width: 2.7rem;
@@ -362,6 +390,32 @@
     color: #effff9;
     font-weight: 700;
   }
+
+  .camera-controls select {
+    width: 100%;
+    min-height: 2.7rem;
+    border: 1px solid rgba(224, 255, 246, 0.42);
+    border-radius: 0.7rem;
+    padding: 0 0.45rem;
+    background: rgba(8, 20, 28, 0.9);
+    color: #effff9;
+  }
+
+  .context-state {
+    position: absolute;
+    z-index: 6;
+    inset: 50% auto auto 50%;
+    width: min(25rem, calc(100% - 2rem));
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(169, 243, 221, 0.45);
+    border-radius: 0.9rem;
+    padding: 1rem;
+    background: rgba(8, 20, 28, 0.96);
+    color: #effff9;
+    text-align: center;
+  }
+  .context-state p { margin: 0 0 0.7rem; }
+  .context-state button { border: 0; border-radius: 0.6rem; padding: 0.55rem 0.8rem; background: #a9f3dd; color: #07131a; font-weight: 700; }
 
   .connection-diagnostic {
     position: absolute;

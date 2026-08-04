@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OrbitCameraState } from '$lib/game/renderers/three/cameraController';
+import { CAMERA_PRESETS, OrbitCameraState } from '$lib/game/renderers/three/cameraController';
 import {
   CAMERA_LIMITS,
   DEFAULT_CAMERA,
@@ -16,8 +16,13 @@ describe('Three world coordinate and camera contracts', () => {
 
   it.each([
     [0, { x: 0, y: -1 }],
+    [Math.PI / 4, { x: -Math.SQRT1_2, y: -Math.SQRT1_2 }],
     [Math.PI / 2, { x: -1, y: 0 }],
+    [Math.PI * 3 / 4, { x: -Math.SQRT1_2, y: Math.SQRT1_2 }],
     [Math.PI, { x: 0, y: 1 }]
+    ,[Math.PI * 5 / 4, { x: Math.SQRT1_2, y: Math.SQRT1_2 }]
+    ,[Math.PI * 3 / 2, { x: 1, y: 0 }]
+    ,[Math.PI * 7 / 4, { x: Math.SQRT1_2, y: -Math.SQRT1_2 }]
   ])('converts forward input at yaw %s into normalized server intent', (yaw, expected) => {
     const result = cameraRelativeMovement(0, -1, yaw);
     expect(result.x).toBeCloseTo(expected.x, 6);
@@ -29,13 +34,50 @@ describe('Three world coordinate and camera contracts', () => {
     const camera = new OrbitCameraState();
     camera.orbit(1, 100);
     camera.adjustZoom(100);
-    expect(camera.pitch).toBe(CAMERA_LIMITS.pitchMax);
-    expect(camera.zoom).toBe(CAMERA_LIMITS.zoomMax);
+    expect(camera.targetPitch).toBe(CAMERA_LIMITS.pitchMax);
+    expect(camera.targetZoom).toBe(CAMERA_LIMITS.zoomMax);
     camera.orbit(0, -200);
     camera.adjustZoom(-200);
-    expect(camera.pitch).toBe(CAMERA_LIMITS.pitchMin);
-    expect(camera.zoom).toBe(CAMERA_LIMITS.zoomMin);
+    expect(camera.targetPitch).toBe(CAMERA_LIMITS.pitchMin);
+    expect(camera.targetZoom).toBe(CAMERA_LIMITS.zoomMin);
     camera.reset();
-    expect(camera).toMatchObject(DEFAULT_CAMERA);
+    expect(camera.targetYaw).toBe(DEFAULT_CAMERA.yaw);
+    expect(camera.targetPitch).toBe(CAMERA_PRESETS.classic.pitch);
+    expect(camera.targetZoom).toBe(CAMERA_PRESETS.classic.zoom);
+  });
+
+  it('interpolates reset smoothly and crosses yaw wraparound by the shortest path', () => {
+    const camera = new OrbitCameraState();
+    camera.yaw = Math.PI * 2 - 0.01;
+    camera.targetYaw = 0.01;
+    camera.update(1 / 60);
+    expect(camera.yaw < 0.05 || camera.yaw > Math.PI * 2 - 0.05).toBe(true);
+    camera.orbit(2, 0);
+    camera.update(1 / 60);
+    const beforeReset = camera.yaw;
+    camera.reset();
+    expect(camera.yaw).toBe(beforeReset);
+    camera.update(1 / 60);
+    expect(camera.yaw).not.toBe(beforeReset);
+  });
+
+  it('defines complete safe camera presets', () => {
+    expect(Object.keys(CAMERA_PRESETS)).toEqual(['classic', 'adventurer', 'wide', 'close']);
+    for (const preset of Object.values(CAMERA_PRESETS)) {
+      expect(preset.pitch).toBeGreaterThanOrEqual(CAMERA_LIMITS.pitchMin);
+      expect(preset.pitch).toBeLessThanOrEqual(CAMERA_LIMITS.pitchMax);
+      expect(preset.zoom).toBeGreaterThanOrEqual(CAMERA_LIMITS.zoomMin);
+      expect(preset.zoom).toBeLessThanOrEqual(CAMERA_LIMITS.zoomMax);
+      expect(preset.followSmoothing).toBeGreaterThan(0);
+    }
+  });
+
+  it('normalizes diagonal input and treats equivalent wrapped angles identically', () => {
+    const diagonal = cameraRelativeMovement(1, -1, Math.PI / 3);
+    expect(Math.hypot(diagonal.x, diagonal.y)).toBeCloseTo(1, 8);
+    const beforeWrap = cameraRelativeMovement(0, -1, -0.0001);
+    const afterWrap = cameraRelativeMovement(0, -1, Math.PI * 2 - 0.0001);
+    expect(beforeWrap.x).toBeCloseTo(afterWrap.x, 8);
+    expect(beforeWrap.y).toBeCloseTo(afterWrap.y, 8);
   });
 });
