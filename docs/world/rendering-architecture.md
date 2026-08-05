@@ -21,6 +21,8 @@ Traversal presentation has one canonical, server-owned public manifest: `service
 
 Three's development-only collision overlay renders walkable bounds, player-expanded blocking rings, the spawn, and interaction range. It is diagnostic presentation, has no physics role, and is excluded when `import.meta.env.DEV` is false.
 
+Phase 8C replaces Three's canvas direction cards with `HdSpriteEntity`. Yaw-only planes consume native-eight-direction atlas contracts while labels remain separate camera-facing sprites. `HdSpriteResources` owns shared plane/shadow/aura geometry plus reference-counted manifest and atlas-page caches. Version 2 manifests carry ordered, variable-length per-direction sequences and metadata timing; entities load only the active sequence's bounded pages and own only shader UV/opacity state, label texture, animation timer, and root transform. Phaser remains unchanged as rollback. Temporary version 1 Muse/player SVG atlases prove backward-compatible loading and frame selection; production art uses version 2 pages.
+
 Lifecycle order is mount host → create session → dynamically create selected renderer → register composite runtime → start connection. Teardown is idempotent and runs renderer disposal before connection disposal. Visibility changes pause rendering only and do not destroy the socket. Navigation destroys the composite once.
 
 Relevant implementation: `src/routes/app/(protected)/world/+page.server.ts`, `src/lib/game/WorldGameMount.svelte`, `src/lib/game/worldSession.ts`, `src/lib/game/worldRuntimeRegistry.ts`, `src/lib/game/worldGame.ts`, `src/lib/game/renderers/three/threeWorld.ts`, `src/lib/game/traversal.ts`, and `services/world-server/src/world/traversal.ts`.

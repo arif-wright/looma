@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "muse-hd-test-v1",
+  "status": "temporary",
+  "image": "muse.test-atlas.svg",
+  "imageWidth": 1024,
+  "imageHeight": 4096,
+  "nativeDirections": true,
+  "directionOrder": ["n", "ne", "e", "se", "s", "sw", "w", "nw"],
+  "animations": {
+    "idle": {
+      "frameWidth": 256, "frameHeight": 256, "frameCount": 2, "fps": 2, "loop": true,
+      "directions": {
+        "n": { "column": 0, "row": 0 }, "ne": { "column": 0, "row": 1 },
+        "e": { "column": 0, "row": 2 }, "se": { "column": 0, "row": 3 },
+        "s": { "column": 0, "row": 4 }, "sw": { "column": 0, "row": 5 },
+        "w": { "column": 0, "row": 6 }, "nw": { "column": 0, "row": 7 }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 }, "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "effectAnchors": { "chestCrystal": { "x": 0.5, "y": 0.56 }, "forehead": { "x": 0.5, "y": 0.29 }, "aura": { "x": 0.5, "y": 0.9 } },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    },
+    "walk": {
+      "frameWidth": 256, "frameHeight": 256, "frameCount": 4, "fps": 8, "loop": true,
+      "directions": {
+        "n": { "column": 0, "row": 8 }, "ne": { "column": 0, "row": 9 },
+        "e": { "column": 0, "row": 10 }, "se": { "column": 0, "row": 11 },
+        "s": { "column": 0, "row": 12 }, "sw": { "column": 0, "row": 13 },
+        "w": { "column": 0, "row": 14 }, "nw": { "column": 0, "row": 15 }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 }, "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "effectAnchors": { "chestCrystal": { "x": 0.5, "y": 0.56 }, "forehead": { "x": 0.5, "y": 0.29 }, "aura": { "x": 0.5, "y": 0.9 } },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    }
+  }
+}

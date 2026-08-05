@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PLAYER_SPEED } from '../../config';
-import { FacingState, FACING_LABELS, type FacingDirection } from '../../facing';
+import { FacingState, type FacingDirection } from '../../facing';
 import { MovementIntentScheduler } from '../../movementIntentScheduler';
 import type { GameRuntime } from '../../lifecycle';
 import type { PlayerSnapshot, WorldSnapshot } from '../../protocol';
@@ -14,20 +14,16 @@ import { cameraRelativeMovement, SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } fr
 import { ObstructionFadeController, type ObstructableRegistration } from './obstruction';
 import { parseSyntheticDensity, qualityDprCap, selectVisualQuality, type VisualQuality } from './performance';
 import { calculateVisualRosterDelta } from './roster';
-
-type DirectionalBillboard = {
-  sprite: THREE.Sprite;
-  setFacing: (facing: FacingDirection) => void;
-};
+import { HdSpriteEntity, HdSpriteResources, MUSE_ATLAS_URL, PLAYER_ATLAS_URL } from './hdSprite';
 
 type VisualPlayer = {
-  billboard: DirectionalBillboard;
+  billboard: HdSpriteEntity;
   target: THREE.Vector3;
   previousTarget: THREE.Vector3;
   facing: FacingState;
   state: PlayerVisualState;
   trail: CompanionTrail;
-  follower?: DirectionalBillboard;
+  follower?: HdSpriteEntity;
   followerTarget?: THREE.Vector3;
   followerFacing?: FacingState;
 };
@@ -61,47 +57,6 @@ const readCameraPreset = (): CameraPresetName => {
     const value = localStorage.getItem(CAMERA_STORAGE_KEY);
     return isCameraPreset(value) ? value : 'classic';
   } catch { return 'classic'; }
-};
-
-const createBillboard = (label: string, color: string, companion = false): DirectionalBillboard => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 192;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Canvas 2D context unavailable');
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
-  const sprite = new THREE.Sprite(material);
-  sprite.scale.set(companion ? 1.5 : 2, companion ? 1.12 : 1.5, 1);
-  sprite.center.set(0.5, 0);
-  let currentFacing: FacingDirection | null = null;
-
-  const setFacing = (facing: FacingDirection) => {
-    if (facing === currentFacing) return;
-    currentFacing = facing;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = color;
-    context.beginPath();
-    context.roundRect(76, 28, 104, companion ? 86 : 112, 28);
-    context.fill();
-    context.fillStyle = '#07131a';
-    context.font = '800 38px system-ui, sans-serif';
-    context.textAlign = 'center';
-    context.fillText(FACING_LABELS[facing], 128, companion ? 87 : 103);
-    context.fillStyle = '#fff';
-    context.beginPath();
-    context.moveTo(128, 10);
-    context.lineTo(115, 31);
-    context.lineTo(141, 31);
-    context.closePath();
-    context.fill();
-    context.font = '600 21px system-ui, sans-serif';
-    context.fillText(label.slice(0, 24), 128, 180);
-    texture.needsUpdate = true;
-  };
-  setFacing('s');
-  return { sprite, setFacing };
 };
 
 const disposeObject = (object: THREE.Object3D) => {
@@ -139,10 +94,11 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const keys = new Set<string>();
   const touch = { x: 0, y: 0 };
   const players = new Map<string, VisualPlayer>();
+  const spriteResources = new HdSpriteResources();
   const obstructables: ObstructableRegistration[] = [];
   const obstructionFader = new ObstructionFadeController();
   const raycaster = new THREE.Raycaster();
-  const synthetic: DirectionalBillboard[] = [];
+  const synthetic: HdSpriteEntity[] = [];
   let obstructed = new Set<string>();
   let localPlayerId = '';
   let localServerPosition = { x: 180, y: 270 };
@@ -157,6 +113,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   let fpsElapsed = 0;
   let fpsWindowElapsed = 0;
   let recentMinimumFps = 60;
+  let animationUpdateMs = 0;
 
   scene.add(new THREE.HemisphereLight(0xd9fff5, 0x355044, 1.8));
   const sun = new THREE.DirectionalLight(0xfff0cf, 2.2);
@@ -237,13 +194,15 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   if (import.meta.env.DEV) {
     const density = parseSyntheticDensity(new URLSearchParams(location.search).get('worldDensity'));
     for (let index = 0; index < density; index += 1) {
-      const billboard = createBillboard(`Synthetic ${index + 1}`, '#7898d8');
+      const billboard = new HdSpriteEntity(spriteResources, {
+        label: `Synthetic ${index + 1}`, manifestUrl: PLAYER_ATLAS_URL
+      });
       const angle = index / Math.max(1, density) * Math.PI * 2;
       const radius = 4 + index % 4;
-      billboard.sprite.position.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
-      billboard.setFacing((['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as FacingDirection[])[index % 8]!);
+      billboard.root.position.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
+      billboard.animator.facing = (['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as FacingDirection[])[index % 8]!;
       synthetic.push(billboard);
-      scene.add(billboard.sprite);
+      scene.add(billboard.root);
     }
   }
 
@@ -257,9 +216,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const removePlayer = (id: string) => {
     const visual = players.get(id);
     if (!visual) return;
-    scene.remove(visual.billboard.sprite);
-    disposeObject(visual.billboard.sprite);
-    if (visual.follower) { scene.remove(visual.follower.sprite); disposeObject(visual.follower.sprite); }
+    scene.remove(visual.billboard.root);
+    visual.billboard.destroy();
+    if (visual.follower) { scene.remove(visual.follower.root); visual.follower.destroy(); }
     players.delete(id);
   };
 
@@ -274,9 +233,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const mapped = serverToWorld(player.x, player.y);
       let visual = players.get(id);
       if (!visual) {
-        const billboard = createBillboard(player.displayName, id === localPlayerId ? '#39d7bc' : '#f0a7cf');
-        billboard.sprite.position.set(mapped.x, 0.02, mapped.z);
-        scene.add(billboard.sprite);
+        const billboard = new HdSpriteEntity(spriteResources, { label: player.displayName, manifestUrl: PLAYER_ATLAS_URL });
+        billboard.root.position.set(mapped.x, 0.02, mapped.z);
+        scene.add(billboard.root);
         const facing = new FacingState();
         visual = {
           billboard,
@@ -305,8 +264,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       visual.previousTarget.copy(visual.target);
       visual.target.set(mapped.x, 0.02, mapped.z);
       if (id !== localPlayerId) visual.facing.update(motionX, motionZ, 0.02);
-      visual.billboard.setFacing(visual.facing.value);
-      visual.billboard.sprite.material.opacity = player.connected ? 1 : 0.4;
+      visual.billboard.setOpacity(player.connected ? 1 : 0.4);
       const motion = movementState(motionX, motionZ, 0.02);
       visual.state = {
         ...visual.state,
@@ -323,16 +281,23 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       if (id === localPlayerId) localServerPosition = { x: player.x, y: player.y };
       if (player.companionPresent) {
         if (!visual.follower) {
-          visual.follower = createBillboard(player.companionName, '#ffd36e', true);
+          const muse = player.companionKind.toLowerCase().includes('muse');
+          visual.follower = new HdSpriteEntity(spriteResources, {
+            label: player.companionName,
+            manifestUrl: muse ? MUSE_ATLAS_URL : `/game/sprites/companions/${encodeURIComponent(player.companionKind)}/companion.atlas.json`,
+            fallbackManifestUrl: PLAYER_ATLAS_URL,
+            companion: true,
+            museEffects: muse
+          });
           visual.followerFacing = new FacingState();
           visual.followerTarget = new THREE.Vector3(mapped.x - 0.9, 0.02, mapped.z + 0.8);
-          visual.follower.sprite.position.copy(visual.followerTarget);
-          scene.add(visual.follower.sprite);
+          visual.follower.root.position.copy(visual.followerTarget);
+          scene.add(visual.follower.root);
         }
-        visual.follower.sprite.material.opacity = player.companionStatus === 'reconnecting' ? 0.45 : 0.95;
+        visual.follower.setOpacity(player.companionStatus === 'reconnecting' ? 0.45 : 0.95);
       } else if (visual.follower) {
-        scene.remove(visual.follower.sprite);
-        disposeObject(visual.follower.sprite);
+        scene.remove(visual.follower.root);
+        visual.follower.destroy();
         delete visual.follower;
         delete visual.followerTarget;
         delete visual.followerFacing;
@@ -435,34 +400,41 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     const intent = movement.next(intentDirection.x, intentDirection.y, delta * 1000);
     if (intent) options.session.sendMovement(intent);
 
+    const animationStart = performance.now();
     const local = players.get(localPlayerId);
     if (local) {
       local.facing.update(intentDirection.x, intentDirection.y);
-      local.billboard.setFacing(local.facing.value);
       const motion = movementState(intentDirection.x, intentDirection.y);
       local.state = { ...local.state, facing: local.facing.value, ...motion };
-      local.billboard.sprite.position.x += intentDirection.x * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
-      local.billboard.sprite.position.z += intentDirection.y * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
-      local.billboard.sprite.position.lerp(local.target, 1 - Math.exp(-8 * delta));
-      cameraTarget.copy(local.billboard.sprite.position);
-      renderer.domElement.dataset.localPlayerX = local.billboard.sprite.position.x.toFixed(3);
-      renderer.domElement.dataset.localPlayerZ = local.billboard.sprite.position.z.toFixed(3);
+      local.billboard.root.position.x += intentDirection.x * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
+      local.billboard.root.position.z += intentDirection.y * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
+      local.billboard.root.position.lerp(local.target, 1 - Math.exp(-8 * delta));
+      cameraTarget.copy(local.billboard.root.position);
+      renderer.domElement.dataset.localPlayerX = local.billboard.root.position.x.toFixed(3);
+      renderer.domElement.dataset.localPlayerZ = local.billboard.root.position.z.toFixed(3);
       renderer.domElement.dataset.facing = local.facing.value;
     }
     const updateRemoteVisuals = quality === 'full' || frame % 2 === 0;
     for (const [id, visual] of players) {
-      if (id !== localPlayerId && updateRemoteVisuals) visual.billboard.sprite.position.lerp(visual.target, 1 - Math.exp(-10 * delta));
-      visual.state.renderPosition = { x: visual.billboard.sprite.position.x, z: visual.billboard.sprite.position.z };
+      if (id !== localPlayerId && updateRemoteVisuals) visual.billboard.root.position.lerp(visual.target, 1 - Math.exp(-10 * delta));
+      visual.state.renderPosition = { x: visual.billboard.root.position.x, z: visual.billboard.root.position.z };
       visual.trail.push(visual.state.renderPosition);
+      visual.billboard.update(delta, visual.state.facing, visual.state.movementMagnitude, cameraState.yaw, quality, camera.position.distanceTo(visual.billboard.root.position));
       if (visual.follower && visual.followerTarget) {
-        const trailTarget = visual.trail.target({ x: visual.billboard.sprite.position.x - 0.9, z: visual.billboard.sprite.position.z + 0.8 });
+        const trailTarget = visual.trail.target({ x: visual.billboard.root.position.x - 0.9, z: visual.billboard.root.position.z + 0.8 });
         visual.followerTarget.set(trailTarget.x, 0.02, trailTarget.z);
-        visual.follower.sprite.position.lerp(visual.followerTarget, 1 - Math.exp(-7 * delta));
-        const followX = visual.followerTarget.x - visual.follower.sprite.position.x;
-        const followZ = visual.followerTarget.z - visual.follower.sprite.position.z;
-        visual.follower.setFacing(visual.followerFacing?.update(followX, followZ, 0.02) ?? visual.facing.value);
+        visual.follower.root.position.lerp(visual.followerTarget, 1 - Math.exp(-7 * delta));
+        const followX = visual.followerTarget.x - visual.follower.root.position.x;
+        const followZ = visual.followerTarget.z - visual.follower.root.position.z;
+        const followerFacing = visual.followerFacing?.update(followX, followZ, 0.02) ?? visual.facing.value;
+        const followerMotion = movementState(followX, followZ, 0.018);
+        visual.follower.update(delta, followerFacing, followerMotion.movementMagnitude, cameraState.yaw, quality, camera.position.distanceTo(visual.follower.root.position));
       }
     }
+    for (const billboard of synthetic) {
+      billboard.update(delta, billboard.animator.facing, frame % 240 < 150 ? 0.5 : 0, cameraState.yaw, quality, camera.position.distanceTo(billboard.root.position));
+    }
+    animationUpdateMs = performance.now() - animationStart;
 
     const followAlpha = 1 - Math.exp(-cameraState.settings.followSmoothing * delta);
     cameraTargetSmooth.lerp(cameraTarget, followAlpha);
@@ -499,7 +471,10 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (debug && fpsElapsed >= 0.5) {
       const localFacing = players.get(localPlayerId)?.facing.value ?? 's';
       const billboardCount = players.size + [...players.values()].filter((visual) => visual.follower).length + synthetic.length;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      const animated = [...players.values()].reduce((count, visual) => count + 1 + Number(Boolean(visual.follower)), 0) + synthetic.length;
+      const textureMemoryMb = spriteResources.estimatedTextureMemoryBytes / (1024 * 1024);
+      const animation = players.get(localPlayerId)?.billboard.animationDiagnostics;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.facing} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }
@@ -510,6 +485,13 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     renderer.domElement.dataset.cameraZoom = cameraState.zoom.toFixed(3);
     renderer.domElement.dataset.cameraPreset = cameraState.preset;
     renderer.domElement.dataset.contextStatus = contextStatus;
+    renderer.domElement.dataset.animatedSprites = String(players.size + [...players.values()].filter((visual) => visual.follower).length + synthetic.length);
+    renderer.domElement.dataset.spriteAssets = String(spriteResources.cacheSize);
+    renderer.domElement.dataset.spriteMemoryMb = (spriteResources.estimatedTextureMemoryBytes / (1024 * 1024)).toFixed(2);
+    renderer.domElement.dataset.animationUpdateMs = animationUpdateMs.toFixed(3);
+    renderer.domElement.dataset.localAnimation = local?.billboard.animator.state ?? 'idle';
+    renderer.domElement.dataset.localSpriteLoad = local?.billboard.loadState ?? 'loading';
+    renderer.domElement.dataset.museSprites = String([...players.values()].filter((visual) => visual.follower?.assetId.startsWith('muse-')).length);
   };
 
   const selectCameraPreset = (preset: CameraPresetName) => {
@@ -555,7 +537,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', contextRestored);
       for (const id of [...players.keys()]) removePlayer(id);
-      synthetic.forEach((billboard) => { scene.remove(billboard.sprite); disposeObject(billboard.sprite); });
+      synthetic.forEach((billboard) => { scene.remove(billboard.root); billboard.destroy(); });
+      spriteResources.dispose();
       disposeObject(scene);
       renderer.dispose();
       renderer.domElement.remove();

@@ -67,6 +67,13 @@ test.describe('The Wilds protected route', () => {
     await page.keyboard.up('KeyW');
     await expect.poll(() => canvas.evaluate((element) => `${element.dataset.localPlayerX}:${element.dataset.localPlayerZ}`)).not.toBe(initialPosition);
     await expect(canvas).toHaveAttribute('data-facing', /^(n|ne|e|se|s|sw|w|nw)$/);
+    await expect(canvas).toHaveAttribute('data-local-sprite-load', /^(loaded|fallback)$/);
+    await expect(canvas).toHaveAttribute('data-sprite-assets', /^[1-9]\d*$/);
+    await page.keyboard.down('KeyD');
+    await expect.poll(() => canvas.getAttribute('data-local-animation')).toBe('walk');
+    await page.keyboard.up('KeyD');
+    await expect.poll(() => canvas.getAttribute('data-local-animation')).toBe('idle');
+    await expect(canvas).toHaveAttribute('data-animation-update-ms', /^\d+\.\d+$/);
     await page.getByRole('link', { name: 'Return Home' }).click();
     await expect(page.locator('canvas[data-renderer="three"]')).toHaveCount(0);
   });
@@ -81,5 +88,6 @@ test.describe('The Wilds protected route', () => {
     await page.getByRole('link', { name: 'Return Home' }).click();
     await page.goto('/app/world');
     await expect(page.locator('canvas[data-renderer="three"]')).toHaveCount(1);
+    await expect(page.locator('canvas[data-renderer="three"]')).toHaveAttribute('data-sprite-assets', /^[1-9]\d*$/);
   });
 });

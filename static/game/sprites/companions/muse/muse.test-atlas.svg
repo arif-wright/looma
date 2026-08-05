@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="4096" viewBox="0 0 1024 4096">
+  <!-- TEMPORARY Phase 8C pipeline-validation atlas. Replace image + metadata without runtime changes. -->
+  <defs>
+    <g id="muse">
+      <path d="M22 91 C-6 66 0 39 26 48 C37 52 42 64 43 77" fill="#a888db" stroke="#5d477e" stroke-width="5"/>
+      <path d="M106 91 C134 66 128 39 102 48 C91 52 86 64 85 77" fill="#a888db" stroke="#5d477e" stroke-width="5"/>
+      <path d="M23 42 L12 10 L43 31 M105 42 L116 10 L85 31" fill="#d7c8f2" stroke="#5d477e" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M111 111 C142 117 139 145 119 147 C132 133 119 128 105 130" fill="none" stroke="#76f3e1" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="64" cy="82" rx="48" ry="58" fill="#9a75ca" stroke="#5d477e" stroke-width="6"/>
+      <path d="M45 35 Q64 17 83 35 L75 53 L53 53 Z" fill="#b99ae0"/>
+      <path d="M55 36 L64 24 L73 36 L64 46 Z" fill="#73f6df" stroke="#ecffff" stroke-width="2"/>
+      <ellipse cx="45" cy="73" rx="11" ry="14" fill="#fff"/><ellipse cx="83" cy="73" rx="11" ry="14" fill="#fff"/>
+      <ellipse cx="47" cy="76" rx="6" ry="8" fill="#172b39"/><ellipse cx="81" cy="76" rx="6" ry="8" fill="#172b39"/>
+      <circle cx="49" cy="73" r="2.5" fill="#79fff0"/><circle cx="83" cy="73" r="2.5" fill="#79fff0"/>
+      <path d="M54 98 Q64 106 74 98" fill="none" stroke="#392c50" stroke-width="4" stroke-linecap="round"/>
+      <path d="M52 114 L64 103 L76 114 L64 132 Z" fill="#64f4e1" stroke="#dcffff" stroke-width="3"/>
+      <path d="M37 111 Q27 137 44 151 M91 111 Q101 137 84 151" fill="none" stroke="#6eeedc" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <style>text{font-family:system-ui,sans-serif;font-weight:800;fill:#eaffff;paint-order:stroke;stroke:#2d2042;stroke-width:5px}</style>
+  </defs>
+  <rect width="1024" height="4096" fill="none"/>
+  <!-- idle: rows N, NE, E, SE, S, SW, W, NW; two authored cells used -->
+  <g transform="translate(0 0)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">N · I0</text><text x="384" y="224" text-anchor="middle">N · I1</text></g>
+  <g transform="translate(0 256)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">NE · I0</text><text x="384" y="224" text-anchor="middle">NE · I1</text></g>
+  <g transform="translate(0 512)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">E · I0</text><text x="384" y="224" text-anchor="middle">E · I1</text></g>
+  <g transform="translate(0 768)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">SE · I0</text><text x="384" y="224" text-anchor="middle">SE · I1</text></g>
+  <g transform="translate(0 1024)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">S · I0</text><text x="384" y="224" text-anchor="middle">S · I1</text></g>
+  <g transform="translate(0 1280)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">SW · I0</text><text x="384" y="224" text-anchor="middle">SW · I1</text></g>
+  <g transform="translate(0 1536)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">W · I0</text><text x="384" y="224" text-anchor="middle">W · I1</text></g>
+  <g transform="translate(0 1792)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="35"/><text x="128" y="224" text-anchor="middle">NW · I0</text><text x="384" y="224" text-anchor="middle">NW · I1</text></g>
+  <!-- walk: same native direction order; four visibly distinct bob frames -->
+  <g transform="translate(0 2048)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">N · W0</text><text x="384" y="224" text-anchor="middle">N · W1</text><text x="640" y="224" text-anchor="middle">N · W2</text><text x="896" y="224" text-anchor="middle">N · W3</text></g>
+  <g transform="translate(0 2304)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">NE · W0</text><text x="384" y="224" text-anchor="middle">NE · W1</text><text x="640" y="224" text-anchor="middle">NE · W2</text><text x="896" y="224" text-anchor="middle">NE · W3</text></g>
+  <g transform="translate(0 2560)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">E · W0</text><text x="384" y="224" text-anchor="middle">E · W1</text><text x="640" y="224" text-anchor="middle">E · W2</text><text x="896" y="224" text-anchor="middle">E · W3</text></g>
+  <g transform="translate(0 2816)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">SE · W0</text><text x="384" y="224" text-anchor="middle">SE · W1</text><text x="640" y="224" text-anchor="middle">SE · W2</text><text x="896" y="224" text-anchor="middle">SE · W3</text></g>
+  <g transform="translate(0 3072)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">S · W0</text><text x="384" y="224" text-anchor="middle">S · W1</text><text x="640" y="224" text-anchor="middle">S · W2</text><text x="896" y="224" text-anchor="middle">S · W3</text></g>
+  <g transform="translate(0 3328)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">SW · W0</text><text x="384" y="224" text-anchor="middle">SW · W1</text><text x="640" y="224" text-anchor="middle">SW · W2</text><text x="896" y="224" text-anchor="middle">SW · W3</text></g>
+  <g transform="translate(0 3584)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">W · W0</text><text x="384" y="224" text-anchor="middle">W · W1</text><text x="640" y="224" text-anchor="middle">W · W2</text><text x="896" y="224" text-anchor="middle">W · W3</text></g>
+  <g transform="translate(0 3840)"><use href="#muse" x="64" y="38"/><use href="#muse" x="320" y="30"/><use href="#muse" x="576" y="38"/><use href="#muse" x="832" y="44"/><text x="128" y="224" text-anchor="middle">NW · W0</text><text x="384" y="224" text-anchor="middle">NW · W1</text><text x="640" y="224" text-anchor="middle">NW · W2</text><text x="896" y="224" text-anchor="middle">NW · W3</text></g>
+</svg>

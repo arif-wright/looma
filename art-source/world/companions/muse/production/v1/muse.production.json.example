@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "status": "awaiting-approval",
+  "sourceApprovalId": "REPLACE_WITH_APPROVED_CURRENT_MUSE_DELIVERY_ID",
+  "primaryVisualReference": "UPDATED_APPROVED_MUSE_HD_GAMEPLAY_SPRITE_PRODUCTION_SHEET",
+  "deprecatedSourcesExcluded": ["static/models/muse.glb"],
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "animations": {
+    "idle": {
+      "fps": 12,
+      "loop": true,
+      "directions": {
+        "n": { "frameCount": 24 }, "ne": { "frameCount": 24 },
+        "e": { "frameCount": 24 }, "se": { "frameCount": 24 },
+        "s": { "frameCount": 24 }, "sw": { "frameCount": 24 },
+        "w": { "frameCount": 24 }, "nw": { "frameCount": 24 }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 },
+      "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "effectAnchors": {
+        "chestCrystal": { "x": 0.5, "y": 0.56 },
+        "forehead": { "x": 0.5, "y": 0.29 },
+        "aura": { "x": 0.5, "y": 0.9 }
+      },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    },
+    "walk": {
+      "fps": 10,
+      "loop": true,
+      "directions": {
+        "n": { "frameCount": 6 }, "ne": { "frameCount": 6 },
+        "e": { "frameCount": 6 }, "se": { "frameCount": 6 },
+        "s": { "frameCount": 6 }, "sw": { "frameCount": 6 },
+        "w": { "frameCount": 6 }, "nw": { "frameCount": 6 }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 },
+      "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "effectAnchors": {
+        "chestCrystal": { "x": 0.5, "y": 0.56 },
+        "forehead": { "x": 0.5, "y": 0.29 },
+        "aura": { "x": 0.5, "y": 0.9 }
+      },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    }
+  }
+}

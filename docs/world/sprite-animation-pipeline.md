@@ -1,0 +1,13 @@
+# HD sprite animation pipeline
+
+`PlayerVisualState` and companion trail motion remain renderer-neutral. `SpriteAnimator` selects `idle` or `walk`, retains the last world-relative facing at rest, advances time without restarting an unchanged state, and preserves progress when only facing changes. `MotionAnimationState` enters walk at magnitude 0.025 and returns to idle at 0.012, preventing interpolation noise from flickering animation.
+
+Three uses yaw-only upright planes, not fully camera-facing sprites. Every plane rotates around world Y to face camera yaw but remains vertical as pitch changes. This preserves illustrated proportions across Classic, Adventurer, Wide, and Close without the backward tilt a full pitch-facing billboard can produce. Camera orbit changes presentation only; atlas direction remains world-relative.
+
+The plane is centered from the manifest feet point so declared ground contact resolves to world Y=0.02. Player height is 3.1 world units (approximately 120 px in the Classic 540 px/14-world-unit viewport); companion height is 2.5 units (approximately 96 px). Labels are separate camera-facing sprites above the art and hide beyond 34 world units. Companion labels are smaller and lower-contrast. Shared transparent ellipse geometry/material supplies fake ground shadows.
+
+`HdSpriteResources` loads metadata once and atlas pages on demand. An entity retains only pages needed by its active state/direction sequence; concurrent entities share page promises and textures. A direction change first acquires its required pages, then releases pages no longer needed. Each entity owns a small shader material containing only its active texture/UV region/opacity. No animation frame creates a texture or material. Reference counts dispose each page after the final user releases it; entity destruction releases all pages exactly once. A failed primary companion asset falls back safely.
+
+Animation timing comes from manifest metadata. `SpriteAnimator` derives total frames from the selected direction's explicit sequence, supports direction-specific FPS/loop overrides, reaches every ordered frame (including 24+ frame cycles), and does not restart when facing alone changes. Playback state, facing, frame/total, effective FPS, loaded page count, and estimated decoded RGBA memory appear in development diagnostics.
+
+Muse's optional aura is a separate renderer layer following the companion root. It does not enter synchronized state. Full quality enables it; reduced/minimum quality disables it before affecting core sprites or animation. Future crystal/marking/wing layers may use the declared anchors but should remain lightweight.

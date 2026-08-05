@@ -17,6 +17,9 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest",
 		"test:e2e": "playwright test --reporter=list",
+		"test:world-assets": "node --test scripts/world/muse-assets.test.mjs",
+		"world:muse:validate": "node scripts/world/muse-assets.mjs validate",
+		"world:muse:pack": "node scripts/world/muse-assets.mjs pack",
 		"seed": "tsx scripts/seed.ts",
 		"seed:ci": "NODE_ENV=test tsx scripts/seed.ts"
 	},
@@ -29,6 +32,7 @@
 		"autoprefixer": "^10.4.21",
 		"dotenv": "^17.2.3",
 		"dotenv-cli": "^11.0.0",
+		"pngjs": "5.0.0",
 		"postcss": "^8.5.6",
 		"svelte": "^5.39.5",
 		"svelte-check": "^4.3.2",
