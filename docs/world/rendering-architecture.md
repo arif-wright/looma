@@ -1,6 +1,6 @@
 # The Wilds rendering architecture
 
-Status: Phase 8B.2 parallel prototype. Phaser remains the production-safe default.
+Status: Phase 8D production-environment foundation. Phaser remains the production-safe fallback.
 
 `/app/world` keeps the existing protected SvelteKit route, world-ticket endpoint, `WorldConnection`, Colyseus protocol, persistence, inventory, and companion contracts. The route reads `PUBLIC_WORLD_RENDERER` server-side and passes the normalized value to `WorldGameMount.svelte`; only `three` selects Three.js. Missing and invalid values select `phaser`.
 
@@ -18,6 +18,8 @@ WorldGameMount.svelte -> WorldSession -> WorldConnection -> Colyseus
 Prediction remains visual; both renderers send normalized intent and reconcile to snapshots. `PlayerVisualState` is a renderer-neutral animation input containing public identity, the authoritative `playerBody` presentation selection, world/render positions, facing, movement state, companion association, and connection state—never private companion or account data. The profile and ticket ownership boundary for `playerBody` is defined in `docs/world/player-body-contract.md`.
 
 Traversal presentation has one canonical, server-owned public manifest: `services/world-server/src/world/traversalManifest.json`. The server consumes it for authoritative movement, spawn, and persisted-position validation. `src/lib/game/traversal.ts` exposes the identical static data to both renderers. Phaser creates visible static placeholder bodies from its circles; Three places the corresponding visible tree/rock placeholders after server-X/Y to Three-X/Z conversion. Neither renderer may invent permanent blocker geometry or make collision authoritative. The road and open terrain have no collision entries.
+
+Three environment presentation is data-driven by `src/lib/game/environment/wilds-exploration.environment.json`. `environmentWorld.ts` maps that renderer-neutral contract to shared Three resources, instanced deterministic dressing, ordered layers, obstruction registrations, Moonberry emphasis, quality tiers, metrics, and idempotent disposal. The visual manifest references server blockers but never defines collision. Phaser can adopt the same presentation contract later without changing authority.
 
 Three's development-only collision overlay renders walkable bounds, player-expanded blocking rings, the spawn, and interaction range. It is diagnostic presentation, has no physics role, and is excluded when `import.meta.env.DEV` is false.
 

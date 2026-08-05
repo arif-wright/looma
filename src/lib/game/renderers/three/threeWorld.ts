@@ -17,6 +17,7 @@ import { calculateVisualRosterDelta } from './roster';
 import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
 import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
 import { playerBodyManifestUrl } from '../../playerBody';
+import { createEnvironmentWorld } from './environmentWorld';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -134,48 +135,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   sun.position.set(-8, 14, -5);
   scene.add(sun);
 
-  const terrain = new THREE.Mesh(new THREE.PlaneGeometry(30, 16.875), new THREE.MeshStandardMaterial({ color: 0x4f896c, roughness: 0.95 }));
-  terrain.rotation.x = -Math.PI / 2;
-  scene.add(terrain);
-  const path = new THREE.Mesh(new THREE.BoxGeometry(30, 0.12, 3.3), new THREE.MeshStandardMaterial({ color: 0x9c835d, roughness: 1 }));
-  path.position.y = 0.04;
-  scene.add(path);
-
-  const registerObstructable = (id: string, root: THREE.Object3D, materials: THREE.Material[]) => {
-    root.userData.obstructionId = id;
-    root.traverse((child) => { child.userData.obstructionId = id; });
-    for (const material of materials) { material.transparent = true; material.depthWrite = true; }
-    obstructables.push({ id, root, materials });
-  };
-
-  for (const blocker of WORLD_TRAVERSAL.blockers.filter((item) => item.kind === 'tree')) {
-    const mapped = serverToWorld(blocker.x, blocker.y);
-    const tree = new THREE.Group();
-    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x624a35 });
-    const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2c654c });
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.6, 8), trunkMaterial);
-    trunk.position.y = 0.8;
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.6, 10), leafMaterial);
-    crown.position.y = 2.35;
-    tree.add(trunk, crown);
-    tree.position.set(mapped.x, 0, mapped.z);
-    scene.add(tree);
-    registerObstructable(blocker.id, tree, [trunkMaterial, leafMaterial]);
-  }
-  for (const blocker of WORLD_TRAVERSAL.blockers.filter((item) => item.kind === 'rock')) {
-    const mapped = serverToWorld(blocker.x, blocker.y);
-    const scale = blocker.radius / 28;
-    const material = new THREE.MeshStandardMaterial({ color: 0x67736f, roughness: 1 });
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(scale, 0), material);
-    rock.scale.y = 0.65;
-    rock.position.set(mapped.x, scale * 0.42, mapped.z);
-    scene.add(rock);
-    registerObstructable(blocker.id, rock, [material]);
-  }
-  const grovePosition = serverToWorld(MOONBERRY.x, MOONBERRY.y);
-  const grove = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.25, 24), new THREE.MeshStandardMaterial({ color: 0x7a5bc1, emissive: 0x241447, emissiveIntensity: 0.5 }));
-  grove.position.set(grovePosition.x, 0.14, grovePosition.z);
-  scene.add(grove);
+  const environment = createEnvironmentWorld();
+  scene.add(environment.root);
+  obstructables.push(...environment.obstructables);
 
   if (import.meta.env.DEV) {
     const collisionDebug = new THREE.Group();
@@ -350,7 +312,11 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     });
     for (const id of rosterDelta.removed) removePlayer(id);
     const available = Math.hypot(localServerPosition.x - MOONBERRY.x, localServerPosition.y - MOONBERRY.y) <= MOONBERRY.radius;
-    if (available !== interactionVisible) { interactionVisible = available; options.onGatherPrompt(available); }
+    if (available !== interactionVisible) {
+      interactionVisible = available;
+      environment.setMoonberryEmphasis(available);
+      options.onGatherPrompt(available);
+    }
   };
   options.session.setSnapshotConsumer(applySnapshot);
 
@@ -430,7 +396,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     const opacity = obstructionFader.update(obstructables.map((item) => item.id), obstructed, delta);
     for (const state of opacity) {
       const item = obstructables.find((candidate) => candidate.id === state.id);
-      item?.materials.forEach((material) => { material.opacity = state.opacity; material.depthWrite = state.opacity > 0.75; });
+      if (item?.setOpacity) item.setOpacity(state.opacity);
+      else item?.materials.forEach((material) => { material.opacity = state.opacity; material.depthWrite = state.opacity > 0.75; });
     }
   };
 
@@ -438,6 +405,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (destroyed || paused) return;
     raf = requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
+    environment.update(clock.elapsedTime);
     cameraState.update(delta);
     const inputX = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + touch.x;
     const inputY = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + touch.y;
@@ -510,6 +478,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         quality = nextQuality;
         setDpr();
         scene.fog = quality === 'minimum' ? null : fullFog;
+        environment.setQuality(quality);
       }
       fpsWindowElapsed = 0;
       recentMinimumFps = currentFps;
@@ -540,6 +509,12 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     renderer.domElement.dataset.spriteAssets = String(spriteResources.cacheSize);
     renderer.domElement.dataset.spriteMemoryMb = (spriteResources.estimatedTextureMemoryBytes / (1024 * 1024)).toFixed(2);
     renderer.domElement.dataset.animationUpdateMs = animationUpdateMs.toFixed(3);
+    renderer.domElement.dataset.environmentDrawCalls = String(environment.metrics.drawCalls);
+    renderer.domElement.dataset.environmentVisibleProps = String(environment.metrics.visibleProps);
+    renderer.domElement.dataset.environmentDecorativeProps = String(environment.metrics.decorativeProps);
+    renderer.domElement.dataset.environmentTextureMemoryMb = (environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2);
+    renderer.domElement.dataset.environmentEffects = String(environment.metrics.ambientEffects);
+    renderer.domElement.dataset.environmentSharedResources = String(environment.metrics.sharedResources);
     renderer.domElement.dataset.localAnimation = local?.billboard.animator.state ?? 'idle';
     renderer.domElement.dataset.localSpriteLoad = local?.billboard.loadState ?? 'loading';
     renderer.domElement.dataset.museSprites = String([...players.values()].filter((visual) => visual.follower?.assetId.startsWith('muse-')).length);
@@ -608,6 +583,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       for (const id of [...players.keys()]) removePlayer(id);
       synthetic.forEach((billboard) => { scene.remove(billboard.root); billboard.destroy(); });
       spriteResources.dispose();
+      scene.remove(environment.root);
+      environment.dispose();
       disposeObject(scene);
       renderer.dispose();
       renderer.domElement.remove();

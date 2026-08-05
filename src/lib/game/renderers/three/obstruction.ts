@@ -6,6 +6,7 @@ export type ObstructableRegistration = {
   id: string;
   root: THREE.Object3D;
   materials: THREE.Material[];
+  setOpacity?: (opacity: number) => void;
 };
 
 export class ObstructionFadeController {

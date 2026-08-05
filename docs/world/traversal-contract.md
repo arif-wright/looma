@@ -8,6 +8,8 @@ The Colyseus `WorldRoom` remains authoritative. Clients send normalized input in
 
 The renderer-neutral manifest is `services/world-server/src/world/traversalManifest.json`. It contains the map id and version, walkable bounds, safe spawn, and public circular blocker geometry. `services/world-server/src/world/traversal.ts` validates movement against it. `src/lib/game/traversal.ts` imports the same file for Phaser and Three presentation, so renderers do not maintain independent obstacle coordinates.
 
+Phase 8D adds `src/lib/game/environment/wilds-exploration.environment.json` as a presentation-only companion. A visible solid prop links to an authoritative blocker ID with `collisionRef`. Validation rejects unknown references and forbids visual instances from declaring radii or collision shapes. Decorative fields, paths, effects, and terrain never alter traversal.
+
 ## Walkability rules
 
 1. Open ground and roads are walkable.

@@ -1,5 +1,11 @@
 # The Wilds Decision Log
 
+## 2026-08-05 — Phase 8D renderer-neutral environment foundation
+
+Authoritative traversal stays in the existing world-server manifest. A separate validated visual manifest uses the same server coordinate space, references blocker IDs without defining collision, and makes prototype/production/fallback provenance explicit. Renderer-local dressing is seeded, deterministic, non-persistent, and non-colliding. Three shares resources, instances decoration, and removes optional presentation by declared quality tiers. Final art, physics, elevation, navmeshes, weather, combat, and traversal changes remain deferred.
+
+The approved exploration reference at `art-source/world/environment/references/3bf40675-74cc-4a44-bff9-fffa7e249a19.png` governs visual style only. It is explicitly excluded from runtime assets, cropping, coordinate authoring, collision, and gameplay inference. Separately supplied production assets must reproduce its approved painterly treatment while conforming to existing authoritative geometry.
+
 ## 2026-08-03 — Stage 6 per-player Moonberry loop
 
 Accepted ADR-006. The shared visual bush has per-player cooldown and eligibility. One service-only transaction derives the fixed reward and active companion, updates canonical `user_items`, records an idempotent audit event, and optionally writes one authored Journal entry. The configured MVP defaults are one Moonberry, five minutes, and a twenty-Moonberry holding cap.
