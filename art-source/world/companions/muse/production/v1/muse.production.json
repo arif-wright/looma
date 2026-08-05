@@ -1,7 +1,7 @@
 {
   "version": 2,
   "status": "approved",
-  "sourceApprovalId": "phase-8c3-user-supplied-production-sheets-2026-08-05",
+  "sourceApprovalId": "phase-8c3-corrected-muse-production-sheets-2026-08-05",
   "primaryVisualReference": "USER_SUPPLIED_MUSE_PRODUCTION_ANIMATION_SHEETS",
   "deprecatedSourcesExcluded": ["static/models/muse.glb"],
   "frameWidth": 256,
@@ -11,7 +11,7 @@
       "fps": 12,
       "loop": true,
       "directions": {
-        "n": { "source": "authored", "frameCount": 24 },
+        "n": { "source": "authored", "frameCount": 25 },
         "ne": { "source": "authored", "frameCount": 25 },
         "e": { "source": "authored", "frameCount": 25 },
         "se": { "source": "authored", "frameCount": 25 },
@@ -36,14 +36,14 @@
       "fps": 12,
       "loop": true,
       "directions": {
-        "n": { "source": "authored", "frameCount": 24 },
-        "ne": { "source": "temporary-fallback", "fallbackDirection": "e", "temporary": true },
+        "n": { "source": "authored", "frameCount": 25 },
+        "ne": { "source": "authored", "frameCount": 25 },
         "e": { "source": "authored", "frameCount": 25 },
         "se": { "source": "authored", "frameCount": 25 },
         "s": { "source": "authored", "frameCount": 25 },
         "sw": { "source": "mirrored", "from": "se" },
         "w": { "source": "mirrored", "from": "e" },
-        "nw": { "source": "temporary-fallback", "fallbackDirection": "w", "temporary": true }
+        "nw": { "source": "mirrored", "from": "ne" }
       },
       "pivot": { "x": 0.5, "y": 0.96 },
       "feet": { "x": 0.5, "y": 0.92 },

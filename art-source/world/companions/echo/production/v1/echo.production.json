@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "status": "approved",
+  "sourceApprovalId": "phase-8c3-corrected-echo-reclassification-2026-08-05",
+  "primaryVisualReference": "USER_SUPPLIED_ECHO_PRODUCTION_ANIMATION_SHEETS",
+  "deprecatedSourcesExcluded": [],
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "animations": {
+    "idle": {
+      "fps": 12,
+      "loop": true,
+      "directions": {
+        "n": { "source": "authored", "frameCount": 24 },
+        "ne": { "source": "authored", "frameCount": 25 },
+        "e": { "source": "authored", "frameCount": 25 },
+        "se": { "source": "authored", "frameCount": 25 },
+        "s": { "source": "authored", "frameCount": 25 },
+        "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" },
+        "nw": { "source": "mirrored", "from": "ne" }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 },
+      "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    },
+    "walk": {
+      "fps": 12,
+      "loop": true,
+      "directions": {
+        "n": { "source": "authored", "frameCount": 24 },
+        "ne": { "source": "temporary-fallback", "fallbackDirection": "e", "temporary": true },
+        "e": { "source": "authored", "frameCount": 25 },
+        "se": { "source": "authored", "frameCount": 25 },
+        "s": { "source": "authored", "frameCount": 25 },
+        "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" },
+        "nw": { "source": "temporary-fallback", "fallbackDirection": "w", "temporary": true }
+      },
+      "pivot": { "x": 0.5, "y": 0.96 },
+      "feet": { "x": 0.5, "y": 0.92 },
+      "visualScale": { "heightWorldUnits": 2.5 },
+      "shadow": { "width": 1.05, "depth": 0.54, "opacity": 0.22, "offsetY": 0.08 },
+      "labelAnchor": { "x": 0.5, "y": -0.03 },
+      "ownerSpacing": { "preferredWorldUnits": 1.35, "minimumWorldUnits": 0.8 }
+    }
+  }
+}

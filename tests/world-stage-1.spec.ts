@@ -28,7 +28,7 @@ test.describe('The Wilds protected route', () => {
     expect(manifestResponse.ok()).toBe(true);
     const manifest = await manifestResponse.json();
     expect(manifest).toMatchObject({ id: 'muse-hd-production-v2', status: 'production', version: 2 });
-    expect(manifest.pages).toHaveLength(28);
+    expect(manifest.pages).toHaveLength(32);
     for (const atlasPage of manifest.pages) {
       const response = await request.get(`/game/sprites/companions/muse/${atlasPage.image}`);
       expect(response.ok(), atlasPage.image).toBe(true);

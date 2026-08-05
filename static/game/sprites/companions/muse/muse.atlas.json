@@ -12,7 +12,7 @@
     {
       "id": "idle-n-p02",
       "image": "muse.idle.n.p02.png",
-      "imageWidth": 2048,
+      "imageWidth": 2304,
       "imageHeight": 256
     },
     {
@@ -108,7 +108,19 @@
     {
       "id": "walk-n-p02",
       "image": "muse.walk.n.p02.png",
-      "imageWidth": 2048,
+      "imageWidth": 2304,
+      "imageHeight": 256
+    },
+    {
+      "id": "walk-ne-p01",
+      "image": "muse.walk.ne.p01.png",
+      "imageWidth": 4096,
+      "imageHeight": 256
+    },
+    {
+      "id": "walk-ne-p02",
+      "image": "muse.walk.ne.p02.png",
+      "imageWidth": 2304,
       "imageHeight": 256
     },
     {
@@ -168,6 +180,18 @@
     {
       "id": "walk-w-p02",
       "image": "muse.walk.w.p02.png",
+      "imageWidth": 2304,
+      "imageHeight": 256
+    },
+    {
+      "id": "walk-nw-p01",
+      "image": "muse.walk.nw.p01.png",
+      "imageWidth": 4096,
+      "imageHeight": 256
+    },
+    {
+      "id": "walk-nw-p02",
+      "image": "muse.walk.nw.p02.png",
       "imageWidth": 2304,
       "imageHeight": 256
     }
@@ -310,6 +334,11 @@
             {
               "page": "idle-n-p02",
               "column": 7,
+              "row": 0
+            },
+            {
+              "page": "idle-n-p02",
+              "column": 8,
               "row": 0
             }
           ],
@@ -1393,15 +1422,144 @@
               "page": "walk-n-p02",
               "column": 7,
               "row": 0
+            },
+            {
+              "page": "walk-n-p02",
+              "column": 8,
+              "row": 0
             }
           ],
           "source": "authored"
         },
         "ne": {
-          "frames": [],
-          "source": "temporary-fallback",
-          "fallbackDirection": "e",
-          "temporary": true
+          "frames": [
+            {
+              "page": "walk-ne-p01",
+              "column": 0,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 1,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 2,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 3,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 4,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 5,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 6,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 7,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 8,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 9,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 10,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 11,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 12,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 13,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 14,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p01",
+              "column": 15,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 0,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 1,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 2,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 3,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 4,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 5,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 6,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 7,
+              "row": 0
+            },
+            {
+              "page": "walk-ne-p02",
+              "column": 8,
+              "row": 0
+            }
+          ],
+          "source": "authored"
         },
         "e": {
           "frames": [
@@ -2054,10 +2212,134 @@
           "source": "mirrored-from-e"
         },
         "nw": {
-          "frames": [],
-          "source": "temporary-fallback",
-          "fallbackDirection": "w",
-          "temporary": true
+          "frames": [
+            {
+              "page": "walk-nw-p01",
+              "column": 0,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 1,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 2,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 3,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 4,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 5,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 6,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 7,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 8,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 9,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 10,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 11,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 12,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 13,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 14,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p01",
+              "column": 15,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 0,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 1,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 2,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 3,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 4,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 5,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 6,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 7,
+              "row": 0
+            },
+            {
+              "page": "walk-nw-p02",
+              "column": 8,
+              "row": 0
+            }
+          ],
+          "source": "mirrored-from-ne"
         }
       },
       "pivot": {

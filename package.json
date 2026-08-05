@@ -21,6 +21,9 @@
 		"world:muse:validate": "node scripts/world/muse-assets.mjs validate",
 		"world:muse:ingest": "node scripts/world/muse-assets.mjs ingest",
 		"world:muse:pack": "node scripts/world/muse-assets.mjs pack",
+		"world:echo:validate": "node scripts/world/muse-assets.mjs validate --source art-source/world/companions/echo/production/v1",
+		"world:echo:ingest": "node scripts/world/muse-assets.mjs ingest --source art-source/world/companions/echo/production/v1",
+		"world:echo:pack": "node scripts/world/muse-assets.mjs pack --source art-source/world/companions/echo/production/v1 --output artifacts/world/companions/echo/v1",
 		"seed": "tsx scripts/seed.ts",
 		"seed:ci": "NODE_ENV=test tsx scripts/seed.ts"
 	},

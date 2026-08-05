@@ -311,7 +311,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
             fallbackManifestUrl: PLAYER_ATLAS_URL,
             companion: true,
             museEffects: muse,
-            requireProduction: muse
+            requireProduction: assetSelection.production
           });
           visual.followerMuse = muse;
           visual.followerAssetSelection = assetSelection;

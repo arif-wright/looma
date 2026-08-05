@@ -14,7 +14,7 @@ Use this checklist with `npm run world:muse:validate`. Automated success is nece
 
 - [ ] Authored source frames exist for idle N/NE/E/SE/S and walk N/E/SE/S.
 - [ ] Derived idle NW/W/SW and walk W/SW match their explicitly approved horizontal mirror sources.
-- [ ] Walk NE/NW contain no rejected frames and declare only the temporary E/W visual fallbacks.
+- [ ] Walk NE contains the approved authored frames and walk NW declares the approved mirror of NE; neither direction uses the TEMP sprite or a temporary direction fallback.
 - [ ] Every authored direction contains exactly its metadata-declared frame count (24+ is supported).
 - [ ] The delivery was not downsampled to the temporary atlas's two-idle/four-walk counts or the reference grid's four/six examples.
 - [ ] Every filename follows `muse_<state>_<direction>_<NN>.png`.

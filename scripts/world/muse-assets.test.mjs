@@ -24,10 +24,10 @@ const metadata = {
       } },
     walk: { fps: 10, loop: true, pivot: { x: .5, y: .96 }, feet: { x: .5, y: .92 }, visualScale: { heightWorldUnits: 2.5 },
       directions: {
-        n: { source: 'authored', frameCount: 7 }, ne: { source: 'temporary-fallback', fallbackDirection: 'e', temporary: true },
+        n: { source: 'authored', frameCount: 7 }, ne: { source: 'authored', frameCount: 7 },
         e: { source: 'authored', frameCount: 7 }, se: { source: 'authored', frameCount: 7 }, s: { source: 'authored', frameCount: 7 },
         sw: { source: 'mirrored', from: 'se' }, w: { source: 'mirrored', from: 'e' },
-        nw: { source: 'temporary-fallback', fallbackDirection: 'w', temporary: true }
+        nw: { source: 'mirrored', from: 'ne' }
       } }
   }
 };
@@ -79,15 +79,15 @@ for (const [state, sheets] of Object.entries(SOURCE_SHEETS)) for (const [directi
 
 test('ingests explicit approved sheets without changing frame count or order', () => {
   const result = ingestMuseSheets(source);
-  assert.equal(result.writtenFrames, 72);
+  assert.equal(result.writtenFrames, 79);
   assert.equal(validateMuseFrames(source).ok, true);
 });
 
 test('accepts a complete approved Muse frame delivery', () => {
   const report = validateMuseFrames(source);
   assert.equal(report.ok, true, report.errors.join('\n'));
-  assert.equal(report.expectedFrames, 72);
-  assert.equal(report.transparentFrames, 72);
+  assert.equal(report.expectedFrames, 79);
+  assert.equal(report.transparentFrames, 79);
 });
 
 test('detects missing and duplicate frames', () => {
@@ -112,10 +112,7 @@ test('detects invalid dimensions, opacity, and filenames', () => {
   writeFileSync(target, createFrame(999, 128, 256));
   writeFileSync(opaqueTarget, createOpaqueFrame());
   const unexpected = join(source, 'frames', 'idle', 'n', 'concept-sheet.png');
-  const rejectedNeWalk = framePath('walk', 'ne', 0);
-  mkdirSync(join(source, 'frames', 'walk', 'ne'), { recursive: true });
   writeFileSync(unexpected, createFrame(1000));
-  writeFileSync(rejectedNeWalk, createFrame(1001));
   const errors = validateMuseFrames(source).errors.join('\n');
   assert.match(errors, /must be 256×256/);
   assert.match(errors, /has no transparent pixels/);
@@ -123,14 +120,13 @@ test('detects invalid dimensions, opacity, and filenames', () => {
   writeFileSync(target, backup);
   writeFileSync(opaqueTarget, opaqueBackup);
   unlinkSync(unexpected);
-  unlinkSync(rejectedNeWalk);
 });
 
 test('rejects substitutions outside the explicit Muse direction policy', () => {
   const invalid = structuredClone(metadata);
-  invalid.animations.walk.directions.ne.fallbackDirection = 'se';
+  invalid.animations.walk.directions.ne = { source: 'temporary-fallback', fallbackDirection: 'e', temporary: true };
   writeFileSync(join(source, 'muse.production.json'), JSON.stringify(invalid));
-  assert.match(validateMuseFrames(source).errors.join('\n'), /walk.ne must resolve from e/);
+  assert.match(validateMuseFrames(source).errors.join('\n'), /violates the approved muse direction policy/);
   writeFileSync(join(source, 'muse.production.json'), JSON.stringify(metadata));
 });
 
@@ -151,8 +147,8 @@ test('packs every approved frame in order across bounded atlas pages', () => {
   assert.deepEqual(north[16], { page: 'idle-n-p02', column: 0, row: 0 });
   assert.equal(result.manifest.animations.idle.directions.ne.frames.length, 5);
   assert.equal(result.manifest.animations.idle.directions.nw.source, 'mirrored-from-ne');
-  assert.deepEqual(result.manifest.animations.walk.directions.ne,
-    { frames: [], source: 'temporary-fallback', fallbackDirection: 'e', temporary: true });
+  assert.equal(result.manifest.animations.walk.directions.ne.source, 'authored');
+  assert.equal(result.manifest.animations.walk.directions.nw.source, 'mirrored-from-ne');
   assert.equal(result.manifest.animations.walk.directions.sw.source, 'mirrored-from-se');
   assert.deepEqual(result.manifest.directionOrder, DIRECTIONS);
 
@@ -164,19 +160,6 @@ test('packs every approved frame in order across bounded atlas pages', () => {
     const mirroredPixel = (y * mirroredWest.width + (FRAME_SIZE - 1 - x)) * 4;
     assert.deepEqual([...mirroredWest.data.subarray(mirroredPixel, mirroredPixel + 4)], [...sourceEast.data.subarray(sourcePixel, sourcePixel + 4)]);
   }
-});
-
-test('drops the explicit walk fallback when approved NE frames become available', () => {
-  const upgraded = structuredClone(metadata);
-  upgraded.animations.walk.directions.ne = { source: 'authored', frameCount: 7 };
-  upgraded.animations.walk.directions.nw = { source: 'mirrored', from: 'ne' };
-  writeFileSync(join(source, 'muse.production.json'), JSON.stringify(upgraded));
-  mkdirSync(join(source, 'frames', 'walk', 'ne'), { recursive: true });
-  for (let frame = 0; frame < 7; frame += 1) writeFileSync(framePath('walk', 'ne', frame), createFrame(unique++));
-  const result = packMuseAtlas(source, join(root, 'upgraded-output'));
-  assert.equal(result.manifest.animations.walk.directions.ne.source, 'authored');
-  assert.equal(result.manifest.animations.walk.directions.nw.source, 'mirrored-from-ne');
-  assert.equal(result.manifest.animations.walk.directions.ne.fallbackDirection, undefined);
 });
 
 test.after(() => rmSync(root, { recursive: true, force: true }));

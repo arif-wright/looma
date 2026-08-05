@@ -13,16 +13,32 @@ export const FRAMES_PER_PAGE = 16;
 export const DEFAULT_SOURCE = 'art-source/world/companions/muse/production/v1';
 export const DEFAULT_OUTPUT = 'artifacts/world/companions/muse/v1';
 export const SOURCE_SHEETS = {
-  idle: { n: 'Echo-iso_idle_up-trimmed.png', ne: 'Echo-iso_idle_northeast-v2.png', e: 'Echo-iso_idle_right-v1.png', se: 'Echo-iso_idle_southeast-v1.png', s: 'Echo-iso_idle_down-v1.png' },
-  walk: { n: 'Echo-iso_walk_up-trimmed.png', e: 'Echo-iso_walk_right-v1.png', se: 'Echo-iso_walk_southeast-v1.png', s: 'Echo-iso_walk_down-v1.png' }
+  idle: { n: 'Muse-iso_idle_up-v1.png', ne: 'Muse-iso_idle_northeast-v1.png', e: 'Muse-iso_idle_right-v1.png', se: 'Muse-iso_idle_southeast-v1.png', s: 'Muse-iso_idle_down-v1.png' },
+  walk: { n: 'Muse-iso_walk_up-v1.png', ne: 'Muse-iso_walk_northeast-v1.png', e: 'Muse-iso_walk_right-v1.png', se: 'Muse-iso_walk_southeast-v1.png', s: 'Muse-iso_walk_down-v1.png' }
 };
 export const MUSE_DIRECTION_POLICY = {
   idle: { n: 'authored', ne: 'authored', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'mirrored:ne' },
+  walk: { n: 'authored', ne: 'authored', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'mirrored:ne' }
+};
+
+export const ECHO_SOURCE_SHEETS = {
+  idle: { n: 'Echo-iso_idle_up-trimmed.png', ne: 'Echo-iso_idle_northeast-v2.png', e: 'Echo-iso_idle_right-v1.png', se: 'Echo-iso_idle_southeast-v1.png', s: 'Echo-iso_idle_down-v1.png' },
+  walk: { n: 'Echo-iso_walk_up-trimmed.png', e: 'Echo-iso_walk_right-v1.png', se: 'Echo-iso_walk_southeast-v1.png', s: 'Echo-iso_walk_down-v1.png' }
+};
+export const ECHO_DIRECTION_POLICY = {
+  idle: MUSE_DIRECTION_POLICY.idle,
   walk: { n: 'authored', ne: 'temporary-fallback:e', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'temporary-fallback:w' }
 };
 
+const assetKeyFor = (root) => root.split(/[\\/]/).includes('echo') ? 'echo' : 'muse';
+const assetConfig = (root) => {
+  const key = assetKeyFor(root);
+  return { key, sheets: key === 'echo' ? ECHO_SOURCE_SHEETS : SOURCE_SHEETS,
+    policy: key === 'echo' ? ECHO_DIRECTION_POLICY : MUSE_DIRECTION_POLICY };
+};
+
 const expectedFramePath = (root, state, direction, index) =>
-  join(root, 'frames', state, direction, `muse_${state}_${direction}_${String(index + 1).padStart(2, '0')}.png`);
+  join(root, 'frames', state, direction, `${assetKeyFor(root)}_${state}_${direction}_${String(index + 1).padStart(2, '0')}.png`);
 
 const walkFiles = (directory) => {
   if (!existsSync(directory)) return [];
@@ -35,8 +51,9 @@ const normalizedPoint = (value) => value && typeof value === 'object' &&
   Number.isFinite(value.x) && Number.isFinite(value.y) && value.x >= 0 && value.x <= 1 && value.y >= 0 && value.y <= 1;
 
 const readMetadata = (root, errors) => {
-  const path = join(root, 'muse.production.json');
-  if (!existsSync(path)) { errors.push('Missing muse.production.json metadata.'); return null; }
+  const config = assetConfig(root);
+  const path = join(root, `${config.key}.production.json`);
+  if (!existsSync(path)) { errors.push(`Missing ${config.key}.production.json metadata.`); return null; }
   try {
     const metadata = JSON.parse(readFileSync(path, 'utf8'));
     if (metadata.version !== 2) errors.push('Metadata version must be 2.');
@@ -44,7 +61,8 @@ const readMetadata = (root, errors) => {
     if (typeof metadata.sourceApprovalId !== 'string' || !metadata.sourceApprovalId.trim()) errors.push('Metadata requires sourceApprovalId.');
     if (typeof metadata.primaryVisualReference !== 'string' || !metadata.primaryVisualReference.trim()) errors.push('Metadata requires primaryVisualReference.');
     if (metadata.frameWidth !== FRAME_SIZE || metadata.frameHeight !== FRAME_SIZE) errors.push(`Metadata frame size must be ${FRAME_SIZE}×${FRAME_SIZE}.`);
-    if (!Array.isArray(metadata.deprecatedSourcesExcluded) || !metadata.deprecatedSourcesExcluded.includes('static/models/muse.glb')) errors.push('Metadata must explicitly exclude static/models/muse.glb.');
+    if (!Array.isArray(metadata.deprecatedSourcesExcluded)) errors.push('Metadata requires deprecatedSourcesExcluded.');
+    if (config.key === 'muse' && !metadata.deprecatedSourcesExcluded?.includes('static/models/muse.glb')) errors.push('Muse metadata must explicitly exclude static/models/muse.glb.');
     for (const state of REQUIRED_STATES) {
       const animation = metadata.animations?.[state];
       if (!animation) { errors.push(`Missing ${state} animation metadata.`); continue; }
@@ -59,11 +77,11 @@ const readMetadata = (root, errors) => {
           errors.push(`${state}.${direction} requires an explicit authored, mirrored, or temporary-fallback source.`);
           continue;
         }
-        const expectedPolicy = MUSE_DIRECTION_POLICY[state][direction];
+        const expectedPolicy = config.policy[state][direction];
         const expectedSource = expectedPolicy.split(':')[0];
         const expectedFrom = expectedPolicy.split(':')[1];
         if (sequence.source !== expectedSource && !(state === 'walk' && direction === 'ne' && sequence.source === 'authored') &&
-          !(state === 'walk' && direction === 'nw' && sequence.source === 'mirrored')) errors.push(`${state}.${direction} violates the approved Muse direction policy.`);
+          !(state === 'walk' && direction === 'nw' && sequence.source === 'mirrored')) errors.push(`${state}.${direction} violates the approved ${config.key} direction policy.`);
         if (sequence.source === 'authored' && (!Number.isInteger(sequence.frameCount) || sequence.frameCount < 1)) errors.push(`${state}.${direction} authored source requires a positive integer frameCount.`);
         if (sequence.source === 'mirrored' && (!DIRECTIONS.includes(sequence.from) || sequence.from === direction)) errors.push(`${state}.${direction} mirrored source requires a valid distinct "from" direction.`);
         if (sequence.source === 'temporary-fallback' && (!DIRECTIONS.includes(sequence.fallbackDirection) || sequence.temporary !== true)) errors.push(`${state}.${direction} fallback requires fallbackDirection and temporary: true.`);
@@ -81,7 +99,7 @@ const readMetadata = (root, errors) => {
     }
     return metadata;
   } catch (error) {
-    errors.push(`Invalid muse.production.json: ${error instanceof Error ? error.message : String(error)}`);
+    errors.push(`Invalid ${config.key}.production.json: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 };
@@ -97,11 +115,12 @@ const cropCell = (sheet, column, row) => {
 
 export const ingestMuseSheets = (sourceDirectory = DEFAULT_SOURCE) => {
   const root = resolve(sourceDirectory);
+  const config = assetConfig(root);
   const errors = [];
   const metadata = readMetadata(root, errors);
   if (!metadata || errors.length) throw new Error(`Muse sheet intake metadata failed:\n${errors.map((item) => `- ${item}`).join('\n')}`);
   const written = [];
-  for (const [state, sheets] of Object.entries(SOURCE_SHEETS)) for (const [direction, filename] of Object.entries(sheets)) {
+  for (const [state, sheets] of Object.entries(config.sheets)) for (const [direction, filename] of Object.entries(sheets)) {
     const definition = metadata.animations[state].directions[direction];
     if (definition?.source !== 'authored') throw new Error(`${state}.${direction} sheet requires authored metadata.`);
     const sheetPath = join(root, filename);
@@ -193,6 +212,7 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
     throw error;
   }
   const root = report.sourceDirectory;
+  const config = assetConfig(root);
   const output = resolve(outputDirectory);
   mkdirSync(output, { recursive: true });
   const pages = [];
@@ -213,7 +233,7 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
       for (let pageIndex = 0, offset = 0; offset < sourceSequence.frameCount; pageIndex += 1, offset += FRAMES_PER_PAGE) {
         const count = Math.min(FRAMES_PER_PAGE, sourceSequence.frameCount - offset);
         const pageId = `${state}-${direction}-p${String(pageIndex + 1).padStart(2, '0')}`;
-        const imageName = `muse.${state}.${direction}.p${String(pageIndex + 1).padStart(2, '0')}.png`;
+        const imageName = `${config.key}.${state}.${direction}.p${String(pageIndex + 1).padStart(2, '0')}.png`;
         const atlas = new PNG({ width: count * FRAME_SIZE, height: FRAME_SIZE, colorType: 6 });
         atlas.data.fill(0);
         for (let local = 0; local < count; local += 1) {
@@ -237,9 +257,9 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
       ...(source.shadow ? { shadow: source.shadow } : {}), ...(source.effectAnchors ? { effectAnchors: source.effectAnchors } : {}),
       ...(source.labelAnchor ? { labelAnchor: source.labelAnchor } : {}), ...(source.ownerSpacing ? { ownerSpacing: source.ownerSpacing } : {}) };
   };
-  const manifest = { version: 2, id: 'muse-hd-production-v2', status: 'production', pages, nativeDirections: true,
+  const manifest = { version: 2, id: `${config.key}-hd-production-v2`, status: 'production', pages, nativeDirections: true,
     directionOrder: DIRECTIONS, animations: { idle: animationManifest('idle'), walk: animationManifest('walk') } };
-  const manifestPath = join(output, 'muse.atlas.json');
+  const manifestPath = join(output, `${config.key}.atlas.json`);
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return { report, atlasPaths, manifestPath, manifest };
 };

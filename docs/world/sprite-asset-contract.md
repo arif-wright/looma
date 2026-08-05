@@ -12,7 +12,7 @@ Version 2 requires `idle` and `walk`, declares atlas `pages`, and gives every re
 
 Each animation also declares frame width/height, normalized pivot and feet points, display height in world units, and optional shadow, effect anchors, label anchor, and owner-spacing guidance. Additional named states can be added; unsupported states fall back to idle.
 
-A temporary fallback instead declares an empty frame list, `source: "temporary-fallback"`, `temporary: true`, and an explicit `fallbackDirection`. Resolution preserves the requested gameplay facing and changes only the selected artwork. Fallbacks cannot chain, and no nearest-direction algorithm exists. Muse currently declares only `walk.ne → walk.e` and `walk.nw → walk.w`.
+A temporary fallback instead declares an empty frame list, `source: "temporary-fallback"`, `temporary: true`, and an explicit `fallbackDirection`. Resolution preserves the requested gameplay facing and changes only the selected artwork. Fallbacks cannot chain, and no nearest-direction algorithm exists. Muse has no temporary direction fallback: walk NE is authored and walk NW mirrors it. Echo currently declares `walk.ne → walk.e` and `walk.nw → walk.w` until native Echo walk-NE artwork is supplied.
 
 Atlas coordinates use a top-left image origin. Normalized points also use top-left `(0,0)` and bottom-right `(1,1)`. Runtime UV conversion accounts for WebGL's bottom-left texture origin. Metadata is rejected if a required direction is absent, a frame extends outside the image, native directions are false, timing is invalid, or idle/walk is missing. Failed metadata or image loading uses the configured safe fallback and never blocks the world session.
 

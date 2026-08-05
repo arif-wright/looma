@@ -71,13 +71,14 @@ describe('HD sprite asset contract', () => {
 
   it('does not mistake another canonical companion for Muse', () => {
     expect(selectCompanionSpriteAsset('echo')).toMatchObject({
-      archetype: 'echo', muse: false,
-      manifestUrl: '/game/sprites/companions/echo/companion.atlas.json'
+      archetype: 'echo', muse: false, production: true,
+      manifestUrl: '/game/sprites/companions/echo/echo.atlas.json'
     });
   });
 
   it.each([
     'static/game/sprites/companions/muse/muse.atlas.json',
+    'static/game/sprites/companions/echo/echo.atlas.json',
     'static/game/sprites/players/placeholder/player-placeholder.atlas.json'
   ])('validates shipped atlas metadata %s', (path) => {
     expect(parseSpriteAssetContract(JSON.parse(readFileSync(path, 'utf8')))).not.toBeNull();
@@ -88,10 +89,10 @@ describe('HD sprite asset contract', () => {
     const raw = JSON.parse(readFileSync(manifestPath, 'utf8'));
     const asset = parseSpriteAssetContract(raw)!;
     expect(asset.status).toBe('production');
-    expect(asset.pages).toHaveLength(28);
+    expect(asset.pages).toHaveLength(32);
     expect(asset.pages.every((page) => existsSync(join(dirname(manifestPath), page.image)))).toBe(true);
-    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'e', source: 'temporary-fallback' });
-    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'w', source: 'temporary-fallback' });
+    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'ne', source: 'authored' });
+    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'nw', source: 'mirrored-from-ne' });
     expect(sequenceFor(asset, 'idle', 'nw')).toMatchObject({ resolvedDirection: 'nw', source: 'mirrored-from-ne' });
   });
 
