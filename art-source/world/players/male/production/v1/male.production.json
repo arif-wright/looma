@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "status": "approved",
+  "sourceApprovalId": "phase-8c-player-male-sheets-2026-08-05",
+  "primaryVisualReference": "USER_SUPPLIED_MALE_PLAYER_ANIMATION_SHEETS",
+  "deprecatedSourcesExcluded": [],
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "animations": {
+    "idle": {
+      "fps": 12, "loop": true,
+      "directions": {
+        "n": { "source": "authored", "frameCount": 25 }, "ne": { "source": "authored", "frameCount": 25 },
+        "e": { "source": "authored", "frameCount": 25 }, "se": { "source": "authored", "frameCount": 25 },
+        "s": { "source": "authored", "frameCount": 25 }, "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" }, "nw": { "source": "mirrored", "from": "ne" }
+      },
+      "pivot": { "x": 0.5, "y": 0.97 }, "feet": { "x": 0.5, "y": 0.94 },
+      "visualScale": { "heightWorldUnits": 3.1 },
+      "shadow": { "width": 1.3, "depth": 0.66, "opacity": 0.24, "offsetY": 0.06 },
+      "labelAnchor": { "x": 0.5, "y": -0.03 }
+    },
+    "walk": {
+      "fps": 12, "loop": true,
+      "directions": {
+        "n": { "source": "authored", "frameCount": 25 }, "ne": { "source": "authored", "frameCount": 25 },
+        "e": { "source": "authored", "frameCount": 25 }, "se": { "source": "authored", "frameCount": 25 },
+        "s": { "source": "authored", "frameCount": 25 }, "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" }, "nw": { "source": "mirrored", "from": "ne" }
+      },
+      "pivot": { "x": 0.5, "y": 0.97 }, "feet": { "x": 0.5, "y": 0.94 },
+      "visualScale": { "heightWorldUnits": 3.1 },
+      "shadow": { "width": 1.3, "depth": 0.66, "opacity": 0.24, "offsetY": 0.06 },
+      "labelAnchor": { "x": 0.5, "y": -0.03 }
+    }
+  }
+}

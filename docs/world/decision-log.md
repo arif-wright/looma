@@ -153,3 +153,4 @@ No Colyseus version/provider, tick/snapshot rate, physics library, map format, R
 - OAuth and other identity-provider metadata are not appearance sources.
 - SvelteKit signs the owner-scoped value into the short-lived world ticket; Colyseus validates and synchronizes it. Renderers never query Supabase.
 - Atlas selection is the only renderer branch. Production player art, layering, and entitlement-backed cosmetics remain deferred.
+- The subsequently supplied male and female sheets are packed through the shared validated production-atlas pipeline. Native N/NE/E/SE/S views are preserved and western views use declared horizontal mirrors; layering and cosmetics remain deferred.

@@ -24,6 +24,12 @@
 		"world:echo:validate": "node scripts/world/muse-assets.mjs validate --source art-source/world/companions/echo/production/v1",
 		"world:echo:ingest": "node scripts/world/muse-assets.mjs ingest --source art-source/world/companions/echo/production/v1",
 		"world:echo:pack": "node scripts/world/muse-assets.mjs pack --source art-source/world/companions/echo/production/v1 --output artifacts/world/companions/echo/v1",
+		"world:player:male:validate": "node scripts/world/muse-assets.mjs validate --source art-source/world/players/male/production/v1",
+		"world:player:male:ingest": "node scripts/world/muse-assets.mjs ingest --source art-source/world/players/male/production/v1",
+		"world:player:male:pack": "node scripts/world/muse-assets.mjs pack --source art-source/world/players/male/production/v1 --output artifacts/world/players/male/v1",
+		"world:player:female:validate": "node scripts/world/muse-assets.mjs validate --source art-source/world/players/female/production/v1",
+		"world:player:female:ingest": "node scripts/world/muse-assets.mjs ingest --source art-source/world/players/female/production/v1",
+		"world:player:female:pack": "node scripts/world/muse-assets.mjs pack --source art-source/world/players/female/production/v1 --output artifacts/world/players/female/v1",
 		"seed": "tsx scripts/seed.ts",
 		"seed:ci": "NODE_ENV=test tsx scripts/seed.ts"
 	},

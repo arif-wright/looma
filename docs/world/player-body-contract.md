@@ -22,7 +22,7 @@ The SvelteKit world-ticket endpoint reads `player_body` in the same owner-scoped
 - `female` -> `/game/sprites/players/female/player.atlas.json`
 - absent or unsupported -> the safe `male` default
 
-Both manifests currently reference copies of the existing temporary directional test artwork. Three.js changes only the manifest URL passed to `HdSpriteEntity`; animation, atlas caching, billboarding, grounding, shadows, labels, opacity, facing, and diagnostics use the existing shared path. A body change in an authoritative snapshot replaces that entity's atlas-backed billboard without changing gameplay state.
+Both manifests now contain the supplied production player pixels. Each body provides authored N/NE/E/SE/S idle and walk sequences; NW/W/SW are explicit horizontal mirrors of NE/E/SE. Three.js changes only the manifest URL passed to `HdSpriteEntity`; animation, atlas caching, billboarding, grounding, shadows, labels, opacity, facing, and diagnostics use the existing shared path. A body change in an authoritative snapshot replaces that entity's atlas-backed billboard without changing gameplay state.
 
 The Phaser rollback renderer continues to use its placeholder sprite and consumes the same authoritative snapshots. It does not become authoritative and requires no protocol or movement changes.
 
@@ -30,4 +30,19 @@ The Phaser rollback renderer continues to use its placeholder sprite and consume
 
 Adding another base body requires an allowlist/migration update and a new `players/<body>/player.atlas.json`; it does not require a new profile column or synchronized schema shape. Future layered clothing, hairstyles, armor, and cosmetics should be separate validated appearance selections composed over the base body. They must not be encoded as more body columns or inferred from identity-provider data.
 
-Production player artwork, equipment composition, palette swaps, customization onboarding, and cosmetic entitlement validation are explicitly deferred.
+Equipment composition, palette swaps, customization onboarding, and cosmetic entitlement validation remain explicitly deferred.
+
+## Production asset commands
+
+Source sheets live in `art-source/world/players/<body>/production/v1`. They are 5×5 grids of 256×256 transparent cells. The checked-in isolated frames and runtime pages are reproducible with:
+
+```bash
+npm run world:player:male:ingest
+npm run world:player:male:validate
+npm run world:player:male:pack
+npm run world:player:female:ingest
+npm run world:player:female:validate
+npm run world:player:female:pack
+```
+
+Packing writes reviewed output under `artifacts/world/players/<body>/v1`; deployment assets are promoted to `static/game/sprites/players/<body>` without resizing or reinterpretation.

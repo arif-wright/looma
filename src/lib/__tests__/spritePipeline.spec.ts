@@ -94,6 +94,29 @@ describe('HD sprite asset contract', () => {
     expect(normalizePlayerBody(undefined)).toBe('male');
   });
 
+  it.each(['male', 'female'] as const)('ships the %s production player atlas with supplied transparent pixels', (body) => {
+    const manifestPath = `static/game/sprites/players/${body}/player.atlas.json`;
+    const asset = parseSpriteAssetContract(JSON.parse(readFileSync(manifestPath, 'utf8')))!;
+    expect(asset.id).toBe(`${body}-hd-production-v2`);
+    expect(asset.status).toBe('production');
+    expect(asset.pages).toHaveLength(32);
+    expect(asset.pages.every((page) => existsSync(join(dirname(manifestPath), page.image)))).toBe(true);
+    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ resolvedDirection: 'ne', source: 'authored' });
+    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ resolvedDirection: 'nw', source: 'mirrored-from-ne' });
+    const uv = atlasUvFor(asset, 'idle', 's', 0);
+    const page = asset.pages.find((candidate) => candidate.id === uv.page)!;
+    const png = PNG.sync.read(readFileSync(join(dirname(manifestPath), page.image)));
+    let transparent = 0;
+    let visible = 0;
+    for (let y = 0; y < 256; y += 1) for (let x = 0; x < 256; x += 1) {
+      const alpha = png.data[(y * png.width + x) * 4 + 3]!;
+      if (alpha === 0) transparent += 1;
+      if (alpha > 100) visible += 1;
+    }
+    expect(transparent).toBeGreaterThan(30_000);
+    expect(visible).toBeGreaterThan(1_000);
+  });
+
   it('ships every production Muse page and exposes its approved fallback matrix', () => {
     const manifestPath = 'static/game/sprites/companions/muse/muse.atlas.json';
     const raw = JSON.parse(readFileSync(manifestPath, 'utf8'));

@@ -30,11 +30,25 @@ export const ECHO_DIRECTION_POLICY = {
   walk: { n: 'authored', ne: 'temporary-fallback:e', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'temporary-fallback:w' }
 };
 
-const assetKeyFor = (root) => root.split(/[\\/]/).includes('echo') ? 'echo' : 'muse';
+export const MALE_SOURCE_SHEETS = {
+  idle: { n: 'Male_player-iso_idle_up-v1.png', ne: 'Male_player-iso_idle_northeast-v1.png', e: 'Male_player-iso_idle_right-v1.png', se: 'Male_player-iso_idle_southeast-v1.png', s: 'Male_player-iso_idle_down-v1.png' },
+  walk: { n: 'Male_player-iso_walk_up-v1.png', ne: 'Male_player-iso_walk_northeast-v1.png', e: 'Male_player-iso_walk_right-v1.png', se: 'Male_player-iso_walk_southeast-v1.png', s: 'Male_player-iso_walk_down-v1.png' }
+};
+export const FEMALE_SOURCE_SHEETS = {
+  idle: { n: 'Female_player-iso_idle_up-v1.png', ne: 'Female_player-iso_idle_northeast-v1.png', e: 'Female_player-iso_idle_right-v1.png', se: 'Female_player-iso_idle_southeast-v1.png', s: 'Female_player-iso_idle_down-v1.png' },
+  walk: { n: 'Female_player-iso_walk_up-v1.png', ne: 'Female_player-iso_walk_northeast-v1.png', e: 'Female_player-iso_walk_right-v1.png', se: 'Female_player-iso_walk_southeast-v1.png', s: 'Female_player-iso_walk_down-v1.png' }
+};
+
+const assetKeyFor = (root) => {
+  const parts = root.split(/[\\/]/);
+  return ['echo', 'male', 'female', 'muse'].find((key) => parts.includes(key)) ?? 'muse';
+};
 const assetConfig = (root) => {
   const key = assetKeyFor(root);
-  return { key, sheets: key === 'echo' ? ECHO_SOURCE_SHEETS : SOURCE_SHEETS,
-    policy: key === 'echo' ? ECHO_DIRECTION_POLICY : MUSE_DIRECTION_POLICY };
+  const sheets = key === 'echo' ? ECHO_SOURCE_SHEETS : key === 'male' ? MALE_SOURCE_SHEETS
+    : key === 'female' ? FEMALE_SOURCE_SHEETS : SOURCE_SHEETS;
+  return { key, sheets, policy: key === 'echo' ? ECHO_DIRECTION_POLICY : MUSE_DIRECTION_POLICY,
+    manifestName: key === 'male' || key === 'female' ? 'player.atlas.json' : `${key}.atlas.json` };
 };
 
 const expectedFramePath = (root, state, direction, index) =>
@@ -259,7 +273,7 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
   };
   const manifest = { version: 2, id: `${config.key}-hd-production-v2`, status: 'production', pages, nativeDirections: true,
     directionOrder: DIRECTIONS, animations: { idle: animationManifest('idle'), walk: animationManifest('walk') } };
-  const manifestPath = join(output, `${config.key}.atlas.json`);
+  const manifestPath = join(output, config.manifestName);
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return { report, atlasPaths, manifestPath, manifest };
 };
