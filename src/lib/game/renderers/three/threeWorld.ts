@@ -14,7 +14,8 @@ import { cameraRelativeMovement, SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } fr
 import { ObstructionFadeController, type ObstructableRegistration } from './obstruction';
 import { parseSyntheticDensity, qualityDprCap, selectVisualQuality, type VisualQuality } from './performance';
 import { calculateVisualRosterDelta } from './roster';
-import { HdSpriteEntity, HdSpriteResources, MUSE_ATLAS_URL, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
+import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
+import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -27,6 +28,8 @@ type VisualPlayer = {
   followerTarget?: THREE.Vector3;
   followerFacing?: FacingState;
   followerMuse?: boolean;
+  followerAssetSelection?: CompanionSpriteSelection;
+  followerIdentityKey?: string;
 };
 
 export type { WebglContextStatus } from './contextRecovery';
@@ -289,16 +292,30 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       };
       if (id === localPlayerId) localServerPosition = { x: player.x, y: player.y };
       if (player.companionPresent) {
+        const followerIdentityKey = `${player.companionKind}:${player.companionName}`;
+        if (visual.follower && visual.followerIdentityKey !== followerIdentityKey) {
+          scene.remove(visual.follower.root);
+          visual.follower.destroy();
+          delete visual.follower;
+          delete visual.followerTarget;
+          delete visual.followerFacing;
+          delete visual.followerMuse;
+          delete visual.followerAssetSelection;
+        }
         if (!visual.follower) {
-          const muse = player.companionKind.toLowerCase().includes('muse');
+          const assetSelection = selectCompanionSpriteAsset(player.companionKind);
+          const muse = assetSelection.muse;
           visual.follower = new HdSpriteEntity(spriteResources, {
             label: player.companionName,
-            manifestUrl: muse ? MUSE_ATLAS_URL : `/game/sprites/companions/${encodeURIComponent(player.companionKind)}/companion.atlas.json`,
+            manifestUrl: assetSelection.manifestUrl,
             fallbackManifestUrl: PLAYER_ATLAS_URL,
             companion: true,
-            museEffects: muse
+            museEffects: muse,
+            requireProduction: muse
           });
           visual.followerMuse = muse;
+          visual.followerAssetSelection = assetSelection;
+          visual.followerIdentityKey = followerIdentityKey;
           visual.followerFacing = new FacingState();
           visual.followerTarget = new THREE.Vector3(mapped.x - 0.9, 0.02, mapped.z + 0.8);
           visual.follower.root.position.copy(visual.followerTarget);
@@ -312,6 +329,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         delete visual.followerTarget;
         delete visual.followerFacing;
         delete visual.followerMuse;
+        delete visual.followerAssetSelection;
+        delete visual.followerIdentityKey;
       }
     });
     for (const id of rosterDelta.removed) removePlayer(id);
@@ -486,8 +505,12 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const animated = [...players.values()].reduce((count, visual) => count + 1 + Number(Boolean(visual.follower)), 0) + synthetic.length;
       const textureMemoryMb = spriteResources.estimatedTextureMemoryBytes / (1024 * 1024);
       const animation = players.get(localPlayerId)?.billboard.animationDiagnostics;
-      const museAnimation = [...players.values()].find((visual) => visual.followerMuse)?.follower?.animationDiagnostics;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse source ${museAnimation?.source ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      const museVisual = (players.get(localPlayerId)?.followerMuse ? players.get(localPlayerId) : undefined) ??
+        [...players.values()].find((visual) => visual.followerMuse);
+      const museAnimation = museVisual?.follower?.animationDiagnostics;
+      const museAsset = museVisual?.follower?.assetDiagnostics;
+      const museIdentity = museVisual?.followerAssetSelection;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }
@@ -505,6 +528,15 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     renderer.domElement.dataset.localAnimation = local?.billboard.animator.state ?? 'idle';
     renderer.domElement.dataset.localSpriteLoad = local?.billboard.loadState ?? 'loading';
     renderer.domElement.dataset.museSprites = String([...players.values()].filter((visual) => visual.follower?.assetId.startsWith('muse-')).length);
+    const activeMuse = (players.get(localPlayerId)?.followerMuse ? players.get(localPlayerId) : undefined) ??
+      [...players.values()].find((visual) => visual.followerMuse);
+    renderer.domElement.dataset.museAssetStatus = activeMuse?.follower?.assetDiagnostics.assetStatus ?? 'none';
+    renderer.domElement.dataset.museManifest = activeMuse?.follower?.assetDiagnostics.resolvedManifestUrl ?? '';
+    renderer.domElement.dataset.museAtlasPage = activeMuse?.follower?.assetDiagnostics.currentPageId ?? '';
+    renderer.domElement.dataset.museIdentity = activeMuse?.followerAssetSelection?.suppliedIdentity ?? '';
+    renderer.domElement.dataset.museArchetype = activeMuse?.followerAssetSelection?.archetype ?? '';
+    renderer.domElement.dataset.museFallbackReason = activeMuse?.follower?.assetDiagnostics.fallbackReason ?? '';
+    renderer.domElement.dataset.museAssetError = activeMuse?.follower?.assetDiagnostics.lastAssetError ?? '';
   };
 
   const selectCameraPreset = (preset: CameraPresetName) => {

@@ -1,4 +1,5 @@
 import { resolveCanonicalActiveCompanion } from '$lib/companions/activeCompanion';
+import { seedToArchetype } from '$lib/onboarding/archetypes';
 
 export type WorldCompanionRow = {
   id: string;
@@ -18,8 +19,8 @@ export type PublicWorldCompanion = {
 
 const safeName = (value: string | null) => value?.trim().replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32) || 'Companion';
 const safeKind = (value: string | null) => {
-  const normalized = value?.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
-  return normalized || 'companion';
+  const normalized = value?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 24) ?? '';
+  return seedToArchetype[normalized] ?? (normalized || 'muse');
 };
 
 export const unavailableWorldCompanion = (): PublicWorldCompanion => ({

@@ -3,10 +3,14 @@ import type { FacingDirection } from '../../facing';
 import { atlasUvFor, pageFor, parseSpriteAssetContract, resolveAssetImageUrl, sequenceFor, spritePresentationLayout, type SpriteAssetContract } from '../../sprites/assetContract';
 import { MotionAnimationState, SpriteAnimator, effectsEnabledForQuality, yawOnlyBillboardRotation } from '../../sprites/animation';
 import { ReferenceAssetCache, type ResourceLease } from '../../sprites/atlasCache';
+import { MUSE_PRODUCTION_MANIFEST_URL } from '../../sprites/companionAsset';
 import type { VisualQuality } from './performance';
 
 export const PLAYER_ATLAS_URL = '/game/sprites/players/placeholder/player-placeholder.atlas.json';
-export const MUSE_ATLAS_URL = '/game/sprites/companions/muse/muse.atlas.json';
+export const MUSE_ATLAS_URL = MUSE_PRODUCTION_MANIFEST_URL;
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+const resolvedUrl = (url: string) => new URL(url, globalThis.location?.origin ?? 'http://localhost').toString();
 
 const vertexShader = `
 varying vec2 vUv;
@@ -103,6 +107,7 @@ export type HdSpriteOptions = {
   fallbackManifestUrl?: string;
   companion?: boolean;
   museEffects?: boolean;
+  requireProduction?: boolean;
 };
 export type SpriteAnimationOverride = { state: 'idle' | 'walk'; facing: FacingDirection };
 
@@ -125,6 +130,10 @@ export class HdSpriteEntity {
   private destroyed = false;
   private lastFrameKey = '';
   private loadingTexture: THREE.Texture | null;
+  private currentPageId: string | null = null;
+  private currentPageUrl: string | null = null;
+  private fallbackReason: string | null = null;
+  private lastAssetError: string | null = null;
 
   constructor(private readonly resources: HdSpriteResources, private readonly options: HdSpriteOptions) {
     const loadingTexture = new THREE.DataTexture(new Uint8Array([114, 99, 154, 255]), 1, 1);
@@ -161,13 +170,22 @@ export class HdSpriteEntity {
 
   private async load() {
     try {
-      await this.attach(await this.resources.acquireContract(this.options.manifestUrl), this.options.manifestUrl, false);
-    } catch {
+      const lease = await this.resources.acquireContract(this.options.manifestUrl);
+      if (this.options.requireProduction && lease.resource.status !== 'production') {
+        lease.release();
+        throw new Error(`Expected production atlas, received ${lease.resource.status}`);
+      }
+      await this.attach(lease, this.options.manifestUrl, false);
+    } catch (error) {
+      this.lastAssetError = errorMessage(error);
+      this.fallbackReason = `Primary asset failed: ${this.lastAssetError}`;
       if (this.options.fallbackManifestUrl && this.options.fallbackManifestUrl !== this.options.manifestUrl) {
         try {
           await this.attach(await this.resources.acquireContract(this.options.fallbackManifestUrl), this.options.fallbackManifestUrl, true);
           return;
-        } catch { /* use safe colored loading texture */ }
+        } catch (fallbackError) {
+          this.lastAssetError = `Primary: ${this.lastAssetError}; fallback: ${errorMessage(fallbackError)}`;
+        }
       }
       this.loadState = 'failed';
       this.assetId = 'safe-color-fallback';
@@ -249,7 +267,11 @@ export class HdSpriteEntity {
     const pageSetNeedsUpdate = pages.size !== this.pageLeases.size || [...pages].some((pageId) => !this.pageLeases.has(pageId));
     if ((pageSetNeedsUpdate || Boolean(this.pendingPageSet)) && pageSet !== this.pendingPageSet) {
       this.pendingPageSet = pageSet;
-      void this.ensurePages(pages).catch(() => { this.loadState = 'failed'; }).finally(() => {
+      void this.ensurePages(pages).catch((error) => {
+        this.loadState = 'failed';
+        this.lastAssetError = errorMessage(error);
+        this.fallbackReason = `Atlas page failed: ${this.lastAssetError}`;
+      }).finally(() => {
         if (this.pendingPageSet === pageSet) this.pendingPageSet = '';
       });
     }
@@ -257,6 +279,9 @@ export class HdSpriteEntity {
     if (!texture) return;
     if (key === this.lastFrameKey && this.plane.material.uniforms.atlas!.value === texture) return;
     this.lastFrameKey = key;
+    this.currentPageId = uv.page;
+    const page = pageFor(this.contract, uv.page);
+    this.currentPageUrl = page ? resolveAssetImageUrl(this.manifestUrl, page.image) : null;
     this.plane.material.uniforms.atlas!.value = texture;
     this.plane.material.uniforms.atlasRegion!.value.set(uv.u, uv.v, uv.width, uv.height);
   }
@@ -266,6 +291,24 @@ export class HdSpriteEntity {
     const selected = sequenceFor(this.contract, this.animator.state, this.animator.facing);
     return { state: this.animator.state, requestedDirection: selected.requestedDirection, resolvedDirection: selected.resolvedDirection,
       source: selected.source, frame: this.animator.frame + 1, totalFrames: selected.sequence.frames.length, fps: selected.fps };
+  }
+
+  get assetDiagnostics() {
+    const status = this.loadState === 'loading' ? 'loading'
+      : this.loadState === 'failed' ? 'failed'
+        : this.loadState === 'fallback' || this.contract?.status !== 'production' ? 'fallback'
+          : 'production';
+    return {
+      requestedManifestUrl: this.options.manifestUrl,
+      requestedManifestResolvedUrl: resolvedUrl(this.options.manifestUrl),
+      resolvedManifestUrl: this.manifestUrl ? resolvedUrl(this.manifestUrl) : null,
+      assetStatus: status as 'loading' | 'production' | 'fallback' | 'failed',
+      assetId: this.assetId,
+      currentPageId: this.currentPageId,
+      currentPageUrl: this.currentPageUrl,
+      fallbackReason: status === 'fallback' || status === 'failed' ? this.fallbackReason : null,
+      lastAssetError: this.lastAssetError
+    };
   }
 
   setOpacity(opacity: number) { this.plane.material.uniforms.opacity!.value = opacity; }

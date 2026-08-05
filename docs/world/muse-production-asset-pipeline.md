@@ -75,7 +75,11 @@ __MEMVOYA_WORLD_THREE__.forceMuseAnimation('walk.nw')
 __MEMVOYA_WORLD_THREE__.forceMuseAnimation(null)
 ```
 
-The diagnostics show requested combination, resolved combination, source classification, current/total frame, FPS, pages, and decoded memory. The override is development-only and changes neither `FacingDirection`, movement input, `WorldSession`, network state, authority, nor companion trails.
+The diagnostics show companion identity and canonical archetype, requested and resolved manifest URLs, asset status, current atlas page, requested combination, resolved combination, provenance, fallback reason, last loading error, current/total frame, FPS, pages, and decoded memory. Non-sensitive asset state is also exposed through `data-muse-*` attributes on the Three canvas for deployed-browser inspection. The override is development-only and changes neither `FacingDirection`, movement input, `WorldSession`, network state, authority, nor companion trails.
+
+Established Muse species/seed values (`muse`, `mirae`, `lumina`, `harmonizer`, `looma`, and a legacy missing species) are canonicalized to `muse` when the world ticket is issued. The renderer repeats the alias resolution defensively and requests `/game/sprites/companions/muse/muse.atlas.json`. A Muse manifest must declare `status: production`.
+
+`temporary-fallback` is direction provenance, not an entire-asset fallback: Walk NE selects production E pages and Walk NW selects production W pages. The TEMP player atlas is used only when the production Muse manifest or its initial texture page cannot load, decode, or validate.
 
 ## Promotion record
 

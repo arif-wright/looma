@@ -5,6 +5,12 @@ import { FACING_DIRECTIONS } from '$lib/game/facing';
 import { atlasUvFor, parseSpriteAssetContract, sequenceFor, spritePresentationLayout } from '$lib/game/sprites/assetContract';
 import { effectsEnabledForQuality, MotionAnimationState, SpriteAnimator, yawOnlyBillboardRotation } from '$lib/game/sprites/animation';
 import { acquireWithFallback, ReferenceAssetCache } from '$lib/game/sprites/atlasCache';
+import { selectCompanionSpriteAsset } from '$lib/game/sprites/companionAsset';
+import { createRequire } from 'node:module';
+
+const PNG = (createRequire(import.meta.url)('pngjs') as {
+  PNG: { sync: { read: (input: Buffer) => { width: number; height: number; data: Buffer } } }
+}).PNG;
 
 const fixture = (): unknown => ({
   version: 1, id: 'test-atlas', status: 'temporary', image: 'test.webp',
@@ -53,6 +59,23 @@ const museFallbackFixture = (): any => {
 };
 
 describe('HD sprite asset contract', () => {
+  it.each(['muse', 'Muse', 'mirae', 'lumina', 'harmonizer', 'looma'])(
+    'routes the established Muse identity %s to the production manifest',
+    (identity) => {
+      expect(selectCompanionSpriteAsset(identity)).toMatchObject({
+        archetype: 'muse', muse: true,
+        manifestUrl: '/game/sprites/companions/muse/muse.atlas.json'
+      });
+    }
+  );
+
+  it('does not mistake another canonical companion for Muse', () => {
+    expect(selectCompanionSpriteAsset('echo')).toMatchObject({
+      archetype: 'echo', muse: false,
+      manifestUrl: '/game/sprites/companions/echo/companion.atlas.json'
+    });
+  });
+
   it.each([
     'static/game/sprites/companions/muse/muse.atlas.json',
     'static/game/sprites/players/placeholder/player-placeholder.atlas.json'
@@ -70,6 +93,32 @@ describe('HD sprite asset contract', () => {
     expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'e', source: 'temporary-fallback' });
     expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'w', source: 'temporary-fallback' });
     expect(sequenceFor(asset, 'idle', 'nw')).toMatchObject({ resolvedDirection: 'nw', source: 'mirrored-from-ne' });
+  });
+
+  it('selects supplied production Muse pixels with valid UVs and transparency', () => {
+    const manifestPath = 'static/game/sprites/companions/muse/muse.atlas.json';
+    const asset = parseSpriteAssetContract(JSON.parse(readFileSync(manifestPath, 'utf8')))!;
+    const uv = atlasUvFor(asset, 'idle', 's', 0);
+    const page = asset.pages.find((candidate) => candidate.id === uv.page)!;
+    const png = PNG.sync.read(readFileSync(join(dirname(manifestPath), page.image)));
+    expect(uv).toMatchObject({ page: 'idle-s-p01', u: 0, v: 0, width: 1 / 16, height: 1 });
+    expect([png.width, png.height]).toEqual([page.imageWidth, page.imageHeight]);
+    let transparent = 0;
+    let opaque = 0;
+    let cyanOrPurple = 0;
+    for (let y = 0; y < 256; y += 1) for (let x = 0; x < 256; x += 1) {
+      const index = (y * png.width + x) * 4;
+      const red = png.data[index]!;
+      const green = png.data[index + 1]!;
+      const blue = png.data[index + 2]!;
+      const alpha = png.data[index + 3]!;
+      if (alpha === 0) transparent += 1;
+      if (alpha > 200) opaque += 1;
+      if (alpha > 100 && (blue > red || red > green * 1.25)) cyanOrPurple += 1;
+    }
+    expect(transparent).toBeGreaterThan(30_000);
+    expect(opaque).toBeGreaterThan(2_000);
+    expect(cyanOrPurple).toBeGreaterThan(1_000);
   });
 
   it('parses native eight-direction idle/walk metadata', () => {

@@ -9,6 +9,14 @@ const row = (overrides: Partial<WorldCompanionRow> = {}): WorldCompanionRow => (
 });
 
 describe('world companion projection', () => {
+  it.each([null, 'mirae', 'lumina', 'harmonizer', 'looma', 'Muse'])(
+    'projects the established Muse identity %s as canonical muse',
+    (species) => {
+      expect(resolveWorldCompanionProjection(OWNER, [row({ species })])).toMatchObject({
+        present: true, kind: 'muse', availability: 'available'
+      });
+    }
+  );
   it('rejects another owner companion and supports a missing companion', () => {
     expect(resolveWorldCompanionProjection(OWNER, [row({ owner_id: OTHER })])).toEqual({
       present: false, name: '', kind: '', availability: 'unavailable'
