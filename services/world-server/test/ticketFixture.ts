@@ -10,6 +10,7 @@ export const createTestTicket = (overrides: Record<string, unknown> = {}, now = 
     iss: 'memvoya-web', aud: 'memvoya-world', room: 'wilds', protocol: 1,
     sub: TEST_USER_ONE, jti: randomUUID(), iat: now, exp: now + 45,
     identity: { displayName: 'Aster', handle: 'aster' },
+    playerBody: 'male',
     companion: { present: true, name: 'Lumi', kind: 'muse', availability: 'available' },
     ...overrides
   };

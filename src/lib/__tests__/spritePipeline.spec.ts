@@ -6,6 +6,7 @@ import { atlasUvFor, parseSpriteAssetContract, sequenceFor, spritePresentationLa
 import { effectsEnabledForQuality, MotionAnimationState, SpriteAnimator, yawOnlyBillboardRotation } from '$lib/game/sprites/animation';
 import { acquireWithFallback, ReferenceAssetCache } from '$lib/game/sprites/atlasCache';
 import { selectCompanionSpriteAsset } from '$lib/game/sprites/companionAsset';
+import { normalizePlayerBody, playerBodyManifestUrl } from '$lib/game/playerBody';
 import { createRequire } from 'node:module';
 
 const PNG = (createRequire(import.meta.url)('pngjs') as {
@@ -79,9 +80,18 @@ describe('HD sprite asset contract', () => {
   it.each([
     'static/game/sprites/companions/muse/muse.atlas.json',
     'static/game/sprites/companions/echo/echo.atlas.json',
-    'static/game/sprites/players/placeholder/player-placeholder.atlas.json'
+    'static/game/sprites/players/placeholder/player-placeholder.atlas.json',
+    'static/game/sprites/players/male/player.atlas.json',
+    'static/game/sprites/players/female/player.atlas.json'
   ])('validates shipped atlas metadata %s', (path) => {
     expect(parseSpriteAssetContract(JSON.parse(readFileSync(path, 'utf8')))).not.toBeNull();
+  });
+
+  it('selects player atlases only from the renderer-neutral profile body', () => {
+    expect(playerBodyManifestUrl('male')).toBe('/game/sprites/players/male/player.atlas.json');
+    expect(playerBodyManifestUrl('female')).toBe('/game/sprites/players/female/player.atlas.json');
+    expect(playerBodyManifestUrl('oauth-female')).toBe('/game/sprites/players/male/player.atlas.json');
+    expect(normalizePlayerBody(undefined)).toBe('male');
   });
 
   it('ships every production Muse page and exposes its approved fallback matrix', () => {

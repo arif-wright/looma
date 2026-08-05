@@ -24,12 +24,15 @@ describe('WorldRoom integration', () => {
     const first = await server.connectTo(room, { ticket: createTestTicket() });
     const second = await server.connectTo(room, { ticket: createTestTicket({
       sub: TEST_USER_TWO,
+      playerBody: 'female',
       companion: { present: true, name: 'Ember', kind: 'guardian', availability: 'available' }
     }) });
     await room.waitForNextPatch();
     expect(room.state.players.size).toBe(2);
     expect(room.state.players.get(first.sessionId)?.companionName).toBe('Lumi');
     expect(room.state.players.get(second.sessionId)?.companionName).toBe('Ember');
+    expect(room.state.players.get(first.sessionId)?.playerBody).toBe('male');
+    expect(room.state.players.get(second.sessionId)?.playerBody).toBe('female');
     const before = room.state.players.get(first.sessionId)!.x;
     const received = room.waitForMessage(MOVEMENT_MESSAGE);
     first.send(MOVEMENT_MESSAGE, { sequence: 1, x: 1, y: 0 });
@@ -39,10 +42,12 @@ describe('WorldRoom integration', () => {
     expect(room.state.players.has(second.sessionId)).toBe(true);
     const refreshed = room.waitForMessage(COMPANION_REFRESH_MESSAGE);
     first.send(COMPANION_REFRESH_MESSAGE, { ticket: createTestTicket({
+      playerBody: 'female',
       companion: { present: true, name: 'Nova', kind: 'spark', availability: 'available' }
     }) });
     await refreshed;
     expect(room.state.players.get(first.sessionId)?.companionName).toBe('Nova');
+    expect(room.state.players.get(first.sessionId)?.playerBody).toBe('female');
     await first.leave(true);
     await second.leave(true);
   });

@@ -147,3 +147,9 @@ Decisions are architecture proposals from the repository audit. “Accepted for 
 ## Explicit non-decisions
 
 No Colyseus version/provider, tick/snapshot rate, physics library, map format, Redis provider, exact schema migration, reward amounts, chat system, combat model or multi-region architecture is selected here. Those require implementation spikes, current dependency review, product targets, or later feature scope.
+# Phase 8C.4 — Memvoya-owned player body selection
+
+- Base body selection is stored once as `profiles.player_body`, initially constrained to `male | female` and defaulting to `male` for existing users.
+- OAuth and other identity-provider metadata are not appearance sources.
+- SvelteKit signs the owner-scoped value into the short-lived world ticket; Colyseus validates and synchronizes it. Renderers never query Supabase.
+- Atlas selection is the only renderer branch. Production player art, layering, and entitlement-backed cosmetics remain deferred.

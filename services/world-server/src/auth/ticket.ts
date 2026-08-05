@@ -6,6 +6,7 @@ const AUDIENCE = 'memvoya-world';
 const ROOM = 'wilds';
 const PROTOCOL = 1;
 const MAX_TTL_SECONDS = 60;
+export type PlayerBody = 'male' | 'female';
 
 export type WorldAuth = {
   userId: string;
@@ -13,6 +14,7 @@ export type WorldAuth = {
   expiresAt: number;
   displayName: string;
   handle: string | null;
+  playerBody: PlayerBody;
   companion: {
     present: boolean;
     name: string;
@@ -71,13 +73,15 @@ export const verifyWorldTicket = (
   const companionName = companion.present === true ? cleanText(companion.name, 32) : '';
   const companionKind = companion.present === true ? cleanText(companion.kind, 24) : '';
   const companionAvailable = companion.availability === 'available';
+  const playerBody = claims.playerBody === undefined ? 'male' : claims.playerBody;
   if (
     claims.iss !== ISSUER || claims.aud !== AUDIENCE || claims.room !== ROOM ||
     claims.protocol !== PROTOCOL || !UUID.test(String(claims.sub)) || !UUID.test(String(claims.jti)) ||
     !Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp) || !displayName ||
     (identity.handle !== null && !handle) || typeof companion.present !== 'boolean' ||
     !['available', 'unavailable'].includes(String(companion.availability)) ||
-    (companion.present && (!companionName || !companionKind || !companionAvailable))
+    (companion.present && (!companionName || !companionKind || !companionAvailable)) ||
+    !['male', 'female'].includes(String(playerBody))
   ) return { ok: false, reason: 'claims' };
   const iat = claims.iat as number;
   const exp = claims.exp as number;
@@ -87,7 +91,7 @@ export const verifyWorldTicket = (
   }
   return { ok: true, auth: {
     userId: String(claims.sub), ticketId: String(claims.jti), expiresAt: exp,
-    displayName, handle,
+    displayName, handle, playerBody: playerBody as PlayerBody,
     companion: {
       present: companion.present,
       name: companionName ?? '',

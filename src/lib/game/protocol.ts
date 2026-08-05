@@ -1,3 +1,5 @@
+import type { PlayerBody } from './playerBody';
+
 export const WORLD_ROOM_NAME = 'wilds';
 export const WORLD_PROTOCOL_VERSION = 1;
 export const MOVE_MESSAGE = 'move';
@@ -20,6 +22,7 @@ export type PlayerSnapshot = {
   colorIndex: number;
   displayName: string;
   handle: string;
+  playerBody: PlayerBody;
   companionPresent: boolean;
   companionName: string;
   companionKind: string;

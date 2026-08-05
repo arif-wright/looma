@@ -1,4 +1,5 @@
 import type { FacingDirection } from './facing';
+import type { PlayerBody } from './playerBody';
 
 export type VisualMovementState = 'idle' | 'moving';
 export type VisualConnectionState = 'connected' | 'reconnecting';
@@ -14,6 +15,7 @@ export type PlayerVisualState = {
   local: boolean;
   displayName: string;
   handle: string;
+  playerBody: PlayerBody;
   companionOwnerEntityId: string | null;
   connectionState: VisualConnectionState;
 };

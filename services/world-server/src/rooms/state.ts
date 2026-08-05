@@ -8,6 +8,7 @@ export class PlayerState extends Schema {
   @type('uint8') colorIndex = 0;
   @type('string') displayName = 'Explorer';
   @type('string') handle = '';
+  @type('string') playerBody = 'male';
   @type('boolean') companionPresent = false;
   @type('string') companionName = '';
   @type('string') companionKind = '';

@@ -29,6 +29,13 @@ describe('presence transitions', () => {
     });
     expect(JSON.stringify(serialized)).not.toMatch(/memory|journal|prompt|trait|owner_id|userId/i);
   });
+
+  it('serializes only an allowed renderer-neutral base body value', () => {
+    const player = new PlayerState();
+    expect(player.playerBody).toBe('male');
+    player.playerBody = 'female';
+    expect(player.toJSON()).toMatchObject({ playerBody: 'female' });
+  });
 });
 
 describe('rate limiter', () => {

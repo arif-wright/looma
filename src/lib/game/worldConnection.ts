@@ -3,6 +3,7 @@ import {
   GATHER_MESSAGE, GATHER_RESULT_MESSAGE, MOVE_MESSAGE, WORLD_ROOM_NAME,
   type ConnectionDiagnostic, type ConnectionStatus, type GatherResult, type MovementIntent, type PlayerSnapshot, type WorldSnapshot
 } from './protocol';
+import { normalizePlayerBody } from './playerBody';
 
 type SyncedWorld = {
   tick: number;
@@ -225,6 +226,7 @@ export class WorldConnection {
         x: player.x, y: player.y, connected: player.connected,
         acknowledgedSequence: player.acknowledgedSequence, colorIndex: player.colorIndex,
         displayName: player.displayName, handle: player.handle,
+        playerBody: normalizePlayerBody(player.playerBody),
         companionPresent: player.companionPresent,
         companionName: player.companionName,
         companionKind: player.companionKind,

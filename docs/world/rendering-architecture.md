@@ -15,7 +15,7 @@ WorldGameMount.svelte -> WorldSession -> WorldConnection -> Colyseus
        `-- dynamic import renderers/three/threeWorld.ts (Three.js)
 ```
 
-The server, schema, database, reward idempotency, auth, and public companion projection are unchanged. Prediction remains visual; both renderers send normalized intent and reconcile to snapshots. `PlayerVisualState` is a renderer-neutral animation input containing public identity, world/render positions, facing, movement state, companion association, and connection state—never private companion or account data.
+Prediction remains visual; both renderers send normalized intent and reconcile to snapshots. `PlayerVisualState` is a renderer-neutral animation input containing public identity, the authoritative `playerBody` presentation selection, world/render positions, facing, movement state, companion association, and connection state—never private companion or account data. The profile and ticket ownership boundary for `playerBody` is defined in `docs/world/player-body-contract.md`.
 
 Traversal presentation has one canonical, server-owned public manifest: `services/world-server/src/world/traversalManifest.json`. The server consumes it for authoritative movement, spawn, and persisted-position validation. `src/lib/game/traversal.ts` exposes the identical static data to both renderers. Phaser creates visible static placeholder bodies from its circles; Three places the corresponding visible tree/rock placeholders after server-X/Y to Three-X/Z conversion. Neither renderer may invent permanent blocker geometry or make collision authoritative. The road and open terrain have no collision entries.
 

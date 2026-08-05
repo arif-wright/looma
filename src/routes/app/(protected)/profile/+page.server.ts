@@ -34,6 +34,7 @@ type ProfileRow = {
   links: Record<string, unknown>[] | null;
   is_private: boolean | null;
   account_private: boolean | null;
+  player_body: 'male' | 'female' | null;
   joined_at: string | null;
   featured_companion_id: string | null;
   show_shards: boolean | null;
@@ -92,7 +93,7 @@ type ChapterRewardRow = {
 };
 
 const PROFILE_COLUMNS =
-  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
+  'id, handle, display_name, avatar_url, banner_url, bio, pronouns, location, links, is_private, account_private, player_body, joined_at, featured_companion_id, show_shards, show_level, show_joined, show_location, show_achievements, show_feed';
 
 const POSTS_PAGE_SIZE = 10;
 

@@ -5,8 +5,9 @@ import { MotionAnimationState, SpriteAnimator, effectsEnabledForQuality, yawOnly
 import { ReferenceAssetCache, type ResourceLease } from '../../sprites/atlasCache';
 import { MUSE_PRODUCTION_MANIFEST_URL } from '../../sprites/companionAsset';
 import type { VisualQuality } from './performance';
+import { playerBodyManifestUrl } from '../../playerBody';
 
-export const PLAYER_ATLAS_URL = '/game/sprites/players/placeholder/player-placeholder.atlas.json';
+export const PLAYER_ATLAS_URL = playerBodyManifestUrl('male');
 export const MUSE_ATLAS_URL = MUSE_PRODUCTION_MANIFEST_URL;
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);

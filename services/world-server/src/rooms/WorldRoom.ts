@@ -116,6 +116,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     player.colorIndex = this.state.players.size % 6;
     player.displayName = auth.displayName;
     player.handle = auth.handle ?? '';
+    player.playerBody = auth.playerBody;
     this.applyCompanion(player, auth.companion);
     this.state.players.set(client.sessionId, player);
     client.userData = {
@@ -259,7 +260,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     }
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
-    client.auth = { ...client.auth, companion: result.auth.companion };
+    client.auth = { ...client.auth, companion: result.auth.companion, playerBody: result.auth.playerBody };
+    player.playerBody = result.auth.playerBody;
     this.applyCompanion(player, result.auth.companion);
   }
 

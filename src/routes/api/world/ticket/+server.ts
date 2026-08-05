@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 
   const { data, error } = await locals.supabase
     .from('profiles')
-    .select('id, display_name, handle, account_private')
+    .select('id, display_name, handle, account_private, player_body')
     .eq('id', locals.user.id)
     .maybeSingle();
   if (error) return json({ error: 'identity_unavailable' }, { status: 503 });
@@ -44,6 +44,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
       ? { displayName: 'Explorer', handle: null }
       : normalizeWorldIdentity(data ?? {}),
     companion,
+    data?.player_body,
     secret
   );
   return json(issued, {

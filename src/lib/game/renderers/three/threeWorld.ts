@@ -16,6 +16,7 @@ import { parseSyntheticDensity, qualityDprCap, selectVisualQuality, type VisualQ
 import { calculateVisualRosterDelta } from './roster';
 import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
 import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
+import { playerBodyManifestUrl } from '../../playerBody';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -30,6 +31,7 @@ type VisualPlayer = {
   followerMuse?: boolean;
   followerAssetSelection?: CompanionSpriteSelection;
   followerIdentityKey?: string;
+  playerBodyManifestUrl: string;
 };
 
 export type { WebglContextStatus } from './contextRecovery';
@@ -245,7 +247,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const mapped = serverToWorld(player.x, player.y);
       let visual = players.get(id);
       if (!visual) {
-        const billboard = new HdSpriteEntity(spriteResources, { label: player.displayName, manifestUrl: PLAYER_ATLAS_URL });
+        const playerManifestUrl = playerBodyManifestUrl(player.playerBody);
+        const billboard = new HdSpriteEntity(spriteResources, { label: player.displayName, manifestUrl: playerManifestUrl });
         billboard.root.position.set(mapped.x, 0.02, mapped.z);
         scene.add(billboard.root);
         const facing = new FacingState();
@@ -255,6 +258,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
           previousTarget: new THREE.Vector3(mapped.x, 0.02, mapped.z),
           facing,
           trail: new CompanionTrail(),
+          playerBodyManifestUrl: playerManifestUrl,
           state: {
             entityId: id,
             worldPosition: { x: mapped.x, z: mapped.z },
@@ -265,11 +269,21 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
             local: id === localPlayerId,
             displayName: player.displayName,
             handle: player.handle,
+            playerBody: player.playerBody,
             companionOwnerEntityId: player.companionPresent ? id : null,
             connectionState: player.connected ? 'connected' : 'reconnecting'
           }
         };
         players.set(id, visual);
+      }
+      const nextPlayerManifestUrl = playerBodyManifestUrl(player.playerBody);
+      if (visual.playerBodyManifestUrl !== nextPlayerManifestUrl) {
+        scene.remove(visual.billboard.root);
+        visual.billboard.destroy();
+        visual.billboard = new HdSpriteEntity(spriteResources, { label: player.displayName, manifestUrl: nextPlayerManifestUrl });
+        visual.billboard.root.position.copy(visual.target);
+        visual.playerBodyManifestUrl = nextPlayerManifestUrl;
+        scene.add(visual.billboard.root);
       }
       const motionX = mapped.x - visual.target.x;
       const motionZ = mapped.z - visual.target.z;
@@ -287,6 +301,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         local: id === localPlayerId,
         displayName: player.displayName,
         handle: player.handle,
+        playerBody: player.playerBody,
         companionOwnerEntityId: player.companionPresent ? id : null,
         connectionState: player.connected ? 'connected' : 'reconnecting'
       };

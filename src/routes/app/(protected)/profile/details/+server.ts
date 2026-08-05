@@ -16,6 +16,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   const pronouns = (payload?.pronouns ?? '').trim().slice(0, 30);
   const location = (payload?.location ?? '').trim().slice(0, 60);
   const links = safeLinks(payload?.links ?? []);
+  const player_body = payload?.player_body;
+  if (player_body !== undefined && player_body !== 'male' && player_body !== 'female') {
+    throw error(400, 'Invalid player body');
+  }
   const toBool = (value: unknown, fallback: boolean) =>
     typeof value === 'boolean' ? value : fallback;
 
@@ -44,13 +48,14 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (display_name.length > 0) {
     updates.display_name = display_name;
   }
+  if (player_body !== undefined) updates.player_body = player_body;
 
   const { data, error: updateError } = await locals.supabase
     .from('profiles')
     .update(updates)
     .eq('id', user.id)
     .select(
-      'id, display_name, bio, pronouns, location, links, account_private, show_shards, show_level, show_joined, show_location, show_achievements, show_feed, avatar_url, handle, banner_url, joined_at'
+      'id, display_name, bio, pronouns, location, links, player_body, account_private, show_shards, show_level, show_joined, show_location, show_achievements, show_feed, avatar_url, handle, banner_url, joined_at'
     )
     .maybeSingle();
 

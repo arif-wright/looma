@@ -6,8 +6,17 @@ describe('world ticket verification', () => {
   it('derives identity from a valid signed credential', () => {
     const result = verifyWorldTicket(createTestTicket({}, 1_000), TEST_JOIN_SECRET, 1_010);
     expect(result).toEqual({ ok: true, auth: expect.objectContaining({
-      userId: TEST_USER_ONE, displayName: 'Aster', handle: 'aster'
+      userId: TEST_USER_ONE, displayName: 'Aster', handle: 'aster', playerBody: 'male'
     }) });
+  });
+
+  it('accepts an allowed profile body, defaults a legacy ticket, and rejects invalid values', () => {
+    const female = verifyWorldTicket(createTestTicket({ playerBody: 'female' }, 1_000), TEST_JOIN_SECRET, 1_010);
+    expect(female).toMatchObject({ ok: true, auth: { playerBody: 'female' } });
+    const legacy = verifyWorldTicket(createTestTicket({ playerBody: undefined }, 1_000), TEST_JOIN_SECRET, 1_010);
+    expect(legacy).toMatchObject({ ok: true, auth: { playerBody: 'male' } });
+    expect(verifyWorldTicket(createTestTicket({ playerBody: 'admin' }, 1_000), TEST_JOIN_SECRET, 1_010))
+      .toEqual({ ok: false, reason: 'claims' });
   });
 
   it('rejects expired, malformed, missing, and incorrectly signed credentials', () => {

@@ -1,5 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { PublicWorldCompanion } from '$lib/server/worldCompanion';
+import { normalizePlayerBody, type PlayerBody } from '$lib/game/playerBody';
 
 export const WORLD_TICKET_ISSUER = 'memvoya-web';
 export const WORLD_TICKET_AUDIENCE = 'memvoya-world';
@@ -18,6 +19,7 @@ export type WorldTicketClaims = {
   iat: number;
   exp: number;
   identity: SafeWorldIdentity;
+  playerBody: PlayerBody;
   companion: PublicWorldCompanion;
 };
 
@@ -37,6 +39,7 @@ export const issueWorldTicket = (
   userId: string,
   identity: SafeWorldIdentity,
   companion: PublicWorldCompanion,
+  playerBody: unknown,
   secret: string,
   nowSeconds = Math.floor(Date.now() / 1000)
 ) => {
@@ -51,6 +54,7 @@ export const issueWorldTicket = (
     iat: nowSeconds,
     exp: nowSeconds + WORLD_TICKET_TTL_SECONDS,
     identity,
+    playerBody: normalizePlayerBody(playerBody),
     companion
   };
   const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(claims)}`;

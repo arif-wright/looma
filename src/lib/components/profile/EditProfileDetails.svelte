@@ -9,6 +9,7 @@
   export let show_location = true;
   export let show_achievements = true;
   export let show_feed = true;
+  let player_body: 'male' | 'female' = profile?.player_body === 'female' ? 'female' : 'male';
 
   const dispatch = createEventDispatcher<{ updated: Record<string, any> }>();
 
@@ -37,6 +38,7 @@
     bio = profile.bio ?? '';
     pronouns = profile.pronouns ?? '';
     location = profile.location ?? '';
+    player_body = profile.player_body === 'female' ? 'female' : 'male';
     links = Array.isArray(profile.links) ? [...profile.links] : [];
     ensureLinks();
   }
@@ -58,6 +60,7 @@
           pronouns,
           location,
           links,
+          player_body,
           account_private,
           show_shards,
           show_level,
@@ -108,6 +111,15 @@
         maxlength="30"
         placeholder="she/her · he/him · they/them"
       />
+    </label>
+
+    <label class="field md:col-span-2">
+      <span class="field-label">World body</span>
+      <select class="select select-sm w-full" name="player_body" bind:value={player_body}>
+        <option value="male">Male base body</option>
+        <option value="female">Female base body</option>
+      </select>
+      <span class="opacity-60 text-sm">Used for your player silhouette in The Wilds; independent of sign-in provider.</span>
     </label>
 
     <label class="field md:col-span-2">
