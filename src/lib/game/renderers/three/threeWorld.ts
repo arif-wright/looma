@@ -14,7 +14,7 @@ import { cameraRelativeMovement, SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } fr
 import { ObstructionFadeController, type ObstructableRegistration } from './obstruction';
 import { parseSyntheticDensity, qualityDprCap, selectVisualQuality, type VisualQuality } from './performance';
 import { calculateVisualRosterDelta } from './roster';
-import { HdSpriteEntity, HdSpriteResources, MUSE_ATLAS_URL, PLAYER_ATLAS_URL } from './hdSprite';
+import { HdSpriteEntity, HdSpriteResources, MUSE_ATLAS_URL, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -26,6 +26,7 @@ type VisualPlayer = {
   follower?: HdSpriteEntity;
   followerTarget?: THREE.Vector3;
   followerFacing?: FacingState;
+  followerMuse?: boolean;
 };
 
 export type { WebglContextStatus } from './contextRecovery';
@@ -51,6 +52,12 @@ type ThreeWorldOptions = {
 const MOONBERRY = MOONBERRY_INTERACTION;
 const CAMERA_STORAGE_KEY = 'memvoya.world.camera-preset';
 const MAX_CAMERA_TARGET_LAG = 2.5;
+
+export const parseMuseAnimationOverride = (value: string | null): SpriteAnimationOverride | null => {
+  if (!value) return null;
+  const match = /^(idle|walk)\.(n|ne|e|se|s|sw|w|nw)$/.exec(value.trim().toLowerCase());
+  return match ? { state: match[1] as 'idle' | 'walk', facing: match[2] as FacingDirection } : null;
+};
 
 const readCameraPreset = (): CameraPresetName => {
   try {
@@ -114,6 +121,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   let fpsWindowElapsed = 0;
   let recentMinimumFps = 60;
   let animationUpdateMs = 0;
+  let forcedMuseAnimation = import.meta.env.DEV
+    ? parseMuseAnimationOverride(new URLSearchParams(location.search).get('worldMuseAnimation')) : null;
 
   scene.add(new THREE.HemisphereLight(0xd9fff5, 0x355044, 1.8));
   const sun = new THREE.DirectionalLight(0xfff0cf, 2.2);
@@ -289,6 +298,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
             companion: true,
             museEffects: muse
           });
+          visual.followerMuse = muse;
           visual.followerFacing = new FacingState();
           visual.followerTarget = new THREE.Vector3(mapped.x - 0.9, 0.02, mapped.z + 0.8);
           visual.follower.root.position.copy(visual.followerTarget);
@@ -301,6 +311,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         delete visual.follower;
         delete visual.followerTarget;
         delete visual.followerFacing;
+        delete visual.followerMuse;
       }
     });
     for (const id of rosterDelta.removed) removePlayer(id);
@@ -428,7 +439,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         const followZ = visual.followerTarget.z - visual.follower.root.position.z;
         const followerFacing = visual.followerFacing?.update(followX, followZ, 0.02) ?? visual.facing.value;
         const followerMotion = movementState(followX, followZ, 0.018);
-        visual.follower.update(delta, followerFacing, followerMotion.movementMagnitude, cameraState.yaw, quality, camera.position.distanceTo(visual.follower.root.position));
+        visual.follower.update(delta, followerFacing, followerMotion.movementMagnitude, cameraState.yaw, quality,
+          camera.position.distanceTo(visual.follower.root.position), visual.followerMuse ? forcedMuseAnimation ?? undefined : undefined);
       }
     }
     for (const billboard of synthetic) {
@@ -474,7 +486,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const animated = [...players.values()].reduce((count, visual) => count + 1 + Number(Boolean(visual.follower)), 0) + synthetic.length;
       const textureMemoryMb = spriteResources.estimatedTextureMemoryBytes / (1024 * 1024);
       const animation = players.get(localPlayerId)?.billboard.animationDiagnostics;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.facing} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      const museAnimation = [...players.values()].find((visual) => visual.followerMuse)?.follower?.animationDiagnostics;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse source ${museAnimation?.source ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }
@@ -499,10 +512,19 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     options.onCameraPreset?.(preset);
     try { localStorage.setItem(CAMERA_STORAGE_KEY, preset); } catch { /* optional preference */ }
   };
-  const debugGlobal = globalThis as typeof globalThis & { __MEMVOYA_WORLD_THREE__?: { loseContext: () => void; restoreContext: () => void } };
+  const debugGlobal = globalThis as typeof globalThis & { __MEMVOYA_WORLD_THREE__?: {
+    loseContext: () => void; restoreContext: () => void; forceMuseAnimation: (value: string | null) => boolean
+  } };
   if (import.meta.env.DEV) debugGlobal.__MEMVOYA_WORLD_THREE__ = {
     loseContext: () => renderer.forceContextLoss(),
-    restoreContext: () => renderer.forceContextRestore()
+    restoreContext: () => renderer.forceContextRestore(),
+    forceMuseAnimation: (value) => {
+      if (value === null) { forcedMuseAnimation = null; return true; }
+      const parsed = parseMuseAnimationOverride(value);
+      if (!parsed) return false;
+      forcedMuseAnimation = parsed;
+      return true;
+    }
   };
 
   resize(host.clientWidth || 960, host.clientHeight || 540);

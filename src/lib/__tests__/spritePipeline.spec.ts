@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { FACING_DIRECTIONS } from '$lib/game/facing';
 import { atlasUvFor, parseSpriteAssetContract, sequenceFor, spritePresentationLayout } from '$lib/game/sprites/assetContract';
 import { effectsEnabledForQuality, MotionAnimationState, SpriteAnimator, yawOnlyBillboardRotation } from '$lib/game/sprites/animation';
@@ -37,6 +38,19 @@ const variableFixture = (): unknown => ({
     }])), pivot: { x: .5, y: .96 }, feet: { x: .5, y: .92 }, visualScale: { heightWorldUnits: 2.5 }
   }]))
 });
+const museFallbackFixture = (): any => {
+  const value = variableFixture() as any;
+  value.animations.idle.directions.nw.source = 'mirrored-from-ne';
+  value.animations.walk.directions.sw.source = 'mirrored-from-se';
+  value.animations.walk.directions.w.source = 'mirrored-from-e';
+  value.animations.walk.directions.ne = {
+    frames: [], source: 'temporary-fallback', fallbackDirection: 'e', temporary: true
+  };
+  value.animations.walk.directions.nw = {
+    frames: [], source: 'temporary-fallback', fallbackDirection: 'w', temporary: true
+  };
+  return value;
+};
 
 describe('HD sprite asset contract', () => {
   it.each([
@@ -44,6 +58,18 @@ describe('HD sprite asset contract', () => {
     'static/game/sprites/players/placeholder/player-placeholder.atlas.json'
   ])('validates shipped atlas metadata %s', (path) => {
     expect(parseSpriteAssetContract(JSON.parse(readFileSync(path, 'utf8')))).not.toBeNull();
+  });
+
+  it('ships every production Muse page and exposes its approved fallback matrix', () => {
+    const manifestPath = 'static/game/sprites/companions/muse/muse.atlas.json';
+    const raw = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const asset = parseSpriteAssetContract(raw)!;
+    expect(asset.status).toBe('production');
+    expect(asset.pages).toHaveLength(28);
+    expect(asset.pages.every((page) => existsSync(join(dirname(manifestPath), page.image)))).toBe(true);
+    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'e', source: 'temporary-fallback' });
+    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'w', source: 'temporary-fallback' });
+    expect(sequenceFor(asset, 'idle', 'nw')).toMatchObject({ resolvedDirection: 'nw', source: 'mirrored-from-ne' });
   });
 
   it('parses native eight-direction idle/walk metadata', () => {
@@ -76,6 +102,39 @@ describe('HD sprite asset contract', () => {
     expect(atlasUvFor(asset, 'idle', 'n', 15)).toMatchObject({ page: 'first', frame: 15, totalFrames: 24, fps: 12 });
     expect(atlasUvFor(asset, 'idle', 'n', 16)).toMatchObject({ page: 'second', frame: 16, totalFrames: 24 });
     expect(sequenceFor(asset, 'idle', 'e').sequence.frames).toHaveLength(7);
+  });
+
+  it('resolves only explicit Muse directional fallbacks without changing requested facing', () => {
+    const asset = parseSpriteAssetContract(museFallbackFixture())!;
+    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'e', source: 'temporary-fallback' });
+    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'w', source: 'temporary-fallback' });
+    expect(sequenceFor(asset, 'idle', 'ne')).toMatchObject({ requestedDirection: 'ne', resolvedDirection: 'ne', source: 'authored' });
+    expect(sequenceFor(asset, 'idle', 'nw')).toMatchObject({ requestedDirection: 'nw', resolvedDirection: 'nw', source: 'mirrored-from-ne' });
+    expect(sequenceFor(asset, 'walk', 'se')).toMatchObject({ resolvedDirection: 'se', source: 'authored' });
+    expect(sequenceFor(asset, 'walk', 'sw')).toMatchObject({ resolvedDirection: 'sw', source: 'mirrored-from-se' });
+  });
+
+  it('removes the NE fallback when a valid authored sequence is supplied', () => {
+    const value = museFallbackFixture();
+    value.animations.walk.directions.ne = { ...value.animations.walk.directions.e, source: 'authored' };
+    value.animations.walk.directions.nw = { ...value.animations.walk.directions.w, source: 'mirrored-from-ne' };
+    const asset = parseSpriteAssetContract(value)!;
+    expect(sequenceFor(asset, 'walk', 'ne')).toMatchObject({ resolvedDirection: 'ne', source: 'authored' });
+    expect(sequenceFor(asset, 'walk', 'nw')).toMatchObject({ resolvedDirection: 'nw', source: 'mirrored-from-ne' });
+  });
+
+  it('rejects undeclared, chained, and generic missing-direction fallbacks', () => {
+    const missing = museFallbackFixture();
+    missing.animations.walk.directions.ne = { frames: [] };
+    expect(parseSpriteAssetContract(missing)).toBeNull();
+    const chained = museFallbackFixture();
+    chained.animations.walk.directions.e = { frames: [], source: 'temporary-fallback', fallbackDirection: 's', temporary: true };
+    expect(parseSpriteAssetContract(chained)).toBeNull();
+    const nearest = museFallbackFixture();
+    nearest.animations.walk.directions.ne.fallbackDirection = 'se';
+    const parsed = parseSpriteAssetContract(nearest)!;
+    expect(sequenceFor(parsed, 'walk', 'ne').resolvedDirection).toBe('se');
+    expect(sequenceFor(parsed, 'walk', 'n').resolvedDirection).toBe('n');
   });
 
   it('grounds the declared feet at world zero and places the label above the frame', () => {

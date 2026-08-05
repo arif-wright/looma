@@ -6,7 +6,15 @@ export type SpritePoint = { x: number; y: number };
 export type ShadowFootprint = { width: number; depth: number; opacity: number; offsetY: number };
 export type SpriteAtlasPage = { id: string; image: string; imageWidth: number; imageHeight: number };
 export type SpriteAtlasFrame = AtlasCell & { page: string };
-export type SpriteDirectionSequence = { frames: readonly SpriteAtlasFrame[]; fps?: number; loop?: boolean };
+export type SpriteSequenceSource = 'authored' | `mirrored-from-${FacingDirection}` | 'temporary-fallback';
+export type SpriteDirectionSequence = {
+  frames: readonly SpriteAtlasFrame[];
+  fps?: number;
+  loop?: boolean;
+  source: SpriteSequenceSource;
+  fallbackDirection?: FacingDirection;
+  temporary?: true;
+};
 export type SpriteAnimationClip = {
   frameWidth: number;
   frameHeight: number;
@@ -79,7 +87,7 @@ const parseV1Clip = (value: unknown, page: SpriteAtlasPage): SpriteAnimationClip
       page: page.id, column: Number(cell.column) + index, row: Number(cell.row)
     }));
     if (frames.some((frame) => !frameFits(frame, clip, new Map([[page.id, page]])))) return null;
-    clip.directions[direction] = { frames };
+    clip.directions[direction] = { frames, source: 'authored' };
   }
   optionalPresentation(item, clip);
   return clip;
@@ -113,9 +121,19 @@ const parseV2Clip = (value: unknown, pages: Map<string, SpriteAtlasPage>): Sprit
   };
   for (const direction of FACING_DIRECTIONS) {
     const sequence = record(directions[direction]);
-    if (!sequence || !Array.isArray(sequence.frames) || sequence.frames.length === 0) return null;
+    if (!sequence) return null;
+    const source = sequence.source === undefined ? 'authored' : sequence.source;
+    const validSource = source === 'authored' || source === 'temporary-fallback' ||
+      (typeof source === 'string' && /^mirrored-from-(n|ne|e|se|s|sw|w|nw)$/.test(source));
+    if (!validSource) return null;
+    const fallbackDirection = sequence.fallbackDirection;
+    const isFallback = source === 'temporary-fallback';
+    if (isFallback) {
+      if (!FACING_DIRECTIONS.includes(fallbackDirection as FacingDirection) || fallbackDirection === direction || sequence.temporary !== true ||
+        (Array.isArray(sequence.frames) && sequence.frames.length > 0)) return null;
+    } else if (fallbackDirection !== undefined || sequence.temporary !== undefined || !Array.isArray(sequence.frames) || sequence.frames.length === 0) return null;
     const frames: SpriteAtlasFrame[] = [];
-    for (const valueFrame of sequence.frames) {
+    for (const valueFrame of Array.isArray(sequence.frames) ? sequence.frames : []) {
       const frame = record(valueFrame);
       if (!frame || typeof frame.page !== 'string' || !Number.isInteger(frame.column) || !Number.isInteger(frame.row) ||
         Number(frame.column) < 0 || Number(frame.row) < 0) return null;
@@ -126,10 +144,15 @@ const parseV2Clip = (value: unknown, pages: Map<string, SpriteAtlasPage>): Sprit
     if (sequence.fps !== undefined && !finitePositive(sequence.fps)) return null;
     if (sequence.loop !== undefined && typeof sequence.loop !== 'boolean') return null;
     clip.directions[direction] = {
-      frames,
+      frames, source: source as SpriteSequenceSource,
       ...(sequence.fps !== undefined ? { fps: Number(sequence.fps) } : {}),
-      ...(sequence.loop !== undefined ? { loop: sequence.loop } : {})
+      ...(sequence.loop !== undefined ? { loop: sequence.loop } : {}),
+      ...(isFallback ? { fallbackDirection: fallbackDirection as FacingDirection, temporary: true as const } : {})
     };
+  }
+  for (const direction of FACING_DIRECTIONS) {
+    const sequence = clip.directions[direction];
+    if (sequence.source === 'temporary-fallback' && clip.directions[sequence.fallbackDirection!].source === 'temporary-fallback') return null;
   }
   optionalPresentation(item, clip);
   return clip;
@@ -166,8 +189,11 @@ export const parseSpriteAssetContract = (value: unknown): SpriteAssetContract | 
 export type AtlasUv = { page: string; u: number; v: number; width: number; height: number; frame: number; totalFrames: number; fps: number; loop: boolean };
 export const sequenceFor = (asset: SpriteAssetContract, state: SpriteAnimationState, facing: FacingDirection) => {
   const clip = asset.animations[state] ?? asset.animations.idle!;
-  const sequence = clip.directions[facing];
-  return { clip, sequence, fps: sequence.fps ?? clip.fps, loop: sequence.loop ?? clip.loop };
+  const requested = clip.directions[facing];
+  const resolvedDirection = requested.source === 'temporary-fallback' ? requested.fallbackDirection! : facing;
+  const sequence = clip.directions[resolvedDirection];
+  return { clip, sequence, requestedDirection: facing, resolvedDirection, source: requested.source,
+    fps: sequence.fps ?? clip.fps, loop: sequence.loop ?? clip.loop };
 };
 
 export type SpritePresentationLayout = { width: number; height: number; centerY: number; labelY: number };

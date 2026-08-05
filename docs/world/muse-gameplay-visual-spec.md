@@ -32,3 +32,7 @@ Gameplay target is 2.5 world units tall, roughly 96 px in Classic, with feet at 
 Every production direction must preserve consistent illustrated/chibi scale, lighting, foot contact, and silhouette. Final directions are native artwork and may not be mirrored unless art direction explicitly approves a specific exception.
 
 The chest crystal `(0.5,0.56)`, forehead `(0.5,0.29)`, and aura `(0.5,0.9)` anchors are reserved for lightweight layers. Phase 8C implements only a restrained cyan aura ring at full quality. No effect changes authority, movement, companion state, memory, or networking.
+
+## Phase 8C.3 directional status
+
+Idle N/NE/E/SE/S and walk N/E/SE/S are authored. The approved production pipeline derives idle NW/W/SW and walk W/SW through explicit horizontal mirrors. Walk NE is not approved or available; walk NW consequently cannot be derived. Until approved NE walk art arrives, the sprite resolver displays E for requested NE and W for requested NW while leaving world-facing unchanged. This is documented production art debt, not a claim that Muse is directionally art-complete.

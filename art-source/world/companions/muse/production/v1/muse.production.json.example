@@ -11,10 +11,14 @@
       "fps": 12,
       "loop": true,
       "directions": {
-        "n": { "frameCount": 24 }, "ne": { "frameCount": 24 },
-        "e": { "frameCount": 24 }, "se": { "frameCount": 24 },
-        "s": { "frameCount": 24 }, "sw": { "frameCount": 24 },
-        "w": { "frameCount": 24 }, "nw": { "frameCount": 24 }
+        "n": { "source": "authored", "frameCount": 24 },
+        "ne": { "source": "authored", "frameCount": 24 },
+        "e": { "source": "authored", "frameCount": 24 },
+        "se": { "source": "authored", "frameCount": 24 },
+        "s": { "source": "authored", "frameCount": 24 },
+        "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" },
+        "nw": { "source": "mirrored", "from": "ne" }
       },
       "pivot": { "x": 0.5, "y": 0.96 },
       "feet": { "x": 0.5, "y": 0.92 },
@@ -32,10 +36,14 @@
       "fps": 10,
       "loop": true,
       "directions": {
-        "n": { "frameCount": 6 }, "ne": { "frameCount": 6 },
-        "e": { "frameCount": 6 }, "se": { "frameCount": 6 },
-        "s": { "frameCount": 6 }, "sw": { "frameCount": 6 },
-        "w": { "frameCount": 6 }, "nw": { "frameCount": 6 }
+        "n": { "source": "authored", "frameCount": 24 },
+        "ne": { "source": "temporary-fallback", "fallbackDirection": "e", "temporary": true },
+        "e": { "source": "authored", "frameCount": 24 },
+        "se": { "source": "authored", "frameCount": 24 },
+        "s": { "source": "authored", "frameCount": 24 },
+        "sw": { "source": "mirrored", "from": "se" },
+        "w": { "source": "mirrored", "from": "e" },
+        "nw": { "source": "temporary-fallback", "fallbackDirection": "w", "temporary": true }
       },
       "pivot": { "x": 0.5, "y": 0.96 },
       "feet": { "x": 0.5, "y": 0.92 },

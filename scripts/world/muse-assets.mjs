@@ -12,6 +12,14 @@ export const FRAME_SIZE = 256;
 export const FRAMES_PER_PAGE = 16;
 export const DEFAULT_SOURCE = 'art-source/world/companions/muse/production/v1';
 export const DEFAULT_OUTPUT = 'artifacts/world/companions/muse/v1';
+export const SOURCE_SHEETS = {
+  idle: { n: 'Echo-iso_idle_up-trimmed.png', ne: 'Echo-iso_idle_northeast-v2.png', e: 'Echo-iso_idle_right-v1.png', se: 'Echo-iso_idle_southeast-v1.png', s: 'Echo-iso_idle_down-v1.png' },
+  walk: { n: 'Echo-iso_walk_up-trimmed.png', e: 'Echo-iso_walk_right-v1.png', se: 'Echo-iso_walk_southeast-v1.png', s: 'Echo-iso_walk_down-v1.png' }
+};
+export const MUSE_DIRECTION_POLICY = {
+  idle: { n: 'authored', ne: 'authored', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'mirrored:ne' },
+  walk: { n: 'authored', ne: 'temporary-fallback:e', e: 'authored', se: 'authored', s: 'authored', sw: 'mirrored:se', w: 'mirrored:e', nw: 'temporary-fallback:w' }
+};
 
 const expectedFramePath = (root, state, direction, index) =>
   join(root, 'frames', state, direction, `muse_${state}_${direction}_${String(index + 1).padStart(2, '0')}.png`);
@@ -47,9 +55,28 @@ const readMetadata = (root, errors) => {
       if (!Number.isFinite(animation.visualScale?.heightWorldUnits) || animation.visualScale.heightWorldUnits <= 0) errors.push(`${state} requires positive visualScale.heightWorldUnits.`);
       for (const direction of DIRECTIONS) {
         const sequence = animation.directions?.[direction];
-        if (!sequence || !Number.isInteger(sequence.frameCount) || sequence.frameCount < 1) errors.push(`${state}.${direction} requires a positive integer frameCount.`);
+        if (!sequence || !['authored', 'mirrored', 'temporary-fallback'].includes(sequence.source)) {
+          errors.push(`${state}.${direction} requires an explicit authored, mirrored, or temporary-fallback source.`);
+          continue;
+        }
+        const expectedPolicy = MUSE_DIRECTION_POLICY[state][direction];
+        const expectedSource = expectedPolicy.split(':')[0];
+        const expectedFrom = expectedPolicy.split(':')[1];
+        if (sequence.source !== expectedSource && !(state === 'walk' && direction === 'ne' && sequence.source === 'authored') &&
+          !(state === 'walk' && direction === 'nw' && sequence.source === 'mirrored')) errors.push(`${state}.${direction} violates the approved Muse direction policy.`);
+        if (sequence.source === 'authored' && (!Number.isInteger(sequence.frameCount) || sequence.frameCount < 1)) errors.push(`${state}.${direction} authored source requires a positive integer frameCount.`);
+        if (sequence.source === 'mirrored' && (!DIRECTIONS.includes(sequence.from) || sequence.from === direction)) errors.push(`${state}.${direction} mirrored source requires a valid distinct "from" direction.`);
+        if (sequence.source === 'temporary-fallback' && (!DIRECTIONS.includes(sequence.fallbackDirection) || sequence.temporary !== true)) errors.push(`${state}.${direction} fallback requires fallbackDirection and temporary: true.`);
+        if (expectedFrom && sequence.source === expectedSource && (sequence.from ?? sequence.fallbackDirection) !== expectedFrom) errors.push(`${state}.${direction} must resolve from ${expectedFrom}.`);
+        if (sequence.source !== 'authored' && sequence.frameCount !== undefined) errors.push(`${state}.${direction} derived/fallback entries must not declare frameCount.`);
         if (sequence?.fps !== undefined && (!Number.isFinite(sequence.fps) || sequence.fps <= 0)) errors.push(`${state}.${direction} FPS override must be positive.`);
         if (sequence?.loop !== undefined && typeof sequence.loop !== 'boolean') errors.push(`${state}.${direction} loop override must be boolean.`);
+      }
+      if (state === 'walk') {
+        const ne = animation.directions?.ne;
+        const nw = animation.directions?.nw;
+        if (ne?.source === 'authored' && (nw?.source !== 'mirrored' || nw.from !== 'ne')) errors.push('walk.nw must be mirrored from walk.ne once authored NE artwork exists.');
+        if (ne?.source === 'temporary-fallback' && (nw?.source !== 'temporary-fallback' || nw.fallbackDirection !== 'w')) errors.push('walk.nw must use the explicit W fallback while walk.ne is unavailable.');
       }
     }
     return metadata;
@@ -59,6 +86,51 @@ const readMetadata = (root, errors) => {
   }
 };
 
+const cropCell = (sheet, column, row) => {
+  const frame = new PNG({ width: FRAME_SIZE, height: FRAME_SIZE, colorType: 6 });
+  for (let y = 0; y < FRAME_SIZE; y += 1) {
+    const sourceStart = ((row * FRAME_SIZE + y) * sheet.width + column * FRAME_SIZE) * 4;
+    sheet.data.copy(frame.data, y * FRAME_SIZE * 4, sourceStart, sourceStart + FRAME_SIZE * 4);
+  }
+  return frame;
+};
+
+export const ingestMuseSheets = (sourceDirectory = DEFAULT_SOURCE) => {
+  const root = resolve(sourceDirectory);
+  const errors = [];
+  const metadata = readMetadata(root, errors);
+  if (!metadata || errors.length) throw new Error(`Muse sheet intake metadata failed:\n${errors.map((item) => `- ${item}`).join('\n')}`);
+  const written = [];
+  for (const [state, sheets] of Object.entries(SOURCE_SHEETS)) for (const [direction, filename] of Object.entries(sheets)) {
+    const definition = metadata.animations[state].directions[direction];
+    if (definition?.source !== 'authored') throw new Error(`${state}.${direction} sheet requires authored metadata.`);
+    const sheetPath = join(root, filename);
+    if (!existsSync(sheetPath)) throw new Error(`Missing approved source sheet: ${filename}`);
+    const sheet = PNG.sync.read(readFileSync(sheetPath), { skipRescale: true });
+    if (sheet.width !== FRAME_SIZE * 5 || sheet.height !== FRAME_SIZE * 5) throw new Error(`${filename} must be a 5×5 grid of ${FRAME_SIZE}px cells.`);
+    const populated = [];
+    let reachedEmptyCell = false;
+    for (let index = 0; index < 25; index += 1) {
+      const frame = cropCell(sheet, index % 5, Math.floor(index / 5));
+      let visible = false;
+      for (let alpha = 3; alpha < frame.data.length; alpha += 4) if (frame.data[alpha] > 0) { visible = true; break; }
+      if (visible) {
+        if (reachedEmptyCell) throw new Error(`${filename} contains a populated cell after an empty grid position.`);
+        populated.push(frame);
+      } else reachedEmptyCell = true;
+    }
+    if (populated.length !== definition.frameCount) throw new Error(`${filename} contains ${populated.length} populated frames; metadata declares ${definition.frameCount}.`);
+    const destination = join(root, 'frames', state, direction);
+    mkdirSync(destination, { recursive: true });
+    populated.forEach((frame, index) => {
+      const path = expectedFramePath(root, state, direction, index);
+      writeFileSync(path, PNG.sync.write(frame, { colorType: 6 }));
+      written.push(path);
+    });
+  }
+  return { sourceDirectory: root, writtenFrames: written.length, files: written };
+};
+
 export const validateMuseFrames = (sourceDirectory = DEFAULT_SOURCE) => {
   const root = resolve(sourceDirectory);
   const errors = [];
@@ -66,7 +138,8 @@ export const validateMuseFrames = (sourceDirectory = DEFAULT_SOURCE) => {
   const metadata = readMetadata(root, errors);
   const expected = [];
   if (metadata) for (const state of REQUIRED_STATES) for (const direction of DIRECTIONS) {
-    const count = metadata.animations?.[state]?.directions?.[direction]?.frameCount;
+    const definition = metadata.animations?.[state]?.directions?.[direction];
+    const count = definition?.source === 'authored' ? definition.frameCount : 0;
     if (Number.isInteger(count) && count > 0) for (let index = 0; index < count; index += 1) expected.push(expectedFramePath(root, state, direction, index));
   }
   const expectedSet = new Set(expected.map((path) => resolve(path)));
@@ -98,11 +171,17 @@ export const validateMuseFrames = (sourceDirectory = DEFAULT_SOURCE) => {
   return { ok: errors.length === 0, sourceDirectory: root, expectedFrames: expected.length, suppliedFrames: suppliedPngs.length, transparentFrames, metadata, errors, warnings };
 };
 
-const copyFrame = (target, source, column) => {
+const copyFrame = (target, source, column, mirrored = false) => {
   for (let y = 0; y < FRAME_SIZE; y += 1) {
-    const sourceStart = y * FRAME_SIZE * 4;
     const targetStart = (y * target.width + column * FRAME_SIZE) * 4;
-    source.data.copy(target.data, targetStart, sourceStart, sourceStart + FRAME_SIZE * 4);
+    if (!mirrored) {
+      const sourceStart = y * FRAME_SIZE * 4;
+      source.data.copy(target.data, targetStart, sourceStart, sourceStart + FRAME_SIZE * 4);
+    } else for (let x = 0; x < FRAME_SIZE; x += 1) {
+      const sourcePixel = (y * FRAME_SIZE + (FRAME_SIZE - 1 - x)) * 4;
+      const targetPixel = targetStart + x * 4;
+      source.data.copy(target.data, targetPixel, sourcePixel, sourcePixel + 4);
+    }
   }
 };
 
@@ -123,16 +202,23 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
     directions[state] = {};
     for (const direction of DIRECTIONS) {
       const sequence = report.metadata.animations[state].directions[direction];
+      if (sequence.source === 'temporary-fallback') {
+        directions[state][direction] = { frames: [], source: 'temporary-fallback', fallbackDirection: sequence.fallbackDirection, temporary: true };
+        continue;
+      }
+      const sourceDirection = sequence.source === 'mirrored' ? sequence.from : direction;
+      const sourceSequence = report.metadata.animations[state].directions[sourceDirection];
+      if (sourceSequence?.source !== 'authored') throw new Error(`${state}.${direction} must derive directly from authored frames.`);
       const frames = [];
-      for (let pageIndex = 0, offset = 0; offset < sequence.frameCount; pageIndex += 1, offset += FRAMES_PER_PAGE) {
-        const count = Math.min(FRAMES_PER_PAGE, sequence.frameCount - offset);
+      for (let pageIndex = 0, offset = 0; offset < sourceSequence.frameCount; pageIndex += 1, offset += FRAMES_PER_PAGE) {
+        const count = Math.min(FRAMES_PER_PAGE, sourceSequence.frameCount - offset);
         const pageId = `${state}-${direction}-p${String(pageIndex + 1).padStart(2, '0')}`;
         const imageName = `muse.${state}.${direction}.p${String(pageIndex + 1).padStart(2, '0')}.png`;
         const atlas = new PNG({ width: count * FRAME_SIZE, height: FRAME_SIZE, colorType: 6 });
         atlas.data.fill(0);
         for (let local = 0; local < count; local += 1) {
           const frameIndex = offset + local;
-          copyFrame(atlas, PNG.sync.read(readFileSync(expectedFramePath(root, state, direction, frameIndex)), { skipRescale: true }), local);
+          copyFrame(atlas, PNG.sync.read(readFileSync(expectedFramePath(root, state, sourceDirection, frameIndex)), { skipRescale: true }), local, sequence.source === 'mirrored');
           frames.push({ page: pageId, column: local, row: 0 });
         }
         const atlasPath = join(output, imageName);
@@ -140,7 +226,8 @@ export const packMuseAtlas = (sourceDirectory = DEFAULT_SOURCE, outputDirectory 
         atlasPaths.push(atlasPath);
         pages.push({ id: pageId, image: imageName, imageWidth: atlas.width, imageHeight: atlas.height });
       }
-      directions[state][direction] = { frames, ...(sequence.fps !== undefined ? { fps: sequence.fps } : {}), ...(sequence.loop !== undefined ? { loop: sequence.loop } : {}) };
+      directions[state][direction] = { frames, source: sequence.source === 'mirrored' ? `mirrored-from-${sourceDirection}` : 'authored',
+        ...(sequence.fps !== undefined ? { fps: sequence.fps } : {}), ...(sequence.loop !== undefined ? { loop: sequence.loop } : {}) };
     }
   }
   const animationManifest = (state) => {
@@ -162,8 +249,9 @@ const runCli = () => {
   const [, , command, ...args] = process.argv;
   const source = readOption(args, '--source', DEFAULT_SOURCE);
   if (command === 'validate') { const report = validateMuseFrames(source); console.log(JSON.stringify(report, null, 2)); process.exitCode = report.ok ? 0 : 1; return; }
+  if (command === 'ingest') { const result = ingestMuseSheets(source); console.log(JSON.stringify({ ok: true, writtenFrames: result.writtenFrames }, null, 2)); return; }
   if (command === 'pack') { const result = packMuseAtlas(source, readOption(args, '--output', DEFAULT_OUTPUT)); console.log(JSON.stringify({ ok: true, atlasPaths: result.atlasPaths, manifestPath: result.manifestPath }, null, 2)); return; }
-  console.error('Usage: node scripts/world/muse-assets.mjs <validate|pack> [--source DIR] [--output DIR]');
+  console.error('Usage: node scripts/world/muse-assets.mjs <ingest|validate|pack> [--source DIR] [--output DIR]');
   process.exitCode = 2;
 };
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) runCli();

@@ -8,8 +8,16 @@ import {
   worldMovementToScreen,
   worldToServer
 } from '$lib/game/renderers/three/math';
+import { parseMuseAnimationOverride } from '$lib/game/renderers/three/threeWorld';
 
 describe('Three world coordinate and camera contracts', () => {
+  it('accepts every explicit Muse inspector combination and rejects unrelated values', () => {
+    for (const state of ['idle', 'walk'] as const) for (const facing of ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as const) {
+      expect(parseMuseAnimationOverride(`${state}.${facing}`)).toEqual({ state, facing });
+    }
+    expect(parseMuseAnimationOverride('walk.up')).toBeNull();
+    expect(parseMuseAnimationOverride(null)).toBeNull();
+  });
   it('round-trips server X/Y through world X/Z', () => {
     const world = serverToWorld(800, 120);
     expect(worldToServer(world.x, world.z)).toEqual({ x: 800, y: 120 });

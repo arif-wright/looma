@@ -19,6 +19,7 @@
 		"test:e2e": "playwright test --reporter=list",
 		"test:world-assets": "node --test scripts/world/muse-assets.test.mjs",
 		"world:muse:validate": "node scripts/world/muse-assets.mjs validate",
+		"world:muse:ingest": "node scripts/world/muse-assets.mjs ingest",
 		"world:muse:pack": "node scripts/world/muse-assets.mjs pack",
 		"seed": "tsx scripts/seed.ts",
 		"seed:ci": "NODE_ENV=test tsx scripts/seed.ts"

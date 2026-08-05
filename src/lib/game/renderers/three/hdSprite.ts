@@ -104,6 +104,7 @@ export type HdSpriteOptions = {
   companion?: boolean;
   museEffects?: boolean;
 };
+export type SpriteAnimationOverride = { state: 'idle' | 'walk'; facing: FacingDirection };
 
 export class HdSpriteEntity {
   readonly root = new THREE.Group();
@@ -227,20 +228,22 @@ export class HdSpriteEntity {
     }
   }
 
-  update(deltaSeconds: number, facing: FacingDirection, magnitude: number, cameraYaw: number, quality: VisualQuality, distanceToCamera = 0) {
-    const state = this.motion.update(magnitude);
-    this.animator.select(state, facing);
+  update(deltaSeconds: number, facing: FacingDirection, magnitude: number, cameraYaw: number, quality: VisualQuality, distanceToCamera = 0,
+    override?: SpriteAnimationOverride) {
+    const state = override?.state ?? this.motion.update(magnitude);
+    const requestedFacing = override?.facing ?? facing;
+    this.animator.select(state, requestedFacing);
     const rotation = yawOnlyBillboardRotation(cameraYaw);
     this.plane.rotation.set(rotation.x, rotation.y, rotation.z);
     this.label.visible = distanceToCamera < 34;
     this.aura.visible = Boolean(this.options.museEffects) && effectsEnabledForQuality(quality);
     if (!this.contract) return;
-    const selection = sequenceFor(this.contract, state, facing);
+    const selection = sequenceFor(this.contract, state, requestedFacing);
     const frame = this.animator.update(deltaSeconds, {
       frameCount: selection.sequence.frames.length, fps: selection.fps, loop: selection.loop
     });
-    const key = `${state}:${facing}:${frame}`;
-    const uv = atlasUvFor(this.contract, state, facing, frame);
+    const key = `${state}:${requestedFacing}:${selection.resolvedDirection}:${frame}`;
+    const uv = atlasUvFor(this.contract, state, requestedFacing, frame);
     const pages = new Set(selection.sequence.frames.map((item) => item.page));
     const pageSet = [...pages].sort().join('|');
     const pageSetNeedsUpdate = pages.size !== this.pageLeases.size || [...pages].some((pageId) => !this.pageLeases.has(pageId));
@@ -261,8 +264,8 @@ export class HdSpriteEntity {
   get animationDiagnostics() {
     if (!this.contract) return null;
     const selected = sequenceFor(this.contract, this.animator.state, this.animator.facing);
-    return { state: this.animator.state, facing: this.animator.facing, frame: this.animator.frame + 1,
-      totalFrames: selected.sequence.frames.length, fps: selected.fps };
+    return { state: this.animator.state, requestedDirection: selected.requestedDirection, resolvedDirection: selected.resolvedDirection,
+      source: selected.source, frame: this.animator.frame + 1, totalFrames: selected.sequence.frames.length, fps: selected.fps };
   }
 
   setOpacity(opacity: number) { this.plane.material.uniforms.opacity!.value = opacity; }

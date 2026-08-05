@@ -12,8 +12,10 @@ Use this checklist with `npm run world:muse:validate`. Automated success is nece
 
 ## Automated frame contract
 
-- [ ] All eight native directions exist for idle and walk.
-- [ ] Every direction contains exactly its metadata-declared frame count (24+ is supported).
+- [ ] Authored source frames exist for idle N/NE/E/SE/S and walk N/E/SE/S.
+- [ ] Derived idle NW/W/SW and walk W/SW match their explicitly approved horizontal mirror sources.
+- [ ] Walk NE/NW contain no rejected frames and declare only the temporary E/W visual fallbacks.
+- [ ] Every authored direction contains exactly its metadata-declared frame count (24+ is supported).
 - [ ] The delivery was not downsampled to the temporary atlas's two-idle/four-walk counts or the reference grid's four/six examples.
 - [ ] Every filename follows `muse_<state>_<direction>_<NN>.png`.
 - [ ] Every file is a readable 256×256 PNG with visible and transparent pixels.
@@ -34,6 +36,8 @@ Use this checklist with `npm run world:muse:validate`. Automated success is nece
 ## Runtime review before promotion
 
 - [ ] Generated manifest parses with the Phase 8C contract.
+- [ ] Inspector confirms requested NE/NW world-facing remains unchanged while only walk artwork resolves to E/W.
+- [ ] Diagnostics distinguish authored, mirrored, and temporary-fallback cells.
 - [ ] Every ordered frame is reachable, and multi-page transitions loop at the reviewed FPS without a hitch.
 - [ ] Loaded-page count and decoded texture-memory diagnostics remain within the agreed device budget.
 - [ ] Muse is readable in Classic, Adventurer, Wide, and Close at representative yaw/pitch.

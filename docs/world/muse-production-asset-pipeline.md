@@ -1,62 +1,82 @@
 # Muse production asset pipeline
 
-Status: Phase 8C.2 preparation. No approved production frames are present; runtime still uses the two-idle/four-walk temporary Muse atlas.
+Status: Phase 8C.3 integrated. The nine approved production sheet binaries were ingested into 223 isolated authored frames, validated, packed, and promoted under `static/game/sprites/companions/muse/`.
 
-## Sources and intake
+## Approved animation matrix
 
-The updated approved Muse HD gameplay sheet is the primary visual and animation reference, but is not a runtime image or frame source. Never crop its panels or use its grid, labels, background, or canvas dimensions as atlas data. `static/models/muse.glb` is deprecated and prohibited as a production source.
+| State | N | NE | E | SE | S | SW | W | NW |
+|---|---|---|---|---|---|---|---|---|
+| Idle | Authored | Authored | Authored | Authored | Authored | Mirrored from SE | Mirrored from E | Mirrored from NE |
+| Walk | Authored | Temporary fallback to E | Authored | Authored | Authored | Mirrored from SE | Mirrored from E | Temporary fallback to W |
 
-Approved isolated 256×256 transparent PNGs live outside `static/`:
+Mirroring happens once during packing and produces ordinary runtime atlas frames. The renderer never mirrors, rotates, generates, interpolates, or warps artwork. N and S are never mirrored.
+
+## Muse production art debt
+
+- Missing: `walk.ne`.
+- Derived missing: `walk.nw`.
+- Temporary visual fallback: NE → E and NW → W.
+- Resolution: deliver approved native NE walk frames, then declare NE as authored and NW as mirrored from NE.
+
+Muse is integration-ready for live development/testing but is not directionally art-complete. Rejected or malformed NE walk artwork must not enter the intake directory.
+
+## Source intake
+
+Only isolated reviewed 256×256 transparent PNG frames may be used. The approved sheet remains visual guidance; never crop its panels or infer atlas cells from its layout. `static/models/muse.glb` is deprecated and prohibited.
 
 ```text
 art-source/world/companions/muse/production/v1/
-  README.md
-  muse.production.json.example
   muse.production.json
   frames/
-    idle/<n|ne|e|se|s|sw|w|nw>/muse_idle_<direction>_<NN>.png
-    walk/<n|ne|e|se|s|sw|w|nw>/muse_walk_<direction>_<NN>.png
+    idle/{n,ne,e,se,s}/muse_idle_<direction>_<NN>.png
+    walk/{n,e,se,s}/muse_walk_<direction>_<NN>.png
 ```
 
-Numbers are one-based, at least two digits, contiguous, and ordered. Metadata version 2 declares the actual `frameCount` for every state/direction plus clip FPS/loop defaults and optional direction overrides. Counts may differ and have no tool-imposed maximum. The example uses 24 idle frames per direction to exercise production-scale sequences; its walk count is illustrative until approved art arrives.
+Metadata explicitly marks every matrix cell as `authored`, `mirrored`, or `temporary-fallback`. Only authored entries carry `frameCount` and require source files. Frame numbers are one-based, at least two digits, contiguous, and ordered. Counts and timing remain metadata-driven and are never downsampled.
 
-## Validate
+## Validate and pack
 
 ```bash
+npm run world:muse:ingest
 npm run world:muse:validate
-node scripts/world/muse-assets.mjs validate --source /path/to/approved-muse
+npm run world:muse:pack
 ```
 
-Validation rejects unapproved/missing metadata, missing directions or indices, unexpected names, non-256×256 images, absent transparency, blank/unreadable images, duplicate decoded pixels, invalid timing, missing pivot/feet/scale, or failure to exclude the deprecated GLB. It validates exactly the metadata-declared inventory and never downsamples a delivery.
+The ingest command accepts only the nine explicitly named 1280×1280 5×5 production sheets. It reads populated cells in row-major order and requires their count to match approved metadata. It does not resize, sample, interpolate, key backgrounds, or process reference sheets.
 
-## Pack and review
+Custom paths:
 
 ```bash
-npm run world:muse:pack
-node scripts/world/muse-assets.mjs pack \
-  --source art-source/world/companions/muse/production/v1 \
-  --output artifacts/world/companions/muse/v1
+node scripts/world/muse-assets.mjs validate --source /path/to/approved-muse
+node scripts/world/muse-assets.mjs pack --source /path/to/approved-muse --output artifacts/world/companions/muse/v1
 ```
 
-Output is a Phase 8C version 2 manifest plus bounded pages:
+Validation rejects missing approval/provenance, the deprecated GLB, missing or unexpected frames, invalid dimensions/alpha, blank or duplicate frames, invalid timing/pivots, undeclared derivation, rejected direction mappings, and chained fallbacks.
+
+Packing horizontally mirrors only the approved NE→NW, E→W, and SE→SW mappings. It emits version 2 metadata plus pages of at most sixteen 256 px frames:
 
 ```text
 artifacts/world/companions/muse/v1/
   muse.atlas.json
   muse.idle.n.p01.png
-  muse.idle.n.p02.png        # present when the sequence exceeds 16 frames
+  muse.idle.n.p02.png
   muse.<state>.<direction>.p<NN>.png
 ```
 
-Each page contains at most sixteen 256 px cells (4096×256 maximum). The manifest lists every frame explicitly in source order across pages and preserves per-direction timing overrides. Runtime loads pages on demand, shares them between entities, and releases unused pages. `artifacts/world/` is gitignored and non-deployable.
+The NE/NW walk fallback entries contain no duplicate texture pages. They explicitly resolve to E/W at the sprite-selection layer while requested gameplay facing remains NE/NW. When authored NE files and its metadata declaration are added, the packer requires NW to become `mirrored-from-ne`; the temporary declarations disappear without renderer changes.
 
-Packing is not promotion. Review all frames, page transitions, loop timing, scale, pivots, cameras, yaw angles, memory diagnostics, and 5/10/20/32-entity device performance. Only explicit approval authorizes copying the reviewed manifest/pages beneath `static/game/sprites/companions/muse/`; the tool never promotes them.
+## Development inspection
 
-## Still required
+Run Three.js locally and use either:
 
-- approved isolated frames for every declared state/direction, including the full production-length cycles;
-- traceable production approval and confirmation against the current Muse design;
-- reviewed per-direction counts, FPS, loop behavior, pivot, foot contact, and scale;
-- visual confirmation of native horns, wings, tail, crystals, markings, lighting, and silhouette;
-- target-device frame-rate, decoded-memory, page-transition, context-restore, and repeated-navigation results;
-- explicit promotion authorization.
+```text
+/app/world?worldMuseAnimation=walk.ne
+__MEMVOYA_WORLD_THREE__.forceMuseAnimation('walk.nw')
+__MEMVOYA_WORLD_THREE__.forceMuseAnimation(null)
+```
+
+The diagnostics show requested combination, resolved combination, source classification, current/total frame, FPS, pages, and decoded memory. The override is development-only and changes neither `FacingDirection`, movement input, `WorldSession`, network state, authority, nor companion trails.
+
+## Promotion record
+
+The Phase 8C.3 pack contains 28 bounded PNG pages and a version 2 manifest. Compressed runtime assets total approximately 13 MB; only the active direction's pages are retained at runtime. Automated validation and builds pass. Physical-device visual review, fallback acceptability, final timing tuning, and density measurements remain release follow-ups rather than claims made by CI.
