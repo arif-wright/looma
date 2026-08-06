@@ -1,5 +1,9 @@
 # The Wilds Decision Log
 
+## 2026-08-06 — Phase 8C.5 production environment asset pipeline
+
+Approved environment source PNGs remain immutable under `art-source/`; deterministic tooling validates and copies bytes into an isolated runtime tree with SHA-256 provenance. The existing environment manifest now carries stable production IDs, explicit 5×5/25-frame row-major animation metadata, pivots, scale, collision policy, shadows, interaction type, and quality behavior. Animation phase and small speed variation derive only from stable instance IDs. Production terrain and cards replace Three primitives while server traversal, Phaser rollback, networking, persistence, and gameplay contracts remain unchanged.
+
 ## 2026-08-05 — Phase 8D renderer-neutral environment foundation
 
 Authoritative traversal stays in the existing world-server manifest. A separate validated visual manifest uses the same server coordinate space, references blocker IDs without defining collision, and makes prototype/production/fallback provenance explicit. Renderer-local dressing is seeded, deterministic, non-persistent, and non-colliding. Three shares resources, instances decoration, and removes optional presentation by declared quality tiers. Final art, physics, elevation, navmeshes, weather, combat, and traversal changes remain deferred.

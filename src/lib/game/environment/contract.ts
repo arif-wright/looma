@@ -23,6 +23,25 @@ export type EnvironmentAssetDefinition = {
   ambientAnimation?: 'sway' | 'pulse' | 'drift';
   glow?: { color: string; intensity: number };
   quality: EnvironmentQuality[];
+  category?: 'terrain' | 'tree' | 'rock' | 'vegetation' | 'magical' | 'effect';
+  runtimeAsset?: string;
+  staticAsset?: string;
+  animation?: {
+    sheet: string;
+    frameWidth: number;
+    frameHeight: number;
+    frameCount: number;
+    columns: number;
+    fps: number;
+    loop: boolean;
+    calmSeconds?: [number, number];
+    speedVariation?: number;
+  };
+  worldScale?: { width: number; height: number };
+  collisionBehavior?: 'none' | 'authoritative-ref';
+  shadow?: { enabled: boolean; width: number; depth: number; opacity: number };
+  interactionType?: 'moonberry-gather';
+  mirrorApproved?: boolean;
 };
 
 export type EnvironmentPropInstance = {
@@ -50,7 +69,7 @@ export type EnvironmentManifest = {
   status: EnvironmentAssetStatus;
   units: 'server';
   assets: EnvironmentAssetDefinition[];
-  terrain: { surfaceAssetId: string; pathAssetId: string; pathCenterline: Array<{ x: number; y: number; width: number }> };
+  terrain: { surfaceAssetId: string; secondarySurfaceAssetId?: string; pathAssetId: string; pathEdgeAssetId?: string; pathCenterline: Array<{ x: number; y: number; width: number }> };
   props: EnvironmentPropInstance[];
   decorations: EnvironmentDecorationField[];
   interactables: Array<EnvironmentPropInstance & { interactionRef: string }>;
@@ -61,7 +80,7 @@ export type EnvironmentValidation = { ok: boolean; errors: string[]; manifest: E
 
 const object = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 const finite = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
-const id = (value: unknown) => typeof value === 'string' && /^[a-z0-9][a-z0-9-]{1,63}$/.test(value);
+const id = (value: unknown) => typeof value === 'string' && /^[a-z0-9][a-z0-9.-]{1,63}$/.test(value);
 const point = (value: unknown) => object(value) && finite(value.x) && finite(value.y);
 
 export const validateEnvironmentManifest = (
@@ -92,12 +111,22 @@ export const validateEnvironmentManifest = (
     if (typeof raw.obstruction !== 'boolean') errors.push(`${raw.id}.obstruction must be boolean.`);
     if (!Array.isArray(raw.quality) || raw.quality.some((item) => !['full', 'reduced', 'minimum'].includes(String(item)))) errors.push(`${raw.id}.quality is invalid.`);
     if (raw.texture !== undefined && (typeof raw.texture !== 'string' || !raw.texture.startsWith('/game/environment/'))) errors.push(`${raw.id}.texture must use /game/environment/.`);
+    if (raw.runtimeAsset !== undefined && (typeof raw.runtimeAsset !== 'string' || !raw.runtimeAsset.startsWith('/game/environment/'))) errors.push(`${raw.id}.runtimeAsset must use /game/environment/.`);
+    if (raw.staticAsset !== undefined && (typeof raw.staticAsset !== 'string' || !raw.staticAsset.startsWith('/game/environment/'))) errors.push(`${raw.id}.staticAsset must use /game/environment/.`);
+    if (raw.worldScale !== undefined && (!object(raw.worldScale) || !finite(raw.worldScale.width) || Number(raw.worldScale.width) <= 0 || !finite(raw.worldScale.height) || Number(raw.worldScale.height) <= 0)) errors.push(`${raw.id}.worldScale is invalid.`);
+    if (raw.collisionBehavior !== undefined && !['none', 'authoritative-ref'].includes(String(raw.collisionBehavior))) errors.push(`${raw.id}.collisionBehavior is invalid.`);
+    if (raw.animation !== undefined) {
+      if (!object(raw.animation) || typeof raw.animation.sheet !== 'string' || !raw.animation.sheet.startsWith('/game/environment/') || !Number.isSafeInteger(raw.animation.frameWidth) || !Number.isSafeInteger(raw.animation.frameHeight) || !Number.isSafeInteger(raw.animation.frameCount) || !Number.isSafeInteger(raw.animation.columns) || !finite(raw.animation.fps) || Number(raw.animation.frameWidth) <= 0 || Number(raw.animation.frameHeight) <= 0 || Number(raw.animation.frameCount) <= 1 || Number(raw.animation.columns) <= 0 || Number(raw.animation.fps) <= 0 || typeof raw.animation.loop !== 'boolean') errors.push(`${raw.id}.animation is invalid.`);
+    }
+    if (raw.shadow !== undefined && (!object(raw.shadow) || typeof raw.shadow.enabled !== 'boolean' || !finite(raw.shadow.width) || !finite(raw.shadow.depth) || !finite(raw.shadow.opacity))) errors.push(`${raw.id}.shadow is invalid.`);
     if (raw.status === 'production' && raw.renderer === 'billboard' && raw.texture === undefined && raw.fallbackAssetId === undefined) errors.push(`${raw.id} production billboard requires a texture or fallbackAssetId.`);
   }
   const checkAsset = (assetId: unknown, context: string) => { if (!assetIds.has(String(assetId))) errors.push(`${context} references unknown asset ${String(assetId)}.`); };
   if (!object(value.terrain) || !Array.isArray(value.terrain.pathCenterline) || value.terrain.pathCenterline.length < 2) errors.push('terrain pathCenterline requires at least two points.');
   else {
     checkAsset(value.terrain.surfaceAssetId, 'terrain'); checkAsset(value.terrain.pathAssetId, 'terrain');
+    if (value.terrain.secondarySurfaceAssetId !== undefined) checkAsset(value.terrain.secondarySurfaceAssetId, 'terrain');
+    if (value.terrain.pathEdgeAssetId !== undefined) checkAsset(value.terrain.pathEdgeAssetId, 'terrain');
     value.terrain.pathCenterline.forEach((item, index) => { if (!point(item) || !finite((item as Record<string, unknown>).width) || Number((item as Record<string, unknown>).width) <= 0) errors.push(`pathCenterline[${index}] is invalid.`); });
   }
   const validateInstances = (raw: unknown, label: string, interaction = false) => {
@@ -155,3 +184,19 @@ export const deterministicDecoration = (field: EnvironmentDecorationField) => {
 };
 
 export const visibleAtQuality = (asset: EnvironmentAssetDefinition, quality: EnvironmentQuality) => asset.quality.includes(quality);
+
+const hash = (value: string) => {
+  let result = 2166136261;
+  for (let index = 0; index < value.length; index += 1) result = Math.imul(result ^ value.charCodeAt(index), 16777619);
+  return result >>> 0;
+};
+
+export const environmentAnimationVariation = (instanceId: string, frameCount: number, speedVariation = 0) => {
+  const value = hash(instanceId);
+  const unit = value / 0xffff_ffff;
+  return {
+    startFrame: value % Math.max(1, frameCount),
+    phaseSeconds: unit * Math.max(1, frameCount),
+    playbackRate: 1 + (unit * 2 - 1) * Math.max(0, Math.min(0.25, speedVariation))
+  };
+};

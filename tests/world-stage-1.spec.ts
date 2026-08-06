@@ -65,6 +65,42 @@ test.describe('The Wilds protected route', () => {
     expect(sanity.opaque).toBeGreaterThan(2_000);
   });
 
+  test('serves audited production environment assets with usable alpha', async ({ page, request }) => {
+    const auditResponse = await request.get('/game/environment/v1/asset-audit.json');
+    expect(auditResponse.ok()).toBe(true);
+    const audit = await auditResponse.json();
+    expect(audit.assets).toHaveLength(18);
+    expect(audit.assets.filter((asset: { kind: string }) => asset.kind === 'sheet')).toHaveLength(6);
+    for (const asset of audit.assets) {
+      const response = await request.get(`/game/environment/v1/${asset.runtime}`);
+      expect(response.ok(), asset.runtime).toBe(true);
+      expect(response.headers()['content-type']).toContain('image/png');
+    }
+
+    await page.goto('/');
+    const sanity = await page.evaluate(async () => {
+      const image = new Image();
+      image.src = '/game/environment/v1/props/magical/moonberry-01-idle.png';
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      context.drawImage(image, 0, 0, 256, 256, 0, 0, 256, 256);
+      const pixels = context.getImageData(0, 0, 256, 256).data;
+      let transparent = 0;
+      let visible = 0;
+      for (let index = 3; index < pixels.length; index += 4) {
+        if (pixels[index] === 0) transparent += 1;
+        if (pixels[index]! > 32) visible += 1;
+      }
+      return { width: image.naturalWidth, height: image.naturalHeight, transparent, visible };
+    });
+    expect(sanity).toMatchObject({ width: 1280, height: 1280 });
+    expect(sanity.transparent).toBeGreaterThan(20_000);
+    expect(sanity.visible).toBeGreaterThan(2_000);
+  });
+
   test('shows the server-controlled disabled state without mounting Phaser', async ({ page }) => {
     test.skip(!hasAuthenticatedEnvironment, 'requires seeded authenticated storage state');
     test.skip(worldEnabled, 'requires PUBLIC_WORLD_ENABLED to be disabled');

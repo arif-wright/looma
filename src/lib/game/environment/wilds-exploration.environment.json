@@ -1,21 +1,28 @@
 {
   "version": 1,
   "mapId": "wilds-exploration",
-  "status": "prototype",
+  "status": "production",
   "units": "server",
   "assets": [
-    { "id": "grass-prototype", "kind": "surface", "status": "prototype", "layer": "terrain", "renderer": "surface", "width": 960, "height": 540, "pivot": { "x": 0.5, "y": 0.5 }, "color": "#4f896c", "obstruction": false, "quality": ["full", "reduced", "minimum"] },
-    { "id": "path-prototype", "kind": "path", "status": "prototype", "layer": "terrain-detail", "renderer": "surface", "width": 960, "height": 110, "pivot": { "x": 0.5, "y": 0.5 }, "color": "#9c835d", "obstruction": false, "quality": ["full", "reduced", "minimum"] },
-    { "id": "tree-prototype", "kind": "prop", "status": "prototype", "layer": "foreground", "renderer": "geometry", "width": 72, "height": 126, "pivot": { "x": 0.5, "y": 1 }, "color": "#2c654c", "obstruction": true, "ambientAnimation": "sway", "quality": ["full", "reduced", "minimum"] },
-    { "id": "rock-prototype", "kind": "prop", "status": "prototype", "layer": "prop", "renderer": "geometry", "width": 58, "height": 38, "pivot": { "x": 0.5, "y": 1 }, "color": "#67736f", "obstruction": true, "quality": ["full", "reduced", "minimum"] },
-    { "id": "grass-tuft-prototype", "kind": "prop", "status": "prototype", "layer": "low-vegetation", "renderer": "geometry", "width": 18, "height": 22, "pivot": { "x": 0.5, "y": 1 }, "color": "#78aa72", "obstruction": false, "ambientAnimation": "sway", "quality": ["full", "reduced"] },
-    { "id": "flower-prototype", "kind": "prop", "status": "prototype", "layer": "low-vegetation", "renderer": "geometry", "width": 12, "height": 14, "pivot": { "x": 0.5, "y": 1 }, "color": "#d9c7ff", "obstruction": false, "quality": ["full"] },
-    { "id": "moonberry-prototype", "kind": "interactable", "status": "prototype", "layer": "prop", "renderer": "geometry", "width": 56, "height": 38, "pivot": { "x": 0.5, "y": 1 }, "color": "#7a5bc1", "obstruction": false, "ambientAnimation": "pulse", "glow": { "color": "#9d7cff", "intensity": 0.5 }, "quality": ["full", "reduced", "minimum"] },
-    { "id": "aether-motes-prototype", "kind": "effect", "status": "prototype", "layer": "effect", "renderer": "particles", "width": 360, "height": 260, "pivot": { "x": 0.5, "y": 0.5 }, "color": "#b9fff4", "obstruction": false, "ambientAnimation": "drift", "quality": ["full", "reduced"] }
+    { "id": "terrain.grass-01", "category": "terrain", "kind": "surface", "status": "production", "layer": "terrain", "renderer": "surface", "width": 1254, "height": 1254, "pivot": { "x": 0.5, "y": 0.5 }, "runtimeAsset": "/game/environment/v1/terrain/grass-base-01.png", "texture": "/game/environment/v1/terrain/grass-base-01.png", "obstruction": false, "collisionBehavior": "none", "quality": ["full", "reduced", "minimum"] },
+    { "id": "terrain.grass-02", "category": "terrain", "kind": "surface", "status": "production", "layer": "terrain-detail", "renderer": "surface", "width": 1254, "height": 1254, "pivot": { "x": 0.5, "y": 0.5 }, "runtimeAsset": "/game/environment/v1/terrain/grass-base-02.png", "texture": "/game/environment/v1/terrain/grass-base-02.png", "obstruction": false, "collisionBehavior": "none", "quality": ["full", "reduced"] },
+    { "id": "terrain.path", "category": "terrain", "kind": "path", "status": "production", "layer": "terrain-detail", "renderer": "surface", "width": 1254, "height": 1254, "pivot": { "x": 0.5, "y": 0.5 }, "runtimeAsset": "/game/environment/v1/terrain/dirt-path.png", "texture": "/game/environment/v1/terrain/dirt-path.png", "obstruction": false, "collisionBehavior": "none", "quality": ["full", "reduced", "minimum"] },
+    { "id": "terrain.path-edge", "category": "terrain", "kind": "path", "status": "production", "layer": "terrain-detail", "renderer": "surface", "width": 1254, "height": 1254, "pivot": { "x": 0.5, "y": 0.5 }, "runtimeAsset": "/game/environment/v1/terrain/grass-path-transition.png", "texture": "/game/environment/v1/terrain/grass-path-transition.png", "obstruction": false, "collisionBehavior": "none", "quality": ["full", "reduced"] },
+    { "id": "tree.broadleaf", "category": "tree", "kind": "prop", "status": "production", "layer": "foreground", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/trees/broadleaf-idle.png", "staticAsset": "/game/environment/v1/props/trees/broadleaf-idle-frame-00.png", "texture": "/game/environment/v1/props/trees/broadleaf-idle.png", "animation": { "sheet": "/game/environment/v1/props/trees/broadleaf-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 8, "loop": true, "calmSeconds": [0, 1.5], "speedVariation": 0.08 }, "worldScale": { "width": 4.3, "height": 4.3 }, "obstruction": true, "collisionBehavior": "authoritative-ref", "shadow": { "enabled": true, "width": 1.6, "depth": 0.7, "opacity": 0.2 }, "ambientAnimation": "sway", "quality": ["full", "reduced", "minimum"], "mirrorApproved": false },
+    { "id": "tree.evergreen", "category": "tree", "kind": "prop", "status": "production", "layer": "foreground", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/trees/evergreen-idle.png", "staticAsset": "/game/environment/v1/props/trees/evergreen-idle-frame-00.png", "texture": "/game/environment/v1/props/trees/evergreen-idle.png", "animation": { "sheet": "/game/environment/v1/props/trees/evergreen-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 8, "loop": true, "calmSeconds": [0, 1.8], "speedVariation": 0.07 }, "worldScale": { "width": 4, "height": 4 }, "obstruction": true, "collisionBehavior": "authoritative-ref", "shadow": { "enabled": true, "width": 1.45, "depth": 0.64, "opacity": 0.2 }, "ambientAnimation": "sway", "quality": ["full", "reduced", "minimum"], "mirrorApproved": false },
+    { "id": "rock.large", "category": "rock", "kind": "prop", "status": "production", "layer": "prop", "renderer": "billboard", "width": 1024, "height": 1024, "pivot": { "x": 0.5, "y": 0.94 }, "runtimeAsset": "/game/environment/v1/props/rocks/large-rock-01.png", "texture": "/game/environment/v1/props/rocks/large-rock-01.png", "worldScale": { "width": 2.3, "height": 2.3 }, "obstruction": true, "collisionBehavior": "authoritative-ref", "shadow": { "enabled": true, "width": 1.5, "depth": 0.62, "opacity": 0.2 }, "quality": ["full", "reduced", "minimum"] },
+    { "id": "rock.medium", "category": "rock", "kind": "prop", "status": "production", "layer": "prop", "renderer": "billboard", "width": 1024, "height": 1024, "pivot": { "x": 0.5, "y": 0.94 }, "runtimeAsset": "/game/environment/v1/props/rocks/medium-rock-01.png", "texture": "/game/environment/v1/props/rocks/medium-rock-01.png", "worldScale": { "width": 1.75, "height": 1.75 }, "obstruction": true, "collisionBehavior": "authoritative-ref", "shadow": { "enabled": true, "width": 1.2, "depth": 0.5, "opacity": 0.18 }, "quality": ["full", "reduced", "minimum"] },
+    { "id": "vegetation.grass-tuft", "category": "vegetation", "kind": "prop", "status": "production", "layer": "low-vegetation", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/vegetation/grass-tuft-01-idle.png", "staticAsset": "/game/environment/v1/props/vegetation/grass-tuft-01-idle-frame-00.png", "texture": "/game/environment/v1/props/vegetation/grass-tuft-01-idle.png", "animation": { "sheet": "/game/environment/v1/props/vegetation/grass-tuft-01-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 7, "loop": true, "calmSeconds": [0.5, 2.5], "speedVariation": 0.1 }, "worldScale": { "width": 0.75, "height": 0.75 }, "obstruction": false, "collisionBehavior": "none", "ambientAnimation": "sway", "quality": ["full", "reduced"], "mirrorApproved": false },
+    { "id": "vegetation.flower-cluster", "category": "vegetation", "kind": "prop", "status": "production", "layer": "low-vegetation", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/vegetation/flower-cluster-01-idle.png", "staticAsset": "/game/environment/v1/props/vegetation/flower-cluster-01-idle-frame-00.png", "texture": "/game/environment/v1/props/vegetation/flower-cluster-01-idle.png", "animation": { "sheet": "/game/environment/v1/props/vegetation/flower-cluster-01-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 7, "loop": true, "calmSeconds": [0.8, 3], "speedVariation": 0.1 }, "worldScale": { "width": 0.72, "height": 0.72 }, "obstruction": false, "collisionBehavior": "none", "ambientAnimation": "sway", "quality": ["full"], "mirrorApproved": false },
+    { "id": "magical.aether-plant", "category": "magical", "kind": "prop", "status": "production", "layer": "effect", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/magical/aether-plant-01-idle.png", "staticAsset": "/game/environment/v1/props/magical/aether-plant-01-idle-frame-00.png", "texture": "/game/environment/v1/props/magical/aether-plant-01-idle.png", "animation": { "sheet": "/game/environment/v1/props/magical/aether-plant-01-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 9, "loop": true, "calmSeconds": [0, 1], "speedVariation": 0.08 }, "worldScale": { "width": 1.15, "height": 1.15 }, "obstruction": false, "collisionBehavior": "none", "ambientAnimation": "pulse", "glow": { "color": "#7ee9ff", "intensity": 0.35 }, "quality": ["full", "reduced"], "mirrorApproved": false },
+    { "id": "interactable.moonberry", "category": "magical", "kind": "interactable", "status": "production", "layer": "effect", "renderer": "billboard", "width": 256, "height": 256, "pivot": { "x": 0.5, "y": 0.96 }, "runtimeAsset": "/game/environment/v1/props/magical/moonberry-01-idle.png", "staticAsset": "/game/environment/v1/props/magical/moonberry-01-idle-frame-00.png", "texture": "/game/environment/v1/props/magical/moonberry-01-idle.png", "animation": { "sheet": "/game/environment/v1/props/magical/moonberry-01-idle.png", "frameWidth": 256, "frameHeight": 256, "frameCount": 25, "columns": 5, "fps": 10, "loop": true, "speedVariation": 0.04 }, "worldScale": { "width": 1.75, "height": 1.75 }, "obstruction": false, "collisionBehavior": "none", "interactionType": "moonberry-gather", "ambientAnimation": "pulse", "glow": { "color": "#b7dfff", "intensity": 0.42 }, "shadow": { "enabled": true, "width": 1.05, "depth": 0.46, "opacity": 0.18 }, "quality": ["full", "reduced", "minimum"], "mirrorApproved": false },
+    { "id": "effect.aether-motes", "category": "effect", "kind": "effect", "status": "production", "layer": "effect", "renderer": "particles", "width": 360, "height": 260, "pivot": { "x": 0.5, "y": 0.5 }, "color": "#b9fff4", "obstruction": false, "collisionBehavior": "none", "ambientAnimation": "drift", "quality": ["full", "reduced"] }
   ],
   "terrain": {
-    "surfaceAssetId": "grass-prototype",
-    "pathAssetId": "path-prototype",
+    "surfaceAssetId": "terrain.grass-01",
+    "secondarySurfaceAssetId": "terrain.grass-02",
+    "pathAssetId": "terrain.path",
+    "pathEdgeAssetId": "terrain.path-edge",
     "pathCenterline": [
       { "x": 0, "y": 250, "width": 96 }, { "x": 180, "y": 245, "width": 104 },
       { "x": 390, "y": 258, "width": 92 }, { "x": 610, "y": 246, "width": 108 },
@@ -23,22 +30,23 @@
     ]
   },
   "props": [
-    { "id": "tree-northwest-visual", "assetId": "tree-prototype", "x": 128, "y": 78, "collisionRef": "tree-northwest" },
-    { "id": "tree-southwest-visual", "assetId": "tree-prototype", "x": 224, "y": 430, "collisionRef": "tree-southwest" },
-    { "id": "tree-moonberry-visual", "assetId": "tree-prototype", "x": 800, "y": 110, "collisionRef": "tree-moonberry" },
-    { "id": "tree-southeast-visual", "assetId": "tree-prototype", "x": 864, "y": 398, "collisionRef": "tree-southeast" },
-    { "id": "tree-north-visual", "assetId": "tree-prototype", "x": 352, "y": 78, "collisionRef": "tree-north" },
-    { "id": "rock-southwest-visual", "assetId": "rock-prototype", "x": 288, "y": 366, "collisionRef": "rock-southwest" },
-    { "id": "rock-northeast-visual", "assetId": "rock-prototype", "x": 608, "y": 110, "collisionRef": "rock-northeast" },
-    { "id": "rock-southeast-visual", "assetId": "rock-prototype", "x": 704, "y": 398, "collisionRef": "rock-southeast" }
+    { "id": "tree-northwest-visual", "assetId": "tree.evergreen", "x": 128, "y": 78, "collisionRef": "tree-northwest" },
+    { "id": "tree-southwest-visual", "assetId": "tree.broadleaf", "x": 224, "y": 430, "collisionRef": "tree-southwest" },
+    { "id": "tree-moonberry-visual", "assetId": "tree.evergreen", "x": 800, "y": 110, "collisionRef": "tree-moonberry" },
+    { "id": "tree-southeast-visual", "assetId": "tree.broadleaf", "x": 864, "y": 398, "collisionRef": "tree-southeast" },
+    { "id": "tree-north-visual", "assetId": "tree.broadleaf", "x": 352, "y": 78, "collisionRef": "tree-north" },
+    { "id": "rock-southwest-visual", "assetId": "rock.large", "x": 288, "y": 366, "collisionRef": "rock-southwest" },
+    { "id": "rock-northeast-visual", "assetId": "rock.large", "x": 608, "y": 110, "collisionRef": "rock-northeast" },
+    { "id": "rock-southeast-visual", "assetId": "rock.medium", "x": 704, "y": 398, "collisionRef": "rock-southeast" }
   ],
   "decorations": [
-    { "id": "grove-details", "assetIds": ["grass-tuft-prototype", "flower-prototype"], "seed": 84721, "count": 42, "bounds": { "minX": 40, "maxX": 920, "minY": 38, "maxY": 510 }, "exclusionRadius": 28 }
+    { "id": "ground-details", "assetIds": ["vegetation.grass-tuft", "vegetation.flower-cluster"], "seed": 84721, "count": 24, "bounds": { "minX": 40, "maxX": 920, "minY": 38, "maxY": 510 }, "exclusionRadius": 30 },
+    { "id": "aether-plants", "assetIds": ["magical.aether-plant"], "seed": 48112, "count": 4, "bounds": { "minX": 64, "maxX": 910, "minY": 48, "maxY": 500 }, "exclusionRadius": 54 }
   ],
   "interactables": [
-    { "id": "moonberry-grove-visual", "assetId": "moonberry-prototype", "x": 800, "y": 120, "interactionRef": "moonberry-bush" }
+    { "id": "moonberry-grove-visual", "assetId": "interactable.moonberry", "x": 800, "y": 120, "interactionRef": "moonberry-bush" }
   ],
   "effects": [
-    { "id": "grove-aether-motes", "assetId": "aether-motes-prototype", "x": 800, "y": 120 }
+    { "id": "grove-aether-motes", "assetId": "effect.aether-motes", "x": 800, "y": 120 }
   ]
 }

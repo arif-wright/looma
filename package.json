@@ -17,7 +17,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest",
 		"test:e2e": "playwright test --reporter=list",
-		"test:world-assets": "node --test scripts/world/muse-assets.test.mjs",
+		"test:world-assets": "node --test scripts/world/muse-assets.test.mjs scripts/world/environment-assets.test.mjs",
 		"world:muse:validate": "node scripts/world/muse-assets.mjs validate",
 		"world:muse:ingest": "node scripts/world/muse-assets.mjs ingest",
 		"world:muse:pack": "node scripts/world/muse-assets.mjs pack",
@@ -30,6 +30,8 @@
 		"world:player:female:validate": "node scripts/world/muse-assets.mjs validate --source art-source/world/players/female/production/v1",
 		"world:player:female:ingest": "node scripts/world/muse-assets.mjs ingest --source art-source/world/players/female/production/v1",
 		"world:player:female:pack": "node scripts/world/muse-assets.mjs pack --source art-source/world/players/female/production/v1 --output artifacts/world/players/female/v1",
+		"world:environment:validate": "node scripts/world/environment-assets.mjs validate",
+		"world:environment:prepare": "node scripts/world/environment-assets.mjs prepare",
 		"seed": "tsx scripts/seed.ts",
 		"seed:ci": "NODE_ENV=test tsx scripts/seed.ts"
 	},

@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/world/environment-assets.mjs",
+  "assets": [
+    {
+      "source": "terrain/grass_base_01.png",
+      "runtime": "terrain/grass-base-01.png",
+      "kind": "static-rgb",
+      "width": 1254,
+      "height": 1254,
+      "transparent": false,
+      "frames": 1,
+      "sha256": "96438a3596a3d3cfbca0f4eab90188f49dbb01e7e187d46c0d95ac8832e3788a"
+    },
+    {
+      "source": "terrain/grass_base_02.png",
+      "runtime": "terrain/grass-base-02.png",
+      "kind": "static-rgb",
+      "width": 1254,
+      "height": 1254,
+      "transparent": false,
+      "frames": 1,
+      "sha256": "ac0135b390cfa386ae3ad591c69a8c214fe1e9cb057ea55d2e10a0e62be15f5a"
+    },
+    {
+      "source": "terrain/dirt_path.png",
+      "runtime": "terrain/dirt-path.png",
+      "kind": "static-rgb",
+      "width": 1254,
+      "height": 1254,
+      "transparent": false,
+      "frames": 1,
+      "sha256": "e01152f02aa064d8ba4cf70d212d0e9e6efe8a4c128eebf917cdd10d8c6d0f4a"
+    },
+    {
+      "source": "terrain/grass_path_transition.png",
+      "runtime": "terrain/grass-path-transition.png",
+      "kind": "static-rgb",
+      "width": 1254,
+      "height": 1254,
+      "transparent": false,
+      "frames": 1,
+      "sha256": "87e36ebe1b644452a4681ce94b1432d6314dc15c67b5d96784baae8e93a3155a"
+    },
+    {
+      "source": "trees/broadleaf/tree.png",
+      "runtime": "props/trees/broadleaf.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "f4dec7c941ac40e3ac27e7ae9bdcc497ff660d9ca6d8d9cd23b69448f7de4b2b"
+    },
+    {
+      "source": "trees/broadleaf/idle/tree-spritesheet.png",
+      "runtime": "props/trees/broadleaf-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "0655311c9c6df72db153d3c77561c6927d857a0e01463c777d5301fa53a5c33c"
+    },
+    {
+      "source": "trees/evergreen/evergreen.png",
+      "runtime": "props/trees/evergreen.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "8d93af0b0cec4ca900168e8c4fe93c47477f33bc0d922fcab9103a7d35c92102"
+    },
+    {
+      "source": "trees/evergreen/idle/evergreen-spritesheet.png",
+      "runtime": "props/trees/evergreen-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "10174b2dad6e2a24aa7a2a2747c32227fa6ac526f76775b79073e6a0f93d9bc9"
+    },
+    {
+      "source": "rocks/large_rock_01.png",
+      "runtime": "props/rocks/large-rock-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "e6bff4114220b671cba4a38e91fbff69cf9b533a0ccee4e7177245d0e8b25a5c"
+    },
+    {
+      "source": "rocks/medium_rock_01.png",
+      "runtime": "props/rocks/medium-rock-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "18681ccd06a62d9978bc5b080a929c09ab17cf0f3e8677560a09e33069760baf"
+    },
+    {
+      "source": "vegetation/grass-tuft/grass_tuft_01.png",
+      "runtime": "props/vegetation/grass-tuft-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "7c197078f4a3029ad09ff9d56c9f4271ab25b3a936608686229cf0c8fc77a5e8"
+    },
+    {
+      "source": "vegetation/grass-tuft/idle/grass_tuft_01-spritesheet.png",
+      "runtime": "props/vegetation/grass-tuft-01-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "ac7578c52665d1bf3db352fba93777e8ac876b77c11b7156282efed9df352e4a"
+    },
+    {
+      "source": "vegetation/flower-cluster/flower_cluster_01.png",
+      "runtime": "props/vegetation/flower-cluster-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "e2908b299f4bd32c786c2b7b40d2ef33627a83b404cc25601fed9e91ace7962d"
+    },
+    {
+      "source": "vegetation/flower-cluster/idle/flower_cluster_01-spritesheet.png",
+      "runtime": "props/vegetation/flower-cluster-01-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "07ee2699d7ec4301923b0ac51c1ef48ffae78614fd4cbbfe217c8f513de8d966"
+    },
+    {
+      "source": "magical/aether-plant/aether_plant_01.png",
+      "runtime": "props/magical/aether-plant-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "3c907e82287e341e03e64b19e169df4e03a95757949b0b559707c8e7857b4fad"
+    },
+    {
+      "source": "magical/aether-plant/idle/aether_plant_01-spritesheet.png",
+      "runtime": "props/magical/aether-plant-01-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "93d451e9862bbbca9922ad061539a78f5172f6726f041d5e40fab2fa6a9c6436"
+    },
+    {
+      "source": "magical/moonberry/moonberry_01.png",
+      "runtime": "props/magical/moonberry-01.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "cf516218eb2d845797dc7b2258638564832fdeb4ad7e60ea5e50ddb636ad8975"
+    },
+    {
+      "source": "magical/moonberry/idle/moonberry_01-spritesheet.png",
+      "runtime": "props/magical/moonberry-01-idle.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "4807609cece350232729a14b614846aed327053b55f26179308dbef718749e99"
+    }
+  ]
+}

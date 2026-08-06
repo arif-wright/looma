@@ -9,7 +9,7 @@ import {
 } from '../game/environment/contract';
 import { WORLD_TRAVERSAL } from '../game/traversal';
 import { SharedEnvironmentResources } from '../game/renderers/three/environmentResources';
-import { createEnvironmentWorld } from '../game/renderers/three/environmentWorld';
+import { createEnvironmentWorld, environmentFrameAt } from '../game/renderers/three/environmentWorld';
 import { ObstructionFadeController } from '../game/renderers/three/obstruction';
 
 const collisionIds = new Set(WORLD_TRAVERSAL.blockers.map((blocker) => blocker.id));
@@ -38,10 +38,10 @@ describe('world environment foundation', () => {
     const manifest = structuredClone(manifestJson) as unknown as EnvironmentManifest;
     manifest.assets.push({
       id: 'tree-production', kind: 'prop', status: 'production', layer: 'foreground', renderer: 'billboard',
-      width: 256, height: 384, pivot: { x: 0.5, y: 1 }, fallbackAssetId: 'tree-prototype',
+      width: 256, height: 384, pivot: { x: 0.5, y: 1 }, fallbackAssetId: 'tree.broadleaf',
       obstruction: true, quality: ['full', 'reduced', 'minimum']
     });
-    expect(resolveEnvironmentAsset(manifest, 'tree-production')?.id).toBe('tree-prototype');
+    expect(resolveEnvironmentAsset(manifest, 'tree-production')?.id).toBe('tree.broadleaf');
   });
 
   it('rejects malformed or gameplay-bearing visual metadata', () => {
@@ -53,9 +53,35 @@ describe('world environment foundation', () => {
     expect(result.errors).toContain('props[0] must not define collision geometry.');
   });
 
+  it('rejects invalid production anchors', () => {
+    const malformed = structuredClone(manifestJson) as unknown as Record<string, unknown>;
+    const assets = malformed.assets as Array<Record<string, unknown>>;
+    assets[0]!.pivot = { x: 0.5, y: 1.25 };
+    expect(validateEnvironmentManifest(malformed, collisionIds).errors).toContain('terrain.grass-01.pivot is invalid.');
+  });
+
+  it('distinguishes static and ordered animated assets', () => {
+    const rock = manifest.assets.find((asset) => asset.id === 'rock.large')!;
+    const tree = manifest.assets.find((asset) => asset.id === 'tree.broadleaf')!;
+    expect(rock.animation).toBeUndefined();
+    expect(tree.animation).toMatchObject({ frameCount: 25, columns: 5, frameWidth: 256, frameHeight: 256, loop: true });
+    const frames = Array.from({ length: 25 }, (_, index) => index);
+    expect(frames.map((frame) => [frame % tree.animation!.columns, Math.floor(frame / tree.animation!.columns)]))
+      .toEqual(Array.from({ length: 25 }, (_, index) => [index % 5, Math.floor(index / 5)]));
+  });
+
+  it('uses deterministic per-instance animation offsets without mirroring', () => {
+    const tree = manifest.assets.find((asset) => asset.id === 'tree.broadleaf')!;
+    const first = environmentFrameAt(tree, 'tree-one', 1.25, true);
+    expect(environmentFrameAt(tree, 'tree-one', 1.25, true)).toBe(first);
+    expect(environmentFrameAt(tree, 'tree-one', 1.25, false)).toBe(0);
+    expect(tree.mirrorApproved).toBe(false);
+    expect(new Set(['tree-one', 'tree-two', 'tree-three'].map((id) => environmentFrameAt(tree, id, 1.25, true))).size).toBeGreaterThan(1);
+  });
+
   it('uses explicit quality visibility instead of mutating gameplay objects', () => {
-    const flower = manifest.assets.find((asset) => asset.id === 'flower-prototype')!;
-    const moonberry = manifest.assets.find((asset) => asset.id === 'moonberry-prototype')!;
+    const flower = manifest.assets.find((asset) => asset.id === 'vegetation.flower-cluster')!;
+    const moonberry = manifest.assets.find((asset) => asset.id === 'interactable.moonberry')!;
     expect(visibleAtQuality(flower, 'full')).toBe(true);
     expect(visibleAtQuality(flower, 'minimum')).toBe(false);
     expect(visibleAtQuality(moonberry, 'minimum')).toBe(true);
@@ -78,7 +104,13 @@ describe('world environment foundation', () => {
     const second = createEnvironmentWorld();
     expect(first.obstructables.map((item) => item.id).sort()).toEqual([...collisionIds].sort());
     expect(first.metrics.sharedResources).toBeGreaterThan(0);
-    expect(first.metrics.drawCalls).toBeLessThan(20);
+    expect(first.metrics.atlasPages).toBe(0);
+    expect(first.metrics.animatedInstances).toBeGreaterThan(0);
+    expect(first.metrics.drawCalls).toBeLessThan(50);
+    const nearTree = first.obstructables[0]!.root.position.clone();
+    nearTree.y = 8;
+    first.update(1, nearTree);
+    expect(first.metrics.atlasPages).toBeLessThanOrEqual(1);
     first.setQuality('minimum');
     first.update(1);
     first.dispose();

@@ -405,7 +405,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (destroyed || paused) return;
     raf = requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-    environment.update(clock.elapsedTime);
+    environment.update(clock.elapsedTime, camera.position);
     cameraState.update(delta);
     const inputX = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + touch.x;
     const inputY = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + touch.y;
@@ -494,7 +494,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const museAnimation = museVisual?.follower?.animationDiagnostics;
       const museAsset = museVisual?.follower?.assetDiagnostics;
       const museIdentity = museVisual?.followerAssetSelection;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }
@@ -510,11 +510,16 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     renderer.domElement.dataset.spriteMemoryMb = (spriteResources.estimatedTextureMemoryBytes / (1024 * 1024)).toFixed(2);
     renderer.domElement.dataset.animationUpdateMs = animationUpdateMs.toFixed(3);
     renderer.domElement.dataset.environmentDrawCalls = String(environment.metrics.drawCalls);
+    renderer.domElement.dataset.environmentInstances = String(environment.metrics.instances);
+    renderer.domElement.dataset.environmentAnimated = String(environment.metrics.animatedInstances);
     renderer.domElement.dataset.environmentVisibleProps = String(environment.metrics.visibleProps);
     renderer.domElement.dataset.environmentDecorativeProps = String(environment.metrics.decorativeProps);
     renderer.domElement.dataset.environmentTextureMemoryMb = (environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2);
     renderer.domElement.dataset.environmentEffects = String(environment.metrics.ambientEffects);
     renderer.domElement.dataset.environmentSharedResources = String(environment.metrics.sharedResources);
+    renderer.domElement.dataset.environmentAtlasPages = String(environment.metrics.atlasPages);
+    renderer.domElement.dataset.environmentAnimationUpdateMs = environment.metrics.animationUpdateMs.toFixed(3);
+    renderer.domElement.dataset.environmentFailedAssets = String(environment.metrics.failedAssets);
     renderer.domElement.dataset.localAnimation = local?.billboard.animator.state ?? 'idle';
     renderer.domElement.dataset.localSpriteLoad = local?.billboard.loadState ?? 'loading';
     renderer.domElement.dataset.museSprites = String([...players.values()].filter((visual) => visual.follower?.assetId.startsWith('muse-')).length);

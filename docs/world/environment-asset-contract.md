@@ -1,6 +1,6 @@
 # World environment asset contract
 
-Status: Phase 8D foundation. Current visuals are deliberately marked `prototype`.
+Status: Phase 8C.5 production registry integrated for the exploration slice.
 
 Art direction is governed by `environment-visual-direction.md`. Its referenced concept image is not a runtime asset and has no authority over this manifest's coordinates or the server traversal contract.
 
@@ -10,7 +10,7 @@ The contract uses authoritative server coordinates. Server X maps to Three X and
 
 Layers are ordered: terrain, terrain-detail, low-vegetation, prop, actor, companion, foreground, effect, label. Terrain and paths are walkable. Low vegetation and ambient effects never block. Props with `obstruction: true` must have a visible representation and an existing `collisionRef`. Interaction presentation uses `interactionRef`; the server remains the authority for interaction range and results.
 
-Asset states are explicit: `prototype` is structurally valid temporary geometry or art; `production` is approved runtime art with a resolvable texture under `/game/environment/`; `fallback` is a deliberately selected safe visual. A production billboard must include dimensions, normalized pivot, texture URL, layers, and quality visibility. A production definition without a texture must identify a compatible fallback. Invalid metadata rejects the whole manifest rather than partially applying ambiguous presentation.
+Asset states are explicit: `prototype` is structurally valid temporary geometry or art; `production` is approved runtime art with a resolvable texture under `/game/environment/`; `fallback` is a deliberately selected safe visual. Production entries can additionally declare source-preserving runtime/static paths, a frame grid, FPS/loop/calm timing, world scale, collision policy, lightweight shadow metadata, interaction type, and renderer-only glow. Invalid metadata rejects the whole manifest rather than partially applying ambiguous presentation.
 
 Decoration is renderer-local and deterministic. A field supplies a stable seed, count, bounds, asset choices, and exclusion radius. It is never synchronized or persisted and cannot affect traversal or rewards. The same manifest and seed generate the same placement after navigation, refresh, or context recovery.
 

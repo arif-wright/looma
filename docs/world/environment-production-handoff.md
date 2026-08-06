@@ -1,6 +1,6 @@
 # Environment production handoff
 
-Phase 8D does not ship final environment art. Artists can prepare approved assets against this structure without changing world behavior:
+The first approved production kit is integrated through `environment-production-asset-pipeline.md`. Future deliveries follow this structure without changing world behavior:
 
 The approved style target is documented in `environment-visual-direction.md`, referencing `art-source/world/environment/references/3bf40675-74cc-4a44-bff9-fffa7e249a19.png`. That image is reference-only: do not ship it, use it as a background, crop assets from it, or derive map/collision coordinates from its composition.
 
@@ -32,4 +32,4 @@ Acceptance requires no missing textures, no matte halos, correct alpha, correct 
 
 Visual acceptance also compares isolated assets and the assembled slice against the approved qualities in `environment-visual-direction.md`: painterly grass variation, organic path transitions, strong foliage and rock silhouettes, composed vegetation pockets, clear traversal, restrained cyan/violet aether accents, environmental grounding, and a distinctive Moonberry silhouette. Similarity of painted object placement is neither required nor permitted as an authoring source.
 
-Still missing at Phase 8D foundation: all approved terrain, path, foliage, tree, rock, Moonberry, and ambient-effect art; art-direction sign-off; target-device GPU captures; and approved compressed derivatives.
+Remaining production work includes visual review of integration-authored pivots/scales/timing, terrain seam evaluation, a dedicated transparent path-edge asset if desired, target-device GPU captures, and approved compressed/packed derivatives.
