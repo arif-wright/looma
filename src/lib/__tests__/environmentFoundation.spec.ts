@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 import manifestJson from '../game/environment/wilds-exploration.environment.json';
 import {
   deterministicDecoration,
@@ -118,6 +119,37 @@ describe('world environment foundation', () => {
     second.dispose();
     expect(first.root.children).toHaveLength(0);
     expect(second.root.children).toHaveLength(0);
+  });
+
+  it('keeps browser-loaded environment images on regular textures instead of raw DataTextures', async () => {
+    vi.stubGlobal('document', {});
+    const load = vi.spyOn(THREE.TextureLoader.prototype, 'load').mockImplementation((url, onLoad) => {
+      const texture = new THREE.Texture();
+      texture.image = { width: 256, height: 256 };
+      texture.name = String(url);
+      queueMicrotask(() => onLoad?.(texture));
+      return texture;
+    });
+
+    const environment = createEnvironmentWorld(undefined, 'grass');
+    const textureMaps: THREE.Texture[] = [];
+    environment.root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        if ('map' in material && material.map instanceof THREE.Texture) textureMaps.push(material.map);
+      }
+    });
+
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(load).toHaveBeenCalled();
+    expect(textureMaps.length).toBeGreaterThan(0);
+    expect(textureMaps.every((texture) => !(texture instanceof THREE.DataTexture))).toBe(true);
+    expect(environment.diagnostics().textures.every((texture) => texture.status === 'loaded')).toBe(true);
+
+    environment.dispose();
+    load.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('keeps environment props compatible with obstruction fading', () => {

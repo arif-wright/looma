@@ -17,7 +17,7 @@ import { calculateVisualRosterDelta } from './roster';
 import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
 import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
 import { playerBodyManifestUrl } from '../../playerBody';
-import { createEnvironmentWorld } from './environmentWorld';
+import { createEnvironmentWorld, parseEnvironmentDiagnosticStage, WILDS_ENVIRONMENT_MANIFEST } from './environmentWorld';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -135,7 +135,10 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   sun.position.set(-8, 14, -5);
   scene.add(sun);
 
-  const environment = createEnvironmentWorld();
+  const environmentStage = import.meta.env.DEV
+    ? parseEnvironmentDiagnosticStage(new URLSearchParams(location.search).get('worldEnvironmentStage'))
+    : 'full';
+  const environment = createEnvironmentWorld(WILDS_ENVIRONMENT_MANIFEST!, environmentStage);
   scene.add(environment.root);
   obstructables.push(...environment.obstructables);
 
@@ -520,6 +523,15 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     renderer.domElement.dataset.environmentAtlasPages = String(environment.metrics.atlasPages);
     renderer.domElement.dataset.environmentAnimationUpdateMs = environment.metrics.animationUpdateMs.toFixed(3);
     renderer.domElement.dataset.environmentFailedAssets = String(environment.metrics.failedAssets);
+    const environmentDiagnostics = environment.diagnostics();
+    const terrainTexture = environmentDiagnostics.textures.find((texture) => texture.url === environmentDiagnostics.terrain.textureUrl);
+    renderer.domElement.dataset.environmentTerrainAsset = environmentDiagnostics.terrain.assetId;
+    renderer.domElement.dataset.environmentTerrainTexture = environmentDiagnostics.terrain.textureUrl ?? '';
+    renderer.domElement.dataset.environmentTerrainTextureStatus = terrainTexture?.status ?? 'unknown';
+    renderer.domElement.dataset.environmentTerrainMaterial = environmentDiagnostics.terrain.material;
+    renderer.domElement.dataset.environmentTerrainColor = environmentDiagnostics.terrain.color;
+    renderer.domElement.dataset.environmentTerrainOpacity = String(environmentDiagnostics.terrain.opacity);
+    renderer.domElement.dataset.environmentOutputColorSpace = renderer.outputColorSpace;
     renderer.domElement.dataset.localAnimation = local?.billboard.animator.state ?? 'idle';
     renderer.domElement.dataset.localSpriteLoad = local?.billboard.loadState ?? 'loading';
     renderer.domElement.dataset.museSprites = String([...players.values()].filter((visual) => visual.follower?.assetId.startsWith('muse-')).length);
@@ -540,11 +552,13 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     try { localStorage.setItem(CAMERA_STORAGE_KEY, preset); } catch { /* optional preference */ }
   };
   const debugGlobal = globalThis as typeof globalThis & { __MEMVOYA_WORLD_THREE__?: {
-    loseContext: () => void; restoreContext: () => void; forceMuseAnimation: (value: string | null) => boolean
+    loseContext: () => void; restoreContext: () => void; forceMuseAnimation: (value: string | null) => boolean;
+    environmentDiagnostics: () => ReturnType<typeof environment.diagnostics>
   } };
   if (import.meta.env.DEV) debugGlobal.__MEMVOYA_WORLD_THREE__ = {
     loseContext: () => renderer.forceContextLoss(),
     restoreContext: () => renderer.forceContextRestore(),
+    environmentDiagnostics: () => environment.diagnostics(),
     forceMuseAnimation: (value) => {
       if (value === null) { forcedMuseAnimation = null; return true; }
       const parsed = parseMuseAnimationOverride(value);

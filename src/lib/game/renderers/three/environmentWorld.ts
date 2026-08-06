@@ -33,10 +33,35 @@ export type EnvironmentMetrics = {
   failedAssets: number;
 };
 
+export type EnvironmentTextureDiagnostic = {
+  assetId: string;
+  url: string;
+  status: 'loading' | 'loaded' | 'error' | 'server-fallback';
+  width: number;
+  height: number;
+  colorSpace: string;
+  error: string | null;
+};
+
+export type EnvironmentObjectDiagnostic = {
+  assetId: string;
+  runtimeTextureUrl: string | null;
+  position: { x: number; y: number; z: number };
+  scale: { x: number; y: number; z: number };
+  visible: boolean;
+  renderOrder: number;
+  animated: boolean;
+};
+
 export type EnvironmentWorld = {
   root: THREE.Group;
   obstructables: ObstructableRegistration[];
   metrics: EnvironmentMetrics;
+  diagnostics: () => {
+    terrain: { assetId: string; textureUrl: string | null; material: string; color: string; opacity: number; transparent: boolean; depthWrite: boolean; depthTest: boolean; renderOrder: number };
+    textures: EnvironmentTextureDiagnostic[];
+    objects: EnvironmentObjectDiagnostic[];
+  };
   setQuality: (quality: EnvironmentQuality) => void;
   setMoonberryEmphasis: (active: boolean) => void;
   update: (elapsed: number, cameraPosition?: THREE.Vector3) => void;
@@ -53,6 +78,25 @@ type EnvironmentCard = {
 };
 
 const MAX_ACTIVE_ENVIRONMENT_ATLASES = 1;
+export const ENVIRONMENT_DIAGNOSTIC_STAGES = [
+  'background', 'grass', 'path', 'transition', 'broadleaf', 'evergreen', 'large-rock', 'medium-rock',
+  'grass-tuft', 'flower-cluster', 'aether-plant', 'moonberry', 'animation', 'effects', 'full'
+] as const;
+export type EnvironmentDiagnosticStage = (typeof ENVIRONMENT_DIAGNOSTIC_STAGES)[number];
+export const parseEnvironmentDiagnosticStage = (value: string | null): EnvironmentDiagnosticStage =>
+  ENVIRONMENT_DIAGNOSTIC_STAGES.includes(value as EnvironmentDiagnosticStage) ? value as EnvironmentDiagnosticStage : 'full';
+const stageRank = (stage: EnvironmentDiagnosticStage) => ENVIRONMENT_DIAGNOSTIC_STAGES.indexOf(stage);
+const assetStage = (assetId: string): EnvironmentDiagnosticStage => {
+  if (assetId === 'tree.broadleaf') return 'broadleaf';
+  if (assetId === 'tree.evergreen') return 'evergreen';
+  if (assetId === 'rock.large') return 'large-rock';
+  if (assetId === 'rock.medium') return 'medium-rock';
+  if (assetId === 'vegetation.grass-tuft') return 'grass-tuft';
+  if (assetId === 'vegetation.flower-cluster') return 'flower-cluster';
+  if (assetId === 'magical.aether-plant') return 'aether-plant';
+  if (assetId === 'interactable.moonberry') return 'moonberry';
+  return 'full';
+};
 
 const vertexShader = `
 varying vec2 vUv;
@@ -75,6 +119,23 @@ void main() {
 const colorBytes = (color: string) => {
   const parsedColor = new THREE.Color(color);
   return new Uint8Array([Math.round(parsedColor.r * 255), Math.round(parsedColor.g * 255), Math.round(parsedColor.b * 255), 255]);
+};
+
+const diagnosticFallbackCanvas = (label: string) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  if (!context) return canvas;
+  context.fillStyle = '#ff00d4';
+  context.fillRect(0, 0, 64, 64);
+  context.fillStyle = '#111111';
+  context.fillRect(0, 0, 32, 32);
+  context.fillRect(32, 32, 32, 32);
+  context.fillStyle = '#ffffff';
+  context.font = 'bold 9px sans-serif';
+  context.fillText(label.slice(0, 8), 3, 61);
+  return canvas;
 };
 
 const createPathGeometry = (manifest: EnvironmentManifest, widthMultiplier = 1) => {
@@ -122,7 +183,7 @@ export const environmentFrameAt = (asset: EnvironmentAssetDefinition, instanceId
   return Math.min(animation.frameCount - 1, Math.floor(time * animation.fps));
 };
 
-export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENVIRONMENT_MANIFEST!): EnvironmentWorld => {
+export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENVIRONMENT_MANIFEST!, diagnosticStage: EnvironmentDiagnosticStage = 'full'): EnvironmentWorld => {
   if (!manifest) throw new Error('No valid environment manifest is available.');
   const resources = new SharedEnvironmentResources();
   const root = new THREE.Group();
@@ -133,8 +194,48 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
   const cards: EnvironmentCard[] = [];
   const textureUrls = new Set<string>();
   const assetFailures = new Set<string>();
+  const textureDiagnostics = new Map<string, EnvironmentTextureDiagnostic>();
   const animationTextures = new Map<string, THREE.Texture>();
   let quality: EnvironmentQuality = 'full';
+
+  const configureTexture = (texture: THREE.Texture, surface: boolean) => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = surface ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+    texture.wrapT = surface ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    if (surface) texture.repeat.set(3, 2);
+    texture.needsUpdate = true;
+  };
+  const loadTexture = (asset: EnvironmentAssetDefinition, url: string) => {
+    const diagnostic: EnvironmentTextureDiagnostic = {
+      assetId: asset.id, url, status: typeof document === 'undefined' ? 'server-fallback' : 'loading',
+      width: 0, height: 0, colorSpace: THREE.SRGBColorSpace, error: null
+    };
+    textureDiagnostics.set(url, diagnostic);
+    if (typeof document === 'undefined') {
+      const fallback = new THREE.DataTexture(colorBytes(asset.color ?? '#846ca8'), 1, 1);
+      configureTexture(fallback, asset.renderer === 'surface');
+      return fallback;
+    }
+    const texture = new THREE.TextureLoader().load(url, (loaded) => {
+      configureTexture(loaded, asset.renderer === 'surface');
+      const image = loaded.image as { naturalWidth?: number; naturalHeight?: number; width?: number; height?: number };
+      diagnostic.status = 'loaded';
+      diagnostic.width = image.naturalWidth ?? image.width ?? 0;
+      diagnostic.height = image.naturalHeight ?? image.height ?? 0;
+    }, undefined, (error) => {
+      assetFailures.add(asset.id);
+      diagnostic.status = 'error';
+      diagnostic.error = error instanceof Error ? error.message : `Texture request failed: ${url}`;
+      texture.image = diagnosticFallbackCanvas(import.meta.env.DEV ? 'ERROR' : 'ENV');
+      configureTexture(texture, asset.renderer === 'surface');
+      if (import.meta.env.DEV) console.error('[world:environment] Production texture failed to load.', { assetId: asset.id, url, error: diagnostic.error });
+    });
+    configureTexture(texture, asset.renderer === 'surface');
+    return texture;
+  };
 
   const assetFor = (id: string) => resolveEnvironmentAsset(manifest, id) ?? assets.get(id)!;
   const textureFor = (asset: EnvironmentAssetDefinition, url = asset.runtimeAsset ?? asset.texture) => {
@@ -145,41 +246,19 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     });
     textureUrls.add(url);
     return resources.acquire(`texture:${url}`, () => {
-      const texture = new THREE.DataTexture(colorBytes(asset.color ?? '#846ca8'), 1, 1);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.needsUpdate = true;
-      if (typeof document === 'undefined') return texture;
-      new THREE.TextureLoader().load(url, (loaded) => {
-        texture.image = loaded.image;
-        texture.wrapS = asset.renderer === 'surface' ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-        texture.wrapT = asset.renderer === 'surface' ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.generateMipmaps = asset.renderer === 'surface';
-        if (asset.renderer === 'surface') texture.repeat.set(3, 2);
-        texture.needsUpdate = true;
-      }, undefined, () => assetFailures.add(asset.id));
-      return texture;
+      return loadTexture(asset, url);
     });
   };
   const surfaceMaterial = (asset: EnvironmentAssetDefinition, opacity = 1) => resources.acquire(`material:surface:${asset.id}:${opacity}`, () => new THREE.MeshBasicMaterial({
-    map: textureFor(asset), color: asset.color ?? '#ffffff', transparent: opacity < 1, opacity, depthWrite: opacity >= 1
+    map: textureFor(asset), color: asset.color ?? '#ffffff', transparent: opacity < 1, opacity, depthWrite: opacity >= 1,
+    depthTest: true, side: THREE.DoubleSide
   }));
   const animationTextureFor = (asset: EnvironmentAssetDefinition) => {
     const url = asset.animation?.sheet;
     if (!url) return null;
     const existing = animationTextures.get(asset.id);
     if (existing) return existing;
-    const texture = new THREE.DataTexture(colorBytes(asset.color ?? '#846ca8'), 1, 1);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.needsUpdate = true;
-    if (typeof document !== 'undefined') new THREE.TextureLoader().load(url, (loaded) => {
-      texture.image = loaded.image;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.generateMipmaps = false;
-      texture.needsUpdate = true;
-    }, undefined, () => assetFailures.add(asset.id));
+    const texture = loadTexture(asset, url);
     animationTextures.set(asset.id, texture);
     return texture;
   };
@@ -189,9 +268,9 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
   const terrain = new THREE.Mesh(terrainGeometry, surfaceMaterial(terrainAsset));
   terrain.rotation.x = -Math.PI / 2;
   terrain.renderOrder = layerOrder.terrain;
-  root.add(terrain);
+  if (stageRank(diagnosticStage) >= stageRank('grass')) root.add(terrain);
 
-  if (manifest.terrain.secondarySurfaceAssetId) {
+  if (manifest.terrain.secondarySurfaceAssetId && stageRank(diagnosticStage) >= stageRank('transition')) {
     const detailAsset = assetFor(manifest.terrain.secondarySurfaceAssetId);
     const detail = new THREE.Mesh(terrainGeometry, surfaceMaterial(detailAsset, 0.16));
     detail.rotation.x = -Math.PI / 2;
@@ -202,7 +281,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     root.add(detail);
   }
 
-  if (manifest.terrain.pathEdgeAssetId) {
+  if (manifest.terrain.pathEdgeAssetId && stageRank(diagnosticStage) >= stageRank('transition')) {
     const edgeAsset = assetFor(manifest.terrain.pathEdgeAssetId);
     const edge = new THREE.Mesh(resources.acquire('geometry:path-edge', () => createPathGeometry(manifest, 1.22)), surfaceMaterial(edgeAsset));
     edge.renderOrder = layerOrder['terrain-detail'];
@@ -212,7 +291,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
   const pathAsset = assetFor(manifest.terrain.pathAssetId);
   const path = new THREE.Mesh(resources.acquire('geometry:path', () => createPathGeometry(manifest)), surfaceMaterial(pathAsset));
   path.renderOrder = layerOrder['terrain-detail'] + 1;
-  root.add(path);
+  if (stageRank(diagnosticStage) >= stageRank('path')) root.add(path);
 
   const planeFor = (asset: EnvironmentAssetDefinition) => {
     const scale = asset.worldScale ?? { width: asset.width / SERVER_UNITS_PER_WORLD_UNIT, height: asset.height / SERVER_UNITS_PER_WORLD_UNIT };
@@ -223,6 +302,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
 
   const createCard = (instance: EnvironmentPropInstance, decorative: boolean) => {
     const asset = assetFor(instance.assetId);
+    if (stageRank(diagnosticStage) < stageRank(assetStage(asset.id))) return null;
     const mapped = serverToWorld(instance.x, instance.y);
     const group = new THREE.Group();
     group.name = instance.id;
@@ -287,7 +367,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
   manifest.interactables.forEach((instance) => { moonberry = createCard(instance, false); });
 
   const effectGroups: THREE.Points[] = [];
-  for (const instance of manifest.effects) {
+  for (const instance of stageRank(diagnosticStage) >= stageRank('effects') ? manifest.effects : []) {
     const asset = assetFor(instance.assetId);
     const mapped = serverToWorld(instance.x, instance.y);
     const positions = new Float32Array(18 * 3);
@@ -328,6 +408,29 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
   let disposed = false;
   return {
     root, obstructables, metrics,
+    diagnostics: () => ({
+      terrain: {
+        assetId: terrainAsset.id,
+        textureUrl: terrainAsset.runtimeAsset ?? terrainAsset.texture ?? null,
+        material: terrain.material.type,
+        color: `#${terrain.material.color.getHexString()}`,
+        opacity: terrain.material.opacity,
+        transparent: terrain.material.transparent,
+        depthWrite: terrain.material.depthWrite,
+        depthTest: terrain.material.depthTest,
+        renderOrder: terrain.renderOrder
+      },
+      textures: [...textureDiagnostics.values()].map((diagnostic) => ({ ...diagnostic })),
+      objects: cards.map((card) => ({
+        assetId: card.asset.id,
+        runtimeTextureUrl: card.asset.staticAsset ?? card.asset.runtimeAsset ?? card.asset.texture ?? null,
+        position: { x: card.root.position.x, y: card.root.position.y, z: card.root.position.z },
+        scale: { x: card.root.scale.x, y: card.root.scale.y, z: card.root.scale.z },
+        visible: card.root.visible,
+        renderOrder: card.root.renderOrder,
+        animated: Boolean(card.asset.animation)
+      }))
+    }),
     setQuality: (nextQuality) => {
       quality = nextQuality;
       qualityObjects.forEach(({ object, asset }) => { object.visible = visibleAtQuality(asset, nextQuality); });
@@ -337,7 +440,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     update: (elapsed, cameraPosition) => {
       const started = performance.now();
       const activeAnimationAssets = new Set<string>();
-      if (quality === 'full' && cameraPosition) {
+      if (quality === 'full' && cameraPosition && stageRank(diagnosticStage) >= stageRank('animation')) {
         const candidates = cards.filter((card) => card.root.visible && card.asset.animation)
           .map((card) => ({ card, distance: cameraPosition.distanceTo(card.root.position) }))
           .filter((entry) => entry.distance < 12)

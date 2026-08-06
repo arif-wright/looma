@@ -47,6 +47,12 @@ Map instances reference stable IDs plus server-space X/Y, scale, rotation, varia
 
 Animated cards share one sheet texture and plane geometry per asset. Per-instance shader uniforms select a frame without cloning texture data. A stable instance-ID hash chooses starting phase, small bounded speed variation, and calm timing. Artwork is never mirrored. Reduced/minimum quality and distant rendering use the exact extracted frame-zero texture. Full quality admits only the nearest animated asset family and keeps at most one decoded 1280² animation sheet resident; changing proximity disposes the previous sheet. Animation changes no gameplay or network state.
 
+## Browser texture contract and diagnostics
+
+Production PNGs are loaded as ordinary Three.js `TextureLoader` textures. They remain sRGB, unlit, white-tinted, and alpha-aware through upload and rendering. A loaded HTML image must never be assigned to a `DataTexture`: that texture class is reserved for raw typed-array pixel data and causes an invalid GPU upload when its identity is retained around an image element.
+
+In development, `?worldEnvironmentStage=<stage>` can progressively enable `background`, `grass`, `path`, `transition`, each prop family, `animation`, `effects`, or `full`. The default and every production build use `full`. `window.__MEMVOYA_WORLD_THREE__.environmentDiagnostics()` reports the requested URL, load state, decoded dimensions, color space, active terrain material, object visibility, and the last load error without exposing account or session data. Failed textures are logged in development and render an unmistakable magenta checkerboard rather than silently becoming black.
+
 ## Known source limitations
 
 - FPS, loops, calm periods, pivots, world scale, and shadow dimensions were not supplied as sidecar metadata; current values are explicit integration settings requiring visual review.
