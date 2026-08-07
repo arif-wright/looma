@@ -1,3 +1,5 @@
+import { ENVIRONMENT_RENDER_CLASSES, type EnvironmentRenderClass } from './presentation';
+
 export const ENVIRONMENT_LAYERS = [
   'terrain', 'terrain-detail', 'low-vegetation', 'prop', 'actor',
   'companion', 'foreground', 'effect', 'label'
@@ -9,10 +11,12 @@ export type EnvironmentAssetKind = 'surface' | 'path' | 'prop' | 'interactable' 
 
 export type EnvironmentAssetDefinition = {
   id: string;
+  assetVersion?: number;
   kind: EnvironmentAssetKind;
   status: EnvironmentAssetStatus;
   layer: EnvironmentLayer;
   renderer: 'surface' | 'geometry' | 'billboard' | 'particles';
+  renderClass?: EnvironmentRenderClass;
   width: number;
   height: number;
   pivot: { x: number; y: number };
@@ -36,12 +40,25 @@ export type EnvironmentAssetDefinition = {
     loop: boolean;
     calmSeconds?: [number, number];
     speedVariation?: number;
+    directions?: Partial<Record<'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw', {
+      sheet: string;
+      staticAsset: string;
+      frameCount: number;
+      columns: number;
+      frameWidth: number;
+      frameHeight: number;
+      provenance: 'authored';
+    }>>;
   };
   worldScale?: { width: number; height: number };
   collisionBehavior?: 'none' | 'authoritative-ref';
   shadow?: { enabled: boolean; width: number; depth: number; opacity: number };
   interactionType?: 'moonberry-gather';
   mirrorApproved?: boolean;
+  groundAnchor?: { x: number; y: number };
+  provenance?: { source: string; biomeNeutral: boolean; temporary?: boolean };
+  lod?: { midDistance: number; farDistance: number; midAnimationFps?: number };
+  directionalViews?: { authored: Array<'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw'>; mirrorApproved: boolean };
 };
 
 export type EnvironmentPropInstance = {
@@ -64,7 +81,7 @@ export type EnvironmentDecorationField = {
 };
 
 export type EnvironmentManifest = {
-  version: 1;
+  version: 1 | 2;
   mapId: string;
   status: EnvironmentAssetStatus;
   units: 'server';
@@ -89,7 +106,7 @@ export const validateEnvironmentManifest = (
 ): EnvironmentValidation => {
   const errors: string[] = [];
   if (!object(value)) return { ok: false, errors: ['Manifest must be an object.'], manifest: null };
-  if (value.version !== 1) errors.push('version must be 1.');
+  if (value.version !== 1 && value.version !== 2) errors.push('version must be 1 or 2.');
   if (!id(value.mapId)) errors.push('mapId is invalid.');
   if (!['prototype', 'production', 'fallback'].includes(String(value.status))) errors.push('status is invalid.');
   if (value.units !== 'server') errors.push('units must be server.');
@@ -103,11 +120,16 @@ export const validateEnvironmentManifest = (
     assetIds.add(raw.id as string);
     assetDefinitions.set(raw.id as string, raw);
     if (!['surface', 'path', 'prop', 'interactable', 'effect'].includes(String(raw.kind))) errors.push(`${raw.id}.kind is invalid.`);
+    if (raw.assetVersion !== undefined && (!Number.isSafeInteger(raw.assetVersion) || Number(raw.assetVersion) < 1)) errors.push(`${raw.id}.assetVersion is invalid.`);
     if (!['prototype', 'production', 'fallback'].includes(String(raw.status))) errors.push(`${raw.id}.status is invalid.`);
     if (!ENVIRONMENT_LAYERS.includes(raw.layer as EnvironmentLayer)) errors.push(`${raw.id}.layer is invalid.`);
     if (!['surface', 'geometry', 'billboard', 'particles'].includes(String(raw.renderer))) errors.push(`${raw.id}.renderer is invalid.`);
+    if (raw.renderClass !== undefined && !ENVIRONMENT_RENDER_CLASSES.includes(raw.renderClass as EnvironmentRenderClass)) errors.push(`${raw.id}.renderClass is invalid.`);
     if (!finite(raw.width) || (raw.width as number) <= 0 || !finite(raw.height) || (raw.height as number) <= 0) errors.push(`${raw.id} dimensions must be positive.`);
     if (!point(raw.pivot) || (raw.pivot as { x: number; y: number }).x < 0 || (raw.pivot as { x: number; y: number }).x > 1 || (raw.pivot as { x: number; y: number }).y < 0 || (raw.pivot as { x: number; y: number }).y > 1) errors.push(`${raw.id}.pivot is invalid.`);
+    if (raw.groundAnchor !== undefined && (!point(raw.groundAnchor) || Number((raw.groundAnchor as Record<string, unknown>).x) < 0 || Number((raw.groundAnchor as Record<string, unknown>).x) > 1 || Number((raw.groundAnchor as Record<string, unknown>).y) < 0 || Number((raw.groundAnchor as Record<string, unknown>).y) > 1)) errors.push(`${raw.id}.groundAnchor is invalid.`);
+    if (raw.provenance !== undefined && (!object(raw.provenance) || typeof raw.provenance.source !== 'string' || typeof raw.provenance.biomeNeutral !== 'boolean')) errors.push(`${raw.id}.provenance is invalid.`);
+    if (raw.lod !== undefined && (!object(raw.lod) || !finite(raw.lod.midDistance) || !finite(raw.lod.farDistance) || Number(raw.lod.midDistance) <= 0 || Number(raw.lod.farDistance) <= Number(raw.lod.midDistance))) errors.push(`${raw.id}.lod is invalid.`);
     if (typeof raw.obstruction !== 'boolean') errors.push(`${raw.id}.obstruction must be boolean.`);
     if (!Array.isArray(raw.quality) || raw.quality.some((item) => !['full', 'reduced', 'minimum'].includes(String(item)))) errors.push(`${raw.id}.quality is invalid.`);
     if (raw.texture !== undefined && (typeof raw.texture !== 'string' || !raw.texture.startsWith('/game/environment/'))) errors.push(`${raw.id}.texture must use /game/environment/.`);
@@ -117,9 +139,23 @@ export const validateEnvironmentManifest = (
     if (raw.collisionBehavior !== undefined && !['none', 'authoritative-ref'].includes(String(raw.collisionBehavior))) errors.push(`${raw.id}.collisionBehavior is invalid.`);
     if (raw.animation !== undefined) {
       if (!object(raw.animation) || typeof raw.animation.sheet !== 'string' || !raw.animation.sheet.startsWith('/game/environment/') || !Number.isSafeInteger(raw.animation.frameWidth) || !Number.isSafeInteger(raw.animation.frameHeight) || !Number.isSafeInteger(raw.animation.frameCount) || !Number.isSafeInteger(raw.animation.columns) || !finite(raw.animation.fps) || Number(raw.animation.frameWidth) <= 0 || Number(raw.animation.frameHeight) <= 0 || Number(raw.animation.frameCount) <= 1 || Number(raw.animation.columns) <= 0 || Number(raw.animation.fps) <= 0 || typeof raw.animation.loop !== 'boolean') errors.push(`${raw.id}.animation is invalid.`);
+      const directions = object(raw.animation) ? raw.animation.directions : undefined;
+      if (directions !== undefined) {
+        if (!object(directions)) errors.push(`${raw.id}.animation.directions is invalid.`);
+        else for (const direction of ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']) {
+          const sequence = directions[direction];
+          if (!object(sequence) || typeof sequence.sheet !== 'string' || !sequence.sheet.startsWith('/game/environment/') ||
+            typeof sequence.staticAsset !== 'string' || !sequence.staticAsset.startsWith('/game/environment/') ||
+            !Number.isSafeInteger(sequence.frameCount) || Number(sequence.frameCount) <= 1 || !Number.isSafeInteger(sequence.columns) || Number(sequence.columns) <= 0 ||
+            !Number.isSafeInteger(sequence.frameWidth) || !Number.isSafeInteger(sequence.frameHeight) || sequence.provenance !== 'authored') {
+            errors.push(`${raw.id}.animation.directions.${direction} is invalid.`);
+          }
+        }
+      }
     }
     if (raw.shadow !== undefined && (!object(raw.shadow) || typeof raw.shadow.enabled !== 'boolean' || !finite(raw.shadow.width) || !finite(raw.shadow.depth) || !finite(raw.shadow.opacity))) errors.push(`${raw.id}.shadow is invalid.`);
     if (raw.status === 'production' && raw.renderer === 'billboard' && raw.texture === undefined && raw.fallbackAssetId === undefined) errors.push(`${raw.id} production billboard requires a texture or fallbackAssetId.`);
+    if (value.version === 2 && raw.status === 'production' && (raw.renderClass === undefined || raw.groundAnchor === undefined || raw.provenance === undefined)) errors.push(`${raw.id} production assets require renderClass, groundAnchor, and provenance.`);
   }
   const checkAsset = (assetId: unknown, context: string) => { if (!assetIds.has(String(assetId))) errors.push(`${context} references unknown asset ${String(assetId)}.`); };
   if (!object(value.terrain) || !Array.isArray(value.terrain.pathCenterline) || value.terrain.pathCenterline.length < 2) errors.push('terrain pathCenterline requires at least two points.');

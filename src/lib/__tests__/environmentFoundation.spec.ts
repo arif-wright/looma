@@ -111,7 +111,7 @@ describe('world environment foundation', () => {
     const nearTree = first.obstructables[0]!.root.position.clone();
     nearTree.y = 8;
     first.update(1, nearTree);
-    expect(first.metrics.atlasPages).toBeLessThanOrEqual(1);
+    expect(first.metrics.atlasPages).toBeLessThanOrEqual(2);
     first.setQuality('minimum');
     first.update(1);
     first.dispose();

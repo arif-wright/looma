@@ -4,8 +4,8 @@ export const SERVER_UNITS_PER_WORLD_UNIT = 32;
 export const CARDINAL_CAMERA_YAW = 0;
 export const DEFAULT_CAMERA = { yaw: CARDINAL_CAMERA_YAW, pitch: Math.PI / 4, zoom: 1 } as const;
 export const CAMERA_LIMITS = {
-  pitchMin: Math.PI * 25 / 180,
-  pitchMax: Math.PI * 65 / 180,
+  pitchMin: Math.PI * 30 / 180,
+  pitchMax: Math.PI * 58 / 180,
   zoomMin: 0.65,
   zoomMax: 1.8
 } as const;

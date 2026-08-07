@@ -2,6 +2,8 @@
 
 Status: Phase 8C.5 production-kit integration.
 
+Broadleaf v2 directional ingestion is documented in `broadleaf-v2-integration.md`. The legacy Broadleaf inputs remain preserved as deprecated/prototype fallback sources until visual approval; the preferred manifest asset is v2.
+
 ## Source boundary
 
 Approved immutable sources live under `art-source/world/environment/production/v1/`. Runtime copies live under `static/game/environment/v1/`. `scripts/world/environment-assets.mjs` validates the expected source inventory, dimensions, alpha characteristics, occupied animation cells, and duplicate frames, then copies every PNG byte-for-byte. It writes `asset-audit.json` containing source/runtime paths, dimensions, transparency, frame count, and SHA-256 provenance.

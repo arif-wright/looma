@@ -15,6 +15,22 @@ export const ENVIRONMENT_SOURCES = [
   ['terrain/grass_path_transition.png', 'terrain/grass-path-transition.png', 'static-rgb'],
   ['trees/broadleaf/tree.png', 'props/trees/broadleaf.png', 'static-rgba'],
   ['trees/broadleaf/idle/tree-spritesheet.png', 'props/trees/broadleaf-idle.png', 'sheet'],
+  ['v2/trees/broadleaf/tree_north.png', 'props/trees/broadleaf-v2/static/n.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_northeast.png', 'props/trees/broadleaf-v2/static/ne.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_east.png', 'props/trees/broadleaf-v2/static/e.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_southeast.png', 'props/trees/broadleaf-v2/static/se.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_south.png', 'props/trees/broadleaf-v2/static/s.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_southwest.png', 'props/trees/broadleaf-v2/static/sw.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_west.png', 'props/trees/broadleaf-v2/static/w.png', 'static-rgba'],
+  ['v2/trees/broadleaf/tree_northwest.png', 'props/trees/broadleaf-v2/static/nw.png', 'static-rgba'],
+  ['v2/trees/broadleaf/idle/tree_north-spritesheet.png', 'props/trees/broadleaf-v2/idle/n.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_northeast-spritesheet.png', 'props/trees/broadleaf-v2/idle/ne.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_east-spritesheet.png', 'props/trees/broadleaf-v2/idle/e.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_southeast-spritesheet.png', 'props/trees/broadleaf-v2/idle/se.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_south-spritesheet.png', 'props/trees/broadleaf-v2/idle/s.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_southwest-spritesheet.png', 'props/trees/broadleaf-v2/idle/sw.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_west-spritesheet.png', 'props/trees/broadleaf-v2/idle/w.png', 'sheet'],
+  ['v2/trees/broadleaf/idle/tree_northwest-spritesheet.png', 'props/trees/broadleaf-v2/idle/nw.png', 'sheet'],
   ['trees/evergreen/evergreen.png', 'props/trees/evergreen.png', 'static-rgba'],
   ['trees/evergreen/idle/evergreen-spritesheet.png', 'props/trees/evergreen-idle.png', 'sheet'],
   ['rocks/large_rock_01.png', 'props/rocks/large-rock-01.png', 'static-rgba'],
@@ -92,7 +108,7 @@ export const prepareEnvironmentAssets = async (sourceRoot = SOURCE, outputRoot =
       const sheet = PNG.sync.read(copied);
       const frame = new PNG({ width: FRAME_SIZE, height: FRAME_SIZE });
       PNG.bitblt(sheet, frame, 0, 0, FRAME_SIZE, FRAME_SIZE, 0, 0);
-      await writeFile(destination.replace(/-idle\.png$/, '-idle-frame-00.png'), PNG.sync.write(frame, { colorType: 6 }));
+      await writeFile(destination.replace(/\.png$/, '-frame-00.png'), PNG.sync.write(frame, { colorType: 6 }));
     }
   }
   await mkdir(outputRoot, { recursive: true });

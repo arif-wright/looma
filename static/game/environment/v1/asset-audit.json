@@ -63,6 +63,166 @@
       "sha256": "0655311c9c6df72db153d3c77561c6927d857a0e01463c777d5301fa53a5c33c"
     },
     {
+      "source": "v2/trees/broadleaf/tree_north.png",
+      "runtime": "props/trees/broadleaf-v2/static/n.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "4f0757b32e733b35c1e07c8b62203c5c3f7bbc71a86402b186401f3d133c305c"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_northeast.png",
+      "runtime": "props/trees/broadleaf-v2/static/ne.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "7b91aceaf8880fca2cf11ed31a07f5fd3d83d37d9b27cd0bdd49ecd4e4700fa1"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_east.png",
+      "runtime": "props/trees/broadleaf-v2/static/e.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "7bbd0ebcd8e74535e1d62e96f79399660328fa5b91391f29aae0a6785cc0158d"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_southeast.png",
+      "runtime": "props/trees/broadleaf-v2/static/se.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "ddd257ed5148c5dd563af33f1a2796f8a964cdae5f584f94a5355718d9ffc8df"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_south.png",
+      "runtime": "props/trees/broadleaf-v2/static/s.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "400d08a6508a35637cfaff87aa4bc1958c2f024623daa593f2d67ee67f76f211"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_southwest.png",
+      "runtime": "props/trees/broadleaf-v2/static/sw.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "e3a5423737fbdbf176d6c71877d6c8c8628b0b907920173df565370cfcc2b023"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_west.png",
+      "runtime": "props/trees/broadleaf-v2/static/w.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "6ec1c2974fc66414966db57784c93fcc54a8dd15c3f9b905b6a78bc63511b701"
+    },
+    {
+      "source": "v2/trees/broadleaf/tree_northwest.png",
+      "runtime": "props/trees/broadleaf-v2/static/nw.png",
+      "kind": "static-rgba",
+      "width": 1024,
+      "height": 1024,
+      "transparent": true,
+      "frames": 1,
+      "sha256": "f981a4af1e5cb62d5570335f981c68b53c6e98504616844d6d3159e9c2fea356"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_north-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/n.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "f134d4ff3c2eb72259481ee30d6ffd11e7c0b8304769652917033155fdf7b2ea"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_northeast-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/ne.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "ecba54016e7f7fb46ea9a20ef35b038039d2589cc819611e19cc58a2d1aa273d"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_east-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/e.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "74574468dfbf2f852034d4301097cf5928e2447e7e3d11e83ff2276f741fd106"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_southeast-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/se.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "aeedf3d7e8b22b87f92c125e0112e4522792b84387a7f6637f57d8cae2aeb2d8"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_south-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/s.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "cca9f043d2f62ecb77e5dc6029b74c80a09c0a86cc2512b937024bf2c6e67bc9"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_southwest-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/sw.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "f8640dd50aa6f7486b0b628fe89a9bea0e858810a8a8788b32761a274966fc96"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_west-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/w.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "e14c5233a47274faf8f6f042c3227a6a2af03cb9dd4f5c90c085f3019c1ac401"
+    },
+    {
+      "source": "v2/trees/broadleaf/idle/tree_northwest-spritesheet.png",
+      "runtime": "props/trees/broadleaf-v2/idle/nw.png",
+      "kind": "sheet",
+      "width": 1280,
+      "height": 1280,
+      "transparent": true,
+      "frames": 25,
+      "sha256": "d05c1e1075a8b8629b41f79440c3bd27b0ab635f64c35a2796186ca526940328"
+    },
+    {
       "source": "trees/evergreen/evergreen.png",
       "runtime": "props/trees/evergreen.png",
       "kind": "static-rgba",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAMERA_PRESETS, OrbitCameraState } from '$lib/game/renderers/three/cameraController';
+import { CAMERA_PRESETS, OrbitCameraState, parseCameraReviewState } from '$lib/game/renderers/three/cameraController';
 import {
   CAMERA_LIMITS,
   DEFAULT_CAMERA,
@@ -53,6 +53,20 @@ describe('Three world coordinate and camera contracts', () => {
     expect(camera.targetYaw).toBe(DEFAULT_CAMERA.yaw);
     expect(camera.targetPitch).toBe(CAMERA_PRESETS.classic.pitch);
     expect(camera.targetZoom).toBe(CAMERA_PRESETS.classic.zoom);
+  });
+
+  it('keeps the illustrated camera inside the reviewed 30°–58° pitch envelope', () => {
+    expect(CAMERA_LIMITS.pitchMin * 180 / Math.PI).toBeCloseTo(30, 8);
+    expect(CAMERA_LIMITS.pitchMax * 180 / Math.PI).toBeCloseTo(58, 8);
+    expect(CAMERA_PRESETS.adventurer.pitch * 180 / Math.PI).toBeCloseTo(38, 8);
+  });
+
+  it('supports deterministic development camera review angles while retaining clamps', () => {
+    const camera = new OrbitCameraState();
+    camera.applyReviewState(parseCameraReviewState(new URLSearchParams('worldCameraYaw=180&worldCameraPitch=90&worldCameraZoom=9')));
+    expect(camera.yaw).toBeCloseTo(Math.PI, 8);
+    expect(camera.pitch).toBe(CAMERA_LIMITS.pitchMax);
+    expect(camera.zoom).toBe(CAMERA_LIMITS.zoomMax);
   });
 
   it('interpolates reset smoothly and crosses yaw wraparound by the shortest path', () => {

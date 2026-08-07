@@ -1,6 +1,8 @@
 # World environment asset contract
 
-Status: Phase 8C.5 production registry integrated for the exploration slice.
+Status: Phase 8C.6 versioned illustrated-environment contract.
+
+Production assets additionally follow `environment-visual-architecture.md`. Version-2 manifests require an explicit render class, normalized ground anchor, source provenance, and biome-neutral declaration. Major trees require eight authored directional views; rocks require projection-correct ground-prop art. Surrounding biome terrain, terrain islands, baked renderer shadows, and unapproved mirrored views are rejected.
 
 Art direction is governed by `environment-visual-direction.md`. Its referenced concept image is not a runtime asset and has no authority over this manifest's coordinates or the server traversal contract.
 

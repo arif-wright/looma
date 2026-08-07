@@ -8,13 +8,13 @@ Initial prototype tuning:
 |---|---:|
 | Default yaw | 0° cardinal alignment |
 | Default pitch | 45° |
-| Pitch range | 25°–65° |
+| Pitch range | 30°–58° |
 | Default zoom | 1.0 |
 | Zoom range | 0.65–1.8 |
 | Camera distance | 18 visual units |
 | Maximum target lag | 2.5 visual units |
 
-These are evaluation values, not final art-direction commitments. At yaw 0°, the camera is south of the target looking north: authored north reads as screen up and east as screen right. Right-drag changes target yaw/pitch using preset sensitivity, wheel changes target zoom, and R or the reset UI sets target values back to the selected preset's cardinal yaw. Reset is interpolated, not snapped. The touch camera buttons avoid competing with movement gestures. Canvas pointer handling prevents context menus and wheel scrolling while operating the camera; Return Home remains ordinary accessible navigation.
+The 30°–58° illustrated-camera envelope is the Phase 8C.6 gameplay contract. It avoids both low-angle card exposure and the near-overhead view that collapses vertical illustrated assets. At yaw 0°, the camera is south of the target looking north: authored north reads as screen up and east as screen right. Right-drag changes target yaw/pitch using preset sensitivity, wheel changes target zoom, and R or the reset UI sets target values back to the selected preset's cardinal yaw. Reset is interpolated, not snapped. The touch camera buttons avoid competing with movement gestures. Canvas pointer handling prevents context menus and wheel scrolling while operating the camera; Return Home remains ordinary accessible navigation.
 
 Movement is camera-relative only at the input translation boundary. Forward means away from the camera in the ground plane. The translated vector is normalized and sent as the existing server X/Y intent. Camera state never enters the protocol and never changes server authority.
 
@@ -23,7 +23,7 @@ Movement is camera-relative only at the input translation boundary. Forward mean
 | Preset | Default yaw | Pitch | Zoom | Follow rate | Orbit px sensitivity | Pitch px sensitivity |
 |---|---:|---:|---:|---:|---:|---:|
 | Classic | 0° | 45° | 1.00 | 8 | 0.007 | 0.005 |
-| Adventurer | 0° | 35° | 1.18 | 10 | 0.0065 | 0.0045 |
+| Adventurer | 0° | 38° | 1.18 | 10 | 0.0065 | 0.0045 |
 | Wide | 0° | 55° | 0.78 | 6 | 0.008 | 0.0055 |
 | Close | 0° | 42° | 1.50 | 11 | 0.006 | 0.004 |
 

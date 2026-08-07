@@ -14,13 +14,26 @@ const degrees = (value: number) => value * Math.PI / 180;
 
 export const CAMERA_PRESETS: Record<CameraPresetName, CameraPreset> = {
   classic: { yaw: DEFAULT_CAMERA.yaw, pitch: degrees(45), zoom: 1, followSmoothing: 8, orbitSensitivity: 0.007, pitchSensitivity: 0.005 },
-  adventurer: { yaw: DEFAULT_CAMERA.yaw, pitch: degrees(35), zoom: 1.18, followSmoothing: 10, orbitSensitivity: 0.0065, pitchSensitivity: 0.0045 },
+  adventurer: { yaw: DEFAULT_CAMERA.yaw, pitch: degrees(38), zoom: 1.18, followSmoothing: 10, orbitSensitivity: 0.0065, pitchSensitivity: 0.0045 },
   wide: { yaw: DEFAULT_CAMERA.yaw, pitch: degrees(55), zoom: 0.78, followSmoothing: 6, orbitSensitivity: 0.008, pitchSensitivity: 0.0055 },
   close: { yaw: DEFAULT_CAMERA.yaw, pitch: degrees(42), zoom: 1.5, followSmoothing: 11, orbitSensitivity: 0.006, pitchSensitivity: 0.004 }
 };
 
 export const isCameraPreset = (value: unknown): value is CameraPresetName =>
   typeof value === 'string' && value in CAMERA_PRESETS;
+
+export const parseCameraReviewState = (params: URLSearchParams) => {
+  const degreesValue = (key: string) => {
+    const value = Number(params.get(key));
+    return Number.isFinite(value) && params.has(key) ? degrees(value) : null;
+  };
+  const zoom = Number(params.get('worldCameraZoom'));
+  return {
+    yaw: degreesValue('worldCameraYaw'),
+    pitch: degreesValue('worldCameraPitch'),
+    zoom: Number.isFinite(zoom) && params.has('worldCameraZoom') ? zoom : null
+  };
+};
 
 export class OrbitCameraState {
   preset: CameraPresetName;
@@ -65,6 +78,12 @@ export class OrbitCameraState {
     this.targetYaw = CAMERA_PRESETS[this.preset].yaw;
     this.targetPitch = CAMERA_PRESETS[this.preset].pitch;
     this.targetZoom = CAMERA_PRESETS[this.preset].zoom;
+  }
+
+  applyReviewState(review: ReturnType<typeof parseCameraReviewState>) {
+    if (review.yaw !== null) this.yaw = this.targetYaw = review.yaw;
+    if (review.pitch !== null) this.pitch = this.targetPitch = clampPitch(review.pitch);
+    if (review.zoom !== null) this.zoom = this.targetZoom = clampZoom(review.zoom);
   }
 
   update(deltaSeconds: number) {

@@ -7,7 +7,7 @@ import type { PlayerSnapshot, WorldSnapshot } from '../../protocol';
 import type { WorldSession } from '../../worldSession';
 import { movementState, type PlayerVisualState } from '../../visualState';
 import { MOONBERRY_INTERACTION, WORLD_TRAVERSAL } from '../../traversal';
-import { isCameraPreset, OrbitCameraState, type CameraPresetName } from './cameraController';
+import { isCameraPreset, OrbitCameraState, parseCameraReviewState, type CameraPresetName } from './cameraController';
 import { CompanionTrail } from './companionTrail';
 import { nextContextStatus, type WebglContextStatus } from './contextRecovery';
 import { cameraRelativeMovement, SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } from './math';
@@ -17,7 +17,7 @@ import { calculateVisualRosterDelta } from './roster';
 import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimationOverride } from './hdSprite';
 import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
 import { playerBodyManifestUrl } from '../../playerBody';
-import { createEnvironmentWorld, parseEnvironmentDiagnosticStage, WILDS_ENVIRONMENT_MANIFEST } from './environmentWorld';
+import { createBroadleafReviewManifest, createEnvironmentWorld, parseEnvironmentDiagnosticStage, WILDS_ENVIRONMENT_MANIFEST } from './environmentWorld';
 
 type VisualPlayer = {
   billboard: HdSpriteEntity;
@@ -100,6 +100,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
 
   const camera = new THREE.OrthographicCamera(-10, 10, 6, -6, 0.1, 100);
   const cameraState = new OrbitCameraState(readCameraPreset());
+  if (import.meta.env.DEV) cameraState.applyReviewState(parseCameraReviewState(new URLSearchParams(location.search)));
   const cameraTarget = new THREE.Vector3();
   const cameraTargetSmooth = new THREE.Vector3();
   const clock = new THREE.Clock();
@@ -129,6 +130,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   let animationUpdateMs = 0;
   let forcedMuseAnimation = import.meta.env.DEV
     ? parseMuseAnimationOverride(new URLSearchParams(location.search).get('worldMuseAnimation')) : null;
+  const environmentInspectId = import.meta.env.DEV
+    ? new URLSearchParams(location.search).get('worldEnvironmentInspect') : null;
 
   scene.add(new THREE.HemisphereLight(0xd9fff5, 0x355044, 1.8));
   const sun = new THREE.DirectionalLight(0xfff0cf, 2.2);
@@ -138,7 +141,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const environmentStage = import.meta.env.DEV
     ? parseEnvironmentDiagnosticStage(new URLSearchParams(location.search).get('worldEnvironmentStage'))
     : 'full';
-  const environment = createEnvironmentWorld(WILDS_ENVIRONMENT_MANIFEST!, environmentStage);
+  const environmentManifest = import.meta.env.DEV && new URLSearchParams(location.search).get('worldEnvironmentReview') === 'broadleaf'
+    ? createBroadleafReviewManifest(WILDS_ENVIRONMENT_MANIFEST!) : WILDS_ENVIRONMENT_MANIFEST!;
+  const environment = createEnvironmentWorld(environmentManifest, environmentStage);
   scene.add(environment.root);
   obstructables.push(...environment.obstructables);
 
@@ -497,7 +502,12 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const museAnimation = museVisual?.follower?.animationDiagnostics;
       const museAsset = museVisual?.follower?.assetDiagnostics;
       const museIdentity = museVisual?.followerAssetSelection;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      const environmentReport = environment.diagnostics();
+      const inspectedEnvironment = environmentReport.objects.find((item) => item.instanceId === environmentInspectId) ?? environmentReport.objects[0];
+      const inspectedTexture = inspectedEnvironment
+        ? environmentReport.textures.find((texture) => texture.url === inspectedEnvironment.runtimeTextureUrl) : undefined;
+      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nenv inspect ${inspectedEnvironment?.instanceId ?? 'none'}\nenv asset/class ${inspectedEnvironment ? `${inspectedEnvironment.assetId}/${inspectedEnvironment.renderClass}` : 'none'}\nenv provenance ${inspectedEnvironment?.provenance ?? 'none'}\nenv direction/angle ${inspectedEnvironment ? `${inspectedEnvironment.selectedDirection ?? 'n/a'}/${inspectedEnvironment.cameraRelativeAngleDegrees?.toFixed(1) ?? 'n/a'}°` : 'none'}\nenv animation ${inspectedEnvironment ? `${inspectedEnvironment.animationFrame}/${inspectedEnvironment.animationFrames} @ ${inspectedEnvironment.fps} fps phase ${inspectedEnvironment.animationPhase.toFixed(2)}` : 'none'}\nenv position ${inspectedEnvironment ? `${inspectedEnvironment.position.x.toFixed(2)},${inspectedEnvironment.position.z.toFixed(2)}` : 'none'}\nenv anchor ${inspectedEnvironment ? `${inspectedEnvironment.groundAnchor.x},${inspectedEnvironment.groundAnchor.y}` : 'none'}\nenv collision ${inspectedEnvironment?.collisionFootprint ?? 'none'}\nenv lod/quality ${inspectedEnvironment ? `${inspectedEnvironment.lod}/${quality}` : quality}\nenv texture ${inspectedEnvironment?.runtimeTextureUrl ?? 'none'}\nenv texture state ${inspectedTexture?.status ?? 'none'}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      if (inspectedEnvironment) debug.textContent += `\nenv version ${inspectedEnvironment.assetVersion}\nenv normalized phase ${inspectedEnvironment.animationPhase.toFixed(3)}\nenv instance offset ${inspectedEnvironment.instancePhaseOffset.toFixed(3)}\nenv atlas page ${inspectedEnvironment.texturePage ?? 'none'}\nenv page state ${inspectedEnvironment.loadStatus}\nenv approx MB ${(inspectedEnvironment.textureMemoryBytes / (1024 * 1024)).toFixed(2)}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }

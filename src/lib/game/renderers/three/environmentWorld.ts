@@ -8,11 +8,24 @@ import { WORLD_TRAVERSAL } from '../../traversal';
 import { SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } from './math';
 import type { ObstructableRegistration } from './obstruction';
 import { SharedEnvironmentResources } from './environmentResources';
+import {
+  cameraRelativeEnvironmentAngle, resolveEnvironmentDirection, resolveEnvironmentLod, resolveEnvironmentRenderClass,
+  type EnvironmentDirection, type EnvironmentLod, type EnvironmentRenderClass
+} from '../../environment/presentation';
 
 const collisionIds = new Set(WORLD_TRAVERSAL.blockers.map((blocker) => blocker.id));
 const parsed = validateEnvironmentManifest(manifestJson, collisionIds);
 if (!parsed.ok) console.error('[world:environment] Bundled environment manifest is invalid.', parsed.errors);
 export const WILDS_ENVIRONMENT_MANIFEST = parsed.manifest ?? null;
+
+export const createBroadleafReviewManifest = (manifest: EnvironmentManifest): EnvironmentManifest => ({
+  ...structuredClone(manifest),
+  props: [
+    { id: 'broadleaf-v2-review-a', assetId: 'tree.broadleaf', x: 360, y: 210 },
+    { id: 'broadleaf-v2-review-b', assetId: 'tree.broadleaf', x: 520, y: 330 }
+  ],
+  decorations: [], interactables: [], effects: []
+});
 
 const layerOrder = {
   terrain: -100, 'terrain-detail': -90, 'low-vegetation': -50, prop: -10,
@@ -45,12 +58,29 @@ export type EnvironmentTextureDiagnostic = {
 
 export type EnvironmentObjectDiagnostic = {
   assetId: string;
+  assetVersion: number;
+  instanceId: string;
+  renderClass: EnvironmentRenderClass;
+  provenance: string;
   runtimeTextureUrl: string | null;
   position: { x: number; y: number; z: number };
   scale: { x: number; y: number; z: number };
   visible: boolean;
   renderOrder: number;
   animated: boolean;
+  selectedDirection: EnvironmentDirection | null;
+  cameraRelativeAngleDegrees: number | null;
+  animationFrame: number;
+  animationFrames: number;
+  fps: number;
+  animationPhase: number;
+  instancePhaseOffset: number;
+  groundAnchor: { x: number; y: number };
+  collisionFootprint: string | null;
+  lod: EnvironmentLod;
+  textureMemoryBytes: number;
+  texturePage: string | null;
+  loadStatus: EnvironmentTextureDiagnostic['status'] | 'unknown';
 };
 
 export type EnvironmentWorld = {
@@ -75,9 +105,17 @@ type EnvironmentCard = {
   instanceId: string;
   staticTexture: THREE.Texture;
   animatedMaterial?: THREE.ShaderMaterial;
+  renderClass: EnvironmentRenderClass;
+  selectedDirection: EnvironmentDirection | null;
+  cameraRelativeAngle: number | null;
+  animationFrame: number;
+  lod: EnvironmentLod;
+  normalizedPhase: number;
+  instancePhaseOffset: number;
+  texturePage: string | null;
 };
 
-const MAX_ACTIVE_ENVIRONMENT_ATLASES = 1;
+const MAX_ACTIVE_ENVIRONMENT_ATLASES = 2;
 export const ENVIRONMENT_DIAGNOSTIC_STAGES = [
   'background', 'grass', 'path', 'transition', 'broadleaf', 'evergreen', 'large-rock', 'medium-rock',
   'grass-tuft', 'flower-cluster', 'aether-plant', 'moonberry', 'animation', 'effects', 'full'
@@ -172,16 +210,26 @@ const createPathGeometry = (manifest: EnvironmentManifest, widthMultiplier = 1) 
 export const environmentFrameAt = (asset: EnvironmentAssetDefinition, instanceId: string, elapsed: number, animate: boolean) => {
   const animation = asset.animation;
   if (!animation || !animate) return 0;
+  return Math.min(animation.frameCount - 1, Math.floor(environmentNormalizedPhaseAt(asset, instanceId, elapsed, animate) * animation.frameCount));
+};
+
+export const environmentNormalizedPhaseAt = (asset: EnvironmentAssetDefinition, instanceId: string, elapsed: number, animate: boolean) => {
+  const animation = asset.animation;
+  if (!animation || !animate) return 0;
   const variation = environmentAnimationVariation(instanceId, animation.frameCount, animation.speedVariation ?? 0);
   const animationSeconds = animation.frameCount / animation.fps;
   const calm = animation.calmSeconds
     ? animation.calmSeconds[0] + (animation.calmSeconds[1] - animation.calmSeconds[0]) * ((variation.startFrame + 1) / animation.frameCount)
     : 0;
   const cycle = animationSeconds + calm;
-  const time = (elapsed * variation.playbackRate + variation.phaseSeconds / animation.fps) % cycle;
+  const phaseOffsetSeconds = variation.startFrame / animation.frameCount * animationSeconds;
+  const time = (elapsed * variation.playbackRate + phaseOffsetSeconds) % cycle;
   if (time >= animationSeconds) return 0;
-  return Math.min(animation.frameCount - 1, Math.floor(time * animation.fps));
+  return Math.min(0.999999, time / animationSeconds);
 };
+
+export const environmentFrameForPhase = (normalizedPhase: number, frameCount: number) =>
+  Math.min(frameCount - 1, Math.max(0, Math.floor(normalizedPhase * frameCount)));
 
 export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENVIRONMENT_MANIFEST!, diagnosticStage: EnvironmentDiagnosticStage = 'full'): EnvironmentWorld => {
   if (!manifest) throw new Error('No valid environment manifest is available.');
@@ -202,9 +250,10 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = surface ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
     texture.wrapT = surface ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-    texture.minFilter = THREE.LinearFilter;
+    texture.minFilter = surface ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
+    texture.generateMipmaps = surface;
+    texture.anisotropy = surface ? 4 : 1;
     if (surface) texture.repeat.set(3, 2);
     texture.needsUpdate = true;
   };
@@ -253,13 +302,16 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     map: textureFor(asset), color: asset.color ?? '#ffffff', transparent: opacity < 1, opacity, depthWrite: opacity >= 1,
     depthTest: true, side: THREE.DoubleSide
   }));
-  const animationTextureFor = (asset: EnvironmentAssetDefinition) => {
-    const url = asset.animation?.sheet;
+  const directionalAnimation = (asset: EnvironmentAssetDefinition, direction: EnvironmentDirection | null) =>
+    direction ? asset.animation?.directions?.[direction] : undefined;
+  const animationTextureFor = (asset: EnvironmentAssetDefinition, direction: EnvironmentDirection | null) => {
+    const url = directionalAnimation(asset, direction)?.sheet ?? asset.animation?.sheet;
     if (!url) return null;
-    const existing = animationTextures.get(asset.id);
+    const key = `${asset.id}:${direction ?? 'default'}`;
+    const existing = animationTextures.get(key);
     if (existing) return existing;
     const texture = loadTexture(asset, url);
-    animationTextures.set(asset.id, texture);
+    animationTextures.set(key, texture);
     return texture;
   };
 
@@ -302,6 +354,7 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
 
   const createCard = (instance: EnvironmentPropInstance, decorative: boolean) => {
     const asset = assetFor(instance.assetId);
+    const renderClass = resolveEnvironmentRenderClass(asset);
     if (stageRank(diagnosticStage) < stageRank(assetStage(asset.id))) return null;
     const mapped = serverToWorld(instance.x, instance.y);
     const group = new THREE.Group();
@@ -324,7 +377,11 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     }
     const card = new THREE.Mesh(planeFor(asset), material);
     const height = asset.worldScale?.height ?? asset.height / SERVER_UNITS_PER_WORLD_UNIT;
-    card.position.y = Math.max(0.01, (asset.pivot.y - 0.5) * height);
+    const groundAnchor = asset.groundAnchor ?? asset.pivot;
+    if (renderClass === 'ground-prop' || renderClass === 'ground-detail') {
+      card.rotation.x = -Math.PI / 2;
+      card.position.y = 0.018;
+    } else card.position.y = Math.max(0.01, (groundAnchor.y - 0.5) * height);
     card.onBeforeRender = () => {
       const opacity = Number(group.userData.environmentOpacity ?? 1);
       if (animatedMaterial) animatedMaterial.uniforms.opacity!.value = opacity;
@@ -349,7 +406,14 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
         if (animatedMaterial) animatedMaterial.uniforms.opacity!.value = opacity;
       } });
     }
-    cards.push({ root: group, card, asset, instanceId: instance.id, staticTexture: texture, ...(animatedMaterial ? { animatedMaterial } : {}) });
+    cards.push({
+      root: group, card, asset, instanceId: instance.id, staticTexture: texture, renderClass,
+      selectedDirection: null, cameraRelativeAngle: null, animationFrame: 0, lod: 'near',
+      normalizedPhase: 0,
+      instancePhaseOffset: environmentAnimationVariation(instance.id, asset.animation?.frameCount ?? 1, asset.animation?.speedVariation ?? 0).startFrame / (asset.animation?.frameCount ?? 1),
+      texturePage: asset.staticAsset ?? asset.runtimeAsset ?? asset.texture ?? null,
+      ...(animatedMaterial ? { animatedMaterial } : {})
+    });
     qualityObjects.push({ object: group, asset, decorative });
     root.add(group);
     return group;
@@ -423,12 +487,29 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
       textures: [...textureDiagnostics.values()].map((diagnostic) => ({ ...diagnostic })),
       objects: cards.map((card) => ({
         assetId: card.asset.id,
+        assetVersion: card.asset.assetVersion ?? 1,
+        instanceId: card.instanceId,
+        renderClass: card.renderClass,
+        provenance: card.asset.provenance?.source ?? (manifest.version === 1 ? 'phase-8c5-legacy-prototype' : 'unknown'),
         runtimeTextureUrl: card.asset.staticAsset ?? card.asset.runtimeAsset ?? card.asset.texture ?? null,
         position: { x: card.root.position.x, y: card.root.position.y, z: card.root.position.z },
         scale: { x: card.root.scale.x, y: card.root.scale.y, z: card.root.scale.z },
         visible: card.root.visible,
         renderOrder: card.root.renderOrder,
-        animated: Boolean(card.asset.animation)
+        animated: Boolean(card.asset.animation),
+        selectedDirection: card.selectedDirection,
+        cameraRelativeAngleDegrees: card.cameraRelativeAngle === null ? null : card.cameraRelativeAngle * 180 / Math.PI,
+        animationFrame: card.animationFrame,
+        animationFrames: card.asset.animation?.frameCount ?? 1,
+        fps: card.asset.animation?.fps ?? 0,
+        animationPhase: card.normalizedPhase,
+        instancePhaseOffset: card.instancePhaseOffset,
+        groundAnchor: card.asset.groundAnchor ?? card.asset.pivot,
+        collisionFootprint: manifest.props.find((instance) => instance.id === card.instanceId)?.collisionRef ?? null,
+        lod: card.lod,
+        textureMemoryBytes: (card.texturePage?.includes('-frame-00.png') ? 256 * 256 : card.texturePage?.includes('/idle/') ? 1280 * 1280 : card.asset.width * card.asset.height) * 4,
+        texturePage: card.texturePage,
+        loadStatus: card.texturePage ? textureDiagnostics.get(card.texturePage)?.status ?? 'unknown' : 'unknown'
       }))
     }),
     setQuality: (nextQuality) => {
@@ -440,13 +521,34 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
     update: (elapsed, cameraPosition) => {
       const started = performance.now();
       const activeAnimationAssets = new Set<string>();
+      for (const card of cards) {
+        if (!card.root.visible || !cameraPosition) continue;
+        const distance = cameraPosition.distanceTo(card.root.position);
+        card.lod = resolveEnvironmentLod(distance, card.asset.lod?.midDistance ?? 12, card.asset.lod?.farDistance ?? 22);
+        if (card.renderClass !== 'ground-prop' && card.renderClass !== 'ground-detail') {
+          card.card.rotation.y = Math.atan2(cameraPosition.x - card.root.position.x, cameraPosition.z - card.root.position.z) - card.root.rotation.y;
+        }
+        if (card.renderClass === 'directional-impostor') {
+          card.cameraRelativeAngle = cameraRelativeEnvironmentAngle(cameraPosition.x, cameraPosition.z, card.root.position.x, card.root.position.z, card.root.rotation.y);
+          card.selectedDirection = resolveEnvironmentDirection(card.cameraRelativeAngle, card.selectedDirection ?? undefined);
+          const direction = directionalAnimation(card.asset, card.selectedDirection);
+          if (direction) {
+            const requestedStatic = textureFor(card.asset, direction.staticAsset);
+            const staticStatus = textureDiagnostics.get(direction.staticAsset)?.status;
+            if (staticStatus === 'loaded' || staticStatus === 'server-fallback') {
+              card.staticTexture = requestedStatic;
+              card.texturePage = direction.staticAsset;
+            }
+          }
+        }
+      }
       if (quality === 'full' && cameraPosition && stageRank(diagnosticStage) >= stageRank('animation')) {
-        const candidates = cards.filter((card) => card.root.visible && card.asset.animation)
+        const candidates = cards.filter((card) => card.root.visible && card.asset.animation && card.lod !== 'far')
           .map((card) => ({ card, distance: cameraPosition.distanceTo(card.root.position) }))
           .filter((entry) => entry.distance < 12)
           .sort((left, right) => left.distance - right.distance);
         for (const { card } of candidates) {
-          activeAnimationAssets.add(card.asset.id);
+          activeAnimationAssets.add(`${card.asset.id}:${card.selectedDirection ?? 'default'}`);
           if (activeAnimationAssets.size >= MAX_ACTIVE_ENVIRONMENT_ATLASES) break;
         }
       }
@@ -456,20 +558,28 @@ export const createEnvironmentWorld = (manifest: EnvironmentManifest = WILDS_ENV
       }
       for (const card of cards) {
         if (!card.root.visible) continue;
-        if (cameraPosition) card.card.rotation.y = Math.atan2(cameraPosition.x - card.root.position.x, cameraPosition.z - card.root.position.z) - card.root.rotation.y;
         const animation = card.asset.animation;
         if (animation && card.animatedMaterial) {
-          const animate = activeAnimationAssets.has(card.asset.id);
-          const frame = environmentFrameAt(card.asset, card.instanceId, elapsed, animate);
-          card.animatedMaterial.uniforms.atlas!.value = animate ? animationTextureFor(card.asset) ?? card.staticTexture : card.staticTexture;
+          const animationKey = `${card.asset.id}:${card.selectedDirection ?? 'default'}`;
+          const animate = activeAnimationAssets.has(animationKey);
+          const directionAnimation = directionalAnimation(card.asset, card.selectedDirection);
+          card.normalizedPhase = environmentNormalizedPhaseAt(card.asset, card.instanceId, elapsed, animate);
+          const frameCount = directionAnimation?.frameCount ?? animation.frameCount;
+          const frame = environmentFrameForPhase(card.normalizedPhase, frameCount);
+          card.animationFrame = frame;
+          const animatedTexture = animate ? animationTextureFor(card.asset, card.selectedDirection) : null;
+          const animationUrl = directionAnimation?.sheet ?? animation.sheet;
+          const animationLoaded = textureDiagnostics.get(animationUrl)?.status === 'loaded';
+          card.animatedMaterial.uniforms.atlas!.value = animate && animationLoaded && animatedTexture ? animatedTexture : card.staticTexture;
+          card.texturePage = animate && animationLoaded ? animationUrl : card.texturePage;
           if (!animate) {
             card.animatedMaterial.uniforms.atlasRegion!.value.set(0, 0, 1, 1);
             continue;
           }
-          const column = frame % animation.columns;
-          const row = Math.floor(frame / animation.columns);
-          const columns = animation.columns;
-          const rows = Math.ceil(animation.frameCount / columns);
+          const columns = directionAnimation?.columns ?? animation.columns;
+          const column = frame % columns;
+          const row = Math.floor(frame / columns);
+          const rows = Math.ceil(frameCount / columns);
           card.animatedMaterial.uniforms.atlasRegion!.value.set(column / columns, 1 - (row + 1) / rows, 1 / columns, 1 / rows);
         }
       }
