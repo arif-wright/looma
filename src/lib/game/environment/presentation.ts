@@ -62,3 +62,19 @@ export const resolveEnvironmentLod = (distance: number, midDistance: number, far
   if (distance >= midDistance) return 'mid';
   return 'near';
 };
+
+/** World-space yaw for an upright plane whose +Z normal faces the camera. */
+export const cylindricalBillboardYaw = (
+  cameraX: number,
+  cameraZ: number,
+  objectX: number,
+  objectZ: number
+) => Math.atan2(cameraX - objectX, cameraZ - objectZ);
+
+/** Environment LOD is ground-plane distance; camera elevation must not demote props. */
+export const horizontalEnvironmentDistance = (
+  cameraX: number,
+  cameraZ: number,
+  objectX: number,
+  objectZ: number
+) => Math.hypot(cameraX - objectX, cameraZ - objectZ);

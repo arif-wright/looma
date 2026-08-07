@@ -10,7 +10,7 @@ import {
 } from '../game/environment/contract';
 import { WORLD_TRAVERSAL } from '../game/traversal';
 import { SharedEnvironmentResources } from '../game/renderers/three/environmentResources';
-import { createEnvironmentWorld, environmentFrameAt } from '../game/renderers/three/environmentWorld';
+import { createBroadleafReviewManifest, createEnvironmentWorld, environmentFrameAt } from '../game/renderers/three/environmentWorld';
 import { ObstructionFadeController } from '../game/renderers/three/obstruction';
 
 const collisionIds = new Set(WORLD_TRAVERSAL.blockers.map((blocker) => blocker.id));
@@ -147,6 +147,44 @@ describe('world environment foundation', () => {
     expect(textureMaps.every((texture) => !(texture instanceof THREE.DataTexture))).toBe(true);
     expect(environment.diagnostics().textures.every((texture) => texture.status === 'loaded')).toBe(true);
 
+    environment.dispose();
+    load.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps Broadleaf grounded, upright, animated, and shared while the elevated camera orbits', async () => {
+    vi.stubGlobal('document', {});
+    const load = vi.spyOn(THREE.TextureLoader.prototype, 'load').mockImplementation((url, onLoad) => {
+      const texture = new THREE.Texture();
+      texture.image = { width: String(url).includes('-frame-00') ? 256 : 1280, height: String(url).includes('-frame-00') ? 256 : 1280 };
+      queueMicrotask(() => onLoad?.(texture));
+      return texture;
+    });
+    const review = createBroadleafReviewManifest(manifest);
+    review.props[0]!.rotation = 1.1;
+    const environment = createEnvironmentWorld(review, 'full', { broadleafLod: 'near' });
+    const firstRoot = environment.root.getObjectByName('broadleaf-v2-review-a')!;
+    const planted = firstRoot.position.clone();
+
+    environment.update(0.1, new THREE.Vector3(planted.x, 100, planted.z + 5));
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    environment.update(0.3, new THREE.Vector3(planted.x, 100, planted.z + 5));
+    const before = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
+    const card = firstRoot.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.PlaneGeometry)!;
+    expect(environment.metrics.atlasPages).toBeGreaterThan(0);
+    expect(before.animationFrames).toBe(25);
+    expect(card.rotation.x).toBe(0);
+    expect(card.rotation.z).toBe(0);
+    expect(firstRoot.rotation.y).toBe(0);
+    expect(firstRoot.position).toEqual(planted);
+
+    environment.update(0.3, new THREE.Vector3(planted.x + 5, 100, planted.z));
+    const after = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
+    expect(after.selectedDirection).not.toBe(before.selectedDirection);
+    expect(after.animationPhase).toBe(before.animationPhase);
+    expect(environment.metrics.atlasPages).toBeLessThanOrEqual(2);
+
+    environment.dispose();
     environment.dispose();
     load.mockRestore();
     vi.unstubAllGlobals();

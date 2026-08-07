@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import manifestJson from '../game/environment/wilds-exploration.environment.json';
-import { validateEnvironmentManifest, type EnvironmentAssetDefinition } from '../game/environment/contract';
+import { environmentAnimationVariation, validateEnvironmentManifest, type EnvironmentAssetDefinition } from '../game/environment/contract';
 import {
   cameraRelativeEnvironmentAngle,
+  cylindricalBillboardYaw,
+  horizontalEnvironmentDistance,
   resolveEnvironmentDirection,
   resolveEnvironmentLod,
   resolveEnvironmentRenderClass
 } from '../game/environment/presentation';
 import { WORLD_TRAVERSAL } from '../game/traversal';
-import { environmentFrameForPhase, environmentNormalizedPhaseAt, WILDS_ENVIRONMENT_MANIFEST } from '../game/renderers/three/environmentWorld';
+import {
+  environmentAtlasRegionForFrame, environmentFrameForPhase,
+  environmentNormalizedPhaseAt, WILDS_ENVIRONMENT_MANIFEST
+} from '../game/renderers/three/environmentWorld';
 
 const asset = (overrides: Partial<EnvironmentAssetDefinition>): EnvironmentAssetDefinition => ({
   id: 'test.asset', kind: 'prop', status: 'production', layer: 'prop', renderer: 'billboard',
@@ -68,6 +73,38 @@ describe('environment visual architecture', () => {
     expect(environmentFrameForPhase(phase, 25)).toBe(Math.floor(phase * 25));
     expect(environmentFrameForPhase(phase, 17)).toBe(Math.floor(phase * 17));
     expect(environmentNormalizedPhaseAt(broadleaf, 'broadleaf-review-a', 2.75, true)).toBe(phase);
+  });
+
+  it('keeps a directional card camera-facing around world-up at every orbit angle', () => {
+    for (let degrees = 0; degrees <= 360; degrees += 45) {
+      const radians = degrees * Math.PI / 180;
+      const cameraX = Math.sin(radians) * 10;
+      const cameraZ = Math.cos(radians) * 10;
+      const yaw = cylindricalBillboardYaw(cameraX, cameraZ, 0, 0);
+      const normal = { x: Math.sin(yaw), z: Math.cos(yaw) };
+      expect(normal.x * cameraX + normal.z * cameraZ).toBeCloseTo(10, 8);
+    }
+  });
+
+  it('ignores camera pitch/elevation for billboard yaw and environment LOD', () => {
+    const lowPitchYaw = cylindricalBillboardYaw(6, 8, 0, 0);
+    const highPitchYaw = cylindricalBillboardYaw(6, 8, 0, 0);
+    expect(highPitchYaw).toBe(lowPitchYaw);
+    expect(horizontalEnvironmentDistance(6, 8, 0, 0)).toBe(10);
+  });
+
+  it('changes atlas UV regions as animation advances and loops without losing phase', () => {
+    expect(environmentAtlasRegionForFrame(0, 25, 5)).toEqual({ x: 0, y: 0.8, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(1, 25, 5)).toEqual({ x: 0.2, y: 0.8, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(24, 25, 5)).toEqual({ x: 0.8, y: 0, width: 0.2, height: 0.2 });
+    const broadleaf = WILDS_ENVIRONMENT_MANIFEST!.assets.find((candidate) => candidate.id === 'tree.broadleaf')!;
+    const variation = environmentAnimationVariation('phase-loop', broadleaf.animation!.frameCount, broadleaf.animation!.speedVariation);
+    const calm = broadleaf.animation!.calmSeconds![0] +
+      (broadleaf.animation!.calmSeconds![1] - broadleaf.animation!.calmSeconds![0]) *
+      ((variation.startFrame + 1) / broadleaf.animation!.frameCount);
+    const cycleSeconds = broadleaf.animation!.frameCount / broadleaf.animation!.fps + calm;
+    expect(environmentNormalizedPhaseAt(broadleaf, 'phase-loop', 0.5, true))
+      .toBeCloseTo(environmentNormalizedPhaseAt(broadleaf, 'phase-loop', 0.5 + cycleSeconds / variation.playbackRate, true), 8);
   });
 
   it('assigns deterministic but asynchronous phase offsets to separate tree instances', () => {

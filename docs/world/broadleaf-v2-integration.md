@@ -37,6 +37,10 @@ Near uses the selected full animation page. Mid retains direction and animation 
 
 Textures and materials are shared by runtime URL. Direction changes retain the old loaded image until the next static/animation page has decoded, preventing a blank flash. Alpha discard, depth testing, obstruction fading, and the renderer-owned shadow remain enabled. Collision and visual bounds remain separate.
 
+The authored direction and the presentation plane solve separate problems. Camera azimuth on the X/Z ground plane selects the native view. Independently, the plane uses cylindrical billboarding: its +Z normal yaws toward the camera, it never inherits camera pitch, and the instance root and bottom anchor remain fixed. Authored instance yaw may offset direction selection, but it is not applied to an upright card's root; the card receives one absolute renderer-owned yaw so nested rotations cannot expose its edge.
+
+LOD and animation admission use horizontal X/Z distance only. Camera elevation is deliberately excluded; including it previously classified nearby trees as too distant and kept their frame-zero fallback visible. Animation phase is stable per instance and survives direction changes.
+
 ## Visual review
 
 Use the development-only review arrangement:
@@ -44,6 +48,15 @@ Use the development-only review arrangement:
 ```text
 /app/world?worldEnvironmentReview=broadleaf&worldEnvironmentInspect=broadleaf-v2-review-a
 ```
+
+Development-only review overrides can be combined with that URL:
+
+- `worldBroadleafDirection=s` forces one of `n,ne,e,se,s,sw,w,nw`.
+- `worldBroadleafFps=8` forces a visible rate from greater than zero through 30.
+- `worldBroadleafFrame=0` freezes an exact zero-based frame.
+- `worldBroadleafLod=near` forces `near`, `mid`, or `far`.
+
+The environment inspector reports current/total frame, phase, selected direction, atlas page, load state, LOD, and the active overrides. These query controls are compiled into development behavior only and do not alter production presentation.
 
 It removes normal decorative clutter and presents two v2 trees near open player space. Add exact camera parameters as needed:
 

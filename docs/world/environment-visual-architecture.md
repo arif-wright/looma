@@ -41,6 +41,8 @@ The resolver divides the camera-relative object angle into eight 45° sectors an
 
 All directional views share one stable instance animation clock, so orbiting never restarts animation. Instance hashes provide phase and bounded speed variation. Direction pages/materials are shared. Near uses full animation; mid retains direction at reduced update/FPS; far uses a representative static direction. Current one-page residency remains until directional assets are profiled.
 
+Directional selection is not billboard orientation. Selection uses camera azimuth relative to the stationary prop. The presentation plane separately yaws about world Y so its normal faces the camera, with no pitch rotation. The group remains at its server-mapped X/Z point and the plane offset keeps the declared ground anchor planted. Environment LOD uses horizontal X/Z distance rather than full camera distance, so camera height cannot disable a nearby animation.
+
 ## Representation decisions
 
 Rocks use `ground-prop`: a horizontal, camera-independent plane with a stable footprint. It is predictable through 360° yaw and cannot become edge-on within the pitch envelope. Replacement art must be composed for this projection; collision remains a separate server circle.
