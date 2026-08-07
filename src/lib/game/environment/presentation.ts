@@ -42,6 +42,13 @@ export const cameraRelativeEnvironmentAngle = (
   objectYaw = 0
 ) => wrapAngle(Math.atan2(cameraX - objectX, cameraZ - objectZ) - objectYaw);
 
+/** Orthographic authored-view azimuth: every screen ray is parallel to camera forward. */
+export const cameraForwardEnvironmentAngle = (
+  cameraForwardX: number,
+  cameraForwardZ: number,
+  objectYaw = 0
+) => wrapAngle(Math.atan2(-cameraForwardX, -cameraForwardZ) - objectYaw);
+
 export const resolveEnvironmentDirection = (
   angle: number,
   previous?: EnvironmentDirection,

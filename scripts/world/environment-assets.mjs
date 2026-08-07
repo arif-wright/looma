@@ -64,6 +64,8 @@ export const validateEnvironmentSources = async (sourceRoot = SOURCE) => {
     await stat(absolute);
     const inspected = await inspectPng(absolute);
     let uniqueFrames = 1;
+    let duplicateGroups = [];
+    let meanSequentialPixelDifference = null;
     if (kind === 'static-rgb') {
       assert.equal(inspected.png.width, 1254, `${source} width`);
       assert.equal(inspected.png.height, 1254, `${source} height`);
@@ -77,24 +79,40 @@ export const validateEnvironmentSources = async (sourceRoot = SOURCE) => {
       assert.equal(inspected.png.height, 1280, `${source} height`);
       assert.ok(inspected.transparentPixels > 0, `${source} requires transparency`);
       const hashes = [];
+      const cells = [];
       for (let row = 0; row < 5; row += 1) for (let column = 0; column < 5; column += 1) {
         const hash = createHash('sha256');
+        const cell = new Uint8Array(FRAME_SIZE * FRAME_SIZE * 4);
         let occupied = false;
         for (let y = 0; y < FRAME_SIZE; y += 1) {
           const start = (((row * FRAME_SIZE + y) * inspected.png.width) + column * FRAME_SIZE) * 4;
           const line = inspected.png.data.subarray(start, start + FRAME_SIZE * 4);
           hash.update(line);
+          cell.set(line, y * FRAME_SIZE * 4);
           for (let alpha = 3; alpha < line.length; alpha += 4) if (line[alpha] > 0) occupied = true;
         }
         assert.ok(occupied, `${source} frame ${row * 5 + column} is blank`);
         hashes.push(hash.digest('hex'));
+        cells.push(cell);
       }
       uniqueFrames = new Set(hashes).size;
+      duplicateGroups = [...new Set(hashes)].map((value) => hashes.map((hash, index) => hash === value ? index : -1).filter((index) => index >= 0)).filter((group) => group.length > 1);
+      let sequentialDifference = 0;
+      let comparedChannels = 0;
+      for (let frame = 1; frame < cells.length; frame += 1) {
+        const before = cells[frame - 1];
+        const after = cells[frame];
+        for (let channel = 0; channel < before.length; channel += 1) {
+          sequentialDifference += Math.abs(before[channel] - after[channel]);
+          comparedChannels += 1;
+        }
+      }
+      meanSequentialPixelDifference = sequentialDifference / comparedChannels;
       assert.equal(uniqueFrames, 25, `${source} contains duplicate frames`);
     }
     report.push({ source, runtime, kind, width: inspected.png.width, height: inspected.png.height,
       transparent: inspected.transparentPixels + inspected.partialAlphaPixels > 0, frames: kind === 'sheet' ? 25 : 1,
-      uniqueFrames, sha256: inspected.sha256 });
+      uniqueFrames, duplicateGroups, meanSequentialPixelDifference, sha256: inspected.sha256 });
   }
   return report;
 };

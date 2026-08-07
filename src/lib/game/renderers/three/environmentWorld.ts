@@ -8,8 +8,9 @@ import { WORLD_TRAVERSAL } from '../../traversal';
 import { SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } from './math';
 import type { ObstructableRegistration } from './obstruction';
 import { SharedEnvironmentResources } from './environmentResources';
+import { applyEnvironmentAtlasFrame, createEnvironmentAtlasMaterial, environmentAtlasRegionForFrame } from './environmentAtlas';
 import {
-  anchoredPlaneTranslation, cameraRelativeEnvironmentAngle, cylindricalBillboardYaw, horizontalEnvironmentDistance,
+  anchoredPlaneTranslation, cameraForwardEnvironmentAngle, cylindricalBillboardYaw, horizontalEnvironmentDistance,
   resolveEnvironmentDirection, resolveEnvironmentLod, resolveEnvironmentRenderClass,
   type EnvironmentDirection, type EnvironmentLod, type EnvironmentRenderClass
 } from '../../environment/presentation';
@@ -70,7 +71,10 @@ export type EnvironmentObjectDiagnostic = {
   renderOrder: number;
   animated: boolean;
   selectedDirection: EnvironmentDirection | null;
+  rawDirection: EnvironmentDirection | null;
   cameraRelativeAngleDegrees: number | null;
+  cameraToTree: { x: number; z: number } | null;
+  cameraForward: { x: number; z: number } | null;
   animationFrame: number;
   requestedAnimationFrame: number;
   resolvedAnimationFrame: number;
@@ -102,7 +106,7 @@ export type EnvironmentWorld = {
   };
   setQuality: (quality: EnvironmentQuality) => void;
   setMoonberryEmphasis: (active: boolean) => void;
-  update: (elapsed: number, cameraPosition?: THREE.Vector3, cameraQuaternion?: THREE.Quaternion, viewCenter?: THREE.Vector3) => void;
+  update: (elapsed: number, cameraPosition?: THREE.Vector3, cameraQuaternion?: THREE.Quaternion, viewCenter?: THREE.Vector3, cameraForward?: THREE.Vector3) => void;
   dispose: () => void;
 };
 
@@ -123,7 +127,10 @@ type EnvironmentCard = {
   renderClass: EnvironmentRenderClass;
   authoredYaw: number;
   selectedDirection: EnvironmentDirection | null;
+  rawDirection: EnvironmentDirection | null;
   cameraRelativeAngle: number | null;
+  cameraToTree: { x: number; z: number } | null;
+  cameraForward: { x: number; z: number } | null;
   animationFrame: number;
   requestedAnimationFrame: number;
   resolvedAnimationFrame: number;
@@ -156,24 +163,6 @@ const assetStage = (assetId: string): EnvironmentDiagnosticStage => {
   if (assetId === 'interactable.moonberry') return 'moonberry';
   return 'full';
 };
-
-const vertexShader = `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`;
-const fragmentShader = `
-uniform sampler2D atlas;
-uniform vec4 atlasRegion;
-uniform float opacity;
-varying vec2 vUv;
-void main() {
-  vec2 atlasUv = atlasRegion.xy + vUv * atlasRegion.zw;
-  vec4 color = texture2D(atlas, atlasUv);
-  if (color.a < 0.025) discard;
-  gl_FragColor = vec4(color.rgb, color.a * opacity);
-}`;
 
 const colorBytes = (color: string) => {
   const parsedColor = new THREE.Color(color);
@@ -252,16 +241,7 @@ export const environmentNormalizedPhaseAt = (asset: EnvironmentAssetDefinition, 
 export const environmentFrameForPhase = (normalizedPhase: number, frameCount: number) =>
   Math.min(frameCount - 1, Math.max(0, Math.floor(normalizedPhase * frameCount)));
 
-export const environmentAtlasRegionForFrame = (frame: number, frameCount: number, columns: number) => {
-  const safeFrame = Math.min(frameCount - 1, Math.max(0, frame));
-  const rows = Math.ceil(frameCount / columns);
-  return {
-    x: (safeFrame % columns) / columns,
-    y: 1 - (Math.floor(safeFrame / columns) + 1) / rows,
-    width: 1 / columns,
-    height: 1 / rows
-  };
-};
+export { environmentAtlasRegionForFrame } from './environmentAtlas';
 
 export const createEnvironmentWorld = (
   manifest: EnvironmentManifest = WILDS_ENVIRONMENT_MANIFEST!,
@@ -415,10 +395,7 @@ export const createEnvironmentWorld = (
     let material: THREE.Material;
     let animatedMaterial: THREE.ShaderMaterial | undefined;
     if (asset.animation) {
-      animatedMaterial = new THREE.ShaderMaterial({
-        uniforms: { atlas: { value: texture }, atlasRegion: { value: new THREE.Vector4(0, 0, 1, 1) }, opacity: { value: 1 } },
-        vertexShader, fragmentShader, transparent: true, depthWrite: false
-      });
+      animatedMaterial = createEnvironmentAtlasMaterial(texture);
       material = animatedMaterial;
     } else {
       material = resources.acquire(`material:card:${asset.id}`, () => new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.025, depthWrite: false }));
@@ -457,7 +434,8 @@ export const createEnvironmentWorld = (
     }
     cards.push({
       root: group, card, asset, instanceId: instance.id, staticTexture: texture, renderClass, authoredYaw,
-      selectedDirection: null, cameraRelativeAngle: null, animationFrame: 0,
+      selectedDirection: null, rawDirection: null, cameraRelativeAngle: null,
+      cameraToTree: null, cameraForward: null, animationFrame: 0,
       requestedAnimationFrame: 0, resolvedAnimationFrame: 0, animationEligible: false,
       uvRegion: { x: 0, y: 0, width: 1, height: 1 }, lod: 'near',
       normalizedPhase: 0,
@@ -549,7 +527,10 @@ export const createEnvironmentWorld = (
         renderOrder: card.root.renderOrder,
         animated: Boolean(card.asset.animation),
         selectedDirection: card.selectedDirection,
+        rawDirection: card.rawDirection,
         cameraRelativeAngleDegrees: card.cameraRelativeAngle === null ? null : card.cameraRelativeAngle * 180 / Math.PI,
+        cameraToTree: card.cameraToTree ? { ...card.cameraToTree } : null,
+        cameraForward: card.cameraForward ? { ...card.cameraForward } : null,
         animationFrame: card.animationFrame,
         requestedAnimationFrame: card.requestedAnimationFrame,
         resolvedAnimationFrame: card.resolvedAnimationFrame,
@@ -577,7 +558,7 @@ export const createEnvironmentWorld = (
       metrics.visibleProps = cards.filter((card) => card.root.visible).length;
     },
     setMoonberryEmphasis: (active) => { emphasized = active; },
-    update: (elapsed, cameraPosition, cameraQuaternion, viewCenter) => {
+    update: (elapsed, cameraPosition, cameraQuaternion, viewCenter, cameraForward) => {
       const started = performance.now();
       const activeAnimationAssets = new Set<string>();
       for (const card of cards) {
@@ -599,7 +580,12 @@ export const createEnvironmentWorld = (
           ), 0);
         }
         if (card.renderClass === 'directional-impostor') {
-          card.cameraRelativeAngle = cameraRelativeEnvironmentAngle(cameraPosition.x, cameraPosition.z, card.root.position.x, card.root.position.z, card.authoredYaw);
+          card.cameraToTree = { x: card.root.position.x - cameraPosition.x, z: card.root.position.z - cameraPosition.z };
+          card.cameraForward = cameraForward ? { x: cameraForward.x, z: cameraForward.z } : null;
+          card.cameraRelativeAngle = cameraForward
+            ? cameraForwardEnvironmentAngle(cameraForward.x, cameraForward.z, card.authoredYaw)
+            : Math.atan2(cameraPosition.x - card.root.position.x, cameraPosition.z - card.root.position.z) - card.authoredYaw;
+          card.rawDirection = resolveEnvironmentDirection(card.cameraRelativeAngle);
           card.selectedDirection = card.asset.id === 'tree.broadleaf' && debugOverrides.broadleafDirection
             ? debugOverrides.broadleafDirection
             : resolveEnvironmentDirection(card.cameraRelativeAngle, card.selectedDirection ?? undefined);
@@ -653,17 +639,17 @@ export const createEnvironmentWorld = (
           const animationUrl = directionAnimation?.sheet ?? animation.sheet;
           const animationLoaded = textureDiagnostics.get(animationUrl)?.status === 'loaded';
           const animationReady = animate && animationLoaded && Boolean(animatedTexture);
-          card.animatedMaterial.uniforms.atlas!.value = animationReady ? animatedTexture : card.staticTexture;
+          const resolvedTexture = animationReady ? animatedTexture! : card.staticTexture;
           card.texturePage = animate && animationLoaded ? animationUrl : card.texturePage;
           if (!animationReady) {
-            card.animatedMaterial.uniforms.atlasRegion!.value.set(0, 0, 1, 1);
+            applyEnvironmentAtlasFrame(card.animatedMaterial, resolvedTexture, { x: 0, y: 0, width: 1, height: 1 });
             card.resolvedAnimationFrame = 0;
             card.uvRegion = { x: 0, y: 0, width: 1, height: 1 };
             continue;
           }
           const columns = directionAnimation?.columns ?? animation.columns;
           const region = environmentAtlasRegionForFrame(frame, frameCount, columns);
-          card.animatedMaterial.uniforms.atlasRegion!.value.set(region.x, region.y, region.width, region.height);
+          applyEnvironmentAtlasFrame(card.animatedMaterial, resolvedTexture, region);
           card.resolvedAnimationFrame = frame;
           card.uvRegion = region;
         }

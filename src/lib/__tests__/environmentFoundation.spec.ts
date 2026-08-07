@@ -170,16 +170,19 @@ describe('world environment foundation', () => {
     const planted = firstRoot.position.clone();
 
     const camera = new THREE.PerspectiveCamera();
+    const cameraForward = new THREE.Vector3();
     camera.position.set(planted.x, 100, planted.z + 18);
     camera.lookAt(planted.x, 0, planted.z);
-    environment.update(0.1, camera.position, camera.quaternion, planted);
+    camera.getWorldDirection(cameraForward);
+    environment.update(0.1, camera.position, camera.quaternion, planted, cameraForward);
     const pending = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
     expect(pending.requestedAnimationFrame).toBeGreaterThanOrEqual(0);
     expect(pending.resolvedAnimationFrame).toBe(0);
     expect(pending.uvScale).toEqual({ x: 1, y: 1 });
     await new Promise<void>((resolve) => queueMicrotask(resolve));
-    environment.update(0.3, camera.position, camera.quaternion, planted);
+    environment.update(0.3, camera.position, camera.quaternion, planted, cameraForward);
     const before = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
+    const secondBefore = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-b')!;
     const card = firstRoot.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.PlaneGeometry)!;
     expect(environment.metrics.atlasPages).toBeGreaterThan(0);
     expect(before.animationFrames).toBe(25);
@@ -189,10 +192,19 @@ describe('world environment foundation', () => {
     expect(before.animationEligible).toBe(true);
     expect(before.materialTextureUuid).toBeTruthy();
     expect(before.uvScale).toEqual({ x: 0.2, y: 0.2 });
+    expect(secondBefore.animationPhase).not.toBe(before.animationPhase);
+    expect(secondBefore.resolvedAnimationFrame).not.toBe(before.resolvedAnimationFrame);
+
+    camera.position.addScaledVector(cameraForward, 6);
+    environment.update(0.3, camera.position, camera.quaternion, planted, cameraForward);
+    const translated = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
+    expect(translated.selectedDirection).toBe(before.selectedDirection);
+    expect(translated.rawDirection).toBe(before.rawDirection);
 
     camera.position.set(planted.x + 18, 100, planted.z);
     camera.lookAt(planted.x, 0, planted.z);
-    environment.update(0.3, camera.position, camera.quaternion, planted);
+    camera.getWorldDirection(cameraForward);
+    environment.update(0.3, camera.position, camera.quaternion, planted, cameraForward);
     const after = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
     expect(after.selectedDirection).not.toBe(before.selectedDirection);
     expect(after.animationPhase).toBe(before.animationPhase);

@@ -3,6 +3,7 @@ import manifestJson from '../game/environment/wilds-exploration.environment.json
 import { environmentAnimationVariation, validateEnvironmentManifest, type EnvironmentAssetDefinition } from '../game/environment/contract';
 import {
   anchoredPlaneTranslation,
+  cameraForwardEnvironmentAngle,
   cameraRelativeEnvironmentAngle,
   cylindricalBillboardYaw,
   horizontalEnvironmentDistance,
@@ -42,6 +43,14 @@ describe('environment visual architecture', () => {
     const angle = cameraRelativeEnvironmentAngle(10, 0, 0, 0);
     expect(resolveEnvironmentDirection(angle)).toBe('e');
     expect(resolveEnvironmentDirection(angle + Math.PI)).toBe('w');
+  });
+
+  it('keeps orthographic authored direction invariant under player/camera translation', () => {
+    const angle = cameraForwardEnvironmentAngle(0, -1);
+    expect(resolveEnvironmentDirection(angle)).toBe('s');
+    // Moving camera and player along the viewing ray does not enter this formula.
+    expect(cameraForwardEnvironmentAngle(0, -1)).toBe(angle);
+    expect(resolveEnvironmentDirection(cameraForwardEnvironmentAngle(-1, 0))).toBe('e');
   });
 
   it('uses architecture-configured near, mid, and far LOD boundaries', () => {
