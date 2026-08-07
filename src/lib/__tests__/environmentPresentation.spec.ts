@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import manifestJson from '../game/environment/wilds-exploration.environment.json';
 import { environmentAnimationVariation, validateEnvironmentManifest, type EnvironmentAssetDefinition } from '../game/environment/contract';
 import {
+  anchoredPlaneTranslation,
   cameraRelativeEnvironmentAngle,
   cylindricalBillboardYaw,
   horizontalEnvironmentDistance,
@@ -11,7 +12,7 @@ import {
 } from '../game/environment/presentation';
 import { WORLD_TRAVERSAL } from '../game/traversal';
 import {
-  environmentAtlasRegionForFrame, environmentFrameForPhase,
+  ENVIRONMENT_ATLAS_TEXTURE_FLIP_Y, environmentAtlasRegionForFrame, environmentFrameForPhase,
   environmentNormalizedPhaseAt, WILDS_ENVIRONMENT_MANIFEST
 } from '../game/renderers/three/environmentWorld';
 
@@ -93,9 +94,22 @@ describe('environment visual architecture', () => {
     expect(horizontalEnvironmentDistance(6, 8, 0, 0)).toBe(10);
   });
 
+  it('places the declared image-space ground anchor at the rotating plane origin', () => {
+    const translation = anchoredPlaneTranslation(4.3, 4.3, { x: 0.5, y: 0.8 });
+    const anchorBeforeTranslation = { x: (0.5 - 0.5) * 4.3, y: (0.5 - 0.8) * 4.3 };
+    expect(anchorBeforeTranslation.x + translation.x).toBeCloseTo(0, 10);
+    expect(anchorBeforeTranslation.y + translation.y).toBeCloseTo(0, 10);
+  });
+
   it('changes atlas UV regions as animation advances and loops without losing phase', () => {
+    expect(ENVIRONMENT_ATLAS_TEXTURE_FLIP_Y).toBe(true);
     expect(environmentAtlasRegionForFrame(0, 25, 5)).toEqual({ x: 0, y: 0.8, width: 0.2, height: 0.2 });
     expect(environmentAtlasRegionForFrame(1, 25, 5)).toEqual({ x: 0.2, y: 0.8, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(4, 25, 5)).toEqual({ x: 0.8, y: 0.8, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(5, 25, 5)).toEqual({ x: 0, y: 0.6, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(6, 25, 5)).toEqual({ x: 0.2, y: 0.6, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(10, 25, 5)).toEqual({ x: 0, y: 0.4, width: 0.2, height: 0.2 });
+    expect(environmentAtlasRegionForFrame(20, 25, 5)).toEqual({ x: 0, y: 0, width: 0.2, height: 0.2 });
     expect(environmentAtlasRegionForFrame(24, 25, 5)).toEqual({ x: 0.8, y: 0, width: 0.2, height: 0.2 });
     const broadleaf = WILDS_ENVIRONMENT_MANIFEST!.assets.find((candidate) => candidate.id === 'tree.broadleaf')!;
     const variation = environmentAnimationVariation('phase-loop', broadleaf.animation!.frameCount, broadleaf.animation!.speedVariation);

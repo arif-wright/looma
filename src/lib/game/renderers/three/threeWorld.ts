@@ -148,6 +148,11 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const environmentDebug: EnvironmentDebugOverrides = {};
   if (import.meta.env.DEV) {
     const query = new URLSearchParams(location.search);
+    if (query.get('worldBroadleafDebug') === 'frames') {
+      environmentDebug.broadleafDirection = 's';
+      environmentDebug.broadleafFps = 2;
+      environmentDebug.broadleafLod = 'near';
+    }
     const direction = query.get('worldBroadleafDirection');
     const fps = Number(query.get('worldBroadleafFps'));
     const frameOverride = Number(query.get('worldBroadleafFrame'));
@@ -211,6 +216,17 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     debug.dataset.testid = 'three-diagnostics';
     Object.assign(debug.style, { position: 'absolute', left: '8px', top: '8px', zIndex: '5', maxHeight: '45%', overflow: 'hidden', margin: '0', padding: '6px', color: '#dffff5', background: '#07120dcc', font: '11px monospace', pointerEvents: 'none' });
     host.appendChild(debug);
+  }
+  const broadleafFrameBadge = import.meta.env.DEV && new URLSearchParams(location.search).get('worldBroadleafDebug') === 'frames'
+    ? document.createElement('div') : null;
+  if (broadleafFrameBadge) {
+    broadleafFrameBadge.dataset.testid = 'broadleaf-frame-counter';
+    Object.assign(broadleafFrameBadge.style, {
+      position: 'absolute', zIndex: '6', transform: 'translate(-50%, -100%)', padding: '4px 7px',
+      border: '1px solid #9fffe1', borderRadius: '4px', color: '#effff9', background: '#07120ddd',
+      font: 'bold 12px monospace', pointerEvents: 'none'
+    });
+    host.appendChild(broadleafFrameBadge);
   }
 
   const removePlayer = (id: string) => {
@@ -429,7 +445,6 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (destroyed || paused) return;
     raf = requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-    environment.update(clock.elapsedTime, camera.position);
     cameraState.update(delta);
     const inputX = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + touch.x;
     const inputY = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + touch.y;
@@ -488,6 +503,17 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     camera.lookAt(cameraTargetSmooth.x, 0.5, cameraTargetSmooth.z);
     camera.zoom = cameraState.zoom;
     camera.updateProjectionMatrix();
+    environment.update(clock.elapsedTime, camera.position, camera.quaternion, cameraTargetSmooth);
+    if (broadleafFrameBadge) {
+      const inspected = environment.diagnostics().objects.find((item) => item.instanceId === (environmentInspectId ?? 'broadleaf-v2-review-a'));
+      if (inspected) {
+        const screen = new THREE.Vector3(inspected.position.x, inspected.position.y + 4.5, inspected.position.z).project(camera);
+        broadleafFrameBadge.style.left = `${(screen.x * 0.5 + 0.5) * renderer.domElement.clientWidth}px`;
+        broadleafFrameBadge.style.top = `${(-screen.y * 0.5 + 0.5) * renderer.domElement.clientHeight}px`;
+        broadleafFrameBadge.textContent = `FRAME ${inspected.resolvedAnimationFrame} / ${inspected.animationFrames}`;
+        broadleafFrameBadge.hidden = !inspected.visible;
+      }
+    }
     updateObstructions(delta);
     if (contextStatus === 'ready') renderer.render(scene, camera);
 
@@ -523,7 +549,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const inspectedTexture = inspectedEnvironment
         ? environmentReport.textures.find((texture) => texture.url === inspectedEnvironment.runtimeTextureUrl) : undefined;
       debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nenv inspect ${inspectedEnvironment?.instanceId ?? 'none'}\nenv asset/class ${inspectedEnvironment ? `${inspectedEnvironment.assetId}/${inspectedEnvironment.renderClass}` : 'none'}\nenv provenance ${inspectedEnvironment?.provenance ?? 'none'}\nenv direction/angle ${inspectedEnvironment ? `${inspectedEnvironment.selectedDirection ?? 'n/a'}/${inspectedEnvironment.cameraRelativeAngleDegrees?.toFixed(1) ?? 'n/a'}°` : 'none'}\nenv animation ${inspectedEnvironment ? `${inspectedEnvironment.animationFrame}/${inspectedEnvironment.animationFrames} @ ${inspectedEnvironment.fps} fps phase ${inspectedEnvironment.animationPhase.toFixed(2)}` : 'none'}\nenv position ${inspectedEnvironment ? `${inspectedEnvironment.position.x.toFixed(2)},${inspectedEnvironment.position.z.toFixed(2)}` : 'none'}\nenv anchor ${inspectedEnvironment ? `${inspectedEnvironment.groundAnchor.x},${inspectedEnvironment.groundAnchor.y}` : 'none'}\nenv collision ${inspectedEnvironment?.collisionFootprint ?? 'none'}\nenv lod/quality ${inspectedEnvironment ? `${inspectedEnvironment.lod}/${quality}` : quality}\nenv texture ${inspectedEnvironment?.runtimeTextureUrl ?? 'none'}\nenv texture state ${inspectedTexture?.status ?? 'none'}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
-      if (inspectedEnvironment) debug.textContent += `\nenv version ${inspectedEnvironment.assetVersion}\nenv normalized phase ${inspectedEnvironment.animationPhase.toFixed(3)}\nenv instance offset ${inspectedEnvironment.instancePhaseOffset.toFixed(3)}\nenv atlas page ${inspectedEnvironment.texturePage ?? 'none'}\nenv page state ${inspectedEnvironment.loadStatus}\nenv approx MB ${(inspectedEnvironment.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenv current/total ${inspectedEnvironment.animationFrame + 1}/${inspectedEnvironment.animationFrames}\nenv effective fps ${environmentDebug.broadleafFps ?? inspectedEnvironment.fps}\nenv broadleaf overrides ${JSON.stringify(environmentDebug)}`;
+      if (inspectedEnvironment) debug.textContent += `\nenv version ${inspectedEnvironment.assetVersion}\nenv normalized phase ${inspectedEnvironment.animationPhase.toFixed(3)}\nenv instance offset ${inspectedEnvironment.instancePhaseOffset.toFixed(3)}\nenv atlas page ${inspectedEnvironment.texturePage ?? 'none'}\nenv page state ${inspectedEnvironment.loadStatus}\nenv approx MB ${(inspectedEnvironment.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenv requested frame ${inspectedEnvironment.requestedAnimationFrame}/25\nenv GPU frame ${inspectedEnvironment.resolvedAnimationFrame}/25\nenv UV offset ${inspectedEnvironment.uvOffset.x.toFixed(3)},${inspectedEnvironment.uvOffset.y.toFixed(3)}\nenv UV scale ${inspectedEnvironment.uvScale.x.toFixed(3)},${inspectedEnvironment.uvScale.y.toFixed(3)}\nenv material texture ${inspectedEnvironment.materialTextureUuid ?? 'none'}\nenv material update ${inspectedEnvironment.materialNeedsUpdate ?? 'n/a'}\nenv animation eligible ${inspectedEnvironment.animationEligible}\nenv effective fps ${environmentDebug.broadleafFps ?? inspectedEnvironment.fps}\nenv broadleaf overrides ${JSON.stringify(environmentDebug)}`;
       fpsFrames = 0;
       fpsElapsed = 0;
     }
@@ -634,6 +660,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       renderer.dispose();
       renderer.domElement.remove();
       debug?.remove();
+      broadleafFrameBadge?.remove();
       if (debugGlobal.__MEMVOYA_WORLD_THREE__) delete debugGlobal.__MEMVOYA_WORLD_THREE__;
     }
   };

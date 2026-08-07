@@ -37,9 +37,11 @@ Near uses the selected full animation page. Mid retains direction and animation 
 
 Textures and materials are shared by runtime URL. Direction changes retain the old loaded image until the next static/animation page has decoded, preventing a blank flash. Alpha discard, depth testing, obstruction fading, and the renderer-owned shadow remain enabled. Collision and visual bounds remain separate.
 
-The authored direction and the presentation plane solve separate problems. Camera azimuth on the X/Z ground plane selects the native view. Independently, the plane uses cylindrical billboarding: its +Z normal yaws toward the camera, it never inherits camera pitch, and the instance root and bottom anchor remain fixed. Authored instance yaw may offset direction selection, but it is not applied to an upright card's root; the card receives one absolute renderer-owned yaw so nested rotations cannot expose its edge.
+The authored direction and the presentation plane solve separate problems. Camera azimuth on the X/Z ground plane selects the native view. Independently, the Broadleaf plane copies the finalized Three camera quaternion, so every tree remains parallel to the screen plane instead of turning independently toward the camera's world position. Authored instance yaw may offset direction selection but never rotates the presentation plane.
 
-LOD and animation admission use horizontal X/Z distance only. Camera elevation is deliberately excluded; including it previously classified nearby trees as too distant and kept their frame-zero fallback visible. Animation phase is stable per instance and survives direction changes.
+The plane geometry is translated once so its declared top-left image-space ground anchor `(0.5, 0.8)` is the mesh origin. The mesh remains at the stationary server-mapped root point; yaw, pitch, zoom, direction changes, and animation therefore rotate presentation around the root rather than moving it. This differs intentionally from the player/companion yaw-only helper: the environment reuses the same separation between presentation and authored direction, while using full screen-facing orientation because a large tree card made pitch and off-axis divergence visible.
+
+LOD and animation admission use horizontal X/Z distance from the orthographic camera's world focus point. Camera elevation and orbit radius are deliberately excluded; measuring from the physical camera previously classified even a centered Classic-view tree beyond the 12-unit animation radius and kept its frame-zero fallback visible. Direction selection still uses the actual camera position. Animation phase is stable per instance and survives direction changes.
 
 ## Visual review
 
@@ -55,8 +57,9 @@ Development-only review overrides can be combined with that URL:
 - `worldBroadleafFps=8` forces a visible rate from greater than zero through 30.
 - `worldBroadleafFrame=0` freezes an exact zero-based frame.
 - `worldBroadleafLod=near` forces `near`, `mid`, or `far`.
+- `worldBroadleafDebug=frames` applies the review defaults: South, 2 FPS, near LOD.
 
-The environment inspector reports current/total frame, phase, selected direction, atlas page, load state, LOD, and the active overrides. These query controls are compiled into development behavior only and do not alter production presentation.
+The environment inspector reports requested and material-resolved frame, normalized phase, UV offset/scale, selected direction, atlas URL/load state, material texture UUID, animation eligibility, LOD, and active overrides. “GPU frame” changes only when the loaded atlas texture and UV region have actually been assigned to that instance's shader uniforms. Textures are shared; each tree owns a distinct shader material/uniform set and independent deterministic phase. These query controls are compiled into development behavior only and do not alter production presentation.
 
 It removes normal decorative clutter and presents two v2 trees near open player space. Add exact camera parameters as needed:
 

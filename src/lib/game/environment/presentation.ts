@@ -78,3 +78,10 @@ export const horizontalEnvironmentDistance = (
   objectX: number,
   objectZ: number
 ) => Math.hypot(cameraX - objectX, cameraZ - objectZ);
+
+/** Translate centered plane geometry so an image-space (top-left) anchor is its origin. */
+export const anchoredPlaneTranslation = (
+  width: number,
+  height: number,
+  anchor: { x: number; y: number }
+) => ({ x: (0.5 - anchor.x) * width, y: (anchor.y - 0.5) * height });

@@ -41,7 +41,7 @@ The resolver divides the camera-relative object angle into eight 45° sectors an
 
 All directional views share one stable instance animation clock, so orbiting never restarts animation. Instance hashes provide phase and bounded speed variation. Direction pages/materials are shared. Near uses full animation; mid retains direction at reduced update/FPS; far uses a representative static direction. Current one-page residency remains until directional assets are profiled.
 
-Directional selection is not billboard orientation. Selection uses camera azimuth relative to the stationary prop. The presentation plane separately yaws about world Y so its normal faces the camera, with no pitch rotation. The group remains at its server-mapped X/Z point and the plane offset keeps the declared ground anchor planted. Environment LOD uses horizontal X/Z distance rather than full camera distance, so camera height cannot disable a nearby animation.
+Directional selection is not billboard orientation. Selection uses camera azimuth relative to the stationary prop. Broadleaf presentation copies the finalized camera quaternion so the large plane stays parallel to the screen; its geometry is translated around the declared image-space ground anchor, leaving the mesh origin planted at the server-mapped X/Z point. The camera transform is never used as tree gameplay-facing. Environment LOD uses horizontal X/Z distance from the orthographic view focus, not the physical orbiting camera, so camera height and orbit radius cannot disable an on-screen animation.
 
 ## Representation decisions
 

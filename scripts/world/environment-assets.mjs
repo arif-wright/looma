@@ -63,6 +63,7 @@ export const validateEnvironmentSources = async (sourceRoot = SOURCE) => {
     const absolute = path.join(sourceRoot, source);
     await stat(absolute);
     const inspected = await inspectPng(absolute);
+    let uniqueFrames = 1;
     if (kind === 'static-rgb') {
       assert.equal(inspected.png.width, 1254, `${source} width`);
       assert.equal(inspected.png.height, 1254, `${source} height`);
@@ -88,10 +89,12 @@ export const validateEnvironmentSources = async (sourceRoot = SOURCE) => {
         assert.ok(occupied, `${source} frame ${row * 5 + column} is blank`);
         hashes.push(hash.digest('hex'));
       }
-      assert.equal(new Set(hashes).size, 25, `${source} contains duplicate frames`);
+      uniqueFrames = new Set(hashes).size;
+      assert.equal(uniqueFrames, 25, `${source} contains duplicate frames`);
     }
     report.push({ source, runtime, kind, width: inspected.png.width, height: inspected.png.height,
-      transparent: inspected.transparentPixels + inspected.partialAlphaPixels > 0, frames: kind === 'sheet' ? 25 : 1, sha256: inspected.sha256 });
+      transparent: inspected.transparentPixels + inspected.partialAlphaPixels > 0, frames: kind === 'sheet' ? 25 : 1,
+      uniqueFrames, sha256: inspected.sha256 });
   }
   return report;
 };

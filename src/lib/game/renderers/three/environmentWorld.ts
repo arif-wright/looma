@@ -9,7 +9,7 @@ import { SERVER_UNITS_PER_WORLD_UNIT, serverToWorld } from './math';
 import type { ObstructableRegistration } from './obstruction';
 import { SharedEnvironmentResources } from './environmentResources';
 import {
-  cameraRelativeEnvironmentAngle, cylindricalBillboardYaw, horizontalEnvironmentDistance,
+  anchoredPlaneTranslation, cameraRelativeEnvironmentAngle, cylindricalBillboardYaw, horizontalEnvironmentDistance,
   resolveEnvironmentDirection, resolveEnvironmentLod, resolveEnvironmentRenderClass,
   type EnvironmentDirection, type EnvironmentLod, type EnvironmentRenderClass
 } from '../../environment/presentation';
@@ -72,6 +72,8 @@ export type EnvironmentObjectDiagnostic = {
   selectedDirection: EnvironmentDirection | null;
   cameraRelativeAngleDegrees: number | null;
   animationFrame: number;
+  requestedAnimationFrame: number;
+  resolvedAnimationFrame: number;
   animationFrames: number;
   fps: number;
   animationPhase: number;
@@ -82,6 +84,11 @@ export type EnvironmentObjectDiagnostic = {
   textureMemoryBytes: number;
   texturePage: string | null;
   loadStatus: EnvironmentTextureDiagnostic['status'] | 'unknown';
+  animationEligible: boolean;
+  uvOffset: { x: number; y: number };
+  uvScale: { x: number; y: number };
+  materialTextureUuid: string | null;
+  materialNeedsUpdate: boolean | null;
 };
 
 export type EnvironmentWorld = {
@@ -95,7 +102,7 @@ export type EnvironmentWorld = {
   };
   setQuality: (quality: EnvironmentQuality) => void;
   setMoonberryEmphasis: (active: boolean) => void;
-  update: (elapsed: number, cameraPosition?: THREE.Vector3) => void;
+  update: (elapsed: number, cameraPosition?: THREE.Vector3, cameraQuaternion?: THREE.Quaternion, viewCenter?: THREE.Vector3) => void;
   dispose: () => void;
 };
 
@@ -118,6 +125,10 @@ type EnvironmentCard = {
   selectedDirection: EnvironmentDirection | null;
   cameraRelativeAngle: number | null;
   animationFrame: number;
+  requestedAnimationFrame: number;
+  resolvedAnimationFrame: number;
+  animationEligible: boolean;
+  uvRegion: { x: number; y: number; width: number; height: number };
   lod: EnvironmentLod;
   normalizedPhase: number;
   instancePhaseOffset: number;
@@ -125,6 +136,7 @@ type EnvironmentCard = {
 };
 
 const MAX_ACTIVE_ENVIRONMENT_ATLASES = 2;
+export const ENVIRONMENT_ATLAS_TEXTURE_FLIP_Y = true;
 export const ENVIRONMENT_DIAGNOSTIC_STAGES = [
   'background', 'grass', 'path', 'transition', 'broadleaf', 'evergreen', 'large-rock', 'medium-rock',
   'grass-tuft', 'flower-cluster', 'aether-plant', 'moonberry', 'animation', 'effects', 'full'
@@ -278,6 +290,7 @@ export const createEnvironmentWorld = (
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = surface;
     texture.anisotropy = surface ? 4 : 1;
+    texture.flipY = ENVIRONMENT_ATLAS_TEXTURE_FLIP_Y;
     if (surface) texture.repeat.set(3, 2);
     texture.needsUpdate = true;
   };
@@ -369,9 +382,17 @@ export const createEnvironmentWorld = (
   path.renderOrder = layerOrder['terrain-detail'] + 1;
   if (stageRank(diagnosticStage) >= stageRank('path')) root.add(path);
 
-  const planeFor = (asset: EnvironmentAssetDefinition) => {
+  const planeFor = (asset: EnvironmentAssetDefinition, anchored = false) => {
     const scale = asset.worldScale ?? { width: asset.width / SERVER_UNITS_PER_WORLD_UNIT, height: asset.height / SERVER_UNITS_PER_WORLD_UNIT };
-    return resources.acquire(`geometry:card:${asset.id}`, () => new THREE.PlaneGeometry(scale.width, scale.height));
+    return resources.acquire(`geometry:card:${asset.id}:${anchored ? 'anchored' : 'centered'}`, () => {
+      const geometry = new THREE.PlaneGeometry(scale.width, scale.height);
+      if (anchored) {
+        const anchor = asset.groundAnchor ?? asset.pivot;
+        const translation = anchoredPlaneTranslation(scale.width, scale.height, anchor);
+        geometry.translate(translation.x, translation.y, 0);
+      }
+      return geometry;
+    });
   };
   const shadowGeometry = resources.acquire('geometry:environment-shadow', () => new THREE.CircleGeometry(0.5, 20));
   const shadowMaterial = resources.acquire('material:environment-shadow', () => new THREE.MeshBasicMaterial({ color: 0x07130f, transparent: true, opacity: 0.2, depthWrite: false }));
@@ -402,13 +423,14 @@ export const createEnvironmentWorld = (
     } else {
       material = resources.acquire(`material:card:${asset.id}`, () => new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.025, depthWrite: false }));
     }
-    const card = new THREE.Mesh(planeFor(asset), material);
+    const screenFacing = renderClass === 'directional-impostor';
+    const card = new THREE.Mesh(planeFor(asset, screenFacing), material);
     const height = asset.worldScale?.height ?? asset.height / SERVER_UNITS_PER_WORLD_UNIT;
     const groundAnchor = asset.groundAnchor ?? asset.pivot;
     if (renderClass === 'ground-prop' || renderClass === 'ground-detail') {
       card.rotation.x = -Math.PI / 2;
       card.position.y = 0.018;
-    } else card.position.y = Math.max(0.01, (groundAnchor.y - 0.5) * height);
+    } else card.position.y = screenFacing ? 0.01 : Math.max(0.01, (groundAnchor.y - 0.5) * height);
     card.onBeforeRender = () => {
       const opacity = Number(group.userData.environmentOpacity ?? 1);
       if (animatedMaterial) animatedMaterial.uniforms.opacity!.value = opacity;
@@ -435,7 +457,9 @@ export const createEnvironmentWorld = (
     }
     cards.push({
       root: group, card, asset, instanceId: instance.id, staticTexture: texture, renderClass, authoredYaw,
-      selectedDirection: null, cameraRelativeAngle: null, animationFrame: 0, lod: 'near',
+      selectedDirection: null, cameraRelativeAngle: null, animationFrame: 0,
+      requestedAnimationFrame: 0, resolvedAnimationFrame: 0, animationEligible: false,
+      uvRegion: { x: 0, y: 0, width: 1, height: 1 }, lod: 'near',
       normalizedPhase: 0,
       instancePhaseOffset: environmentAnimationVariation(instance.id, asset.animation?.frameCount ?? 1, asset.animation?.speedVariation ?? 0).startFrame / (asset.animation?.frameCount ?? 1),
       texturePage: asset.staticAsset ?? asset.runtimeAsset ?? asset.texture ?? null,
@@ -527,6 +551,8 @@ export const createEnvironmentWorld = (
         selectedDirection: card.selectedDirection,
         cameraRelativeAngleDegrees: card.cameraRelativeAngle === null ? null : card.cameraRelativeAngle * 180 / Math.PI,
         animationFrame: card.animationFrame,
+        requestedAnimationFrame: card.requestedAnimationFrame,
+        resolvedAnimationFrame: card.resolvedAnimationFrame,
         animationFrames: card.asset.animation?.frameCount ?? 1,
         fps: card.asset.animation?.fps ?? 0,
         animationPhase: card.normalizedPhase,
@@ -536,7 +562,13 @@ export const createEnvironmentWorld = (
         lod: card.lod,
         textureMemoryBytes: (card.texturePage?.includes('-frame-00.png') ? 256 * 256 : card.texturePage?.includes('/idle/') ? 1280 * 1280 : card.asset.width * card.asset.height) * 4,
         texturePage: card.texturePage,
-        loadStatus: card.texturePage ? textureDiagnostics.get(card.texturePage)?.status ?? 'unknown' : 'unknown'
+        loadStatus: card.texturePage ? textureDiagnostics.get(card.texturePage)?.status ?? 'unknown' : 'unknown',
+        animationEligible: card.animationEligible,
+        uvOffset: { x: card.uvRegion.x, y: card.uvRegion.y },
+        uvScale: { x: card.uvRegion.width, y: card.uvRegion.height },
+        materialTextureUuid: card.animatedMaterial
+          ? (card.animatedMaterial.uniforms.atlas!.value as THREE.Texture | null)?.uuid ?? null : null,
+        materialNeedsUpdate: card.animatedMaterial ? card.animatedMaterial.needsUpdate : null
       }))
     }),
     setQuality: (nextQuality) => {
@@ -545,16 +577,21 @@ export const createEnvironmentWorld = (
       metrics.visibleProps = cards.filter((card) => card.root.visible).length;
     },
     setMoonberryEmphasis: (active) => { emphasized = active; },
-    update: (elapsed, cameraPosition) => {
+    update: (elapsed, cameraPosition, cameraQuaternion, viewCenter) => {
       const started = performance.now();
       const activeAnimationAssets = new Set<string>();
       for (const card of cards) {
         if (!card.root.visible || !cameraPosition) continue;
-        const distance = horizontalEnvironmentDistance(cameraPosition.x, cameraPosition.z, card.root.position.x, card.root.position.z);
+        const lodOrigin = viewCenter ?? cameraPosition;
+        const distance = horizontalEnvironmentDistance(lodOrigin.x, lodOrigin.z, card.root.position.x, card.root.position.z);
         card.lod = card.asset.id === 'tree.broadleaf' && debugOverrides.broadleafLod
           ? debugOverrides.broadleafLod
           : resolveEnvironmentLod(distance, card.asset.lod?.midDistance ?? 12, card.asset.lod?.farDistance ?? 22);
-        if (card.renderClass !== 'ground-prop' && card.renderClass !== 'ground-detail') {
+        if (card.renderClass === 'directional-impostor' && cameraQuaternion) {
+          // A true screen-facing plane: presentation follows the camera view while
+          // the authored direction remains selected independently from world azimuth.
+          card.card.quaternion.copy(cameraQuaternion);
+        } else if (card.renderClass !== 'ground-prop' && card.renderClass !== 'ground-detail') {
           // Cylindrical billboard: the card's world-space normal faces the camera,
           // while its root and ground anchor remain fixed and pitch never tilts it.
           card.card.rotation.set(0, cylindricalBillboardYaw(
@@ -579,7 +616,10 @@ export const createEnvironmentWorld = (
       }
       if (quality === 'full' && cameraPosition && stageRank(diagnosticStage) >= stageRank('animation')) {
         const candidates = cards.filter((card) => card.root.visible && card.asset.animation && card.lod !== 'far')
-          .map((card) => ({ card, distance: horizontalEnvironmentDistance(cameraPosition.x, cameraPosition.z, card.root.position.x, card.root.position.z) }))
+          .map((card) => {
+            const lodOrigin = viewCenter ?? cameraPosition;
+            return { card, distance: horizontalEnvironmentDistance(lodOrigin.x, lodOrigin.z, card.root.position.x, card.root.position.z) };
+          })
           .filter((entry) => entry.distance < 12)
           .sort((left, right) => left.distance - right.distance);
         for (const { card } of candidates) {
@@ -597,6 +637,7 @@ export const createEnvironmentWorld = (
         if (animation && card.animatedMaterial) {
           const animationKey = `${card.asset.id}:${card.selectedDirection ?? 'default'}`;
           const animate = activeAnimationAssets.has(animationKey);
+          card.animationEligible = animate;
           const directionAnimation = directionalAnimation(card.asset, card.selectedDirection);
           const effectiveElapsed = card.asset.id === 'tree.broadleaf' && debugOverrides.broadleafFps
             ? elapsed * debugOverrides.broadleafFps / animation.fps
@@ -607,18 +648,24 @@ export const createEnvironmentWorld = (
             ? Math.min(frameCount - 1, Math.max(0, debugOverrides.broadleafFrame))
             : environmentFrameForPhase(card.normalizedPhase, frameCount);
           card.animationFrame = frame;
+          card.requestedAnimationFrame = frame;
           const animatedTexture = animate ? animationTextureFor(card.asset, card.selectedDirection) : null;
           const animationUrl = directionAnimation?.sheet ?? animation.sheet;
           const animationLoaded = textureDiagnostics.get(animationUrl)?.status === 'loaded';
-          card.animatedMaterial.uniforms.atlas!.value = animate && animationLoaded && animatedTexture ? animatedTexture : card.staticTexture;
+          const animationReady = animate && animationLoaded && Boolean(animatedTexture);
+          card.animatedMaterial.uniforms.atlas!.value = animationReady ? animatedTexture : card.staticTexture;
           card.texturePage = animate && animationLoaded ? animationUrl : card.texturePage;
-          if (!animate) {
+          if (!animationReady) {
             card.animatedMaterial.uniforms.atlasRegion!.value.set(0, 0, 1, 1);
+            card.resolvedAnimationFrame = 0;
+            card.uvRegion = { x: 0, y: 0, width: 1, height: 1 };
             continue;
           }
           const columns = directionAnimation?.columns ?? animation.columns;
           const region = environmentAtlasRegionForFrame(frame, frameCount, columns);
           card.animatedMaterial.uniforms.atlasRegion!.value.set(region.x, region.y, region.width, region.height);
+          card.resolvedAnimationFrame = frame;
+          card.uvRegion = region;
         }
       }
       if (moonberry) {

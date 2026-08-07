@@ -11,6 +11,7 @@ test('validates all approved source dimensions, transparency, and frame counts',
   assert.equal(report.length, 34);
   assert.equal(report.filter((asset) => asset.kind === 'sheet').length, 14);
   assert.equal(report.filter((asset) => asset.runtime.includes('broadleaf-v2/idle/')).length, 8);
+  assert.ok(report.filter((asset) => asset.runtime.includes('broadleaf-v2/idle/')).every((asset) => asset.uniqueFrames === 25));
   assert.ok(report.filter((asset) => asset.kind === 'sheet').every((asset) => asset.frames === 25 && asset.transparent));
   assert.ok(report.filter((asset) => asset.kind === 'static-rgb').every((asset) => !asset.transparent));
 });

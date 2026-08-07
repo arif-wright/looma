@@ -162,27 +162,47 @@ describe('world environment foundation', () => {
     });
     const review = createBroadleafReviewManifest(manifest);
     review.props[0]!.rotation = 1.1;
+    review.props[1]!.x = review.props[0]!.x;
+    review.props[1]!.y = review.props[0]!.y;
+    review.props[1]!.rotation = review.props[0]!.rotation;
     const environment = createEnvironmentWorld(review, 'full', { broadleafLod: 'near' });
     const firstRoot = environment.root.getObjectByName('broadleaf-v2-review-a')!;
     const planted = firstRoot.position.clone();
 
-    environment.update(0.1, new THREE.Vector3(planted.x, 100, planted.z + 5));
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(planted.x, 100, planted.z + 18);
+    camera.lookAt(planted.x, 0, planted.z);
+    environment.update(0.1, camera.position, camera.quaternion, planted);
+    const pending = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
+    expect(pending.requestedAnimationFrame).toBeGreaterThanOrEqual(0);
+    expect(pending.resolvedAnimationFrame).toBe(0);
+    expect(pending.uvScale).toEqual({ x: 1, y: 1 });
     await new Promise<void>((resolve) => queueMicrotask(resolve));
-    environment.update(0.3, new THREE.Vector3(planted.x, 100, planted.z + 5));
+    environment.update(0.3, camera.position, camera.quaternion, planted);
     const before = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
     const card = firstRoot.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.PlaneGeometry)!;
     expect(environment.metrics.atlasPages).toBeGreaterThan(0);
     expect(before.animationFrames).toBe(25);
-    expect(card.rotation.x).toBe(0);
-    expect(card.rotation.z).toBe(0);
+    expect(card.quaternion.equals(camera.quaternion)).toBe(true);
     expect(firstRoot.rotation.y).toBe(0);
     expect(firstRoot.position).toEqual(planted);
+    expect(before.animationEligible).toBe(true);
+    expect(before.materialTextureUuid).toBeTruthy();
+    expect(before.uvScale).toEqual({ x: 0.2, y: 0.2 });
 
-    environment.update(0.3, new THREE.Vector3(planted.x + 5, 100, planted.z));
+    camera.position.set(planted.x + 18, 100, planted.z);
+    camera.lookAt(planted.x, 0, planted.z);
+    environment.update(0.3, camera.position, camera.quaternion, planted);
     const after = environment.diagnostics().objects.find((item) => item.instanceId === 'broadleaf-v2-review-a')!;
     expect(after.selectedDirection).not.toBe(before.selectedDirection);
     expect(after.animationPhase).toBe(before.animationPhase);
     expect(environment.metrics.atlasPages).toBeLessThanOrEqual(2);
+
+    const secondRoot = environment.root.getObjectByName('broadleaf-v2-review-b')!;
+    const firstMaterial = (card as THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>).material;
+    const secondCard = secondRoot.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.PlaneGeometry) as THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
+    expect(secondCard.material).not.toBe(firstMaterial);
+    expect(secondCard.material.uniforms.atlas!.value).toBe(firstMaterial.uniforms.atlas!.value);
 
     environment.dispose();
     environment.dispose();
