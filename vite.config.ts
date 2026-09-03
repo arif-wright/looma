@@ -28,6 +28,7 @@ export default defineConfig({
     // but should be executed via `npm run test:e2e`.
     include: [
       'src/lib/__tests__/**/*.spec.ts',
+      'src/routes/api/events/ingest/*.spec.ts',
       'tests/api/companion-bond*.spec.ts',
       'tests/api/companion-rituals.spec.ts'
     ]

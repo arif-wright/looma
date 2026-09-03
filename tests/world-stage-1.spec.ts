@@ -69,8 +69,8 @@ test.describe('The Wilds protected route', () => {
     const auditResponse = await request.get('/game/environment/v1/asset-audit.json');
     expect(auditResponse.ok()).toBe(true);
     const audit = await auditResponse.json();
-    expect(audit.assets).toHaveLength(18);
-    expect(audit.assets.filter((asset: { kind: string }) => asset.kind === 'sheet')).toHaveLength(6);
+    expect(audit.assets).toHaveLength(34);
+    expect(audit.assets.filter((asset: { kind: string }) => asset.kind === 'sheet')).toHaveLength(14);
     for (const asset of audit.assets) {
       const response = await request.get(`/game/environment/v1/${asset.runtime}`);
       expect(response.ok(), asset.runtime).toBe(true);

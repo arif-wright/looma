@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { createSupabaseServerClient } from '$lib/server/supabase';
+import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/server/supabase';
 import { trackLightweightUsage, type LightweightTrackedType } from '$lib/server/analytics/lightweight';
 import { agentRegistry, dispatchEvent } from '$lib/server/agents';
 import type { AgentEvent } from '$lib/agents/types';
@@ -149,9 +149,15 @@ export const POST: RequestHandler = async (event) => {
   });
 
   if (userId) {
+    const receiptClient = tryGetSupabaseAdminClient();
+    if (!receiptClient) {
+      console.error('[events] idempotency receipt service unavailable');
+      return json({ error: 'service_unavailable' }, { status: 503 });
+    }
+
     try {
       const receipt = await claimEventIngestReceipt({
-        supabase,
+        supabase: receiptClient,
         userId,
         type,
         idempotencyKey
@@ -167,8 +173,9 @@ export const POST: RequestHandler = async (event) => {
           traceId: null
         });
       }
-    } catch (err) {
-      console.error('[events] idempotency receipt failed', err);
+    } catch {
+      console.error('[events] idempotency receipt failed');
+      return json({ error: 'service_unavailable' }, { status: 503 });
     }
   }
 
