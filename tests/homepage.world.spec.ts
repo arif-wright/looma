@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Memvoya homepage renders key sections and CTA navigates to auth', async ({ page }) => {
+test('Memvoya homepage renders key sections and CTA navigates to login', async ({ page }) => {
   await page.route('**/*', async (route) => {
     const type = route.request().resourceType();
     if (type === 'image' || type === 'media' || type === 'font') {
@@ -22,8 +22,8 @@ test('Memvoya homepage renders key sections and CTA navigates to auth', async ({
   await expect(page.getByRole('heading', { level: 2, name: 'A quiz becomes the first emotional handshake.' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Not a category. A relationship that can return.' })).toBeVisible();
 
-  const navigationPromise = page.waitForURL('**/app/auth');
+  const navigationPromise = page.waitForURL('**/app/login');
   await page.getByRole('link', { name: 'Begin the bond' }).first().click();
   await navigationPromise;
-  await expect(page).toHaveURL(/\/app\/auth$/);
+  await expect(page).toHaveURL(/\/app\/login$/);
 });

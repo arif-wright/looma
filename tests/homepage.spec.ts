@@ -22,7 +22,7 @@ test.describe('Marketing homepage', () => {
   test('CTA navigates to login', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.getByRole('link', { name: 'Begin the bond' }).first().click();
-    await expect(page).toHaveURL(/\/app\/auth$/);
+    await expect(page).toHaveURL(/\/app\/login$/);
   });
 
   test('sections render for worlds and support copy', async ({ page }) => {
