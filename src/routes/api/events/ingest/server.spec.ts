@@ -143,4 +143,18 @@ describe('POST /api/events/ingest receipt handling', () => {
     expect(mocks.dispatchEvent).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  it('returns 401 for unauthenticated requests and does not invoke admin or receipt helpers', async () => {
+    // Simulate an unauthenticated request (no session returned from the request client)
+    mocks.createRequestClient.mockResolvedValue({ supabase: requestClient, session: null });
+
+    const response = await POST(makeEvent());
+
+    expect(response.status).toBe(401);
+    // Ensure we didn't try to obtain the admin client or claim a receipt
+    expect(mocks.getAdminClient).not.toHaveBeenCalled();
+    expect(mocks.claimReceipt).not.toHaveBeenCalled();
+    // And no downstream processing should occur
+    expect(mocks.dispatchEvent).not.toHaveBeenCalled();
+  });
 });
