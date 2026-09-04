@@ -143,4 +143,27 @@ describe('POST /api/events/ingest receipt handling', () => {
     expect(mocks.dispatchEvent).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  it("returns 400 'Unsupported event type' when the payload is missing type and does not call any downstream clients", async () => {
+    const badRequest = {
+      request: new Request('http://localhost/api/events/ingest', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ payload: { foo: 'bar' }, meta: { idempotencyKey: 'receipt-1' } })
+      }),
+      locals: {},
+      getClientAddress: () => '127.0.0.1'
+    } as any;
+
+    const response = await POST(badRequest);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Unsupported event type' });
+
+    // Ensure no upstream/downstream side-effects or clients were used
+    expect(mocks.createRequestClient).not.toHaveBeenCalled();
+    expect(mocks.getAdminClient).not.toHaveBeenCalled();
+    expect(mocks.claimReceipt).not.toHaveBeenCalled();
+    expect(mocks.dispatchEvent).not.toHaveBeenCalled();
+  });
 });
