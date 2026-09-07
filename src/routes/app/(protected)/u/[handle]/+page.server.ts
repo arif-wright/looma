@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { supabaseServer } from '$lib/supabaseClient';
 import type { PostRow } from '$lib/social/types';
 import { env } from '$env/dynamic/public';
-import { getPersonaSummary } from '$lib/server/persona';
+import { getPublicPersonaSummary } from '$lib/server/persona';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 type CompanionRow = {
@@ -189,7 +189,7 @@ export const load: PageServerLoad = async (event) => {
       ])
     : [null, { items: [] as PostRow[], nextCursor: null }, null, [] as AchievementRow[], []];
 
-  const personaPublic = allowContent ? await getPersonaSummary(profile.id) : null;
+  const personaPublic = allowContent ? await getPublicPersonaSummary(profile.id) : null;
 
   const showShards = isOwner ? true : profile.show_shards ?? true;
   const showLevel = isOwner ? true : profile.show_level ?? true;

@@ -1,3 +1,4 @@
+import { toPublicPersona } from '$lib/companions/personalization';
 import { createClient } from '@supabase/supabase-js';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env as privateEnv } from '$env/dynamic/private';
@@ -31,4 +32,8 @@ export async function getPersonaSummary(userId: string | null | undefined): Prom
   }
 
   return (data?.summary as Record<string, any> | null) ?? null;
+}
+
+export async function getPublicPersonaSummary(userId: string | null | undefined) {
+  return toPublicPersona(await getPersonaSummary(userId));
 }

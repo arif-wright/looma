@@ -1,3 +1,4 @@
+import { getCompanionPersonalization } from '$lib/server/companionPersonalization';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
@@ -431,13 +432,16 @@ export const POST: RequestHandler = async (event) => {
     }
   }
 
+  const personalization = type === 'companion.ritual.listen' && !suppressAdaptationFromMeta
+    ? await getCompanionPersonalization(event)
+    : null;
   const agentEvent: AgentEvent = {
     id: crypto.randomUUID(),
     type,
     scope: resolveScope(type),
     timestamp: nowIso,
     payload: eventPayload ?? null,
-    context: context as unknown as Record<string, unknown>,
+    context: { ...context, personalization } as unknown as Record<string, unknown>,
     meta: {
       sessionId,
       userId: userId ?? undefined,
