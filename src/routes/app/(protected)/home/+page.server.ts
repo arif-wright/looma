@@ -1,3 +1,4 @@
+import { dailyActivityEvidence } from '$lib/companions/dailyActivity';
 import type { PageServerLoad } from './$types';
 import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -335,49 +336,6 @@ const applyKeepsakeToSanctuaryNudge = (args: {
         title: `${theme.title} is holding the bond close`,
         body: `${name} is in a deeper bond chapter. A small sincere return will do more than a dramatic gesture today.`
       } satisfies SanctuaryNudge;
-  }
-};
-
-const applyKeepsakeToDailyRecap = (args: {
-  recap: DailyArcRecap | null;
-  keepsakeTheme: KeepsakeTheme | null;
-  companionName: string | null;
-}) => {
-  if (!args.recap || !args.keepsakeTheme) return args.recap;
-  const name = args.companionName?.trim() || 'your companion';
-
-  switch (args.keepsakeTheme.tone) {
-    case 'care':
-      return {
-        ...args.recap,
-        title: `${name}'s care chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} made the whole day read as steady care.`
-      } satisfies DailyArcRecap;
-    case 'social':
-      return {
-        ...args.recap,
-        title: `${name}'s shared thread is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} turned the day toward connection beyond the sanctuary.`
-      } satisfies DailyArcRecap;
-    case 'mission':
-      return {
-        ...args.recap,
-        title: `${name}'s purposeful chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} gave the bond a stronger sense of direction.`
-      } satisfies DailyArcRecap;
-    case 'play':
-      return {
-        ...args.recap,
-        title: `${name}'s bright chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} kept the relationship feeling lighter and more alive.`
-      } satisfies DailyArcRecap;
-    case 'bond':
-    default:
-      return {
-        ...args.recap,
-        title: `${name}'s bond chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} made the closeness of the day feel more explicit.`
-      } satisfies DailyArcRecap;
   }
 };
 
@@ -1171,7 +1129,7 @@ export const load: PageServerLoad = async (event) => {
     let chapterReveal: ChapterRevealMoment | null = null;
     const chapterActivity = userId && activeCompanion?.id
       ? await loadChapterActivity(supabase, userId, activeCompanion.id)
-      : { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0 };
+      : { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0, dailyEvidence: dailyActivityEvidence([], []) };
     if (userId && activeCompanion?.id) {
       const [socialEntries, systemEntries] = await Promise.all([
         supabase
@@ -1325,10 +1283,8 @@ export const load: PageServerLoad = async (event) => {
         : [];
     const dailyArc = deriveDailyCompanionArc({
       companionName: activeCompanion?.name ?? null,
-      hasDailyCheckin: Boolean(dailyCheckinToday || latestDailyCheckin),
-      rituals,
-      hasSocialMoment: journalMoments.some((entry) => entry.label === 'Social'),
-      hasJournalMoment: journalMoments.length > 0
+      ...chapterActivity.dailyEvidence,
+      rituals: []
     });
     const keepsakeTheme = await resolveFeaturedKeepsakeTheme({
       supabase,
@@ -1372,11 +1328,6 @@ export const load: PageServerLoad = async (event) => {
       companionName: activeCompanion?.name ?? null,
       keepsakeTheme,
       weeklyArc
-    });
-    const flavoredDailyArcRecap = applyKeepsakeToDailyRecap({
-      recap: dailyArcRecap,
-      keepsakeTheme,
-      companionName: activeCompanion?.name ?? null
     });
     const chapterPaths = buildChapterPaths({
       companionName: activeCompanion?.name ?? null,
@@ -1432,7 +1383,7 @@ export const load: PageServerLoad = async (event) => {
       chapterReveal,
       sanctuaryNudge,
       dailyArc,
-      dailyArcRecap: flavoredDailyArcRecap,
+      dailyArcRecap,
       weeklyArc,
       chapterMilestones,
       chapterRewards,

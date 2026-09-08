@@ -1,3 +1,4 @@
+import { dailyActivityEvidence } from '$lib/companions/dailyActivity';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
@@ -504,13 +505,14 @@ export const deriveRitualGuideFromPattern = (
 export const deriveDailyCompanionArc = (args: {
   companionName: string | null;
   hasDailyCheckin: boolean;
+  hasCareMoment?: boolean;
   rituals: CompanionRitual[];
   hasSocialMoment: boolean;
   hasJournalMoment: boolean;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const completedRituals = args.rituals.filter((entry) => entry.status === 'completed').length;
-  const hasRitual = completedRituals > 0;
+  const hasRitual = args.hasCareMoment ?? (completedRituals > 0);
 
   const steps: DailyCompanionArcStep[] = [
     {
@@ -576,68 +578,14 @@ export const deriveDailyCompanionArcRecap = (args: {
   if (completeCount < 3) return null;
 
   const phrases: string[] = [];
-  if (done.has('arrive')) phrases.push('you showed up honestly');
-  if (done.has('ritual')) phrases.push('you kept the sanctuary warm');
-  if (done.has('express')) phrases.push('you carried the bond outward');
-  if (done.has('remember')) phrases.push('you let the day turn into memory');
-
-  const chapterTitle = args.chapter?.title ?? null;
-  const chapterTone = args.chapter?.tone ?? null;
-  const baseBody = `${name} noticed that ${phrases.slice(0, 3).join(', ')}${phrases.length > 3 ? ', and ' + phrases[3] : ''}.`;
-  const styleClose =
-    args.premiumStyle === 'gilded_dawn'
-      ? 'The moment settles with a warmer, gilded glow.'
-      : args.premiumStyle === 'moon_glass'
-        ? 'The moment settles with a cooler, glass-clear calm.'
-        : args.premiumStyle === 'ember_bloom'
-          ? 'The moment settles with a softer ember warmth.'
-          : args.premiumStyle === 'tide_silk'
-            ? 'The moment settles with a quiet tidal hush.'
-            : 'That is enough for today.';
-
-  if (chapterTone === 'care') {
-    return {
-      title: `${name}'s care chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} read the whole day as steadier, softer care. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'social') {
-    return {
-      title: `${name}'s shared thread is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the bond moving outward through other people and shared moments. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'mission') {
-    return {
-      title: `${name}'s wayfinding chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} gave the relationship more direction than drift. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'play') {
-    return {
-      title: `${name}'s bright chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the relationship lighter and more alive. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'bond') {
-    return {
-      title: `${name}'s bond chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} made the closeness of the day feel more explicit. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
+  if (done.has('arrive')) phrases.push('a check-in');
+  if (done.has('ritual')) phrases.push('a care activity');
+  if (done.has('express')) phrases.push('a shared social moment');
+  if (done.has('remember')) phrases.push('a journal entry');
 
   return {
-    title: `${name}'s day is settling into memory`,
-    body: `${baseBody} ${styleClose}`,
+    title: `Today's recorded moments with ${name}`,
+    body: `Recorded today: ${phrases.join(', ')}. You can revisit these moments in your journal.`,
     unlockedAt: new Date().toISOString()
   } satisfies DailyCompanionArcRecap;
 };
@@ -682,6 +630,9 @@ export const syncDailyCompanionArcProgress = async (
   const recapBody =
     (typeof existing?.recap_body === 'string' && existing.recap_body) || recap?.body || null;
 
+  // Keep the original stored recap for history, but render only today's supported
+  // recap below. Legacy prose and keepsake themes are not activity evidence.
+
   const { error } = await client.from('companion_daily_arc_progress').upsert(
     {
       owner_id: args.ownerId,
@@ -701,12 +652,12 @@ export const syncDailyCompanionArcProgress = async (
   if (error) {
     console.error('[companion-journal] daily arc progress upsert failed', error);
     return {
-      recap: recapTitle && recapBody ? { title: recapTitle, body: recapBody, unlockedAt } : null
+      recap: recap ? { ...recap, unlockedAt } : null
     };
   }
 
   return {
-    recap: recapTitle && recapBody ? { title: recapTitle, body: recapBody, unlockedAt } : null
+    recap: recap ? { ...recap, unlockedAt } : null
   };
 };
 
@@ -723,12 +674,13 @@ export const loadChapterActivity = async (client: SupabaseClient, ownerId: strin
       .order('created_at', { ascending: false }).limit(1000)
   ]);
   if (care.error || journal.error) {
-    return { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0 };
+    return { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0, dailyEvidence: dailyActivityEvidence([], []) };
   }
   const checkins = (journal.data ?? []).filter(row => row.meta_json?.generatedBy === 'home_reconnect');
   const social = (journal.data ?? []).filter(row => ['post', 'message', 'circle_announcement'].includes(row.source_type));
   return {
     activityDates: [...(care.data ?? []), ...checkins, ...social].map(row => String(row.created_at)),
+    dailyEvidence: dailyActivityEvidence(care.data ?? [], journal.data ?? []),
     careMoments: care.data?.length ?? 0,
     // User-wide mission/game sessions do not prove this companion participated.
     missionMoments: 0,

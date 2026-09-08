@@ -603,7 +603,7 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
-              <p class="eyebrow">End of day</p>
+              <p class="eyebrow">Today’s recap</p>
               <h2>{data.dailyArcRecap?.title ?? 'Let the day settle'}</h2>
             </div>
           </div>

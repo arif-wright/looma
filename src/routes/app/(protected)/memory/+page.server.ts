@@ -268,8 +268,7 @@ const buildRelationshipReasons = (args: {
 }) => {
   const { companion, emotionalState, summary, careRows, missionRows, gameRows, checkins } = args;
   const reasons: string[] = [];
-  const stats = normalizeStats(companion.stats);
-  const lastCareAt = pickLatestIso([stats?.fed_at, stats?.played_at, stats?.groomed_at, careRows[0]?.created_at ?? null]);
+  const lastCareAt = pickLatestIso(careRows.map(row => row.created_at));
   const affection = companion.affection ?? 0;
   const trust = companion.trust ?? 0;
   const energy = companion.energy ?? 0;
@@ -277,25 +276,25 @@ const buildRelationshipReasons = (args: {
   const completedGames = gameRows.length;
 
   if (energy <= 20) {
-    reasons.push('Spark is low, so this companion is reading as more fragile and quiet.');
+    reasons.push('Energy is low right now. This temporary state does not erase shared history.');
   } else if (energy >= 70) {
-    reasons.push('Spark is high, which supports a brighter and more responsive presence.');
+    reasons.push('Energy is high right now, which supports a more active presence.');
   }
 
   if (trust >= 70 && affection >= 70) {
-    reasons.push('Trust and affection are both strong, so the relationship feels settled rather than uncertain.');
+    reasons.push('The current trust and affection scores are high. Your journal shows the experiences behind the relationship.');
   } else if (trust <= 35 || affection <= 35) {
-    reasons.push('Trust or affection is still rebuilding, so the bond reads as less secure.');
+    reasons.push('Trust and affection scores are still developing. Low starting scores do not mean the relationship has suffered a setback.');
   }
 
   if (emotionalState.streakMomentum >= 0.55) {
-    reasons.push('Recent consistency is reinforcing the emotional state, not just one isolated action.');
+    reasons.push('Recent activity contributes to this current state; it does not measure the value of your relationship.');
   }
 
   if (completedGames > completedMissions && completedGames > 0) {
-    reasons.push('Recent momentum is coming more from play sessions than from missions.');
+    reasons.push('Your account has recent play sessions. These records alone do not show whether this companion participated.');
   } else if (completedMissions > 0) {
-    reasons.push('Mission progress is currently doing more of the relationship-shaping work.');
+    reasons.push('Your account has recent mission progress. These records alone do not show whether this companion participated.');
   }
 
   if (checkins.length > 0) {
@@ -928,10 +927,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const ritualGuide = deriveRitualGuideFromPattern(patternNotice, selectedCompanion.name);
   const dailyArc = deriveDailyCompanionArc({
     companionName: selectedCompanion.name,
-    hasDailyCheckin: checkinRows.length > 0,
-    rituals: [],
-    hasSocialMoment: timeline.some((item) => item.kind === 'social'),
-    hasJournalMoment: Boolean(summary?.summary_text || timeline.length > 0)
+    ...chapterActivity.dailyEvidence,
+    rituals: []
   });
   const weeklyArc = deriveWeeklyCompanionArc({
     companionName: selectedCompanion.name,
