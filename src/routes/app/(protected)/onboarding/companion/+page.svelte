@@ -40,6 +40,7 @@
   let currentIndex = 0;
   let errorMsg = '';
   let submitting = false;
+  let spawning = false;
   let result: {
     primaryArchetype?: CanonicalArchetypeId | string | null;
     secondaryArchetype?: CanonicalArchetypeId | string | null;
@@ -239,7 +240,8 @@
   }
 
   async function spawn() {
-    if (!result || !spawnEligible) return;
+    if (!result || !spawnEligible || spawning) return;
+    spawning = true;
 
     try {
       const res = await fetch('/api/persona/spawn', { method: 'POST' });
@@ -257,6 +259,7 @@
     } catch (err) {
       devLog('[onboarding/companion] persona.spawn error', err);
       showToast(safeUiMessage(err));
+      spawning = false;
     }
   }
 
@@ -380,7 +383,7 @@
                 </label>
               </fieldset>
               <button class="unsure-button" type="button" on:click={() => showToast('Choose the answer that feels closest. There are no wrong answers.', 'info')}>
-                Not sure
+                Help me choose
               </button>
             </article>
           </div>
@@ -400,7 +403,7 @@
                 <strong>{archetypeConfig.emotionalFunction}</strong>
               </article>
               <article class="result-tile">
-                <span class="result-tile__label">Companion resonance</span>
+                <span class="result-tile__label">Companion species</span>
                 <strong>{archetypeConfig.companionSeed}</strong>
               </article>
             </div>
@@ -463,10 +466,11 @@
           class="nav-button nav-button--primary"
           type="button"
           on:click={spawn}
-          disabled={!spawnEligible}
+          disabled={!spawnEligible || spawning}
+          aria-busy={spawning}
           data-testid="quiz-spawn"
         >
-          Begin your bond
+          {spawning ? 'Preparing your companion...' : 'Begin your bond'}
           <span aria-hidden="true">→</span>
         </button>
         <a class="nav-button" href="/app/home">Return home</a>
