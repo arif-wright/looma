@@ -7,6 +7,7 @@ import { isSubscriptionActive } from '$lib/subscriptions';
 import { firstBondCheckinCopy } from '$lib/launch/proofIntegrity';
 import {
   deriveChapterMilestones,
+  loadChapterActivity,
   deriveChapterRewards,
   deriveCompanionChapterDigest,
   deriveCompanionPatternNotice,
@@ -924,13 +925,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     socialMoments: timeline.filter((item) => item.kind === 'social' && (toStamp(item.occurredAt) ?? 0) >= Date.now() - 7 * 24 * 60 * 60 * 1000)
       .length
   });
+  const chapterActivity = await loadChapterActivity(supabase, userId, selectedCompanionId);
   const patternNotice = deriveCompanionPatternNotice({
     companionName: selectedCompanion.name,
-    careMoments: careRows.length,
-    missionMoments: missionRows.filter((row) => row.status === 'completed').length,
-    gameMoments: gameRows.length,
-    socialMoments: timeline.filter((item) => item.kind === 'social').length,
-    checkins: checkinRows.length
+    ...chapterActivity
   });
   const hasStoredPatternNotice = journalEntryRows.some(
     (row) => row.source_type === 'system'
@@ -945,11 +943,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   });
   const weeklyArc = deriveWeeklyCompanionArc({
     companionName: selectedCompanion.name,
-    careMoments: weeklyPulse.careMoments,
-    missionMoments: weeklyPulse.missionMoments,
-    gameMoments: weeklyPulse.gameMoments,
-    socialMoments: weeklyPulse.socialMoments,
-    checkins: weeklyPulse.recentCheckins
+    ...chapterActivity
   });
   const selectedStats = normalizeStats(selectedCompanion.stats);
   const chapterMilestones = deriveChapterMilestones({

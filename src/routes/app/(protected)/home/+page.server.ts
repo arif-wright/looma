@@ -12,6 +12,7 @@ import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
 import {
   deriveChapterMilestones,
+  loadChapterActivity,
   deriveChapterRewards,
   deriveCompanionPatternNotice,
   deriveDailyCompanionArc,
@@ -1167,6 +1168,9 @@ export const load: PageServerLoad = async (event) => {
       rituals
     });
     let chapterReveal: ChapterRevealMoment | null = null;
+    const chapterActivity = userId && activeCompanion?.id
+      ? await loadChapterActivity(supabase, userId, activeCompanion.id)
+      : { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0 };
     if (userId && activeCompanion?.id) {
       const [socialEntries, systemEntries] = await Promise.all([
         supabase
@@ -1266,11 +1270,7 @@ export const load: PageServerLoad = async (event) => {
       } else {
         const derivedNotice = deriveCompanionPatternNotice({
           companionName: activeCompanion.name ?? null,
-          careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-          missionMoments: missionSuggestions.length,
-          gameMoments: 0,
-          socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-          checkins: latestDailyCheckin ? 1 : 0
+          ...chapterActivity
         });
         if (derivedNotice) {
           journalMoments.unshift({
@@ -1291,11 +1291,7 @@ export const load: PageServerLoad = async (event) => {
     });
     const weeklyArc = deriveWeeklyCompanionArc({
       companionName: activeCompanion?.name ?? null,
-      careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-      missionMoments: missionSuggestions.length,
-      gameMoments: 0,
-      socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-      checkins: latestDailyCheckin ? 1 : 0
+      ...chapterActivity
     });
     const chapterMilestones = deriveChapterMilestones({
       companionName: activeCompanion?.name ?? null,
@@ -1305,11 +1301,7 @@ export const load: PageServerLoad = async (event) => {
       weeklyArc,
       patternNotice: deriveCompanionPatternNotice({
         companionName: activeCompanion?.name ?? null,
-        careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-        missionMoments: missionSuggestions.length,
-        gameMoments: 0,
-        socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-        checkins: latestDailyCheckin ? 1 : 0
+        ...chapterActivity
       })
     });
     const chapterRewards =
