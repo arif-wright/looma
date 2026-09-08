@@ -6,6 +6,7 @@
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import type { PageData } from './$types';
   import type { SanctuaryDecor, SanctuarySlot } from '$lib/sanctuary';
+  import { journalMomentHref } from '$lib/launch/proofIntegrity';
 
   export let data: PageData;
 
@@ -204,9 +205,12 @@
         <span class="reaction-label">{mossSeatPlacement ? 'A shared ritual' : 'Companion response'}</span>
         <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
         {#if status}<small>{status}</small>{/if}
-        {#if restMemory}
-          <a class="rest-memory-link" href="/app/memory">Revisit “{restMemory.title}” in your Journal</a>
-        {:else if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
+        {#if restMemory && data.companion?.id}
+          <a class="rest-memory-link" href={journalMomentHref(data.companion.id, restMemory.id)}>Revisit “{restMemory.title}” in your Journal</a>
+        {:else if data.latestReaction?.id && data.latestReaction?.companion_id && reaction === data.latestReaction.body}
+          <a class="rest-memory-link" href={journalMomentHref(data.latestReaction.companion_id, data.latestReaction.id)}>Revisit “{data.latestReaction.title}” in your Journal</a>
+        {/if}
+        {#if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
           <small>The Moss Seat is holding your last quiet moment. Rest together again after {new Date(nextRestAvailableAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</small>
         {:else if mossSeatPlacement}
           <small>Rest together to restore spark and create a durable Journal memory.</small>
