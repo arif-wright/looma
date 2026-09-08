@@ -117,8 +117,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ error: 'update_failed' }, { status: 500 });
   }
 
+  let memory: { id: string; companion_id: string; title: string; body: string } | null = null;
   if (companion?.id) {
-    const { error: journalError } = await supabase.from('companion_journal_entries').insert({
+    const { data: savedMemory, error: journalError } = await supabase.from('companion_journal_entries').insert({
       owner_id: userId,
       companion_id: companion.id,
       source_type: 'system',
@@ -130,15 +131,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         itemTitle: item.title,
         slot: payload.slot
       }
-    });
+    }).select('id, companion_id, title, body').single();
     if (journalError) {
       console.error('[sanctuary] journal reaction failed', journalError);
+    } else {
+      memory = savedMemory;
     }
   }
 
   return json({
     ok: true,
     placement: { ...placement, item: typedDecor },
-    reaction
+    reaction,
+    memory
   });
 };

@@ -43,7 +43,7 @@
   let savingSlot: SanctuarySlot | null = null;
   let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
-  let restMemory: { id: string; title: string } | null = null;
+  let reactionMemory: { id: string; companion_id: string; title: string } | null = data.latestReaction ?? null;
   let restAvailable = Boolean(data.restAvailable);
   let nextRestAvailableAt = data.nextRestAvailableAt ?? null;
   let status: string | null = null;
@@ -79,7 +79,7 @@
   };
 
   const updateSlot = async (slot: SanctuarySlot, clear = false) => {
-    if (savingSlot || (!clear && !selectedItemId)) return;
+    if (savingSlot || interactionPending || (!clear && !selectedItemId)) return;
     savingSlot = slot;
     status = clear ? 'Making space...' : 'Changing the sanctuary...';
     try {
@@ -93,8 +93,19 @@
         status = payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
         return;
       }
-      reaction = payload?.reaction ?? reaction;
-      status = clear ? 'Space cleared.' : 'The sanctuary remembers this change.';
+      if (clear) {
+        reaction = null;
+        reactionMemory = null;
+        status = 'Space cleared.';
+      } else if (payload?.unchanged) {
+        status = 'This item is already in that space.';
+      } else {
+        reaction = payload?.reaction ?? null;
+        reactionMemory = payload?.memory ?? null;
+        status = reactionMemory
+          ? 'Placed and remembered in your Journal.'
+          : 'Item placed. No Journal memory was saved for this change.';
+      }
       await invalidateAll();
     } catch {
       status = 'The sanctuary could not be changed.';
@@ -104,7 +115,7 @@
   };
 
   const restTogether = async () => {
-    if (interactionPending || !mossSeatPlacement) return;
+    if (interactionPending || savingSlot || !mossSeatPlacement) return;
     interactionPending = true;
     status = `Settling in with ${data.companion?.name ?? 'your companion'}...`;
     try {
@@ -123,12 +134,13 @@
         return;
       }
       reaction = payload.reaction ?? reaction;
-      restMemory = payload.memory?.id ? { id: payload.memory.id, title: payload.memory.title } : null;
+      reactionMemory = payload.memory?.id && data.companion?.id
+        ? { id: payload.memory.id, title: payload.memory.title, companion_id: data.companion.id } : null;
       restAvailable = false;
       nextRestAvailableAt = payload.nextAvailableAt ?? null;
       status = payload.restoredEnergy > 0
-        ? `${payload.restoredEnergy} spark restored. ${restMemory ? 'This rest is now in your Journal.' : 'The rest was completed, but the Journal could not hold it.'}`
-        : restMemory
+        ? `${payload.restoredEnergy} spark restored. ${reactionMemory ? 'This rest is now in your Journal.' : 'The rest was completed, but the Journal could not hold it.'}`
+        : reactionMemory
           ? 'The quiet itself became a remembered moment.'
           : 'The quiet moment was completed.';
       await invalidateAll();
@@ -203,12 +215,10 @@
     <section class="reaction-card" id="shared-rest" aria-live="polite">
       <div>
         <span class="reaction-label">{mossSeatPlacement ? 'A shared ritual' : 'Companion response'}</span>
-        <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
+        <p>{reaction ?? 'Choose a decoration and a space to make a new moment together.'}</p>
         {#if status}<small>{status}</small>{/if}
-        {#if restMemory && data.companion?.id}
-          <a class="rest-memory-link" href={journalMomentHref(data.companion.id, restMemory.id)}>Revisit “{restMemory.title}” in your Journal</a>
-        {:else if data.latestReaction?.id && data.latestReaction?.companion_id && reaction === data.latestReaction.body}
-          <a class="rest-memory-link" href={journalMomentHref(data.latestReaction.companion_id, data.latestReaction.id)}>Revisit “{data.latestReaction.title}” in your Journal</a>
+        {#if reactionMemory}
+          <a class="rest-memory-link" href={journalMomentHref(reactionMemory.companion_id, reactionMemory.id)}>Revisit “{reactionMemory.title}” in your Journal</a>
         {/if}
         {#if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
           <small>The Moss Seat is holding your last quiet moment. Rest together again after {new Date(nextRestAvailableAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</small>
