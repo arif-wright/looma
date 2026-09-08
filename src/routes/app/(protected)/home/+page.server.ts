@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
@@ -1219,6 +1220,9 @@ export const load: PageServerLoad = async (event) => {
             ? String((latestNotice.meta_json as Record<string, unknown>).generatedBy ?? '')
             : '';
         if (generatedBy === 'chapter_reward_reveal') {
+          latestNotice.body = recordedRewardBody(
+            (latestNotice.meta_json as Record<string, unknown> | null)?.rewardTitle
+          );
           const meta =
             latestNotice.meta_json && typeof latestNotice.meta_json === 'object'
               ? (latestNotice.meta_json as Record<string, unknown>)

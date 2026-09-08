@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
 import { createCompanionDigestNotification } from '$lib/server/notifications';
 import type { OptionalCompanionRitualKey } from '$lib/companions/optionalRituals';
@@ -1048,7 +1049,7 @@ export const unlockChapterRewards = async (
   const mappedRewards = (data ?? []).map((row) => ({
     rewardKey: String(row.reward_key ?? ''),
     title: String(row.reward_title ?? 'Companion keepsake'),
-    body: String(row.reward_body ?? ''),
+    body: recordedRewardBody(row.reward_title),
     tone:
       row.reward_tone === 'care' ||
       row.reward_tone === 'social' ||

@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { presentRewardHistory } from '$lib/companions/rewardHistory';
 import {
   deriveEmotionalStateFromCompanionStats,
   type EmotionalStateSnapshot
@@ -560,16 +561,7 @@ const buildRelationshipEras = (args: {
   });
 
   for (const entry of args.chapterHistory.slice(0, 3)) {
-    const title =
-      entry.tone === 'care'
-        ? 'Era of Tending'
-        : entry.tone === 'social'
-          ? 'Era of Outward Bonding'
-          : entry.tone === 'mission'
-            ? 'Era of Purpose'
-            : entry.tone === 'play'
-              ? 'Era of Lightness'
-              : 'Era of Deep Bond';
+    const title = 'Keepsake added';
     eras.push({
       id: `era-${entry.id}`,
       title,
@@ -720,10 +712,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('user_id', userId)
       .maybeSingle()
   ]);
-  const journalEntryRows = [...((journalEntriesRes.data ?? []) as JournalEntryRow[])];
+  const journalEntryRows = ((journalEntriesRes.data ?? []) as JournalEntryRow[]).map(presentRewardHistory);
   const targetedJournalEntry = targetedJournalEntryRes.data as JournalEntryRow | null;
   if (targetedJournalEntry && !journalEntryRows.some((row) => row.id === targetedJournalEntry.id)) {
-    journalEntryRows.push(targetedJournalEntry);
+    journalEntryRows.push(presentRewardHistory(targetedJournalEntry));
   }
 
   const subscription = subscriptionRes.data
