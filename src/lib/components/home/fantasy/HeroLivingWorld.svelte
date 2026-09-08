@@ -113,6 +113,7 @@
     <div class="companion-aura" aria-hidden="true"></div>
     <div class="companion-model">
       <MuseModel
+        {companionName}
         bind:loaded={modelLoaded}
         minSize="0px"
         size="100%"
