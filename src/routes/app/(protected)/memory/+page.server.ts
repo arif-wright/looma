@@ -5,7 +5,7 @@ import {
   type EmotionalStateSnapshot
 } from '$lib/server/emotionalState';
 import { isSubscriptionActive } from '$lib/subscriptions';
-import { firstBondCheckinCopy } from '$lib/launch/proofIntegrity';
+import { firstBondCheckinCopy, resolveHomeBondPercent } from '$lib/launch/proofIntegrity';
 import {
   deriveChapterMilestones,
   loadChapterActivity,
@@ -1120,6 +1120,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     selectedCompanion,
     summary,
     emotionalState,
+    bondClosenessPercent: resolveHomeBondPercent({
+      bondScore: normalizeStats(selectedCompanion.stats)?.bond_score,
+      affection: selectedCompanion.affection,
+      trust: selectedCompanion.trust
+    }),
     relationshipPulse,
     ritualGuide,
     journalGuidance,

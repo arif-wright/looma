@@ -540,8 +540,8 @@
                 <strong>{formatPercent(data.emotionalState.trust) ?? 'Unknown'}</strong>
               </div>
               <div>
-                <span>Bond</span>
-                <strong>{formatPercent(data.emotionalState.bond) ?? 'Unknown'}</strong>
+                <span>Bond closeness</span>
+                <strong>{typeof data.bondClosenessPercent === 'number' ? `${data.bondClosenessPercent}%` : 'Unknown'}</strong>
               </div>
               <div>
                 <span>Tone</span>
