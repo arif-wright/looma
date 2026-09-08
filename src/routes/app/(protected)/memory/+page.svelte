@@ -463,7 +463,7 @@
             <p class="eyebrow">Shared continuity</p>
             <h2>{selectedName}'s shared history is taking shape</h2>
           </div>
-          <a class="btn btn--ghost btn--link" href="/app/home">Return to sanctuary</a>
+          <a class="btn btn--ghost btn--link" href="/app/sanctuary">Return to sanctuary</a>
         </div>
         <div class="continuity-grid">
           {#each continuitySignals as signal}
