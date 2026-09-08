@@ -50,8 +50,8 @@
   let appliedRequestedItem: string | null = null;
 
   const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
-  const placementFor = (slot: SanctuarySlot) =>
-    (data.placements as unknown as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
+  const placementFor = (placements: unknown, slot: SanctuarySlot) =>
+    (placements as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
   const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
   $: requestedItem = $page.url.searchParams.get('item');
   $: if (requestedItem && requestedItem !== appliedRequestedItem) {
@@ -181,7 +181,7 @@
       <div class="ground" aria-hidden="true"></div>
 
       {#each slots as slot}
-        {@const placement = placementFor(slot.key)}
+        {@const placement = placementFor(data.placements, slot.key)}
         {@const placedDecor = normalizeItem(placement?.item ?? null)}
         <button
           class:occupied={Boolean(placedDecor)}
@@ -286,7 +286,7 @@
           {#each data.placements as placement}
             {@const placedDecor = normalizeItem((placement as unknown as Placement).item)}
             {#if placedDecor}
-              <button type="button" disabled={Boolean(savingSlot)} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
+              <button type="button" aria-label={`Remove ${placedDecor.title} from ${slots.find(slot => slot.key === (placement as unknown as Placement).slot_key)?.label ?? 'this space'}`} disabled={Boolean(savingSlot) || interactionPending} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
                 <span>{placedDecor.title}</span>
                 <small>Remove</small>
               </button>
