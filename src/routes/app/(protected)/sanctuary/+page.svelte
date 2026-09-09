@@ -7,6 +7,7 @@
   import type { PageData } from './$types';
   import type { SanctuaryDecor, SanctuarySlot } from '$lib/sanctuary';
   import { journalMomentHref } from '$lib/launch/proofIntegrity';
+  import { recordedRewardBody } from '$lib/companions/rewardHistory';
 
   export let data: PageData;
 
@@ -257,8 +258,8 @@
           >
             <span class={`decor-art decor-art--${decor.tone}`}><DecorIcon size={25} /></span>
             <strong>{decor.title}</strong>
-            <small>{decor.description}</small>
-            <em>{owned.source_type === 'care_milestone' ? 'Earned through care' : 'Earned as a chapter keepsake'}</em>
+            <small>{owned.source_type === 'chapter_reward' ? recordedRewardBody(decor.title) : decor.description}</small>
+            <em>{owned.source_type === 'care_milestone' ? 'Earned through care' : owned.source_type === 'chapter_reward' ? 'Added as a chapter keepsake' : 'In your collection'}</em>
           </button>
           {/if}
         {/each}
