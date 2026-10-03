@@ -1121,7 +1121,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     summary,
     emotionalState,
     bondClosenessPercent: resolveHomeBondPercent({
-      bondScore: normalizeStats(selectedCompanion.stats)?.bond_score,
+      bondScore: normalizeStats(selectedCompanion.stats)?.bond_score ?? null,
       affection: selectedCompanion.affection,
       trust: selectedCompanion.trust
     }),

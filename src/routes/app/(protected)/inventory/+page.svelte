@@ -59,6 +59,7 @@
   type PlacementRow = {
     id: string;
     item_id: string | null;
+    user_item_id: string | null;
     slot_key: string;
   };
 
@@ -121,7 +122,7 @@
   $: unifiedItemKeys = new Set(unifiedItems.map((owned) => owned.item?.item_key).filter(Boolean));
   $: legacyCompanionRewards = companionRewards.filter((reward) => !unifiedItemKeys.has(reward.reward_key));
   $: collectionCount = items.length + unifiedItems.length + legacyCompanionRewards.length;
-  $: placementByItemId = new Map(placements.filter((placement) => placement.item_id).map((placement) => [placement.item_id, placement]));
+  $: placementByOwnedItemId = new Map(placements.filter((placement) => placement.user_item_id).map((placement) => [placement.user_item_id, placement]));
 </script>
 
 <SanctuaryPageFrame
@@ -238,13 +239,13 @@
                     {/each}
                   </div>
                   {#if owned.item.capabilities.includes('placeable')}
-                    {@const placement = placementByItemId.get(owned.item.id)}
+                    {@const placement = placementByOwnedItemId.get(owned.id)}
                     {#if placement}
                       <p class="placement-state">Placed in {sanctuarySlotLabel(placement.slot_key)}</p>
                     {:else if owned.item.capabilities.includes('interactive')}
                       <p class="placement-state">Place this object to unlock its shared interaction.</p>
                     {/if}
-                    <a class="item-action" href={`/app/sanctuary?item=${encodeURIComponent(owned.item.id)}`}>
+                    <a class="item-action" href={`/app/sanctuary?item=${encodeURIComponent(owned.id)}`}>
                       {placement ? 'View in Sanctuary' : 'Place in Sanctuary'}
                     </a>
                   {/if}

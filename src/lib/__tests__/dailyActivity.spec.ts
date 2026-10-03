@@ -53,6 +53,6 @@ describe('daily activity evidence and recap', () => {
       ownerId: 'test-owner', companionId: 'test-companion', companionName: 'Root', arc: arc([], [checkin])
     });
     expect(result.recap).toBeNull();
-    expect(upsert.mock.calls[0][0]).toMatchObject(stored);
+    expect(upsert.mock.calls[0]?.[0]).toMatchObject(stored);
   });
 });

@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       .order('unlocked_at', { ascending: false }),
     supabase
       .from('sanctuary_placements')
-      .select('id, slot_key, item_id')
+      .select('id, slot_key, item_id, user_item_id')
   ]);
 
   return {

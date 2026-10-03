@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { pendingRest, rememberRest, forgetRest, type RestRequest } from '$lib/sanctuary/restRequest';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
   import { Armchair, Flower2, LampDesk, Sparkles, Waves, Wind } from 'lucide-svelte';
@@ -40,7 +42,7 @@
     ...owned,
     item: Array.isArray(owned.item) ? owned.item[0] ?? null : owned.item
   }));
-  let selectedItemId: string | null = normalizedOwnedItems[0]?.item?.id ?? null;
+  let selectedItemId: string | null = normalizedOwnedItems[0]?.id ?? null;
   let savingSlot: SanctuarySlot | null = null;
   let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
@@ -53,14 +55,14 @@
   const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
   const placementFor = (placements: unknown, slot: SanctuarySlot) =>
     (placements as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
-  const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
+  const selectedItem = () => normalizedOwnedItems.find((owned) => owned.id === selectedItemId) ?? null;
   $: requestedItem = $page.url.searchParams.get('item');
   $: if (requestedItem && requestedItem !== appliedRequestedItem) {
     const requestedOwnedItem = normalizedOwnedItems.find(
-      (owned) => owned.item?.id === requestedItem || owned.item?.item_key === requestedItem
+      (owned) => owned.id === requestedItem || owned.item?.id === requestedItem || owned.item?.item_key === requestedItem
     );
     if (requestedOwnedItem?.item) {
-      selectedItemId = requestedOwnedItem.item.id;
+      selectedItemId = requestedOwnedItem.id;
       status = `${requestedOwnedItem.item.title} selected. Choose a space.`;
     }
     appliedRequestedItem = requestedItem;
@@ -87,11 +89,13 @@
       const response = await fetch('/api/sanctuary/placement', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slot, itemId: selectedItemId, clear })
+        body: JSON.stringify({ slot, userItemId: selectedItemId, clear })
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        status = payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
+        status = payload?.error === 'item_quantity_exhausted'
+          ? 'All copies of this item are placed. Clear its current space to move it.'
+          : payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
         return;
       }
       if (clear) {
@@ -115,18 +119,28 @@
     }
   };
 
-  const restTogether = async () => {
-    if (interactionPending || savingSlot || !mossSeatPlacement) return;
+  let pendingRequest: RestRequest | null = null;
+  let requestStorage: Storage | null = null;
+  const submitRest = async (restRequest: RestRequest) => {
+    if (interactionPending || savingSlot) return;
     interactionPending = true;
     status = `Settling in with ${data.companion?.name ?? 'your companion'}...`;
     try {
       const response = await fetch('/api/sanctuary/interact', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'shared_rest' })
+        body: JSON.stringify({ action: 'shared_rest', ...restRequest })
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status >= 400 && response.status < 500 && ['rest_cooldown', 'invalid_request', 'companion_required', 'request_companion_mismatch', 'moss_seat_must_be_placed'].includes(payload?.error)) {
+          forgetRest(requestStorage, restRequest);
+          pendingRequest = null;
+          if (payload?.error === 'rest_cooldown' && data.companion?.id === restRequest.companionId) {
+            restAvailable = false;
+            nextRestAvailableAt = payload.nextAvailableAt ?? null;
+          }
+        }
         status =
           payload?.message ??
           (payload?.error === 'moss_seat_must_be_placed'
@@ -134,23 +148,44 @@
             : 'This quiet moment is not available right now.');
         return;
       }
+      if (!payload?.ok || !payload?.memory?.id) throw new Error('Rest result not confirmed');
+      forgetRest(requestStorage, restRequest);
+      pendingRequest = null;
+      if (data.companion?.id !== restRequest.companionId) return;
       reaction = payload.reaction ?? reaction;
-      reactionMemory = payload.memory?.id && data.companion?.id
-        ? { id: payload.memory.id, title: payload.memory.title, companion_id: data.companion.id } : null;
+      reactionMemory = payload.memory?.id
+        ? { id: payload.memory.id, title: payload.memory.title, companion_id: payload.memory.companion_id ?? restRequest.companionId } : null;
       restAvailable = false;
       nextRestAvailableAt = payload.nextAvailableAt ?? null;
       status = payload.restoredEnergy > 0
-        ? `${payload.restoredEnergy} spark restored. ${reactionMemory ? 'This rest is now in your Journal.' : 'The rest was completed, but the Journal could not hold it.'}`
-        : reactionMemory
-          ? 'The quiet itself became a remembered moment.'
-          : 'The quiet moment was completed.';
+        ? `${payload.restoredEnergy} spark restored. This rest is now in your Journal.`
+        : 'The quiet itself became a remembered moment.';
       await invalidateAll();
     } catch {
-      status = 'This quiet moment could not be completed.';
+      status = 'The result is not confirmed yet. Try again to recover this same quiet moment.';
     } finally {
       interactionPending = false;
     }
   };
+
+  const restTogether = async () => {
+    if (interactionPending || savingSlot) return;
+    if (pendingRequest) { await submitRest(pendingRequest); return; }
+    if (!mossSeatPlacement || !restAvailable || !data.companion?.id) return;
+    pendingRequest = pendingRequest ?? pendingRest(requestStorage, data.companion.id) ?? {
+      requestId: crypto.randomUUID(), companionId: data.companion.id
+    };
+    rememberRest(requestStorage, pendingRequest);
+    await submitRest(pendingRequest);
+  };
+  onMount(() => {
+    try { requestStorage = sessionStorage; } catch { requestStorage = null; }
+    if (!data.companion?.id) return;
+    pendingRequest = pendingRest(requestStorage, data.companion.id);
+    // Recover an already-requested result after a reload/back navigation, even
+    // if the seat was removed or the successful rest now shows a cooldown.
+    if (pendingRequest) void submitRest(pendingRequest);
+  });
 </script>
 
 <svelte:head>
@@ -227,10 +262,10 @@
           <small>Rest together to restore spark and create a durable Journal memory.</small>
         {/if}
       </div>
-      {#if mossSeatPlacement && restAvailable}
+      {#if pendingRequest || (mossSeatPlacement && restAvailable)}
         <button type="button" disabled={interactionPending} on:click={restTogether}>
           <Armchair size={18} />
-          <span>{interactionPending ? 'Resting...' : 'Rest Together'}</span>
+          <span>{interactionPending ? 'Resting...' : pendingRequest ? 'Recover quiet moment' : 'Rest Together'}</span>
         </button>
       {/if}
     </section>
@@ -251,10 +286,10 @@
           {#if decor}
           {@const DecorIcon = iconFor(decor.visual_key)}
           <button
-            class:selected={selectedItemId === decor.id}
+            class:selected={selectedItemId === owned.id}
             type="button"
-            aria-pressed={selectedItemId === decor.id}
-            on:click={() => (selectedItemId = decor.id)}
+            aria-pressed={selectedItemId === owned.id}
+            on:click={() => (selectedItemId = owned.id)}
           >
             <span class={`decor-art decor-art--${decor.tone}`}><DecorIcon size={25} /></span>
             <strong>{decor.title}</strong>

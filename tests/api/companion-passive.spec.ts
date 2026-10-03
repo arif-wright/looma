@@ -76,7 +76,7 @@ test.describe('Companion passive tick API', () => {
     companionId = data.id as string;
   });
 
-  test('applies passive decay and logs a single event', async () => {
+  test('restores energy without relationship decay and logs a single event', async () => {
     await resetState();
     const beforeSnapshot = { affection: 60, trust: 55, energy: 30 };
 
@@ -85,8 +85,8 @@ test.describe('Companion passive tick API', () => {
 
     const updated = (payload?.companions ?? []).find((row: { id: string }) => row.id === companionId);
     expect(updated).toBeTruthy();
-    expect(updated.affection).toBe(beforeSnapshot.affection - 2);
-    expect(updated.trust).toBe(beforeSnapshot.trust - 1);
+    expect(updated.affection).toBe(beforeSnapshot.affection);
+    expect(updated.trust).toBe(beforeSnapshot.trust);
     expect(updated.energy).toBe(beforeSnapshot.energy + 12);
 
     const passiveEvents = (payload?.newEvents ?? []).filter((evt: { kind: string }) => evt.kind === 'passive');
@@ -96,6 +96,18 @@ test.describe('Companion passive tick API', () => {
     expect(repeat.res.status()).toBe(200);
     const secondPassive = (repeat.payload?.newEvents ?? []).filter((evt: { kind: string }) => evt.kind === 'passive');
     expect(secondPassive.length).toBe(0);
+    const repeated = (repeat.payload?.companions ?? []).find((row: { id: string }) => row.id === companionId);
+    expect(repeated.affection).toBe(updated.affection);
+    expect(repeated.trust).toBe(updated.trust);
+    expect(repeated.energy).toBe(updated.energy);
+  });
+
+  test('years away do not reduce earned affection or trust', async () => {
+    await resetState({ affection: 80, trust: 75, energy: 20, lastPassiveMinutesAgo: 3650 * 24 * 60 });
+    const { res, payload } = await fetchTick();
+    expect(res.status()).toBe(200);
+    const updated = (payload?.companions ?? []).find((row: { id: string }) => row.id === companionId);
+    expect(updated).toMatchObject({ affection: 80, trust: 75, energy: 80 });
   });
 
   test('daily bonus triggers once per day', async () => {
