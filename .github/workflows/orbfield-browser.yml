@@ -35,13 +35,15 @@ jobs:
             node --version
             npm --version
             npx playwright --version
-            git ls-files -z package-lock.json .github/workflows/orbfield-browser.yml scripts/testing/orbfield-preview src/lib/games/GameShell.svelte src/lib/games/dodgeSurvive.ts src/lib/games/types.ts src/lib/games/sdk.ts src/lib/games/state.ts src/lib/stores/companionRituals.ts 'src/routes/app/(game)/+layout.svelte' 'src/routes/app/(game)/games/dodge/+page.svelte' | xargs -0 sha256sum
+            git ls-files -z package-lock.json .github/workflows/orbfield-browser.yml scripts/testing/orbfield-preview src/lib/games/GameShell.svelte src/lib/games/dodgeSurvive.ts src/lib/games/orbfieldSkin.ts static/games/dodge/skins/moonlit src/lib/games/types.ts src/lib/games/sdk.ts src/lib/games/state.ts src/lib/stores/companionRituals.ts 'src/routes/app/(game)/+layout.svelte' 'src/routes/app/(game)/games/dodge/+page.svelte' | xargs -0 sha256sum
           } > artifacts/orbfield/source.txt
       - name: Check isolated component types, markup and build
         shell: bash
         run: |
           set -euo pipefail
           {
+            npx svelte-kit sync
+            npx vitest run src/lib/__tests__/orbfield.spec.ts src/lib/__tests__/orbfieldSkin.spec.ts
             npx svelte-check --tsconfig scripts/testing/orbfield-preview/tsconfig.json
             node scripts/testing/orbfield-preview/ssr-check.mjs
             npx vite build --config scripts/testing/orbfield-preview/vite.config.mjs

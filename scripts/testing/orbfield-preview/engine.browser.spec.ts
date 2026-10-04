@@ -2,6 +2,7 @@ import { test, expect, calls, capture } from './guard';
 
 test('REAL ENGINE: keyboard movement, pointer scaling, touch warp, pause and cleanup', async ({ page }, info) => {
   await page.goto('/app/games/dodge');
+  await expect(page.getByTestId('orbfield-game')).toHaveAttribute('data-art-state', 'ready');
   expect(await page.evaluate(() => window.__orbfieldFixture.engine)).toBe('real');
   await page.getByRole('button', { name: 'Start round', exact: true }).click();
   const canvas = page.getByLabel('Orbfield play area', { exact: true });

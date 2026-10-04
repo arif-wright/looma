@@ -21,7 +21,7 @@ Use only a browser/local origin this environment permits. A prior cloud-browser 
 - `engine.browser.spec.ts` uses the actual engine, observes only its public state callback, and exercises keyboard movement, real touchscreen input with CSS-to-canvas coordinate scaling, touch time warp, pause/resume, navigation cleanup, and screenshot/overflow checks.
 - `lifecycle.browser.spec.ts` uses the actual shell with an explicitly selected deterministic manually-finished engine. It tests intro, server reward presentation, repeated start/replay, error recovery, honest short practice rounds, stale async results, navigation, and synthetic window blur while a session start is pending (paused resolution and explicit Resume without stealing focus). It does **not** prove collision or scoring physics.
 - `ssr-check.mjs` renders the actual shell on the server and checks accessible ready-state markup and absence of eager engine/session work. It does **not** prove browser lifecycle, layout, touch, focus, or rendering.
-- The 12 browser flows are discovered at 320×844, 390×844 and 1280×900: 36 cases total. Browser runs attach screenshots and traces under this fixture's ignored `.results/` directory.
+- The original 12 browser flows plus 4 skin flows are discovered at 320×844, 390×844 and 1280×900: 48 cases total. Browser runs attach screenshots and traces under this fixture's ignored `.results/` directory.
 - `#game-root` is constrained to the viewport and GameShell runs with `fullScreen=true`, so narrow-screen scrolling is tested inside the shell. The 30px synthetic-review ribbon and minimal global font are fixture-only; this is not the full app layout.
 - All browser requests are guarded: only GET/HEAD to the fixture's exact loopback origin are allowed; API paths, external calls, mutations and uncaught page errors fail the suite. Global app fetch/XHR/beacon calls fail closed too. Build config disables `.env` loading.
 
@@ -38,3 +38,12 @@ Manual follow-ups in a permitted browser: inspect all viewport screenshots; Tab/
 ## Prepared CI workflow
 
 `.github/workflows/orbfield-browser.yml` prepares a credential-free Node 22 Chromium run with 30-day source identity, text/JSON reports and separate per-viewport screenshot/trace artifacts. It supplies no application secrets, uses read-only repository permission, disables persisted checkout credentials, and records commit/tree plus fixture and relevant production source hashes. It is local-only until the user authorizes publication; this preparation is not a workflow execution result.
+
+
+## Moonlit skin coverage
+
+The fixture narrowly serves the four actual WebP files from `static/games/dodge/skins/moonlit/`; it does not expose the full application static tree. The renderer module is explicitly allowlisted. Normal real-engine and lifecycle flows wait for decoded artwork, and manual `finish` waits for a playing phase.
+
+`skin.browser.spec.ts` adds loaded-art intro and real-engine screenshots, an orientation change with unchanged logical geometry/state, reduced-motion warp, failed-image fallback, and navigation during held image preload. The held-preload test uses DOMContentLoaded so the browser does not wait for intentionally delayed image requests before the test can act.
+
+Discovery/build results are not executed browser evidence. Run the prepared CI workflow against the candidate commit after publication authorization, then inspect captures at actual 320px/390px/desktop sizes.

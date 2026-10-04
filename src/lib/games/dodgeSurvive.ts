@@ -1,4 +1,5 @@
 import type { LoomaGameInitOptions, LoomaGameInstance } from './types';
+import { createOrbfieldRenderer, type OrbfieldSkinAssets } from './orbfieldSkin';
 
 type Enemy = { x: number; y: number; vx: number; vy: number };
 export type OrbfieldState = {
@@ -11,6 +12,8 @@ export type OrbfieldState = {
 };
 export type OrbfieldOptions = LoomaGameInitOptions & {
   maxDurationMs?: number;
+  skinAssets?: OrbfieldSkinAssets;
+  reducedMotion?: boolean | (() => boolean);
   onStateChange?: (state: OrbfieldState) => void;
 };
 export type OrbfieldInstance = LoomaGameInstance & {
@@ -31,7 +34,7 @@ export const createDodgeSurvive = (opts: OrbfieldOptions): OrbfieldInstance => {
   const { canvas, onGameOver } = opts;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas rendering is unavailable.');
-  const context = ctx;
+  const renderer = createOrbfieldRenderer(ctx, opts.skinAssets, opts.reducedMotion);
   const maxDurationMs = Number.isFinite(opts.maxDurationMs) && (opts.maxDurationMs ?? 0) > 0
     ? Math.floor(opts.maxDurationMs!) : 60_000;
   let running = false;
@@ -121,21 +124,10 @@ export const createDodgeSurvive = (opts: OrbfieldOptions): OrbfieldInstance => {
       finish('round_complete');
     }
   };
-  const draw = () => {
-    const w = canvas.width, h = canvas.height;
-    context.clearRect(0, 0, w, h);
-    context.fillStyle = '#090e20'; context.fillRect(0, 0, w, h);
-    const glow = context.createRadialGradient(playerX, playerY, 10, playerX, playerY, 100);
-    glow.addColorStop(0, '#22d3ee33'); glow.addColorStop(1, 'transparent');
-    context.fillStyle = glow; context.fillRect(0, 0, w, h);
-    context.fillStyle = '#e5e7eb'; context.beginPath();
-    context.arc(playerX, playerY, PLAYER_RADIUS, 0, Math.PI * 2); context.fill();
-    context.save(); context.shadowColor = '#22d3ee'; context.shadowBlur = 12;
-    context.fillStyle = slowMo > 0 ? '#c4b5fd' : '#22d3ee'; context.beginPath();
-    context.arc(playerX + 26, playerY - 18, 8, 0, Math.PI * 2); context.fill(); context.restore();
-    context.fillStyle = '#fb7185';
-    for (const enemy of enemies) { context.beginPath(); context.arc(enemy.x, enemy.y, 8, 0, Math.PI * 2); context.fill(); }
-  };
+  const draw = () => renderer.draw({
+    width: canvas.width, height: canvas.height, playerX, playerY,
+    playerRadius: PLAYER_RADIUS, hazardRadius: 8, elapsedMs, slowMo: slowMo > 0, enemies
+  });
   const loop = (time: number) => {
     rafId = null;
     if (!running || paused || destroyed) return;
@@ -194,7 +186,7 @@ export const createDodgeSurvive = (opts: OrbfieldOptions): OrbfieldInstance => {
     pause() { if (!running || paused) return; paused = true; clearInput(); cancelFrame(); },
     resume() { if (!running || !paused || destroyed) return; paused = false; lastTime = performance.now(); rafId = requestAnimationFrame(loop); },
     destroy() {
-      destroyed = true; running = false; clearInput(); cancelFrame();
+      destroyed = true; running = false; clearInput(); cancelFrame(); renderer.destroy();
       canvas.removeEventListener('pointerdown', pointerDown);
       canvas.removeEventListener('pointermove', movePointer);
       canvas.removeEventListener('pointerup', releasePointer);

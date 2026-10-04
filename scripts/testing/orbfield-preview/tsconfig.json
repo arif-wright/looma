@@ -15,6 +15,6 @@
       "$lib/*": ["src/lib/*"]
     }
   },
-  "include": ["./*.ts", "./*.svelte", "../../../src/lib/games/GameShell.svelte", "../../../src/lib/games/dodgeSurvive.ts", "../../../src/lib/games/types.ts"],
+  "include": ["./*.ts", "./*.svelte", "../../../src/lib/games/GameShell.svelte", "../../../src/lib/games/dodgeSurvive.ts", "../../../src/lib/games/types.ts", "../../../src/lib/games/orbfieldSkin.ts"],
   "exclude": [".build", ".results"]
 }

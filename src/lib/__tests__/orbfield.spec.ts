@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDodgeSurvive } from '$lib/games/dodgeSurvive';
+import type { OrbfieldSkinAssets } from '$lib/games/orbfieldSkin';
 
 describe('Orbfield real engine', () => {
   let now: number;
@@ -17,9 +18,9 @@ describe('Orbfield real engine', () => {
   const emit = (type: string, values: Record<string, unknown> = {}) => {
     listeners.get(type)?.({ type, preventDefault: vi.fn(), ...values } as unknown as Event);
   };
-  const create = (maxDurationMs = 60_000) => {
+  const create = (maxDurationMs = 60_000, skinAssets?: OrbfieldSkinAssets) => {
     end = vi.fn();
-    game = createDodgeSurvive({ canvas, onGameOver: end, maxDurationMs });
+    game = createDodgeSurvive({ canvas, onGameOver: end, maxDurationMs, ...(skinAssets ? { skinAssets } : {}) });
     return game;
   };
 
@@ -33,7 +34,8 @@ describe('Orbfield real engine', () => {
     vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const context = { clearRect: vi.fn(), fillRect: vi.fn(), createRadialGradient: () => ({ addColorStop: vi.fn() }),
-      beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn(), save: vi.fn(), restore: vi.fn() };
+      beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn(), save: vi.fn(), restore: vi.fn(),
+      drawImage: vi.fn(), stroke: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn() };
     canvas = {
       width: 960, height: 540, getContext: () => context,
       getBoundingClientRect: () => ({ left: 10, top: 20, width: 480, height: 270 }),
@@ -43,6 +45,20 @@ describe('Orbfield real engine', () => {
     } as unknown as HTMLCanvasElement;
   });
   afterEach(() => { game?.destroy(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it('keeps loaded and fallback art identical in simulation and collision outcomes', () => {
+    const run = (skinAssets?: OrbfieldSkinAssets) => {
+      create(10_000, skinAssets).start();
+      emit('keydown', { code: 'ArrowRight' }); step(50); emit('keyup', { code: 'ArrowRight' });
+      game.activateSlowMo();
+      for (let i = 0; i < 240 && !end.mock.calls.length; i++) step(50);
+      const result = { state: game.getState(), results: end.mock.calls };
+      game.destroy(); return result;
+    };
+    const fallback = run();
+    const image = { naturalWidth: 128, naturalHeight: 128 } as HTMLImageElement;
+    expect(run({ background: image, player: image, hazard: image, companion: image })).toEqual(fallback);
+  });
 
   it('starts only once and does not award a result just by mounting', () => {
     create(); expect(end).not.toHaveBeenCalled(); expect(frames.size).toBe(0);

@@ -1,6 +1,6 @@
 # Isolated two-owner PostgREST gate
 
-This test-only gate targets the product source reviewed at `fb417fe4839d400d5b7e8afad008f2c408e6fff1`, root tree `9636660534f1d6031b6e6e58edb3d5d0f1d850a9`. Test additions change the final root tree. The bootstrap asserts unchanged `src` tree `eb23b43550226d375b03db1b42175acd1d370c6f` and `supabase` tree `c81fbae8e9873b717791288aefbae5d252c5ea6a`; update this intentionally bounded gate only after reviewing a later product revision.
+This test-only gate targets the product source reviewed at `fb417fe4839d400d5b7e8afad008f2c408e6fff1`, root tree `9636660534f1d6031b6e6e58edb3d5d0f1d850a9`. Test additions change the final root tree. The bootstrap now strictly asserts independently reviewed Moonlit cosmetic `src` tree `0fd7769586df2888f111719a4be8ad8e933de9fb` and unchanged `supabase` tree `c81fbae8e9873b717791288aefbae5d252c5ea6a`. The rendering-only skin leaves settlement code and query contracts unchanged. The original product commit/tree remain historical provenance; update these strict pins only after reviewing a later product revision.
 
 ## Execution and evidence
 

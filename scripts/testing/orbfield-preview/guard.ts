@@ -32,5 +32,11 @@ export async function capture(page: Page, info: TestInfo, name: string) {
   }), 'No document or inner-shell horizontal overflow').toBe(true);
 }
 export const calls = (page: Page, method: string) => page.evaluate((name) => window.__orbfieldFixture.calls.filter((call) => call.method === name), method);
-export const finish = (page: Page, durationMs = 8000) => page.evaluate((duration) => window.__orbfieldFixture.finish({ score: 84, durationMs: duration, meta: { slowMoUsed: 1 } }), durationMs);
-export const openLifecycle = (page: Page, scenario = 'success') => page.goto(`/app/games/dodge?engine=lifecycle&scenario=${scenario}`);
+export const finish = async (page: Page, durationMs = 8000) => {
+  await expect(page.getByTestId('orbfield-game')).toHaveAttribute('data-phase', 'playing');
+  await page.evaluate((duration) => window.__orbfieldFixture.finish({ score: 84, durationMs: duration, meta: { slowMoUsed: 1 } }), durationMs);
+};
+export const openLifecycle = async (page: Page, scenario = 'success') => {
+  await page.goto(`/app/games/dodge?engine=lifecycle&scenario=${scenario}`);
+  await expect(page.getByTestId('orbfield-game')).toHaveAttribute('data-art-state', 'ready');
+};

@@ -89,7 +89,7 @@ test('short round stays practice and never pads its duration or submits', async 
 test('repeated start while pending cannot start two sessions; stale start cannot re-open after navigation', async ({ page }, info) => {
   await openLifecycle(page, 'delayed-start');
   await page.getByRole('button', { name: 'Start round', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); button.click(); });
-  expect(await calls(page, 'start')).toHaveLength(1);
+  await expect.poll(async () => (await calls(page, 'start')).length).toBe(1);
   await capture(page, info, 'pending-start');
   await page.getByRole('button', { name: /back to play/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Play', exact: true })).toBeVisible();
