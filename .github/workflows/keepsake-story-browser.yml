@@ -1,0 +1,54 @@
+name: Keepsake Story Browser
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Record synthetic fixture source
+        run: |
+          mkdir -p artifacts/keepsake-story
+          {
+            echo "Synthetic component fixture only; no hosted auth, database, or real SvelteKit routing."
+            git rev-parse HEAD HEAD^{tree}
+            node --version
+            npm --version
+            npx playwright --version
+            git ls-files -z scripts/testing/keepsake-story-preview src/lib/items/story.ts src/lib/components/items/KeepsakeStory.svelte 'src/routes/app/(protected)/inventory/+page.svelte' 'src/routes/app/(protected)/sanctuary/+page.svelte' | xargs -0 sha256sum
+          } > artifacts/keepsake-story/source.txt
+      - name: Run credential-free story browser flows
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test --config scripts/testing/keepsake-story-preview/playwright.config.ts 2>&1 | tee artifacts/keepsake-story/browser.log
+      - name: Upload screenshots, traces, report and source identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepsake-story-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/keepsake-story/
+            keepsake-story-report/
+            keepsake-story-results/
+          if-no-files-found: error
+          retention-days: 30

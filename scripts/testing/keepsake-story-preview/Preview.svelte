@@ -17,8 +17,9 @@
   ];
   let url = new URL(location.href);
   $: selected = [owned, other].find((value) => value.id === url.searchParams.get('item'));
-  $: story = selected ? buildKeepsakeStory({ ownerId, owned: selected, placements: url.searchParams.has('removed') ? [] : placements, journal: moments, historyState: url.searchParams.has('failed') ? 'unavailable' : 'ready' }) : null;
-  $: data = { items: [], unifiedItems: [owned, other], companionRewards: [], placements, story, storyStatus: url.searchParams.has('item') ? story ? 'ready' : 'unavailable' : null, storyFromSanctuary: url.searchParams.get('from') === 'sanctuary', storySanctuarySelection: url.searchParams.get('selected'), error: null };
+  $: currentPlacements = url.searchParams.has('removed') ? [] : placements;
+  $: story = selected ? buildKeepsakeStory({ ownerId, owned: selected, placements: currentPlacements, journal: moments, historyState: url.searchParams.has('failed') ? 'unavailable' : 'ready' }) : null;
+  $: data = { items: [], unifiedItems: [owned, other], companionRewards: [], placements: currentPlacements, story, storyStatus: url.searchParams.has('item') ? story ? 'ready' : 'unavailable' : null, storyFromSanctuary: url.searchParams.get('from') === 'sanctuary', storySanctuarySelection: url.searchParams.get('selected'), error: null };
   const sanctuaryData = { companion: { id: companionId, name: 'Moss' }, items: [owned, other], placements, latestReaction: null, restAvailable: false, nextRestAvailableAt: null, error: null };
   onMount(() => {
     const sync = async () => { url = new URL(location.href); await tick(); navigated(); if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView(); };
