@@ -1,4 +1,5 @@
 // A real libpq connection per psql process. No JavaScript PostgreSQL dependency.
+import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
@@ -13,12 +14,18 @@ export function parseMarker(line, marker) {
 
 export class Session {
   constructor(database, name) {
+    // -d accepts libpq connection strings, which can override explicit -h.
+    assert.match(database, /^[a-zA-Z_][a-zA-Z0-9_]*$/, 'Only plain local database names are allowed');
     this.name = name;
     this.pending = null;
     this.stderr = '';
-    const env = { ...process.env, PGDATABASE: database, PGAPPNAME: `mv-lock-test:${name}`, PGPASSFILE: '/dev/null' };
-    delete env.PGSERVICE;
-    delete env.PGSERVICEFILE;
+    const env = { ...process.env };
+    // In particular PGHOSTADDR can override a Unix-socket -h with TCP. Do not
+    // inherit any libpq connection/auth settings from the surrounding runner.
+    for (const key of Object.keys(env)) if (key.startsWith('PG')) delete env[key];
+    Object.assign(env, { PGHOST: process.env.PGHOST, PGPORT: process.env.PGPORT || '5432',
+      PGUSER: process.env.PGUSER, PGDATABASE: database,
+      PGAPPNAME: `mv-lock-test:${name}`, PGPASSFILE: '/dev/null' });
     this.child = spawn(process.env.PSQL_BIN || 'psql', ['-X', '-w', '-q', '-A', '-t', '-P', 'pager=off', '-P', 'footer=off', '-h', env.PGHOST, '-p', env.PGPORT || '5432', '-U', env.PGUSER, '-d', database], { env, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child.stderr.on('data', (chunk) => { this.stderr += chunk; });
     createInterface({ input: this.child.stdout }).on('line', (line) => {

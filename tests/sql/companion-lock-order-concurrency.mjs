@@ -19,12 +19,17 @@ if (process.argv.includes('--self-test')) {
   assert.deepEqual(parseMarker('__END true 40P01', '__END'), { failed: true, code: '40P01' });
   assert.deepEqual(parseMarker('__END true P0001 not_owner', '__END'), { failed: true, code: 'P0001', message: 'not_owner' });
   assert.equal(parseMarker('ordinary output', '__END'), null);
+  for (const unsafe of ['postgresql://remote/db', 'host=remote dbname=postgres']) {
+    assert.throws(() => new Session(unsafe, 'unsafe-connection'), /Only plain local database names/);
+  }
   console.log('PASS: SQL quoting and psql status framing helpers. Native concurrency NOT RUN.');
   process.exit(0);
 }
 assert.equal(process.env.MEMVOYA_PG_TEST_ONLY, '1', 'Explicit disposable local-cluster opt-in is required');
 assert(process.env.PGHOST?.startsWith('/') && !process.env.PGHOST.includes(','), 'PGHOST must be one local Unix-socket directory; TCP/remote hosts are refused');
 assert(process.env.PGUSER, 'Explicit local PGUSER is required');
+assert(!process.env.PGHOSTADDR, 'PGHOSTADDR is refused; only local Unix sockets are allowed');
+assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap database must be postgres');
 assert(!process.env.PGPASSWORD, 'Passwords are refused; use the disposable local peer-authenticated cluster');
 assert(/^\d+$/.test(process.env.PGPORT || '5432'), 'Invalid local socket port');
 const root = resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -45,6 +50,7 @@ const roleFor = (kind) => ['bond', 'recalc'].includes(kind) ? 'service_role' : '
 const track = (promise) => { const work = { state: 'pending' }; work.done = promise.then(value => { work.state = 'done'; return { value }; }, error => { work.state = 'failed'; return { error }; }); return work; };
 const finish = async (work) => { const outcome = await work.done; if (outcome.error) throw outcome.error; return outcome.value; };
 let observer;
+let activeScenario;
 async function blocked(label, waiter, holder, work) {
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
@@ -53,7 +59,7 @@ async function blocked(label, waiter, holder, work) {
     const activity = await observer.rows(`SELECT pid,state,wait_event_type,wait_event,pg_blocking_pids(pid) AS blockers FROM pg_stat_activity WHERE pid=${waiter.pid}`);
     if (activity[0]?.wait_event_type === 'Lock' && activity[0].blockers.includes(holder.pid)) {
       const locks = await observer.rows(`SELECT pid,locktype,relation::regclass::text AS relation,mode,granted FROM pg_locks WHERE pid IN (${waiter.pid},${holder.pid}) ORDER BY pid,locktype,relation,mode`);
-      report.blockingEvidence.push({ label, activity, locks });
+      report.blockingEvidence.push({ scenario: activeScenario, label, activity, locks });
       return;
     }
     assert.equal(work.state, 'pending', `${label}: contender completed without the required overlapping lock wait`);
@@ -62,6 +68,7 @@ async function blocked(label, waiter, holder, work) {
   throw new Error(`${label}: expected blocking was not observed`);
 }
 async function test(label, run) {
+  activeScenario = label;
   const local = [];
   const session = async (name) => { const s = await connect(`${label}:${name}`); local.push(s); return s; };
   try { await run(session); report.checks.push(label); console.log(`PASS: ${label}`); }

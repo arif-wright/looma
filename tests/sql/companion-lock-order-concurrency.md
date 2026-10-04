@@ -1,8 +1,16 @@
 # Companion lock-order native concurrency gate
 
-## Verification status
+## CI execution and evidence
 
-**Native suite: NOT RUN.** This execution environment rejects PostgreSQL's private Unix-socket creation with `Operation not permitted`, including one sandbox-reviewed start. No alternate transport was attempted.
+The `Native PostgreSQL concurrency` workflow checks out the exact PR head and runs all 21 schedules three times in independent synthetic databases. It uses the official PostgreSQL 17 container image, records its immutable digest, disables container networking, and uses peer-authenticated Unix sockets exclusively. The server and clients run as the container's `postgres` OS user. There are no host port mappings, host mounts, production environments, application secrets, or persistent credentials.
+
+The job only has read access to repository contents; checkout does not persist credentials. The 12-minute job and per-query timeouts bound failures. `test-results/native-postgres/` is uploaded even on failure, retaining the exact Git commit/tree, image digest, server version, migration/extract hashes, each scenario's observed waits and locks, stdout, and server logs. The container and its synthetic data are removed at job exit. These data are test fixtures only.
+
+A CI pass requires three reports with `PASSED`, exactly 21 unique scenarios, 22 observed lock waits mapped to those scenarios, PostgreSQL 17, and 28 manifest pieces. The workflow result must be checked for the exact candidate commit before rollout; adding this workflow alone does not satisfy the gate.
+
+## Original local preparation status
+
+**Native suite: NOT RUN in the original cloud workspace.** That execution environment rejects PostgreSQL's private Unix-socket creation with `Operation not permitted`, including one sandbox-reviewed start. No alternate transport was attempted.
 
 Prepared PostgreSQL binaries: **17.11 (Debian 17.11-0+deb13u1)**, from the official [Debian package archive](https://deb.debian.org/debian/pool/main/p/postgresql-17/). Both `postgres --version` and `psql --version` worked, and `initdb` completed. No native server started.
 
@@ -27,7 +35,7 @@ PGDATABASE=postgres \
 node tests/sql/companion-lock-order-concurrency.mjs
 ```
 
-The harness refuses TCP/remote hosts, requires explicit test-only opt-in, disables password-file loading, rejects PGPASSWORD, and creates a uniquely named `memvoya_lock_order_*` database. It retains that synthetic database for inspection, rather than dropping data automatically. The cluster's standard test roles are created only if absent; no live role or user credentials are used.
+The harness refuses TCP/remote hosts, requires explicit test-only opt-in, disables password-file loading, rejects PGPASSWORD and PGHOSTADDR, accepts only the `postgres` bootstrap database, strips inherited libpq settings, and creates a uniquely named `memvoya_lock_order_*` database. It retains that synthetic database for inspection, rather than dropping data automatically. The cluster's standard test roles are created only if absent; no live role or user credentials are used.
 
 Output: `test-results/companion-lock-order-concurrency.json`, or `MEMVOYA_PG_REPORT`. The JSON includes server version, exact migration SHA-256 values, passed checks, observed blocker PIDs and lock modes, and any failure. Independent `psql` processes use independent backend PIDs. PostgreSQL statement/lock timeouts and a process watchdog prevent a broken schedule from hanging indefinitely.
 
