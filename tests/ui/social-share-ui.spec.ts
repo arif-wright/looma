@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
-import { loginAs, VIEWER_CREDENTIALS } from '../fixtures/auth';
+import { createAuthedRequest, loginAs, VIEWER_CREDENTIALS } from '../fixtures/auth';
 import { runSeed } from '../fixtures/env';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL!;
@@ -109,189 +109,98 @@ const grantAchievementToUser = async (userId: string, achievementId: string) => 
 
 test.describe.serial('Social share UI', () => {
   let viewerId: string;
+  let viewerHandle: string;
   let gameId: string;
 
   test.beforeAll(async () => {
     const seed = await runSeed();
     viewerId = seed.viewer.id;
+    viewerHandle = seed.viewer.handle;
     gameId = await ensureGameId('tiles-run');
   });
 
-  test('session completion prompts run share and renders feed card', async ({ page }) => {
+  test('historical run share renders and its old play link opens the archive', async ({ page }) => {
     await loginAs(page, VIEWER_CREDENTIALS);
 
-    const sessionId = randomUUID();
-    const nonce = randomUUID().slice(0, 16);
-    const { score, durationMs } = await insertCompletedSession({
-      sessionId,
-      nonce,
+    // The session is already completed history; the archive must never launch
+    // Tiles Run just to render or follow its existing social share.
+    const { sessionId, score, durationMs } = await insertCompletedSession({
       userId: viewerId,
       gameId,
       score: 5120,
       durationMs: 92_000
     });
-
-    await page.route('**/api/games/session/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ sessionId, nonce, caps: {} })
+    const authed = await createAuthedRequest(VIEWER_CREDENTIALS);
+    let postId: string;
+    try {
+      const response = await authed.post('/api/social/share/run', {
+        data: { sessionId, score, durationMs, slug: 'tiles-run', text: 'A saved Tiles Run result.' }
       });
+      expect(response.ok()).toBeTruthy();
+      const payload = await response.json();
+      expect(typeof payload.postId).toBe('string');
+      postId = payload.postId;
+    } finally {
+      await authed.dispose();
+    }
+
+    await page.goto(`/app/u/${encodeURIComponent(viewerHandle)}/p/${postId}`);
+    const runCard = page.getByTestId('run-share-card');
+    await expect(runCard).toBeVisible();
+    await expect(runCard).toContainText('Tiles Run');
+    await expect(runCard).toContainText('5,120');
+    await expect(runCard).toContainText('92s');
+    const playLink = runCard.getByTestId('run-share-cta');
+    await expect(playLink).toHaveAttribute('href', '/app/games/tiles-run');
+
+    const sessionRequests: string[] = [];
+    await page.route('**/api/games/session/**', async (route) => {
+      sessionRequests.push(new URL(route.request().url()).pathname);
+      await route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
     });
+    await playLink.click();
+    await expect(page).toHaveURL(/\/app\/games\/tiles-run$/);
+    await expect(page.getByTestId('tiles-archive')).toBeVisible();
+    await expect(page.getByText('Tiles Run is archived', { exact: true })).toBeVisible();
+    await expect(page.locator('iframe, canvas, #game-container')).toHaveCount(0);
+    expect(sessionRequests).toEqual([]);
 
-    await page.route('**/api/games/session/complete', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ xpDelta: 18, currencyDelta: 24, achievements: [] })
-      });
-    });
-
-    await page.route('**/api/games/player/state', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          level: 8,
-          xp: 2400,
-          xpNext: 3200,
-          energy: 6,
-          energyMax: 10,
-          currency: 340,
-          rewards: []
-        })
-      });
-    });
-
-    await page.goto('/app/games/tiles-run');
-
-    const iframeHandle = await page.locator('iframe[data-testid="tiles-embed"]').elementHandle();
-    const frame = await iframeHandle?.contentFrame();
-    expect(frame, 'embedded frame').toBeTruthy();
-
-    await frame!.evaluate(
-      ({ shareScore, shareDuration, shareNonce }) => {
-        parent.postMessage(
-          { type: 'GAME_COMPLETE', payload: { score: shareScore, durationMs: shareDuration, nonce: shareNonce } },
-          '*'
-        );
-      },
-      { shareScore: score, shareDuration: durationMs, shareNonce: nonce }
-    );
-
-    const runComposer = page.locator('[data-testid="share-composer"][data-kind="run"]');
-    await expect(runComposer).toBeVisible();
-
-    const postButton = runComposer.getByRole('button', { name: 'Post' });
-    await Promise.all([
-      page.waitForResponse('**/api/social/share/run'),
-      postButton.click()
-    ]);
-
-    await expect(runComposer).not.toBeVisible();
-    await expect(page.locator('.share-toast.success')).toContainText('Shared to your Circle.');
-
-    await page.goto('/app/home?from=run-share');
-    await expect(page.locator('[data-testid="run-share-card"]').first()).toBeVisible();
+    await page.goBack();
+    await expect(runCard).toBeVisible();
+    await expect(runCard).toContainText('5,120');
+    await page.goForward();
+    await expect(page.getByTestId('tiles-archive')).toBeVisible();
+    expect(sessionRequests).toEqual([]);
   });
 
-  test('achievement unlock prompts badge share and renders feed card', async ({ page }) => {
+  test('previously earned achievement share still renders its badge and deep link', async ({ page }) => {
     await loginAs(page, VIEWER_CREDENTIALS);
-
-    const sessionId = randomUUID();
-    const nonce = randomUUID().slice(0, 16);
-    const { score, durationMs } = await insertCompletedSession({
-      sessionId,
-      nonce,
-      userId: viewerId,
-      gameId,
-      score: 6200,
-      durationMs: 88_000
-    });
-
     const achievementKey = 'automation.badge.ui';
     const achievementId = await ensureTestAchievement(achievementKey);
     await grantAchievementToUser(viewerId, achievementId);
 
-    await page.route('**/api/games/session/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ sessionId, nonce, caps: {} })
+    const authed = await createAuthedRequest(VIEWER_CREDENTIALS);
+    let postId: string;
+    try {
+      const response = await authed.post('/api/social/share/achievement', {
+        data: { key: achievementKey, text: 'A previously earned badge.' }
       });
-    });
+      expect(response.ok()).toBeTruthy();
+      const payload = await response.json();
+      expect(typeof payload.postId).toBe('string');
+      postId = payload.postId;
+    } finally {
+      await authed.dispose();
+    }
 
-    await page.route('**/api/games/session/complete', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          xpDelta: 20,
-          currencyDelta: 30,
-          achievements: [
-            {
-              key: achievementKey,
-              name: 'Automation Badge',
-              icon: 'sparkles',
-              points: 15,
-              rarity: 'rare'
-            }
-          ]
-        })
-      });
-    });
-
-    await page.route('**/api/games/player/state', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          level: 9,
-          xp: 2800,
-          xpNext: 3600,
-          energy: 7,
-          energyMax: 10,
-          currency: 380,
-          rewards: []
-        })
-      });
-    });
-
-    await page.goto('/app/games/tiles-run');
-
-    const iframeHandle = await page.locator('iframe[data-testid="tiles-embed"]').elementHandle();
-    const frame = await iframeHandle?.contentFrame();
-    expect(frame, 'embedded frame').toBeTruthy();
-
-    await frame!.evaluate(
-      ({ shareScore, shareDuration, shareNonce }) => {
-        parent.postMessage(
-          { type: 'GAME_COMPLETE', payload: { score: shareScore, durationMs: shareDuration, nonce: shareNonce } },
-          '*'
-        );
-      },
-      { shareScore: score, shareDuration: durationMs, shareNonce: nonce }
+    await page.goto(`/app/u/${encodeURIComponent(viewerHandle)}/p/${postId}`);
+    const achievementCard = page.getByTestId('achievement-share-card');
+    await expect(achievementCard).toBeVisible();
+    await expect(achievementCard).toContainText('Automation Badge');
+    await expect(achievementCard).toContainText('Rare');
+    await expect(achievementCard).toContainText('+15 pts');
+    await expect(achievementCard.getByTestId('achievement-share-cta')).toHaveAttribute(
+      'href', `/app/achievements?highlight=${encodeURIComponent(achievementKey)}`
     );
-
-    const runComposer = page.locator('[data-testid="share-composer"][data-kind="run"]');
-    await expect(runComposer).toBeVisible();
-    await Promise.all([
-      page.waitForResponse('**/api/social/share/run'),
-      runComposer.getByRole('button', { name: 'Post' }).click()
-    ]);
-    await expect(runComposer).not.toBeVisible();
-
-    const achievementComposer = page.locator('[data-testid="share-composer"][data-kind="achievement"]');
-    await expect(achievementComposer).toBeVisible();
-    await Promise.all([
-      page.waitForResponse('**/api/social/share/achievement'),
-      achievementComposer.getByRole('button', { name: 'Post' }).click()
-    ]);
-
-    await expect(page.locator('.share-toast.success')).toContainText('Shared to your Circle.');
-
-    await page.goto('/app/home?from=achievement-share');
-    await expect(page.locator('[data-testid="run-share-card"]').first()).toBeVisible();
-    await expect(page.locator('[data-testid="achievement-share-card"]').first()).toBeVisible();
   });
 });

@@ -215,8 +215,8 @@ async function main() {
   assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap must connect to postgres');
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim();
   // Test-only additions change the root tree. The strict src pin includes the independently
-  // reviewed Moonlit cosmetic revision; settlement code and the supabase tree are unchanged.
-  for (const [directory, expected] of Object.entries({src:'0fd7769586df2888f111719a4be8ad8e933de9fb',supabase:'c81fbae8e9873b717791288aefbae5d252c5ea6a'})) {
+  // reviewed Tiles archive presentation revision; settlement code and the supabase tree are unchanged.
+  for (const [directory, expected] of Object.entries({src:'d543c1734d994420a18f6045d3c1c7741cfef234',supabase:'c81fbae8e9873b717791288aefbae5d252c5ea6a'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

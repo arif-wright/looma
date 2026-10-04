@@ -6,6 +6,7 @@
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { games as gameCatalog } from '$lib/data/games';
+  import { pickerEntries, pickerArtwork, recentDiscoverableGames, type GameEntry } from '$lib/games/discovery';
   import {
     applyPlayerState,
     getPlayerProgressSnapshot,
@@ -13,25 +14,11 @@
     type PlayerProgressState,
     type RewardEntry
   } from '$lib/games/state';
-  import type { GameMeta } from '$lib/data/games';
   import type { PageData } from './$types';
 
   export let data: PageData;
 
-  type GameEntry = {
-    slug: string;
-    name: string;
-    min_version: string | null;
-    max_score: number | null;
-  };
-
-  const games: GameEntry[] = data?.games?.length
-    ? (data.games as GameEntry[])
-    : [
-        { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
-        { slug: 'arpg', name: 'Memvoya ARPG', min_version: '1.0.0', max_score: 150000 },
-        { slug: 'astro-match', name: 'Astro Match', min_version: '1.0.0', max_score: 75000 }
-      ];
+  const games = pickerEntries(data?.games);
 
   type PlayerSummary = {
     level: number | null;
@@ -102,37 +89,12 @@
   $: rewardList = (playerSummary?.rewards ?? []).slice();
   $: hasPlayedGames = rewardList.length > 0;
 
-  const recentGamesFromRewards = () => {
-    const unique = new Map<string, { slug: string; name: string }>();
-    for (const reward of rewardList) {
-      const slug = typeof reward.game === 'string' ? reward.game : null;
-      const name = reward.gameName ?? reward.game ?? null;
-      if (!slug && !name) continue;
-      const key = slug ?? (name ?? '').toLowerCase().replace(/\s+/g, '-');
-      if (key && !unique.has(key)) {
-        unique.set(key, {
-          slug: slug ?? key,
-          name: name ?? key.replace(/-/g, ' ')
-        });
-      }
-    }
-    return Array.from(unique.values());
-  };
-
   const fallbackRecent = games.slice(0, 6).map((game: GameEntry) => ({ slug: game.slug, name: game.name }));
-  $: recentGames = recentGamesFromRewards();
+  $: recentGames = recentDiscoverableGames(rewardList);
   $: recentCatalog = recentGames.length > 0 ? recentGames : fallbackRecent;
 
   const metaBySlug = new Map(gameCatalog.map((entry) => [entry.slug, entry]));
-  const gamesWithArtwork: GameMeta[] = games
-    .map((game: GameEntry) => metaBySlug.get(game.slug))
-    .filter((entry: GameMeta | undefined): entry is GameMeta => Boolean(entry));
-  const gridGames: GameMeta[] = gamesWithArtwork.length
-    ? [
-        ...gamesWithArtwork,
-        ...gameCatalog.filter((entry) => !gamesWithArtwork.some((item) => item.slug === entry.slug))
-      ]
-    : gameCatalog;
+  const gridGames = pickerArtwork(games);
 
   $: featuredMeta = featuredGame ? metaBySlug.get(featuredGame.slug) ?? null : null;
   $: heroBackground = featuredMeta
@@ -252,7 +214,7 @@
       {/if}
       </section>
 
-      <section class="games-rewards panel-glass" aria-label="Latest play rewards">
+      <section id="reward-history" class="games-rewards panel-glass" aria-label="Latest play rewards">
       <header>
         <h2>Latest play echoes</h2>
         <p>{hasPlayedGames ? 'Recent XP bursts and shard drops from shared sessions.' : 'After your first session, play echoes show up here.'}</p>

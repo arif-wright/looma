@@ -1,6 +1,6 @@
 # Isolated two-owner PostgREST gate
 
-This test-only gate targets the product source reviewed at `fb417fe4839d400d5b7e8afad008f2c408e6fff1`, root tree `9636660534f1d6031b6e6e58edb3d5d0f1d850a9`. Test additions change the final root tree. The bootstrap now strictly asserts independently reviewed Moonlit cosmetic `src` tree `0fd7769586df2888f111719a4be8ad8e933de9fb` and unchanged `supabase` tree `c81fbae8e9873b717791288aefbae5d252c5ea6a`. The rendering-only skin leaves settlement code and query contracts unchanged. The original product commit/tree remain historical provenance; update these strict pins only after reviewing a later product revision.
+This test-only gate targets the product source reviewed at `fb417fe4839d400d5b7e8afad008f2c408e6fff1`, root tree `9636660534f1d6031b6e6e58edb3d5d0f1d850a9`. Test additions change the final root tree. The bootstrap now strictly asserts independently reviewed Tiles archive presentation `src` tree `d543c1734d994420a18f6045d3c1c7741cfef234` and unchanged `supabase` tree `c81fbae8e9873b717791288aefbae5d252c5ea6a`. The Moonlit skin and subsequent presentation-only Tiles archive leave settlement code, history query contracts and the Supabase tree unchanged. The archive review includes authentication parity, discovery/history separation and no session start at either legacy URL. The original product commit/tree remain historical provenance; update these strict pins only after reviewing a later product revision.
 
 ## Execution and evidence
 

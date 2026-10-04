@@ -1,7 +1,7 @@
 import type { PageLoad } from './$types';
 
-// This route is a runtime embed (canvas/game bootstrap). Prerendering it triggers
-// server hooks during build, which can fail in CI when runtime env isn't injected.
+// Retain the legacy URL as a notice without bootstrapping an engine or bridge.
+// Keep runtime rendering so build-time prerendering does not invoke auth hooks.
 export const prerender = false;
 
 export const load: PageLoad = () => ({ slug: 'tiles-run' });

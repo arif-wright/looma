@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { filterDiscoverableGames } from '$lib/games/discovery';
 import type { RequestHandler } from './$types';
 import { requireUser } from '$lib/server/games/guard';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
@@ -18,7 +19,6 @@ export const GET: RequestHandler = async (event) => {
         console.warn('[games] config fallback engaged, schema missing');
         return json({
           games: [
-            { slug: 'tiles-run', name: 'Tiles Run', min_version: '1.0.0', max_score: 100000 },
             { slug: 'arpg', name: 'Memvoya ARPG', min_version: '1.0.0', max_score: 150000 }
           ],
           fallback: true
@@ -27,7 +27,7 @@ export const GET: RequestHandler = async (event) => {
       throw error;
     }
 
-    return json({ games: data ?? [] });
+    return json({ games: filterDiscoverableGames(data ?? []) });
   } catch (err) {
     return safeGameApiError('default', err);
   }
