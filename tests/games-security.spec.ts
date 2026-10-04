@@ -9,6 +9,9 @@ const startSession = async () => {
   expect(response.ok()).toBeTruthy();
   const payload = await response.json();
   await authed.dispose();
+  // Shared settlement now checks reported duration against the server start.
+  // Authenticated integration tests must let real time pass, not invent a run.
+  await new Promise((resolve) => setTimeout(resolve, 10_050));
   return payload as {
     sessionId: string;
     nonce: string;
@@ -47,8 +50,8 @@ const completeSession = async (args: {
 test.describe.serial('Game session security', () => {
   test('rejects mismatched nonce', async () => {
     const start = await startSession();
-    const score = 3200;
-    const durationMs = 60000;
+    const score = 1000;
+    const durationMs = 10000;
 
     const signResponse = await signPayload({
       sessionId: start.sessionId,
@@ -74,10 +77,10 @@ test.describe.serial('Game session security', () => {
     expect(payload.code).toBe('forbidden');
   });
 
-  test('rejects replay attempts', async () => {
+  test('returns the same saved receipt for an identical replay', async () => {
     const start = await startSession();
-    const score = 2800;
-    const durationMs = 70000;
+    const score = 1000;
+    const durationMs = 10000;
 
     const signResponse = await signPayload({
       sessionId: start.sessionId,
@@ -106,15 +109,14 @@ test.describe.serial('Game session security', () => {
       signature,
       clientVersion: '1.0.0'
     });
-    expect(second.status()).toBe(409);
-    const payload = await second.json();
-    expect(payload.code).toBe('conflict');
+    expect(second.status()).toBe(200);
+    expect(await second.json()).toEqual(await first.json());
   });
 
   test('rejects excessive score rate', async () => {
     const start = await startSession();
     const score = 50000;
-    const durationMs = 15000; // fast score rate
+    const durationMs = 10000; // fast score rate
 
     const signResponse = await signPayload({
       sessionId: start.sessionId,
@@ -147,8 +149,8 @@ test.describe.serial('Game session security', () => {
 
   test('happy path clamps rewards and updates player state', async () => {
     const start = await startSession();
-    const score = 7200;
-    const durationMs = 120000;
+    const score = 1000;
+    const durationMs = 10000;
 
     const signResponse = await signPayload({
       sessionId: start.sessionId,

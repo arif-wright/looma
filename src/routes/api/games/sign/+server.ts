@@ -6,8 +6,10 @@ import {
   getSession,
   getConfigForGame,
   getGameById,
-  hasAbuseFlag
+  hasAbuseFlag,
+  getAdminClient
 } from '$lib/server/games/guard';
+import { assertSameSubmission, parseGameSubmission, readGameSettlement } from '$lib/server/games/settlement';
 import { limit } from '$lib/server/games/rate';
 import { buildSignaturePayload, makeSignature } from '$lib/server/games/hmac';
 
@@ -31,16 +33,10 @@ const compareVersions = (current: string | null, minimum: string) => {
 
 export const POST: RequestHandler = async (event) => {
   const { user, supabase } = await ensureAuth(event);
+  const verified = await supabase.auth.getUser();
+  if (verified.error || verified.data.user?.id !== user.id) throw error(401, { code: 'unauthorized', message: 'Authentication required.' });
   const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
 
-  await limit(supabase, `games:sign:user:${user.id}`, rateLimitPerMinute);
-  if (clientIp) {
-    await limit(supabase, `games:sign:ip:${clientIp}`, rateLimitPerMinute);
-  }
-
-  if (await hasAbuseFlag(user.id)) {
-    throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
-  }
 
   let body: {
     sessionId?: unknown;
@@ -56,30 +52,33 @@ export const POST: RequestHandler = async (event) => {
     throw error(400, { code: 'bad_request', message: 'Invalid JSON body.' });
   }
 
-  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
-  const scoreRaw = Number(body.score);
-  const durationMsRaw = Number(body.durationMs);
-  const nonce = typeof body.nonce === 'string' ? body.nonce : '';
-  const clientVersion = typeof body.clientVersion === 'string' ? body.clientVersion : null;
-
-  if (!sessionId || !Number.isFinite(scoreRaw) || !Number.isFinite(durationMsRaw) || !nonce) {
-    throw error(400, { code: 'bad_request', message: 'Missing required fields.' });
-  }
-
-  const score = Math.max(0, Math.floor(scoreRaw));
-  const durationMs = Math.max(0, Math.floor(durationMsRaw));
+  const { sessionId, submission } = parseGameSubmission(body);
+  const { score, durationMs, nonce, clientVersion } = submission;
 
   const session = await getSession(supabase, sessionId);
   if (!session || session.user_id !== user.id) {
     throw error(404, { code: 'not_found', message: 'Session not found.' });
   }
 
-  if (session.status !== 'started' || session.completed_at) {
-    throw error(409, { code: 'conflict', message: 'Session already completed.' });
-  }
-
   if (session.nonce !== nonce) {
     throw error(403, { code: 'forbidden', message: 'Nonce mismatch.' });
+  }
+  const saved = await readGameSettlement(getAdminClient(), user.id, sessionId);
+  if (saved) {
+    assertSameSubmission(saved.request, submission, true);
+    return json({ signature: makeSignature(sessionId, score, durationMs, nonce),
+      payload: buildSignaturePayload(sessionId, score, durationMs, nonce) });
+  }
+  if (session.status !== 'started' || session.completed_at) {
+    throw error(409, { code: 'legacy_unreconciled', message: 'This earlier session has no recoverable receipt.' });
+  }
+  await limit(supabase, `games:sign:user:${user.id}`, rateLimitPerMinute);
+  if (clientIp) {
+    await limit(supabase, `games:sign:ip:${clientIp}`, rateLimitPerMinute);
+  }
+
+  if (await hasAbuseFlag(user.id)) {
+    throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
   }
 
   if (!session.game_id) {
@@ -87,7 +86,7 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const game = await getGameById(session.game_id);
-  if (!game) {
+  if (!game || !game.is_active) {
     throw error(404, { code: 'not_found', message: 'Game not found.' });
   }
 
@@ -100,7 +99,8 @@ export const POST: RequestHandler = async (event) => {
     maxScore: game.max_score ?? 100000
   };
 
-  if (durationMs < caps.minDurationMs || durationMs > caps.maxDurationMs) {
+  if (durationMs < caps.minDurationMs || durationMs > caps.maxDurationMs ||
+      durationMs > Date.now() - Date.parse(session.started_at) + 2000) {
     throw error(400, { code: 'invalid_duration', message: 'Reported duration is outside allowed bounds.' });
   }
 

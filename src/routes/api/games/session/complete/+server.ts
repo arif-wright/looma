@@ -1,653 +1,101 @@
 import { env } from '$env/dynamic/private';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-  ensureAuth,
-  getSession,
-  getGameById,
-  getConfigForGame,
-  hasAbuseFlag,
-  getAdminClient
-} from '$lib/server/games/guard';
-import { calculateRewards, persistRewards } from '$lib/server/games/rewards';
+import { ensureAuth, getSession, hasAbuseFlag, getAdminClient, getConfigForGame, getGameById } from '$lib/server/games/guard';
 import { buildSignaturePayload, verifySignature } from '$lib/server/games/hmac';
 import { limit } from '$lib/server/games/rate';
-import { logGameAudit } from '$lib/server/games/audit';
-import { createAchievementEvaluator } from '$lib/server/achievements/evaluator';
-import type { UnlockSummary } from '$lib/server/achievements/evaluator';
-import { getCurrentStreakDays } from '$lib/server/games/streak';
-import { createAchievementNotification } from '$lib/server/notifications';
-import { applyStreakMultiplier, getStreakMultiplier, walletGrant } from '$lib/server/econ/index';
-import { getDeviceHash } from '$lib/server/utils/device';
 import { logEvent } from '$lib/server/analytics/log';
 import { inspectSessionComplete } from '$lib/server/anti/inspect';
-import { getActiveCompanionBond } from '$lib/server/companions/bonds';
-import { incrementCompanionRitual } from '$lib/server/companions/rituals';
+import { getDeviceHash } from '$lib/server/utils/device';
+import { logGameAudit } from '$lib/server/games/audit';
+import { createAchievementNotification } from '$lib/server/notifications';
+import { getAchievementShardFactor } from '$lib/server/econ/index';
 import { ingestServerEvent } from '$lib/server/events/ingest';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
+import { assertSameSubmission, parseGameSubmission, parseSettlementResult, readGameSettlement, settlementError } from '$lib/server/games/settlement';
 
 const rateLimitPerMinute = Number.parseInt(env.GAME_RATE_LIMIT_PER_MINUTE ?? '20', 10) || 20;
 const maxRewardsPerHour = Number.parseInt(env.GAME_MAX_REWARDS_PER_HOUR ?? '60', 10) || 60;
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-type CompanionBonusPayload = {
-  companionId: string;
-  name: string | null;
-  bondLevel: number;
-  xpMultiplier: number;
-};
-
-type SessionRewardResponse = {
-  xpDelta: number;
-  baseXpDelta?: number;
-  xpMultiplier?: number;
-  baseXp?: number;
-  finalXp?: number;
-  xpFromCompanion?: number;
-  xpFromStreak?: number;
-  companionBonus?: CompanionBonusPayload | null;
-  currencyDelta: number;
-  baseCurrencyDelta: number;
-  currencyMultiplier: number;
-};
-
-const compareVersions = (current: string | null, minimum: string) => {
-  if (!minimum) return true;
-  if (!current) return false;
-  const normalize = (input: string) => input.split('.').map((part) => Number(part) || 0);
-  const currentParts = normalize(current);
-  const minParts = normalize(minimum);
-  const len = Math.max(currentParts.length, minParts.length);
-  for (let i = 0; i < len; i += 1) {
-    const a = currentParts[i] ?? 0;
-    const b = minParts[i] ?? 0;
-    if (a > b) return true;
-    if (a < b) return false;
-  }
-  return true;
-};
 
 export const POST: RequestHandler = async (event) => {
   try {
-  const { user, supabase } = await ensureAuth(event);
-  const clientIp = typeof event.getClientAddress === 'function' ? event.getClientAddress() : null;
-  const admin = getAdminClient();
-  const deviceHash = getDeviceHash(event);
-
-  let rewards: SessionRewardResponse = {
-    xpDelta: 0,
-    baseXpDelta: 0,
-    xpMultiplier: 1,
-    currencyDelta: 0,
-    baseCurrencyDelta: 0,
-    currencyMultiplier: 1
-  };
-  let currentStreakDays = 0;
-
-  await limit(supabase, `games:complete:user:${user.id}`, rateLimitPerMinute);
-  if (clientIp) {
-    await limit(supabase, `games:complete:ip:${clientIp}`, rateLimitPerMinute);
-  }
-
-  if (await hasAbuseFlag(user.id)) {
-    throw error(403, { code: 'restricted', message: 'Account is temporarily restricted.' });
-  }
-
-  const rewardsHourWindowStartIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count: recentRewardCount, error: rewardCountError } = await admin
-    .from('game_grants')
-    .select('id', { head: true, count: 'exact' })
-    .eq('user_id', user.id)
-    .eq('source', 'game_session')
-    .gte('inserted_at', rewardsHourWindowStartIso);
-
-  if (rewardCountError) {
-    console.error('[games] failed to enforce hourly reward cap', rewardCountError);
-    throw error(500, { code: 'server_error', message: 'Unable to complete game session.' });
-  }
-
-  if (typeof recentRewardCount === 'number' && recentRewardCount >= maxRewardsPerHour) {
-    throw error(429, {
-      code: 'cap_rewards_hourly',
-      message: 'Hourly reward cap reached. Please try again soon.'
-    });
-  }
-
-  let body: {
-    sessionId?: unknown;
-    results?: unknown;
-    score?: unknown;
-    durationMs?: unknown;
-    success?: unknown;
-    stats?: unknown;
-    nonce?: unknown;
-    signature?: unknown;
-    clientVersion?: unknown;
-  };
-
-  try {
-    body = await event.request.json();
-  } catch {
-    throw error(400, { code: 'bad_request', message: 'Invalid JSON body.' });
-  }
-
-  const results =
-    body.results && typeof body.results === 'object' && !Array.isArray(body.results)
-      ? (body.results as Record<string, unknown>)
-      : null;
-  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
-  const scoreRaw = Number(results?.score ?? body.score);
-  const durationMsRaw = Number(results?.durationMs ?? body.durationMs);
-  const success =
-    typeof results?.success === 'boolean'
-      ? results.success
-      : typeof body.success === 'boolean'
-        ? body.success
-        : null;
-  const stats =
-    results?.stats && typeof results.stats === 'object' && !Array.isArray(results.stats)
-      ? (results.stats as Record<string, unknown>)
-      : body.stats && typeof body.stats === 'object' && !Array.isArray(body.stats)
-        ? (body.stats as Record<string, unknown>)
-        : null;
-  const nonce = typeof body.nonce === 'string' ? body.nonce : '';
-  const signature = typeof body.signature === 'string' ? body.signature : '';
-  const clientVersion = typeof body.clientVersion === 'string' ? body.clientVersion : null;
-
-  if (!sessionId || !Number.isFinite(scoreRaw) || !Number.isFinite(durationMsRaw) || !nonce) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'missing_fields' }
-    });
-    throw error(400, { code: 'bad_request', message: 'Missing required fields.' });
-  }
-
-  const score = Math.max(0, Math.floor(scoreRaw));
-  const durationMs = Math.max(0, Math.floor(durationMsRaw));
-
-  const session = await getSession(supabase, sessionId);
-  if (!session) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'session_not_found' }
-    });
-    throw error(404, { code: 'not_found', message: 'Session not found.' });
-  }
-
-  if (session.user_id !== user.id) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'ownership_mismatch' }
-    });
-    throw error(403, { code: 'forbidden', message: 'Session ownership mismatch.' });
-  }
-
-  if (session.status !== 'started' || session.completed_at) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'session_completed' }
-    });
-    throw error(409, { code: 'conflict', message: 'Session already completed.' });
-  }
-
-  if (session.nonce !== nonce) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'nonce_mismatch' }
-    });
-    throw error(403, { code: 'forbidden', message: 'Nonce mismatch.' });
-  }
-
-  const payload = buildSignaturePayload(sessionId, score, durationMs, nonce);
-  if (!verifySignature(payload, signature)) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'signature_invalid' }
-    });
-    throw error(403, { code: 'forbidden', message: 'Invalid signature.' });
-  }
-
-  if (!session.game_id) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'game_missing' }
-    });
-    throw error(400, { code: 'bad_request', message: 'Session game missing.' });
-  }
-
-  const game = await getGameById(session.game_id);
-  if (!game) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: { reason: 'game_not_found', gameId: session.game_id }
-    });
-    throw error(404, { code: 'not_found', message: 'Game not found.' });
-  }
-
-  const config = await getConfigForGame(supabase, session.game_id);
-  const caps = {
-    maxDurationMs: config?.max_duration_ms ?? 600000,
-    minDurationMs: config?.min_duration_ms ?? 10000,
-    maxScorePerMin: config?.max_score_per_min ?? 8000,
-    minClientVer: config?.min_client_ver ?? '1.0.0',
-    maxScore: game.max_score ?? 100000
-  };
-
-  const durationValid = durationMs >= caps.minDurationMs && durationMs <= caps.maxDurationMs;
-  if (!durationValid) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: {
-        reason: 'duration_violation',
-        durationMs,
-        caps
-      }
-    });
-    throw error(400, {
-      code: 'invalid_duration',
-      message: 'Reported duration is outside allowed bounds.'
-    });
-  }
-
-  if (score > caps.maxScore) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: {
-        reason: 'score_above_cap',
-        score,
-        maxScore: caps.maxScore
-      }
-    });
-    throw error(400, { code: 'invalid_score', message: 'Score exceeds allowed maximum.' });
-  }
-
-  if (durationMs === 0) {
-    throw error(400, { code: 'invalid_duration', message: 'Duration must be positive.' });
-  }
-
-  const minutes = durationMs / 60000;
-  const scorePerMinute = minutes > 0 ? score / minutes : Number.POSITIVE_INFINITY;
-  if (scorePerMinute > caps.maxScorePerMin) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: {
-        reason: 'score_rate_violation',
-        scorePerMinute,
-        maxScorePerMinute: caps.maxScorePerMin
-      }
-    });
-    throw error(400, { code: 'invalid_score_rate', message: 'Score rate exceeds allowed maximum.' });
-  }
-
-  if (!compareVersions(clientVersion, caps.minClientVer)) {
-    await logGameAudit({
-      userId: user.id,
-      sessionId,
-      event: 'reject',
-      ip: clientIp,
-      details: {
-        reason: 'client_version_too_low',
-        clientVersion,
-        required: caps.minClientVer
-      }
-    });
-    throw error(400, {
-      code: 'client_outdated',
-      message: `Client version ${clientVersion ?? 'unknown'} does not meet minimum requirements.`
-    });
-  }
-
-  const { error: completeError } = await supabase.rpc('fn_game_complete', {
-    p_session: sessionId,
-    p_score: score,
-    p_duration_ms: durationMs
-  });
-
-  if (completeError) {
-    console.error('[games] fn_game_complete failed', completeError);
-    throw error(500, { code: 'server_error', message: 'Unable to complete session.' });
-  }
-
-  let achievementsUnlocked: UnlockSummary[] = [];
-
-  try {
-    const scoreInsert = await admin.from('game_scores').insert({
-      user_id: user.id,
-      game_id: session.game_id,
-      session_id: session.id,
-      score,
-      duration_ms: durationMs
-    });
-
-    if (scoreInsert.error && scoreInsert.error.code !== '23505') {
-      console.error('[games] game_scores insert failed', scoreInsert.error);
+    const {user,supabase}=await ensureAuth(event);
+    // Revalidate identity at the service-role boundary, even with cached locals.
+    const verified=await supabase.auth.getUser();
+    if (verified.error || verified.data.user?.id!==user.id) throw error(401,{code:'unauthorized',message:'Authentication required.'});
+    let raw:unknown;
+    try { raw=await event.request.json(); } catch { throw error(400,{code:'bad_request',message:'Invalid JSON.'}); }
+    const {sessionId,signature,submission}=parseGameSubmission(raw);
+    const {score,durationMs,nonce}=submission;
+    const session=await getSession(supabase,sessionId);
+    if (!session || session.user_id!==user.id) throw error(404,{code:'not_found',message:'Session not found.'});
+    if (session.nonce!==nonce) throw error(403,{code:'forbidden',message:'Nonce mismatch.'});
+    if (!verifySignature(buildSignaturePayload(sessionId,score,durationMs,nonce),signature)) {
+      throw error(403,{code:'forbidden',message:'Invalid signature.'});
     }
-
-    const refreshAlltime = await admin.rpc('fn_leader_refresh', { p_scope: 'alltime' });
-    if (refreshAlltime.error) {
-      console.warn('[games] fn_leader_refresh alltime failed', refreshAlltime.error);
+    const admin=getAdminClient();
+    const saved=await readGameSettlement(admin,user.id,sessionId);
+    // Authorization and immutable-request checks precede replay; changing catalog,
+    // bonuses, hourly caps or private tuning cannot change an already-paid receipt.
+    if (saved) {
+      assertSameSubmission(saved.request,submission);
+      return json(saved.receipt);
     }
-
-    const refreshDaily = await admin.rpc('fn_leader_refresh', { p_scope: 'daily' });
-    if (refreshDaily.error) {
-      console.warn('[games] fn_leader_refresh daily failed', refreshDaily.error);
-    }
-
-    const refreshWeekly = await admin.rpc('fn_leader_refresh', { p_scope: 'weekly' });
-    if (refreshWeekly.error) {
-      console.warn('[games] fn_leader_refresh weekly failed', refreshWeekly.error);
-    }
-  } catch (err) {
-    console.error('[games] leaderboard refresh failed', err);
-  }
-
-  try {
-    const evaluator = createAchievementEvaluator({ supabase: admin });
-    const [{ count: sessionCount, error: sessionCountError }, streakDays] = await Promise.all([
-      admin
-        .from('game_sessions')
-        .select('id', { head: true, count: 'exact' })
-        .eq('user_id', user.id)
-        .eq('game_id', session.game_id)
-        .eq('status', 'completed'),
-      getCurrentStreakDays(user.id, { supabase: admin })
-    ]);
-
-    currentStreakDays = Number.isFinite(streakDays) ? Number(streakDays) : 0;
-
-    if (sessionCountError) {
-      console.error('[games] failed to count completed sessions', sessionCountError);
-    }
-
-    const completedSessionsForGame = typeof sessionCount === 'number' ? sessionCount : 0;
-    const nowUtc = new Date().toISOString();
-
-    const evaluation = await evaluator.evaluate({
-      userId: user.id,
-      slug: game.slug,
-      gameId: game.id,
-      score,
-      durationMs,
-      sessionId: session.id,
-      completedSessionsForGame,
-      currentStreakDays,
-      nowUtc
+    if (session.status!=='started' || session.completed_at) throw error(409,{code:'legacy_unreconciled',message:'This earlier session has no recoverable receipt.'});
+    const clientIp=typeof event.getClientAddress==='function'?event.getClientAddress():null;
+    await limit(supabase,`games:complete:user:${user.id}`,rateLimitPerMinute);
+    if (clientIp) await limit(supabase,`games:complete:ip:${clientIp}`,rateLimitPerMinute);
+    if (await hasAbuseFlag(user.id)) throw error(403,{code:'restricted',message:'Account is temporarily restricted.'});
+    const rawCap=Number.parseFloat(env.ECON_STREAK_MULTIPLIER_CAP ?? '2');
+    const {data,error:rpcError}=await admin.rpc('fn_settle_game_session',{
+      p_user:user.id,p_session:sessionId,p_score:score,p_duration_ms:durationMs,p_nonce:nonce,
+      p_client_version:submission.clientVersion,p_success:submission.success,p_stats:submission.stats,
+      p_max_rewards_per_hour:maxRewardsPerHour,p_streak_multiplier_cap:Number.isFinite(rawCap)&&rawCap>0?rawCap:2,
+      p_achievement_shard_factor:getAchievementShardFactor()
     });
-
-    achievementsUnlocked = evaluation.unlocked;
-
-    if (achievementsUnlocked.length > 0) {
-      await Promise.all(
-        achievementsUnlocked.map((entry) =>
-          createAchievementNotification(admin, {
-            userId: user.id,
-            achievementId: entry.achievementId,
-            metadata: {
-              key: entry.key,
-              name: entry.name,
-              points: entry.points,
-              icon: entry.icon,
-              rarity: entry.rarity,
-              slug: game.slug
-            }
-          })
-        )
-      );
+    if (rpcError) throw settlementError(rpcError);
+    const settled=parseSettlementResult(data,sessionId);
+    if (!settled.replayed) {
+      // Only optional presentation/observability remains. It cannot award money,
+      // change the receipt, or turn a successful commit into a failed response.
+      const receipt=settled.receipt;
+      const effects=Promise.allSettled([
+        Promise.resolve().then(async () => {
+          if (!session.game_id) return;
+          const [config,game]=await Promise.all([getConfigForGame(supabase,session.game_id),getGameById(session.game_id)]);
+          const deviceHash=getDeviceHash(event);
+          await inspectSessionComplete({userId:user.id,sessionId,gameId:session.game_id,score,durationMs,
+            ip:clientIp,deviceHash,caps:{maxScorePerMin:config?.max_score_per_min ?? null,minDurationMs:config?.min_duration_ms ?? null}});
+          await logEvent(event,'game_complete',{userId:user.id,sessionId,gameId:session.game_id,score,durationMs,
+            meta:{slug:game?.slug,success:submission.success,stats:submission.stats,deviceHash,
+              multiplier:receipt.currencyMultiplier,baseCurrency:receipt.baseCurrencyDelta}});
+        }),
+        ...(receipt.currencyDelta>0?[Promise.resolve().then(()=>logEvent(event,'wallet_grant',{
+          userId:user.id,sessionId,...(session.game_id?{gameId:session.game_id}:{}),amount:receipt.currencyDelta,currency:'shards',
+          meta:{source:'game_session',multiplier:receipt.currencyMultiplier,baseCurrency:receipt.baseCurrencyDelta}
+        }))]:[]),
+        ...receipt.achievements.map(entry=>Promise.resolve().then(async()=>{
+          await logEvent(event,'achievement_unlock',{userId:user.id,sessionId,...(session.game_id?{gameId:session.game_id}:{}),
+            meta:{key:entry.key,points:entry.points,shards:entry.shards,rarity:entry.rarity}});
+          if(entry.shards>0) await logEvent(event,'wallet_grant',{userId:user.id,sessionId,amount:entry.shards,currency:'shards',
+            meta:{source:'achievement',key:entry.key,points:entry.points}});
+        })),
+        ...['alltime','daily','weekly'].map(scope=>Promise.resolve().then(()=>admin.rpc('fn_leader_refresh',{p_scope:scope}))),
+        ...receipt.achievements.map(entry=>Promise.resolve().then(()=>createAchievementNotification(admin,{
+          userId:user.id,achievementId:entry.achievementId,metadata:{key:entry.key,name:entry.name,points:entry.points,icon:entry.icon,rarity:entry.rarity}
+        }))),
+        Promise.resolve().then(()=>logGameAudit({userId:user.id,sessionId,event:'complete',ip:clientIp,
+          details:{score,durationMs,clientVersion:submission.clientVersion,settlementVersion:1}})),
+        Promise.resolve().then(()=>ingestServerEvent(event,'game.complete',{
+          sessionId,gameId:session.game_id,score,durationMs,success:submission.success,stats:submission.stats,
+          rewardsGranted:receipt.rewardsGranted
+        },{sessionId,idempotencyKey:`game.complete:${sessionId}`}))
+      ]);
+      // A hung optional downstream service must not strand the reward response.
+      let timer:ReturnType<typeof setTimeout>|undefined;
+      await Promise.race([effects,new Promise<void>(resolve=>{timer=setTimeout(resolve,1500);})]);
+      if (timer) clearTimeout(timer);
     }
-  } catch (err) {
-    console.error('[games] achievement evaluation failed', err);
-  }
-
-  const companionSnapshot = await getActiveCompanionBond(user.id, admin);
-  const companionDisplay: CompanionBonusPayload | null = companionSnapshot
-    ? {
-        companionId: companionSnapshot.companionId,
-        name: companionSnapshot.name ?? null,
-        bondLevel: companionSnapshot.level,
-        xpMultiplier: companionSnapshot.bonus.xpMultiplier
-      }
-    : null;
-  const ritualUpdate = companionDisplay
-    ? await incrementCompanionRitual(admin, user.id, 'play_game_with_companion', {
-        companionName: companionDisplay.name ?? null
-      })
-    : null;
-
-  const baseRewards = calculateRewards(score);
-  const baseXpDelta = clamp(baseRewards.xpDelta, 0, 100);
-  const xpMultiplier = companionDisplay?.xpMultiplier ?? 1;
-  const xpDelta = Math.max(0, Math.round(baseXpDelta * xpMultiplier));
-  const xpFromCompanion = Math.max(0, xpDelta - baseXpDelta);
-  const xpFromStreak = 0;
-  const baseCurrencyDelta = clamp(baseRewards.currencyDelta, 0, 200);
-  const streakMultiplier = getStreakMultiplier(currentStreakDays);
-  const currencyDelta = applyStreakMultiplier(baseCurrencyDelta, currentStreakDays);
-
-  rewards = {
-    xpDelta,
-    baseXpDelta,
-    xpMultiplier,
-    baseXp: baseXpDelta,
-    finalXp: xpDelta,
-    xpFromCompanion,
-    xpFromStreak,
-    companionBonus: companionDisplay,
-    currencyDelta,
-    baseCurrencyDelta,
-    currencyMultiplier: streakMultiplier
-  };
-
-  try {
-    await persistRewards({
-      sessionId,
-      userId: user.id,
-      xpDelta: rewards.xpDelta,
-      currencyDelta: rewards.currencyDelta,
-      meta: {
-        multiplier: rewards.currencyMultiplier,
-        base_currency: rewards.baseCurrencyDelta,
-        xp_multiplier: rewards.xpMultiplier,
-        base_xp: rewards.baseXpDelta
-      }
-    });
-  } catch (err) {
-    console.error('[games] persist rewards failed', err);
-    throw error(500, { code: 'server_error', message: 'Unable to record rewards.' });
-  }
-
-  if (rewards.currencyDelta > 0) {
-    try {
-      await walletGrant({
-        userId: user.id,
-        amount: rewards.currencyDelta,
-        source: 'game_session',
-        refId: session.id,
-        meta: {
-          slug: game.slug,
-          score,
-          durationMs,
-          multiplier: rewards.currencyMultiplier,
-          base_currency: rewards.baseCurrencyDelta
-        },
-        client: admin
-      });
-    } catch (err) {
-      console.error('[games] wallet grant failed', err);
-      throw error(500, { code: 'server_error', message: 'Unable to credit wallet.' });
-    }
-  }
-
-  await inspectSessionComplete({
-    userId: user.id,
-    sessionId,
-    gameId: session.game_id,
-    score,
-    durationMs,
-    ip: clientIp,
-    deviceHash,
-    caps: {
-      maxScorePerMin: caps.maxScorePerMin,
-      minDurationMs: caps.minDurationMs
-    }
-  });
-
-  await logEvent(event, 'game_complete', {
-    userId: user.id,
-    sessionId,
-    gameId: session.game_id,
-    score,
-    durationMs,
-    meta: {
-      slug: game.slug,
-      success,
-      stats,
-      multiplier: rewards.currencyMultiplier,
-      baseCurrency: rewards.baseCurrencyDelta,
-      deviceHash,
-      caps
-    }
-  });
-
-  await ingestServerEvent(
-    event,
-    'game.complete',
-    {
-      gameId: session.game_id,
-      gameSlug: game.slug,
-      sessionId,
-      score,
-      durationMs,
-      success,
-      stats,
-      rewardsGranted: {
-        xpGained: rewards.xpDelta,
-        shardsGained: rewards.currencyDelta,
-        xpMultiplier: rewards.xpMultiplier ?? 1,
-        currencyMultiplier: rewards.currencyMultiplier ?? 1
-      }
-    },
-    { sessionId }
-  );
-
-  if (rewards.currencyDelta > 0) {
-    await logEvent(event, 'wallet_grant', {
-      userId: user.id,
-      amount: rewards.currencyDelta,
-      currency: 'shards',
-      sessionId,
-      gameId: session.game_id,
-      meta: {
-        source: 'game_session',
-        slug: game.slug,
-        multiplier: rewards.currencyMultiplier,
-        baseCurrency: rewards.baseCurrencyDelta
-      }
-    });
-  }
-
-  if (achievementsUnlocked.length > 0) {
-    await Promise.all(
-      achievementsUnlocked.map(async (entry) => {
-        await logEvent(event, 'achievement_unlock', {
-          userId: user.id,
-          sessionId,
-          ...(session.game_id ? { gameId: session.game_id } : {}),
-          meta: {
-            key: entry.key,
-            points: entry.points,
-            shards: entry.shards,
-            rarity: entry.rarity
-          }
-        });
-        if (entry.shards && entry.shards > 0) {
-          await logEvent(event, 'wallet_grant', {
-            userId: user.id,
-            amount: entry.shards,
-            currency: 'shards',
-            sessionId,
-            ...(session.game_id ? { gameId: session.game_id } : {}),
-            meta: {
-              source: 'achievement',
-              key: entry.key,
-              points: entry.points
-            }
-          });
-        }
-      })
-    );
-  }
-
-  await logGameAudit({
-    userId: user.id,
-    sessionId,
-    event: 'complete',
-    ip: clientIp,
-    details: {
-      score,
-      durationMs,
-      scorePerMinute,
-      clientVersion,
-      rewards,
-      achievements: achievementsUnlocked.map((item) => ({
-        key: item.key,
-        points: item.points,
-        shards: item.shards
-      }))
-    }
-  });
-
-  return json({
-    ...rewards,
-    rewardsGranted: {
-      xpGained: rewards.xpDelta,
-      shardsGained: rewards.currencyDelta,
-      xpMultiplier: rewards.xpMultiplier ?? 1,
-      currencyMultiplier: rewards.currencyMultiplier ?? 1
-    },
-    rituals: ritualUpdate,
-    achievements: achievementsUnlocked.map((entry) => ({
-      key: entry.key,
-      name: entry.name,
-      points: entry.points,
-      icon: entry.icon,
-      rarity: entry.rarity,
-      shards: entry.shards
-    }))
-  });
-  } catch (err) {
-    return safeGameApiError('complete', err);
-  }
+    return json(settled.receipt);
+  } catch (cause) { return safeGameApiError('complete',cause); }
 };

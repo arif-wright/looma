@@ -11,7 +11,7 @@
 
 <GameShell
   title="Orbfield"
-  description="Drag to dodge incoming shards. Tap space to trigger your companion's time warp."
+  description="Dodge together for one minute. Drag or use arrow keys to move; use Time warp for a little breathing room."
   gameId="dodge"
   {createGame}
 />

@@ -1,9 +1,7 @@
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireUser } from '$lib/server/games/guard';
-import { supabaseAdmin } from '$lib/server/supabase';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
-import { memoryStore } from '$lib/server/games/store';
 import { safeGameApiError } from '$lib/server/games/safeApiError';
 import { getActiveCompanionBond } from '$lib/server/companions/bonds';
 import { computeEffectiveMomentumMax, getSubscriptionMomentumBonus } from '$lib/player/momentum';
@@ -16,14 +14,15 @@ export const GET: RequestHandler = async (event) => {
     const [stats, walletRes, rewardsRes, companionBond, subscriptionRes] = await Promise.all([
       getPlayerStats(event, auth.supabase),
       auth.supabase
-        .from('user_wallets')
-        .select('shards, updated_at')
+        .from('wallets')
+        .select('balance, currency, updated_at')
         .eq('user_id', auth.user.id)
+        .eq('currency', 'shards')
         .maybeSingle(),
-      supabaseAdmin
+      auth.supabase
         .from('game_rewards')
         .select(
-          'id, xp_delta, currency_delta, meta, inserted_at, session:game_sessions(id, user_id, game:game_titles(slug, name))'
+          'id, xp_delta, currency_delta, meta, inserted_at, session:game_sessions!inner(id, user_id, game:game_titles(slug, name))'
         )
         .eq('session.user_id', auth.user.id)
         .order('inserted_at', { ascending: false })
@@ -35,6 +34,10 @@ export const GET: RequestHandler = async (event) => {
         .eq('user_id', auth.user.id)
         .maybeSingle()
     ]);
+
+    if (!stats || !Number.isSafeInteger(stats.xp) || (stats.xp ?? -1) < 0) {
+      throw error(500, { code: 'server_error', message: 'Unable to load player progress.' });
+    }
 
     const missionEnergyBonus = companionBond?.bonus?.missionEnergyBonus ?? 0;
     const subscriptionActive = isSubscriptionActive({
@@ -62,22 +65,6 @@ export const GET: RequestHandler = async (event) => {
     currencyMultiplier?: number | null;
   }>;
 
-    const walletMissing =
-      walletRes.error && (walletRes.error.code === 'PGRST205' || walletRes.error.code === 'PGRST202');
-    const rewardsMissing =
-      rewardsRes.error && (rewardsRes.error.code === 'PGRST205' || rewardsRes.error.code === 'PGRST202');
-
-    if (walletMissing || rewardsMissing) {
-      walletBalance = memoryStore.totalCurrency(auth.user.id);
-      rewards = memoryStore.listRewards(auth.user.id).map((row) => ({
-        id: row.sessionId,
-        xpDelta: row.xpDelta,
-        currencyDelta: row.currencyDelta,
-        insertedAt: new Date(row.insertedAt).toISOString(),
-        game: null,
-        gameName: null
-      }));
-    } else {
       if (walletRes.error) {
         throw walletRes.error;
       }
@@ -86,10 +73,11 @@ export const GET: RequestHandler = async (event) => {
         throw rewardsRes.error;
       }
 
-      walletBalance = Number(walletRes.data?.shards ?? 0);
+      walletBalance = Number(walletRes.data?.balance ?? 0);
       walletCurrency = 'shards';
+      if (!Number.isSafeInteger(walletBalance) || walletBalance < 0) throw error(500, { code: 'server_error', message: 'Unable to load wallet.' });
 
-      rewards = (rewardsRes.data ?? []).map((row) => {
+      rewards = (rewardsRes.data ?? []).map((row: Record<string, any>) => {
         const session = Array.isArray(row.session) ? (row.session[0] ?? null) : row.session;
         const game = session && Array.isArray(session.game) ? (session.game[0] ?? null) : session?.game ?? null;
         const gameRow = Array.isArray(game) ? (game[0] ?? null) : game;
@@ -107,7 +95,6 @@ export const GET: RequestHandler = async (event) => {
           currencyMultiplier: typeof rawCurrencyMultiplier === 'number' ? rawCurrencyMultiplier : null
         };
       });
-    }
 
     return json({
       xp: stats?.xp ?? 0,
@@ -123,7 +110,7 @@ export const GET: RequestHandler = async (event) => {
         balance: walletBalance,
         currency: walletCurrency,
         updatedAt:
-          walletRes.data?.updated_at ?? (walletMissing ? new Date().toISOString() : new Date(0).toISOString())
+          walletRes.data?.updated_at ?? null
       },
       rewards
     });

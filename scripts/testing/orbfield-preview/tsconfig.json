@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"], "strict": true,
+    "allowJs": true, "checkJs": false, "esModuleInterop": true,
+    "resolveJsonModule": true, "skipLibCheck": true,
+    "types": ["node", "svelte"], "baseUrl": "../../..",
+    "paths": {
+      "$lib/games/sdk": ["scripts/testing/orbfield-preview/sdk.ts"],
+      "$lib/games/state": ["scripts/testing/orbfield-preview/state.ts"],
+      "$lib/stores/companionRituals": ["scripts/testing/orbfield-preview/state.ts"],
+      "$app/navigation": ["scripts/testing/orbfield-preview/navigation.ts"],
+      "$app/stores": ["scripts/testing/orbfield-preview/navigation.ts"],
+      "$app/environment": ["scripts/testing/orbfield-preview/environment.ts"],
+      "$lib/*": ["src/lib/*"]
+    }
+  },
+  "include": ["./*.ts", "./*.svelte", "../../../src/lib/games/GameShell.svelte", "../../../src/lib/games/dodgeSurvive.ts", "../../../src/lib/games/types.ts"],
+  "exclude": [".build", ".results"]
+}
