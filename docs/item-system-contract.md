@@ -45,4 +45,12 @@ Capabilities describe actions. They do not create separate inventories.
 4. Place it in the Personal Sanctuary.
 5. Record the placement response in the Journal.
 
-The next increment should make the placed Moss Seat unlock a shared-rest interaction.
+6. Use the placed Moss Seat for shared rest and follow its persisted Journal memory.
+
+## Current Implementation Checkpoint — 2026-10-04
+
+Shared rest, owned acquisition identity, history preservation and absence protection exist in published draft PR #9. The local batch qualifies Moss Seat from persisted direct care, saves acquisition and unlock memory atomically, keeps bond calls owner-verified, settles achievement rewards in one transaction and makes the acquired object's recorded story inspectable.
+
+These changes reuse the existing item, Journal and economy systems. Missing or legacy history is not invented. The story uses exact acquisition ownership, memory consent and conservative existing Journal archive visibility. It adds no mutation, emotional profiling, inventory system or monetization behavior.
+
+Hosted schema/grants, real browser interaction and competing-session verification remain release gates. Placement-to-Journal recovery is still separate work. See [the roadmap status](roadmap-status-2026-10-04.md).

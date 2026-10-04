@@ -1,7 +1,12 @@
 <script lang="ts">
+  import { afterNavigate } from '$app/navigation';
+  import { tick } from 'svelte';
+  import KeepsakeStoryPanel from '$lib/components/items/KeepsakeStory.svelte';
+  import { keepsakeStoryHref, keepsakeCollectionHref, type KeepsakeStory } from '$lib/items/story';
   import SanctuaryPageFrame from '$lib/components/ui/sanctuary/SanctuaryPageFrame.svelte';
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
-  import { capabilityLabel, itemSourceDetail, itemSourceLabel, sanctuarySlotLabel } from '$lib/items/presentation';
+  import { recordedRewardBody } from '$lib/companions/rewardHistory';
+  import { capabilityLabel, sanctuarySlotLabel } from '$lib/items/presentation';
 
   type InventoryRow = {
     acquired_at: string;
@@ -68,20 +73,25 @@
     unifiedItems: UnifiedItemRow[];
     companionRewards: CompanionRewardRow[];
     placements: PlacementRow[];
+    placementsAvailable?: boolean;
     error?: string | null;
+    story?: KeepsakeStory | null;
+    storyStatus?: string | null;
+    storyFromSanctuary?: boolean;
+    storySanctuarySelection?: string | null;
   };
 
-  const items = Array.isArray(data?.items) ? data.items : [];
-  const unifiedItems = Array.isArray(data?.unifiedItems)
+  $: items = Array.isArray(data?.items) ? data.items : [];
+  $: unifiedItems = Array.isArray(data?.unifiedItems)
     ? data.unifiedItems.map((row) => ({
         ...row,
         item: Array.isArray(row.item) ? row.item[0] : row.item,
         companion: Array.isArray(row.companion) ? row.companion[0] ?? null : row.companion ?? null
       }))
     : [];
-  const companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
-  const placements = Array.isArray(data?.placements) ? data.placements : [];
-  const error = data?.error ?? null;
+  $: companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
+  $: placements = Array.isArray(data?.placements) ? data.placements : [];
+  $: error = data?.error ?? null;
 
   const formatDate = (value: string) => {
     const date = new Date(value);
@@ -117,33 +127,51 @@
   $: topRarity =
     Object.entries(rarityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  $: latestAcquiredAt = items[0]?.acquired_at ?? null;
+  $: latestAcquiredAt = [items[0]?.acquired_at, unifiedItems[0]?.acquired_at].filter((value): value is string => Boolean(value)).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
   $: latestRewardAt = companionRewards[0]?.unlocked_at ?? null;
   $: unifiedItemKeys = new Set(unifiedItems.map((owned) => owned.item?.item_key).filter(Boolean));
   $: legacyCompanionRewards = companionRewards.filter((reward) => !unifiedItemKeys.has(reward.reward_key));
   $: collectionCount = items.length + unifiedItems.length + legacyCompanionRewards.length;
-  $: placementByOwnedItemId = new Map(placements.filter((placement) => placement.user_item_id).map((placement) => [placement.user_item_id, placement]));
+  const placementsFor = (id: string) => placements.filter((placement) => placement.user_item_id === id);
+  let storyRegion: HTMLElement;
+  afterNavigate(async () => {
+    await tick();
+    if (data.storyStatus && storyRegion) storyRegion.focus({ preventScroll: true });
+  });
 </script>
 
 <SanctuaryPageFrame
   eyebrow="Collection"
   title="Keepsakes"
-  subtitle="Keep companion rewards, cosmetics, boosts, and expression pieces visible without breaking the sanctuary flow."
+  subtitle="A place for what you’ve gathered along the way."
 >
   <svelte:fragment slot="actions">
     <EmotionalChip tone="warm">{collectionCount} owned</EmotionalChip>
-    <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : 'Empty vault'}</EmotionalChip>
+    <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : collectionCount > 0 ? 'Your collection' : 'Empty vault'}</EmotionalChip>
   </svelte:fragment>
 
   <main class="inventory-shell">
+    {#if data.storyStatus}
+      <section id="keepsake-story" class="story-region" bind:this={storyRegion} tabindex="-1" aria-labelledby={data.story ? 'keepsake-story-title' : 'story-unavailable-title'}>
+        {#if data.story}
+          {#key data.story.id}<KeepsakeStoryPanel story={data.story} fromSanctuary={data.storyFromSanctuary ?? false} sanctuarySelection={data.storySanctuarySelection ?? null} />{/key}
+        {:else}
+          <div class="inventory-state" role="status">
+            <h2 id="story-unavailable-title">This story isn’t available</h2>
+            <p>Choose a keepsake from your collection to read its story.</p>
+            <a class="item-action" href={keepsakeCollectionHref()}>Back to collection</a>
+          </div>
+        {/if}
+      </section>
+    {/if}
     <section class="inventory-pulse" aria-label="Keepsakes pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
         <h2>{collectionCount === 0 ? 'Nothing stored yet' : `${collectionCount} items in your collection`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
-            Keepsakes could not be loaded right now. Your owned items are still safe.
-          {:else if items.length === 0}
+            Some collection details could not be loaded right now.
+          {:else if collectionCount === 0}
             Visit the atelier when you want new cosmetics, utility items, or bundle unlocks.
           {:else}
             Your keepsakes should feel like a living record of what you have gathered for play, care, and self-expression.
@@ -180,10 +208,11 @@
 
     {#if error}
       <section class="inventory-state inventory-state--error" aria-live="polite">
-        <h3>Keepsakes unavailable</h3>
-        <p>Failed to load keepsakes: {error}</p>
+        <h3>Some details are unavailable</h3>
+        <p>{error}</p>
       </section>
-    {:else if collectionCount === 0}
+    {/if}
+    {#if collectionCount === 0 && !error}
       <section class="inventory-state" aria-live="polite">
         <h3>Your vault is quiet</h3>
         <p>No items owned yet. Explore the atelier to pick up your first cosmetic, utility item, or bundle.</p>
@@ -212,7 +241,7 @@
         <section class="inventory-grid" aria-label="Meaningful items">
           {#each unifiedItems as owned}
             {#if owned.item}
-              <article class="inventory-card" aria-label={`${owned.item.title} meaningful item`}>
+              <article id={`keepsake-${owned.id}`} tabindex="-1" class="inventory-card" aria-label={`${owned.item.title} meaningful item`}>
                 <div class="inventory-media">
                   <div class="inventory-media__placeholder" aria-hidden="true">{owned.item.title.slice(0, 1)}</div>
                   <span class="inventory-rarity">{titleCase(owned.item.tone)}</span>
@@ -222,31 +251,31 @@
                     <div>
                       <h3>{owned.item.title}</h3>
                       {#if owned.quantity > 1}<span class="inventory-quantity">×{owned.quantity}</span>{/if}
-                      <p class="subtitle">{owned.item.description}</p>
+                      <p class="subtitle">{owned.source_type === 'chapter_reward' ? recordedRewardBody(owned.item.title) : owned.item.description}</p>
                     </div>
                     <span class="inventory-type">{titleCase(owned.item.kind)}</span>
                   </div>
                   <p class="meta">
-                    {itemSourceLabel(owned.source_type, owned.item.tone)}
+                    {owned.source_type === 'chapter_reward' ? 'Added as a chapter keepsake' : owned.source_type === 'care_milestone' ? 'Added as a care keepsake' : owned.source_type === 'world' ? 'Gathered in The Wilds' : 'In your collection'}
                     {owned.companion?.name ? ` with ${owned.companion.name}` : ''}
                   </p>
-                  {#if itemSourceDetail(owned.provenance_json)}
-                    <p class="provenance">{itemSourceDetail(owned.provenance_json)}</p>
-                  {/if}
+                  <a class="story-action" href={keepsakeStoryHref(owned.id)} aria-expanded={data.story?.id === owned.id} aria-controls="keepsake-story" on:click={() => { if (data.story?.id === owned.id) storyRegion?.focus(); }}>Read its story<span aria-hidden="true"> ↗</span><span class="sr-only">: {owned.item.title}</span></a>
                   <div class="capability-list" aria-label="Item capabilities">
                     {#each owned.item.capabilities as capability}
                       <span>{capabilityLabel(capability)}</span>
                     {/each}
                   </div>
                   {#if owned.item.capabilities.includes('placeable')}
-                    {@const placement = placementByOwnedItemId.get(owned.id)}
-                    {#if placement}
-                      <p class="placement-state">Placed in {sanctuarySlotLabel(placement.slot_key)}</p>
+                    {@const ownedPlacements = placementsFor(owned.id)}
+                    {#if data.placementsAvailable === false}
+                      <p class="placement-state">Current placement could not be checked.</p>
+                    {:else if ownedPlacements.length > 0}
+                      <p class="placement-state">Placed in {ownedPlacements.map((placement) => sanctuarySlotLabel(placement.slot_key)).join(' · ')}</p>
                     {:else if owned.item.capabilities.includes('interactive')}
                       <p class="placement-state">Place this object to unlock its shared interaction.</p>
                     {/if}
                     <a class="item-action" href={`/app/sanctuary?item=${encodeURIComponent(owned.id)}`}>
-                      {placement ? 'View in Sanctuary' : 'Place in Sanctuary'}
+                      {data.placementsAvailable === false || ownedPlacements.length > 0 ? 'View in Sanctuary' : 'Place in Sanctuary'}
                     </a>
                   {/if}
                 </div>
@@ -328,6 +357,13 @@
 </SanctuaryPageFrame>
 
 <style>
+  .story-region { scroll-margin-top: 5.5rem; outline: none; }
+  .story-region:focus-visible { outline: 2px solid #b8ded6; outline-offset: 5px; border-radius: 1.35rem; }
+  .story-action { color: #b8ded6; font-size: .8rem; font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; gap: .35rem; text-decoration: none; }
+  .story-action:hover { color: #dcfff1; }
+  .story-action:focus-visible, .inventory-card:focus-visible { outline: 2px solid #b8ded6; outline-offset: 4px; }
+  .inventory-card { scroll-margin-top: 5.5rem; }
+
   .inventory-shell {
     padding: 1rem 0 calc(6rem + env(safe-area-inset-bottom));
     display: grid;
@@ -455,7 +491,6 @@
     font-weight: 700;
   }
 
-  .provenance,
   .placement-state {
     margin: 0;
     color: rgba(220, 208, 186, 0.74);

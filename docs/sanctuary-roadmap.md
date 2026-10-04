@@ -8,9 +8,15 @@ The Personal Sanctuary makes the companion relationship tangible:
 
 The sanctuary is intentionally smaller than a world builder. Expansion should follow demonstrated relationship value rather than editor complexity.
 
+## Implementation Checkpoint — 2026-10-04
+
+This sequence distinguishes source implementation from hosted acceptance. See [the reconciled status and release gates](roadmap-status-2026-10-04.md).
+
+The Moss Seat shared-rest transaction and owned-object history hardening are published in draft PR #9 at `178aeb5`. Care qualification, owner-checked bond calls, atomic achievement settlement and the read-only acquired-keepsake story are reconstructed locally for fresh verification. No feature migration or application deployment is performed by that reconstruction. Finish the same single-object loop before expanding scope.
+
 ## Foundation: One Shared Space
 
-Status: implemented
+Status: implemented in source; hosted acceptance remains open
 
 - One private sanctuary per user
 - Five clear decoration spaces
@@ -18,8 +24,8 @@ Status: implemented
 - Persistent placement and removal
 - Active companion presence
 - Companion reaction after placement
-- Reactions recorded in the companion journal
-- Moss Seat earned after three care moments
+- Reactions recorded in the companion Journal; placement and its Journal insert still have a partial-failure gap
+- Moss Seat earned after three persisted direct-care events, with acquisition and unlock memory saved atomically in the local repair
 
 Success signal:
 
@@ -27,7 +33,7 @@ Success signal:
 
 ## Next: Meaningful Object Interactions
 
-Status: in progress
+Status: Moss Seat implemented in source; reliability and hosted acceptance remain open
 
 - Placed Moss Seat unlocks a shared-rest interaction
 - Shared rest restores the companion's effective energy and records a Journal memory
@@ -55,6 +61,8 @@ Success signal:
 - Sanctuary visits deepen existing relationships without becoming a public popularity feed.
 
 ## Future: Small Worlds
+
+Separate flagged Wilds implementation exists in source and later ADRs. It does not establish this Sanctuary product phase or a verified live rollout.
 
 - Multiple sanctuary scenes
 - Modular paths, structures, and points of interest

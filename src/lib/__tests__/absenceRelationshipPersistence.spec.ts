@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$lib/server/supabase', () => ({
   createSupabaseServerClient: vi.fn(async (event: any) => event.locals),
-  supabaseAdmin: { from: () => ({ select: () => ({ eq: () => ({ eq: async () => ({ count: 0, error: null }) }) }) }) }
+  supabaseAdmin: { rpc: vi.fn(async () => ({ data: null, error: null })) }
 }));
 vi.mock('$lib/server/companions/bonds', () => ({ syncPlayerBondState: vi.fn(async () => ({ rows: [], milestones: [] })) }));
 vi.mock('$lib/server/companions/rituals', () => ({ incrementCompanionRitual: vi.fn(async () => null) }));

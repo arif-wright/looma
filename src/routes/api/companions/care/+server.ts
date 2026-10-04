@@ -41,73 +41,18 @@ const deriveMood = (affection: number, trust: number, energy: number) => {
   return 'neutral';
 };
 
-const unlockCareMossSeat = async (ownerId: string, companionId: string, companionName: string) => {
-  const { count, error: countError } = await supabaseAdmin
-    .from('companion_care_events')
-    .select('id', { count: 'exact', head: true })
-    .eq('owner_id', ownerId)
-    .eq('companion_id', companionId);
-  if (countError || (count ?? 0) < 3) return null;
-
-  const { data: item, error: itemError } = await supabaseAdmin
-    .from('item_catalog')
-    .select('id, item_key, title, description')
-    .eq('item_key', 'care-moss-seat')
-    .maybeSingle();
-  if (itemError || !item) return null;
-
-  const { data: existing } = await supabaseAdmin
-    .from('user_items')
-    .select('id')
-    .eq('owner_id', ownerId)
-    .eq('companion_id', companionId)
-    .eq('item_id', item.id)
-    .eq('source_type', 'care_milestone')
-    .eq('source_key', 'care_3')
-    .maybeSingle();
-  if (existing) return null;
-
-  const { data: unlocked, error: unlockError } = await supabaseAdmin
-    .from('user_items')
-    .insert({
-      owner_id: ownerId,
-      companion_id: companionId,
-      item_id: item.id,
-      source_type: 'care_milestone',
-      source_key: 'care_3',
-      provenance_json: {
-        careMoments: count,
-        companionName,
-        reason: 'Earned after three moments of care.'
-      }
-    })
-    .select('id')
-    .single();
-  if (unlockError || !unlocked) {
-    console.error('[companion care] moss seat unlock failed', unlockError);
+// The service-only RPC qualifies persisted care and saves ownership + memory atomically.
+const unlockCareMossSeat = async (ownerId: string, companionId: string, careEventId: string) => {
+  const { data, error } = await supabaseAdmin.rpc('unlock_care_moss_seat', {
+    p_owner_id: ownerId,
+    p_companion_id: companionId,
+    p_care_event_id: careEventId
+  });
+  if (error) {
+    console.error('[companion care] moss seat unlock failed', error);
     return null;
   }
-
-  await supabaseAdmin.from('companion_journal_entries').insert({
-    owner_id: ownerId,
-    companion_id: companionId,
-    source_type: 'system',
-    title: `${companionName} found a Moss Seat`,
-    body: `After three moments of care, ${companionName} found a soft place that now belongs in your shared sanctuary.`,
-    meta_json: {
-      category: 'item_unlock',
-      itemKey: item.item_key,
-      sourceType: 'care_milestone',
-      sourceKey: 'care_3'
-    }
-  });
-
-  return {
-    id: unlocked.id,
-    itemKey: item.item_key,
-    title: item.title,
-    description: item.description
-  };
+  return data;
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -292,10 +237,12 @@ export const POST: RequestHandler = async (event) => {
     bond_level: bondLevel,
     bond_score: bondScore
   };
-  const itemUnlock = await unlockCareMossSeat(session.user.id, companion.id, companion.name).catch((err) => {
-    console.error('[companion care] item unlock evaluation failed', err);
-    return null;
-  });
+  const itemUnlock = !eventError && eventRow?.id
+    ? await unlockCareMossSeat(session.user.id, companion.id, eventRow.id).catch((err) => {
+      console.error('[companion care] item unlock evaluation failed', err);
+      return null;
+    })
+    : null;
 
   return json({
     ok: true,

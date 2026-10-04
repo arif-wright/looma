@@ -354,7 +354,7 @@ export const POST: RequestHandler = async (event) => {
             },
             { onConflict: 'companion_id', ignoreDuplicates: false }
           );
-        const { rows } = await syncPlayerBondState(db, userId);
+        const { rows } = await syncPlayerBondState(supabase, userId);
         return rows.find((row) => row.companion_id === updatedCompanion.id) ?? null;
       }
     },

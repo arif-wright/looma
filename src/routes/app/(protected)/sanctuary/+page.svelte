@@ -9,12 +9,14 @@
   import type { PageData } from './$types';
   import type { SanctuaryDecor, SanctuarySlot } from '$lib/sanctuary';
   import { journalMomentHref } from '$lib/launch/proofIntegrity';
+  import { keepsakeStoryHref } from '$lib/items/story';
   import { recordedRewardBody } from '$lib/companions/rewardHistory';
 
   export let data: PageData;
 
   type Placement = {
     id: string;
+    user_item_id?: string | null;
     slot_key: SanctuarySlot;
     item:
       | (SanctuaryDecor & { item_key?: string; capabilities?: string[] })
@@ -51,6 +53,20 @@
   let nextRestAvailableAt = data.nextRestAvailableAt ?? null;
   let status: string | null = null;
   let appliedRequestedItem: string | null = null;
+
+  // Preserve a card selection across Journal/story visits and browser Back/Forward.
+  // The URL remains the explicit initial selection; a snapshot remembers later UI choices.
+  export const snapshot = {
+    capture: () => ({ selectedItemId, appliedRequestedItem }),
+    restore: (value: unknown) => {
+      if (!value || typeof value !== 'object') return;
+      const saved = value as { selectedItemId?: unknown; appliedRequestedItem?: unknown };
+      if (typeof saved.selectedItemId === 'string' && normalizedOwnedItems.some((owned) => owned.id === saved.selectedItemId)) {
+        selectedItemId = saved.selectedItemId;
+        appliedRequestedItem = typeof saved.appliedRequestedItem === 'string' ? saved.appliedRequestedItem : null;
+      }
+    }
+  };
 
   const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
   const placementFor = (placements: unknown, slot: SanctuarySlot) =>
@@ -304,6 +320,7 @@
         <div class="selection-bar">
           <span><strong>{selectedItem()?.item?.title}</strong> selected</span>
           <span>Tap an occupied space to replace it.</span>
+          <a class="read-story-link" href={keepsakeStoryHref(selectedItemId!, true, selectedItemId)}>Read its story<span aria-hidden="true"> ↗</span></a>
         </div>
       {/if}
       {:else}
@@ -322,10 +339,15 @@
           {#each data.placements as placement}
             {@const placedDecor = normalizeItem((placement as unknown as Placement).item)}
             {#if placedDecor}
+              <div class="placed-item">
               <button type="button" aria-label={`Remove ${placedDecor.title} from ${slots.find(slot => slot.key === (placement as unknown as Placement).slot_key)?.label ?? 'this space'}`} disabled={Boolean(savingSlot) || interactionPending} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
                 <span>{placedDecor.title}</span>
                 <small>Remove</small>
               </button>
+              {#if (placement as unknown as Placement).user_item_id}
+                <a class="read-story-link" href={keepsakeStoryHref((placement as unknown as Placement).user_item_id!, true, selectedItemId)}>Read its story<span class="sr-only">: {placedDecor.title}</span><span aria-hidden="true"> ↗</span></a>
+              {/if}
+              </div>
             {/if}
           {/each}
         </div>
@@ -335,6 +357,11 @@
 </SanctuaryPageFrame>
 
 <style>
+  .read-story-link { display: inline-flex; align-items: center; min-height: 44px; color: #b8ded6; font-size: .78rem; font-weight: 650; text-decoration: none; }
+  .read-story-link:focus-visible { outline: 2px solid #b8ded6; outline-offset: 3px; border-radius: .3rem; }
+  .read-story-link:hover { color: #ddfff2; }
+  .placed-item { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .8rem; }
+
   :global(.sanctuary-builder) {
     min-height: calc(100dvh - 5rem);
   }

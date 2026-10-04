@@ -1,6 +1,8 @@
 # The Wilds Implementation Roadmap
 
-This roadmap is sequencing guidance only. The audit adds no implementation, dependency, route, or migration.
+This roadmap preserves historical sequencing. Later source implementation is described in the decision log, ADR-003 through ADR-006 and renderer/environment contracts; historical future-tense entries are not a current completion checklist.
+
+Status checkpoint (2026-10-04): protected flagged world routes, signed admission, independent Colyseus service, authoritative movement, followers, persistence and Moonberry mechanics exist in source. Their current hosted rollout, permissions and load/concurrency acceptance are not established here. See [the product status](../roadmap-status-2026-10-04.md).
 
 ## Principles
 

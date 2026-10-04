@@ -1,0 +1,44 @@
+import { test, expect } from '@playwright/test';
+const owned = '10000000-0000-0000-0000-000000000002';
+const other = '10000000-0000-0000-0000-000000000005';
+const story = `/app/inventory?item=${owned}#keepsake-story`;
+test('narrow story, qualification disclosure, exact Journal destination and reload', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => { if (!['GET', 'HEAD'].includes(request.method())) writes.push(request.url()); });
+  await page.goto(story);
+  await expect(page.getByRole('heading', { name: 'Moss Seat', exact: true })).toBeVisible();
+  await expect(page.getByText('Earned through three care moments')).toBeVisible();
+  await page.getByText('See the three care moments').click();
+  await expect(page.getByText('Fed together', { exact: true })).toBeVisible();
+  await expect(page.getByText('Played together', { exact: true })).toBeVisible();
+  await expect(page.getByText('Groomed together', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('link', { name: 'Open Journal: A quiet rest with Fern' }).click();
+  await expect(page).toHaveURL(/companion=10000000-0000-0000-0000-000000000007&moment=10000000-0000-0000-0000-000000000030/);
+  await page.goBack(); await page.reload();
+  await expect(page.getByRole('heading', { name: 'Moss Seat', exact: true })).toBeVisible();
+  expect(writes).toEqual([]);
+});
+test('close, repeated activation, item switching and browser history do not retain stale story data', async ({ page }) => {
+  await page.goto(story);
+  await page.getByRole('link', { name: 'Close story and return to collection' }).click();
+  await expect(page.locator('#keepsake-story')).toHaveCount(0);
+  const first = page.locator(`#keepsake-${owned}`).getByRole('link', { name: 'Read its story: Moss Seat' });
+  await first.click(); await first.click();
+  await expect(page.locator('#keepsake-story')).toHaveCount(1);
+  await page.locator(`#keepsake-${other}`).getByRole('link', { name: 'Read its story: Moss Seat' }).click();
+  await expect(page.locator('#keepsake-story')).toContainText('Added as a chapter keepsake');
+  await expect(page.locator('#keepsake-story')).not.toContainText('A quiet rest with Fern');
+  await page.goBack();
+  await expect(page.locator('#keepsake-story')).toContainText('Earned through three care moments');
+  await page.goForward();
+  await expect(page.locator('#keepsake-story')).toContainText('Added as a chapter keepsake');
+});
+test('unavailable and removed-placement states keep the owned collection and historical slot', async ({ page }) => {
+  await page.goto('/app/inventory?item=foreign#keepsake-story');
+  await expect(page.getByRole('heading', { name: 'This story isn’t available' })).toBeVisible();
+  await expect(page.locator(`#keepsake-${owned}`)).toBeVisible();
+  await page.goto(`${story.replace('#keepsake-story', '')}&removed=1#keepsake-story`);
+  await expect(page.locator('#keepsake-story')).toContainText('In your collection');
+  await expect(page.locator('#keepsake-story')).toContainText('Recorded in center glade');
+});

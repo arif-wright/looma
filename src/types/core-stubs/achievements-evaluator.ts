@@ -8,7 +8,12 @@ export type UnlockSummary = {
   shards?: number;
 };
 
-type CatalogEntry = { id: string; key: string };
+type CatalogEntry = {
+  id: string;
+  key: string;
+  game_id: string | null;
+  rule: { kind: string; gte: number };
+};
 
 export const createAchievementEvaluator = (_args: unknown) => ({
   evaluate: async (_input: unknown): Promise<{ unlocked: UnlockSummary[] }> => ({ unlocked: [] }),
