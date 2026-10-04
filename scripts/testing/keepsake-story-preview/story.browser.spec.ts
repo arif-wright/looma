@@ -48,7 +48,7 @@ test('narrow story, qualification disclosure, exact Journal destination and relo
   ]);
   await capture(page, testInfo, 'qualified-story-expanded');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('link', { name: 'Open Journal: A quiet rest with Fern' }).click();
+  await page.getByRole('link', { name: /^Open Journal\s*:\s*A quiet rest with Fern$/ }).click();
   await expect(page).toHaveURL('http://127.0.0.1:4176/app/memory?companion=10000000-0000-0000-0000-000000000007&moment=10000000-0000-0000-0000-000000000030#moment-10000000-0000-0000-0000-000000000030');
   await page.goBack(); await page.reload();
   await expect(page.locator('#keepsake-story').getByRole('heading', { name: 'Moss Seat', exact: true })).toBeVisible();
@@ -58,12 +58,12 @@ test('close, repeated activation, item switching and browser history do not reta
   await page.goto(story);
   await page.getByRole('link', { name: 'Close story and return to collection' }).click();
   await expect(page.locator('#keepsake-story')).toHaveCount(0);
-  const first = page.locator(`#keepsake-${owned}`).getByRole('link', { name: 'Read its story: Moss Seat' });
+  const first = page.locator(`#keepsake-${owned}`).getByRole('link', { name: /^Read its story\s*:\s*Moss Seat$/ });
   await first.click();
   await expect(page.locator('#keepsake-story')).toBeFocused();
   await first.click();
   await expect(page.locator('#keepsake-story')).toHaveCount(1);
-  await page.locator(`#keepsake-${other}`).getByRole('link', { name: 'Read its story: Moss Seat' }).click();
+  await page.locator(`#keepsake-${other}`).getByRole('link', { name: /^Read its story\s*:\s*Moss Seat$/ }).click();
   await expect(page.locator('#keepsake-story')).toContainText('Added as a chapter keepsake');
   await expect(page.locator('#keepsake-story')).not.toContainText('A quiet rest with Fern');
   await page.goBack();

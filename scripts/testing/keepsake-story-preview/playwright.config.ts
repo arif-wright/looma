@@ -32,6 +32,6 @@ export default defineConfig({
   },
   reporter: [
     ['list'],
-    ['html', { outputFolder: `${repositoryRoot}keepsake-story-report`, open: 'never' }]
+    ['json', { outputFile: `${repositoryRoot}artifacts/keepsake-story/results.json` }]
   ]
 });
