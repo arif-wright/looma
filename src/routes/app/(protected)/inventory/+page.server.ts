@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { visibleStoryJournal } from '$lib/server/items/storyHistory';
-import { buildKeepsakeStory, isOwnedItemId, STORY_MOMENT_LIMIT, type KeepsakeStory, type StoryOwnedItem } from '$lib/items/story';
+import { buildKeepsakeStory, isOwnedItemId, recordedMoonberryEventId, STORY_MOMENT_LIMIT, type KeepsakeStory, type StoryOwnedItem } from '$lib/items/story';
 
 // Each read fails independently: a missing history record must not hide an owned collection.
 const read = async (query: PromiseLike<any>) => {
@@ -51,13 +51,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   else {
     // Resolve bounded candidates, then apply Journal's ordinary browsing visibility.
     // No archived text or ids are returned through the exact-moment-link exception.
-    const history = await read(supabase.from('companion_journal_entries')
+    const historyQuery = read(supabase.from('companion_journal_entries')
       .select('id, owner_id, companion_id, source_type, source_id, title, body, created_at, meta_json')
       .eq('owner_id', ownerId).eq('source_type', 'system').contains('meta_json', { userItemId: owned.id })
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(STORY_MOMENT_LIMIT));
-    if (history.error) historyState = 'unavailable';
+    // Old Moonberry rows already store an exact event link, but their Journal metadata
+    // predates userItemId. Never broaden this to all gathers or match by dates/catalog.
+    const worldEventId = recordedMoonberryEventId(owned);
+    const worldQuery = worldEventId ? read(supabase.from('companion_journal_entries')
+      .select('id, owner_id, companion_id, source_type, source_id, title, body, created_at, meta_json')
+      .eq('owner_id', ownerId).eq('companion_id', owned.companion_id).eq('source_type', 'system').eq('source_id', worldEventId)
+      .contains('meta_json', { kind: 'world_gather', itemKey: 'world-moonberry', mapId: 'wilds-exploration' })
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(1))
+      : Promise.resolve({ data: [], error: null });
+    const [history, worldHistory] = await Promise.all([historyQuery, worldQuery]);
+    if (history.error || worldHistory.error) historyState = 'unavailable';
     else {
-      try { journal = await visibleStoryJournal(supabase, ownerId, history.data ?? []); }
+      try { journal = await visibleStoryJournal(supabase, ownerId, [...(history.data ?? []), ...(worldHistory.data ?? [])]); }
       catch { historyState = 'unavailable'; }
     }
   }

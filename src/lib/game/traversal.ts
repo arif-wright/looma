@@ -11,7 +11,7 @@ export type TraversalBlocker = {
 
 export type TraversalManifest = {
   version: number;
-  mapId: 'wilds-exploration';
+  mapId: 'wilds-exploration' | 'wilds-town';
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   spawn: { x: number; y: number };
   blockers: readonly TraversalBlocker[];

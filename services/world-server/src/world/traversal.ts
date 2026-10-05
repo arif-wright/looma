@@ -1,4 +1,5 @@
 import manifestJson from './traversalManifest.json' with { type: 'json' };
+import hollowManifestJson from './hollowTraversalManifest.json' with { type: 'json' };
 
 export type Position = { x: number; y: number };
 export type CircleBlocker = {
@@ -11,13 +12,14 @@ export type CircleBlocker = {
 };
 export type TraversalDefinition = {
   version: number;
-  mapId: 'wilds-exploration';
+  mapId: 'wilds-exploration' | 'wilds-town';
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   spawn: Position;
   blockers: readonly CircleBlocker[];
 };
 
 export const EXPLORATION_TRAVERSAL = manifestJson as TraversalDefinition;
+export const HOLLOW_TRAVERSAL = hollowManifestJson as TraversalDefinition;
 
 export const overlapsBlocker = (position: Position, playerRadius: number, blocker: CircleBlocker) =>
   Math.hypot(position.x - blocker.x, position.y - blocker.y) < playerRadius + blocker.radius;

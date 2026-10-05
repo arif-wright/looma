@@ -6,20 +6,31 @@ import {
   GATHER_MESSAGE,
   GATHER_RESULT_MESSAGE,
   PROTOCOL_ERROR_MESSAGE,
+  PORTAL_MESSAGE, PORTAL_RESULT_MESSAGE, type PortalResult,
   WORLD_PROTOCOL_VERSION,
   type MovementIntent
 } from '../protocol.js';
 import { applyMovement, parseMovementIntent } from '../simulation/movement.js';
 import { SlidingWindowRateLimiter } from '../security/rateLimiter.js';
-import { PlayerState, WorldState } from './state.js';
+import { NpcState, PlayerState, WorldState } from './state.js';
 import { applyPresenceTransition } from './presence.js';
 import {
   parseJoinCredential, verifyWorldTicket, worldTicketReplayGuard, type WorldAuth
 } from '../auth/ticket.js';
 import type { WorldPersistence } from '../persistence/worldPersistence.js';
-import { gatherNodeAtPosition, isValidWorldPosition, landmarkAtPosition, WORLD_MAPS, type WorldMapDefinition } from '../world/maps.js';
+import { gatherNodeAtPosition, isWorldMapId, isValidWorldPosition, landmarkAtPosition, WORLD_MAPS, type WorldMapDefinition } from '../world/maps.js';
+
+import { parsePortalRequest, resolvePortal, PORTAL_COOLDOWN_MS } from '../world/portals.js';
+import { WORLD_NPCS, npcPositionAt } from '../world/npcs.js';
 
 type ClientRuntime = {
+  leaving: boolean;
+  gathering: boolean;
+  portalLimiter: SlidingWindowRateLimiter;
+  portalResults: Map<string, PortalResult>;
+  portalRequestId: string | null;
+  lastPortalAt: number;
+  transitionInFlight: Promise<void> | null;
   input: MovementIntent;
   movementLimiter: SlidingWindowRateLimiter;
   malformedLimiter: SlidingWindowRateLimiter;
@@ -81,6 +92,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   private log = createLogger('info');
   private joinSecret = '';
   private map: WorldMapDefinition = WORLD_MAPS['wilds-exploration'];
+  private elapsedMs = 0;
   private checkpointMs = 15_000;
   private persistence: WorldPersistence | null = null;
   private readonly pendingPersistence = new Set<Promise<void>>();
@@ -94,6 +106,12 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     this.checkpointMs = Math.max(5_000, (options.checkpointSeconds ?? 15) * 1_000);
     this.persistence = options.persistence ?? null;
     this.setMetadata({ protocolVersion: WORLD_PROTOCOL_VERSION });
+    for (const definition of WORLD_NPCS) {
+      const npc = new NpcState();
+      Object.assign(npc, { id: definition.id, name: definition.name, mapId: definition.mapId, kind: definition.kind, playerBody: definition.playerBody, ...npcPositionAt(definition, 0) });
+      this.state.npcs.set(definition.id, npc);
+    }
+    this.onMessage(PORTAL_MESSAGE, (client, value: unknown) => void this.handlePortal(client, value));
     this.onMessage(MOVEMENT_MESSAGE, (client, value: unknown) => this.handleMovement(client, value));
     this.onMessage(COMPANION_REFRESH_MESSAGE, (client, value: unknown) => this.handleCompanionRefresh(client, value));
     this.onMessage(GATHER_MESSAGE, (client, value: unknown) => void this.handleGather(client, value));
@@ -111,6 +129,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     const candidateSpawn = spawnFor(this.state.players.size);
     const spawn = isValidWorldPosition(this.map, candidateSpawn) ? candidateSpawn : this.map.spawn;
     const player = new PlayerState();
+    player.mapId = this.map.id;
+    player.connected = false;
     player.x = spawn.x;
     player.y = spawn.y;
     player.colorIndex = this.state.players.size % 6;
@@ -120,6 +140,9 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     this.applyCompanion(player, auth.companion);
     this.state.players.set(client.sessionId, player);
     client.userData = {
+      leaving: false, gathering: false,
+      portalLimiter: new SlidingWindowRateLimiter(5, 5_000),
+      portalResults: new Map(), portalRequestId: null, lastPortalAt: -Infinity, transitionInFlight: null,
       input: { sequence: 0, x: 0, y: 0 },
       movementLimiter: new SlidingWindowRateLimiter(25, 1000),
       malformedLimiter: new SlidingWindowRateLimiter(5, 10_000),
@@ -136,10 +159,13 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     if (this.persistence) {
       try {
         const loaded = await this.persistence.load(auth.userId, this.map);
-        player.x = loaded.position.x;
-        player.y = loaded.position.y;
+        const loadedMap = loaded.mapId && isWorldMapId(loaded.mapId) ? WORLD_MAPS[loaded.mapId] : this.map;
+        player.mapId = loadedMap.id;
+        const restoredPosition = isValidWorldPosition(loadedMap, loaded.position) ? loaded.position : loadedMap.spawn;
+        player.x = restoredPosition.x;
+        player.y = restoredPosition.y;
         client.userData.stateVersion = loaded.stateVersion;
-        client.userData.discoveries = loaded.discoveries;
+        client.userData.discoveries = new Set([...loaded.discoveries].map((key) => `${player.mapId}:${key}`));
         client.userData.dirty = !loaded.restored;
       } catch {
         player.x = this.map.spawn.x;
@@ -148,6 +174,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
         this.log.warn('world.persistence.load_failed', { playerId: client.sessionId });
       }
     }
+    player.connected = true;
     this.log.info('world.player.joined', { playerId: client.sessionId, players: this.state.players.size });
   }
 
@@ -157,7 +184,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     if (client.userData) client.userData.input = { sequence: client.userData.input.sequence, x: 0, y: 0 };
     this.log.warn('world.player.dropped', { playerId: client.sessionId, code });
     const checkpoint = this.queueCheckpoint(client, true);
-    if (code === 4002 || code === 4003) {
+    if (code === 4002 || code === 4003 || code === 4004) {
       await checkpoint;
       this.state.players.delete(client.sessionId);
       return;
@@ -181,6 +208,9 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   async onLeave(client: WorldClient, code?: number) {
+    if (client.userData) client.userData.leaving = true;
+    const leavingPlayer = this.state.players.get(client.sessionId);
+    if (leavingPlayer) leavingPlayer.connected = false;
     await this.queueCheckpoint(client, true);
     if (applyPresenceTransition(this.state.players.get(client.sessionId), 'leave') === 'remove') {
       this.state.players.delete(client.sessionId);
@@ -199,12 +229,12 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   async onDispose() {
-    await Promise.allSettled([...this.pendingPersistence]);
+    while (this.pendingPersistence.size) await Promise.allSettled([...this.pendingPersistence]);
   }
 
   private handleMovement(client: WorldClient, value: unknown) {
     const runtime = client.userData;
-    if (!runtime) return;
+    if (!runtime || runtime.stateVersion < 0 || runtime.leaving || runtime.transitionInFlight || !this.state.players.get(client.sessionId)?.connected) return;
 
     const input = parseMovementIntent(value);
     if (!input) {
@@ -229,10 +259,13 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
 
   private simulate(deltaMs: number) {
     this.state.tick = (this.state.tick + 1) >>> 0;
+    this.elapsedMs = (this.elapsedMs + Math.max(0, Math.min(100, Number.isFinite(deltaMs) ? deltaMs : 0)));
+    for (const definition of WORLD_NPCS) Object.assign(this.state.npcs.get(definition.id)!, npcPositionAt(definition, this.elapsedMs));
     for (const client of this.clients) {
       const player = this.state.players.get(client.sessionId);
-      if (!player?.connected || !client.userData) continue;
-      const next = applyMovement(player, client.userData.input, deltaMs, this.map.traversal);
+      if (!player?.connected || !client.userData || client.userData.stateVersion < 0 || client.userData.leaving || client.userData.transitionInFlight) continue;
+      const map = this.playerMap(player);
+      const next = applyMovement(player, client.userData.input, deltaMs, map.traversal);
       player.x = next.x;
       player.y = next.y;
       player.acknowledgedSequence = client.userData.input.sequence;
@@ -284,7 +317,13 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       this.log.warn('world.gather.rejected', { playerId: client.sessionId, reason: 'rate_limited' });
       return;
     }
-    const node = gatherNodeAtPosition(this.map, request.nodeKey, player);
+    if (!player.connected || runtime.stateVersion < 0 || runtime.leaving || runtime.transitionInFlight || runtime.gathering) {
+      client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'unavailable' });
+      return;
+    }
+    const map = this.playerMap(player);
+    const position = { x: player.x, y: player.y };
+    const node = gatherNodeAtPosition(map, request.nodeKey, position);
     if (!node) {
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'out_of_range' });
       this.log.info('world.gather.rejected', { playerId: client.sessionId, reason: 'out_of_range' });
@@ -294,18 +333,21 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'unavailable' });
       return;
     }
-    await runtime.discoveryInFlight.get(node.landmarkKey);
-    if (!runtime.discoveries.has(node.landmarkKey)) {
+    const discoveryKey = `${map.id}:${node.landmarkKey}`;
+    runtime.gathering = true;
+    await runtime.discoveryInFlight.get(discoveryKey);
+    if (!runtime.discoveries.has(discoveryKey) || !player.connected || runtime.leaving || player.mapId !== map.id) {
+      runtime.gathering = false;
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'unavailable' });
       return;
     }
     try {
       const result = await this.persistence.gather({
         userId: client.auth!.userId,
-        map: this.map,
+        map,
         nodeKey: node.key,
-        x: player.x,
-        y: player.y,
+        x: position.x,
+        y: position.y,
         idempotencyKey: `moonberry:${requestId}`
       });
       client.send(GATHER_RESULT_MESSAGE, { requestId, ...result });
@@ -315,7 +357,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     } catch {
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'failure' });
       this.log.warn('world.gather.failed', { playerId: client.sessionId, node: node.key });
-    }
+    } finally { runtime.gathering = false; }
   }
 
   private applyCompanion(player: PlayerState, companion: WorldAuth['companion']) {
@@ -326,32 +368,118 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     player.companionRevision = (player.companionRevision + 1) >>> 0;
   }
 
-  private queueCheckpoint(client: WorldClient, force: boolean) {
+  private playerMap(player: PlayerState): WorldMapDefinition {
+    return isWorldMapId(player.mapId) ? WORLD_MAPS[player.mapId] : this.map;
+  }
+
+  private handlePortal(client: WorldClient, value: unknown) {
     const runtime = client.userData;
     const player = this.state.players.get(client.sessionId);
-    if (!this.persistence || !runtime || !player || runtime.stateVersion < 0) return Promise.resolve();
-    if (runtime.saveInFlight) return runtime.saveInFlight;
-    if (!force && !runtime.dirty) return Promise.resolve();
+    if (!runtime || !player || !player.connected || runtime.leaving) return Promise.resolve();
+    const permitted = runtime.portalLimiter.accept();
+    const request = parsePortalRequest(value);
+    if (!request) {
+      client.send(PROTOCOL_ERROR_MESSAGE, { code: 'malformed_message' });
+      return Promise.resolve();
+    }
+    if (!permitted) {
+      client.send(PORTAL_RESULT_MESSAGE, { requestId: request.requestId, status: 'cooldown' });
+      return Promise.resolve();
+    }
+    const previous = runtime.portalResults.get(request.requestId);
+    if (previous) { client.send(PORTAL_RESULT_MESSAGE, previous); return Promise.resolve(); }
+    if (runtime.portalRequestId === request.requestId) return runtime.transitionInFlight ?? Promise.resolve();
+    const reply = (status: PortalResult['status'], mapId?: WorldMapDefinition['id']) => {
+      const result: PortalResult = { requestId: request.requestId, status, ...(mapId ? { mapId } : {}) };
+      runtime.portalResults.set(request.requestId, result);
+      if (runtime.portalResults.size > 16) runtime.portalResults.delete(runtime.portalResults.keys().next().value!);
+      client.send(PORTAL_RESULT_MESSAGE, result);
+    };
+    if (runtime.transitionInFlight || runtime.gathering || Date.now() - runtime.lastPortalAt < PORTAL_COOLDOWN_MS) {
+      reply('cooldown'); return Promise.resolve();
+    }
+    const sourceMap = this.playerMap(player);
+    const position = { x: player.x, y: player.y };
+    const target = resolvePortal(sourceMap, request.portalId, position);
+    if (!target) { reply('out_of_range'); return Promise.resolve(); }
+    if (this.persistence && (!this.persistence.travel || runtime.stateVersion <= 0)) {
+      reply('unavailable'); return Promise.resolve();
+    }
+    runtime.input = { ...runtime.input, x: 0, y: 0 };
+    runtime.portalRequestId = request.requestId;
+    let operation!: Promise<void>;
+    operation = (async () => {
+      // A save captured in the source area must settle before the atomic travel CAS.
+      await runtime.saveInFlight;
+      if (!player.connected || runtime.stateVersion < 0 || runtime.leaving || this.state.players.get(client.sessionId) !== player) {
+        reply('unavailable'); return;
+      }
+      if (this.persistence?.travel) {
+        const result = await this.persistence.travel({
+          userId: client.auth!.userId, map: sourceMap, portalId: request.portalId,
+          x: position.x, y: position.y, expectedStateVersion: runtime.stateVersion
+        });
+        if (!result.ok) {
+          runtime.stateVersion = -1;
+          reply('unavailable');
+          client.leave(4004, 'checkpoint resynchronization required'); return;
+        }
+        runtime.stateVersion = result.stateVersion;
+      }
+      // A drop during the RPC retains this same authoritative player until the
+      // pending transition settles, so reconnect restores the committed area.
+      if (this.state.players.get(client.sessionId) !== player) return;
+      player.mapId = target.destination.id;
+      player.x = target.arrival.x;
+      player.y = target.arrival.y;
+      player.transitionRevision = (player.transitionRevision + 1) >>> 0;
+      player.companionStatus = player.companionPresent ? (player.connected ? 'idle' : 'reconnecting') : 'unavailable';
+      runtime.lastPortalAt = Date.now();
+      runtime.lastCheckpointAt = Date.now();
+      runtime.dirty = false;
+      reply('success', target.destination.id);
+    })().catch(() => {
+      runtime.stateVersion = -1;
+      reply('unavailable');
+      client.leave(4004, 'checkpoint resynchronization required');
+    }).finally(() => {
+      runtime.transitionInFlight = null;
+      runtime.portalRequestId = null;
+      this.pendingPersistence.delete(operation);
+    });
+    runtime.transitionInFlight = operation;
+    this.pendingPersistence.add(operation);
+    return operation;
+  }
 
-    const position = isValidWorldPosition(this.map, player)
-      ? { x: player.x, y: player.y }
-      : { ...this.map.spawn };
+  private async queueCheckpoint(client: WorldClient, force: boolean): Promise<void> {
+    const runtime = client.userData;
+    const player = this.state.players.get(client.sessionId);
+    if (!this.persistence || !runtime || !player || runtime.stateVersion < 0) return;
+    if (runtime.transitionInFlight) await runtime.transitionInFlight;
+    if (runtime.stateVersion < 0) return;
+    if (runtime.saveInFlight) {
+      await runtime.saveInFlight;
+      if (force && runtime.dirty) await this.queueCheckpoint(client, true);
+      return;
+    }
+    if (!force && !runtime.dirty) return;
+    const map = this.playerMap(player);
+    const position = isValidWorldPosition(map, player) ? { x: player.x, y: player.y } : { ...map.spawn };
     const expectedStateVersion = runtime.stateVersion;
     let operation!: Promise<void>;
     operation = this.persistence.save({
-      userId: client.auth!.userId,
-      map: this.map,
-      x: position.x,
-      y: position.y,
-      expectedStateVersion
+      userId: client.auth!.userId, map, x: position.x, y: position.y, expectedStateVersion
     }).then((result) => {
       if (result.ok) {
         runtime.stateVersion = result.stateVersion;
         runtime.lastCheckpointAt = Date.now();
-        runtime.dirty = player.x !== position.x || player.y !== position.y;
+        runtime.dirty = player.mapId !== map.id || player.x !== position.x || player.y !== position.y;
       } else {
+        runtime.stateVersion = -1;
         runtime.dirty = false;
         this.log.warn('world.persistence.version_conflict', { playerId: client.sessionId });
+        client.leave(4004, 'checkpoint resynchronization required');
       }
     }).catch(() => {
       runtime.dirty = true;
@@ -362,33 +490,36 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     });
     runtime.saveInFlight = operation;
     this.pendingPersistence.add(operation);
-    return operation;
+    await operation;
   }
 
   private checkLandmark(client: WorldClient, player: PlayerState) {
     const runtime = client.userData;
     if (!this.persistence || !runtime) return;
-    const landmark = landmarkAtPosition(this.map, player);
-    if (!landmark || runtime.discoveries.has(landmark.key) || runtime.pendingDiscoveries.has(landmark.key)) return;
-    runtime.pendingDiscoveries.add(landmark.key);
+    const map = this.playerMap(player);
+    const landmark = landmarkAtPosition(map, player);
+    if (!landmark) return;
+    const discoveryKey = `${map.id}:${landmark.key}`;
+    if (runtime.discoveries.has(discoveryKey) || runtime.pendingDiscoveries.has(discoveryKey)) return;
+    runtime.pendingDiscoveries.add(discoveryKey);
     let operation!: Promise<void>;
     operation = this.persistence.discover({
       userId: client.auth!.userId,
-      map: this.map,
+      map,
       landmarkKey: landmark.key,
       x: player.x,
       y: player.y,
-      idempotencyKey: `world:${this.map.id}:${this.map.version}:${landmark.key}`
+      idempotencyKey: `world:${map.id}:${map.version}:${landmark.key}`
     }).then(() => {
-      runtime.discoveries.add(landmark.key);
+      runtime.discoveries.add(discoveryKey);
     }).catch(() => {
       this.log.warn('world.persistence.discovery_failed', { playerId: client.sessionId, landmark: landmark.key });
     }).finally(() => {
-      runtime.pendingDiscoveries.delete(landmark.key);
-      runtime.discoveryInFlight.delete(landmark.key);
+      runtime.pendingDiscoveries.delete(discoveryKey);
+      runtime.discoveryInFlight.delete(discoveryKey);
       this.pendingPersistence.delete(operation);
     });
-    runtime.discoveryInFlight.set(landmark.key, operation);
+    runtime.discoveryInFlight.set(discoveryKey, operation);
     this.pendingPersistence.add(operation);
   }
 }

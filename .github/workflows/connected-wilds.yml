@@ -1,0 +1,127 @@
+name: Connected Wilds candidate verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/lib/game/**'
+      - 'src/lib/server/worldTicket.ts'
+      - 'services/world-server/**'
+      - 'static/game/world/connected-wilds/**'
+      - 'scripts/testing/connected-wilds*/**'
+      - 'scripts/ci/connected-wilds-postgres.sh'
+      - 'tests/sql/connected-wilds*'
+      - 'supabase/migrations/20261005052000_connected_wilds_portals.sql'
+      - '.github/workflows/connected-wilds.yml'
+permissions:
+  contents: read
+concurrency:
+  group: connected-wilds-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  world-service:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Record native transport source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/connected-wilds/world-service
+          {
+            echo 'Real local WebSocket transport with synthetic signed identities and null or in-memory persistence.'
+            echo 'No hosted authentication, database, live world service, real rewards, or deployment.'
+            git rev-parse HEAD HEAD^{tree}
+            git status --short
+            node --version
+            npm --version
+            git ls-files -z .github/workflows/connected-wilds.yml services/world-server supabase/migrations | xargs -0 sha256sum
+          } > artifacts/connected-wilds/world-service/source.txt
+      - run: npm ci --prefix services/world-server
+      - name: Check and build world service
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            npm run check --prefix services/world-server
+            npm run build --prefix services/world-server
+          } 2>&1 | tee artifacts/connected-wilds/world-service/checks.log
+      - name: Run native WebSocket and socket-free tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test --prefix services/world-server -- --reporter=default --reporter=json --outputFile=../../artifacts/connected-wilds/world-service/results.json 2>&1 | tee artifacts/connected-wilds/world-service/tests.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: connected-wilds-world-service-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/connected-wilds/world-service/
+          if-no-files-found: error
+          retention-days: 14
+  native-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: bash scripts/ci/connected-wilds-postgres.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: connected-wilds-native-postgres-${{ github.event.pull_request.head.sha || github.sha }}
+          path: test-results/connected-wilds-native-postgres/
+          if-no-files-found: error
+          retention-days: 14
+  phaser-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Record synthetic presentation source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/connected-wilds/phaser-browser
+          {
+            echo 'Actual WorldScene and production art with explicitly synthetic snapshots.'
+            echo 'No account, authoritative transport, persistence, live service, or rewards are connected.'
+            git rev-parse HEAD HEAD^{tree}
+            git status --short
+            node --version
+            npm --version
+            git ls-files -z package.json package-lock.json .github/workflows/connected-wilds.yml scripts/testing/connected-wilds-preview src/lib/game services/world-server/src/world art-source/world/connected-wilds static/game/environment static/game/sprites static/game/world/connected-wilds | xargs -0 sha256sum
+          } > artifacts/connected-wilds/phaser-browser/source.txt
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run credential-free Phaser browser flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright --version > artifacts/connected-wilds/phaser-browser/playwright-version.txt
+          npx playwright test --config scripts/testing/connected-wilds-preview/playwright.config.ts 2>&1 | tee artifacts/connected-wilds/phaser-browser/browser.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: connected-wilds-phaser-synthetic-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/connected-wilds/phaser-browser/
+            test-results/connected-wilds-browser/
+          if-no-files-found: error
+          retention-days: 14

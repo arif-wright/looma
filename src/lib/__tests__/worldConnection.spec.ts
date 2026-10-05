@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorldConnection } from '$lib/game/worldConnection';
-import type { ConnectionDiagnostic, ConnectionStatus, GatherResult } from '$lib/game/protocol';
+import type { ConnectionDiagnostic, ConnectionStatus, GatherResult, PortalResult } from '$lib/game/protocol';
 
 type Handler = (...args: any[]) => void;
 
@@ -39,15 +39,18 @@ const setup = () => {
   const room = makeRoom();
   const statuses: ConnectionStatus[] = [];
   const gatherResults: GatherResult[] = [];
+  const portalResults: PortalResult[] = [];
+  const onSnapshot = vi.fn();
   const diagnostics: Array<ConnectionDiagnostic | null> = [];
   const joinOrCreate = vi.fn(async () => room);
   const connection = new WorldConnection('wss://world.example.test', {
     onStatus: (status) => statuses.push(status),
     onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
-    onSnapshot: vi.fn(),
+    onSnapshot,
+    onPortalResult: (result) => portalResults.push(result),
     onGatherResult: (result) => gatherResults.push(result)
   }, { createClient: () => ({ joinOrCreate }) as never, debug: false, recoveryDelaysMs: [0, 0] });
-  return { connection, room, statuses, diagnostics, gatherResults, joinOrCreate };
+  return { connection, room, statuses, diagnostics, gatherResults, portalResults, onSnapshot, joinOrCreate };
 };
 
 describe('WorldConnection lifecycle', () => {
@@ -60,6 +63,92 @@ describe('WorldConnection lifecycle', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('sends one bounded portal request and accepts only its matching response', async () => {
+    const { connection, room, portalResults } = setup();
+    await connection.connect();
+    connection.enterPortal('grove-to-hollow'); connection.enterPortal('grove-to-hollow');
+    const sends = room.send.mock.calls.filter(([type]) => type === 'portal');
+    expect(sends).toHaveLength(1);
+    expect(sends[0]?.[1]).toEqual({ requestId: '123e4567-e89b-42d3-a456-426614174000', portalId: 'grove-to-hollow' });
+    room.emitMessage('portal-result', { requestId: 'unknown', status: 'success' });
+    expect(portalResults).toEqual([]);
+    room.emitMessage('portal-result', { requestId: '123e4567-e89b-42d3-a456-426614174000', status: 'success', mapId: 'wilds-town' });
+    expect(portalResults).toHaveLength(1);
+    connection.destroy();
+  });
+
+  it('never resends portal intents after transport loss or fresh authorization', async () => {
+    const { connection, room, portalResults } = setup();
+    await connection.connect(); connection.enterPortal('grove-to-hollow');
+    room.onDrop.emit(1006); room.onReconnect.emit();
+    expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    expect(room.send.mock.calls.filter(([type]) => type === 'portal')).toHaveLength(1);
+    connection.destroy();
+  });
+
+  it('fails a portal after its bounded timeout and clears timers on teardown', async () => {
+    vi.useFakeTimers();
+    const { connection, portalResults } = setup();
+    await connection.connect(); connection.enterPortal('grove-to-hollow');
+    await vi.advanceTimersByTimeAsync(10_001);
+    expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    connection.enterPortal('grove-to-hollow'); connection.destroy();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(portalResults).toHaveLength(1); expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('clears an unresolved portal before checkpoint recovery so the next room can travel', async () => {
+    const { connection, room, joinOrCreate, portalResults } = setup();
+    await connection.connect(); connection.enterPortal('grove-to-hollow');
+    const replacement = makeRoom(); joinOrCreate.mockResolvedValueOnce(replacement);
+    room.onLeave.emit(4004); await vi.waitFor(() => expect(joinOrCreate).toHaveBeenCalledTimes(2));
+    expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    connection.enterPortal('hollow-to-grove');
+    expect(replacement.send).toHaveBeenCalledWith('portal', expect.objectContaining({ portalId: 'hollow-to-grove' }));
+    room.emitMessage('portal-result', { requestId: '123e4567-e89b-42d3-a456-426614174000', status: 'success' });
+    expect(portalResults).toHaveLength(1); connection.destroy();
+  });
+
+  it('fresh-authorizes a checkpoint resync and ignores the replaced room callbacks', async () => {
+    const { connection, room, joinOrCreate, portalResults, onSnapshot } = setup();
+    await connection.connect(); const replacement = makeRoom(); joinOrCreate.mockResolvedValueOnce(replacement);
+    room.onLeave.emit(4004);
+    await vi.waitFor(() => expect(joinOrCreate).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(onSnapshot).toHaveBeenCalledTimes(2));
+    connection.enterPortal('grove-to-hollow');
+    room.onStateChange.emit(room.state);
+    room.emitMessage('portal-result', { requestId: '123e4567-e89b-42d3-a456-426614174000', status: 'success' });
+    expect(onSnapshot).toHaveBeenCalledTimes(2); expect(portalResults).toHaveLength(0);
+    replacement.emitMessage('portal-result', { requestId: '123e4567-e89b-42d3-a456-426614174000', status: 'success' });
+    expect(portalResults).toHaveLength(1); connection.destroy();
+  });
+
+  it('sends protocol negotiation on initial and refresh ticket requests', async () => {
+    const { connection, room } = setup(); await connection.connect(); room.onReconnect.emit();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    for (const [, options] of vi.mocked(fetch).mock.calls) expect(options?.headers).toMatchObject({ 'x-world-protocol': '2' });
+    connection.destroy();
+  });
+
+  it('closes an active outdated client on refresh and clears its pending interactions', async () => {
+    const { connection, room, diagnostics, portalResults } = setup();
+    await connection.connect(); connection.enterPortal('grove-to-hollow');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 409 })));
+    room.onReconnect.emit();
+    await vi.waitFor(() => expect(diagnostics.at(-1)).toEqual({ code: 'client_outdated' }));
+    expect(room.leave).toHaveBeenCalledWith(true); expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    room.onLeave.emit(1000); expect(diagnostics.at(-1)).toEqual({ code: 'client_outdated' });
+    connection.destroy();
+  });
+
+  it('shows refresh-required without joining or retrying an obsolete client', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'client_refresh_required' }), { status: 409 })));
+    const { connection, joinOrCreate, diagnostics, statuses } = setup(); await connection.connect();
+    expect(joinOrCreate).not.toHaveBeenCalled(); expect(diagnostics).toEqual([{ code: 'client_outdated' }]);
+    expect(statuses.at(-1)).toBe('unavailable'); connection.destroy();
   });
 
   it('keeps a successful authenticated join connected', async () => {

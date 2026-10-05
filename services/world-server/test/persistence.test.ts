@@ -54,6 +54,24 @@ describe('Supabase world RPC adapter', () => {
     });
   });
 
+  it('sends only source authority and bounded RPC lifetime for portal travel', async () => {
+    const abortSignal = vi.fn().mockResolvedValue({ data: { ok: true, stateVersion: 5 }, error: null });
+    const rpc = vi.fn(() => ({ abortSignal }));
+    const persistence = new SupabaseWorldPersistence({ rpc } as never);
+    await expect(persistence.travel({ userId: USER, map, portalId: 'grove-to-hollow', x: 880, y: 270, expectedStateVersion: 4 }))
+      .resolves.toEqual({ ok: true, stateVersion: 5 });
+    expect(rpc).toHaveBeenCalledWith('fn_world_travel_portal', {
+      p_user: USER, p_map_id: map.id, p_map_version: 1, p_portal_id: 'grove-to-hollow', p_x: 880, p_y: 270, p_expected_state_version: 4
+    });
+    expect(abortSignal).toHaveBeenCalledWith(expect.any(AbortSignal));
+  });
+
+  it('restores an allowlisted saved Hollow map instead of coercing it into the preferred Grove', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { mapId: 'wilds-town', mapVersion: 1, x: 260, y: 270, stateVersion: 9, discoveries: ['town-well'] }, error: null });
+    const persistence = new SupabaseWorldPersistence({ rpc } as never);
+    await expect(persistence.load(USER, map)).resolves.toMatchObject({ mapId: 'wilds-town', position: { x: 260, y: 270 }, stateVersion: 9, restored: true });
+  });
+
   it('treats repeated discovery results idempotently', async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce({ data: { ok: true, newlyDiscovered: true }, error: null })

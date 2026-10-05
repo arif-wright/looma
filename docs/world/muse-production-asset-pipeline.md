@@ -72,7 +72,7 @@ The diagnostics show companion identity and canonical archetype, requested and r
 
 Established Muse species/seed values (`muse`, `mirae`, `lumina`, `harmonizer`, `looma`, and a legacy missing species) are canonicalized to `muse` when the world ticket is issued. The renderer repeats the alias resolution defensively and requests `/game/sprites/companions/muse/muse.atlas.json`. A Muse manifest must declare `status: production`.
 
-The TEMP player atlas is used only when a production companion manifest or its initial texture page cannot load, decode, or validate.
+A companion whose manifest or texture page cannot load, decode, or validate retains the neutral safe-color placeholder with failed asset diagnostics. The renderer never substitutes a player atlas or a different companion identity. This is a temporary error presentation, not production companion art.
 
 ## Promotion record
 

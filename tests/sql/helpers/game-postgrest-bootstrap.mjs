@@ -214,9 +214,10 @@ async function main() {
   assert(!process.env.PGPASSWORD, 'Passwords are refused');
   assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap must connect to postgres');
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim();
-  // Test-only additions change the root tree. The strict src pin includes the independently
-  // reviewed Neon Run lifecycle/Lanternway revision; settlement code and the supabase tree are unchanged.
-  for (const [directory, expected] of Object.entries({src:'8c73a1c899b8fe3eb43380393e795b825589a4a3',supabase:'c81fbae8e9873b717791288aefbae5d252c5ea6a'})) {
+  // Test-only evidence additions change the root tree. These strict subtree pins
+  // cover the independently reviewed Connected Wilds candidate, including the
+  // unapplied portal migration; settlement source and fixture SQL are unchanged.
+  for (const [directory, expected] of Object.entries({src:'61fcdca36a567841b86d7d3d422573bd17c22aa2',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

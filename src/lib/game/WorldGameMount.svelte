@@ -5,6 +5,7 @@
   import { GameLifecycle, type GameRuntime } from './lifecycle';
   import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
   import type { GatherResult } from './protocol';
+  import { getWorldArea, type WorldPortal, type WorldArea } from './areas';
   import type { WorldRenderer } from './rendererSelection';
   import { activateWorldRuntime, releaseWorldRuntime } from './worldRuntimeRegistry';
   import type { CameraPresetName } from './renderers/three/cameraController';
@@ -17,6 +18,7 @@
   type RuntimeWithTouch = GameRuntime & {
     setTouchDirection: (x: number, y: number) => void;
     interact: () => void;
+    enterPortal: () => void;
     orbitCamera?: (yaw: number, pitch: number) => void;
     zoomCamera?: (delta: number) => void;
     resetCamera?: () => void;
@@ -34,6 +36,10 @@
   let connectionStatus: ConnectionStatus = 'offline';
   let connectionDiagnostic: ConnectionDiagnostic | null = null;
   let gatherPrompt = false;
+  let area = getWorldArea();
+  let portalPrompt: WorldPortal | null = null;
+  let travelling = false;
+  let portalMessage = '';
   let gathering = false;
   let gatherResult: GatherResult | null = null;
   let contextStatus: WebglContextStatus = 'ready';
@@ -48,8 +54,19 @@
   const lifecycle = new GameLifecycle(async (target) => {
     const { WorldSession } = await import('./worldSession');
     const session = new WorldSession(serverUrl, {
-      onStatus: (nextStatus) => (connectionStatus = nextStatus),
+      onStatus: (nextStatus) => {
+        connectionStatus = nextStatus;
+        if (nextStatus !== 'connected') { travelling = false; setDirection(null); }
+      },
       onDiagnostic: (diagnostic) => (connectionDiagnostic = diagnostic),
+      onPortalStart: () => { travelling = true; portalMessage = ''; setDirection(null); },
+      onPortalResult: (result) => {
+        travelling = false;
+        portalMessage = result.status === 'success' ? `Arrived in ${getWorldArea(result.mapId).name}.`
+          : result.status === 'out_of_range' ? 'Move closer to the lantern portal.'
+          : result.status === 'cooldown' ? 'The portal is settling. Try again in a moment.'
+          : 'The portal is temporarily unavailable. Please wait for the connection or try again.';
+      },
       onGatherResult: (result) => {
         gathering = false;
         gatherResult = result;
@@ -58,12 +75,16 @@
     const rendererRuntime = renderer === 'three'
       ? (await import('./renderers/three/threeWorld')).createThreeWorld(target, {
           session,
+          onPortalPrompt: (portal) => (portalPrompt = portal),
+          onAreaChange: changeArea,
           onGatherPrompt: (visible) => (gatherPrompt = visible),
           onContextStatus: (nextStatus) => (contextStatus = nextStatus),
           onCameraPreset: (nextPreset) => (cameraPreset = nextPreset)
         })
       : (await import('./worldGame')).createWorldGame(target, {
           session,
+          onPortalPrompt: (portal) => (portalPrompt = portal),
+          onAreaChange: changeArea,
           onGatherPrompt: (visible) => (gatherPrompt = visible)
         });
     let destroyed = false;
@@ -74,6 +95,7 @@
       resume: rendererRuntime.resume,
       setTouchDirection: rendererRuntime.setTouchDirection,
       interact: rendererRuntime.interact,
+      enterPortal: rendererRuntime.enterPortal,
       ...(cameraRuntime.orbitCamera ? { orbitCamera: cameraRuntime.orbitCamera } : {}),
       ...(cameraRuntime.zoomCamera ? { zoomCamera: cameraRuntime.zoomCamera } : {}),
       ...(cameraRuntime.resetCamera ? { resetCamera: cameraRuntime.resetCamera } : {}),
@@ -93,6 +115,14 @@
     return mountedRuntime;
   });
 
+  function changeArea(next: WorldArea) {
+    area = next;
+    gatherPrompt = false;
+    gathering = false;
+    gatherResult = null;
+    setDirection(null);
+  }
+
   const resize = () => {
     if (!viewport || !host) return;
     const bounds = viewport.getBoundingClientRect();
@@ -104,6 +134,7 @@
 
   const diagnosticMessage = (diagnostic: ConnectionDiagnostic) => {
     const suffix = diagnostic.statusCode ? ` (${diagnostic.statusCode})` : '';
+    if (diagnostic.code === 'client_outdated') return 'A newer Wilds version is ready. Reload this page to continue. [W-UPDATE]';
     if (diagnostic.code === 'configuration_missing') return 'The world server URL is not configured. [W-CONFIG]';
     if (diagnostic.code === 'ticket_rejected') return `Your world authorization was rejected${suffix}. [W-AUTH]`;
     if (diagnostic.code === 'ticket_unavailable') return `The world authorization service did not respond successfully${suffix}. [W-TICKET]`;
@@ -113,7 +144,7 @@
     return `Realtime recovery was exhausted${suffix}. [W-RECOVERY]`;
   };
 
-  export const pause = () => lifecycle.pause();
+  export const pause = () => { setDirection(null); lifecycle.pause(); };
   export const resume = () => lifecycle.resume();
   export const destroy = () => lifecycle.destroy();
 
@@ -138,10 +169,15 @@
   };
 
   const gather = () => {
-    if (!runtime || gathering || connectionStatus !== 'connected') return;
+    if (!runtime || gathering || travelling || connectionStatus !== 'connected') return;
     gathering = true;
     gatherResult = null;
     runtime.interact();
+  };
+
+  const enterPortal = () => {
+    if (!runtime || !portalPrompt || travelling || connectionStatus !== 'connected') return;
+    runtime.enterPortal();
   };
 
   const gatherMessage = (result: GatherResult) => {
@@ -185,12 +221,17 @@
 <div class="world-viewport" bind:this={viewport} data-testid="world-game-mount" data-renderer={renderer}>
   <div class="world-canvas" bind:this={host} aria-hidden="true"></div>
   <p class="sr-only" aria-live="polite">{status}</p>
+  <div class="area-label" data-testid="world-area" aria-live="polite">
+    <strong>{area.name}</strong><span>Two trails · one quiet world</span>
+  </div>
   <p class="connection-status" class:connected={connectionStatus === 'connected'} aria-live="polite">
     {connectionLabel}
   </p>
   {#if import.meta.env.DEV}<p class="renderer-label">Renderer: {renderer}</p>{/if}
   {#if connectionDiagnostic && (connectionStatus === 'unavailable' || connectionStatus === 'unauthorized' || connectionStatus === 'offline')}
-    <p class="connection-diagnostic" role="alert">{diagnosticMessage(connectionDiagnostic)}</p>
+    <div class="connection-diagnostic" role="alert">{diagnosticMessage(connectionDiagnostic)}
+      {#if connectionDiagnostic.code === 'client_outdated'}<button type="button" on:click={() => window.location.reload()}>Reload The Wilds</button>{/if}
+    </div>
   {/if}
   {#if connectionStatus === 'unauthorized'}
     <div class="auth-state" role="alert">
@@ -205,7 +246,17 @@
     </div>
   {/if}
 
-  {#if gatherPrompt && !loadError}
+  {#if portalPrompt && !loadError}
+    <div class="interaction-prompt portal-prompt" data-testid="world-portal-prompt">
+      <p>Lantern portal · Press E or tap</p>
+      <button type="button" disabled={travelling || connectionStatus !== 'connected'} on:click={enterPortal}>
+        {travelling ? 'Travelling…' : `Enter ${portalPrompt.targetName}`}
+      </button>
+    </div>
+  {/if}
+  {#if portalMessage}<p class="portal-result" role="status" aria-live="polite">{portalMessage}</p>{/if}
+
+  {#if gatherPrompt && !portalPrompt && !loadError}
     <div class="interaction-prompt">
       <p>Moonberry bush · Press E or tap to gather</p>
       <button type="button" disabled={gathering || connectionStatus !== 'connected'} on:click={gather}>
@@ -302,6 +353,12 @@
     touch-action: none;
   }
 
+  .area-label { position: absolute; top: .85rem; left: .85rem; z-index: 2; display: grid; gap: .2rem; max-width: 48%; padding: .55rem .75rem; border: 1px solid #c7dcb442; border-radius: .8rem; background: #142a25dd; color: #fff4d8; pointer-events: none; }
+  .area-label strong { font-size: .95rem; }
+  .area-label span { font-size: .65rem; color: #c5d4b8; }
+  .portal-result { position: absolute; z-index: 3; top: 4.5rem; left: 50%; transform: translateX(-50%); width: min(27rem, calc(100% - 2rem)); margin: 0; padding: .6rem .8rem; border-radius: .8rem; background: #142a25ed; color: #fff1c8; text-align: center; font-size: .8rem; }
+  .portal-prompt { border-color: #e5c47490; background: #2a2417f0; }
+  .portal-prompt button { background: #ecd69a; }
   .world-canvas {
     display: grid;
     place-items: center;
@@ -434,6 +491,8 @@
     line-height: 1.35;
   }
 
+  .connection-diagnostic button { display: block; margin-top: .5rem; min-height: 44px; padding: .5rem .75rem; border: 1px solid #ffe7bd; border-radius: .5rem; background: #ffe7bd; color: #172b28; font-weight: 700; }
+
   .auth-state {
     position: absolute;
     z-index: 3;
@@ -462,6 +521,8 @@
     background: rgba(25, 17, 43, 0.94);
     color: #f4edff;
   }
+  .interaction-prompt { max-width: calc(100% - 2rem); box-sizing: border-box; }
+  .interaction-prompt button { min-height: 44px; flex-shrink: 0; }
   .interaction-prompt p { margin: 0; font-size: 0.8rem; }
   .interaction-prompt button {
     border: 0;
@@ -524,6 +585,16 @@
   }
 
   @media (max-width: 640px) {
+    .area-label { top: .5rem; left: .5rem; padding: .4rem .5rem; max-width: 45%; }
+    .area-label strong { font-size: .78rem; }
+    .area-label span { display: none; }
+    .connection-status { top: .5rem; right: .5rem; padding: .4rem .5rem; max-width: 45%; font-size: .67rem; }
+    .renderer-label { top: 2.8rem; }
+    .interaction-prompt { bottom: 8rem; width: calc(100% - 1rem); max-width: 23rem; justify-content: space-between; padding: .45rem .55rem; gap: .4rem; }
+    .interaction-prompt p { font-size: .7rem; }
+    .interaction-prompt button { max-width: 62%; padding: .45rem .6rem; font-size: .75rem; }
+    .portal-result { top: 3.2rem; font-size: .72rem; }
+
     .world-viewport {
       height: min(62vh, 34rem);
       min-height: 19rem;

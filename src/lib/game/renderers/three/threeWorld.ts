@@ -4,9 +4,12 @@ import { FacingState, type FacingDirection } from '../../facing';
 import { MovementIntentScheduler } from '../../movementIntentScheduler';
 import type { GameRuntime } from '../../lifecycle';
 import type { PlayerSnapshot, WorldSnapshot } from '../../protocol';
+import { getWorldArea, type WorldArea, type WorldPortal } from '../../areas';
+import { areaInteraction, playerTransitionKey, visibleAreaRoster } from './areaPresentation';
+import { createAreaEnvironment } from './areaEnvironment';
 import type { WorldSession } from '../../worldSession';
 import { movementState, type PlayerVisualState } from '../../visualState';
-import { MOONBERRY_INTERACTION, WORLD_TRAVERSAL } from '../../traversal';
+import { MOONBERRY_INTERACTION } from '../../traversal';
 import { isCameraPreset, OrbitCameraState, parseCameraReviewState, type CameraPresetName } from './cameraController';
 import { CompanionTrail } from './companionTrail';
 import { nextContextStatus, type WebglContextStatus } from './contextRecovery';
@@ -18,8 +21,7 @@ import { HdSpriteEntity, HdSpriteResources, PLAYER_ATLAS_URL, type SpriteAnimati
 import { selectCompanionSpriteAsset, type CompanionSpriteSelection } from '../../sprites/companionAsset';
 import { playerBodyManifestUrl } from '../../playerBody';
 import {
-  createBroadleafReviewManifest, createEnvironmentWorld, parseEnvironmentDiagnosticStage,
-  WILDS_ENVIRONMENT_MANIFEST, type EnvironmentDebugOverrides
+  parseEnvironmentDiagnosticStage, type EnvironmentDebugOverrides
 } from './environmentWorld';
 import { ENVIRONMENT_DIRECTIONS, type EnvironmentDirection, type EnvironmentLod } from '../../environment/presentation';
 
@@ -37,6 +39,14 @@ type VisualPlayer = {
   followerAssetSelection?: CompanionSpriteSelection;
   followerIdentityKey?: string;
   playerBodyManifestUrl: string;
+  transitionKey: string;
+};
+
+type VisualResident = {
+  billboard: HdSpriteEntity;
+  target: THREE.Vector3;
+  facing: FacingState;
+  moving: boolean;
 };
 
 export type { WebglContextStatus } from './contextRecovery';
@@ -44,6 +54,7 @@ export type { WebglContextStatus } from './contextRecovery';
 export type ThreeWorldRuntime = GameRuntime & {
   setTouchDirection: (x: number, y: number) => void;
   interact: () => void;
+  enterPortal: () => void;
   orbitCamera: (yaw: number, pitch: number) => void;
   zoomCamera: (delta: number) => void;
   resetCamera: () => void;
@@ -55,6 +66,8 @@ export type ThreeWorldRuntime = GameRuntime & {
 type ThreeWorldOptions = {
   session: WorldSession;
   onGatherPrompt: (visible: boolean) => void;
+  onPortalPrompt?: (portal: WorldPortal | null) => void;
+  onAreaChange?: (area: WorldArea) => void;
   onContextStatus?: (status: WebglContextStatus) => void;
   onCameraPreset?: (preset: CameraPresetName) => void;
 };
@@ -111,16 +124,27 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const clock = new THREE.Clock();
   const movement = new MovementIntentScheduler();
   const keys = new Set<string>();
+  const physicallyHeldKeys = new Set<string>();
+  const suppressedHeldKeys = new Set<string>();
   const touch = { x: 0, y: 0 };
   const players = new Map<string, VisualPlayer>();
+  const residents = new Map<string, VisualResident>();
+  const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let reducedMotion = reducedMotionQuery?.matches ?? false;
+  const reducedMotionChanged = () => { reducedMotion = reducedMotionQuery?.matches ?? false; };
+  reducedMotionQuery?.addEventListener('change', reducedMotionChanged);
   const spriteResources = new HdSpriteResources();
   const obstructables: ObstructableRegistration[] = [];
-  const obstructionFader = new ObstructionFadeController();
+  let obstructionFader = new ObstructionFadeController();
   const raycaster = new THREE.Raycaster();
   const synthetic: HdSpriteEntity[] = [];
   let obstructed = new Set<string>();
   let localPlayerId = '';
-  let localServerPosition = { x: 180, y: 270 };
+  let localSnapshot: PlayerSnapshot | undefined;
+  let activeArea = getWorldArea();
+  let localTransitionKey: string | null = null;
+  let lastConnectionStatus = options.session.connectionStatus;
+  let portalPrompt: WorldPortal | null = null;
   let interactionVisible = false;
   let frame = 0;
   let destroyed = false;
@@ -163,16 +187,17 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (query.has('worldBroadleafFrame') && Number.isSafeInteger(frameOverride) && frameOverride >= 0) environmentDebug.broadleafFrame = frameOverride;
     if (lod === 'near' || lod === 'mid' || lod === 'far') environmentDebug.broadleafLod = lod as EnvironmentLod;
   }
-  const environmentManifest = import.meta.env.DEV && new URLSearchParams(location.search).get('worldEnvironmentReview') === 'broadleaf'
-    ? createBroadleafReviewManifest(WILDS_ENVIRONMENT_MANIFEST!) : WILDS_ENVIRONMENT_MANIFEST!;
-  const environment = createEnvironmentWorld(environmentManifest, environmentStage, environmentDebug);
+  const broadleafReview = import.meta.env.DEV && new URLSearchParams(location.search).get('worldEnvironmentReview') === 'broadleaf';
+  let environment = createAreaEnvironment(activeArea, environmentStage, environmentDebug, broadleafReview);
   scene.add(environment.root);
   obstructables.push(...environment.obstructables);
-
-  if (import.meta.env.DEV) {
-    const collisionDebug = new THREE.Group();
-    collisionDebug.name = 'collision-debug';
-    const bounds = WORLD_TRAVERSAL.bounds;
+  let collisionDebug: THREE.Group | null = null;
+  const rebuildCollisionDebug = () => {
+    if (collisionDebug) { scene.remove(collisionDebug); disposeObject(collisionDebug); }
+    if (!import.meta.env.DEV) return;
+    collisionDebug = new THREE.Group();
+    collisionDebug.name = `collision-debug:${activeArea.id}`;
+    const bounds = activeArea.traversal.bounds;
     const corners = [
       serverToWorld(bounds.minX, bounds.minY), serverToWorld(bounds.maxX, bounds.minY),
       serverToWorld(bounds.maxX, bounds.maxY), serverToWorld(bounds.minX, bounds.maxY),
@@ -189,13 +214,31 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       );
       ring.rotation.x = -Math.PI / 2;
       ring.position.set(mapped.x, 0.04, mapped.z);
-      collisionDebug.add(ring);
+      collisionDebug!.add(ring);
     };
-    WORLD_TRAVERSAL.blockers.forEach((blocker) => addRing(blocker.x, blocker.y, blocker.radius + 16, 0xff6b6b));
-    addRing(WORLD_TRAVERSAL.spawn.x, WORLD_TRAVERSAL.spawn.y, 10, 0x62ff9a);
-    addRing(MOONBERRY.x, MOONBERRY.y, MOONBERRY.radius, 0xc9a7ff);
+    activeArea.traversal.blockers.forEach((blocker) => addRing(blocker.x, blocker.y, blocker.radius + 16, 0xff6b6b));
+    addRing(activeArea.traversal.spawn.x, activeArea.traversal.spawn.y, 10, 0x62ff9a);
+    addRing(activeArea.portal.x, activeArea.portal.y, activeArea.portal.radius, 0xffd78a);
+    if (activeArea.id === 'wilds-exploration') addRing(MOONBERRY.x, MOONBERRY.y, MOONBERRY.radius, 0xc9a7ff);
     scene.add(collisionDebug);
-  }
+  };
+  rebuildCollisionDebug();
+  const switchEnvironment = (area: WorldArea) => {
+    scene.remove(environment.root);
+    environment.dispose();
+    activeArea = area;
+    environment = createAreaEnvironment(area, environmentStage, environmentDebug, broadleafReview && area.id === 'wilds-exploration');
+    environment.setQuality(quality);
+    scene.add(environment.root);
+    obstructables.splice(0, obstructables.length, ...environment.obstructables);
+    obstructionFader = new ObstructionFadeController();
+    obstructed.clear();
+    const color = area.id === 'wilds-town' ? '#769eaa' : '#91bcae';
+    scene.background = new THREE.Color(color);
+    fullFog.color.set(color);
+    rebuildCollisionDebug();
+    options.onAreaChange?.(area);
+  };
 
   if (import.meta.env.DEV) {
     const density = parseSyntheticDensity(new URLSearchParams(location.search).get('worldDensity'));
@@ -239,16 +282,77 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     players.delete(id);
   };
 
+  const removeResident = (id: string) => {
+    const resident = residents.get(id);
+    if (!resident) return;
+    scene.remove(resident.billboard.root);
+    resident.billboard.destroy();
+    residents.delete(id);
+  };
+  const clearInput = (sendStop = true) => {
+    physicallyHeldKeys.forEach((key) => suppressedHeldKeys.add(key));
+    keys.clear();
+    touch.x = 0;
+    touch.y = 0;
+    drag = null;
+    movement.next(0, 0, 0);
+    if (sendStop) options.session.stopMovement();
+  };
+  const canMove = () => !destroyed && !paused && contextStatus === 'ready' && options.session.connectionStatus === 'connected' && Boolean(localSnapshot?.connected);
+  const updateInteraction = () => {
+    const interaction = areaInteraction(localSnapshot, options.session.connectionStatus, destroyed || paused || contextStatus !== 'ready');
+    if (interaction.gather !== interactionVisible) {
+      interactionVisible = interaction.gather;
+      environment.setMoonberryEmphasis(interactionVisible);
+      options.onGatherPrompt(interactionVisible);
+    }
+    if (interaction.portal?.id !== portalPrompt?.id) {
+      portalPrompt = interaction.portal;
+      environment.setPortalEmphasis(Boolean(portalPrompt));
+      options.onPortalPrompt?.(portalPrompt);
+    }
+  };
+  const enterPortal = () => {
+    updateInteraction();
+    if (!portalPrompt) return;
+    clearInput();
+    options.session.enterPortal(portalPrompt.id);
+  };
+  const interact = () => {
+    updateInteraction();
+    if (portalPrompt) enterPortal();
+    else if (interactionVisible) options.session.gatherMoonberry();
+  };
   const applySnapshot = (snapshot: WorldSnapshot) => {
+    if (destroyed) return;
     localPlayerId = snapshot.localPlayerId;
+    localSnapshot = snapshot.players.get(localPlayerId);
+    const nextArea = getWorldArea(localSnapshot?.mapId);
+    const nextTransitionKey = localSnapshot ? playerTransitionKey(localSnapshot) : null;
+    const transitioned = nextTransitionKey !== localTransitionKey;
+    if (transitioned) {
+      clearInput();
+      for (const id of [...players.keys()]) removePlayer(id);
+      for (const id of [...residents.keys()]) removeResident(id);
+      localTransitionKey = nextTransitionKey;
+      if (nextArea.id !== activeArea.id) switchEnvironment(nextArea);
+      if (localSnapshot) {
+        const spawn = serverToWorld(localSnapshot.x, localSnapshot.y);
+        cameraTarget.set(spawn.x, 0.02, spawn.z);
+        cameraTargetSmooth.copy(cameraTarget);
+      }
+    }
+    const visible = visibleAreaRoster(snapshot, activeArea.id);
+
     const rosterDelta = calculateVisualRosterDelta(
       new Set(players.keys()),
       new Set([...players].filter(([, visual]) => Boolean(visual.follower)).map(([id]) => id)),
-      snapshot.players
+      visible.players
     );
-    snapshot.players.forEach((player: PlayerSnapshot, id) => {
+    visible.players.forEach((player: PlayerSnapshot, id) => {
       const mapped = serverToWorld(player.x, player.y);
       let visual = players.get(id);
+      if (visual && visual.transitionKey !== playerTransitionKey(player)) { removePlayer(id); visual = undefined; }
       if (!visual) {
         const playerManifestUrl = playerBodyManifestUrl(player.playerBody);
         const billboard = new HdSpriteEntity(spriteResources, { label: player.displayName, manifestUrl: playerManifestUrl });
@@ -262,6 +366,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
           facing,
           trail: new CompanionTrail(),
           playerBodyManifestUrl: playerManifestUrl,
+          transitionKey: playerTransitionKey(player),
           state: {
             entityId: id,
             worldPosition: { x: mapped.x, z: mapped.z },
@@ -308,7 +413,6 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         companionOwnerEntityId: player.companionPresent ? id : null,
         connectionState: player.connected ? 'connected' : 'reconnecting'
       };
-      if (id === localPlayerId) localServerPosition = { x: player.x, y: player.y };
       if (player.companionPresent) {
         const followerIdentityKey = `${player.companionKind}:${player.companionName}`;
         if (visual.follower && visual.followerIdentityKey !== followerIdentityKey) {
@@ -326,7 +430,6 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
           visual.follower = new HdSpriteEntity(spriteResources, {
             label: player.companionName,
             manifestUrl: assetSelection.manifestUrl,
-            fallbackManifestUrl: PLAYER_ATLAS_URL,
             companion: true,
             museEffects: muse,
             requireProduction: assetSelection.production
@@ -352,14 +455,31 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       }
     });
     for (const id of rosterDelta.removed) removePlayer(id);
-    const available = Math.hypot(localServerPosition.x - MOONBERRY.x, localServerPosition.y - MOONBERRY.y) <= MOONBERRY.radius;
-    if (available !== interactionVisible) {
-      interactionVisible = available;
-      environment.setMoonberryEmphasis(available);
-      options.onGatherPrompt(available);
-    }
+    for (const id of [...residents.keys()]) if (!visible.npcs.has(id)) removeResident(id);
+    visible.npcs.forEach((npc, id) => {
+      const mapped = serverToWorld(npc.x, npc.y);
+      let resident = residents.get(id);
+      if (!resident) {
+        const billboard = new HdSpriteEntity(spriteResources, { label: `${npc.name} · Resident`, manifestUrl: playerBodyManifestUrl(npc.playerBody) });
+        billboard.root.name = `resident:${id}`;
+        billboard.label.name = 'resident-nameplate';
+        billboard.root.position.set(mapped.x, 0.02, mapped.z);
+        resident = { billboard, target: new THREE.Vector3(mapped.x, 0.02, mapped.z), facing: new FacingState(), moving: npc.moving };
+        residents.set(id, resident);
+        scene.add(billboard.root);
+      }
+      resident.facing.update(mapped.x - resident.target.x, mapped.z - resident.target.z, 0.001);
+      resident.target.set(mapped.x, 0.02, mapped.z);
+      resident.moving = npc.moving;
+    });
+    updateInteraction();
   };
   options.session.setSnapshotConsumer(applySnapshot);
+  options.session.setStatusConsumer((status) => {
+    clearInput();
+    lastConnectionStatus = status;
+    updateInteraction();
+  });
 
   const resize = (width: number, height: number) => {
     const safeWidth = Math.max(1, width);
@@ -375,14 +495,25 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   };
 
   const keyDown = (event: KeyboardEvent) => {
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+    const movementKey = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code);
+    if (!movementKey && event.code !== 'KeyR' && event.code !== 'KeyE') return;
+    // Record physical presses even while input is inactive. Browsers can emit a
+    // repeat:false keydown after focus/reconnect without an intervening release.
+    physicallyHeldKeys.add(event.code);
+    if (!canMove()) { suppressedHeldKeys.add(event.code); return; }
+    if (suppressedHeldKeys.has(event.code)) return;
+    if (movementKey) {
       keys.add(event.code);
       event.preventDefault();
     }
     if (event.code === 'KeyR') cameraState.reset();
-    if (event.code === 'KeyE' && interactionVisible) options.session.gatherMoonberry();
+    if (event.code === 'KeyE' && !event.repeat) { event.preventDefault(); interact(); }
   };
-  const keyUp = (event: KeyboardEvent) => keys.delete(event.code);
+  const keyUp = (event: KeyboardEvent) => {
+    keys.delete(event.code);
+    physicallyHeldKeys.delete(event.code);
+    suppressedHeldKeys.delete(event.code);
+  };
   const pointerDown = (event: PointerEvent) => {
     if (event.button === 2) {
       renderer.domElement.setPointerCapture?.(event.pointerId);
@@ -400,6 +531,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   const contextLost = (event: Event) => {
     event.preventDefault();
     contextStatus = nextContextStatus(contextStatus, 'lost');
+    clearInput();
+    updateInteraction();
     options.onContextStatus?.('lost');
     if (import.meta.env.DEV) console.info('[world:three] WebGL context lost; world session retained.');
   };
@@ -414,6 +547,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   };
   window.addEventListener('keydown', keyDown, { passive: false });
   window.addEventListener('keyup', keyUp);
+  const blur = () => clearInput();
+  window.addEventListener('blur', blur);
   renderer.domElement.addEventListener('pointerdown', pointerDown);
   window.addEventListener('pointermove', pointerMove);
   window.addEventListener('pointerup', pointerUp);
@@ -447,11 +582,18 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     raf = requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
     cameraState.update(delta);
+    const connected = options.session.connectionStatus === 'connected';
+    if (lastConnectionStatus !== options.session.connectionStatus) {
+      clearInput();
+      lastConnectionStatus = options.session.connectionStatus;
+    }
+    if (!canMove()) clearInput(false);
+    updateInteraction();
     const inputX = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + touch.x;
     const inputY = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + touch.y;
     const intentDirection = cameraRelativeMovement(inputX, inputY, cameraState.yaw);
     const intent = movement.next(intentDirection.x, intentDirection.y, delta * 1000);
-    if (intent) options.session.sendMovement(intent);
+    if (intent && canMove()) options.session.sendMovement(intent);
 
     const animationStart = performance.now();
     const local = players.get(localPlayerId);
@@ -459,9 +601,12 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       local.facing.update(intentDirection.x, intentDirection.y);
       const motion = movementState(intentDirection.x, intentDirection.y);
       local.state = { ...local.state, facing: local.facing.value, ...motion };
-      local.billboard.root.position.x += intentDirection.x * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
-      local.billboard.root.position.z += intentDirection.y * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
-      local.billboard.root.position.lerp(local.target, 1 - Math.exp(-8 * delta));
+      if (canMove()) {
+        local.billboard.root.position.x += intentDirection.x * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
+        local.billboard.root.position.z += intentDirection.y * PLAYER_SPEED / SERVER_UNITS_PER_WORLD_UNIT * delta;
+        if (reducedMotion) local.billboard.root.position.copy(local.target);
+        else local.billboard.root.position.lerp(local.target, 1 - Math.exp(-8 * delta));
+      }
       cameraTarget.copy(local.billboard.root.position);
       renderer.domElement.dataset.localPlayerX = local.billboard.root.position.x.toFixed(3);
       renderer.domElement.dataset.localPlayerZ = local.billboard.root.position.z.toFixed(3);
@@ -469,28 +614,33 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     }
     const updateRemoteVisuals = quality === 'full' || frame % 2 === 0;
     for (const [id, visual] of players) {
-      if (id !== localPlayerId && updateRemoteVisuals) visual.billboard.root.position.lerp(visual.target, 1 - Math.exp(-10 * delta));
+      if (id !== localPlayerId && updateRemoteVisuals && connected) visual.billboard.root.position.lerp(visual.target, reducedMotion ? 1 : 1 - Math.exp(-10 * delta));
       visual.state.renderPosition = { x: visual.billboard.root.position.x, z: visual.billboard.root.position.z };
       visual.trail.push(visual.state.renderPosition);
-      visual.billboard.update(delta, visual.state.facing, visual.state.movementMagnitude, cameraState.yaw, quality, camera.position.distanceTo(visual.billboard.root.position));
+      visual.billboard.update(reducedMotion ? 0 : delta, visual.state.facing, connected ? visual.state.movementMagnitude : 0, cameraState.yaw, quality, camera.position.distanceTo(visual.billboard.root.position));
       if (visual.follower && visual.followerTarget) {
         const trailTarget = visual.trail.target({ x: visual.billboard.root.position.x - 0.9, z: visual.billboard.root.position.z + 0.8 });
         visual.followerTarget.set(trailTarget.x, 0.02, trailTarget.z);
-        visual.follower.root.position.lerp(visual.followerTarget, 1 - Math.exp(-7 * delta));
+        if (connected) visual.follower.root.position.lerp(visual.followerTarget, reducedMotion ? 1 : 1 - Math.exp(-7 * delta));
         const followX = visual.followerTarget.x - visual.follower.root.position.x;
         const followZ = visual.followerTarget.z - visual.follower.root.position.z;
         const followerFacing = visual.followerFacing?.update(followX, followZ, 0.02) ?? visual.facing.value;
         const followerMotion = movementState(followX, followZ, 0.018);
-        visual.follower.update(delta, followerFacing, followerMotion.movementMagnitude, cameraState.yaw, quality,
+        visual.follower.update(reducedMotion ? 0 : delta, followerFacing, connected ? followerMotion.movementMagnitude : 0, cameraState.yaw, quality,
           camera.position.distanceTo(visual.follower.root.position), visual.followerMuse ? forcedMuseAnimation ?? undefined : undefined);
       }
     }
+    for (const resident of residents.values()) {
+      if (connected) resident.billboard.root.position.lerp(resident.target, reducedMotion ? 1 : 1 - Math.exp(-10 * delta));
+      resident.billboard.update(reducedMotion ? 0 : delta, resident.facing.value, connected && resident.moving ? 0.55 : 0,
+        cameraState.yaw, quality, camera.position.distanceTo(resident.billboard.root.position));
+    }
     for (const billboard of synthetic) {
-      billboard.update(delta, billboard.animator.facing, frame % 240 < 150 ? 0.5 : 0, cameraState.yaw, quality, camera.position.distanceTo(billboard.root.position));
+      billboard.update(reducedMotion ? 0 : delta, billboard.animator.facing, frame % 240 < 150 ? 0.5 : 0, cameraState.yaw, quality, camera.position.distanceTo(billboard.root.position));
     }
     animationUpdateMs = performance.now() - animationStart;
 
-    const followAlpha = 1 - Math.exp(-cameraState.settings.followSmoothing * delta);
+    const followAlpha = reducedMotion ? 1 : 1 - Math.exp(-cameraState.settings.followSmoothing * delta);
     cameraTargetSmooth.lerp(cameraTarget, followAlpha);
     const lag = cameraTargetSmooth.distanceTo(cameraTarget);
     if (lag > MAX_CAMERA_TARGET_LAG) cameraTargetSmooth.lerp(cameraTarget, 1 - MAX_CAMERA_TARGET_LAG / lag);
@@ -505,7 +655,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     camera.zoom = cameraState.zoom;
     camera.updateProjectionMatrix();
     camera.getWorldDirection(cameraForward);
-    environment.update(clock.elapsedTime, camera.position, camera.quaternion, cameraTargetSmooth, cameraForward);
+    environment.update(reducedMotion ? 0 : clock.elapsedTime, camera.position, camera.quaternion, cameraTargetSmooth, cameraForward);
     if (broadleafFrameBadge) {
       const inspected = environment.diagnostics().objects.find((item) => item.instanceId === (environmentInspectId ?? 'broadleaf-v2-review-a'));
       if (inspected) {
@@ -516,7 +666,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
         broadleafFrameBadge.hidden = !inspected.visible;
       }
     }
-    updateObstructions(delta);
+    updateObstructions(reducedMotion ? 1 : delta);
     if (contextStatus === 'ready') renderer.render(scene, camera);
 
     fpsFrames += 1;
@@ -537,8 +687,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     }
     if (debug && fpsElapsed >= 0.5) {
       const localFacing = players.get(localPlayerId)?.facing.value ?? 's';
-      const billboardCount = players.size + [...players.values()].filter((visual) => visual.follower).length + synthetic.length;
-      const animated = [...players.values()].reduce((count, visual) => count + 1 + Number(Boolean(visual.follower)), 0) + synthetic.length;
+      const billboardCount = players.size + [...players.values()].filter((visual) => visual.follower).length + residents.size + synthetic.length;
+      const animated = [...players.values()].reduce((count, visual) => count + 1 + Number(Boolean(visual.follower)), 0) + residents.size + synthetic.length;
       const textureMemoryMb = spriteResources.estimatedTextureMemoryBytes / (1024 * 1024);
       const animation = players.get(localPlayerId)?.billboard.animationDiagnostics;
       const museVisual = (players.get(localPlayerId)?.followerMuse ? players.get(localPlayerId) : undefined) ??
@@ -550,7 +700,7 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       const inspectedEnvironment = environmentReport.objects.find((item) => item.instanceId === environmentInspectId) ?? environmentReport.objects[0];
       const inspectedTexture = inspectedEnvironment
         ? environmentReport.textures.find((texture) => texture.url === inspectedEnvironment.runtimeTextureUrl) : undefined;
-      debug.textContent = `renderer three\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nenv inspect ${inspectedEnvironment?.instanceId ?? 'none'}\nenv asset/class ${inspectedEnvironment ? `${inspectedEnvironment.assetId}/${inspectedEnvironment.renderClass}` : 'none'}\nenv provenance ${inspectedEnvironment?.provenance ?? 'none'}\nenv direction/angle ${inspectedEnvironment ? `${inspectedEnvironment.selectedDirection ?? 'n/a'}/${inspectedEnvironment.cameraRelativeAngleDegrees?.toFixed(1) ?? 'n/a'}°` : 'none'}\nenv animation ${inspectedEnvironment ? `${inspectedEnvironment.animationFrame}/${inspectedEnvironment.animationFrames} @ ${inspectedEnvironment.fps} fps phase ${inspectedEnvironment.animationPhase.toFixed(2)}` : 'none'}\nenv position ${inspectedEnvironment ? `${inspectedEnvironment.position.x.toFixed(2)},${inspectedEnvironment.position.z.toFixed(2)}` : 'none'}\nenv anchor ${inspectedEnvironment ? `${inspectedEnvironment.groundAnchor.x},${inspectedEnvironment.groundAnchor.y}` : 'none'}\nenv collision ${inspectedEnvironment?.collisionFootprint ?? 'none'}\nenv lod/quality ${inspectedEnvironment ? `${inspectedEnvironment.lod}/${quality}` : quality}\nenv texture ${inspectedEnvironment?.runtimeTextureUrl ?? 'none'}\nenv texture state ${inspectedTexture?.status ?? 'none'}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${WORLD_TRAVERSAL.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
+      debug.textContent = `renderer three\narea ${activeArea.name}\nresidents ${residents.size}\nfps ${Math.round(currentFps)}\nrecent min ${Math.round(recentMinimumFps)}\ndraw calls ${renderer.info.render.calls}\ntriangles ${renderer.info.render.triangles}\nenvironment instances ${environment.metrics.instances}\nenvironment visible ${environment.metrics.visibleProps}\nenvironment animated ${environment.metrics.animatedInstances}\nenvironment draw calls ${environment.metrics.drawCalls}\nenvironment pages ${environment.metrics.atlasPages}\nenvironment MB ${(environment.metrics.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenvironment effects ${environment.metrics.ambientEffects}\nenvironment update ${environment.metrics.animationUpdateMs.toFixed(2)} ms\nenvironment failures ${environment.metrics.failedAssets}\nenv inspect ${inspectedEnvironment?.instanceId ?? 'none'}\nenv asset/class ${inspectedEnvironment ? `${inspectedEnvironment.assetId}/${inspectedEnvironment.renderClass}` : 'none'}\nenv provenance ${inspectedEnvironment?.provenance ?? 'none'}\nenv direction/angle ${inspectedEnvironment ? `${inspectedEnvironment.selectedDirection ?? 'n/a'}/${inspectedEnvironment.cameraRelativeAngleDegrees?.toFixed(1) ?? 'n/a'}°` : 'none'}\nenv animation ${inspectedEnvironment ? `${inspectedEnvironment.animationFrame}/${inspectedEnvironment.animationFrames} @ ${inspectedEnvironment.fps} fps phase ${inspectedEnvironment.animationPhase.toFixed(2)}` : 'none'}\nenv position ${inspectedEnvironment ? `${inspectedEnvironment.position.x.toFixed(2)},${inspectedEnvironment.position.z.toFixed(2)}` : 'none'}\nenv anchor ${inspectedEnvironment ? `${inspectedEnvironment.groundAnchor.x},${inspectedEnvironment.groundAnchor.y}` : 'none'}\nenv collision ${inspectedEnvironment?.collisionFootprint ?? 'none'}\nenv lod/quality ${inspectedEnvironment ? `${inspectedEnvironment.lod}/${quality}` : quality}\nenv texture ${inspectedEnvironment?.runtimeTextureUrl ?? 'none'}\nenv texture state ${inspectedTexture?.status ?? 'none'}\nplayers ${players.size}\nbillboards ${billboardCount}\nanimated sprites ${animated}\nanimation update ${animationUpdateMs.toFixed(2)} ms\nanimation ${animation ? `${animation.state}/${animation.requestedDirection} ${animation.frame}/${animation.totalFrames} @ ${animation.fps} fps` : 'loading'}\nmuse identity ${museIdentity ? `${museIdentity.suppliedIdentity || '(empty)'} -> ${museIdentity.archetype}` : 'none'}\nmuse requested manifest ${museAsset?.requestedManifestUrl ?? 'none'}\nmuse resolved manifest ${museAsset?.resolvedManifestUrl ?? 'none'}\nmuse asset status ${museAsset?.assetStatus ?? 'none'}\nmuse atlas page ${museAsset?.currentPageId ?? 'none'}\nmuse requested ${museAnimation ? `${museAnimation.state}.${museAnimation.requestedDirection}` : 'none'}\nmuse resolved ${museAnimation ? `${museAnimation.state}.${museAnimation.resolvedDirection}` : 'none'}\nmuse provenance ${museAnimation?.source ?? 'none'}\nmuse fallback reason ${museAsset?.fallbackReason ?? 'none'}\nmuse last error ${museAsset?.lastAssetError ?? 'none'}\natlas pages ${spriteResources.cacheSize}\nest atlas MB ${textureMemoryMb.toFixed(2)}\ndpr ${renderer.getPixelRatio().toFixed(2)}\nquality ${quality}\npitch ${(cameraState.pitch * 180 / Math.PI).toFixed(1)}°\nzoom ${cameraState.zoom.toFixed(2)}\npreset ${cameraState.preset}\nfacing ${localFacing}\ncollision blockers ${activeArea.traversal.blockers.length}\nobstructions ${obstructed.size}\ncontext ${contextStatus}\nstatus ${options.session.connectionStatus}`;
       if (inspectedEnvironment) debug.textContent += `\nenv version ${inspectedEnvironment.assetVersion}\nenv normalized phase ${inspectedEnvironment.animationPhase.toFixed(3)}\nenv instance offset ${inspectedEnvironment.instancePhaseOffset.toFixed(3)}\nenv atlas page ${inspectedEnvironment.texturePage ?? 'none'}\nenv page state ${inspectedEnvironment.loadStatus}\nenv approx MB ${(inspectedEnvironment.textureMemoryBytes / (1024 * 1024)).toFixed(2)}\nenv requested frame ${inspectedEnvironment.requestedAnimationFrame}/25\nenv GPU frame ${inspectedEnvironment.resolvedAnimationFrame}/25\nenv UV offset ${inspectedEnvironment.uvOffset.x.toFixed(3)},${inspectedEnvironment.uvOffset.y.toFixed(3)}\nenv UV scale ${inspectedEnvironment.uvScale.x.toFixed(3)},${inspectedEnvironment.uvScale.y.toFixed(3)}\nenv material texture ${inspectedEnvironment.materialTextureUuid ?? 'none'}\nenv material update ${inspectedEnvironment.materialNeedsUpdate ?? 'n/a'}\nenv animation eligible ${inspectedEnvironment.animationEligible}\nenv effective fps ${environmentDebug.broadleafFps ?? inspectedEnvironment.fps}\nenv broadleaf overrides ${JSON.stringify(environmentDebug)}`;
       if (inspectedEnvironment) debug.textContent += `\nenv tree world ${inspectedEnvironment.position.x.toFixed(3)},${inspectedEnvironment.position.z.toFixed(3)}\nenv player world ${local ? `${local.billboard.root.position.x.toFixed(3)},${local.billboard.root.position.z.toFixed(3)}` : 'none'}\nenv camera world ${camera.position.x.toFixed(3)},${camera.position.y.toFixed(3)},${camera.position.z.toFixed(3)}\nenv camera forward ${cameraForward.x.toFixed(3)},${cameraForward.y.toFixed(3)},${cameraForward.z.toFixed(3)}\nenv camera target ${cameraTargetSmooth.x.toFixed(3)},${cameraTargetSmooth.z.toFixed(3)}\nenv camera-to-tree ${inspectedEnvironment.cameraToTree ? `${inspectedEnvironment.cameraToTree.x.toFixed(3)},${inspectedEnvironment.cameraToTree.z.toFixed(3)}` : 'none'}\nenv azimuth ${inspectedEnvironment.cameraRelativeAngleDegrees?.toFixed(2) ?? 'none'}°\nenv raw/selected/final ${inspectedEnvironment.rawDirection ?? 'none'}/${inspectedEnvironment.selectedDirection ?? 'none'}/${inspectedEnvironment.selectedDirection ?? 'none'}`;
       fpsFrames = 0;
@@ -558,12 +708,20 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     }
     frame += 1;
     renderer.domElement.dataset.frame = String(frame);
+    renderer.domElement.dataset.mapId = activeArea.id;
+    renderer.domElement.dataset.areaName = activeArea.name;
+    renderer.domElement.dataset.residents = String(residents.size);
+    renderer.domElement.dataset.residentIds = [...residents.keys()].join(',');
+    renderer.domElement.dataset.players = String(players.size);
+    renderer.domElement.dataset.transitionRevision = String(localSnapshot?.transitionRevision ?? 0);
+    renderer.domElement.dataset.portalPrompt = portalPrompt?.id ?? '';
+    renderer.domElement.dataset.reducedMotion = String(reducedMotion);
     renderer.domElement.dataset.cameraYaw = cameraState.yaw.toFixed(3);
     renderer.domElement.dataset.cameraPitch = cameraState.pitch.toFixed(3);
     renderer.domElement.dataset.cameraZoom = cameraState.zoom.toFixed(3);
     renderer.domElement.dataset.cameraPreset = cameraState.preset;
     renderer.domElement.dataset.contextStatus = contextStatus;
-    renderer.domElement.dataset.animatedSprites = String(players.size + [...players.values()].filter((visual) => visual.follower).length + synthetic.length);
+    renderer.domElement.dataset.animatedSprites = String(players.size + [...players.values()].filter((visual) => visual.follower).length + residents.size + synthetic.length);
     renderer.domElement.dataset.spriteAssets = String(spriteResources.cacheSize);
     renderer.domElement.dataset.spriteMemoryMb = (spriteResources.estimatedTextureMemoryBytes / (1024 * 1024)).toFixed(2);
     renderer.domElement.dataset.animationUpdateMs = animationUpdateMs.toFixed(3);
@@ -626,14 +784,16 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
   resize(host.clientWidth || 960, host.clientHeight || 540);
   options.onContextStatus?.('ready');
   options.onCameraPreset?.(cameraState.preset);
+  options.onAreaChange?.(activeArea);
   animate();
 
   return {
     resize,
-    pause: () => { paused = true; cancelAnimationFrame(raf); },
-    resume: () => { if (!destroyed && paused) { paused = false; clock.getDelta(); animate(); } },
-    setTouchDirection: (x, y) => { touch.x = x; touch.y = y; },
-    interact: () => options.session.gatherMoonberry(),
+    pause: () => { if (destroyed || paused) return; clearInput(); paused = true; updateInteraction(); cancelAnimationFrame(raf); },
+    resume: () => { if (!destroyed && paused) { clearInput(); paused = false; clock.getDelta(); animate(); } },
+    setTouchDirection: (x, y) => { if (!canMove()) { clearInput(false); return; } touch.x = x; touch.y = y; },
+    interact,
+    enterPortal,
     orbitCamera: (yaw, pitch) => cameraState.orbit(yaw, pitch),
     zoomCamera: (delta) => cameraState.adjustZoom(delta),
     resetCamera: () => cameraState.reset(),
@@ -642,11 +802,15 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     simulateContextRestore: () => renderer.forceContextRestore(),
     destroy: () => {
       if (destroyed) return;
+      clearInput();
       destroyed = true;
       cancelAnimationFrame(raf);
       options.session.setSnapshotConsumer(null);
+      options.session.setStatusConsumer(null);
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener('keyup', keyUp);
+      window.removeEventListener('blur', blur);
+      reducedMotionQuery?.removeEventListener('change', reducedMotionChanged);
       renderer.domElement.removeEventListener('pointerdown', pointerDown);
       window.removeEventListener('pointermove', pointerMove);
       window.removeEventListener('pointerup', pointerUp);
@@ -655,6 +819,9 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', contextRestored);
       for (const id of [...players.keys()]) removePlayer(id);
+      for (const id of [...residents.keys()]) removeResident(id);
+      options.onPortalPrompt?.(null);
+      options.onGatherPrompt(false);
       synthetic.forEach((billboard) => { scene.remove(billboard.root); billboard.destroy(); });
       spriteResources.dispose();
       scene.remove(environment.root);

@@ -33,6 +33,14 @@ export type StoryJournalRow = {
 };
 export type CareStoryEvent = { id: string; action: 'feed' | 'play' | 'groom'; label: string; occurredAt: string };
 
+/** A Moonberry stack retains its first gather event, not a history of later increments. */
+export const recordedMoonberryEventId = (owned: StoryOwnedItem): string | null => {
+  const provenance = record(owned.provenance_json);
+  return one(owned.item)?.item_key === 'world-moonberry' && owned.source_type === 'world' &&
+    owned.source_key === 'moonberry-bush' && isOwnedItemId(owned.companion_id) &&
+    isOwnedItemId(provenance.worldEventId) ? provenance.worldEventId : null;
+};
+
 /** Only the versioned direct-care award proves which three actions earned this acquisition. */
 export const qualifiedCareEvents = (owned: StoryOwnedItem): CareStoryEvent[] => {
   const item = one(owned.item);
@@ -69,6 +77,7 @@ export const buildKeepsakeStory = (args: {
   const item = one(owned.item);
   if (!item || owned.owner_id !== ownerId || !isOwnedItemId(owned.id)) return null;
   const careEvents = qualifiedCareEvents(owned);
+  const worldEventId = recordedMoonberryEventId(owned);
   const companion = one(owned.companion);
   const companionName = companion?.id === owned.companion_id ? text(companion.name, 100) || null : null;
   const sourceLabel = careEvents.length === 3 ? 'Earned through three care moments'
@@ -76,23 +85,32 @@ export const buildKeepsakeStory = (args: {
     : owned.source_type === 'chapter_reward' ? 'Added as a chapter keepsake'
     : owned.source_type === 'world' ? 'Gathered in The Wilds' : 'Added to your collection';
   const sourceNote = owned.source_type === 'care_milestone' && careEvents.length === 0
-    ? 'The individual care moments behind this keepsake are not recorded here.' : null;
+    ? 'The individual care moments behind this keepsake are not recorded here.'
+    : owned.source_type === 'world' && item.item_key === 'world-moonberry'
+      ? worldEventId
+        ? 'This stack links to its first recorded gather. Later gathers are not linked here.'
+        : 'A companion Journal link is not available for this Moonberry stack.'
+      : null;
   const historyState = args.historyState ?? 'ready';
   const moments: KeepsakeStory['moments'] = [];
   for (const row of historyState === 'ready' ? args.journal : []) {
     const meta = record(row.meta_json);
-    if (row.owner_id !== ownerId || meta.userItemId !== owned.id || row.source_type !== 'system' ||
+    if (row.owner_id !== ownerId || row.source_type !== 'system' ||
         !isOwnedItemId(row.id) || !isOwnedItemId(row.companion_id) || !date(row.created_at) ||
         !text(row.title) || !text(row.body) || moments.some((moment) => moment.id === row.id)) continue;
     let label: string;
-    if (meta.category === 'item_unlock' && meta.itemKey === item.item_key && row.source_id === owned.id &&
+    if (meta.userItemId === owned.id && meta.category === 'item_unlock' && meta.itemKey === item.item_key && row.source_id === owned.id &&
         row.companion_id === owned.companion_id && meta.sourceType === owned.source_type && meta.sourceKey === owned.source_key &&
         meta.ruleVersion === 'direct-care-3-v1' && careEvents.length === 3) {
       label = 'Keepsake arrived';
-    } else if (meta.category === 'sanctuary' && meta.itemKey === item.item_key && isOwnedItemId(meta.placementId) && storySlotLabel(meta.slot)) {
+    } else if (meta.userItemId === owned.id && meta.category === 'sanctuary' && meta.itemKey === item.item_key && isOwnedItemId(meta.placementId) && storySlotLabel(meta.slot)) {
       if (meta.interactionType === 'shared_rest' && meta.action === 'shared_rest' && item.item_key === 'care-moss-seat') label = 'Rested together';
       else if (!meta.interactionType && !meta.action) label = 'Found a place';
       else continue;
+    } else if (worldEventId && row.source_id === worldEventId && row.companion_id === owned.companion_id &&
+      meta.kind === 'world_gather' && meta.itemKey === 'world-moonberry' && meta.mapId === 'wilds-exploration' &&
+      (meta.userItemId === undefined || meta.userItemId === owned.id)) {
+      label = 'Gathered at Moonberry Grove';
     } else continue;
     moments.push({ id: row.id, title: text(row.title, 160), body: text(row.body), occurredAt: row.created_at,
       label, slotLabel: storySlotLabel(meta.slot), href: journalMomentHref(row.companion_id, row.id) });

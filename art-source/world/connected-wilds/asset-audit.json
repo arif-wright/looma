@@ -1,0 +1,20 @@
+[
+  {
+    "id": "lantern-portal",
+    "width": 1161,
+    "height": 1355,
+    "bytes": 2266313,
+    "transparent": 657179,
+    "visible": 787554,
+    "sha256": "d7fb0e984522ce27b74e539653b06107c3f72ab81674bef29a3af59dd4cd6798"
+  },
+  {
+    "id": "lantern-cottage",
+    "width": 1377,
+    "height": 1142,
+    "bytes": 1711820,
+    "transparent": 905699,
+    "visible": 649646,
+    "sha256": "37c43b66713e2e69dc4da380a1b98d1cd866055fc76f0013ffcc8353b75241cf"
+  }
+]
