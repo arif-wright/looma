@@ -1,5 +1,6 @@
 name: Game settlement PostgREST isolation
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/game-settlement-postgrest.yml'

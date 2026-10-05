@@ -1,6 +1,7 @@
 name: Native PostgreSQL concurrency
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/native-postgres-concurrency.yml'

@@ -1,6 +1,7 @@
 name: Keepsake Story Browser
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]

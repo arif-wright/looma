@@ -1,6 +1,7 @@
 name: Game settlement PostgreSQL concurrency
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/game-settlement-concurrency.yml'
