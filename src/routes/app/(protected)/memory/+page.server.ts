@@ -1,12 +1,14 @@
 import type { PageServerLoad } from './$types';
+import { presentRewardHistory } from '$lib/companions/rewardHistory';
 import {
   deriveEmotionalStateFromCompanionStats,
   type EmotionalStateSnapshot
 } from '$lib/server/emotionalState';
 import { isSubscriptionActive } from '$lib/subscriptions';
-import { firstBondCheckinCopy } from '$lib/launch/proofIntegrity';
+import { firstBondCheckinCopy, resolveHomeBondPercent } from '$lib/launch/proofIntegrity';
 import {
   deriveChapterMilestones,
+  loadChapterActivity,
   deriveChapterRewards,
   deriveCompanionChapterDigest,
   deriveCompanionPatternNotice,
@@ -266,8 +268,7 @@ const buildRelationshipReasons = (args: {
 }) => {
   const { companion, emotionalState, summary, careRows, missionRows, gameRows, checkins } = args;
   const reasons: string[] = [];
-  const stats = normalizeStats(companion.stats);
-  const lastCareAt = pickLatestIso([stats?.fed_at, stats?.played_at, stats?.groomed_at, careRows[0]?.created_at ?? null]);
+  const lastCareAt = pickLatestIso(careRows.map(row => row.created_at));
   const affection = companion.affection ?? 0;
   const trust = companion.trust ?? 0;
   const energy = companion.energy ?? 0;
@@ -275,25 +276,25 @@ const buildRelationshipReasons = (args: {
   const completedGames = gameRows.length;
 
   if (energy <= 20) {
-    reasons.push('Spark is low, so this companion is reading as more fragile and quiet.');
+    reasons.push('Energy is low right now. This temporary state does not erase shared history.');
   } else if (energy >= 70) {
-    reasons.push('Spark is high, which supports a brighter and more responsive presence.');
+    reasons.push('Energy is high right now, which supports a more active presence.');
   }
 
   if (trust >= 70 && affection >= 70) {
-    reasons.push('Trust and affection are both strong, so the relationship feels settled rather than uncertain.');
+    reasons.push('The current trust and affection scores are high. Your journal shows the experiences behind the relationship.');
   } else if (trust <= 35 || affection <= 35) {
-    reasons.push('Trust or affection is still rebuilding, so the bond reads as less secure.');
+    reasons.push('Trust and affection scores are still developing. Low starting scores do not mean the relationship has suffered a setback.');
   }
 
   if (emotionalState.streakMomentum >= 0.55) {
-    reasons.push('Recent consistency is reinforcing the emotional state, not just one isolated action.');
+    reasons.push('Recent activity contributes to this current state; it does not measure the value of your relationship.');
   }
 
   if (completedGames > completedMissions && completedGames > 0) {
-    reasons.push('Recent momentum is coming more from play sessions than from missions.');
+    reasons.push('Your account has recent play sessions. These records alone do not show whether this companion participated.');
   } else if (completedMissions > 0) {
-    reasons.push('Mission progress is currently doing more of the relationship-shaping work.');
+    reasons.push('Your account has recent mission progress. These records alone do not show whether this companion participated.');
   }
 
   if (checkins.length > 0) {
@@ -559,16 +560,7 @@ const buildRelationshipEras = (args: {
   });
 
   for (const entry of args.chapterHistory.slice(0, 3)) {
-    const title =
-      entry.tone === 'care'
-        ? 'Era of Tending'
-        : entry.tone === 'social'
-          ? 'Era of Outward Bonding'
-          : entry.tone === 'mission'
-            ? 'Era of Purpose'
-            : entry.tone === 'play'
-              ? 'Era of Lightness'
-              : 'Era of Deep Bond';
+    const title = 'Keepsake added';
     eras.push({
       id: `era-${entry.id}`,
       title,
@@ -719,10 +711,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .eq('user_id', userId)
       .maybeSingle()
   ]);
-  const journalEntryRows = [...((journalEntriesRes.data ?? []) as JournalEntryRow[])];
+  const journalEntryRows = ((journalEntriesRes.data ?? []) as JournalEntryRow[]).map(presentRewardHistory);
   const targetedJournalEntry = targetedJournalEntryRes.data as JournalEntryRow | null;
   if (targetedJournalEntry && !journalEntryRows.some((row) => row.id === targetedJournalEntry.id)) {
-    journalEntryRows.push(targetedJournalEntry);
+    journalEntryRows.push(presentRewardHistory(targetedJournalEntry));
   }
 
   const subscription = subscriptionRes.data
@@ -924,13 +916,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     socialMoments: timeline.filter((item) => item.kind === 'social' && (toStamp(item.occurredAt) ?? 0) >= Date.now() - 7 * 24 * 60 * 60 * 1000)
       .length
   });
+  const chapterActivity = await loadChapterActivity(supabase, userId, selectedCompanionId);
   const patternNotice = deriveCompanionPatternNotice({
     companionName: selectedCompanion.name,
-    careMoments: careRows.length,
-    missionMoments: missionRows.filter((row) => row.status === 'completed').length,
-    gameMoments: gameRows.length,
-    socialMoments: timeline.filter((item) => item.kind === 'social').length,
-    checkins: checkinRows.length
+    ...chapterActivity
   });
   const hasStoredPatternNotice = journalEntryRows.some(
     (row) => row.source_type === 'system'
@@ -938,18 +927,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const ritualGuide = deriveRitualGuideFromPattern(patternNotice, selectedCompanion.name);
   const dailyArc = deriveDailyCompanionArc({
     companionName: selectedCompanion.name,
-    hasDailyCheckin: checkinRows.length > 0,
-    rituals: [],
-    hasSocialMoment: timeline.some((item) => item.kind === 'social'),
-    hasJournalMoment: Boolean(summary?.summary_text || timeline.length > 0)
+    ...chapterActivity.dailyEvidence,
+    rituals: []
   });
   const weeklyArc = deriveWeeklyCompanionArc({
     companionName: selectedCompanion.name,
-    careMoments: weeklyPulse.careMoments,
-    missionMoments: weeklyPulse.missionMoments,
-    gameMoments: weeklyPulse.gameMoments,
-    socialMoments: weeklyPulse.socialMoments,
-    checkins: weeklyPulse.recentCheckins
+    ...chapterActivity
   });
   const selectedStats = normalizeStats(selectedCompanion.stats);
   const chapterMilestones = deriveChapterMilestones({
@@ -1137,6 +1120,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     selectedCompanion,
     summary,
     emotionalState,
+    bondClosenessPercent: resolveHomeBondPercent({
+      bondScore: normalizeStats(selectedCompanion.stats)?.bond_score ?? null,
+      affection: selectedCompanion.affection,
+      trust: selectedCompanion.trust
+    }),
     relationshipPulse,
     ritualGuide,
     journalGuidance,

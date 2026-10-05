@@ -6,7 +6,7 @@ import type { PostRow } from '$lib/social/types';
 import { getFollowCounts } from '$lib/server/follows';
 import { getFollowPrivacyStatus } from '$lib/server/privacy';
 import { ensureBlockedPeers, isBlockedPeer } from '$lib/server/blocks';
-import { getPersonaSummary } from '$lib/server/persona';
+import { getPublicPersonaSummary } from '$lib/server/persona';
 import { fetchBondAchievementsForUser } from '$lib/server/achievements/bond';
 
 type ProfileRow = {
@@ -345,7 +345,7 @@ export const load: PageServerLoad = async (event) => {
       fetchBondAchievementsForUser(supabase, profileWithUserId.id),
       getFollowCounts(profileWithUserId.id),
       getFollowPrivacyStatus(viewerId, profileWithUserId.id),
-      getPersonaSummary(profileWithUserId.id)
+      getPublicPersonaSummary(profileWithUserId.id)
     ]);
 
   if (statsResult.error) {

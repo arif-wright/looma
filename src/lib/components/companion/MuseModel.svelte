@@ -16,6 +16,7 @@
   export let autoplay = true;
   export let cameraControls = false;
   export let poster: string | undefined = undefined;
+  export let companionName = 'Muse';
   export let transparent = true;
   export let auraColor: string = 'cyan';
   export let glowIntensity = 55;
@@ -430,18 +431,18 @@
   <div class="muse-aura" aria-hidden="true"></div>
   {#if !supportsWebGL}
     <div class="muse-fallback" role="status">
-      <p class="muse-fallback__title">Muse preview unavailable</p>
-      <p class="muse-fallback__copy">Your browser doesn’t support WebGL.</p>
+      <p class="muse-fallback__title">{companionName}'s 3D view is unavailable</p>
+      <p class="muse-fallback__copy">This browser cannot display the 3D view. You can still check in and revisit your shared memories.</p>
     </div>
   {:else if loadError}
     <div class="muse-fallback" role="status">
-      <p class="muse-fallback__title">Muse failed to load</p>
-      <p class="muse-fallback__copy">{loadError}</p>
+      <p class="muse-fallback__title">{companionName}'s 3D view could not load</p>
+      <p class="muse-fallback__copy">You can still check in and revisit your shared memories. Reload the page to try the 3D view again.</p>
     </div>
   {:else if !shouldLoad}
     <div class="muse-placeholder" aria-hidden="true">
       <div class="muse-placeholder__orb"></div>
-      <p>Loading Muse…</p>
+      <p>Loading {companionName}'s 3D view…</p>
     </div>
   {:else}
     <model-viewer

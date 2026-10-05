@@ -1,4 +1,6 @@
+import { dailyActivityEvidence } from '$lib/companions/dailyActivity';
 import type { PageServerLoad } from './$types';
+import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '$lib/supabaseClient';
 import { getPlayerStats } from '$lib/server/queries/getPlayerStats';
@@ -12,6 +14,7 @@ import { getCompanionRituals } from '$lib/server/companions/rituals';
 import type { CompanionRitual } from '$lib/companions/rituals';
 import {
   deriveChapterMilestones,
+  loadChapterActivity,
   deriveChapterRewards,
   deriveCompanionPatternNotice,
   deriveDailyCompanionArc,
@@ -333,49 +336,6 @@ const applyKeepsakeToSanctuaryNudge = (args: {
         title: `${theme.title} is holding the bond close`,
         body: `${name} is in a deeper bond chapter. A small sincere return will do more than a dramatic gesture today.`
       } satisfies SanctuaryNudge;
-  }
-};
-
-const applyKeepsakeToDailyRecap = (args: {
-  recap: DailyArcRecap | null;
-  keepsakeTheme: KeepsakeTheme | null;
-  companionName: string | null;
-}) => {
-  if (!args.recap || !args.keepsakeTheme) return args.recap;
-  const name = args.companionName?.trim() || 'your companion';
-
-  switch (args.keepsakeTheme.tone) {
-    case 'care':
-      return {
-        ...args.recap,
-        title: `${name}'s care chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} made the whole day read as steady care.`
-      } satisfies DailyArcRecap;
-    case 'social':
-      return {
-        ...args.recap,
-        title: `${name}'s shared thread is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} turned the day toward connection beyond the sanctuary.`
-      } satisfies DailyArcRecap;
-    case 'mission':
-      return {
-        ...args.recap,
-        title: `${name}'s purposeful chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} gave the bond a stronger sense of direction.`
-      } satisfies DailyArcRecap;
-    case 'play':
-      return {
-        ...args.recap,
-        title: `${name}'s bright chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} kept the relationship feeling lighter and more alive.`
-      } satisfies DailyArcRecap;
-    case 'bond':
-    default:
-      return {
-        ...args.recap,
-        title: `${name}'s bond chapter is settling in`,
-        body: `${args.recap.body} ${args.keepsakeTheme.title} made the closeness of the day feel more explicit.`
-      } satisfies DailyArcRecap;
   }
 };
 
@@ -1167,6 +1127,9 @@ export const load: PageServerLoad = async (event) => {
       rituals
     });
     let chapterReveal: ChapterRevealMoment | null = null;
+    const chapterActivity = userId && activeCompanion?.id
+      ? await loadChapterActivity(supabase, userId, activeCompanion.id)
+      : { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0, dailyEvidence: dailyActivityEvidence([], []) };
     if (userId && activeCompanion?.id) {
       const [socialEntries, systemEntries] = await Promise.all([
         supabase
@@ -1215,6 +1178,9 @@ export const load: PageServerLoad = async (event) => {
             ? String((latestNotice.meta_json as Record<string, unknown>).generatedBy ?? '')
             : '';
         if (generatedBy === 'chapter_reward_reveal') {
+          latestNotice.body = recordedRewardBody(
+            (latestNotice.meta_json as Record<string, unknown> | null)?.rewardTitle
+          );
           const meta =
             latestNotice.meta_json && typeof latestNotice.meta_json === 'object'
               ? (latestNotice.meta_json as Record<string, unknown>)
@@ -1266,11 +1232,7 @@ export const load: PageServerLoad = async (event) => {
       } else {
         const derivedNotice = deriveCompanionPatternNotice({
           companionName: activeCompanion.name ?? null,
-          careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-          missionMoments: missionSuggestions.length,
-          gameMoments: 0,
-          socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-          checkins: latestDailyCheckin ? 1 : 0
+          ...chapterActivity
         });
         if (derivedNotice) {
           journalMoments.unshift({
@@ -1291,11 +1253,7 @@ export const load: PageServerLoad = async (event) => {
     });
     const weeklyArc = deriveWeeklyCompanionArc({
       companionName: activeCompanion?.name ?? null,
-      careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-      missionMoments: missionSuggestions.length,
-      gameMoments: 0,
-      socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-      checkins: latestDailyCheckin ? 1 : 0
+      ...chapterActivity
     });
     const chapterMilestones = deriveChapterMilestones({
       companionName: activeCompanion?.name ?? null,
@@ -1305,11 +1263,7 @@ export const load: PageServerLoad = async (event) => {
       weeklyArc,
       patternNotice: deriveCompanionPatternNotice({
         companionName: activeCompanion?.name ?? null,
-        careMoments: rituals.filter((entry) => entry.status === 'completed').length,
-        missionMoments: missionSuggestions.length,
-        gameMoments: 0,
-        socialMoments: journalMoments.filter((entry) => entry.label === 'Social').length,
-        checkins: latestDailyCheckin ? 1 : 0
+        ...chapterActivity
       })
     });
     const chapterRewards =
@@ -1329,10 +1283,8 @@ export const load: PageServerLoad = async (event) => {
         : [];
     const dailyArc = deriveDailyCompanionArc({
       companionName: activeCompanion?.name ?? null,
-      hasDailyCheckin: Boolean(dailyCheckinToday || latestDailyCheckin),
-      rituals,
-      hasSocialMoment: journalMoments.some((entry) => entry.label === 'Social'),
-      hasJournalMoment: journalMoments.length > 0
+      ...chapterActivity.dailyEvidence,
+      rituals: []
     });
     const keepsakeTheme = await resolveFeaturedKeepsakeTheme({
       supabase,
@@ -1376,11 +1328,6 @@ export const load: PageServerLoad = async (event) => {
       companionName: activeCompanion?.name ?? null,
       keepsakeTheme,
       weeklyArc
-    });
-    const flavoredDailyArcRecap = applyKeepsakeToDailyRecap({
-      recap: dailyArcRecap,
-      keepsakeTheme,
-      companionName: activeCompanion?.name ?? null
     });
     const chapterPaths = buildChapterPaths({
       companionName: activeCompanion?.name ?? null,
@@ -1436,7 +1383,7 @@ export const load: PageServerLoad = async (event) => {
       chapterReveal,
       sanctuaryNudge,
       dailyArc,
-      dailyArcRecap: flavoredDailyArcRecap,
+      dailyArcRecap,
       weeklyArc,
       chapterMilestones,
       chapterRewards,

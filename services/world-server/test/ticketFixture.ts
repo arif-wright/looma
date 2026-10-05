@@ -7,7 +7,7 @@ export const TEST_USER_TWO = '22222222-2222-4222-8222-222222222222';
 export const createTestTicket = (overrides: Record<string, unknown> = {}, now = Math.floor(Date.now() / 1000)) => {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const claims = {
-    iss: 'memvoya-web', aud: 'memvoya-world', room: 'wilds', protocol: 1,
+    iss: 'memvoya-web', aud: 'memvoya-world', room: 'wilds', protocol: 2,
     sub: TEST_USER_ONE, jti: randomUUID(), iat: now, exp: now + 45,
     identity: { displayName: 'Aster', handle: 'aster' },
     playerBody: 'male',

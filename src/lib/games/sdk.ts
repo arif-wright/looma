@@ -115,7 +115,17 @@ type SessionContext = StartResponse & {
 };
 
 const activeSessions = new Map<string, SessionContext>();
+const submittedResults = new Map<string, { key: string; result: GameSessionResult }>();
 let currentSessionId: string | null = null;
+
+/** Forget local bookkeeping only. This does not cancel or settle a server session. */
+export const abandonSession = (sessionId: string): void => {
+  activeSessions.delete(sessionId);
+  submittedResults.delete(sessionId);
+  if (currentSessionId === sessionId) {
+    currentSessionId = null;
+  }
+};
 
 const isRecord = (value: unknown): value is Record<string, any> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -303,7 +313,8 @@ export async function startSession(
       mode: mode ?? null,
       clientMeta: clientMeta ?? null
     });
-    await sendEvent(
+    // Optional event delivery must not hold an already-created game session open.
+    void sendEvent(
       'game.session.start',
       {
         sessionId: context.sessionId,
@@ -312,7 +323,7 @@ export async function startSession(
         clientMeta: clientMeta ?? null
       },
       { sessionId: context.sessionId }
-    );
+    ).catch((err) => console.debug('[games/sdk] start event unavailable', err));
     return payload;
   } catch (err) {
     throw toGameClientError(err, 'start');
@@ -326,6 +337,8 @@ type CompleteArgs = {
   nonce: string;
   signature: string;
   clientVersion?: string;
+  success?: boolean | null;
+  stats?: Record<string, unknown> | null;
 };
 
 export type SessionAchievement = {
@@ -338,6 +351,8 @@ export type SessionAchievement = {
 };
 
 export type GameSessionServerResult = {
+  settlementVersion?: 1;
+  sessionId?: string;
   xpDelta: number;
   baseXpDelta?: number;
   baseXp?: number;
@@ -398,7 +413,13 @@ const postSessionCompletion = async (args: CompleteArgs) => {
         errorPayload
       );
     }
-    return (await response.json()) as GameSessionServerResult;
+    const data: unknown = await response.json();
+    if (!isRecord(data) || !Number.isSafeInteger(data.xpDelta) || data.xpDelta < 0 ||
+        !Number.isSafeInteger(data.currencyDelta) || data.currencyDelta < 0 ||
+        ('settlementVersion' in data && (data.settlementVersion !== 1 || data.sessionId !== args.sessionId))) {
+      throw new GameClientError({ message: SAFE_COMPLETION_MESSAGE, kind: 'completion_failed', code: 'invalid_receipt' });
+    }
+    return data as GameSessionServerResult;
   } catch (err) {
     throw toGameClientError(err, 'complete');
   }
@@ -442,7 +463,7 @@ const normalizeCompletionResults = (
   return normalized;
 };
 
-const completeWithResult = async (sessionId: string, result: GameSessionResult = {}) => {
+const performCompletion = async (sessionId: string, result: GameSessionResult = {}) => {
   const context = resolveActiveContext(sessionId);
   if (!context) {
     console.warn('[games/sdk] no active context for session', sessionId);
@@ -467,13 +488,12 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     durationMs,
     nonce: context.nonce,
     signature,
-    clientVersion: context.clientVersion ?? CLIENT_VERSION
+    clientVersion: context.clientVersion ?? CLIENT_VERSION,
+    success: typeof result.success === 'boolean' ? result.success : null,
+    stats: result.stats ?? result.extra ?? null
   });
 
-  activeSessions.delete(sessionId);
-  if (currentSessionId === sessionId) {
-    currentSessionId = null;
-  }
+  abandonSession(sessionId);
 
   sendGameEvent('session_completed', {
     sessionId,
@@ -487,9 +507,14 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
   });
 
   if (typeof window !== 'undefined') {
-    const current = Number(window.sessionStorage.getItem(SESSION_GAMES_PLAYED_KEY) ?? '0');
-    const next = Number.isFinite(current) && current > 0 ? Math.floor(current) + 1 : 1;
-    window.sessionStorage.setItem(SESSION_GAMES_PLAYED_KEY, String(next));
+    try {
+      const current = Number(window.sessionStorage.getItem(SESSION_GAMES_PLAYED_KEY) ?? '0');
+      const next = Number.isFinite(current) && current > 0 ? Math.floor(current) + 1 : 1;
+      window.sessionStorage.setItem(SESSION_GAMES_PLAYED_KEY, String(next));
+    } catch (err) {
+      // Optional browser storage must not turn a committed completion into a failure.
+      console.debug('[games/sdk] session counter unavailable', err);
+    }
   }
 
   const completionRequest: GameSessionCompleteRequest = {
@@ -497,23 +522,65 @@ const completeWithResult = async (sessionId: string, result: GameSessionResult =
     results: normalizeCompletionResults(result, score, durationMs)
   };
 
-  const response = await sendEvent('game.complete', {
-    sessionId,
-    gameId: context.gameId,
-    mode: context.mode ?? null,
-    results: completionRequest.results
-  }, {
-    sessionId
-  });
+  // The reward response is authoritative; optional reactions may finish later.
+  void (async () => {
+    try {
+      const response = await sendEvent('game.complete', {
+        sessionId,
+        gameId: context.gameId,
+        mode: context.mode ?? null,
+        results: completionRequest.results
+      }, {
+        sessionId,
+        idempotencyKey: `game.complete:${sessionId}`
+      });
 
-  const output = response?.output ?? null;
-  const reaction = output?.suppressed === true ? null : output?.reaction ?? null;
-  if (reaction) {
-    const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
-    pushCompanionReaction(reaction);
-  }
+      const output = response?.output ?? null;
+      const reaction = output?.suppressed === true ? null : output?.reaction ?? null;
+      if (reaction) {
+        const { pushCompanionReaction } = await import('$lib/stores/companionReactions');
+        // A slow response from this round must not interrupt a newer active round.
+        if (currentSessionId === null || currentSessionId === sessionId) {
+          pushCompanionReaction(reaction);
+        }
+      }
+    } catch (err) {
+      // Optional reaction delivery cannot invalidate the server's committed result.
+      console.debug('[games/sdk] completion reaction unavailable', err);
+    }
+  })();
 
   return completion;
+};
+
+const completingSessions = new Map<string, { key: string; promise: Promise<GameSessionServerResult | null> }>();
+const stableCompletion = (value: unknown): string => Array.isArray(value)
+  ? `[${value.map(stableCompletion).join(',')}]`
+  : isRecord(value) ? `{${Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + stableCompletion(value[key])).join(',')}}`
+    : JSON.stringify(value);
+const completeWithResult = (sessionId: string, result: GameSessionResult = {}) => {
+  const key = stableCompletion({score: result.score, durationMs: result.durationMs, success: result.success,
+    stats: result.stats ?? result.extra ?? null});
+  const pending = completingSessions.get(sessionId);
+  if (pending) {
+    if (pending.key !== key) return Promise.reject(new GameClientError({message: SAFE_COMPLETION_MESSAGE,
+      kind: 'completion_failed', status: 409, code: 'conflict'}));
+    return pending.promise;
+  }
+  const submitted = submittedResults.get(sessionId);
+  if (submitted && submitted.key !== key) return Promise.reject(new GameClientError({message: SAFE_COMPLETION_MESSAGE,
+    kind: 'completion_failed', status: 409, code: 'conflict'}));
+  // Freeze elapsed duration and nested result fields across an uncertain response.
+  // Explicit abandonment forgets this retry context; it never reverses payment.
+  const normalized = submitted?.result ?? JSON.parse(JSON.stringify({ ...result,
+    score: normalizeScore(result.score), durationMs: resolveDuration(result.durationMs, resolveActiveContext(sessionId))
+  })) as GameSessionResult;
+  if (!submitted && activeSessions.has(sessionId)) submittedResults.set(sessionId, {key,result:normalized});
+  const promise = performCompletion(sessionId, normalized).finally(() => {
+    if (completingSessions.get(sessionId)?.promise === promise) completingSessions.delete(sessionId);
+  });
+  completingSessions.set(sessionId, { key, promise });
+  return promise;
 };
 
 export async function completeSession(args: CompleteArgs): Promise<CompleteResponse>;
@@ -683,7 +750,12 @@ export const sendGameEvent = (type: string, payload: Record<string, any> = {}): 
     return;
   }
 
-  sendAnalytics(`game_${type}`, {
-    payload: enrichedPayload
-  });
+  try {
+    sendAnalytics(`game_${type}`, {
+      payload: enrichedPayload
+    });
+  } catch (err) {
+    // Analytics may encounter blocked localStorage or beacon errors.
+    console.debug('[games/sdk] analytics unavailable', err);
+  }
 };

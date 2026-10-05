@@ -1,0 +1,97 @@
+name: Orbfield Browser
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-orbfield:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies without lifecycle hooks
+        run: npm ci --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Record synthetic fixture source
+        run: |
+          mkdir -p artifacts/orbfield
+          {
+            echo "Credential-free component fixture. Real-engine browser input case is separate from deterministic lifecycle cases."
+            echo "No hosted auth, database, real API, real rewards, or full SvelteKit routing."
+            git rev-parse HEAD HEAD^{tree}
+            node --version
+            npm --version
+            npx playwright --version
+            git ls-files -z package-lock.json .github/workflows/orbfield-browser.yml scripts/testing/orbfield-preview src/lib/games/GameShell.svelte src/lib/games/dodgeSurvive.ts src/lib/games/orbfieldSkin.ts static/games/dodge/skins/moonlit src/lib/games/types.ts src/lib/games/sdk.ts src/lib/games/state.ts src/lib/stores/companionRituals.ts 'src/routes/app/(game)/+layout.svelte' 'src/routes/app/(game)/games/dodge/+page.svelte' | xargs -0 sha256sum
+          } > artifacts/orbfield/source.txt
+      - name: Check isolated component types, markup and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            npx svelte-kit sync
+            npx vitest run src/lib/__tests__/orbfield.spec.ts src/lib/__tests__/orbfieldSkin.spec.ts
+            npx svelte-check --tsconfig scripts/testing/orbfield-preview/tsconfig.json
+            node scripts/testing/orbfield-preview/ssr-check.mjs
+            npx vite build --config scripts/testing/orbfield-preview/vite.config.mjs
+          } 2>&1 | tee artifacts/orbfield/checks.log
+      - name: Run credential-free Orbfield browser flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright test --config scripts/testing/orbfield-preview/playwright.config.ts 2>&1 | tee artifacts/orbfield/browser.log
+      - name: Gather structured browser report
+        if: always()
+        run: |
+          if [ -f scripts/testing/orbfield-preview/.results/results.json ]; then
+            cp scripts/testing/orbfield-preview/.results/results.json artifacts/orbfield/results.json
+          fi
+      - name: Upload test report and source identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbfield-report-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/orbfield/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload narrow-320 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbfield-narrow-320-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/orbfield-preview/.results/screenshots/*-narrow-320/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload mobile-390 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbfield-mobile-390-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/orbfield-preview/.results/screenshots/*-mobile-390/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload desktop-1280 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbfield-desktop-1280-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/orbfield-preview/.results/screenshots/*-desktop-1280/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

@@ -309,145 +309,93 @@ test.describe('Game achievements', () => {
     );
   });
 
-  test('UI surfaces achievement toasts and panel', async ({ page }) => {
+  test('archive and profile retain earned achievements without starting a game', async ({ page }) => {
     await loginAs(page, VIEWER_CREDENTIALS);
-    await page.goto('/app');
+    const sessionRequests: string[] = [];
+    await page.route('**/api/games/session/**', async (route) => {
+      sessionRequests.push(new URL(route.request().url()).pathname);
+      await route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
+    });
 
-    const fakeSession = { sessionId: 'session-achievements', nonce: 'nonce-achievements' };
     const mockAchievements = [
       { key: 'tiles.first_clear', name: 'First clear of Tiles Run', icon: 'sparkles', points: 10, rarity: 'common' },
       { key: 'tiles.score_1k', name: 'Score 1,000 points', icon: 'trophy', points: 10, rarity: 'common' }
     ];
-
-    await page.route('**/api/games/session/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(fakeSession)
-      });
-    });
-
-    await page.route('**/api/games/session/complete', async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ xpDelta: 18, currencyDelta: 42, achievements: mockAchievements })
-      });
-    });
-
-    await page.route('**/api/games/player/state', async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          level: 6,
-          xp: 1330,
-          xpNext: 1600,
-          energy: 9,
-          energyMax: 10,
-          currency: 512,
-          rewards: []
-        })
-      });
-    });
-
     const catalogResponse = {
-      achievements: mockAchievements.map((entry) => ({
-        id: `ach-${entry.key}`,
-        key: entry.key,
-        name: entry.name,
-        description: `${entry.name} description`,
-        icon: entry.icon,
-        rarity: entry.rarity,
-        points: entry.points,
-        gameId: 'game-tiles',
-        gameSlug: 'tiles-run',
-        gameName: 'Tiles Run',
-        ruleKind: 'score_threshold'
-      }))
+      achievements: [
+        ...mockAchievements.map((entry) => ({
+          id: `ach-${entry.key}`,
+          ...entry,
+          description: `${entry.name} description`,
+          gameId: 'game-tiles',
+          gameSlug: 'tiles-run',
+          gameName: 'Tiles Run',
+          ruleKind: 'score_threshold'
+        })),
+        {
+          id: 'ach-runner-locked', key: 'runner.locked', name: 'Neon Run milestone',
+          description: 'An unrelated game milestone.', icon: 'trophy', rarity: 'common', points: 10,
+          gameId: 'game-runner', gameSlug: 'runner', gameName: 'Neon Run', ruleKind: 'score_threshold'
+        }
+      ]
     };
 
     await page.route('**/api/achievements/catalog', async (route) => {
       await route.fulfill({
         status: 200,
-        headers: { 'content-type': 'application/json' },
+        contentType: 'application/json',
         body: JSON.stringify(catalogResponse)
       });
     });
-
     await page.route('**/api/achievements/me', async (route) => {
       await route.fulfill({
         status: 200,
-        headers: { 'content-type': 'application/json' },
+        contentType: 'application/json',
         body: JSON.stringify({
           points: 200,
           unlocks: mockAchievements.map((entry) => ({
             ...entry,
             description: `${entry.name} description`,
-            unlockedAt: new Date().toISOString()
+            unlockedAt: '2026-01-01T12:00:00.000Z'
           }))
         })
       });
     });
 
-    const startRequest = page.waitForRequest('**/api/games/session/start');
-
     await page.goto('/app/games/tiles-run');
+    await expect(page.getByTestId('tiles-archive')).toBeVisible();
+    await expect(page.locator('iframe, canvas, #game-container')).toHaveCount(0);
+    await page.getByTestId('achievements-open').click();
 
-    const iframe = page.locator('iframe[data-testid="tiles-embed"]');
-    await expect(iframe).toBeVisible();
-
-    const embed = await iframe.elementHandle();
-    const frame = await embed?.contentFrame();
-    expect(frame).toBeTruthy();
-
-    await frame!.evaluate(() => {
-      parent.postMessage({ type: 'GAME_READY' }, '*');
-    });
-
-    await startRequest;
-
-    await frame!.evaluate(({ nonce, sessionId }) => {
-      parent.postMessage(
-        {
-          type: 'GAME_COMPLETE',
-          payload: { score: 2750, durationMs: 64000, nonce, sessionId }
-        },
-        '*'
-      );
-    }, fakeSession);
-
-    await page.waitForResponse('**/api/games/session/complete');
-
-    const rewardToast = page.locator('[data-testid="reward-toast"]');
-    await expect(rewardToast).toContainText('+18 XP');
-    await expect(rewardToast).toContainText('+42 shards');
-
-    const achievementToastStack = page.locator('[data-testid="achievement-toast-stack"]');
-    await expect(achievementToastStack).toBeVisible();
-    await expect(achievementToastStack.locator('[data-testid^="achievement-toast-"]')).toHaveCount(2);
-
-    await achievementToastStack.locator('[data-testid="achievement-toast-view"]').first().click();
-
-    const panel = page.locator('[data-testid="achievements-panel"]');
+    const panel = page.getByTestId('achievements-panel');
     await expect(panel).toBeVisible();
-    await expect(panel.locator('[data-testid^="achievement-card-"]')).toHaveCount(
-      catalogResponse.achievements.length
-    );
+    await expect(panel.locator('[data-testid^="achievement-card-"]')).toHaveCount(2);
+    await expect(panel.getByTestId('achievement-card-tiles.first_clear')).toHaveClass(/unlocked/);
+    await expect(panel.getByTestId('achievement-card-tiles.score_1k')).toHaveClass(/unlocked/);
+    await expect(panel.getByTestId('achievement-card-runner.locked')).toHaveCount(0);
+    await expect(page.getByText('Total points · 200', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('achievements-tab-game')).toHaveText('Tiles Run');
 
-    await expect(panel.locator('text=Total points · 200')).toBeVisible();
+    await page.getByTestId('achievements-tab-locked').click();
+    await expect(panel.getByText('No achievements here yet.', { exact: true })).toBeVisible();
 
-    await page.locator('[data-testid="achievements-tab-locked"]').click();
-    await expect(panel.locator('text=No achievements here yet.')).toBeVisible();
-
-    await page.locator('[data-testid="achievements-close"]').click();
+    await page.getByTestId('achievements-close').click();
     await expect(panel).toHaveCount(0);
+    await page.getByTestId('achievements-open').click();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByTestId('tiles-archive')).toBeVisible();
+    expect(sessionRequests).toEqual([]);
 
-    // Profile badge strip opens panel as well.
+    // The current public profile displays earned history in Recent milestones.
     await page.goto(`/app/u/${viewerHandle}`);
-    const badgeStrip = page.locator('[data-testid="achievement-badge-strip"]');
-    await expect(badgeStrip).toBeVisible();
-    await badgeStrip.locator('button').first().click();
-    await expect(page.locator('[data-testid="achievements-panel"]')).toBeVisible();
+    const milestones = page.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Recent milestones', exact: true })
+    });
+    await expect(milestones).toBeVisible();
+    await expect(milestones.locator('li').first()).toBeVisible();
+    await expect(milestones).toContainText(/Tiles Run|Tiles Marathoner|Weekly Top 10|Score [\d,]+ points/);
+    expect(sessionRequests).toEqual([]);
   });
 });

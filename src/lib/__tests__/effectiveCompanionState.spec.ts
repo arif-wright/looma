@@ -51,6 +51,29 @@ describe('computeCompanionEffectiveState', () => {
     expect(effective.msSinceCare).not.toBeNull();
     expect(effective.moodLabel).not.toBe('Happy');
     expect(effective.energy).toBe(companion.energy);
+    expect(effective.affection).toBe(companion.affection);
+    expect(effective.trust).toBe(companion.trust);
+  });
+
+  it.each([0, 2, 3, 14, 30, 3650])('preserves relationship stats after %i days away', (days) => {
+    const lastSeen = new Date('2026-01-01T00:00:00.000Z');
+    const companion = makeCompanion({ affection: 80, trust: 75, energy: 60, updated_at: lastSeen.toISOString() });
+    const effective = computeCompanionEffectiveState(companion, new Date(lastSeen.getTime() + days * 86_400_000));
+    expect(effective).toMatchObject({ affection: 80, trust: 75, energy: 60 });
+  });
+
+  it.each([[0, 0], [-10, 0], [100, 100], [120, 100], [70.4, 70]])(
+    'normalizes %s without applying absence loss', (value, expected) => {
+      const companion = makeCompanion({ affection: value, trust: value, energy: value });
+      expect(computeCompanionEffectiveState(companion, new Date('2036-01-01T00:00:00Z')))
+        .toMatchObject({ affection: expected, trust: expected, energy: expected });
+    }
+  );
+
+  it('treats future timestamps as zero elapsed time without changing the relationship', () => {
+    const companion = makeCompanion({ updated_at: '2027-01-01T00:00:00Z' });
+    expect(computeCompanionEffectiveState(companion, new Date('2026-01-01T00:00:00Z')))
+      .toMatchObject({ msSinceCheckIn: 0, affection: 70, trust: 65, energy: 55 });
   });
 
   it('uses a bright mood shortly after care', () => {

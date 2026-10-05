@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
-  import { BookOpen, Leaf, Sparkles } from 'lucide-svelte';
+  import { BookOpen, House, Leaf, Sparkles } from 'lucide-svelte';
   import FantasySidebar from '$lib/components/home/fantasy/FantasySidebar.svelte';
   import HeroLivingWorld from '$lib/components/home/fantasy/HeroLivingWorld.svelte';
   import MemvoyaBrand from '$lib/components/brand/MemvoyaBrand.svelte';
@@ -706,6 +706,7 @@
         <nav class="relationship-links" aria-label="Supporting relationship actions">
           <a href={activeCompanionHref}><Sparkles size={18} /><span>Companion</span></a>
           <a href="/app/memory"><BookOpen size={18} /><span>Journal</span></a>
+          <a href="/app/sanctuary"><House size={18} /><span>Sanctuary</span></a>
           {#if canCompleteSharedRest}
             <a href="/app/sanctuary#shared-rest"><Leaf size={18} /><span>Rest together</span></a>
           {/if}

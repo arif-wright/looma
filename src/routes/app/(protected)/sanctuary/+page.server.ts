@@ -28,12 +28,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     supabase
       .from('sanctuary_placements')
       .select(
-        'id, slot_key, placed_at, updated_at, item:item_id (id, item_key, title, description, tone, visual_key, capabilities)'
+        'id, user_item_id, slot_key, placed_at, updated_at, item:item_id (id, item_key, title, description, tone, visual_key, capabilities)'
       )
       .eq('owner_id', userId),
     supabase
       .from('companion_journal_entries')
-      .select('id, title, body, created_at')
+      .select('id, companion_id, title, body, created_at')
       .eq('owner_id', userId)
       .contains('meta_json', { category: 'sanctuary' })
       .order('created_at', { ascending: false })

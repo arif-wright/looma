@@ -56,9 +56,14 @@ export const recalculateBondsForPlayer = async (
   client: SupabaseClient,
   playerId: string
 ): Promise<BondStatsRow[]> => {
-  if (!playerId) return [];
+  // Revalidate against Auth before crossing into the service-role client. Neither
+  // a submitted owner id nor a caller-provided Session is authorization.
+  const { data: { user }, error: authError } = await client.auth.getUser();
+  if (authError || !user) throw new Error('bond_authentication_required');
+  if (!playerId || user.id !== playerId) throw new Error('bond_owner_mismatch');
+
   const { data, error } = await supabaseAdmin.rpc('recalculate_bonds_for_player', {
-    p_player_id: playerId
+    p_player_id: user.id
   });
 
   if (error) {
@@ -95,19 +100,22 @@ const findActiveCompanion = async (
 };
 
 const ensureAchievementsForLevel = async (
-  client: SupabaseClient,
   playerId: string,
   level: number
 ) => {
-  if (!playerId || level <= 0) return;
-  const evaluator = createAchievementEvaluator({ supabase: client });
+  if (!playerId || !Number.isFinite(level) || level <= 0) return;
+  // Private to the authenticated-owner sync below. Only the achievement path is
+  // privileged: unlock writes and fn_add_points must remain server-only. Reward
+  // amounts come from the protected catalog, never from a route payload.
+  const evaluator = createAchievementEvaluator({ supabase: supabaseAdmin });
   const catalog = await evaluator.getCatalogForGame();
   const catalogMap = new Map(catalog.map((entry) => [entry.key, entry]));
 
   for (const { key, minLevel } of BOND_ACHIEVEMENTS) {
     if (level < minLevel) continue;
     const achievement = catalogMap.get(key);
-    if (!achievement) continue;
+    if (!achievement || achievement.game_id !== null || achievement.rule.kind !== 'bond_level') continue;
+    if (level < achievement.rule.gte) continue;
     if (await evaluator.userHas(playerId, achievement.id)) continue;
     try {
       await evaluator.unlock(playerId, achievement, { bondLevel: level, source: 'companion_bond' });
@@ -202,7 +210,7 @@ export const syncPlayerBondState = async (
 ): Promise<{ rows: BondStatsRow[]; bonus: BondBonus; milestones: BondMilestoneInsert[] }> => {
   const rows = await recalculateBondsForPlayer(client, playerId);
   const maxLevel = rows.reduce((acc, row) => Math.max(acc, row.bond_level ?? 0), 0);
-  await ensureAchievementsForLevel(client, playerId, maxLevel);
+  await ensureAchievementsForLevel(playerId, maxLevel);
   const milestones = await ensureBondMilestoneEvents(client, playerId, rows);
   return { rows, bonus: getBondBonusForLevel(maxLevel), milestones };
 };

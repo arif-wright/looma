@@ -1,406 +1,369 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { createEndlessRunner } from '$lib/games/endlessRunner';
-  import type { LoomaGameInstance, LoomaGameResult, LoomaPowerupState } from '$lib/games/types';
-  import type { GameSessionResult } from '$lib/games/sdk';
+  import { onMount, tick } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { createEndlessRunner, type EndlessRunnerOptions, type EndlessRunnerInstance, type EndlessRunnerState } from '$lib/games/endlessRunner';
+  import type { LoomaGameResult } from '$lib/games/types';
+  import { startSession, completeSession, abandonSession, getGameErrorKind, getGameErrorMessage,
+    type GameSessionStart, type GameSessionResult, type GameSessionServerResult } from '$lib/games/sdk';
+  import { playSound, stopSound, isAudioEnabled, toggleAudioEnabled } from '$lib/games/audio';
+  import { loadRunnerLanternwaySkin, RUNNER_LANTERNWAY_URLS, type RunnerLanternwayAssets } from '$lib/games/runnerLanternwaySkin';
+  import { applyRitualUpdate } from '$lib/stores/companionRituals';
 
-  export let ready = false;
+  export let createGame: (options: EndlessRunnerOptions) => EndlessRunnerInstance = createEndlessRunner;
 
-  const dispatch = createEventDispatcher<{ gameOver: GameSessionResult }>();
-
+  type Phase = 'ready' | 'starting' | 'playing' | 'paused' | 'saving' | 'complete' | 'practice' | 'start-error' | 'save-error';
+  let phase: Phase = 'ready';
   let canvasEl: HTMLCanvasElement | null = null;
-  let stageEl: HTMLDivElement | null = null;
-  let game: LoomaGameInstance | null = null;
-  let resizeAttached = false;
-  let paused = false;
-  let running = false;
-  let hudFrame: number | null = null;
-  let hudStartTime = 0;
-  let hudAccumulated = 0;
-  let scoreDisplay = 0;
-  let distanceDisplay = 0;
-  let shardsDisplay: number | null = null;
-  let shardsCollected = 0;
-  const defaultPowerupState: LoomaPowerupState = {
-    shield: false,
-    magnet: 0,
-    doubleShards: 0,
-    slowMo: 0,
-    dash: 0,
-    dreamSurge: 0
-  };
-  const defaultPowerupUsage = {
-    shield: 0,
-    magnet: 0,
-    doubleShards: 0,
-    slowMo: 0,
-    dash: 0,
-    dreamSurge: 0
-  };
-  let activePowerups: LoomaPowerupState = { ...defaultPowerupState };
-  let powerupsUsed = { ...defaultPowerupUsage };
-  let hudVisible = false;
+  let shellEl: HTMLDivElement | null = null;
+  let focusedView = false;
+  let fullscreenAvailable = false;
+  let fullscreenActive = false;
+  let fullscreenBusy = false;
+  let viewGeneration = 0;
+  let viewMessage = '';
+  let statusEl: HTMLHeadingElement | null = null;
+  let game: EndlessRunnerInstance | null = null;
+  let session: GameSessionStart | null = null;
+  let mounted = false;
+  let generation = 0;
+  let pauseOnStart = false;
+  let minimumDuration = 10_000;
+  let maximumDuration = 600_000;
+  let result: GameSessionResult | null = null;
+  let reward: GameSessionServerResult | null = null;
+  let errorMessage = '';
+  let signInRequired = false;
+  let audioOn = isAudioEnabled();
+  let art: { assets: RunnerLanternwayAssets; complete: boolean } = { assets: {}, complete: false };
+  let artState: 'loading' | 'ready' | 'fallback' = 'loading';
+  let artTask: Promise<typeof art> | null = null;
+  let motionPreference: MediaQueryList | null = null;
+  const initialState = (): EndlessRunnerState => ({ score: 0, elapsedMs: 0, simulationElapsedMs: 0,
+    distanceMeters: 0, shardsCollected: 0, playerX: 192, playerY: 405, onGround: true,
+    powerups: { shield: true, magnet: 0, doubleShards: 0, slowMo: 0, dash: 0, dreamSurge: 0 } });
+  let state = initialState();
 
-  const resizeCanvas = () => {
-    if (!canvasEl) return;
-    const host = stageEl ?? canvasEl.parentElement;
-    if (!host) return;
-    const rect = host.getBoundingClientRect();
-    const width = Math.max(1, Math.floor(rect.width || window.innerWidth));
-    const height = Math.max(1, Math.floor(rect.height || window.innerHeight));
-    canvasEl.width = width;
-    canvasEl.height = height;
-  };
+  const isCurrent = (token: number) => mounted && generation === token;
+  const stopGame = () => { game?.destroy(); game = null; stopSound('bgm'); };
+  const releaseSession = () => { if (session) abandonSession(session.sessionId); session = null; };
+  const focusStatus = async (token: number) => { await tick(); if (isCurrent(token)) statusEl?.focus(); };
 
-  const destroyGame = () => {
-    game?.destroy?.();
-    game = null;
-    paused = false;
-    running = false;
-    activePowerups = { ...defaultPowerupState };
-    powerupsUsed = { ...defaultPowerupUsage };
-  };
-
-  const handleShardCollected = (count: number) => {
-    shardsCollected = count;
-  };
-
-  const handlePowerupState = (state: LoomaPowerupState) => {
-    activePowerups = { ...defaultPowerupState, ...state };
-  };
-
-  const ensureGame = () => {
-    if (game || !canvasEl) return;
-    resizeCanvas();
-    game = createEndlessRunner({
-      canvas: canvasEl,
-      onGameOver: handleGameOver,
-      onShardCollected: handleShardCollected,
-      onPowerupState: handlePowerupState
-    });
+  const saveResult = async (token: number) => {
+    if (!isCurrent(token) || !session || !result || !['playing', 'save-error'].includes(phase)) return;
+    const context = session;
+    const payload = result;
+    phase = 'saving'; errorMessage = ''; signInRequired = false;
+    try {
+      // The SDK preserves this session and payload after an uncertain response and
+      // retrieves the existing atomic receipt on identical retries. Never re-award locally.
+      const response = await completeSession(context.sessionId, payload);
+      if (!isCurrent(token)) return;
+      if (!response || !Number.isSafeInteger(response.xpDelta) || response.xpDelta < 0 ||
+          !Number.isSafeInteger(response.currencyDelta) || response.currencyDelta < 0) {
+        throw new Error('No confirmed reward receipt.');
+      }
+      reward = response;
+      session = null;
+      phase = 'complete';
+      // Optional local ritual presentation cannot invalidate a confirmed receipt.
+      try { if (response.rituals?.list) applyRitualUpdate(response.rituals.list); }
+      catch { /* The saved result remains authoritative. */ }
+    } catch (error) {
+      if (!isCurrent(token)) return;
+      signInRequired = getGameErrorKind(error, 'complete') === 'unauthorized';
+      errorMessage = signInRequired ? getGameErrorMessage(error, 'complete')
+        : 'We couldn’t confirm the saved result. Your run may already have saved.';
+      phase = 'save-error';
+      // Keep the exact result and SDK session for Retry saving. Only a new run or
+      // explicit navigation abandons this local retry context; neither undoes a save.
+    }
+    if (isCurrent(token)) void focusStatus(token);
   };
 
-  const stopHudLoop = () => {
-    if (hudFrame !== null) {
-      cancelAnimationFrame(hudFrame);
-      hudFrame = null;
+  const finishRun = (raw: LoomaGameResult, token: number) => {
+    if (!isCurrent(token) || phase !== 'playing') return;
+    stopGame();
+    const meta = { ...raw.meta };
+    const powerupsUsed = Object.freeze({ shield: meta.shield_powerups ?? 0, magnet: meta.magnet_powerups ?? 0,
+      doubleShards: meta.double_powerups ?? 0, slowMo: meta.slowmo_powerups ?? 0,
+      dash: meta.dash_powerups ?? 0, dreamSurge: meta.dream_powerups ?? 0 });
+    result = Object.freeze({ score: Math.max(0, Math.floor(raw.score)), durationMs: Math.max(0, Math.floor(raw.durationMs)),
+      success: meta.survived_round === 1,
+      stats: Object.freeze({ ...meta, shardsCollected: meta.shards ?? state.shardsCollected,
+        distanceMeters: meta.distance_meters ?? state.distanceMeters, difficulty: 'normal', powerupsUsed }) });
+    if (result.durationMs! < minimumDuration) {
+      phase = 'practice'; releaseSession(); void focusStatus(token); return;
+    }
+    void saveResult(token);
+  };
+
+  const startRun = async () => {
+    if (!mounted || !canvasEl || ['starting', 'playing', 'paused', 'saving'].includes(phase)) return;
+    const token = ++generation;
+    stopGame(); releaseSession();
+    phase = 'starting'; pauseOnStart = document.hidden;
+    result = null; reward = null; errorMessage = ''; signInRequired = false; state = initialState();
+    try {
+      // Finish bounded cosmetic loading before opening a server session.
+      const loadedArt = artTask ? await artTask : art;
+      if (!isCurrent(token)) return;
+      const context = await startSession('runner', 'standard', { clientVersion: '1.0.0', source: 'neon-run' });
+      if (!isCurrent(token)) { abandonSession(context.sessionId); return; }
+      session = context;
+      const min = context.caps.minDurationMs;
+      const max = context.caps.maxDurationMs;
+      if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || min < 0 || max < Math.max(1, min)) {
+        throw new Error('Invalid session limits.');
+      }
+      minimumDuration = min; maximumDuration = max;
+      game = createGame({ canvas: canvasEl, maxDurationMs: maximumDuration,
+        skinAssets: loadedArt.assets, reducedMotion: () => motionPreference?.matches ?? true,
+        onStateChange: (next) => { if (isCurrent(token)) state = next; },
+        onGameOver: (next) => finishRun(next, token) });
+      phase = 'playing'; game.start();
+      if ((pauseOnStart || document.hidden) && phase === 'playing') pauseRun();
+      else if (phase === 'playing') playSound('bgm', { loop: true });
+      await tick();
+      if (isCurrent(token) && phase === 'playing') canvasEl?.focus({ preventScroll: true });
+    } catch (error) {
+      if (!isCurrent(token)) return;
+      stopGame(); releaseSession();
+      signInRequired = getGameErrorKind(error, 'start') === 'unauthorized';
+      errorMessage = getGameErrorMessage(error, 'start');
+      phase = 'start-error'; void focusStatus(token);
     }
   };
 
-  const startHudLoop = () => {
-    hudAccumulated = 0;
-    hudStartTime = performance.now();
-    hudVisible = true;
-    const loop = () => {
-      if (!running) {
+  const pauseRun = () => { if (phase === 'playing') { phase = 'paused'; game?.pause(); stopSound('bgm'); } };
+  const resumeRun = () => {
+    if (phase !== 'paused' || document.hidden) return;
+    phase = 'playing'; game?.resume(); playSound('bgm', { loop: true }); canvasEl?.focus({ preventScroll: true });
+  };
+  const jump = () => { if (phase === 'playing') game?.playerJump(); };
+  const releaseFullscreen = async (target: HTMLDivElement | null = shellEl) => {
+    if (target && document.fullscreenElement === target && typeof document.exitFullscreen === 'function') {
+      try { await document.exitFullscreen(); } catch { /* Browser cleanup is best effort, scoped to this shell. */ }
+    }
+  };
+  const syncFullscreen = () => { fullscreenActive = Boolean(shellEl && document.fullscreenElement === shellEl); };
+  const toggleFocusView = async () => {
+    focusedView = !focusedView; viewMessage = ''; ++viewGeneration;
+    if (!focusedView) void releaseFullscreen();
+    await tick();
+    if (mounted && focusedView && phase === 'playing') canvasEl?.focus({ preventScroll: true });
+  };
+  const toggleFullscreen = async () => {
+    if (!mounted || !shellEl || fullscreenBusy) return;
+    if (document.fullscreenElement === shellEl) { await releaseFullscreen(); syncFullscreen(); return; }
+    focusedView = true; viewMessage = '';
+    const target = shellEl;
+    const token = ++viewGeneration;
+    if (!fullscreenAvailable || typeof target.requestFullscreen !== 'function') {
+      viewMessage = 'Fullscreen isn’t available here. Focus view is open.'; return;
+    }
+    fullscreenBusy = true;
+    try {
+      await target.requestFullscreen();
+      if (!mounted || viewGeneration !== token) {
+        if (document.fullscreenElement === target) void releaseFullscreen(target);
         return;
       }
-      if (!paused) {
-        const elapsed = performance.now() - hudStartTime;
-        const total = hudAccumulated + elapsed;
-        scoreDisplay = Math.floor(total * 0.012);
-        distanceDisplay = Math.floor(total * 0.18);
-      }
-      hudFrame = requestAnimationFrame(loop);
-    };
-    hudFrame = requestAnimationFrame(loop);
-  };
-
-  const handleGameOver = (result: LoomaGameResult) => {
-    if (!running) return;
-    running = false;
-    paused = true;
-    hudAccumulated += performance.now() - hudStartTime;
-    const rawScore = Math.max(0, Math.floor(result.score ?? 0));
-    powerupsUsed = {
-      shield: result.meta?.shield_powerups ?? 0,
-      magnet: result.meta?.magnet_powerups ?? 0,
-      doubleShards: result.meta?.double_powerups ?? 0,
-      slowMo: result.meta?.slowmo_powerups ?? 0,
-      dash: result.meta?.dash_powerups ?? 0,
-      dreamSurge: result.meta?.dream_powerups ?? 0
-    };
-    scoreDisplay = rawScore;
-    distanceDisplay = Math.floor(((result.durationMs ?? 0) * 0.18));
-    shardsDisplay = shardsCollected;
-    stopHudLoop();
-    activePowerups = { ...defaultPowerupState };
-
-    dispatch('gameOver', {
-      score: rawScore,
-      durationMs: result.durationMs,
-      success: rawScore > 0,
-      stats: {
-        shardsCollected,
-        distanceMeters: distanceDisplay,
-        difficulty: 'normal',
-        powerupsUsed
-      },
-      ...(result.meta ? { extra: result.meta } : {})
-    });
-  };
-
-  const handleJump = (event?: Event) => {
-    event?.preventDefault?.();
-    if (!ready || paused || !running) return;
-    game?.playerJump?.();
-  };
-
-  const handlePointerJump = (event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    handleJump(event);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.code === 'Space' || event.code === 'ArrowUp') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      handleJump(event);
+      syncFullscreen();
+    } catch {
+      if (mounted && viewGeneration === token) viewMessage = 'Fullscreen isn’t available here. Focus view is open.';
+    } finally {
+      fullscreenBusy = false;
     }
+    await tick();
+    if (mounted && viewGeneration === token && phase === 'playing') canvasEl?.focus({ preventScroll: true });
   };
-
-  $: if (ready) {
-    ensureGame();
-    paused = false;
-    running = true;
-    shardsDisplay = null;
-    shardsCollected = 0;
-    activePowerups = { ...defaultPowerupState };
-    powerupsUsed = { ...defaultPowerupUsage };
-    scoreDisplay = 0;
-    distanceDisplay = 0;
-    game?.start();
-    startHudLoop();
-  } else {
-    hudVisible = false;
-    stopHudLoop();
-    destroyGame();
-    shardsCollected = 0;
-  }
-
-  export function pause() {
-    paused = true;
-    hudAccumulated += Math.max(0, performance.now() - hudStartTime);
-    game?.pause?.();
-  }
-
-  export function resume() {
-    paused = false;
-    hudStartTime = performance.now();
-    game?.resume?.();
-  }
-
-  export function reset() {
-    paused = false;
-    running = false;
-    hudAccumulated = 0;
-    hudVisible = false;
-    scoreDisplay = 0;
-    distanceDisplay = 0;
-    shardsCollected = 0;
-    shardsDisplay = null;
-    activePowerups = { ...defaultPowerupState };
-    stopHudLoop();
-    destroyGame();
-  }
+  const exit = () => { ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/games'); };
+  const signIn = () => { ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/auth'); };
+  const onBackground = () => { if (phase === 'starting') pauseOnStart = true; else pauseRun(); };
+  const onVisibility = () => { if (document.hidden) onBackground(); };
+  const toggleAudio = () => { audioOn = toggleAudioEnabled(); };
 
   onMount(() => {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('keydown', handleKeyDown);
-    resizeAttached = true;
-
+    mounted = true;
+    fullscreenAvailable = Boolean(document.fullscreenEnabled && typeof shellEl?.requestFullscreen === 'function');
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    const artController = new AbortController();
+    motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
+    artTask = loadRunnerLanternwaySkin({ signal: artController.signal });
+    void artTask.then((loaded) => {
+      if (!mounted) return;
+      art = loaded; artState = loaded.complete ? 'ready' : 'fallback';
+    });
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', onBackground);
     return () => {
-      if (resizeAttached) {
-        window.removeEventListener('resize', resizeCanvas);
-        resizeAttached = false;
-      }
-      window.removeEventListener('keydown', handleKeyDown);
-      stopHudLoop();
-      destroyGame();
+      mounted = false; artController.abort(); motionPreference = null; ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen();
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onBackground);
     };
   });
+  $: statusTitle = phase === 'complete' ? 'Run complete' : phase === 'practice' ? 'Practice run'
+    : phase === 'save-error' ? 'We couldn’t confirm your rewards' : phase === 'start-error' ? 'Couldn’t start this run'
+    : phase === 'paused' ? 'Paused' : phase === 'saving' ? 'Saving your run…' : '';
 </script>
 
-<div class="runner-stage" bind:this={stageEl}>
-  <canvas bind:this={canvasEl} class="runner-surface" aria-label="Neon Run canvas"></canvas>
-  <div
-    class="runner-input-layer"
-    role="presentation"
-    on:click|preventDefault={handlePointerJump}
-    on:touchstart|preventDefault={handlePointerJump}
-    on:pointerdown|preventDefault={handlePointerJump}
-  ></div>
-  {#if hudVisible}
-    <div class="nr-hud">
-      <div class="nr-hud-item">
-        <span class="nr-label">Score</span>
-        <span class="nr-value">{scoreDisplay.toLocaleString()}</span>
-      </div>
-      <div class="nr-hud-item">
-        <span class="nr-label">Distance</span>
-        <span class="nr-value">{distanceDisplay} m</span>
-      </div>
-      <div class="nr-hud-item">
-        <span class="nr-label">Shards</span>
-        <span class="nr-value">{(shardsDisplay ?? shardsCollected).toLocaleString()}</span>
-      </div>
-      {#if activePowerups.shield || activePowerups.magnet > 0 || activePowerups.doubleShards > 0 || activePowerups.slowMo > 0 || activePowerups.dash > 0 || activePowerups.dreamSurge > 0}
-        <div class="nr-hud-badges">
-          {#if activePowerups.shield}
-            <span class="nr-hud-badge shield">Shield</span>
+<div bind:this={shellEl} class="neon-run-shell" class:focused={focusedView} data-testid="neon-run-game" data-phase={phase} data-art-state={artState} data-focused={focusedView} data-fullscreen={fullscreenActive}>
+  <div class="view-toolbar">
+    <button class="text-button" type="button" on:click={exit}>← Back to Play</button>
+    <div class="view-actions">
+      <button type="button" aria-pressed={focusedView} on:click={toggleFocusView}>{focusedView ? 'Exit focus view' : 'Focus view'}</button>
+      {#if fullscreenAvailable}<button type="button" on:click={toggleFullscreen} disabled={fullscreenBusy}>{fullscreenActive ? 'Exit fullscreen' : 'Fullscreen'}</button>{/if}
+    </div>
+  </div>
+  {#if viewMessage}<p class="view-message" role="status">{viewMessage}</p>{/if}
+  <header>
+    <p class="eyebrow">Memvoya / Play</p><h1>Neon Run</h1><p class="skin-name">Lanternway</p>
+    <p id="neon-run-instructions">Jump over obstacles, gather shards, and discover six power-ups. Tap the play area or Jump, or focus the play area and press Space or ↑.</p>
+  </header>
+  <section class="play-panel" aria-label="Neon Run">
+    <p class="orientation-hint">For a closer view, turn your phone sideways.</p>
+    <div class="run-stats" aria-label="Run progress">
+      <span>Score <strong data-testid="neon-run-score">{state.score.toLocaleString()}</strong></span>
+      <span>Time <strong>{(state.elapsedMs / 1000).toFixed(1)}s</strong></span>
+      <span>Distance <strong>{state.distanceMeters} m</strong></span>
+      <span>Collected <strong>{state.shardsCollected}</strong></span>
+    </div>
+    <div class="canvas-frame">
+      {#if art.assets.background}<img class="arena-preview" src={RUNNER_LANTERNWAY_URLS.background} alt="" aria-hidden="true" />{/if}
+      <canvas bind:this={canvasEl} width="960" height="540" tabindex="0" data-testid="neon-run-canvas"
+        aria-label="Neon Run play area" aria-describedby="neon-run-instructions"></canvas>
+      {#if phase === 'ready' || phase === 'starting'}
+        <div class="canvas-message">
+          {#if art.assets.adventurer && art.assets.echo}
+            <div class="intro-portraits" aria-hidden="true">
+              <span class="intro-adventurer" style={`background-image: url("${RUNNER_LANTERNWAY_URLS.adventurer}")`}></span>
+              <span class="intro-echo" style={`background-image: url("${RUNNER_LANTERNWAY_URLS.echo}")`}></span>
+            </div>
           {/if}
-          {#if activePowerups.magnet > 0}
-            <span class="nr-hud-badge magnet">Magnet</span>
-          {/if}
-          {#if activePowerups.doubleShards > 0}
-            <span class="nr-hud-badge x2">x2 Shards</span>
-          {/if}
-          {#if activePowerups.slowMo > 0}
-            <span class="nr-hud-badge slowmo">Slow-Mo</span>
-          {/if}
-          {#if activePowerups.dash > 0}
-            <span class="nr-hud-badge dash">Dash</span>
-          {/if}
-          {#if activePowerups.dreamSurge > 0}
-            <span class="nr-hud-badge dream">Dream Surge</span>
-          {/if}
+          <p>A small journey, together.</p><span class="intro-caption">Follow the lanterns with Echo.</span>
+          <button class="primary" type="button" on:click={startRun} disabled={phase === 'starting'}>{phase === 'starting' ? 'Starting…' : 'Start run'}</button>
         </div>
+      {:else if phase === 'paused'}
+        <div class="pause-cover" aria-hidden="true">Paused</div>
       {/if}
     </div>
-  {/if}
+    <div class="skin-status">{artState === 'loading' ? 'Preparing Lanternway…' : artState === 'fallback' ? 'Simplified art mode' : 'Lanternway · Echo by your side'}</div>
+    {#if phase === 'playing' || phase === 'paused'}
+    <div class="powerups" aria-label="Active power-ups">
+      <span class:active={state.powerups.shield}>Shield {state.powerups.shield ? 'ready' : 'used'}</span>
+      {#if state.powerups.magnet > 0}<span class="active">Magnet</span>{/if}
+      {#if state.powerups.doubleShards > 0}<span class="active">×2 Shards</span>{/if}
+      {#if state.powerups.slowMo > 0}<span class="active">Slow-Mo</span>{/if}
+      {#if state.powerups.dash > 0}<span class="active">Dash</span>{/if}
+      {#if state.powerups.dreamSurge > 0}<span class="active">Dream Surge</span>{/if}
+    </div>
+    {/if}
+    <div class="controls">
+      {#if phase === 'playing' || phase === 'paused'}
+        <button class="primary jump" type="button" on:click={jump} disabled={phase !== 'playing'}>Jump</button>
+        <button type="button" on:click={phase === 'paused' ? resumeRun : pauseRun}>{phase === 'paused' ? 'Resume' : 'Pause'}</button>
+      {/if}
+      <button type="button" aria-pressed={audioOn} on:click={toggleAudio}>Sound {audioOn ? 'on' : 'off'}</button>
+    </div>
+    {#if statusTitle}
+      <section class="run-status" aria-live="polite" aria-atomic="true">
+        <h2 bind:this={statusEl} tabindex="-1">{statusTitle}</h2>
+        {#if phase === 'paused'}
+          <p>Your run is paused. Resume whenever you’re ready.</p>
+        {:else if phase === 'saving'}
+          <p>Score {result?.score}. Checking the server’s result.</p>
+        {:else if phase === 'start-error'}
+          <p>{errorMessage}</p>
+          <button class="primary" type="button" on:click={signInRequired ? signIn : startRun}>{signInRequired ? 'Sign in' : 'Try again'}</button>
+        {:else}
+          <p>Score {result?.score} · {((result?.durationMs ?? 0) / 1000).toFixed(1)} seconds</p>
+          {#if reward}
+            <p data-testid="neon-run-rewards">+{reward.xpDelta} XP · +{reward.currencyDelta} shards</p>
+            {#if reward.companionBonus}<p>Companion bonus: {reward.companionBonus.name?.trim() || 'Your companion'}.</p>{/if}
+            {#each reward.rituals?.completed ?? [] as ritual}<p>Completed: {ritual.title}</p>{/each}
+          {:else if phase === 'practice'}
+            <p>Runs under {minimumDuration / 1000} seconds are practice. No rewards were requested.</p>
+          {:else}
+            <p>{errorMessage} Retry saving checks this same run. Starting again or leaving closes this retry.</p>
+          {/if}
+          <div class="controls">
+            {#if phase === 'save-error'}
+              <button class="primary" type="button" on:click={() => saveResult(generation)}>Retry saving</button>
+              {#if signInRequired}<button type="button" on:click={signIn}>Sign in</button>{/if}
+            {/if}
+            <button class:primary={phase !== 'save-error'} type="button" on:click={startRun}>Play again</button>
+            <button type="button" on:click={exit}>Back to Play</button>
+          </div>
+        {/if}
+      </section>
+    {/if}
+  </section>
+  <p class="quiet">Find Shield, Magnet, ×2 Shards, Slow-Mo, Dash and Dream Surge along the way. Only your adventurer can be hit; Echo is a companion visual. Your starting shield absorbs one hit. Collected shards are run stats; only the confirmed result shows rewards. Leaving early doesn’t reduce your bond.</p>
 </div>
 
 <style>
-  .runner-stage {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .runner-surface {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    touch-action: none;
-    background: transparent;
-    display: block;
-  }
-
-  .runner-input-layer {
-    position: absolute;
-    inset: 0;
-    touch-action: none;
-    -webkit-user-select: none;
-    user-select: none;
-    z-index: 2;
-  }
-
-  .nr-hud {
-    position: absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 12px);
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding: 0.4rem 0.9rem;
-    background: rgba(3, 12, 24, 0.55);
-    border-radius: 1rem;
-    box-shadow: 0 0 22px rgba(60, 250, 255, 0.25);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    animation: fadeIn 280ms ease-out;
-    font-family: 'Inter', system-ui, sans-serif;
-    z-index: 3;
-  }
-
-  @media (max-width: 640px) {
-    .nr-hud {
-      font-size: 0.9rem;
-      gap: 0.6rem;
-    }
-  }
-
-  .nr-hud-item {
-    display: flex;
-    flex-direction: column;
-    min-width: 70px;
-  }
-
-  .nr-hud-badges {
-    display: flex;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .nr-hud-badge {
-    padding: 0.25rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #04060f;
-    font-weight: 600;
-  }
-
-  .nr-hud-badge.shield {
-    background: linear-gradient(90deg, #38bdf8, #22d3ee);
-  }
-
-  .nr-hud-badge.magnet {
-    background: linear-gradient(90deg, #c084fc, #a855f7);
-    color: #fdf4ff;
-  }
-
-  .nr-hud-badge.x2 {
-    background: linear-gradient(90deg, #fde047, #f97316);
-  }
-
-  .nr-hud-badge.slowmo {
-    background: linear-gradient(90deg, #38bdf8, #1d4ed8);
-    color: #e0f2fe;
-  }
-
-  .nr-hud-badge.dash {
-    background: linear-gradient(90deg, #fef08a, #facc15);
-    color: #78350f;
-  }
-
-  .nr-hud-badge.dream {
-    background: linear-gradient(90deg, #f472b6, #a855f7);
-    color: #fff;
-  }
-
-  .nr-label {
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  .nr-value {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #7cfbff;
-    text-shadow: 0 0 8px rgba(124, 251, 255, 0.6);
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -6px);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
-  }
+  .neon-run-shell { box-sizing: border-box; width: 100%; height: 100%; overflow-y: auto; padding: 1rem; background: radial-gradient(ellipse at 50% 0, #26434d, #102935 60%, #0b1d2a); color: #f6efd9; }
+  header, .view-toolbar, .view-message, .play-panel, .quiet { max-width: 960px; margin: 0 auto; }
+  header { padding-bottom: 1rem; }
+  .view-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .6rem; padding-bottom: .5rem; }
+  .view-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .view-actions button { font-size: .75rem; }
+  .view-message { color: #f9e1ad; font-size: .8rem; padding: .25rem 0; }
+  .orientation-hint { display: none; margin: 0; padding: .4rem .65rem; font-size: .75rem; color: #f1e2bc; }
+  h1 { margin: .25rem 0; font-size: clamp(2rem, 5vw, 3rem); font-family: Georgia, 'Times New Roman', serif; font-weight: 500; letter-spacing: -.03em; }
+  .skin-name { color: #eecb88; font-family: Georgia, 'Times New Roman', serif; font-size: 1.1rem; }
+  h2 { margin: 0 0 .5rem; font-size: 1.2rem; }
+  p { line-height: 1.5; margin: .4rem 0; }
+  header > p, .quiet { color: #c5d5d2; font-size: .875rem; }
+  .eyebrow { letter-spacing: .18em; text-transform: uppercase; font-size: .65rem; }
+  .play-panel { border: 1px solid #87928a; border-radius: 1rem; background: #1b3544; overflow: hidden; }
+  .run-stats { display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; padding: .8rem 1rem; font-size: .85rem; background: #f6efd9; color: #364c56; }
+  strong { color: #1b3948; font-variant-numeric: tabular-nums; }
+  .canvas-frame { width: 100%; position: relative; aspect-ratio: 16 / 9; background: #020617; }
+  .arena-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .75; pointer-events: none; }
+  canvas { position: relative; width: 100%; height: 100%; display: block; touch-action: none; }
+  .canvas-message, .pause-cover { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .5rem; padding: .5rem; background: #112a3b66; }
+  .canvas-message > p { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(1rem, 2.8vw, 1.65rem); text-shadow: 0 2px 8px #071723; }
+  .canvas-message > span { font-size: .8rem; text-shadow: 0 2px 8px #071723; }
+  .skin-status { color: #d9d2ac; padding: .5rem 1rem 0; font-size: .72rem; }
+  .intro-portraits { display: flex; align-items: flex-end; gap: .35rem; height: 96px; }
+  .intro-portraits span { display: block; height: 96px; background-repeat: no-repeat; background-position: left top; background-size: auto 96px; }
+  .intro-adventurer { width: 64px; }
+  .intro-echo { width: 74px; }
+  .pause-cover { pointer-events: none; font-size: 1.3rem; }
+  .powerups { display: flex; flex-wrap: wrap; gap: .5rem; min-height: 2rem; padding: .5rem 1rem; color: #aebcd0; font-size: .75rem; }
+  .powerups span { border: 1px solid #52627a; padding: .2rem .5rem; border-radius: 1rem; }
+  .powerups .active { color: #fff0c8; border-color: #caa96c; }
+  .controls { display: flex; flex-wrap: wrap; gap: .6rem; padding: .75rem 1rem; }
+  button { min-height: 44px; border-radius: .65rem; border: 1px solid #b6baab; background: #284553; color: #faf3db; padding: .55rem .85rem; font: inherit; cursor: pointer; }
+  button.primary { background: #f2deb0; border-color: #fff0cf; color: #183542; font-weight: 650; }
+  .jump { min-width: 100px; }
+  button:disabled { opacity: .55; cursor: default; }
+  button:focus-visible, canvas:focus-visible, h2:focus { outline: 3px solid #fbd889; outline-offset: -3px; }
+  .text-button { padding-left: 0; border-color: transparent; background: transparent; font-size: .85rem; }
+  .run-status { padding: 1rem; border-top: 1px solid #52627a; }
+  .run-status .controls { padding: .6rem 0 0; }
+  .quiet { padding-top: 1rem; font-size: .8rem; }
+  .focused { display: flex; flex-direction: column; padding: .5rem; min-height: 0; }
+  .focused header, .focused .quiet, .focused .skin-status { display: none; }
+  .focused .view-toolbar { flex: 0 0 auto; width: 100%; max-width: none; padding-bottom: .25rem; }
+  .focused .view-message { width: 100%; max-width: none; flex: 0 0 auto; }
+  .focused .play-panel { width: 100%; max-width: none; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .focused .run-stats { padding: .35rem .65rem; font-size: .75rem; gap: .25rem .5rem; flex: 0 0 auto; }
+  .focused .canvas-frame { flex: 1 1 0; min-height: 0; aspect-ratio: auto; }
+  .focused canvas, .focused .arena-preview { width: 100%; height: 100%; object-fit: contain; }
+  .focused .powerups { min-height: 0; padding: .2rem .65rem; font-size: .75rem; flex: 0 0 auto; }
+  .focused .powerups span { padding: .05rem .4rem; }
+  .focused .controls { padding: .25rem .65rem; flex: 0 0 auto; }
+  .focused[data-phase='paused'] .run-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); padding: 0; border: 0; }
+  .focused[data-phase='saving'] .canvas-frame, .focused[data-phase='complete'] .canvas-frame,
+  .focused[data-phase='practice'] .canvas-frame, .focused[data-phase='save-error'] .canvas-frame,
+  .focused[data-phase='start-error'] .canvas-frame { display: none; }
+  .focused .run-status { min-height: 0; overflow-y: auto; }
+  @media (max-width: 600px) { .intro-portraits, .intro-portraits span { height: 48px; } .intro-portraits span { background-size: auto 48px; } .intro-adventurer { width: 32px; } .intro-echo { width: 37px; } .intro-caption { display: none; } }
+  @media (max-height: 500px) { .focused .intro-portraits { display: none; } }
+  @media (max-width: 600px) and (orientation: portrait) { .orientation-hint { display: block; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto; } }
+  @media (max-width: 400px) { .neon-run-shell { padding: .65rem; } .run-stats { padding: .65rem; font-size: .75rem; gap: .4rem; } .controls, .powerups, .run-status { padding: .65rem; } }
 </style>

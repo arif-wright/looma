@@ -1,0 +1,58 @@
+{
+  "skin": "moonlit-conservatory",
+  "generatedOn": "2026-10-04",
+  "files": [
+    {
+      "file": "static/games/dodge/skins/moonlit/arena.webp",
+      "width": 960,
+      "height": 640,
+      "mode": "RGB",
+      "bytes": 95144,
+      "decodedRgbaBytes": 2457600,
+      "alphaExtrema": null,
+      "sha256": "39ade8e5a54b7d0c52f0dfa95b799f7bd95404cb27dd8be537d633ff2718500e"
+    },
+    {
+      "file": "static/games/dodge/skins/moonlit/muse.webp",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "bytes": 4262,
+      "decodedRgbaBytes": 65536,
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "32e286527960784cdd10b162325a0c4a66be5707abaa4a41c86b7484c53fe642"
+    },
+    {
+      "file": "static/games/dodge/skins/moonlit/pearl-wisp.webp",
+      "width": 128,
+      "height": 126,
+      "mode": "RGBA",
+      "bytes": 11158,
+      "decodedRgbaBytes": 64512,
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "8996b95d70583db75990a0a022c102809cada5e4aac00998447701ba803da3d1"
+    },
+    {
+      "file": "static/games/dodge/skins/moonlit/thorn-mote.webp",
+      "width": 128,
+      "height": 125,
+      "mode": "RGBA",
+      "bytes": 9128,
+      "decodedRgbaBytes": 64000,
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "6bb923496aa6dbdc14b3494b5c2a576177a8a77923db4a70617180dc29b81380"
+    }
+  ],
+  "totalTransferBytes": 119692,
+  "totalDecodedRgbaBytes": 2651648,
+  "memoryScope": "Image textures only; excludes browser overhead and the existing 960x540 canvas. No extra canvas cache."
+}

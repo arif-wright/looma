@@ -130,7 +130,8 @@ export class HdSpriteEntity {
   private pendingPageSet = '';
   private destroyed = false;
   private lastFrameKey = '';
-  private loadingTexture: THREE.Texture | null;
+  // Keep this code-native placeholder available if a later atlas page fails, too.
+  private readonly loadingTexture: THREE.Texture;
   private currentPageId: string | null = null;
   private currentPageUrl: string | null = null;
   private fallbackReason: string | null = null;
@@ -172,12 +173,15 @@ export class HdSpriteEntity {
   private async load() {
     try {
       const lease = await this.resources.acquireContract(this.options.manifestUrl);
+      if (this.destroyed) { lease.release(); return; }
       if (this.options.requireProduction && lease.resource.status !== 'production') {
         lease.release();
         throw new Error(`Expected production atlas, received ${lease.resource.status}`);
       }
       await this.attach(lease, this.options.manifestUrl, false);
     } catch (error) {
+      if (this.destroyed) return;
+      this.releaseAsset();
       this.lastAssetError = errorMessage(error);
       this.fallbackReason = `Primary asset failed: ${this.lastAssetError}`;
       if (this.options.fallbackManifestUrl && this.options.fallbackManifestUrl !== this.options.manifestUrl) {
@@ -185,17 +189,43 @@ export class HdSpriteEntity {
           await this.attach(await this.resources.acquireContract(this.options.fallbackManifestUrl), this.options.fallbackManifestUrl, true);
           return;
         } catch (fallbackError) {
+          if (this.destroyed) return;
           this.lastAssetError = `Primary: ${this.lastAssetError}; fallback: ${errorMessage(fallbackError)}`;
         }
       }
-      this.loadState = 'failed';
-      this.assetId = 'safe-color-fallback';
+      this.showSafeColorFallback();
     }
+  }
+
+  private releaseAsset() {
+    this.pageRequest += 1;
+    this.pendingPageSet = '';
+    this.plane.material.uniforms.atlas!.value = this.loadingTexture;
+    this.plane.material.uniforms.atlasRegion!.value.set(0, 0, 1, 1);
+    this.pageLeases.forEach((lease) => lease.release());
+    this.pageLeases.clear();
+    this.contractLease?.release();
+    this.contractLease = null;
+    this.contract = null;
+    this.currentPageId = null;
+    this.currentPageUrl = null;
+    this.lastFrameKey = '';
+  }
+
+  private showSafeColorFallback() {
+    this.releaseAsset();
+    this.loadState = 'failed';
+    this.assetId = 'safe-color-fallback';
+    this.plane.scale.set(this.options.companion ? 2.2 : 2.8, this.options.companion ? 2.2 : 2.8, 1);
+    this.plane.position.y = this.plane.scale.y / 2 + 0.02;
+    this.shadow.scale.set(this.options.companion ? 1.05 : 1.35, this.options.companion ? 0.55 : 0.68, 1);
+    this.shadow.position.z = 0;
+    this.label.position.y = this.options.companion ? 2.48 : 3.12;
   }
 
   private async attach(lease: ResourceLease<SpriteAssetContract>, manifestUrl: string, fallback: boolean) {
     if (this.destroyed) { lease.release(); return; }
-    this.contractLease?.release();
+    this.releaseAsset();
     this.contractLease = lease;
     this.contract = lease.resource;
     this.manifestUrl = manifestUrl;
@@ -203,11 +233,9 @@ export class HdSpriteEntity {
     const idlePages = new Set(idle.sequence.frames.map((frame) => frame.page));
     const initialPageSet = [...idlePages].sort().join('|');
     this.pendingPageSet = initialPageSet;
-    try { await this.ensurePages(idlePages); }
+    try { if (!await this.ensurePages(idlePages)) return; }
     finally { if (this.pendingPageSet === initialPageSet) this.pendingPageSet = ''; }
     if (this.destroyed) return;
-    this.loadingTexture?.dispose();
-    this.loadingTexture = null;
     this.loadState = fallback ? 'fallback' : 'loaded';
     this.assetId = lease.resource.id;
     const clip = lease.resource.animations.idle!;
@@ -223,32 +251,43 @@ export class HdSpriteEntity {
   }
 
   private async ensurePages(pageIds: Set<string>) {
-    if (!this.contract) return;
+    const contract = this.contract;
+    const manifestUrl = this.manifestUrl;
+    if (!contract) return false;
     const request = ++this.pageRequest;
     const acquired = new Map<string, ResourceLease<THREE.Texture>>();
+    let failed = false;
     try {
       await Promise.all([...pageIds].map(async (pageId) => {
         const retained = this.pageLeases.get(pageId);
         if (retained) return;
-        acquired.set(pageId, await this.resources.acquirePage(this.manifestUrl, this.contract!, pageId));
+        const lease = await this.resources.acquirePage(manifestUrl, contract, pageId);
+        // Promise.all rejects before its other requests settle. Release late arrivals
+        // as well as pages superseded by a direction change or teardown.
+        if (failed || this.destroyed || request !== this.pageRequest) { lease.release(); return; }
+        acquired.set(pageId, lease);
       }));
       if (this.destroyed || request !== this.pageRequest) {
         acquired.forEach((lease) => lease.release());
-        return;
+        return false;
       }
       for (const [pageId, pageLease] of acquired) this.pageLeases.set(pageId, pageLease);
       for (const [pageId, pageLease] of this.pageLeases) {
         if (!pageIds.has(pageId)) { pageLease.release(); this.pageLeases.delete(pageId); }
       }
       this.lastFrameKey = '';
+      return true;
     } catch (error) {
+      failed = true;
       acquired.forEach((pageLease) => pageLease.release());
+      if (this.destroyed || request !== this.pageRequest) return false;
       throw error;
     }
   }
 
   update(deltaSeconds: number, facing: FacingDirection, magnitude: number, cameraYaw: number, quality: VisualQuality, distanceToCamera = 0,
     override?: SpriteAnimationOverride) {
+    if (this.destroyed) return;
     const state = override?.state ?? this.motion.update(magnitude);
     const requestedFacing = override?.facing ?? facing;
     this.animator.select(state, requestedFacing);
@@ -256,7 +295,7 @@ export class HdSpriteEntity {
     this.plane.rotation.set(rotation.x, rotation.y, rotation.z);
     this.label.visible = distanceToCamera < 34;
     this.aura.visible = Boolean(this.options.museEffects) && effectsEnabledForQuality(quality);
-    if (!this.contract) return;
+    if (!this.contract || this.loadState === 'loading') return;
     const selection = sequenceFor(this.contract, state, requestedFacing);
     const frame = this.animator.update(deltaSeconds, {
       frameCount: selection.sequence.frames.length, fps: selection.fps, loop: selection.loop
@@ -268,12 +307,15 @@ export class HdSpriteEntity {
     const pageSetNeedsUpdate = pages.size !== this.pageLeases.size || [...pages].some((pageId) => !this.pageLeases.has(pageId));
     if ((pageSetNeedsUpdate || Boolean(this.pendingPageSet)) && pageSet !== this.pendingPageSet) {
       this.pendingPageSet = pageSet;
-      void this.ensurePages(pages).catch((error) => {
-        this.loadState = 'failed';
+      const loading = this.ensurePages(pages);
+      const request = this.pageRequest;
+      void loading.catch((error) => {
+        if (this.destroyed || request !== this.pageRequest) return;
         this.lastAssetError = errorMessage(error);
         this.fallbackReason = `Atlas page failed: ${this.lastAssetError}`;
+        this.showSafeColorFallback();
       }).finally(() => {
-        if (this.pendingPageSet === pageSet) this.pendingPageSet = '';
+        if (request === this.pageRequest && this.pendingPageSet === pageSet) this.pendingPageSet = '';
       });
     }
     const texture = this.pageLeases.get(uv.page)?.resource;
@@ -317,13 +359,8 @@ export class HdSpriteEntity {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
-    this.pageRequest += 1;
-    this.pageLeases.forEach((lease) => lease.release());
-    this.pageLeases.clear();
-    this.contractLease?.release();
-    this.contractLease = null;
-    this.loadingTexture?.dispose();
-    this.loadingTexture = null;
+    this.releaseAsset();
+    this.loadingTexture.dispose();
     this.plane.material.dispose();
     const labelMaterial = this.label.material as THREE.SpriteMaterial;
     labelMaterial.map?.dispose();

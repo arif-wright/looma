@@ -4,7 +4,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const ISSUER = 'memvoya-web';
 const AUDIENCE = 'memvoya-world';
 const ROOM = 'wilds';
-const PROTOCOL = 1;
+const PROTOCOL = 2;
 const MAX_TTL_SECONDS = 60;
 export type PlayerBody = 'male' | 'female';
 

@@ -48,14 +48,6 @@ const pickLatestIso = (values: Array<string | null | undefined>) => {
   return latest;
 };
 
-const computeDecay = (elapsedDays: number) => {
-  // Absence changes relational availability, not physical capacity.
-  const energy = 0;
-  const affection = Math.min(25, Math.max(0, elapsedDays - 2) * 1);
-  const trust = 0;
-  return { energy, affection, trust };
-};
-
 const deriveMood = (energy: number, daysSinceCare: number): DerivedMoodKey => {
   if (energy <= 15) return daysSinceCare > 14 ? 'distant' : 'resting';
   if (daysSinceCare < 1) return energy >= 60 ? 'radiant' : 'calm';
@@ -102,15 +94,14 @@ export const computeCompanionEffectiveState = (instance: Companion, now: Date = 
   const baseTrust = typeof instance.trust === 'number' ? instance.trust : 0;
   const baseEnergy = typeof instance.energy === 'number' ? instance.energy : 0;
 
-  // Gentle decay should reflect time away. If there's no explicit "care" yet, fall back to check-ins
-  // (passive ticks / last updated) so we don't show "Radiant" after weeks of inactivity.
+  // Time away can change the current mood, but never the accumulated relationship.
+  // Fall back to check-ins when there is no explicit care timestamp yet.
   const referenceMs = msSinceCare ?? msSinceCheckIn;
   const elapsedDays = referenceMs === null ? 0 : referenceMs / 86_400_000;
-  const decay = referenceMs === null ? { energy: 0, affection: 0, trust: 0 } : computeDecay(elapsedDays);
 
-  const affection = clamp(Math.round(baseAffection - decay.affection));
-  const trust = clamp(Math.round(baseTrust - decay.trust));
-  const energy = clamp(Math.round(baseEnergy - decay.energy));
+  const affection = clamp(Math.round(baseAffection));
+  const trust = clamp(Math.round(baseTrust));
+  const energy = clamp(Math.round(baseEnergy));
 
   const moodKey = deriveMood(energy, elapsedDays);
 

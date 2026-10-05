@@ -1,13 +1,15 @@
-import type { ConnectionDiagnostic, ConnectionStatus, GatherResult, MovementIntent, WorldSnapshot } from './protocol';
+import type { ConnectionDiagnostic, ConnectionStatus, GatherResult, MovementIntent, WorldSnapshot, PortalResult } from './protocol';
 import { WorldConnection } from './worldConnection';
 
 export type WorldSessionEvents = {
   onStatus: (status: ConnectionStatus) => void;
   onDiagnostic: (diagnostic: ConnectionDiagnostic | null) => void;
   onGatherResult: (result: GatherResult) => void;
+  onPortalResult?: (result: PortalResult) => void;
+  onPortalStart?: () => void;
 };
 
-type SessionConnection = Pick<WorldConnection, 'connect' | 'sendMovement' | 'gatherMoonberry' | 'destroy'>;
+type SessionConnection = Pick<WorldConnection, 'connect' | 'sendMovement' | 'gatherMoonberry' | 'destroy'> & Partial<Pick<WorldConnection, 'enterPortal'>>;
 type ConnectionFactory = (serverUrl: string, events: ConstructorParameters<typeof WorldConnection>[1]) => SessionConnection;
 
 export class WorldSession {
@@ -16,6 +18,8 @@ export class WorldSession {
   private destroyed = false;
   private snapshotConsumer: ((snapshot: WorldSnapshot) => void) | null = null;
   private status: ConnectionStatus = 'offline';
+  private statusConsumer: ((status: ConnectionStatus) => void) | null = null;
+  private movementSequence = 0;
 
   constructor(
     private readonly serverUrl: string | null,
@@ -25,6 +29,11 @@ export class WorldSession {
 
   setSnapshotConsumer(consumer: ((snapshot: WorldSnapshot) => void) | null) {
     this.snapshotConsumer = consumer;
+  }
+
+  setStatusConsumer(consumer: ((status: ConnectionStatus) => void) | null) {
+    this.statusConsumer = consumer;
+    consumer?.(this.status);
   }
 
   start() {
@@ -39,15 +48,27 @@ export class WorldSession {
       onStatus: (status) => {
         this.status = status;
         this.events.onStatus(status);
+        this.statusConsumer?.(status);
       },
       onDiagnostic: this.events.onDiagnostic,
       onSnapshot: (snapshot) => this.snapshotConsumer?.(snapshot),
-      onGatherResult: this.events.onGatherResult
+      onGatherResult: this.events.onGatherResult,
+      onPortalResult: (result) => this.events.onPortalResult?.(result)
     });
     void this.connection.connect();
   }
 
-  sendMovement(intent: MovementIntent) { this.connection?.sendMovement(intent); }
+  sendMovement(intent: MovementIntent) {
+    if (this.destroyed || this.status !== 'connected') return;
+    this.connection?.sendMovement({ ...intent, sequence: ++this.movementSequence });
+  }
+  stopMovement() { this.sendMovement({ sequence: 0, x: 0, y: 0 }); }
+  enterPortal(portalId: string) {
+    if (this.destroyed || this.status !== 'connected') return;
+    this.events.onPortalStart?.();
+    this.stopMovement();
+    this.connection?.enterPortal?.(portalId);
+  }
   gatherMoonberry() { this.connection?.gatherMoonberry(); }
   get connectionStatus() { return this.status; }
 
@@ -55,6 +76,7 @@ export class WorldSession {
     if (this.destroyed) return;
     this.destroyed = true;
     this.snapshotConsumer = null;
+    this.statusConsumer = null;
     this.connection?.destroy(source);
     this.connection = null;
   }

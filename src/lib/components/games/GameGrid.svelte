@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { games as catalog } from '$lib/data/games';
+  import { discoverableGames as catalog, isDiscoverableGame } from '$lib/data/games';
   import type { GameMeta } from '$lib/data/games';
   import GameCard from '$lib/components/games/GameCard.svelte';
 
   export let aspect: '16:9' | '1:1' = '16:9';
   export let items: GameMeta[] | null = null;
 
-  $: list = items ?? catalog;
+  $: list = (items ?? catalog).filter((game) => isDiscoverableGame(game.slug));
 </script>
 
 <div

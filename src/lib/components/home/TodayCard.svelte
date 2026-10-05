@@ -119,7 +119,7 @@ import { buildMissionArcs, selectMissionArc } from './missionArcs';
   $: suggestedArc = selectMissionArc(missionArcs);
 
   const caughtUpActions = [
-    { label: 'Play Tiles Run', href: '/app/games/tiles-run' },
+    { label: 'Play Neon Run', href: '/app/games/runner' },
     { label: 'Play Memvoya ARPG', href: '/app/games/arpg' },
     { label: 'Visit companions', href: '/app/companions' }
   ];

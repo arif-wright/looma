@@ -3,6 +3,8 @@ export type GameMeta = {
   slug: string;
   name: string;
   tagline?: string;
+  /** Presentation only. Never use this flag to filter history or settlement. */
+  archived?: boolean;
   cover: {
     alt: string;
     sources: {
@@ -20,6 +22,7 @@ export const games: GameMeta[] = [
     id: 'tiles-run',
     slug: 'tiles-run',
     name: 'Tiles Run',
+    archived: true,
     tagline: 'Chase the signal. Find your flow.',
     cover: {
       alt: 'Exploding rainbow tiles with a light-runner streaking forward',
@@ -81,3 +84,9 @@ export const games: GameMeta[] = [
     }
   }
 ];
+
+/** Keep archived metadata available for old links and history. */
+export const isDiscoverableGame = (slug: string): boolean =>
+  !games.some((game) => game.slug === slug && game.archived);
+
+export const discoverableGames = games.filter((game) => isDiscoverableGame(game.slug));

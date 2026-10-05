@@ -1,3 +1,5 @@
+import { getCompanionPersonalization } from '$lib/server/companionPersonalization';
+import { personalizeReconnectFallback } from '$lib/companions/personalization';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient, tryGetSupabaseAdminClient } from '$lib/server/supabase';
@@ -352,7 +354,7 @@ export const POST: RequestHandler = async (event) => {
             },
             { onConflict: 'companion_id', ignoreDuplicates: false }
           );
-        const { rows } = await syncPlayerBondState(db, userId);
+        const { rows } = await syncPlayerBondState(supabase, userId);
         return rows.find((row) => row.companion_id === updatedCompanion.id) ?? null;
       }
     },
@@ -463,6 +465,10 @@ export const POST: RequestHandler = async (event) => {
           })
         }
       : { text: fallbackReply, source: 'chapter_fallback' };
+  if (reactionSource !== 'llm') {
+    const personalization = await getCompanionPersonalization(event);
+    reactionWithFallback.text = personalizeReconnectFallback(reactionWithFallback.text, personalization, mood, reflection);
+  }
   return json(
     {
       ok: true,

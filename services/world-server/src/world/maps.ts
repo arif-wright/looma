@@ -1,5 +1,5 @@
 import { PLAYER_RADIUS, WORLD_HEIGHT, WORLD_WIDTH } from '../simulation/movement.js';
-import { EXPLORATION_TRAVERSAL, blockerAtPosition, type Position, type TraversalDefinition } from './traversal.js';
+import { EXPLORATION_TRAVERSAL, HOLLOW_TRAVERSAL, blockerAtPosition, type Position, type TraversalDefinition } from './traversal.js';
 
 export type WorldLandmarkDefinition = {
   key: string;
@@ -29,7 +29,7 @@ export const WORLD_MAPS: Record<WorldMapDefinition['id'], WorldMapDefinition> = 
   'wilds-town': {
     id: 'wilds-town', version: 1, spawn: { x: 160, y: 270 },
     landmarks: [{ key: 'town-well', x: 540, y: 270, radius: 56 }],
-    gatherNodes: [], traversal: null
+    gatherNodes: [], traversal: HOLLOW_TRAVERSAL
   },
   'wilds-exploration': {
     id: 'wilds-exploration', version: 1, spawn: { x: 120, y: 120 },

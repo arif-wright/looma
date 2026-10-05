@@ -1,0 +1,36 @@
+{
+  "wilds-exploration": {
+    "id": "wilds-exploration",
+    "name": "Moonberry Grove",
+    "subtitle": "A quiet path beneath the silver leaves",
+    "portal": {
+      "id": "grove-to-hollow",
+      "x": 880,
+      "y": 270,
+      "radius": 54,
+      "targetMapId": "wilds-town",
+      "targetName": "Lantern Hollow",
+      "arrival": {
+        "x": 160,
+        "y": 270
+      }
+    }
+  },
+  "wilds-town": {
+    "id": "wilds-town",
+    "name": "Lantern Hollow",
+    "subtitle": "Follow the glow. There is always a way home.",
+    "portal": {
+      "id": "hollow-to-grove",
+      "x": 80,
+      "y": 270,
+      "radius": 54,
+      "targetMapId": "wilds-exploration",
+      "targetName": "Moonberry Grove",
+      "arrival": {
+        "x": 804,
+        "y": 270
+      }
+    }
+  }
+}

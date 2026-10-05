@@ -1,3 +1,5 @@
+import { canonicalGameCompletionEvent } from '$lib/server/games/settlement';
+import { getCompanionPersonalization } from '$lib/server/companionPersonalization';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
@@ -138,15 +140,33 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const consent = await getConsentFlags(event, supabase);
-  const eventPayload =
+  let eventPayload =
     payload.payload && typeof payload.payload === 'object' && !Array.isArray(payload.payload)
       ? (payload.payload as Record<string, unknown>)
       : null;
-  const idempotencyKey = deriveEventIdempotencyKey({
+  let idempotencyKey = deriveEventIdempotencyKey({
     type,
     meta,
     payload: eventPayload
   });
+
+  if (type === 'game.complete') {
+    // Ignore client-supplied event keys/facts. Old and new SDKs and the server
+    // converge on this one owner-checked committed completion event.
+    const verified = await supabase.auth.getUser();
+    if (verified.error || !userId || verified.data.user?.id !== userId) return json({error:'unauthorized'},{status:401});
+    const settlementClient = tryGetSupabaseAdminClient();
+    if (!settlementClient) return json({error:'service_unavailable'},{status:503});
+    try {
+      const completion = await canonicalGameCompletionEvent(settlementClient,userId,sessionId);
+      eventPayload = completion.payload;
+      idempotencyKey = completion.key;
+    } catch (cause) {
+      const status = (cause as {status?:number})?.status;
+      return json({error:status===400?'bad_request':status===409?'unconfirmed_completion':'service_unavailable'},
+        {status:status===400?400:status===409?409:503});
+    }
+  }
 
   if (userId) {
     const receiptClient = tryGetSupabaseAdminClient();
@@ -431,13 +451,16 @@ export const POST: RequestHandler = async (event) => {
     }
   }
 
+  const personalization = type === 'companion.ritual.listen' && !suppressAdaptationFromMeta
+    ? await getCompanionPersonalization(event)
+    : null;
   const agentEvent: AgentEvent = {
     id: crypto.randomUUID(),
     type,
     scope: resolveScope(type),
     timestamp: nowIso,
     payload: eventPayload ?? null,
-    context: context as unknown as Record<string, unknown>,
+    context: { ...context, personalization } as unknown as Record<string, unknown>,
     meta: {
       sessionId,
       userId: userId ?? undefined,

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabase';
-import { convertAchievementPointsToShards, walletGrant } from '$lib/server/econ/index';
+import { getAchievementShardFactor } from '$lib/server/econ/index';
 
 type SupabaseService = SupabaseClient<any, 'public', any>;
 
@@ -327,98 +327,56 @@ export const createAchievementEvaluator = (options?: { supabase?: SupabaseServic
     meta: UnlockMeta
   ): Promise<UnlockSummary | null> => {
     if (!userId) return null;
-    const payload = {
-      user_id: userId,
-      achievement_id: achievement.id,
-      meta
-    };
+    // Eligibility/owner checks stay at the server call sites. The database reads
+    // catalog amounts and commits claim + points + shards + receipt atomically.
+    // A lost response is safe to retry; never delete a claim to compensate.
+    const { data, error } = await supabase.rpc('fn_settle_achievement_reward', {
+      p_user: userId,
+      p_achievement: achievement.id,
+      p_shard_factor: getAchievementShardFactor(),
+      p_meta: cleanMeta(meta)
+    });
 
-    const insert = await supabase
-      .from('user_achievements')
-      .insert(payload)
-      .select('id')
-      .single();
-
-    if (insert.error) {
-      if (insert.error.code === '23505') {
-        return null;
-      }
-      console.error('[achievements] failed to unlock', insert.error, payload);
-      throw insert.error;
-    }
-
-    const insertedId = (insert.data as { id?: string } | null)?.id ?? null;
-
-    let cache = unlockedCache.get(userId);
-    if (!cache) {
-      cache = new Set([achievement.id]);
-      unlockedCache.set(userId, cache);
-    } else {
-      cache.add(achievement.id);
-    }
-
-    let shardsGranted = 0;
-
-    if (achievement.points > 0) {
-      const { error } = await supabase.rpc('fn_add_points', {
-        p_user: userId,
-        p_delta: achievement.points
+    if (error) {
+      console.error('[achievements] failed to settle reward', error, {
+        userId, achievementId: achievement.id
       });
-
-      if (error) {
-        console.error('[achievements] failed to add points', error, {
-          userId,
-          achievementId: achievement.id
-        });
-      }
+      throw error;
+    }
+    if (!isRecord(data) || typeof data.unlocked !== 'boolean') {
+      throw new Error('achievement_reward_invalid_response');
+    }
+    if (data.unlocked === false && data.reason !== 'already_unlocked') {
+      throw new Error('achievement_reward_invalid_response');
+    }
+    // Validate before caching so an ambiguous response never hides a retry.
+    if (data.unlocked && (
+      data.achievementId !== achievement.id ||
+      typeof data.key !== 'string' || typeof data.name !== 'string' ||
+      typeof data.icon !== 'string' ||
+      typeof data.rarity !== 'string' ||
+      !['common', 'rare', 'epic', 'legendary'].includes(data.rarity) ||
+      typeof data.points !== 'number' || !Number.isSafeInteger(data.points) || data.points < 0 ||
+      typeof data.shards !== 'number' || !Number.isSafeInteger(data.shards) || data.shards < 0 ||
+      !isRecord(data.meta) || Array.isArray(data.meta)
+    )) {
+      throw new Error('achievement_reward_invalid_response');
     }
 
-    const shards = convertAchievementPointsToShards(achievement.points);
-    if (shards > 0) {
-      try {
-        await walletGrant({
-          userId,
-          amount: shards,
-          source: 'achievement',
-          refId: achievement.id,
-          meta: {
-            key: achievement.key,
-            points: achievement.points
-          },
-          client: supabase
-        });
-        shardsGranted = shards;
-      } catch (err) {
-        console.error('[achievements] failed to grant shards', err, {
-          userId,
-          achievementId: achievement.id
-        });
-        if (insertedId) {
-          const rollback = await supabase
-            .from('user_achievements')
-            .delete()
-            .eq('id', insertedId);
-          if (rollback.error) {
-            console.error('[achievements] failed to rollback unlock after shard grant error', rollback.error, {
-              insertedId,
-              userId,
-              achievementId: achievement.id
-            });
-          }
-        }
-        throw err;
-      }
-    }
+    const cache = unlockedCache.get(userId) ?? new Set<string>();
+    cache.add(achievement.id);
+    unlockedCache.set(userId, cache);
+    if (!data.unlocked) return null;
 
     return {
       achievementId: achievement.id,
-      key: achievement.key,
-      name: achievement.name,
-      icon: achievement.icon,
-      points: achievement.points,
-      rarity: achievement.rarity,
-      shards: shardsGranted,
-      meta
+      key: data.key as string,
+      name: data.name as string,
+      icon: data.icon as string,
+      points: data.points as number,
+      rarity: data.rarity as AchievementDefinition['rarity'],
+      shards: data.shards as number,
+      meta: data.meta as UnlockMeta
     };
   };
 

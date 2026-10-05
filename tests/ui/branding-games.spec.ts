@@ -1,21 +1,28 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Branding • Games hub', () => {
-  test('hero, grid, and CTAs adopt neuro-branding', async ({ page }) => {
+  test('hero, playable grid, and CTAs adopt neuro-branding', async ({ page }) => {
     await page.goto('/app/games');
     await expect(page.getByTestId('games-hub')).toBeVisible();
-    await expect(page.locator('[data-testid="games-grid"]').first()).toBeVisible();
+    const grid = page.getByTestId('games-grid');
+    await expect(grid).toBeVisible();
+    await expect(grid).toHaveClass(/panel-glass/);
 
-    const card = page.getByTestId('game-card-tiles-run');
+    const card = grid.getByRole('link', { name: 'Start Neon Run ritual', exact: true });
     await expect(card).toBeVisible();
-    await expect(card).toHaveClass(/panel-glass/);
+    await expect(card).toHaveAttribute('href', '/app/games/runner');
+    await expect(grid.locator('a[href="/app/games/tiles-run"]')).toHaveCount(0);
 
-    const before = await card.evaluate((el) => getComputedStyle(el).transform);
+    const artwork = card.locator('img');
+    const before = await artwork.evaluate((el) => getComputedStyle(el).transform);
     await card.hover();
-    const after = await card.evaluate((el) => getComputedStyle(el).transform);
-    expect(after).not.toBe(before);
+    await expect.poll(() => artwork.evaluate((el) => getComputedStyle(el).transform)).not.toBe(before);
 
-    const cta = page.getByTestId('game-cta-tiles-run');
+    await card.focus();
+    await expect(card).toBeFocused();
+
+    const cta = page.getByTestId('featured-play');
+    await expect(cta).not.toHaveAttribute('href', '/app/games/tiles-run');
     await cta.focus();
     await expect(cta).toBeFocused();
     await expect(cta).toHaveAttribute('data-ana', 'cta:play');

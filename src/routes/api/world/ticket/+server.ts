@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { isWorldEnabled } from '$lib/game/featureFlag';
-import { issueWorldTicket, normalizeWorldIdentity } from '$lib/server/worldTicket';
+import { issueWorldTicket, normalizeWorldIdentity, WORLD_TICKET_PROTOCOL } from '$lib/server/worldTicket';
 import { resolveWorldCompanionProjection, type WorldCompanionRow } from '$lib/server/worldCompanion';
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
@@ -12,6 +12,9 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
   }
   const origin = request.headers.get('origin');
   if (!origin || origin !== url.origin) return json({ error: 'invalid_origin' }, { status: 403 });
+  if (request.headers.get('x-world-protocol') !== String(WORLD_TICKET_PROTOCOL)) {
+    return json({ error: 'client_refresh_required' }, { status: 409, headers: { 'cache-control': 'no-store, private' } });
+  }
   const secret = env.WORLD_JOIN_SECRET;
   if (!secret || secret.length < 32) {
     return json({ error: 'ticket_service_unavailable' }, { status: 503 });

@@ -463,7 +463,7 @@
             <p class="eyebrow">Shared continuity</p>
             <h2>{selectedName}'s shared history is taking shape</h2>
           </div>
-          <a class="btn btn--ghost btn--link" href="/app/home">Return to sanctuary</a>
+          <a class="btn btn--ghost btn--link" href="/app/sanctuary">Return to sanctuary</a>
         </div>
         <div class="continuity-grid">
           {#each continuitySignals as signal}
@@ -540,8 +540,8 @@
                 <strong>{formatPercent(data.emotionalState.trust) ?? 'Unknown'}</strong>
               </div>
               <div>
-                <span>Bond</span>
-                <strong>{formatPercent(data.emotionalState.bond) ?? 'Unknown'}</strong>
+                <span>Bond closeness</span>
+                <strong>{typeof data.bondClosenessPercent === 'number' ? `${data.bondClosenessPercent}%` : 'Unknown'}</strong>
               </div>
               <div>
                 <span>Tone</span>
@@ -603,7 +603,7 @@
         <GlassCard class="memory-card">
           <div class="card-head">
             <div>
-              <p class="eyebrow">End of day</p>
+              <p class="eyebrow">Today’s recap</p>
               <h2>{data.dailyArcRecap?.title ?? 'Let the day settle'}</h2>
             </div>
           </div>

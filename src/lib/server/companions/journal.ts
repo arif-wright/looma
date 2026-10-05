@@ -1,4 +1,6 @@
+import { dailyActivityEvidence } from '$lib/companions/dailyActivity';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordedRewardBody } from '$lib/companions/rewardHistory';
 import { upsertCompanionMemorySummary } from '$lib/server/memorySummary';
 import { createCompanionDigestNotification } from '$lib/server/notifications';
 import type { OptionalCompanionRitualKey } from '$lib/companions/optionalRituals';
@@ -79,6 +81,7 @@ export type DailyCompanionArcRecapContext = {
 export type PremiumSanctuaryStyle = 'gilded_dawn' | 'moon_glass' | 'ember_bloom' | 'tide_silk';
 
 export type WeeklyCompanionArc = {
+  observedDays?: number;
   title: string;
   body: string;
   emphasis: 'care' | 'social' | 'mission' | 'play' | 'quiet';
@@ -502,13 +505,14 @@ export const deriveRitualGuideFromPattern = (
 export const deriveDailyCompanionArc = (args: {
   companionName: string | null;
   hasDailyCheckin: boolean;
+  hasCareMoment?: boolean;
   rituals: CompanionRitual[];
   hasSocialMoment: boolean;
   hasJournalMoment: boolean;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const completedRituals = args.rituals.filter((entry) => entry.status === 'completed').length;
-  const hasRitual = completedRituals > 0;
+  const hasRitual = args.hasCareMoment ?? (completedRituals > 0);
 
   const steps: DailyCompanionArcStep[] = [
     {
@@ -574,68 +578,14 @@ export const deriveDailyCompanionArcRecap = (args: {
   if (completeCount < 3) return null;
 
   const phrases: string[] = [];
-  if (done.has('arrive')) phrases.push('you showed up honestly');
-  if (done.has('ritual')) phrases.push('you kept the sanctuary warm');
-  if (done.has('express')) phrases.push('you carried the bond outward');
-  if (done.has('remember')) phrases.push('you let the day turn into memory');
-
-  const chapterTitle = args.chapter?.title ?? null;
-  const chapterTone = args.chapter?.tone ?? null;
-  const baseBody = `${name} noticed that ${phrases.slice(0, 3).join(', ')}${phrases.length > 3 ? ', and ' + phrases[3] : ''}.`;
-  const styleClose =
-    args.premiumStyle === 'gilded_dawn'
-      ? 'The moment settles with a warmer, gilded glow.'
-      : args.premiumStyle === 'moon_glass'
-        ? 'The moment settles with a cooler, glass-clear calm.'
-        : args.premiumStyle === 'ember_bloom'
-          ? 'The moment settles with a softer ember warmth.'
-          : args.premiumStyle === 'tide_silk'
-            ? 'The moment settles with a quiet tidal hush.'
-            : 'That is enough for today.';
-
-  if (chapterTone === 'care') {
-    return {
-      title: `${name}'s care chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} read the whole day as steadier, softer care. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'social') {
-    return {
-      title: `${name}'s shared thread is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the bond moving outward through other people and shared moments. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'mission') {
-    return {
-      title: `${name}'s wayfinding chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} gave the relationship more direction than drift. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'play') {
-    return {
-      title: `${name}'s bright chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} kept the relationship lighter and more alive. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
-
-  if (chapterTone === 'bond') {
-    return {
-      title: `${name}'s bond chapter is settling for the night`,
-      body: `${baseBody} ${chapterTitle ?? 'This chapter'} made the closeness of the day feel more explicit. ${styleClose}`,
-      unlockedAt: new Date().toISOString()
-    } satisfies DailyCompanionArcRecap;
-  }
+  if (done.has('arrive')) phrases.push('a check-in');
+  if (done.has('ritual')) phrases.push('a care activity');
+  if (done.has('express')) phrases.push('a shared social moment');
+  if (done.has('remember')) phrases.push('a journal entry');
 
   return {
-    title: `${name}'s day is settling into memory`,
-    body: `${baseBody} ${styleClose}`,
+    title: `Today's recorded moments with ${name}`,
+    body: `Recorded today: ${phrases.join(', ')}. You can revisit these moments in your journal.`,
     unlockedAt: new Date().toISOString()
   } satisfies DailyCompanionArcRecap;
 };
@@ -680,6 +630,9 @@ export const syncDailyCompanionArcProgress = async (
   const recapBody =
     (typeof existing?.recap_body === 'string' && existing.recap_body) || recap?.body || null;
 
+  // Keep the original stored recap for history, but render only today's supported
+  // recap below. Legacy prose and keepsake themes are not activity evidence.
+
   const { error } = await client.from('companion_daily_arc_progress').upsert(
     {
       owner_id: args.ownerId,
@@ -699,16 +652,46 @@ export const syncDailyCompanionArcProgress = async (
   if (error) {
     console.error('[companion-journal] daily arc progress upsert failed', error);
     return {
-      recap: recapTitle && recapBody ? { title: recapTitle, body: recapBody, unlockedAt } : null
+      recap: recap ? { ...recap, unlockedAt } : null
     };
   }
 
   return {
-    recap: recapTitle && recapBody ? { title: recapTitle, body: recapBody, unlockedAt } : null
+    recap: recap ? { ...recap, unlockedAt } : null
+  };
+};
+
+// Shared evidence for Home and Journal: no suggestions, initial stats, or
+// automatically generated chapter notices count as an experience.
+export const loadChapterActivity = async (client: SupabaseClient, ownerId: string, companionId: string) => {
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [care, journal] = await Promise.all([
+    client.from('companion_care_events').select('created_at')
+      .eq('owner_id', ownerId).eq('companion_id', companionId).gte('created_at', since)
+      .order('created_at', { ascending: false }).limit(1000),
+    client.from('companion_journal_entries').select('created_at, source_type, meta_json')
+      .eq('owner_id', ownerId).eq('companion_id', companionId).gte('created_at', since)
+      .order('created_at', { ascending: false }).limit(1000)
+  ]);
+  if (care.error || journal.error) {
+    return { activityDates: [], careMoments: 0, missionMoments: 0, gameMoments: 0, socialMoments: 0, checkins: 0, dailyEvidence: dailyActivityEvidence([], []) };
+  }
+  const checkins = (journal.data ?? []).filter(row => row.meta_json?.generatedBy === 'home_reconnect');
+  const social = (journal.data ?? []).filter(row => ['post', 'message', 'circle_announcement'].includes(row.source_type));
+  return {
+    activityDates: [...(care.data ?? []), ...checkins, ...social].map(row => String(row.created_at)),
+    dailyEvidence: dailyActivityEvidence(care.data ?? [], journal.data ?? []),
+    careMoments: care.data?.length ?? 0,
+    // User-wide mission/game sessions do not prove this companion participated.
+    missionMoments: 0,
+    gameMoments: 0,
+    socialMoments: social.length,
+    checkins: checkins.length
   };
 };
 
 export const deriveWeeklyCompanionArc = (args: {
+  activityDates?: string[];
   companionName: string | null;
   careMoments: number;
   missionMoments: number;
@@ -717,6 +700,12 @@ export const deriveWeeklyCompanionArc = (args: {
   checkins: number;
 }) => {
   const name = args.companionName?.trim() || 'your companion';
+  // Only dated, persisted activity can establish repeated return. Multiple
+  // events on one UTC day (including reloads) are still a single visit day.
+  const observedDays = new Set((args.activityDates ?? [])
+    .map((value) => Date.parse(value))
+    .filter((value) => Number.isFinite(value) && value <= Date.now() && value >= Date.now() - 7 * 86400000)
+    .map((value) => new Date(value).toISOString().slice(0, 10))).size;
   const counts = [
     { key: 'care', value: args.careMoments },
     { key: 'mission', value: args.missionMoments },
@@ -733,6 +722,7 @@ export const deriveWeeklyCompanionArc = (args: {
       title: `${name}'s week is opening outward`,
       body: `${name} is finding meaning in the way you share the bond with other people. This week is less about solitude and more about expression.`,
       emphasis,
+      observedDays,
       progressLabel: `${totalMoments} remembered moments this week`
     } satisfies WeeklyCompanionArc;
   }
@@ -742,6 +732,7 @@ export const deriveWeeklyCompanionArc = (args: {
       title: `${name}'s week has a clear direction`,
       body: `${name} is responding to forward motion. Missions are giving the bond shape, purpose, and momentum this week.`,
       emphasis,
+      observedDays,
       progressLabel: `${totalMoments} remembered moments this week`
     } satisfies WeeklyCompanionArc;
   }
@@ -751,15 +742,17 @@ export const deriveWeeklyCompanionArc = (args: {
       title: `${name}'s week feels lighter`,
       body: `${name} is being carried by play and bright interaction. The relationship is growing through joy more than duty right now.`,
       emphasis,
+      observedDays,
       progressLabel: `${totalMoments} remembered moments this week`
     } satisfies WeeklyCompanionArc;
   }
 
   if (emphasis === 'care') {
     return {
-      title: `${name}'s week is being built by consistency`,
-      body: `${name} is feeling the steadiness of your return. Small repeated acts of care are doing the real bond work this week.`,
+      title: `${name}'s week includes moments of care`,
+      body: `${name} has shared ${args.careMoments} care ${args.careMoments === 1 ? 'moment' : 'moments'} with you this week. Each one can become part of your shared history.`,
       emphasis,
+      observedDays,
       progressLabel: `${totalMoments} remembered moments this week`
     } satisfies WeeklyCompanionArc;
   }
@@ -768,6 +761,7 @@ export const deriveWeeklyCompanionArc = (args: {
     title: `${name}'s week is still gathering shape`,
     body: `${name} is in a quieter chapter right now. A few more moments of care, expression, or play will reveal where this week wants to go.`,
     emphasis: 'quiet',
+    observedDays,
     progressLabel: `${totalMoments} remembered moments this week`
   } satisfies WeeklyCompanionArc;
 };
@@ -783,7 +777,8 @@ export const deriveChapterMilestones = (args: {
   const name = args.companionName?.trim() || 'your companion';
   const milestones: CompanionChapterMilestone[] = [];
 
-  if (args.bondLevel >= 3) {
+  const hasRepeatedHistory = (args.weeklyArc.observedDays ?? 0) >= 3;
+  if (hasRepeatedHistory && args.bondLevel >= 3) {
     milestones.push({
       id: 'chapter-bond-tier',
       label: 'Bond chapter',
@@ -792,7 +787,7 @@ export const deriveChapterMilestones = (args: {
     });
   }
 
-  if (args.trust >= 75 && args.affection >= 75) {
+  if (hasRepeatedHistory && args.trust >= 75 && args.affection >= 75) {
     milestones.push({
       id: 'chapter-settled-trust',
       label: 'Trust chapter',
@@ -829,6 +824,8 @@ export const deriveChapterRewards = (args: {
 }) => {
   const name = args.companionName?.trim() || 'your companion';
   const rewards: CompanionChapterReward[] = [];
+  // No chapter award from initial stats, suggested activities, or one visit.
+  if ((args.weeklyArc.observedDays ?? 0) < 3) return rewards;
 
   if (args.weeklyArc.emphasis === 'social') {
     rewards.push({
@@ -923,7 +920,7 @@ export const unlockChapterRewards = async (
     rewards: CompanionChapterReward[];
   }
 ) => {
-  if (!args.rewards.length) return [];
+  // Empty eligibility must not hide keepsakes that were earned previously.
   const { data: existingRewards, error: existingRewardsError } = await client
     .from('companion_chapter_rewards')
     .select('reward_key')
@@ -948,9 +945,9 @@ export const unlockChapterRewards = async (
     reward_tone: reward.tone
   }));
 
-  const { error } = await client
+  const { error } = rows.length ? await client
     .from('companion_chapter_rewards')
-    .upsert(rows, { onConflict: 'owner_id,companion_id,reward_key', ignoreDuplicates: true });
+    .upsert(rows, { onConflict: 'owner_id,companion_id,reward_key', ignoreDuplicates: true }) : { error: null };
 
   if (error) {
     console.error('[companion-journal] chapter reward unlock failed', error);
@@ -1004,7 +1001,7 @@ export const unlockChapterRewards = async (
   const mappedRewards = (data ?? []).map((row) => ({
     rewardKey: String(row.reward_key ?? ''),
     title: String(row.reward_title ?? 'Companion keepsake'),
-    body: String(row.reward_body ?? ''),
+    body: recordedRewardBody(row.reward_title),
     tone:
       row.reward_tone === 'care' ||
       row.reward_tone === 'social' ||

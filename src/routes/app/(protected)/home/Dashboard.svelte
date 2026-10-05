@@ -29,7 +29,7 @@
   ];
 
   const shortcuts = [
-    { label: 'Tiles Run', description: 'Daily score chase', href: '/app/games/tiles-run', icon: Gamepad2 },
+    { label: 'Neon Run', description: 'Daily score chase', href: '/app/games/runner', icon: Gamepad2 },
     { label: 'Memvoya ARPG', description: 'Dash and collect shards', href: '/app/games/arpg', icon: Gamepad2 },
     { label: 'Leaderboards', description: 'Global standings', href: '/app/leaderboard', icon: Trophy },
     { label: 'Atelier', description: 'Expression & cosmetics', href: '/app/shop', icon: ShoppingBag }

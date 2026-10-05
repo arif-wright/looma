@@ -1,12 +1,15 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
-  GATHER_MESSAGE, GATHER_RESULT_MESSAGE, MOVE_MESSAGE, WORLD_ROOM_NAME,
+  GATHER_MESSAGE, GATHER_RESULT_MESSAGE, MOVE_MESSAGE, WORLD_ROOM_NAME, WORLD_PROTOCOL_VERSION, PORTAL_MESSAGE, PORTAL_RESULT_MESSAGE,
+  type PortalResult, type NpcSnapshot,
   type ConnectionDiagnostic, type ConnectionStatus, type GatherResult, type MovementIntent, type PlayerSnapshot, type WorldSnapshot
 } from './protocol';
+import { isWorldAreaId } from './areas';
 import { normalizePlayerBody } from './playerBody';
 
 type SyncedWorld = {
   tick: number;
+  npcs?: { forEach: (callback: (npc: NpcSnapshot, id: string) => void) => void };
   players: { forEach: (callback: (player: PlayerSnapshot, id: string) => void) => void };
 };
 type TicketResponse = { ticket: string; expiresAt: number };
@@ -16,6 +19,7 @@ export type WorldConnectionCallbacks = {
   onDiagnostic?: (diagnostic: ConnectionDiagnostic | null) => void;
   onSnapshot: (snapshot: WorldSnapshot) => void;
   onGatherResult: (result: GatherResult) => void;
+  onPortalResult?: (result: PortalResult) => void;
 };
 
 type WorldConnectionOptions = {
@@ -33,6 +37,8 @@ export class WorldConnection {
   private recoveryAttempt = 0;
   private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private pendingPortal: { requestId: string; portalId: string } | null = null;
+  private portalTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingGathers = new Map<string, { requestId: string; nodeKey: 'moonberry-bush' }>();
 
   private readonly createClient: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
@@ -50,13 +56,15 @@ export class WorldConnection {
   }
 
   async connect(recovering = false) {
+    if (this.stopped) return;
     this.setStatus(recovering ? 'reconnecting' : 'connecting');
     let phase: 'ticket' | 'join' | 'setup' = 'ticket';
     let failureReported = false;
     try {
       const ticketResponse = await fetch('/api/world/ticket', {
-        method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
+        method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json', 'x-world-protocol': String(WORLD_PROTOCOL_VERSION) }
       });
+      if (ticketResponse.status === 409) { this.rejectOutdatedClient(); return; }
       if (ticketResponse.status === 401 || ticketResponse.status === 403) {
         this.callbacks.onDiagnostic?.({ code: 'ticket_rejected', statusCode: ticketResponse.status });
         failureReported = true;
@@ -90,9 +98,28 @@ export class WorldConnection {
       // server-side reconnection grace period.
       room.reconnection.maxRetries = 15;
       room.reconnection.maxDelay = 1_000;
-      room.onStateChange((state) => this.publishSnapshot(state));
+      let shuttingDown = false;
+      const pauseForShutdown = () => {
+        if (this.room !== room || this.stopped || shuttingDown) return;
+        shuttingDown = true;
+        this.connected = false;
+        // This room is being disposed; its token cannot restore a fresh process.
+        room.reconnection.maxRetries = 0;
+        this.clearRefreshTimer();
+        this.failPendingPortal();
+        this.failPendingGathers();
+        this.setStatus('reconnecting');
+      };
+      room.onMessage('server-shutdown', pauseForShutdown);
+      room.onStateChange((state) => { if (this.room === room && !shuttingDown) this.publishSnapshot(state); });
+      room.onMessage(PORTAL_RESULT_MESSAGE, (result: PortalResult) => {
+        if (this.room !== room || this.stopped || !result || result.requestId !== this.pendingPortal?.requestId) return;
+        if (!['success', 'out_of_range', 'cooldown', 'unavailable', 'failure'].includes(result.status)) return;
+        this.clearPortal();
+        this.callbacks.onPortalResult?.(result);
+      });
       room.onMessage(GATHER_RESULT_MESSAGE, (result: GatherResult) => {
-        if (!result || typeof result.requestId !== 'string' || !this.pendingGathers.has(result.requestId)) return;
+        if (this.room !== room || this.stopped || !result || typeof result.requestId !== 'string' || !this.pendingGathers.has(result.requestId)) return;
         this.pendingGathers.delete(result.requestId);
         this.callbacks.onGatherResult(result);
       });
@@ -100,13 +127,14 @@ export class WorldConnection {
         if (this.room !== room) return;
         this.connected = false;
         if (!this.stopped) {
+          this.failPendingPortal();
           this.log('onDrop', { code });
           this.setStatus('reconnecting');
           this.log('reconnect attempt');
         }
       });
       room.onReconnect(() => {
-        if (this.room !== room) return;
+        if (this.room !== room || shuttingDown) return;
         this.connected = true;
         if (!this.stopped) {
           this.recoveryAttempt = 0;
@@ -122,17 +150,23 @@ export class WorldConnection {
         this.connected = false;
         if (!this.stopped) {
           this.log('onLeave', { code });
-          if (this.status === 'reconnecting' && !this.recoveryAttempted) {
+          if (code === 4001) pauseForShutdown();
+          this.failPendingPortal();
+          if ((this.status === 'reconnecting' || code === 4004) && !this.recoveryAttempted) {
             this.recoveryAttempted = true;
             this.room = null;
             this.clearRefreshTimer();
             this.log('fresh session recovery');
+            // Let the replacement process become healthy before fresh auth. Never
+            // replay an uncertain portal or reward request across a restart.
+            if (shuttingDown && this.scheduleRecovery()) return;
             void this.connect(true);
             return;
           }
           this.callbacks.onDiagnostic?.({ code: 'connection_closed', statusCode: this.safeCode(code) });
           this.setStatus('unavailable');
           this.failPendingGathers();
+          this.failPendingPortal();
         }
       });
       room.onError((code) => {
@@ -198,6 +232,30 @@ export class WorldConnection {
     this.room.send(GATHER_MESSAGE, request);
   }
 
+  enterPortal(portalId: string) {
+    if (this.pendingPortal) return;
+    if (!this.connected || !this.room || (portalId !== 'grove-to-hollow' && portalId !== 'hollow-to-grove')) {
+      this.callbacks.onPortalResult?.({ requestId: '', status: 'unavailable' });
+      return;
+    }
+    const request = { requestId: crypto.randomUUID(), portalId };
+    this.pendingPortal = request;
+    this.portalTimer = setTimeout(() => this.failPendingPortal(), 10_000);
+    this.room.send(PORTAL_MESSAGE, request);
+  }
+
+  private clearPortal() {
+    if (this.portalTimer) clearTimeout(this.portalTimer);
+    this.portalTimer = null;
+    this.pendingPortal = null;
+  }
+
+  private failPendingPortal() {
+    const requestId = this.pendingPortal?.requestId;
+    this.clearPortal();
+    if (requestId) this.callbacks.onPortalResult?.({ requestId, status: 'unavailable' });
+  }
+
   destroy(source = 'navigation teardown') {
     if (this.stopped) return;
     this.log('connection destruction', { source });
@@ -208,6 +266,7 @@ export class WorldConnection {
     this.clearRefreshTimer();
     this.clearRecoveryTimer();
     this.pendingGathers.clear();
+    this.clearPortal();
     if (room) void room.leave(true);
   }
 
@@ -223,6 +282,8 @@ export class WorldConnection {
     try {
       const players = new Map<string, PlayerSnapshot>();
       state.players.forEach((player, id) => players.set(id, {
+        mapId: isWorldAreaId(player.mapId) ? player.mapId : 'wilds-exploration',
+        transitionRevision: Number.isSafeInteger(player.transitionRevision) ? Number(player.transitionRevision) : 0,
         x: player.x, y: player.y, connected: player.connected,
         acknowledgedSequence: player.acknowledgedSequence, colorIndex: player.colorIndex,
         displayName: player.displayName, handle: player.handle,
@@ -233,7 +294,12 @@ export class WorldConnection {
         companionStatus: player.companionStatus,
         companionRevision: player.companionRevision
       }));
-      this.callbacks.onSnapshot({ localPlayerId: this.room.sessionId, tick: state.tick, players });
+      const npcs = new Map<string, NpcSnapshot>();
+      state.npcs?.forEach((npc, id) => {
+        if (npcs.size >= 2 || !isWorldAreaId(npc.mapId) || npc.kind !== 'resident' || !Number.isFinite(npc.x) || !Number.isFinite(npc.y)) return;
+        npcs.set(id, { id, mapId: npc.mapId, name: String(npc.name).slice(0, 40), kind: 'resident', playerBody: normalizePlayerBody(npc.playerBody), x: npc.x, y: npc.y, moving: npc.moving === true });
+      });
+      this.callbacks.onSnapshot({ localPlayerId: this.room.sessionId, tick: state.tick, players, npcs });
     } catch {
       // Rendering/presentation failures are isolated from transport truth. The
       // next state patch gets another opportunity to synchronize the scene.
@@ -243,22 +309,38 @@ export class WorldConnection {
 
   private async refreshCompanion() {
     if (!this.connected || !this.room || this.stopped) return;
+    const room = this.room;
     try {
       const response = await fetch('/api/world/ticket', {
-        method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' }
+        method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json', 'x-world-protocol': String(WORLD_PROTOCOL_VERSION) }
       });
+      if (this.room !== room || !this.connected || this.stopped) return;
+      if (response.status === 409) { this.rejectOutdatedClient(); return; }
       if (response.status === 401 || response.status === 403) {
         this.setStatus('unauthorized');
         return;
       }
       if (!response.ok) return;
       const credential = await response.json() as TicketResponse;
-      if (typeof credential.ticket === 'string') {
-        this.room.send(COMPANION_REFRESH_MESSAGE, { ticket: credential.ticket });
+      if (typeof credential.ticket === 'string' && this.room === room && this.connected && !this.stopped) {
+        room.send(COMPANION_REFRESH_MESSAGE, { ticket: credential.ticket });
       }
     } catch {
       // Companion refresh is best-effort and must not interrupt movement.
     }
+  }
+
+  private rejectOutdatedClient() {
+    const room = this.room;
+    this.room = null;
+    this.connected = false;
+    this.clearRefreshTimer();
+    this.clearRecoveryTimer();
+    this.failPendingPortal();
+    this.failPendingGathers();
+    this.callbacks.onDiagnostic?.({ code: 'client_outdated' });
+    this.setStatus('unavailable');
+    if (room) void room.leave(true);
   }
 
   private setStatus(status: ConnectionStatus) {

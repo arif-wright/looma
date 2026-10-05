@@ -1,0 +1,54 @@
+{
+  "kind": "offline native-canvas render",
+  "browserVerified": false,
+  "mobileBrowserVerified": false,
+  "inputVerified": false,
+  "fixtureState": {
+    "width": 960,
+    "height": 540,
+    "groundY": 405,
+    "elapsedMs": 3840,
+    "distanceMeters": 840,
+    "playerX": 192,
+    "playerY": 352,
+    "playerVy": -0.25,
+    "hasShield": true,
+    "shieldPulse": 0,
+    "magnetTimer": 0,
+    "doubleShardsTimer": 0,
+    "slowMoTimer": 0,
+    "dashTimer": 0,
+    "dreamSurgeTimer": 0,
+    "obstacles": [
+      {
+        "x": 402,
+        "width": 44,
+        "height": 72
+      },
+      {
+        "x": 806,
+        "width": 53,
+        "height": 105
+      }
+    ],
+    "shards": [
+      {
+        "x": 562,
+        "y": 346
+      }
+    ],
+    "powerups": [
+      {
+        "type": "shield",
+        "x": 692,
+        "y": 337
+      }
+    ],
+    "shardPopups": []
+  },
+  "outputs": [
+    "960 composition",
+    "320 and 390 mathematical downscales",
+    "six-pickup reduced-motion fixture"
+  ]
+}

@@ -1,5 +1,5 @@
 export const WORLD_ROOM_NAME = 'wilds';
-export const WORLD_PROTOCOL_VERSION = 1;
+export const WORLD_PROTOCOL_VERSION = 2;
 export const MOVEMENT_MESSAGE = 'move';
 export const PROTOCOL_ERROR_MESSAGE = 'protocol-error';
 export const COMPANION_REFRESH_MESSAGE = 'companion-refresh';
@@ -26,4 +26,12 @@ export type GatherResult = {
   reaction?: string | null;
   inventoryHref?: '/app/inventory';
   replayed?: boolean;
+};
+
+export const PORTAL_MESSAGE = 'portal';
+export const PORTAL_RESULT_MESSAGE = 'portal-result';
+export type PortalResult = {
+  requestId: string;
+  status: 'success' | 'out_of_range' | 'cooldown' | 'unavailable' | 'failure';
+  mapId?: 'wilds-exploration' | 'wilds-town';
 };

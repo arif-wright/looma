@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { pendingRest, rememberRest, forgetRest, type RestRequest } from '$lib/sanctuary/restRequest';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
   import { Armchair, Flower2, LampDesk, Sparkles, Waves, Wind } from 'lucide-svelte';
@@ -6,11 +8,15 @@
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import type { PageData } from './$types';
   import type { SanctuaryDecor, SanctuarySlot } from '$lib/sanctuary';
+  import { journalMomentHref } from '$lib/launch/proofIntegrity';
+  import { keepsakeStoryHref } from '$lib/items/story';
+  import { recordedRewardBody } from '$lib/companions/rewardHistory';
 
   export let data: PageData;
 
   type Placement = {
     id: string;
+    user_item_id?: string | null;
     slot_key: SanctuarySlot;
     item:
       | (SanctuaryDecor & { item_key?: string; capabilities?: string[] })
@@ -38,27 +44,41 @@
     ...owned,
     item: Array.isArray(owned.item) ? owned.item[0] ?? null : owned.item
   }));
-  let selectedItemId: string | null = normalizedOwnedItems[0]?.item?.id ?? null;
+  let selectedItemId: string | null = normalizedOwnedItems[0]?.id ?? null;
   let savingSlot: SanctuarySlot | null = null;
   let interactionPending = false;
   let reaction = data.latestReaction?.body ?? null;
-  let restMemory: { id: string; title: string } | null = null;
+  let reactionMemory: { id: string; companion_id: string; title: string } | null = data.latestReaction ?? null;
   let restAvailable = Boolean(data.restAvailable);
   let nextRestAvailableAt = data.nextRestAvailableAt ?? null;
   let status: string | null = null;
   let appliedRequestedItem: string | null = null;
 
+  // Preserve a card selection across Journal/story visits and browser Back/Forward.
+  // The URL remains the explicit initial selection; a snapshot remembers later UI choices.
+  export const snapshot = {
+    capture: () => ({ selectedItemId, appliedRequestedItem }),
+    restore: (value: unknown) => {
+      if (!value || typeof value !== 'object') return;
+      const saved = value as { selectedItemId?: unknown; appliedRequestedItem?: unknown };
+      if (typeof saved.selectedItemId === 'string' && normalizedOwnedItems.some((owned) => owned.id === saved.selectedItemId)) {
+        selectedItemId = saved.selectedItemId;
+        appliedRequestedItem = typeof saved.appliedRequestedItem === 'string' ? saved.appliedRequestedItem : null;
+      }
+    }
+  };
+
   const normalizeItem = (value: Placement['item']) => (Array.isArray(value) ? value[0] ?? null : value);
-  const placementFor = (slot: SanctuarySlot) =>
-    (data.placements as unknown as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
-  const selectedItem = () => normalizedOwnedItems.find((owned) => owned.item?.id === selectedItemId) ?? null;
+  const placementFor = (placements: unknown, slot: SanctuarySlot) =>
+    (placements as Placement[]).find((placement) => placement.slot_key === slot) ?? null;
+  const selectedItem = () => normalizedOwnedItems.find((owned) => owned.id === selectedItemId) ?? null;
   $: requestedItem = $page.url.searchParams.get('item');
   $: if (requestedItem && requestedItem !== appliedRequestedItem) {
     const requestedOwnedItem = normalizedOwnedItems.find(
-      (owned) => owned.item?.id === requestedItem || owned.item?.item_key === requestedItem
+      (owned) => owned.id === requestedItem || owned.item?.id === requestedItem || owned.item?.item_key === requestedItem
     );
     if (requestedOwnedItem?.item) {
-      selectedItemId = requestedOwnedItem.item.id;
+      selectedItemId = requestedOwnedItem.id;
       status = `${requestedOwnedItem.item.title} selected. Choose a space.`;
     }
     appliedRequestedItem = requestedItem;
@@ -78,22 +98,35 @@
   };
 
   const updateSlot = async (slot: SanctuarySlot, clear = false) => {
-    if (savingSlot || (!clear && !selectedItemId)) return;
+    if (savingSlot || interactionPending || (!clear && !selectedItemId)) return;
     savingSlot = slot;
     status = clear ? 'Making space...' : 'Changing the sanctuary...';
     try {
       const response = await fetch('/api/sanctuary/placement', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slot, itemId: selectedItemId, clear })
+        body: JSON.stringify({ slot, userItemId: selectedItemId, clear })
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        status = payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
+        status = payload?.error === 'item_quantity_exhausted'
+          ? 'All copies of this item are placed. Clear its current space to move it.'
+          : payload?.error === 'item_not_placeable' ? 'That item cannot be placed here.' : 'The sanctuary could not be changed.';
         return;
       }
-      reaction = payload?.reaction ?? reaction;
-      status = clear ? 'Space cleared.' : 'The sanctuary remembers this change.';
+      if (clear) {
+        reaction = null;
+        reactionMemory = null;
+        status = 'Space cleared.';
+      } else if (payload?.unchanged) {
+        status = 'This item is already in that space.';
+      } else {
+        reaction = payload?.reaction ?? null;
+        reactionMemory = payload?.memory ?? null;
+        status = reactionMemory
+          ? 'Placed and remembered in your Journal.'
+          : 'Item placed. No Journal memory was saved for this change.';
+      }
       await invalidateAll();
     } catch {
       status = 'The sanctuary could not be changed.';
@@ -102,18 +135,28 @@
     }
   };
 
-  const restTogether = async () => {
-    if (interactionPending || !mossSeatPlacement) return;
+  let pendingRequest: RestRequest | null = null;
+  let requestStorage: Storage | null = null;
+  const submitRest = async (restRequest: RestRequest) => {
+    if (interactionPending || savingSlot) return;
     interactionPending = true;
     status = `Settling in with ${data.companion?.name ?? 'your companion'}...`;
     try {
       const response = await fetch('/api/sanctuary/interact', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'shared_rest' })
+        body: JSON.stringify({ action: 'shared_rest', ...restRequest })
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status >= 400 && response.status < 500 && ['rest_cooldown', 'invalid_request', 'companion_required', 'request_companion_mismatch', 'moss_seat_must_be_placed'].includes(payload?.error)) {
+          forgetRest(requestStorage, restRequest);
+          pendingRequest = null;
+          if (payload?.error === 'rest_cooldown' && data.companion?.id === restRequest.companionId) {
+            restAvailable = false;
+            nextRestAvailableAt = payload.nextAvailableAt ?? null;
+          }
+        }
         status =
           payload?.message ??
           (payload?.error === 'moss_seat_must_be_placed'
@@ -121,22 +164,44 @@
             : 'This quiet moment is not available right now.');
         return;
       }
+      if (!payload?.ok || !payload?.memory?.id) throw new Error('Rest result not confirmed');
+      forgetRest(requestStorage, restRequest);
+      pendingRequest = null;
+      if (data.companion?.id !== restRequest.companionId) return;
       reaction = payload.reaction ?? reaction;
-      restMemory = payload.memory?.id ? { id: payload.memory.id, title: payload.memory.title } : null;
+      reactionMemory = payload.memory?.id
+        ? { id: payload.memory.id, title: payload.memory.title, companion_id: payload.memory.companion_id ?? restRequest.companionId } : null;
       restAvailable = false;
       nextRestAvailableAt = payload.nextAvailableAt ?? null;
       status = payload.restoredEnergy > 0
-        ? `${payload.restoredEnergy} spark restored. ${restMemory ? 'This rest is now in your Journal.' : 'The rest was completed, but the Journal could not hold it.'}`
-        : restMemory
-          ? 'The quiet itself became a remembered moment.'
-          : 'The quiet moment was completed.';
+        ? `${payload.restoredEnergy} spark restored. This rest is now in your Journal.`
+        : 'The quiet itself became a remembered moment.';
       await invalidateAll();
     } catch {
-      status = 'This quiet moment could not be completed.';
+      status = 'The result is not confirmed yet. Try again to recover this same quiet moment.';
     } finally {
       interactionPending = false;
     }
   };
+
+  const restTogether = async () => {
+    if (interactionPending || savingSlot) return;
+    if (pendingRequest) { await submitRest(pendingRequest); return; }
+    if (!mossSeatPlacement || !restAvailable || !data.companion?.id) return;
+    pendingRequest = pendingRequest ?? pendingRest(requestStorage, data.companion.id) ?? {
+      requestId: crypto.randomUUID(), companionId: data.companion.id
+    };
+    rememberRest(requestStorage, pendingRequest);
+    await submitRest(pendingRequest);
+  };
+  onMount(() => {
+    try { requestStorage = sessionStorage; } catch { requestStorage = null; }
+    if (!data.companion?.id) return;
+    pendingRequest = pendingRest(requestStorage, data.companion.id);
+    // Recover an already-requested result after a reload/back navigation, even
+    // if the seat was removed or the successful rest now shows a cooldown.
+    if (pendingRequest) void submitRest(pendingRequest);
+  });
 </script>
 
 <svelte:head>
@@ -168,7 +233,7 @@
       <div class="ground" aria-hidden="true"></div>
 
       {#each slots as slot}
-        {@const placement = placementFor(slot.key)}
+        {@const placement = placementFor(data.placements, slot.key)}
         {@const placedDecor = normalizeItem(placement?.item ?? null)}
         <button
           class:occupied={Boolean(placedDecor)}
@@ -202,20 +267,21 @@
     <section class="reaction-card" id="shared-rest" aria-live="polite">
       <div>
         <span class="reaction-label">{mossSeatPlacement ? 'A shared ritual' : 'Companion response'}</span>
-        <p>{reaction ?? `${data.companion?.name ?? 'Your companion'} is waiting to see what you place first.`}</p>
+        <p>{reaction ?? 'Choose a decoration and a space to make a new moment together.'}</p>
         {#if status}<small>{status}</small>{/if}
-        {#if restMemory}
-          <a class="rest-memory-link" href="/app/memory">Revisit “{restMemory.title}” in your Journal</a>
-        {:else if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
+        {#if reactionMemory}
+          <a class="rest-memory-link" href={journalMomentHref(reactionMemory.companion_id, reactionMemory.id)}>Revisit “{reactionMemory.title}” in your Journal</a>
+        {/if}
+        {#if mossSeatPlacement && !restAvailable && nextRestAvailableAt}
           <small>The Moss Seat is holding your last quiet moment. Rest together again after {new Date(nextRestAvailableAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</small>
         {:else if mossSeatPlacement}
           <small>Rest together to restore spark and create a durable Journal memory.</small>
         {/if}
       </div>
-      {#if mossSeatPlacement && restAvailable}
+      {#if pendingRequest || (mossSeatPlacement && restAvailable)}
         <button type="button" disabled={interactionPending} on:click={restTogether}>
           <Armchair size={18} />
-          <span>{interactionPending ? 'Resting...' : 'Rest Together'}</span>
+          <span>{interactionPending ? 'Resting...' : pendingRequest ? 'Recover quiet moment' : 'Rest Together'}</span>
         </button>
       {/if}
     </section>
@@ -236,15 +302,15 @@
           {#if decor}
           {@const DecorIcon = iconFor(decor.visual_key)}
           <button
-            class:selected={selectedItemId === decor.id}
+            class:selected={selectedItemId === owned.id}
             type="button"
-            aria-pressed={selectedItemId === decor.id}
-            on:click={() => (selectedItemId = decor.id)}
+            aria-pressed={selectedItemId === owned.id}
+            on:click={() => (selectedItemId = owned.id)}
           >
             <span class={`decor-art decor-art--${decor.tone}`}><DecorIcon size={25} /></span>
             <strong>{decor.title}</strong>
-            <small>{decor.description}</small>
-            <em>{owned.source_type === 'care_milestone' ? 'Earned through care' : 'Earned as a chapter keepsake'}</em>
+            <small>{owned.source_type === 'chapter_reward' ? recordedRewardBody(decor.title) : decor.description}</small>
+            <em>{owned.source_type === 'care_milestone' ? 'Earned through care' : owned.source_type === 'chapter_reward' ? 'Added as a chapter keepsake' : 'In your collection'}</em>
           </button>
           {/if}
         {/each}
@@ -254,6 +320,7 @@
         <div class="selection-bar">
           <span><strong>{selectedItem()?.item?.title}</strong> selected</span>
           <span>Tap an occupied space to replace it.</span>
+          <a class="read-story-link" href={keepsakeStoryHref(selectedItemId!, true, selectedItemId)}>Read its story<span aria-hidden="true"> ↗</span></a>
         </div>
       {/if}
       {:else}
@@ -272,10 +339,15 @@
           {#each data.placements as placement}
             {@const placedDecor = normalizeItem((placement as unknown as Placement).item)}
             {#if placedDecor}
-              <button type="button" disabled={Boolean(savingSlot)} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
+              <div class="placed-item">
+              <button type="button" aria-label={`Remove ${placedDecor.title} from ${slots.find(slot => slot.key === (placement as unknown as Placement).slot_key)?.label ?? 'this space'}`} disabled={Boolean(savingSlot) || interactionPending} on:click={() => updateSlot((placement as unknown as Placement).slot_key, true)}>
                 <span>{placedDecor.title}</span>
                 <small>Remove</small>
               </button>
+              {#if (placement as unknown as Placement).user_item_id}
+                <a class="read-story-link" href={keepsakeStoryHref((placement as unknown as Placement).user_item_id!, true, selectedItemId)}>Read its story<span class="sr-only">: {placedDecor.title}</span><span aria-hidden="true"> ↗</span></a>
+              {/if}
+              </div>
             {/if}
           {/each}
         </div>
@@ -285,6 +357,11 @@
 </SanctuaryPageFrame>
 
 <style>
+  .read-story-link { display: inline-flex; align-items: center; min-height: 44px; color: #b8ded6; font-size: .78rem; font-weight: 650; text-decoration: none; }
+  .read-story-link:focus-visible { outline: 2px solid #b8ded6; outline-offset: 3px; border-radius: .3rem; }
+  .read-story-link:hover { color: #ddfff2; }
+  .placed-item { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .8rem; }
+
   :global(.sanctuary-builder) {
     min-height: calc(100dvh - 5rem);
   }

@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { restoreWorldPosition, type WorldMapDefinition } from '../world/maps.js';
+import { restoreWorldPosition, isWorldMapId, WORLD_MAPS, type WorldMapDefinition } from '../world/maps.js';
+import type { PortalRequest } from '../world/portals.js';
 
 export type LoadedWorldState = {
+  mapId?: WorldMapDefinition['id'];
   position: { x: number; y: number };
   stateVersion: number;
   discoveries: Set<string>;
@@ -24,6 +26,10 @@ export interface WorldPersistence {
   save(args: {
     userId: string; map: WorldMapDefinition; x: number; y: number; expectedStateVersion: number;
   }): Promise<SaveWorldStateResult>;
+  travel?(args: {
+    userId: string; map: WorldMapDefinition; portalId: PortalRequest['portalId'];
+    x: number; y: number; expectedStateVersion: number;
+  }): Promise<SaveWorldStateResult>;
   discover(args: {
     userId: string; map: WorldMapDefinition; landmarkKey: string; x: number; y: number; idempotencyKey: string;
   }): Promise<{ newlyDiscovered: boolean }>;
@@ -44,7 +50,8 @@ export class SupabaseWorldPersistence implements WorldPersistence {
     });
     if (error) throw new Error(`world_load_failed:${error.code ?? 'unknown'}`);
     const result = asRecord(data);
-    const restored = restoreWorldPosition(map, {
+    const loadedMap = typeof result.mapId === 'string' && isWorldMapId(result.mapId) ? WORLD_MAPS[result.mapId] : map;
+    const restored = restoreWorldPosition(loadedMap, {
       mapId: result.mapId, mapVersion: result.mapVersion, x: result.x, y: result.y
     });
     const stateVersion = Number(result.stateVersion);
@@ -53,9 +60,27 @@ export class SupabaseWorldPersistence implements WorldPersistence {
       : new Set<string>();
     return {
       ...restored,
+      mapId: loadedMap.id,
       stateVersion: Number.isSafeInteger(stateVersion) && stateVersion > 0 ? stateVersion : 1,
       discoveries
     };
+  }
+
+  async travel(args: {
+    userId: string; map: WorldMapDefinition; portalId: PortalRequest['portalId'];
+    x: number; y: number; expectedStateVersion: number;
+  }): Promise<SaveWorldStateResult> {
+    const { data, error } = await this.supabase.rpc('fn_world_travel_portal', {
+      p_user: args.userId, p_map_id: args.map.id, p_map_version: args.map.version,
+      p_portal_id: args.portalId, p_x: args.x, p_y: args.y,
+      p_expected_state_version: args.expectedStateVersion
+    }).abortSignal(AbortSignal.timeout(8_000));
+    if (error) throw new Error(`world_travel_failed:${error.code ?? 'unknown'}`);
+    const result = asRecord(data);
+    if (result.ok !== true) return { ok: false, conflict: true };
+    const stateVersion = Number(result.stateVersion);
+    if (!Number.isSafeInteger(stateVersion) || stateVersion <= args.expectedStateVersion) throw new Error('world_travel_invalid_version');
+    return { ok: true, stateVersion };
   }
 
   async save(args: {

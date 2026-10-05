@@ -10,7 +10,7 @@ const config = {
 	kit: {
 		// Ensure a stable, supported runtime for Vercel builds/SSR.
 		// (Local environments may run newer Node versions than the adapter supports.)
-		adapter: adapter({ runtime: 'nodejs20.x' })
+		adapter: adapter({ runtime: 'nodejs22.x' })
 	}
 };
 

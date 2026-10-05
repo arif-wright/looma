@@ -20,6 +20,21 @@ describe('renderer-neutral WorldSession', () => {
     expect(connection.destroy).toHaveBeenCalledWith('navigation');
   });
 
+  it('owns monotonic wire sequences across stop, portal and input scheduler resets', () => {
+    const connection = { connect: vi.fn(), sendMovement: vi.fn(), gatherMoonberry: vi.fn(), enterPortal: vi.fn(), destroy: vi.fn() };
+    let callbacks: any;
+    const session = new WorldSession('wss://world.test', { onStatus: vi.fn(), onDiagnostic: vi.fn(), onGatherResult: vi.fn() }, (_url, events) => { callbacks = events; return connection; });
+    const status = vi.fn(); session.setStatusConsumer(status); session.start(); callbacks.onStatus('connected');
+    session.sendMovement({ sequence: 99, x: 1, y: 0 }); session.stopMovement();
+    session.sendMovement({ sequence: 1, x: -1, y: 0 }); session.enterPortal('grove-to-hollow');
+    expect(connection.sendMovement.mock.calls.map(([intent]) => intent.sequence)).toEqual([1, 2, 3, 4]);
+    expect(connection.sendMovement).toHaveBeenLastCalledWith({ sequence: 4, x: 0, y: 0 });
+    expect(connection.enterPortal).toHaveBeenCalledWith('grove-to-hollow');
+    callbacks.onStatus('reconnecting'); session.sendMovement({ sequence: 100, x: 1, y: 0 }); session.enterPortal('hollow-to-grove');
+    expect(connection.sendMovement).toHaveBeenCalledTimes(4); expect(connection.enterPortal).toHaveBeenCalledOnce();
+    expect(status).toHaveBeenLastCalledWith('reconnecting'); session.destroy();
+  });
+
   it('does not connect when configuration is absent', () => {
     const createConnection = vi.fn();
     const onStatus = vi.fn();

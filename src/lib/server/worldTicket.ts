@@ -5,7 +5,7 @@ import { normalizePlayerBody, type PlayerBody } from '$lib/game/playerBody';
 export const WORLD_TICKET_ISSUER = 'memvoya-web';
 export const WORLD_TICKET_AUDIENCE = 'memvoya-world';
 export const WORLD_TICKET_ROOM = 'wilds';
-export const WORLD_TICKET_PROTOCOL = 1;
+export const WORLD_TICKET_PROTOCOL = 2;
 export const WORLD_TICKET_TTL_SECONDS = 45;
 
 export type SafeWorldIdentity = { displayName: string; handle: string | null };
