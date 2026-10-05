@@ -1,0 +1,105 @@
+name: Neon Run Browser
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-neon-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies without lifecycle hooks
+        run: npm ci --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Record synthetic fixture source
+        run: |
+          mkdir -p artifacts/neon-run
+          {
+            echo "Credential-free component fixture. Real-engine browser input case is separate from deterministic lifecycle cases."
+            echo "No hosted auth, database, real API, real rewards, or full SvelteKit routing."
+            git rev-parse HEAD HEAD^{tree}
+            node --version
+            npm --version
+            npx playwright --version
+            git ls-files -z package.json package-lock.json .github/workflows/neon-run-browser.yml scripts/testing/neon-run-preview src/lib/components/games/NeonRun.svelte src/lib/games/endlessRunner.ts src/lib/games/runnerLanternwaySkin.ts src/lib/games/runnerLanternwayAtlas.ts static/games/runner/skins/lanternway src/lib/games/types.ts src/lib/__tests__/endlessRunner.spec.ts src/lib/__tests__/runnerLanternwaySkin.spec.ts src/lib/games/sdk.ts src/lib/games/state.ts src/lib/stores/companionRituals.ts 'src/routes/app/(game)/+layout.svelte' 'src/routes/app/(game)/games/runner/+page.svelte' | xargs -0 sha256sum
+          } > artifacts/neon-run/source.txt
+      - name: Check isolated component types, markup and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            npx svelte-kit sync
+            npx vitest run src/lib/__tests__/endlessRunner.spec.ts src/lib/__tests__/runnerLanternwaySkin.spec.ts
+            npx svelte-check --tsconfig scripts/testing/neon-run-preview/tsconfig.json
+            node scripts/testing/neon-run-preview/ssr-check.mjs
+            npx vite build --config scripts/testing/neon-run-preview/vite.config.mjs
+          } 2>&1 | tee artifacts/neon-run/checks.log
+      - name: Run credential-free Neon Run browser flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright test --config scripts/testing/neon-run-preview/playwright.config.ts 2>&1 | tee artifacts/neon-run/browser.log
+      - name: Gather structured browser report
+        if: always()
+        run: |
+          if [ -f scripts/testing/neon-run-preview/.results/results.json ]; then
+            cp scripts/testing/neon-run-preview/.results/results.json artifacts/neon-run/results.json
+          fi
+      - name: Upload test report and source identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-run-report-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/neon-run/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload narrow-320 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-run-narrow-320-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/neon-run-preview/.results/screenshots/*-narrow-320/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload mobile-390 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-run-mobile-390-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/neon-run-preview/.results/screenshots/*-mobile-390/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload desktop-1280 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-run-desktop-1280-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/neon-run-preview/.results/screenshots/*-desktop-1280/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload landscape844 screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-run-landscape844-${{ github.event.pull_request.head.sha || github.sha }}
+          path: scripts/testing/neon-run-preview/.results/screenshots/*-landscape844/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

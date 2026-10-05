@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "type": "cosmetic-only",
+  "generator": "built-in imagegen; canonical character frames reused without repainting",
+  "assets": {
+    "background": {
+      "url": "/games/runner/skins/lanternway/background.webp",
+      "width": 1280,
+      "height": 720,
+      "bytes": 178450,
+      "sha256": "ce4a4fc1a098ed18a0563eadb9566fc6aaa2da23d179188a74d35d069f0fb255",
+      "source": "art-source/games/runner/lanternway/v1/background-master.png",
+      "sourceSha256": "595ef33de18bea16826daefc3c4ceccb1269c0c4665a263feb61881363fe971b"
+    },
+    "ground": {
+      "url": "/games/runner/skins/lanternway/ground.webp",
+      "width": 1024,
+      "height": 342,
+      "bytes": 107052,
+      "sha256": "810796a2953c98111553d644c1aa17cb46fff25ce82bdf3fa1f6162484b8b4b8",
+      "source": "art-source/games/runner/lanternway/v1/ground-master.png",
+      "sourceSha256": "b41d5163a259a5d0e72a82342271e1437c6aa634832bdafab98907d9e0c7d44c"
+    },
+    "props": {
+      "url": "/games/runner/skins/lanternway/props.webp",
+      "width": 1024,
+      "height": 128,
+      "bytes": 53696,
+      "sha256": "586cfef06cfc9d56224e41ad00ef92f189efd92c1a1bcee6b5a142d81ab4f4e9",
+      "source": "art-source/games/runner/lanternway/v1/props-master.png",
+      "sourceSha256": "df7e53caeb2efbc3fed4991ebb899ce6aa704231763ce46f72f649288539b001",
+      "sprites": {
+        "waystone": {
+          "sourceRect": [
+            20,
+            2,
+            87,
+            124
+          ],
+          "masterCrop": [
+            118,
+            66,
+            366,
+            421
+          ]
+        },
+        "shard": {
+          "sourceRect": [
+            157,
+            2,
+            70,
+            124
+          ],
+          "masterCrop": [
+            577,
+            95,
+            750,
+            402
+          ]
+        },
+        "shield": {
+          "sourceRect": [
+            278,
+            2,
+            84,
+            124
+          ],
+          "masterCrop": [
+            995,
+            90,
+            1217,
+            418
+          ]
+        },
+        "magnet": {
+          "sourceRect": [
+            400,
+            2,
+            95,
+            124
+          ],
+          "masterCrop": [
+            1429,
+            97,
+            1672,
+            413
+          ]
+        },
+        "doubleShards": {
+          "sourceRect": [
+            523,
+            2,
+            106,
+            124
+          ],
+          "masterCrop": [
+            102,
+            486,
+            386,
+            818
+          ]
+        },
+        "slowMo": {
+          "sourceRect": [
+            667,
+            2,
+            74,
+            124
+          ],
+          "masterCrop": [
+            567,
+            469,
+            775,
+            819
+          ]
+        },
+        "dash": {
+          "sourceRect": [
+            784,
+            2,
+            95,
+            124
+          ],
+          "masterCrop": [
+            973,
+            474,
+            1240,
+            824
+          ]
+        },
+        "dreamSurge": {
+          "sourceRect": [
+            913,
+            2,
+            94,
+            124
+          ],
+          "masterCrop": [
+            1426,
+            469,
+            1696,
+            827
+          ]
+        }
+      }
+    },
+    "adventurer": {
+      "url": "/games/runner/skins/lanternway/adventurer.webp",
+      "width": 768,
+      "height": 96,
+      "bytes": 33388,
+      "sha256": "32c99b68903c962acc5e05ff8e9bfa159533bb9d8002ea15b3eb75a781073cfa",
+      "source": "art-source/games/runner/lanternway/v1/adventurer-canonical-east-walk.png",
+      "sourceSha256": "1daee38a55970703c6a5358f6a82ba3a5ffc76bf09de453892f2c683c94d8ca3",
+      "frames": 12,
+      "frameSize": [
+        64,
+        96
+      ],
+      "sourceRect": [
+        6,
+        0,
+        51,
+        96
+      ],
+      "sourceUnion": [
+        82,
+        39,
+        179,
+        223
+      ],
+      "frameDurationMs": 90
+    },
+    "echo": {
+      "url": "/games/runner/skins/lanternway/echo.webp",
+      "width": 960,
+      "height": 104,
+      "bytes": 56564,
+      "sha256": "3d43785c692ee492cb032e948c4eea19ee70b6ed6c22d5b74dc5910e337204dd",
+      "source": "art-source/games/runner/lanternway/v1/echo-canonical-east-walk.png",
+      "sourceSha256": "de780d5504aeb3258625c1faffa2cadf214f9b9b285d4768c1252865f28b2171",
+      "frames": 12,
+      "frameSize": [
+        80,
+        104
+      ],
+      "sourceRect": [
+        1,
+        0,
+        77,
+        104
+      ],
+      "sourceUnion": [
+        43,
+        31,
+        191,
+        232
+      ],
+      "frameDurationMs": 90
+    }
+  },
+  "totalRuntimeBytes": 429150
+}

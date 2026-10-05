@@ -1,11 +1,42 @@
 import type {
-  LoomaGameFactory,
   LoomaGameInstance,
   LoomaGameInitOptions,
   LoomaGameResult,
   LoomaPowerupState
 } from './types';
 import { playSound as playGameSound } from './audio';
+import { drawRunnerLanternway, type RunnerLanternwayAssets } from './runnerLanternwaySkin';
+
+export type EndlessRunnerState = {
+  score: number;
+  /** Active, bounded frame time. Pauses and dropped background time are excluded. */
+  elapsedMs: number;
+  simulationElapsedMs: number;
+  distanceMeters: number;
+  shardsCollected: number;
+  playerX: number;
+  playerY: number;
+  onGround: boolean;
+  powerups: LoomaPowerupState;
+};
+export type EndlessRunnerOptions = LoomaGameInitOptions & {
+  maxDurationMs?: number;
+  skinAssets?: RunnerLanternwayAssets;
+  reducedMotion?: () => boolean;
+  onStateChange?: (state: EndlessRunnerState) => void;
+};
+export type EndlessRunnerInstance = LoomaGameInstance & {
+  pause(): void;
+  resume(): void;
+  reset(): void;
+  playerJump(): void;
+  getState(): EndlessRunnerState;
+};
+
+// A stable world gives phones the same warning distance as larger displays.
+export const RUNNER_WIDTH = 960;
+export const RUNNER_HEIGHT = 540;
+const MAX_FRAME_MS = 50;
 
 type Obstacle = { x: number; width: number; height: number };
 type Shard = { x: number; y: number; collected?: boolean };
@@ -70,20 +101,25 @@ const roundRect = (
   context.closePath();
 };
 
-export const createEndlessRunner: LoomaGameFactory = (
-  opts: LoomaGameInitOptions
-): LoomaGameInstance => {
+export const createEndlessRunner = (
+  opts: EndlessRunnerOptions
+): EndlessRunnerInstance => {
   const {
     canvas,
     onGameOver,
     difficulty = 'normal',
     onShardCollected,
-    onPowerupState
+    onPowerupState,
+    onStateChange
   } = opts;
+  canvas.width = RUNNER_WIDTH;
+  canvas.height = RUNNER_HEIGHT;
+  const maxDurationMs = Math.max(1, Math.floor(opts.maxDurationMs ?? 600_000));
+  if (!Number.isFinite(maxDurationMs)) throw new Error('Invalid run limit');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2D context');
   canvas.style.touchAction = 'none';
-  (canvas.style as any).webkitTapHighlightColor = 'transparent';
+  (canvas.style as CSSStyleDeclaration & { webkitTapHighlightColor: string }).webkitTapHighlightColor = 'transparent';
 
   const difficultyFactor =
     difficulty === 'easy' ? 0.85 : difficulty === 'hard' ? 1.25 : 1.0;
@@ -128,11 +164,15 @@ export const createEndlessRunner: LoomaGameFactory = (
 
   let lastTime = performance.now();
   let elapsedMs = 0;
+  let activeMs = 0;
+  let distanceMeters = 0;
   let score = 0;
 
   let rafId = 0;
   let running = false;
   let paused = false;
+  let finished = false;
+  let destroyed = false;
 
   const notifyShardCount = () => {
     onShardCollected?.(shardsCollected);
@@ -143,16 +183,23 @@ export const createEndlessRunner: LoomaGameFactory = (
     return Math.ceil(value / 100) * 100;
   };
 
-  const emitPowerupState = () => {
-    if (!onPowerupState) return;
-    const payload: LoomaPowerupState = {
+  const powerupState = (): LoomaPowerupState => ({
       shield: hasShield,
       magnet: quantizeTimer(magnetTimer),
       doubleShards: quantizeTimer(doubleShardsTimer),
       slowMo: quantizeTimer(slowMoTimer),
       dash: quantizeTimer(dashTimer),
       dreamSurge: quantizeTimer(dreamSurgeTimer)
-    };
+  });
+
+  const getState = (): EndlessRunnerState => ({
+    score: Math.floor(score), elapsedMs: Math.floor(activeMs), simulationElapsedMs: Math.floor(elapsedMs),
+    distanceMeters: Math.floor(distanceMeters), shardsCollected, playerX, playerY, onGround: isOnGround, powerups: powerupState()
+  });
+  const publish = () => { emitPowerupState(); onStateChange?.(getState()); };
+  const emitPowerupState = () => {
+    if (!onPowerupState) return;
+    const payload = powerupState();
     const changed =
       !lastPowerupState ||
       lastPowerupState.shield !== payload.shield ||
@@ -178,6 +225,8 @@ export const createEndlessRunner: LoomaGameFactory = (
     spawnTimer = 0;
     spawnInterval = 1200 / difficultyFactor;
     elapsedMs = 0;
+    activeMs = 0;
+    distanceMeters = 0;
     score = 0;
     shards = [];
     shardPopups = [];
@@ -193,7 +242,7 @@ export const createEndlessRunner: LoomaGameFactory = (
     powerupUsage = { shield: 0, magnet: 0, doubleShards: 0, slowMo: 0, dash: 0, dreamSurge: 0 };
     lastPowerupState = null;
     notifyShardCount();
-    emitPowerupState();
+    publish();
   };
 
   const spawnObstacle = () => {
@@ -417,15 +466,22 @@ const choosePowerupType = (): PowerupType => {
     });
   };
 
-  const endRun = () => {
-    if (!running) return;
-    running = false;
-    cancelAnimationFrame(rafId);
+  const detachInput = () => {
+    canvas.removeEventListener('keydown', keyHandler);
+    canvas.removeEventListener('pointerdown', pointerHandler);
+  };
+  const endRun = (survived = false) => {
+    if (!running || finished || destroyed) return;
+    running = false; finished = true; paused = false;
+    cancelAnimationFrame(rafId); detachInput(); publish();
     const result: LoomaGameResult = {
       score: Math.floor(score),
-      durationMs: elapsedMs,
+      durationMs: Math.floor(activeMs),
       meta: {
         difficulty: difficultyFactor,
+        distance_meters: Math.floor(distanceMeters),
+        simulation_elapsed_ms: Math.floor(elapsedMs),
+        survived_round: survived ? 1 : 0,
         shards: shardsCollected,
         shield_powerups: powerupUsage.shield,
         magnet_powerups: powerupUsage.magnet,
@@ -439,7 +495,7 @@ const choosePowerupType = (): PowerupType => {
   };
 
   const handleJump = () => {
-    if (!running) return;
+    if (!running || paused || finished || destroyed) return;
     if (!isOnGround) return;
     isOnGround = false;
     playerVy = jumpVelocity;
@@ -447,6 +503,7 @@ const choosePowerupType = (): PowerupType => {
   };
 
   const keyHandler = (event: KeyboardEvent) => {
+    if (!running || paused || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.code === 'Space' || event.code === 'ArrowUp') {
       event.preventDefault();
       handleJump();
@@ -454,16 +511,20 @@ const choosePowerupType = (): PowerupType => {
   };
 
   const pointerHandler = (event: PointerEvent) => {
+    if (!running || paused || event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
+    canvas.focus({ preventScroll: true });
     handleJump();
   };
 
   const update = (dt: number) => {
+    activeMs += dt;
     const timeScale = slowMoTimer > 0 ? SLOW_MO_TIME_SCALE : 1;
     const scaledDt = dt * timeScale;
     elapsedMs += scaledDt;
     const surgeSpeedFactor = dreamSurgeTimer > 0 ? DREAM_SURGE_SPEED_FACTOR : 1;
     const speed = baseSpeed * (1 + (elapsedMs / 60000) * difficultyFactor) * surgeSpeedFactor;
+    distanceMeters += speed * scaledDt;
     const scoreMultiplier = dreamSurgeTimer > 0 ? DREAM_SURGE_SCORE_MULTIPLIER : 1;
     score += scaledDt * 0.012 * difficultyFactor * scoreMultiplier;
 
@@ -573,13 +634,19 @@ const choosePowerupType = (): PowerupType => {
     dashTimer = Math.max(0, dashTimer - dt);
     dreamSurgeTimer = Math.max(0, dreamSurgeTimer - dt);
 
-    emitPowerupState();
+    publish();
+    if (activeMs >= maxDurationMs) endRun(true);
   };
 
   const draw = () => {
     const w = canvas.width;
     const h = canvas.height;
     const gY = groundY();
+    const reducedMotion = opts.reducedMotion?.() ?? false;
+    if (drawRunnerLanternway(ctx, { width: w, height: h, groundY: gY, elapsedMs, distanceMeters,
+      playerX, playerY, playerVy, hasShield, shieldPulse, magnetTimer, doubleShardsTimer,
+      slowMoTimer, dashTimer, dreamSurgeTimer, obstacles, shards, powerups, shardPopups
+    }, opts.skinAssets ?? {}, reducedMotion)) return;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -595,7 +662,7 @@ const choosePowerupType = (): PowerupType => {
 
     if (slowMoTimer > 0) {
       ctx.save();
-      const alpha = 0.12 + 0.08 * Math.sin(elapsedMs * 0.01);
+      const alpha = reducedMotion ? 0.12 : 0.12 + 0.08 * Math.sin(elapsedMs * 0.01);
       ctx.fillStyle = `rgba(56, 189, 248, ${Math.min(0.3, Math.max(0.1, alpha))})`;
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
@@ -633,7 +700,7 @@ const choosePowerupType = (): PowerupType => {
     ctx.shadowBlur = 16;
     ctx.fillStyle = '#f97316';
     obstacles.forEach((obstacle) => {
-      const jitter = Math.sin((elapsedMs + obstacle.x) * 0.004) * 5;
+      const jitter = reducedMotion ? 0 : Math.sin((elapsedMs + obstacle.x) * 0.004) * 5;
       const baseY = gY - obstacle.height + jitter;
       ctx.beginPath();
       ctx.moveTo(obstacle.x, baseY + obstacle.height);
@@ -673,7 +740,7 @@ const choosePowerupType = (): PowerupType => {
     ctx.fill();
     ctx.restore();
 
-    const orbitPhase = elapsedMs * 0.005;
+    const orbitPhase = reducedMotion ? 0 : elapsedMs * 0.005;
     const companionX = playerX - 46 + Math.cos(orbitPhase) * 6;
     const companionY = playerY - 56 + Math.sin(orbitPhase) * 6;
     ctx.save();
@@ -699,60 +766,54 @@ const choosePowerupType = (): PowerupType => {
   };
 
   const loop = () => {
-    if (!running) return;
+    if (!running || paused || destroyed) return;
     const now = performance.now();
-    const dt = now - lastTime;
+    const dt = Math.min(MAX_FRAME_MS, Math.max(0, now - lastTime), maxDurationMs - activeMs);
     lastTime = now;
-    if (paused) {
-      rafId = requestAnimationFrame(loop);
-      return;
-    }
     update(dt);
+    if (destroyed) return;
     draw();
-    rafId = requestAnimationFrame(loop);
+    if (running && !paused) rafId = requestAnimationFrame(loop);
   };
 
   const start = () => {
-    if (running) return;
+    if (running || finished || destroyed) return;
     running = true;
     paused = false;
     resetRun();
     lastTime = performance.now();
-    loop();
-    window.addEventListener('keydown', keyHandler);
+    draw();
+    canvas.addEventListener('keydown', keyHandler);
     canvas.addEventListener('pointerdown', pointerHandler);
+    rafId = requestAnimationFrame(loop);
   };
 
   const pause = () => {
-    if (!running) return;
+    if (!running || paused || destroyed) return;
     paused = true;
+    cancelAnimationFrame(rafId);
   };
 
   const resume = () => {
-    if (!running) return;
+    if (!running || !paused || destroyed) return;
     paused = false;
     lastTime = performance.now();
+    rafId = requestAnimationFrame(loop);
   };
 
   const reset = () => {
+    if (destroyed) return;
+    running = false; paused = false; finished = false;
+    cancelAnimationFrame(rafId); detachInput();
     resetRun();
     draw();
   };
 
   const destroy = () => {
-    running = false;
-    paused = false;
-    cancelAnimationFrame(rafId);
-    window.removeEventListener('keydown', keyHandler);
-    canvas.removeEventListener('pointerdown', pointerHandler);
+    if (destroyed) return;
+    destroyed = true; running = false; paused = false;
+    cancelAnimationFrame(rafId); detachInput();
   };
 
-  return {
-    start,
-    pause,
-    resume,
-    reset,
-    destroy,
-    playerJump: handleJump
-  };
+  return { start, pause, resume, reset, destroy, playerJump: handleJump, getState };
 };
