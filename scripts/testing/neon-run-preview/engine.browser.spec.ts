@@ -37,8 +37,9 @@ test('REAL ENGINE: mouse and touchscreen canvas jumps, fixed logical geometry an
   await canvas.click({ position: { x: 20, y: 20 } });
   await expect.poll(() => page.evaluate(() => window.__neonRunFixture.engineState!.onGround)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.__neonRunFixture.engineState!.onGround)).toBe(true);
-  const bounds = await canvas.boundingBox(); if (!bounds) throw new Error('No canvas layout box.');
-  await page.touchscreen.tap(bounds.x + bounds.width * .7, bounds.y + bounds.height * .5);
+  // A tall canvas can extend below the landscape viewport. Let the locator
+  // scroll this point into view before dispatching a real touchscreen tap.
+  await canvas.tap({ position: { x: 20, y: 20 } });
   await expect.poll(() => page.evaluate(() => window.__neonRunFixture.engineState!.onGround)).toBe(false);
   await page.getByRole('button', { name: 'Pause', exact: true }).click(); await phase(page, 'paused');
   const before = await page.evaluate(() => window.__neonRunFixture.readEngineState());

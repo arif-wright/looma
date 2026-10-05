@@ -34,7 +34,7 @@
   :global(button), :global(input) { font: inherit; }
   :global(a) { color: #b7e6d5; }
   :global(.sr-only) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
-  .fixture-note { height: 30px; padding: 8px 4px; color: #9db2bb; text-align: center; font-size: 9px; letter-spacing: .04em; white-space: nowrap; }
+  .fixture-note { display: flex; align-items: center; justify-content: center; height: 30px; padding: 2px 4px; color: #9db2bb; text-align: center; font-size: 9px; line-height: 12px; letter-spacing: .04em; }
   #game-root { position: fixed; inset: 30px 0 0; overflow: auto; }
   .destination { max-width: 700px; margin: 40px auto; padding: 20px; }
 </style>

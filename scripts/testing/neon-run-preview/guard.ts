@@ -23,10 +23,20 @@ export const test = base.extend<{ isolatedGuard: void }>({
 export { expect };
 export async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { body: await page.screenshot({ fullPage: true, animations: 'disabled' }), contentType: 'image/png' });
-  expect(await page.evaluate(() => {
+  const layout = await page.evaluate(() => {
     const shell = document.querySelector('[data-testid="neon-run-game"]');
-    return document.documentElement.scrollWidth <= innerWidth && (!shell || shell.scrollWidth <= shell.clientWidth);
-  }), 'No document or inner-shell horizontal overflow').toBe(true);
+    const note = document.querySelector('.fixture-note');
+    return {
+      documentOverflow: document.documentElement.scrollWidth - innerWidth,
+      shellOverflow: shell ? shell.scrollWidth - shell.clientWidth : 0,
+      ribbonHorizontalOverflow: note ? note.scrollWidth - note.clientWidth : 0,
+      ribbonVerticalOverflow: note ? note.scrollHeight - note.clientHeight : 0
+    };
+  });
+  expect(layout.documentOverflow, 'No document horizontal overflow').toBeLessThanOrEqual(0);
+  expect(layout.shellOverflow, 'No inner-shell horizontal overflow').toBeLessThanOrEqual(0);
+  expect(layout.ribbonHorizontalOverflow, 'Entire fixture ribbon fits horizontally').toBeLessThanOrEqual(0);
+  expect(layout.ribbonVerticalOverflow, 'Entire fixture ribbon fits vertically').toBeLessThanOrEqual(0);
 }
 export const calls = (page: Page, method: string) => page.evaluate((name) => window.__neonRunFixture.calls.filter((call) => call.method === name), method);
 export const phase = (page: Page, value: string) => expect(page.getByTestId('neon-run-game')).toHaveAttribute('data-phase', value);
