@@ -1,4 +1,4 @@
-import { Client, ErrorCode, Room, ServerError } from 'colyseus';
+import { Client, CloseCode, ErrorCode, Room, ServerError } from 'colyseus';
 import { createLogger } from '../log.js';
 import {
   MOVEMENT_MESSAGE,
@@ -24,6 +24,7 @@ import { parsePortalRequest, resolvePortal, PORTAL_COOLDOWN_MS } from '../world/
 import { WORLD_NPCS, npcPositionAt } from '../world/npcs.js';
 
 type ClientRuntime = {
+  loading: boolean;
   leaving: boolean;
   gathering: boolean;
   portalLimiter: SlidingWindowRateLimiter;
@@ -96,6 +97,17 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   private checkpointMs = 15_000;
   private persistence: WorldPersistence | null = null;
   private readonly pendingPersistence = new Set<Promise<void>>();
+  // Includes dropped clients and pending joins, which Colyseus removes from clients
+  // before their asynchronous lifecycle hooks have finished.
+  private readonly activeClients = new Map<string, WorldClient>();
+  private draining = false;
+  private persistenceClosed = false;
+  private readonly shutdownDrainMs = 12_000;
+  private shutdownTask: Promise<void> | null = null;
+  private signalShutdown!: () => void;
+  private readonly shutdownStarted = new Promise<void>((resolve) => { this.signalShutdown = resolve; });
+  private releaseDrain!: () => void;
+  private readonly drainReleased = new Promise<void>((resolve) => { this.releaseDrain = resolve; });
 
   onCreate(options: WorldRoomOptions) {
     this.maxClients = options.maxClients ?? 32;
@@ -120,6 +132,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   async onJoin(client: WorldClient) {
+    if (this.draining) throw new ServerError(CloseCode.SERVER_SHUTDOWN, 'World is restarting');
     const auth = client.auth;
     if (!auth) throw new ServerError(ErrorCode.AUTH_FAILED, 'World authorization failed');
     if (this.clients.some((other) => other !== client && (other.auth as WorldAuth | undefined)?.userId === auth.userId)) {
@@ -140,7 +153,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     this.applyCompanion(player, auth.companion);
     this.state.players.set(client.sessionId, player);
     client.userData = {
-      leaving: false, gathering: false,
+      loading: true, leaving: false, gathering: false,
       portalLimiter: new SlidingWindowRateLimiter(5, 5_000),
       portalResults: new Map(), portalRequestId: null, lastPortalAt: -Infinity, transitionInFlight: null,
       input: { sequence: 0, x: 0, y: 0 },
@@ -156,9 +169,14 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       pendingDiscoveries: new Set<string>(),
       discoveryInFlight: new Map<string, Promise<void>>()
     };
+    this.activeClients.set(client.sessionId, client);
     if (this.persistence) {
       try {
-        const loaded = await this.persistence.load(auth.userId, this.map);
+        const loaded = await Promise.race([
+          this.persistence.load(auth.userId, this.map),
+          this.shutdownStarted.then(() => { throw new ServerError(CloseCode.SERVER_SHUTDOWN, 'World is restarting'); })
+        ]);
+        if (this.draining) throw new ServerError(CloseCode.SERVER_SHUTDOWN, 'World is restarting');
         const loadedMap = loaded.mapId && isWorldMapId(loaded.mapId) ? WORLD_MAPS[loaded.mapId] : this.map;
         player.mapId = loadedMap.id;
         const restoredPosition = isValidWorldPosition(loadedMap, loaded.position) ? loaded.position : loadedMap.spawn;
@@ -167,13 +185,19 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
         client.userData.stateVersion = loaded.stateVersion;
         client.userData.discoveries = new Set([...loaded.discoveries].map((key) => `${player.mapId}:${key}`));
         client.userData.dirty = !loaded.restored;
-      } catch {
+      } catch (error) {
+        if (this.draining) {
+          this.state.players.delete(client.sessionId);
+          this.activeClients.delete(client.sessionId);
+          throw error;
+        }
         player.x = this.map.spawn.x;
         player.y = this.map.spawn.y;
         client.userData.dirty = true;
         this.log.warn('world.persistence.load_failed', { playerId: client.sessionId });
       }
     }
+    client.userData.loading = false;
     player.connected = true;
     this.log.info('world.player.joined', { playerId: client.sessionId, players: this.state.players.size });
   }
@@ -183,8 +207,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     applyPresenceTransition(player, 'drop');
     if (client.userData) client.userData.input = { sequence: client.userData.input.sequence, x: 0, y: 0 };
     this.log.warn('world.player.dropped', { playerId: client.sessionId, code });
-    const checkpoint = this.queueCheckpoint(client, true);
-    if (code === 4002 || code === 4003 || code === 4004) {
+    const checkpoint = this.draining ? this.drainReleased : Promise.race([this.queueCheckpoint(client, true), this.drainReleased]);
+    if (this.draining || code === CloseCode.SERVER_SHUTDOWN || code === 4002 || code === 4003 || code === 4004) {
       await checkpoint;
       this.state.players.delete(client.sessionId);
       return;
@@ -202,6 +226,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   onReconnect(client: WorldClient) {
+    if (this.draining) throw new ServerError(CloseCode.SERVER_SHUTDOWN, 'World is restarting');
+    this.activeClients.set(client.sessionId, client);
     const player = this.state.players.get(client.sessionId);
     applyPresenceTransition(player, 'reconnect');
     this.log.info('world.player.reconnected', { playerId: client.sessionId });
@@ -211,7 +237,8 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     if (client.userData) client.userData.leaving = true;
     const leavingPlayer = this.state.players.get(client.sessionId);
     if (leavingPlayer) leavingPlayer.connected = false;
-    await this.queueCheckpoint(client, true);
+    await (this.draining ? this.drainReleased : Promise.race([this.queueCheckpoint(client, true), this.drainReleased]));
+    this.activeClients.delete(client.sessionId);
     if (applyPresenceTransition(this.state.players.get(client.sessionId), 'leave') === 'remove') {
       this.state.players.delete(client.sessionId);
     }
@@ -219,9 +246,51 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   onBeforeShutdown() {
-    for (const client of this.clients) void this.queueCheckpoint(client as WorldClient, true);
+    if (this.shutdownTask) return this.shutdownTask;
+    this.draining = true;
+    this.signalShutdown();
+    // Colyseus also locks rooms during process shutdown. Lock here as well so
+    // direct lifecycle calls cannot admit a newly reserved seat.
+    void this.lock();
+    for (const client of this.activeClients.values()) {
+      const runtime = client.userData;
+      if (runtime) {
+        runtime.leaving = true;
+        runtime.input = { ...runtime.input, x: 0, y: 0 };
+      }
+      const player = this.state.players.get(client.sessionId);
+      if (player) player.connected = false;
+    }
     this.broadcast('server-shutdown', { retry: true });
-    this.log.info('world.room.shutdown');
+    this.shutdownTask = this.drainAndDisconnect();
+    return this.shutdownTask;
+  }
+
+  private async drainAndDisconnect() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<false>((resolve) => {
+      timer = setTimeout(() => resolve(false), this.shutdownDrainMs);
+    });
+    const drain = (async () => {
+      // queueCheckpoint waits an old save and an already-started portal before
+      // capturing the final position. Never race a final save against travel.
+      await Promise.allSettled([...this.activeClients.values()].map((client) => this.queueCheckpoint(client, true)));
+      while (this.pendingPersistence.size) await Promise.allSettled([...this.pendingPersistence]);
+      return true;
+    })();
+    const completed = await Promise.race([drain, deadline]);
+    clearTimeout(timer);
+    // A deadline is not proof of database cancellation. Fence every continuation
+    // before releasing lifecycle hooks; late results cannot enqueue more writes.
+    // Existing save/travel RPCs still carry the original database CAS version.
+    this.persistenceClosed = true;
+    this.releaseDrain();
+    this.log.info('world.room.shutdown', {
+      drained: completed,
+      pendingWrites: this.pendingPersistence.size,
+      unsavedPlayers: [...this.activeClients.values()].filter((client) => client.userData?.dirty).length
+    });
+    await this.disconnect(CloseCode.SERVER_SHUTDOWN);
   }
 
   onUncaughtException(error: Error, methodName: string) {
@@ -229,7 +298,9 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   async onDispose() {
-    while (this.pendingPersistence.size) await Promise.allSettled([...this.pendingPersistence]);
+    while (!this.persistenceClosed && this.pendingPersistence.size) {
+      await Promise.race([Promise.allSettled([...this.pendingPersistence]), this.drainReleased]);
+    }
   }
 
   private handleMovement(client: WorldClient, value: unknown) {
@@ -258,6 +329,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   private simulate(deltaMs: number) {
+    if (this.draining) return;
     this.state.tick = (this.state.tick + 1) >>> 0;
     this.elapsedMs = (this.elapsedMs + Math.max(0, Math.min(100, Number.isFinite(deltaMs) ? deltaMs : 0)));
     for (const definition of WORLD_NPCS) Object.assign(this.state.npcs.get(definition.id)!, npcPositionAt(definition, this.elapsedMs));
@@ -281,6 +353,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   }
 
   private handleCompanionRefresh(client: WorldClient, value: unknown) {
+    if (this.draining || client.userData?.leaving) return;
     const runtime = client.userData;
     if (!runtime?.companionRefreshLimiter.accept()) {
       client.send(PROTOCOL_ERROR_MESSAGE, { code: 'rate_limited' });
@@ -298,7 +371,14 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     this.applyCompanion(player, result.auth.companion);
   }
 
-  private async handleGather(client: WorldClient, value: unknown) {
+  private handleGather(client: WorldClient, value: unknown) {
+    if (this.draining) return Promise.resolve();
+    const operation = this.performGather(client, value).finally(() => this.pendingPersistence.delete(operation));
+    this.pendingPersistence.add(operation);
+    return operation;
+  }
+
+  private async performGather(client: WorldClient, value: unknown) {
     const runtime = client.userData;
     const player = this.state.players.get(client.sessionId);
     const request = value && typeof value === 'object' && !Array.isArray(value)
@@ -336,7 +416,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     const discoveryKey = `${map.id}:${node.landmarkKey}`;
     runtime.gathering = true;
     await runtime.discoveryInFlight.get(discoveryKey);
-    if (!runtime.discoveries.has(discoveryKey) || !player.connected || runtime.leaving || player.mapId !== map.id) {
+    if (this.persistenceClosed || !runtime.discoveries.has(discoveryKey) || !player.connected || runtime.leaving || player.mapId !== map.id) {
       runtime.gathering = false;
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'unavailable' });
       return;
@@ -350,11 +430,13 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
         y: position.y,
         idempotencyKey: `moonberry:${requestId}`
       });
+      if (this.persistenceClosed) return;
       client.send(GATHER_RESULT_MESSAGE, { requestId, ...result });
       this.log.info('world.gather.completed', {
         playerId: client.sessionId, node: node.key, status: result.status, replayed: result.replayed
       });
     } catch {
+      if (this.persistenceClosed) return;
       client.send(GATHER_RESULT_MESSAGE, { requestId, status: 'failure' });
       this.log.warn('world.gather.failed', { playerId: client.sessionId, node: node.key });
     } finally { runtime.gathering = false; }
@@ -375,7 +457,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   private handlePortal(client: WorldClient, value: unknown) {
     const runtime = client.userData;
     const player = this.state.players.get(client.sessionId);
-    if (!runtime || !player || !player.connected || runtime.leaving) return Promise.resolve();
+    if (this.draining || !runtime || !player || !player.connected || runtime.leaving) return Promise.resolve();
     const permitted = runtime.portalLimiter.accept();
     const request = parsePortalRequest(value);
     if (!request) {
@@ -411,7 +493,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     operation = (async () => {
       // A save captured in the source area must settle before the atomic travel CAS.
       await runtime.saveInFlight;
-      if (!player.connected || runtime.stateVersion < 0 || runtime.leaving || this.state.players.get(client.sessionId) !== player) {
+      if (this.persistenceClosed || !player.connected || runtime.stateVersion < 0 || runtime.leaving || this.state.players.get(client.sessionId) !== player) {
         reply('unavailable'); return;
       }
       if (this.persistence?.travel) {
@@ -419,6 +501,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
           userId: client.auth!.userId, map: sourceMap, portalId: request.portalId,
           x: position.x, y: position.y, expectedStateVersion: runtime.stateVersion
         });
+        if (this.persistenceClosed) return;
         if (!result.ok) {
           runtime.stateVersion = -1;
           reply('unavailable');
@@ -439,6 +522,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       runtime.dirty = false;
       reply('success', target.destination.id);
     })().catch(() => {
+      if (this.persistenceClosed) return;
       runtime.stateVersion = -1;
       reply('unavailable');
       client.leave(4004, 'checkpoint resynchronization required');
@@ -455,12 +539,12 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
   private async queueCheckpoint(client: WorldClient, force: boolean): Promise<void> {
     const runtime = client.userData;
     const player = this.state.players.get(client.sessionId);
-    if (!this.persistence || !runtime || !player || runtime.stateVersion < 0) return;
+    if (this.persistenceClosed || !this.persistence || !runtime || runtime.loading || !player || runtime.stateVersion < 0) return;
     if (runtime.transitionInFlight) await runtime.transitionInFlight;
-    if (runtime.stateVersion < 0) return;
+    if (this.persistenceClosed || runtime.stateVersion < 0) return;
     if (runtime.saveInFlight) {
       await runtime.saveInFlight;
-      if (force && runtime.dirty) await this.queueCheckpoint(client, true);
+      if (!this.persistenceClosed && force && runtime.dirty) await this.queueCheckpoint(client, true);
       return;
     }
     if (!force && !runtime.dirty) return;
@@ -471,6 +555,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
     operation = this.persistence.save({
       userId: client.auth!.userId, map, x: position.x, y: position.y, expectedStateVersion
     }).then((result) => {
+      if (this.persistenceClosed) return;
       if (result.ok) {
         runtime.stateVersion = result.stateVersion;
         runtime.lastCheckpointAt = Date.now();
@@ -482,6 +567,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
         client.leave(4004, 'checkpoint resynchronization required');
       }
     }).catch(() => {
+      if (this.persistenceClosed) return;
       runtime.dirty = true;
       this.log.warn('world.persistence.save_failed', { playerId: client.sessionId });
     }).finally(() => {
@@ -495,7 +581,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
 
   private checkLandmark(client: WorldClient, player: PlayerState) {
     const runtime = client.userData;
-    if (!this.persistence || !runtime) return;
+    if (this.draining || !this.persistence || !runtime) return;
     const map = this.playerMap(player);
     const landmark = landmarkAtPosition(map, player);
     if (!landmark) return;
@@ -511,7 +597,7 @@ export class WorldRoom extends Room<{ state: WorldState; client: WorldClient }> 
       y: player.y,
       idempotencyKey: `world:${map.id}:${map.version}:${landmark.key}`
     }).then(() => {
-      runtime.discoveries.add(discoveryKey);
+      if (!this.persistenceClosed) runtime.discoveries.add(discoveryKey);
     }).catch(() => {
       this.log.warn('world.persistence.discovery_failed', { playerId: client.sessionId, landmark: landmark.key });
     }).finally(() => {

@@ -253,3 +253,97 @@ describe('WorldConnection lifecycle', () => {
     expect(room.leave).toHaveBeenCalledOnce();
   });
 });
+
+describe('WorldConnection graceful restart', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ticket: 'redacted-world-ticket', expiresAt: Date.now() + 30_000
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    vi.stubGlobal('crypto', { randomUUID: () => '123e4567-e89b-42d3-a456-426614174000' });
+  });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('pauses input, fails pending interactions once, and waits for server close before fresh auth', async () => {
+    const { connection, room, statuses, gatherResults, portalResults, onSnapshot, joinOrCreate } = setup();
+    const replacement = makeRoom();
+    await connection.connect();
+    connection.gatherMoonberry(); connection.enterPortal('grove-to-hollow');
+    room.emitMessage('server-shutdown', { retry: true });
+    room.emitMessage('server-shutdown', { retry: true });
+    expect(statuses.at(-1)).toBe('reconnecting');
+    expect(room.reconnection.maxRetries).toBe(0);
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    const sentBefore = room.send.mock.calls.length;
+    connection.sendMovement({ sequence: 8, x: 1, y: 0 });
+    room.onReconnect.emit(); room.onStateChange.emit(room.state);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(room.send).toHaveBeenCalledTimes(sentBefore);
+    expect(onSnapshot).toHaveBeenCalledOnce();
+    expect(joinOrCreate).toHaveBeenCalledOnce();
+    joinOrCreate.mockResolvedValueOnce(replacement);
+    room.onLeave.emit(4001); room.onLeave.emit(4001);
+    expect(joinOrCreate).toHaveBeenCalledOnce();
+    await vi.runOnlyPendingTimersAsync();
+    expect(joinOrCreate).toHaveBeenCalledTimes(2);
+    expect(statuses.at(-1)).toBe('connected');
+    expect(replacement.send).not.toHaveBeenCalled();
+    expect(gatherResults).toHaveLength(1); expect(portalResults).toHaveLength(1);
+    connection.destroy();
+  });
+
+  it('recovers from close code 4001 even when the shutdown notice was lost', async () => {
+    const { connection, room, statuses, joinOrCreate, gatherResults } = setup();
+    await connection.connect(); connection.gatherMoonberry();
+    const replacement = makeRoom(); joinOrCreate.mockResolvedValueOnce(replacement);
+    room.onLeave.emit(4001);
+    expect(statuses.at(-1)).toBe('reconnecting');
+    await vi.runOnlyPendingTimersAsync();
+    expect(joinOrCreate).toHaveBeenCalledTimes(2);
+    expect(statuses.at(-1)).toBe('connected');
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    expect(replacement.send).not.toHaveBeenCalled();
+    connection.destroy();
+  });
+
+  it('does not send a delayed companion refresh after shutdown or into the replacement room', async () => {
+    const { connection, room, joinOrCreate } = setup();
+    await connection.connect();
+    let finishRefresh!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise((resolve) => { finishRefresh = resolve; }));
+    room.onReconnect.emit();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    room.emitMessage('server-shutdown', { retry: true }); room.onLeave.emit(4001);
+    const replacement = makeRoom(); joinOrCreate.mockResolvedValueOnce(replacement);
+    await vi.runOnlyPendingTimersAsync();
+    finishRefresh(new Response(JSON.stringify({ ticket: 'stale-ticket' }), { status: 200 }));
+    await Promise.resolve(); await Promise.resolve();
+    expect(room.send).not.toHaveBeenCalled();
+    expect(replacement.send).not.toHaveBeenCalled();
+    connection.destroy();
+  });
+
+  it('cancels restart recovery on navigation and ignores obsolete room notices', async () => {
+    const { connection, room, statuses, joinOrCreate } = setup();
+    await connection.connect();
+    room.emitMessage('server-shutdown', { retry: true }); room.onLeave.emit(4001);
+    connection.destroy();
+    await vi.runOnlyPendingTimersAsync();
+    room.onReconnect.emit(); room.emitMessage('server-shutdown', { retry: true });
+    expect(joinOrCreate).toHaveBeenCalledOnce();
+    expect(statuses.at(-1)).toBe('reconnecting');
+  });
+
+  it('requires a page refresh when fresh restart authorization rejects the old protocol', async () => {
+    const { connection, room, diagnostics, joinOrCreate } = setup();
+    await connection.connect();
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 409 }));
+    room.emitMessage('server-shutdown', { retry: true }); room.onLeave.emit(4001);
+    await vi.runOnlyPendingTimersAsync();
+    expect(diagnostics.at(-1)).toEqual({ code: 'client_outdated' });
+    expect(joinOrCreate).toHaveBeenCalledOnce();
+    connection.destroy();
+  });
+});

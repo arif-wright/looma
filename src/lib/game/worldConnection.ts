@@ -56,6 +56,7 @@ export class WorldConnection {
   }
 
   async connect(recovering = false) {
+    if (this.stopped) return;
     this.setStatus(recovering ? 'reconnecting' : 'connecting');
     let phase: 'ticket' | 'join' | 'setup' = 'ticket';
     let failureReported = false;
@@ -97,7 +98,20 @@ export class WorldConnection {
       // server-side reconnection grace period.
       room.reconnection.maxRetries = 15;
       room.reconnection.maxDelay = 1_000;
-      room.onStateChange((state) => { if (this.room === room) this.publishSnapshot(state); });
+      let shuttingDown = false;
+      const pauseForShutdown = () => {
+        if (this.room !== room || this.stopped || shuttingDown) return;
+        shuttingDown = true;
+        this.connected = false;
+        // This room is being disposed; its token cannot restore a fresh process.
+        room.reconnection.maxRetries = 0;
+        this.clearRefreshTimer();
+        this.failPendingPortal();
+        this.failPendingGathers();
+        this.setStatus('reconnecting');
+      };
+      room.onMessage('server-shutdown', pauseForShutdown);
+      room.onStateChange((state) => { if (this.room === room && !shuttingDown) this.publishSnapshot(state); });
       room.onMessage(PORTAL_RESULT_MESSAGE, (result: PortalResult) => {
         if (this.room !== room || this.stopped || !result || result.requestId !== this.pendingPortal?.requestId) return;
         if (!['success', 'out_of_range', 'cooldown', 'unavailable', 'failure'].includes(result.status)) return;
@@ -120,7 +134,7 @@ export class WorldConnection {
         }
       });
       room.onReconnect(() => {
-        if (this.room !== room) return;
+        if (this.room !== room || shuttingDown) return;
         this.connected = true;
         if (!this.stopped) {
           this.recoveryAttempt = 0;
@@ -136,12 +150,16 @@ export class WorldConnection {
         this.connected = false;
         if (!this.stopped) {
           this.log('onLeave', { code });
+          if (code === 4001) pauseForShutdown();
           this.failPendingPortal();
           if ((this.status === 'reconnecting' || code === 4004) && !this.recoveryAttempted) {
             this.recoveryAttempted = true;
             this.room = null;
             this.clearRefreshTimer();
             this.log('fresh session recovery');
+            // Let the replacement process become healthy before fresh auth. Never
+            // replay an uncertain portal or reward request across a restart.
+            if (shuttingDown && this.scheduleRecovery()) return;
             void this.connect(true);
             return;
           }
@@ -291,10 +309,12 @@ export class WorldConnection {
 
   private async refreshCompanion() {
     if (!this.connected || !this.room || this.stopped) return;
+    const room = this.room;
     try {
       const response = await fetch('/api/world/ticket', {
         method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json', 'x-world-protocol': String(WORLD_PROTOCOL_VERSION) }
       });
+      if (this.room !== room || !this.connected || this.stopped) return;
       if (response.status === 409) { this.rejectOutdatedClient(); return; }
       if (response.status === 401 || response.status === 403) {
         this.setStatus('unauthorized');
@@ -302,8 +322,8 @@ export class WorldConnection {
       }
       if (!response.ok) return;
       const credential = await response.json() as TicketResponse;
-      if (typeof credential.ticket === 'string') {
-        this.room.send(COMPANION_REFRESH_MESSAGE, { ticket: credential.ticket });
+      if (typeof credential.ticket === 'string' && this.room === room && this.connected && !this.stopped) {
+        room.send(COMPANION_REFRESH_MESSAGE, { ticket: credential.ticket });
       }
     } catch {
       // Companion refresh is best-effort and must not interrupt movement.

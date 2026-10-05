@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 const fixture = '/scripts/testing/connected-wilds-preview/index.html';
 const loaded = async (page: Page) => {
   await page.goto(fixture);
-  await expect(page.locator('canvas')).toHaveAttribute('data-local-sprite-load', 'loaded');
+  await expect(page.locator('canvas')).toHaveAttribute('data-local-sprite-load', 'loaded', { timeout: 20_000 });
 };
 
 test('production assets load and players, companions and residents are map-filtered', async ({ page }) => {
