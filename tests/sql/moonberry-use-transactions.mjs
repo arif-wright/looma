@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Session, literal as q, identifier } from './helpers/native-postgres.mjs';
-import { bootstrap, candidatePath, sha256 } from './helpers/moonberry-use-fixture.mjs';
+import { bootstrap, candidatePath, sha256, configureHardenedPreferences } from './helpers/moonberry-use-fixture.mjs';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 assert.equal(process.env.MEMVOYA_PG_TEST_ONLY, '1', 'Native tests require an explicit disposable-cluster guard');
 assert.match(process.env.MEMVOYA_MOONBERRY_CLUSTER_ROOT || '', /^\/tmp\/mv-moonberry-native-[a-zA-Z0-9]+$/);
@@ -19,7 +19,7 @@ assert.equal(process.env.PGPASSFILE, '/dev/null');
 assert.match(process.env.PSQL_BIN, /\/postgresql\/17\/bin\/psql$/);
 const database = `memvoya_moonberry_${randomUUID().replaceAll('-', '')}`;
 const report = { status: 'RUNNING', startedAt: new Date().toISOString(), database, checks: [], failures: [], blockingEvidence: [], sessions: [],
-  limitations: ['Synthetic consent schema is an explicit test fixture, not a verified hosted migration.', 'Native ACL/RLS checks do not replace hosted PostgREST authentication or UI acceptance.', 'Existing gather consent behavior is outside this candidate.', 'Ordinary archive-window filtering is application-level and not asserted by this SQL suite.'] };
+  limitations: ['Observed consent defaults/nullability reproduced synthetically; this is not a hosted migration or authenticated acceptance.', 'Native ACL/RLS checks do not replace hosted PostgREST authentication or UI acceptance.', 'Existing gather consent behavior is outside this candidate.', 'Ordinary archive-window filtering is application-level and not asserted by this SQL suite.'] };
 const sessions = new Set();
 let observer, admin, activeScenario;
 const connect = async (name, db = database) => { const s = new Session(db, `moonberry:${name}`); sessions.add(s); await s.init(); report.sessions.push({ name, backendPid: s.pid, clientPid: s.child.pid }); return s; };
@@ -66,9 +66,11 @@ async function fixture(quantity = 1, preference = 'enabled') {
       FROM public.item_catalog WHERE item_key='world-moonberry';
     INSERT INTO public.world_landmark_discoveries(user_id,landmark_id,map_id,map_version,idempotency_key)
       SELECT ${q(f.owner)},id,map_id,map_version,${q(randomUUID())} FROM public.world_landmarks WHERE landmark_key='moonberry-grove';`, { failFast: true });
-  if (preference !== 'absent') {
+  if (preference === 'default') {
+    await observer.exec(`INSERT INTO public.user_preferences(user_id) VALUES (${q(f.owner)});`, { failFast: true });
+  } else if (preference !== 'absent') {
     const memory = preference === 'enabled' || preference === 'reaction-off' ? 'true' : preference === 'null' ? 'null' : 'false';
-    const reaction = preference === 'enabled' ? 'true' : preference === 'null' ? 'null' : 'false';
+    const reaction = preference === 'enabled' ? 'true' : 'false';
     await observer.exec(`INSERT INTO public.user_preferences(user_id,consent_memory,consent_reactions) VALUES (${q(f.owner)},${memory},${reaction});`, { failFast: true });
   }
   return f;
@@ -103,14 +105,57 @@ try {
   const preflight = candidate.slice(0, firstEnd);
   await test('rollout preflight rejects absent, partial and incorrectly typed consent columns', async () => {
     await assert.rejects(observer.exec(preflight), e => e.code === 'P0001' && (e.primaryMessage ?? e.message).includes('moonberry_use_requires_verified_consent_schema'));
-    await observer.exec('ALTER TABLE public.user_preferences ADD COLUMN consent_memory boolean;', { failFast: true });
+    await observer.exec('ALTER TABLE public.user_preferences ADD COLUMN consent_memory boolean DEFAULT true;', { failFast: true });
     await assert.rejects(observer.exec(preflight), e => e.code === 'P0001');
     await observer.exec('ALTER TABLE public.user_preferences ADD COLUMN consent_reactions text;', { failFast: true });
     await assert.rejects(observer.exec(preflight), e => e.code === 'P0001');
-    await observer.exec('ALTER TABLE public.user_preferences DROP COLUMN consent_reactions; ALTER TABLE public.user_preferences ADD COLUMN consent_reactions boolean;', { failFast: true });
+    await observer.exec('ALTER TABLE public.user_preferences DROP COLUMN consent_reactions; ALTER TABLE public.user_preferences ADD COLUMN consent_reactions boolean NOT NULL DEFAULT true;', { failFast: true });
     assert.equal((await observer.rows("SELECT count(*)::int AS count FROM pg_namespace WHERE nspname='item_use_internal'"))[0].count, 0);
   });
+  await configureHardenedPreferences(observer, report);
   await observer.exec(candidate, { failFast: true });
+  await test('hardened baseline denies protected writes and table administration without broad grants', async () => {
+    const protectedColumns = ['role','moderation_status','moderation_until'];
+    const roles = ['anon','authenticated'];
+    for (const role of roles) {
+      for (const privilege of ['INSERT','UPDATE']) {
+        assert.equal(await scalar(observer, `SELECT has_table_privilege(${q(role)},'public.user_preferences',${q(privilege)})`), false);
+        for (const column of protectedColumns) assert.equal(await scalar(observer, `SELECT has_column_privilege(${q(role)},'public.user_preferences',${q(column)},${q(privilege)})`), false);
+      }
+      for (const table of ['user_preferences','user_items','item_catalog','companions','companion_journal_entries','world_events']) {
+        for (const privilege of ['TRUNCATE','TRIGGER']) assert.equal(await scalar(observer, `SELECT has_table_privilege(${q(role)},${q('public.'+table)},${q(privilege)})`), false);
+      }
+    }
+    for (const column of ['user_id','start_on','consent_memory','consent_reactions']) {
+      for (const privilege of ['INSERT','UPDATE']) assert.equal(await scalar(observer, `SELECT has_column_privilege('authenticated','public.user_preferences',${q(column)},${q(privilege)})`), true);
+    }
+    for (const column of protectedColumns) assert.equal(await scalar(observer, `SELECT has_column_privilege('service_role','public.user_preferences',${q(column)},'UPDATE')`), true);
+    const columns = await observer.rows("SELECT column_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='user_preferences' AND column_name IN ('consent_memory','consent_reactions') ORDER BY column_name");
+    assert.deepEqual(columns, [
+      {column_name:'consent_memory',is_nullable:'YES',column_default:'true'},
+      {column_name:'consent_reactions',is_nullable:'NO',column_default:'true'}
+    ]);
+    return { columns, noUnsafeGrantsAdded: true };
+  });
+  await test('ordinary preference upserts and service moderation writes survive the hardened fixture', async session => {
+    const f = await fixture(1,'absent'); const s = await session('ordinary'), service = await session('service'); await actor(s,f.owner);
+    const upsert = value => `INSERT INTO public.user_preferences(user_id,consent_memory,consent_reactions) VALUES (${q(f.owner)},${value},${value}) ON CONFLICT(user_id) DO UPDATE SET consent_memory=EXCLUDED.consent_memory,consent_reactions=EXCLUDED.consent_reactions;`;
+    await s.exec(upsert('true'), { failFast: true }); await s.exec(upsert('false'), { failFast: true });
+    assert.deepEqual(await s.rows(`SELECT consent_memory,consent_reactions FROM public.user_preferences WHERE user_id=${q(f.owner)}`), [{consent_memory:false,consent_reactions:false}]);
+    for (const assignment of ["role='admin'","moderation_status='active'","moderation_until=null"]) await assert.rejects(s.exec(`UPDATE public.user_preferences SET ${assignment} WHERE user_id=${q(f.owner)}`), e => e.code==='42501');
+    const another = await fixture(1,'absent'); await actor(s,another.owner);
+    await assert.rejects(s.exec(`INSERT INTO public.user_preferences(user_id,moderation_status) VALUES (${q(another.owner)},'active')`), e => e.code==='42501');
+    await actor(s,f.owner); await assert.rejects(s.exec(`UPDATE public.user_preferences SET consent_reactions=null WHERE user_id=${q(f.owner)}`), e => e.code==='23502');
+    await actor(service,f.owner,'service_role'); await service.exec(`UPDATE public.user_preferences SET moderation_status='muted',moderation_until=now()+interval '1 day' WHERE user_id=${q(f.owner)}`, { failFast: true });
+    assert.equal((await observer.rows(`SELECT moderation_status FROM public.user_preferences WHERE user_id=${q(f.owner)}`))[0].moderation_status,'muted');
+    const result = await use(s,f); assert.equal(result.status,'shared'); assert.equal('reaction' in result,false); assert.equal((await counts(f)).memories,0);
+  });
+  await test('existing stored true defaults enable memory and reaction without implying explicit opt-in', async session => {
+    const f = await fixture(1,'default'); const s=await session('user'); await actor(s,f.owner);
+    const result=await use(s,f); assert.equal(result.status,'shared'); assert.equal(result.reaction,'Hazel receives it gently.');
+    assert.equal((await counts(f)).memories,1); assert.equal((await story(s,f.item)).length,1);
+    return { policy:'Existing stored true preference semantics; defaults are not proof of explicit human opt-in.' };
+  });
   await test('one share preserves exact acquisition and every unrelated progression field', async session => {
     const f = await fixture(); const s = await session('user'); await actor(s, f.owner);
     const before = await inventory(f), effects = await sideEffects(f);

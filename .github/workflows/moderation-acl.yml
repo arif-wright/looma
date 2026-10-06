@@ -1,0 +1,146 @@
+name: Moderation ACL review verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/server/moderation/**'
+      - 'src/routes/api/messenger/messages/**'
+      - 'src/routes/api/circles/detail/**'
+      - 'src/routes/api/friends/list/**'
+      - 'src/routes/api/moderation/**'
+      - 'scripts/sql/moderation-acl-*'
+      - 'scripts/testing/moderation-acl.test.cjs'
+      - 'scripts/ci/moderation-acl-*'
+      - 'tests/sql/moderation-acl-*'
+      - 'docs/moderation-acl-hardening.md'
+      - 'package*.json'
+      - '*config*'
+      - '.github/workflows/moderation-acl.yml'
+
+# Review/test only. No application deployment or hosted database connection.
+permissions:
+  contents: read
+concurrency:
+  group: moderation-acl-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  application-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record exact candidate and verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moderation-acl/application
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Credential-free source checks and build only. No deployment or hosted acceptance.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z src scripts tests supabase/migrations package.json package-lock.json '*config*' .github/workflows/moderation-acl.yml | xargs -0 sha256sum
+          } > test-results/moderation-acl/application/source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install and prepare application
+        id: dependencies
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npx svelte-kit sync
+      - name: Moderation expiry and source regressions
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          node --test scripts/testing/moderation-acl.test.cjs 2>&1 | tee test-results/moderation-acl/application/moderation-source.tap
+      - name: Full unit suite
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          VITEST=true npm run test -- --run --pool=forks --maxWorkers=1 --minWorkers=1 --reporter=default --reporter=json --outputFile=test-results/moderation-acl/application/unit-results.json 2>&1 | tee test-results/moderation-acl/application/unit.log
+      - name: Full application check
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run check 2>&1 | tee test-results/moderation-acl/application/check.log
+      - name: Core TypeScript check
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run check:core 2>&1 | tee test-results/moderation-acl/application/core.log
+      - name: Production bundle build only
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee test-results/moderation-acl/application/build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moderation-acl-application-${{ github.event.pull_request.head.sha }}
+          path: test-results/moderation-acl/application/
+          if-no-files-found: error
+          retention-days: 14
+
+  native-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record isolated native verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moderation-acl/native
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Synthetic data in a new private Unix-socket PostgreSQL 17 cluster only.'
+            echo 'No TCP listener, hosted connection, production migration or deployment.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z tests/sql/moderation-acl-* scripts/sql/moderation-acl-* scripts/testing/moderation-acl.test.cjs scripts/ci/moderation-acl-verify.mjs docs/moderation-acl-hardening.md .github/workflows/moderation-acl.yml | xargs -0 sha256sum
+          } > test-results/moderation-acl/native/source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install official PostgreSQL 17 binaries without a default cluster
+        run: |
+          set -euo pipefail
+          # Official PGDG packages: https://www.postgresql.org/download/linux/ubuntu/
+          # Installation only. The unprivileged guarded launcher owns its own cluster.
+          sudo install -d /usr/share/postgresql-common/pgdg /etc/postgresql-common
+          sudo curl --fail --show-error --silent --location https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main\n' | sudo tee /etc/apt/sources.list.d/moderation-acl-pgdg.list > /dev/null
+          printf '\ncreate_main_cluster = false\n' | sudo tee -a /etc/postgresql-common/createcluster.conf > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-17 postgresql-client-17 iproute2
+          test ! -d /var/lib/postgresql/17/main
+          dpkg-query -W postgresql-17 postgresql-client-17 libpq5 > test-results/moderation-acl/native/packages.txt
+      - name: Validate native runner safety guards
+        run: |
+          set -euo pipefail
+          node --check scripts/ci/moderation-acl-verify.mjs
+          node scripts/ci/moderation-acl-verify.mjs --self-test
+      - name: Run isolated ACL, RLS, preservation and rollback regressions
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" node scripts/ci/moderation-acl-verify.mjs 2>&1 | tee test-results/moderation-acl/native/launcher.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moderation-acl-native-${{ github.event.pull_request.head.sha }}
+          path: test-results/moderation-acl/native/
+          if-no-files-found: error
+          retention-days: 14

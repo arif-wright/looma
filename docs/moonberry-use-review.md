@@ -1,6 +1,8 @@
 # Moonberry snack: local candidate and verification contract
 
-Base: main `160b0a15a59befd2fa085b2a5384954f1efcaba5` (2026-10-06).
+**Integration update (2026-10-06):** see [the release plan](moonberry-use-release-plan.md) for reconciliation with security main, 32 required native scenarios, observed consent semantics, and current approval gates. The original blocked-run sections below are historical.
+
+Original base: main `160b0a15a59befd2fa085b2a5384954f1efcaba5` (2026-10-06).
 This is a review candidate. Publication and credential-free GitHub verification are separate from rollout; no hosted migration, production data access, merge, or deployment is part of this candidate.
 
 ## Minimal slice
@@ -11,7 +13,7 @@ The final unit leaves quantity zero in the same user_items row. Zero is valid on
 
 The RPC shares the existing fixed grove gather lock. A per-owner request UUID binds the exact item and chosen companion and persists both successful and depleted terminal results. A receipt replay never decrements again or recreates a removed/disabled Journal entry. Receipt quantity describes that event; the UI reloads current collection state rather than treating it as a current balance.
 
-Memory is saved only when an existing authoritative preferences row explicitly has consent_memory=true. A row lock serializes an existing preference update. An absent preference means no memory for this action, avoiding a first-preference opt-out race. Missing consent schema is a rollout blocker; no permissive fallback is supplied. Reaction-off suppresses expressive response. The private receipt stores no journal text or memory ID and does not expose old memory on replay. The ordinary story read retains consent and archive-window controls.
+Memory is saved only when an existing authoritative preferences row has a stored consent_memory=true value (which may be defaulted and does not prove explicit human opt-in). A row lock serializes an existing preference update. An absent preference means no memory for this action, avoiding a first-preference opt-out race. Missing consent schema is a rollout blocker; no permissive fallback is supplied. Reaction-off suppresses expressive response. The private receipt stores no journal text or memory ID and does not expose old memory on replay. The ordinary story read retains consent and archive-window controls.
 
 ## Required tests
 
@@ -27,7 +29,7 @@ Memory is saved only when an existing authoritative preferences row explicitly h
 
 ## Release boundary
 
-Standalone candidate SQL is under scripts/sql, not an applied/generated migration. The production user_preferences consent columns have no complete source migration in this checkout, so a future approved rollout needs explicit schema reconciliation. Existing gather/rest writers' consent behavior is outside this slice. This candidate must not be called production verified without separately authorized hosted schema/ACL review and authenticated end-to-end acceptance.
+Standalone candidate SQL is under scripts/sql, not an applied/generated migration. The production consent columns were verified by a separate catalog review; no addition or backfill is needed there. The checkout still lacks their complete authoritative migration history, so other environments must fail closed unless their schema is independently reconciled. Existing gather/rest writers' consent behavior is outside this slice. This candidate must not be called production verified without separately authorized hosted schema/ACL review and authenticated end-to-end acceptance.
 
 ## Review refinements
 

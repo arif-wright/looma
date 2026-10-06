@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { serviceClient } from '$lib/server/admin';
-import { MODERATION_CACHE_HEADERS, requireModerator } from '$lib/server/moderation';
+import { MODERATION_CACHE_HEADERS, effectiveModerationState, requireModerator } from '$lib/server/moderation';
 import { parseCaseStatus } from '$lib/server/moderation/cases';
 
 type ModerationCaseRow = {
@@ -174,10 +174,7 @@ export const GET: RequestHandler = async (event) => {
   const senderModeration = new Map(
     (senderPrefs ?? []).map((row) => [
       row.user_id as string,
-      {
-        status: (row.moderation_status as string | null) ?? 'active',
-        until: (row.moderation_until as string | null) ?? null
-      }
+      effectiveModerationState(row)
     ])
   );
 

@@ -1,5 +1,7 @@
 # Moonberry share: independent SQL review and native verification status
 
+**Historical review:** the published original head later passed 29 native scenarios in isolated GitHub CI. The security-reconciled local candidate now requires 32 scenarios and has not run natively. See [the current release plan](moonberry-use-release-plan.md); the original evidence below is preserved.
+
 Reviewed 2026-10-06 against the local candidate based on main
 `160b0a15a59befd2fa085b2a5384954f1efcaba5`. SQL candidate SHA-256:
 `84732dbc9f0bbd328f400d6c6d5a3f1786df7fb69ef0b9330c7890bfd7aa621f`.
@@ -54,7 +56,7 @@ These do not parse or execute candidate SQL. Evidence is in
   still conflicts with concurrent target update/deletion. No new writes to
   progression, care, bond, wallet or achievement tables appear in the function.
 - Existing consent rows are locked `FOR SHARE` before decrement, receipt and
-  optional Journal insertion. Explicit true is required; absent or null rows
+  optional Journal insertion. Stored true is required (including a defaulted true value); absent or null rows
   do not create a memory/reaction. A first-time concurrent preferences insert
   cannot create memory for a call that observed no preferences row.
 - The function has no exception handler swallowing write errors. Receipt or
