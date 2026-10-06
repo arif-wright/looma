@@ -142,11 +142,11 @@ try {
     const upsert = value => `INSERT INTO public.user_preferences(user_id,consent_memory,consent_reactions) VALUES (${q(f.owner)},${value},${value}) ON CONFLICT(user_id) DO UPDATE SET consent_memory=EXCLUDED.consent_memory,consent_reactions=EXCLUDED.consent_reactions;`;
     await s.exec(upsert('true'), { failFast: true }); await s.exec(upsert('false'), { failFast: true });
     assert.deepEqual(await s.rows(`SELECT consent_memory,consent_reactions FROM public.user_preferences WHERE user_id=${q(f.owner)}`), [{consent_memory:false,consent_reactions:false}]);
-    for (const assignment of ["role='admin'","moderation_status='active'","moderation_until=null"]) await assert.rejects(s.exec(`UPDATE public.user_preferences SET ${assignment} WHERE user_id=${q(f.owner)}`), e => e.code==='42501');
+    for (const assignment of ["role='admin'","moderation_status='active'","moderation_until=null"]) await assert.rejects(s.exec(`UPDATE public.user_preferences SET ${assignment} WHERE user_id=${q(f.owner)};`), e => e.code==='42501');
     const another = await fixture(1,'absent'); await actor(s,another.owner);
-    await assert.rejects(s.exec(`INSERT INTO public.user_preferences(user_id,moderation_status) VALUES (${q(another.owner)},'active')`), e => e.code==='42501');
-    await actor(s,f.owner); await assert.rejects(s.exec(`UPDATE public.user_preferences SET consent_reactions=null WHERE user_id=${q(f.owner)}`), e => e.code==='23502');
-    await actor(service,f.owner,'service_role'); await service.exec(`UPDATE public.user_preferences SET moderation_status='muted',moderation_until=now()+interval '1 day' WHERE user_id=${q(f.owner)}`, { failFast: true });
+    await assert.rejects(s.exec(`INSERT INTO public.user_preferences(user_id,moderation_status) VALUES (${q(another.owner)},'active');`), e => e.code==='42501');
+    await actor(s,f.owner); await assert.rejects(s.exec(`UPDATE public.user_preferences SET consent_reactions=null WHERE user_id=${q(f.owner)};`), e => e.code==='23502');
+    await actor(service,f.owner,'service_role'); await service.exec(`UPDATE public.user_preferences SET moderation_status='muted',moderation_until=now()+interval '1 day' WHERE user_id=${q(f.owner)};`, { failFast: true });
     assert.equal((await observer.rows(`SELECT moderation_status FROM public.user_preferences WHERE user_id=${q(f.owner)}`))[0].moderation_status,'muted');
     const result = await use(s,f); assert.equal(result.status,'shared'); assert.equal('reaction' in result,false); assert.equal((await counts(f)).memories,0);
   });
