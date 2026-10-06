@@ -40,7 +40,9 @@ export type WorldSnapshot = {
 };
 export type GatherResult = {
   requestId: string;
-  status: 'success' | 'cooldown' | 'inventory_full' | 'out_of_range' | 'unavailable' | 'failure';
+  // `unconfirmed` is a client-only outcome after transport loss or a timeout.
+  // It is not accepted from the wire and does not imply server cancellation.
+  status: 'success' | 'cooldown' | 'inventory_full' | 'out_of_range' | 'unavailable' | 'failure' | 'unconfirmed';
   itemTitle?: string;
   quantity?: number;
   cooldownUntil?: string | null;

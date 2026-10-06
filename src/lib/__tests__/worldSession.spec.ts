@@ -45,3 +45,27 @@ describe('renderer-neutral WorldSession', () => {
     expect(onDiagnostic).toHaveBeenCalledWith({ code: 'configuration_missing' });
   });
 });
+
+describe('renderer-neutral gather lifecycle', () => {
+  it('forwards accepted starts and results, while gating inactive and destroyed input', () => {
+    const onGatherStart = vi.fn(); const onGatherResult = vi.fn();
+    const connection = { connect: vi.fn(), sendMovement: vi.fn(), gatherMoonberry: vi.fn(), destroy: vi.fn() };
+    let callbacks: any;
+    const session = new WorldSession('wss://world.test', {
+      onStatus: vi.fn(), onDiagnostic: vi.fn(), onGatherStart, onGatherResult
+    }, (_url, events) => { callbacks = events; return connection; });
+    session.gatherMoonberry(); session.start(); session.gatherMoonberry();
+    expect(connection.gatherMoonberry).not.toHaveBeenCalled();
+    callbacks.onStatus('connected'); session.gatherMoonberry();
+    expect(connection.gatherMoonberry).toHaveBeenCalledOnce();
+    // An input intent does not itself claim the transport accepted it.
+    expect(onGatherStart).not.toHaveBeenCalled();
+    callbacks.onGatherStart(); expect(onGatherStart).toHaveBeenCalledOnce();
+    const result = { requestId: 'synthetic', status: 'success' };
+    callbacks.onGatherResult(result); expect(onGatherResult).toHaveBeenCalledWith(result);
+    callbacks.onStatus('reconnecting'); session.gatherMoonberry();
+    callbacks.onStatus('unauthorized'); session.gatherMoonberry();
+    callbacks.onStatus('connected'); session.destroy(); session.gatherMoonberry();
+    expect(connection.gatherMoonberry).toHaveBeenCalledOnce();
+  });
+});

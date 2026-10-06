@@ -39,6 +39,7 @@ const setup = () => {
   const room = makeRoom();
   const statuses: ConnectionStatus[] = [];
   const gatherResults: GatherResult[] = [];
+  const onGatherStart = vi.fn();
   const portalResults: PortalResult[] = [];
   const onSnapshot = vi.fn();
   const diagnostics: Array<ConnectionDiagnostic | null> = [];
@@ -47,10 +48,11 @@ const setup = () => {
     onStatus: (status) => statuses.push(status),
     onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
     onSnapshot,
+    onGatherStart,
     onPortalResult: (result) => portalResults.push(result),
     onGatherResult: (result) => gatherResults.push(result)
   }, { createClient: () => ({ joinOrCreate }) as never, debug: false, recoveryDelaysMs: [0, 0] });
-  return { connection, room, statuses, diagnostics, gatherResults, portalResults, onSnapshot, joinOrCreate };
+  return { connection, room, statuses, diagnostics, gatherResults, portalResults, onSnapshot, onGatherStart, joinOrCreate };
 };
 
 describe('WorldConnection lifecycle', () => {
@@ -273,7 +275,7 @@ describe('WorldConnection graceful restart', () => {
     room.emitMessage('server-shutdown', { retry: true });
     expect(statuses.at(-1)).toBe('reconnecting');
     expect(room.reconnection.maxRetries).toBe(0);
-    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unconfirmed' })]);
     expect(portalResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
     const sentBefore = room.send.mock.calls.length;
     connection.sendMovement({ sequence: 8, x: 1, y: 0 });
@@ -303,7 +305,7 @@ describe('WorldConnection graceful restart', () => {
     await vi.runOnlyPendingTimersAsync();
     expect(joinOrCreate).toHaveBeenCalledTimes(2);
     expect(statuses.at(-1)).toBe('connected');
-    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unavailable' })]);
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unconfirmed' })]);
     expect(replacement.send).not.toHaveBeenCalled();
     connection.destroy();
   });
@@ -345,5 +347,131 @@ describe('WorldConnection graceful restart', () => {
     expect(diagnostics.at(-1)).toEqual({ code: 'client_outdated' });
     expect(joinOrCreate).toHaveBeenCalledOnce();
     connection.destroy();
+  });
+});
+
+describe('WorldConnection bounded Moonberry interactions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    let nextId = 0;
+    vi.stubGlobal('crypto', { randomUUID: () => `123e4567-e89b-42d3-a456-${String(++nextId).padStart(12, '0')}` });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ticket: 'synthetic-ticket', expiresAt: Date.now() + 30_000
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+  });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+  const gathers = (room: ReturnType<typeof makeRoom>) => room.send.mock.calls.filter(([type]) => type === 'gather');
+
+  it('accepts only one pending intent across repeated keyboard and button callers', async () => {
+    const { connection, room, onGatherStart, gatherResults } = setup();
+    await connection.connect();
+    // Both input paths use this same transport entry point.
+    connection.gatherMoonberry(); connection.gatherMoonberry(); connection.gatherMoonberry();
+    expect(gathers(room)).toHaveLength(1); expect(onGatherStart).toHaveBeenCalledOnce();
+    const request = gathers(room)[0][1];
+    room.emitMessage('gather-result', { ...request, status: 'success', quantity: 1 });
+    expect(gatherResults).toHaveLength(1);
+    connection.gatherMoonberry();
+    expect(gathers(room)).toHaveLength(2); expect(onGatherStart).toHaveBeenCalledTimes(2);
+    expect(gathers(room)[1][1].requestId).not.toBe(request.requestId);
+    connection.destroy(); expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('settles a lost reply once at the deadline without retransmitting or claiming failure', async () => {
+    const { connection, room, gatherResults } = setup();
+    await connection.connect(); connection.gatherMoonberry();
+    const request = gathers(room)[0][1];
+    await vi.advanceTimersByTimeAsync(9_999); expect(gatherResults).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(gatherResults).toEqual([{ requestId: request.requestId, status: 'unconfirmed' }]);
+    await vi.advanceTimersByTimeAsync(10_000); expect(gatherResults).toHaveLength(1);
+    room.emitMessage('gather-result', { ...request, status: 'success' });
+    expect(gatherResults).toHaveLength(1); expect(gathers(room)).toHaveLength(1);
+    connection.gatherMoonberry();
+    room.emitMessage('gather-result', { ...request, status: 'success' });
+    expect(gatherResults).toHaveLength(1);
+    room.emitMessage('gather-result', { ...gathers(room)[1][1], status: 'cooldown' });
+    expect(gatherResults.at(-1)?.status).toBe('cooldown');
+    connection.destroy(); expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ignores malformed, unmatched, duplicate and wire-only unconfirmed results', async () => {
+    const { connection, room, gatherResults } = setup();
+    await connection.connect();
+    room.emitMessage('gather-result', { status: 'success' });
+    expect(gatherResults).toEqual([]);
+    connection.gatherMoonberry(); const request = gathers(room)[0][1];
+    for (const result of [null, {}, { status: 'success' }, { requestId: 'other', status: 'success' },
+      { ...request, status: 'invented' }, { ...request, status: 'unconfirmed' }]) room.emitMessage('gather-result', result);
+    expect(gatherResults).toEqual([]);
+    room.emitMessage('gather-result', { ...request, status: 'success' });
+    room.emitMessage('gather-result', { ...request, status: 'success' });
+    expect(gatherResults).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(10_001); expect(gatherResults).toHaveLength(1);
+    connection.destroy();
+  });
+
+  it('settles a dropped request once and never resends on same-room reconnect', async () => {
+    const { connection, room, gatherResults, onGatherStart } = setup();
+    await connection.connect(); connection.gatherMoonberry();
+    const old = gathers(room)[0][1];
+    room.onDrop.emit(1006); room.onDrop.emit(1006); room.onReconnect.emit();
+    expect(gatherResults).toEqual([{ requestId: old.requestId, status: 'unconfirmed' }]);
+    expect(gathers(room)).toHaveLength(1); expect(onGatherStart).toHaveBeenCalledOnce();
+    room.emitMessage('gather-result', { ...old, status: 'success' });
+    expect(gatherResults).toHaveLength(1);
+    connection.gatherMoonberry(); expect(gathers(room)).toHaveLength(2);
+    room.emitMessage('gather-result', { ...gathers(room)[1][1], status: 'success' });
+    expect(gatherResults.at(-1)?.status).toBe('success'); connection.destroy();
+  });
+
+  it.each([4004, 4003])('never carries an uncertain gather into fresh authorization (%s)', async (code) => {
+    const { connection, room, joinOrCreate, gatherResults } = setup();
+    await connection.connect(); connection.gatherMoonberry();
+    const old = gathers(room)[0][1]; const replacement = makeRoom();
+    joinOrCreate.mockResolvedValueOnce(replacement);
+    if (code === 4003) room.onDrop.emit(1006);
+    room.onLeave.emit(code);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(joinOrCreate).toHaveBeenCalledTimes(2);
+    expect(gathers(replacement)).toEqual([]);
+    expect(gatherResults).toEqual([{ requestId: old.requestId, status: 'unconfirmed' }]);
+    connection.gatherMoonberry(); const next = gathers(replacement)[0][1];
+    room.emitMessage('gather-result', { ...next, status: 'success' });
+    expect(gatherResults).toHaveLength(1);
+    replacement.emitMessage('gather-result', { ...next, status: 'success' });
+    expect(gatherResults).toHaveLength(2); connection.destroy();
+  });
+
+  it('bounds synchronous send failures and permits a later explicit retry', async () => {
+    const { connection, room, gatherResults, onGatherStart } = setup();
+    await connection.connect(); room.send.mockImplementationOnce(() => { throw new Error('synthetic transport failure'); });
+    expect(() => connection.gatherMoonberry()).not.toThrow();
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unconfirmed' })]);
+    expect(onGatherStart).toHaveBeenCalledOnce();
+    connection.gatherMoonberry(); expect(gathers(room)).toHaveLength(2);
+    connection.destroy(); expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('silently cancels teardown and ignores later outcomes and new intents', async () => {
+    const { connection, room, gatherResults, onGatherStart } = setup();
+    await connection.connect(); connection.gatherMoonberry(); const request = gathers(room)[0][1];
+    connection.destroy(); connection.destroy(); connection.gatherMoonberry();
+    room.emitMessage('gather-result', { ...request, status: 'success' });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(gatherResults).toEqual([]); expect(onGatherStart).toHaveBeenCalledOnce();
+    expect(gathers(room)).toHaveLength(1); expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('clears pending gathering on refresh rejection and prevents unauthorized intents', async () => {
+    const { connection, room, gatherResults } = setup();
+    await connection.connect();
+    await vi.advanceTimersByTimeAsync(25_000);
+    connection.gatherMoonberry();
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 401 }));
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(gatherResults).toEqual([expect.objectContaining({ status: 'unconfirmed' })]);
+    connection.gatherMoonberry(); expect(gathers(room)).toHaveLength(1);
+    expect(gatherResults.at(-1)?.status).toBe('unavailable'); connection.destroy();
   });
 });

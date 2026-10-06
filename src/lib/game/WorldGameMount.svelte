@@ -30,6 +30,7 @@
   let viewport: HTMLDivElement;
   let runtime: RuntimeWithTouch | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let mountGeneration = 0;
   let activeTouch: Direction | null = null;
   let status = 'Loading The Wilds…';
   let loadError = false;
@@ -52,7 +53,13 @@
     connectionStatus === 'unavailable' ? 'Multiplayer unavailable' : 'World offline';
 
   const lifecycle = new GameLifecycle(async (target) => {
+    const generation = mountGeneration;
     const { WorldSession } = await import('./worldSession');
+    const createRenderer = renderer === 'three'
+      ? (await import('./renderers/three/threeWorld')).createThreeWorld
+      : (await import('./worldGame')).createWorldGame;
+    // Never start a session or activate a renderer for a view removed during import.
+    if (generation !== mountGeneration) return { resize() {}, pause() {}, resume() {}, destroy() {} };
     const session = new WorldSession(serverUrl, {
       onStatus: (nextStatus) => {
         connectionStatus = nextStatus;
@@ -70,23 +77,17 @@
       onGatherResult: (result) => {
         gathering = false;
         gatherResult = result;
-      }
+      },
+      onGatherStart: () => { gathering = true; gatherResult = null; }
     });
-    const rendererRuntime = renderer === 'three'
-      ? (await import('./renderers/three/threeWorld')).createThreeWorld(target, {
-          session,
-          onPortalPrompt: (portal) => (portalPrompt = portal),
-          onAreaChange: changeArea,
-          onGatherPrompt: (visible) => (gatherPrompt = visible),
-          onContextStatus: (nextStatus) => (contextStatus = nextStatus),
-          onCameraPreset: (nextPreset) => (cameraPreset = nextPreset)
-        })
-      : (await import('./worldGame')).createWorldGame(target, {
-          session,
-          onPortalPrompt: (portal) => (portalPrompt = portal),
-          onAreaChange: changeArea,
-          onGatherPrompt: (visible) => (gatherPrompt = visible)
-        });
+    const rendererRuntime = createRenderer(target, {
+      session,
+      onPortalPrompt: (portal) => (portalPrompt = portal),
+      onAreaChange: changeArea,
+      onGatherPrompt: (visible) => (gatherPrompt = visible),
+      onContextStatus: (nextStatus) => (contextStatus = nextStatus),
+      onCameraPreset: (nextPreset) => (cameraPreset = nextPreset)
+    });
     let destroyed = false;
     const cameraRuntime = rendererRuntime as Partial<ThreeWorldRuntime>;
     const mountedRuntime: RuntimeWithTouch = {
@@ -118,8 +119,6 @@
   function changeArea(next: WorldArea) {
     area = next;
     gatherPrompt = false;
-    gathering = false;
-    gatherResult = null;
     setDirection(null);
   }
 
@@ -169,9 +168,7 @@
   };
 
   const gather = () => {
-    if (!runtime || gathering || travelling || connectionStatus !== 'connected') return;
-    gathering = true;
-    gatherResult = null;
+    if (!runtime || !gatherPrompt || portalPrompt || gathering || travelling || connectionStatus !== 'connected') return;
     runtime.interact();
   };
 
@@ -181,20 +178,24 @@
   };
 
   const gatherMessage = (result: GatherResult) => {
+    if (result.status === 'unconfirmed' || result.status === 'failure') return 'We couldn’t confirm that gather. Check your Keepsakes before trying again.';
     if (result.status === 'success') return `Gathered ${result.quantity ?? 1} ${result.itemTitle ?? 'Moonberry'}.`;
     if (result.status === 'cooldown') {
       const ready = result.cooldownUntil ? new Date(result.cooldownUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
       return ready ? `The Moonberry bush is resting until ${ready}.` : 'The Moonberry bush is still resting.';
     }
-    if (result.status === 'inventory_full') return 'Your Moonberry holding limit is full. Make room before gathering again.';
+    if (result.status === 'inventory_full') return 'You’ve reached the Moonberry holding limit.';
     if (result.status === 'out_of_range') return 'Move closer to the Moonberry bush.';
     if (result.status === 'unavailable') return 'Gathering is temporarily unavailable.';
-    return 'The Moonberry could not be gathered. Please try again.';
+    return 'Gathering is temporarily unavailable.';
   };
 
   onMount(async () => {
+    const generation = ++mountGeneration;
     try {
       await lifecycle.mount(host);
+      // A lazy renderer can finish loading after navigation has removed this view.
+      if (generation !== mountGeneration) return;
       status = 'The Wilds is ready.';
       resizeObserver = new ResizeObserver(resize);
       resizeObserver.observe(viewport);
@@ -202,6 +203,7 @@
       document.addEventListener('visibilitychange', handleVisibility);
       if (document.hidden) pause();
     } catch (error) {
+      if (generation !== mountGeneration) return;
       console.error(`[world] ${renderer} renderer failed to mount`, error);
       loadError = true;
       status = 'The Wilds could not start in this browser.';
@@ -210,6 +212,7 @@
   });
 
   onDestroy(() => {
+    mountGeneration += 1;
     if (browser) document.removeEventListener('visibilitychange', handleVisibility);
     resizeObserver?.disconnect();
     resizeObserver = null;
@@ -259,7 +262,7 @@
   {#if gatherPrompt && !portalPrompt && !loadError}
     <div class="interaction-prompt">
       <p>Moonberry bush · Press E or tap to gather</p>
-      <button type="button" disabled={gathering || connectionStatus !== 'connected'} on:click={gather}>
+      <button type="button" disabled={gathering || travelling || connectionStatus !== 'connected'} aria-busy={gathering} on:click={gather}>
         {gathering ? 'Gathering…' : 'Gather Moonberry'}
       </button>
     </div>
@@ -269,7 +272,7 @@
     <div class:success={gatherResult.status === 'success'} class="gather-result" role="status" aria-live="polite">
       <strong>{gatherMessage(gatherResult)}</strong>
       {#if gatherResult.reaction}<p>{gatherResult.reaction}</p>{/if}
-      {#if gatherResult.status === 'success'}<a href="/app/inventory">View in Keepsakes</a>{/if}
+      {#if gatherResult.status === 'success' || gatherResult.status === 'unconfirmed' || gatherResult.status === 'failure' || gatherResult.status === 'inventory_full'}<a href="/app/inventory">View in Keepsakes</a>{/if}
     </div>
   {/if}
 
@@ -600,5 +603,63 @@
       min-height: 19rem;
       border-radius: 0.75rem;
     }
+
+    /* Reserve the taller camera cluster and keep both pads independently tappable. */
+    .world-viewport[data-renderer='three'] { min-height: calc(25rem + env(safe-area-inset-bottom)); }
+    .world-viewport[data-renderer='three'] .touch-controls {
+      left: max(6px, env(safe-area-inset-left));
+      bottom: max(6px, env(safe-area-inset-bottom));
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+      gap: 2px;
+    }
+    .world-viewport[data-renderer='three'] .camera-controls {
+      right: max(6px, env(safe-area-inset-right));
+      bottom: max(6px, env(safe-area-inset-bottom));
+      grid-template-columns: repeat(3, 44px);
+      gap: 2px;
+    }
+    .world-viewport[data-renderer='three'] .camera-controls button,
+    .world-viewport[data-renderer='three'] .camera-controls select { min-width: 44px; min-height: 44px; }
+    .world-viewport[data-renderer='three'] .interaction-prompt {
+      bottom: calc(max(6px, env(safe-area-inset-bottom)) + 136px + 12px);
+    }
+  }
+
+  @media (min-width: 480px) and (max-height: 500px) and (pointer: coarse) {
+    /* A shorter, wider camera strip leaves room for feedback in phone landscape. */
+    .world-viewport[data-renderer='three'] { min-height: calc(19rem + env(safe-area-inset-bottom)); }
+    .world-viewport[data-renderer='three'] .touch-controls {
+      left: max(6px, env(safe-area-inset-left));
+      bottom: max(6px, env(safe-area-inset-bottom));
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+      gap: 2px;
+    }
+    .world-viewport[data-renderer='three'] .camera-controls {
+      right: max(6px, env(safe-area-inset-right));
+      bottom: max(6px, env(safe-area-inset-bottom));
+      grid-template-columns: repeat(5, 44px);
+      gap: 2px;
+    }
+    .world-viewport[data-renderer='three'] .camera-controls button,
+    .world-viewport[data-renderer='three'] .camera-controls select { min-width: 44px; min-height: 44px; }
+    .world-viewport[data-renderer='three'] .interaction-prompt {
+      bottom: calc(max(6px, env(safe-area-inset-bottom)) + 90px + 12px);
+      width: calc(100% - 1rem);
+      max-width: 23rem;
+      justify-content: space-between;
+      padding: .45rem .55rem;
+      gap: .4rem;
+    }
+    .world-viewport[data-renderer='three'] .interaction-prompt p { font-size: .7rem; }
+    .world-viewport[data-renderer='three'] .interaction-prompt button { max-width: 62%; padding: .45rem .6rem; font-size: .75rem; }
+    .world-viewport[data-renderer='three'] .gather-result {
+      top: 3.2rem;
+      padding: .4rem .75rem;
+      font-size: .85rem;
+      line-height: 1.3;
+    }
+    .world-viewport[data-renderer='three'] .gather-result p { margin: .25rem 0; }
   }
 </style>

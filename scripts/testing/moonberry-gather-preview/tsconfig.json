@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "$lib/*": ["../../../src/lib/*"],
+      "$app/environment": ["./environment.ts"]
+    }
+  },
+  "include": ["./*.ts", "./*.svelte"],
+  "exclude": []
+}
