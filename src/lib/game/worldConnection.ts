@@ -14,11 +14,13 @@ type SyncedWorld = {
 };
 type TicketResponse = { ticket: string; expiresAt: number };
 const COMPANION_REFRESH_MESSAGE = 'companion-refresh';
+const GATHER_TIMEOUT_MS = 10_000;
 export type WorldConnectionCallbacks = {
   onStatus: (status: ConnectionStatus) => void;
   onDiagnostic?: (diagnostic: ConnectionDiagnostic | null) => void;
   onSnapshot: (snapshot: WorldSnapshot) => void;
   onGatherResult: (result: GatherResult) => void;
+  onGatherStart?: () => void;
   onPortalResult?: (result: PortalResult) => void;
 };
 
@@ -39,7 +41,8 @@ export class WorldConnection {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private pendingPortal: { requestId: string; portalId: string } | null = null;
   private portalTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly pendingGathers = new Map<string, { requestId: string; nodeKey: 'moonberry-bush' }>();
+  private pendingGather: { requestId: string; nodeKey: 'moonberry-bush' } | null = null;
+  private gatherTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly createClient: (endpoint: string) => Pick<Client, 'joinOrCreate'>;
   private readonly debug: boolean;
@@ -107,7 +110,7 @@ export class WorldConnection {
         room.reconnection.maxRetries = 0;
         this.clearRefreshTimer();
         this.failPendingPortal();
-        this.failPendingGathers();
+        this.failPendingGather();
         this.setStatus('reconnecting');
       };
       room.onMessage('server-shutdown', pauseForShutdown);
@@ -119,8 +122,9 @@ export class WorldConnection {
         this.callbacks.onPortalResult?.(result);
       });
       room.onMessage(GATHER_RESULT_MESSAGE, (result: GatherResult) => {
-        if (this.room !== room || this.stopped || !result || typeof result.requestId !== 'string' || !this.pendingGathers.has(result.requestId)) return;
-        this.pendingGathers.delete(result.requestId);
+        if (this.room !== room || this.stopped || !this.pendingGather || !result || result.requestId !== this.pendingGather.requestId) return;
+        if (!['success', 'cooldown', 'inventory_full', 'out_of_range', 'unavailable', 'failure'].includes(result.status)) return;
+        this.clearGather();
         this.callbacks.onGatherResult(result);
       });
       room.onDrop((code) => {
@@ -128,6 +132,7 @@ export class WorldConnection {
         this.connected = false;
         if (!this.stopped) {
           this.failPendingPortal();
+          this.failPendingGather();
           this.log('onDrop', { code });
           this.setStatus('reconnecting');
           this.log('reconnect attempt');
@@ -142,7 +147,6 @@ export class WorldConnection {
           this.log('reconnect success');
           this.setStatus('connected');
           void this.refreshCompanion();
-          for (const request of this.pendingGathers.values()) room.send(GATHER_MESSAGE, request);
         }
       });
       room.onLeave((code) => {
@@ -152,6 +156,7 @@ export class WorldConnection {
           this.log('onLeave', { code });
           if (code === 4001) pauseForShutdown();
           this.failPendingPortal();
+          this.failPendingGather();
           if ((this.status === 'reconnecting' || code === 4004) && !this.recoveryAttempted) {
             this.recoveryAttempted = true;
             this.room = null;
@@ -165,7 +170,6 @@ export class WorldConnection {
           }
           this.callbacks.onDiagnostic?.({ code: 'connection_closed', statusCode: this.safeCode(code) });
           this.setStatus('unavailable');
-          this.failPendingGathers();
           this.failPendingPortal();
         }
       });
@@ -180,7 +184,6 @@ export class WorldConnection {
       this.log('successful join');
       this.setStatus('connected');
       this.publishSnapshot(room.state);
-      for (const request of this.pendingGathers.values()) room.send(GATHER_MESSAGE, request);
       this.clearRefreshTimer();
       this.refreshTimer = setInterval(() => void this.refreshCompanion(), 30_000);
     } catch (error) {
@@ -223,13 +226,21 @@ export class WorldConnection {
   }
 
   gatherMoonberry() {
-    if (!this.connected || !this.room) {
+    if (this.stopped || this.pendingGather) return;
+    if (!this.connected || !this.room || this.status !== 'connected') {
       this.callbacks.onGatherResult({ requestId: '', status: 'unavailable' });
       return;
     }
     const request = { requestId: crypto.randomUUID(), nodeKey: 'moonberry-bush' as const };
-    this.pendingGathers.set(request.requestId, request);
-    this.room.send(GATHER_MESSAGE, request);
+    this.pendingGather = request;
+    this.gatherTimer = setTimeout(() => this.failPendingGather(), GATHER_TIMEOUT_MS);
+    this.callbacks.onGatherStart?.();
+    try {
+      this.room.send(GATHER_MESSAGE, request);
+    } catch {
+      // A transport exception cannot prove whether the server received the intent.
+      this.failPendingGather();
+    }
   }
 
   enterPortal(portalId: string) {
@@ -265,16 +276,23 @@ export class WorldConnection {
     this.room = null;
     this.clearRefreshTimer();
     this.clearRecoveryTimer();
-    this.pendingGathers.clear();
+    this.clearGather();
     this.clearPortal();
     if (room) void room.leave(true);
   }
 
-  private failPendingGathers() {
-    for (const requestId of this.pendingGathers.keys()) {
-      this.callbacks.onGatherResult({ requestId, status: 'unavailable' });
-    }
-    this.pendingGathers.clear();
+  private clearGather() {
+    if (this.gatherTimer) clearTimeout(this.gatherTimer);
+    this.gatherTimer = null;
+    this.pendingGather = null;
+  }
+
+  private failPendingGather() {
+    const requestId = this.pendingGather?.requestId;
+    this.clearGather();
+    // Never automatically retransmit an uncertain reward request. A fresh user
+    // action can try again, while the existing server cooldown/ledger stays authoritative.
+    if (requestId) this.callbacks.onGatherResult({ requestId, status: 'unconfirmed' });
   }
 
   private publishSnapshot(state: SyncedWorld) {
@@ -337,7 +355,7 @@ export class WorldConnection {
     this.clearRefreshTimer();
     this.clearRecoveryTimer();
     this.failPendingPortal();
-    this.failPendingGathers();
+    this.failPendingGather();
     this.callbacks.onDiagnostic?.({ code: 'client_outdated' });
     this.setStatus('unavailable');
     if (room) void room.leave(true);
@@ -346,6 +364,7 @@ export class WorldConnection {
   private setStatus(status: ConnectionStatus) {
     if (this.stopped || this.status === status) return;
     this.status = status;
+    if (status !== 'connected') this.failPendingGather();
     this.callbacks.onStatus(status);
   }
 

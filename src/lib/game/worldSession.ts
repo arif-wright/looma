@@ -5,6 +5,7 @@ export type WorldSessionEvents = {
   onStatus: (status: ConnectionStatus) => void;
   onDiagnostic: (diagnostic: ConnectionDiagnostic | null) => void;
   onGatherResult: (result: GatherResult) => void;
+  onGatherStart?: () => void;
   onPortalResult?: (result: PortalResult) => void;
   onPortalStart?: () => void;
 };
@@ -53,6 +54,7 @@ export class WorldSession {
       onDiagnostic: this.events.onDiagnostic,
       onSnapshot: (snapshot) => this.snapshotConsumer?.(snapshot),
       onGatherResult: this.events.onGatherResult,
+      onGatherStart: () => this.events.onGatherStart?.(),
       onPortalResult: (result) => this.events.onPortalResult?.(result)
     });
     void this.connection.connect();
@@ -69,7 +71,10 @@ export class WorldSession {
     this.stopMovement();
     this.connection?.enterPortal?.(portalId);
   }
-  gatherMoonberry() { this.connection?.gatherMoonberry(); }
+  gatherMoonberry() {
+    if (this.destroyed || this.status !== 'connected') return;
+    this.connection?.gatherMoonberry();
+  }
   get connectionStatus() { return this.status; }
 
   destroy(source = 'world session teardown') {
