@@ -122,8 +122,8 @@ try {
     await absent();
     const tables = await observer.rows(`SELECT c.relname,c.relowner='postgres'::regrole AS owner,c.relrowsecurity,c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('user_preferences','user_items','item_catalog','companions','companion_journal_entries','world_events') ORDER BY c.relname`);
     assert.equal(tables.length, 6); assert(tables.every(t => t.owner && t.relrowsecurity && !t.relforcerowsecurity));
-    assert.equal(await scalar(observer, "SELECT count(*)::int FROM pg_default_acl WHERE defaclrole='postgres'::regrole AND defaclnamespace=0"), 0);
-    assert.equal(await scalar(observer, "SELECT count(*)::int FROM pg_auth_members WHERE member IN ('anon'::regrole,'authenticated'::regrole,'service_role'::regrole)"), 0);
+    assert.equal(await scalar(observer, "SELECT (SELECT count(*)::int FROM pg_default_acl WHERE defaclrole='postgres'::regrole AND defaclnamespace=0)"), 0);
+    assert.equal(await scalar(observer, "SELECT (SELECT count(*)::int FROM pg_auth_members WHERE member IN ('anon'::regrole,'authenticated'::regrole,'service_role'::regrole))"), 0);
     const config = (await observer.rows(`SELECT
       (SELECT count(*)::int FROM public.item_catalog WHERE item_key='world-moonberry' AND kind='consumable' AND capabilities=ARRAY['consumable','giftable']::text[]) AS catalog,
       (SELECT count(*)::int FROM public.world_maps WHERE id='wilds-exploration' AND version=1 AND is_active) AS map,
