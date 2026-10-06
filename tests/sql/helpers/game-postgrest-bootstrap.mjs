@@ -214,10 +214,11 @@ async function main() {
   assert(!process.env.PGPASSWORD, 'Passwords are refused');
   assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap must connect to postgres');
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim();
-  // Test-only evidence additions change the root tree. These strict subtree pins
-  // cover the independently reviewed Connected Wilds candidate and shutdown
-  // drain repair, including the unapplied portal migration; settlement and fixture SQL are unchanged.
-  for (const [directory, expected] of Object.entries({src:'5ee387ea2a2b4843e36e484056e811a8708375b7',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
+  // Root-only review/test additions leave the product trees independently pinned.
+  // This src pin includes the six merged Wilds recovery/mobile files and the six
+  // reviewed moderation effective-state files. No Moonberry Share code is present.
+  // Settlement code, fixture SQL and the entire supabase tree remain unchanged.
+  for (const [directory, expected] of Object.entries({src:'052968dde80959294bb5b75cbbeb8b2fb26864f6',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

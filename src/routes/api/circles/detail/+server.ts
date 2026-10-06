@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 import { CIRCLES_CACHE_HEADERS, isUuid } from '$lib/server/circles';
-import { requireModerator } from '$lib/server/moderation';
+import { effectiveModerationState, requireModerator } from '$lib/server/moderation';
 
 type CircleRow = {
   id: string;
@@ -100,7 +100,7 @@ export const GET: RequestHandler = async (event) => {
     moderatorView.ok && memberIds.length
       ? await supabase
           .from('user_preferences')
-          .select('user_id, moderation_status')
+          .select('user_id, moderation_status, moderation_until')
           .in('user_id', memberIds)
       : { data: [] };
 
@@ -110,11 +110,7 @@ export const GET: RequestHandler = async (event) => {
   const moderationMap = new Map(
     (memberPrefs ?? []).map((row) => [
       row.user_id as string,
-      row.moderation_status === 'muted' ||
-      row.moderation_status === 'suspended' ||
-      row.moderation_status === 'banned'
-        ? row.moderation_status
-        : 'active'
+      effectiveModerationState(row).status
     ])
   );
 
