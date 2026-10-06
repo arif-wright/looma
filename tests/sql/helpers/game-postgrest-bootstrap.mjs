@@ -214,11 +214,11 @@ async function main() {
   assert(!process.env.PGPASSWORD, 'Passwords are refused');
   assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap must connect to postgres');
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim();
-  // Preserve exact-tree checking. The combined reviewed tree retains all six
-  // security compatibility files from main 7d5ad259 and all 11 Share source
-  // files from PR #11 e35586da. No application source changes in reconciliation.
+  // Preserve exact-tree checking. The reviewed combined security/Share source
+  // adds only the Journal-memory disclosure in MoonberryShare.svelte. All 841
+  // other source blobs retain their exact reviewed identities (2026-10-06).
   // Keep Supabase pinned independently; this is not a hosted-schema claim.
-  for (const [directory, expected] of Object.entries({src:'a38d1942026b1bd9bfde15d374c5308db2efa744',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
+  for (const [directory, expected] of Object.entries({src:'882236c59c42b5c14cb7f28a442295d9690d9ae5',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

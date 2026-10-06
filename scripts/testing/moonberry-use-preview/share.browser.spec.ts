@@ -18,6 +18,7 @@ async function confirm(page: Page, companion = moss, stack = first) {
   await card(page, stack).getByRole('combobox').selectOption(companion);
   await card(page, stack).getByRole('button', { name: 'Share one Moonberry', exact: true }).click();
   await expect(card(page, stack).getByRole('group', { name: 'Confirm Moonberry share' })).toBeFocused();
+  await expect(card(page, stack).getByRole('group', { name: 'Confirm Moonberry share' }).getByText('Sharing can add a Journal moment when memory is on.', { exact: true })).toBeVisible();
 }
 async function share(page: Page, companion = moss, stack = first) {
   await confirm(page, companion, stack);

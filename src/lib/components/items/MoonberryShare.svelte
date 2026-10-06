@@ -181,6 +181,7 @@
       <div class="confirmation" bind:this={confirmRegion} tabindex="-1" role="group" aria-label="Confirm Moonberry share">
         <p>Share one Moonberry with <strong>{selected?.name}</strong>?</p>
         <p class="quiet">This uses 1 Moonberry from this stack.</p>
+        <p class="quiet">Sharing can add a Journal moment when memory is on.</p>
         <div class="actions">
           <button type="button" on:click={confirm}>Confirm share</button>
           <button type="button" class="secondary" on:click={cancel}>Cancel</button>
