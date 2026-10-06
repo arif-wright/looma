@@ -1,0 +1,894 @@
+{
+  "config": {
+    "configFile": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/scripts/testing/moonberry-use-preview/playwright.config.ts",
+    "rootDir": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/scripts/testing/moonberry-use-preview",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/artifacts/moonberry-use/browser-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/artifacts/moonberry-use/browser",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/scripts/testing/moonberry-use-preview",
+        "testIgnore": [],
+        "testMatch": [
+          "*.browser.spec.ts"
+        ],
+        "timeout": 40000
+      },
+      {
+        "outputDir": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/artifacts/moonberry-use/browser",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "narrow",
+        "name": "narrow",
+        "testDir": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/scripts/testing/moonberry-use-preview",
+        "testIgnore": [],
+        "testMatch": [
+          "*.browser.spec.ts"
+        ],
+        "timeout": 40000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "/workspace/scratch/105963ff4370/memvoya-moonberry-use/",
+      "command": "./node_modules/.bin/vite --config scripts/testing/moonberry-use-preview/vite.config.mjs",
+      "url": "http://127.0.0.1:4182",
+      "reuseExistingServer": true,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "share.browser.spec.ts",
+      "file": "share.browser.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "cancel restores focus and sends no request; companion changes before confirmation remain explicit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-9d6dc2b0e2bfcd4f36df",
+          "file": "share.browser.spec.ts",
+          "line": 85,
+          "column": 1
+        },
+        {
+          "title": "double activation stays single-flight and depletion retains acquisition identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-3c6e6ef2cb66fba5404c",
+          "file": "share.browser.spec.ts",
+          "line": 111,
+          "column": 1
+        },
+        {
+          "title": "failure remains uncertain, blocks different stack and target, and explicit retry reuses exact key",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-2d13df74a6c7121f7d91",
+          "file": "share.browser.spec.ts",
+          "line": 155,
+          "column": 1
+        },
+        {
+          "title": "real client timeout stays uncertain and makes no automatic retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-f4e2e0abd808916af416",
+          "file": "share.browser.spec.ts",
+          "line": 187,
+          "column": 1
+        },
+        {
+          "title": "lost committed response reloads without mutation; retry ignores old receipt quantity after refill",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-3aedef0609b991d17e13",
+          "file": "share.browser.spec.ts",
+          "line": 204,
+          "column": 1
+        },
+        {
+          "title": "pending unmount and remount restores uncertainty without auto-send or stale success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-0058f29cf916544a705f",
+          "file": "share.browser.spec.ts",
+          "line": 235,
+          "column": 1
+        },
+        {
+          "title": "exact acquisition story survives depletion and refill; other stack cannot inherit its moment",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-61113d5a5a96a253540d",
+          "file": "share.browser.spec.ts",
+          "line": 261,
+          "column": 1
+        },
+        {
+          "title": "reaction and memory disabled do not fabricate emotional response or Journal entry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-9d3243734119f4becfb2",
+          "file": "share.browser.spec.ts",
+          "line": 306,
+          "column": 1
+        },
+        {
+          "title": "mismatched response cannot confirm consumption or authorize a different target",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-e3dd8767ce5f6227db53",
+          "file": "share.browser.spec.ts",
+          "line": 325,
+          "column": 3
+        },
+        {
+          "title": "unauthorized response cannot confirm consumption or authorize a different target",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-1dea63bdae3be47cfe1e",
+          "file": "share.browser.spec.ts",
+          "line": 325,
+          "column": 3
+        },
+        {
+          "title": "depleted receipt refreshes current stock without invented success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-09b232bb1ece4e8e2645",
+          "file": "share.browser.spec.ts",
+          "line": 344,
+          "column": 1
+        },
+        {
+          "title": "failed collection refresh blocks another share until current stock is loaded",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-13fdbfe2c023e3bcc1dd",
+          "file": "share.browser.spec.ts",
+          "line": 358,
+          "column": 1
+        },
+        {
+          "title": "storage removal failure offers local-only cleanup and refreshes before another share",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-4cc768a423ea4ebe5e1d",
+          "file": "share.browser.spec.ts",
+          "line": 383,
+          "column": 1
+        },
+        {
+          "title": "deleted source stack reload exposes exact saved-target recovery without auto-send",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-312c8794b806472ee8bd",
+          "file": "share.browser.spec.ts",
+          "line": 424,
+          "column": 1
+        },
+        {
+          "title": "account change while stale page remains cannot apply saved intent to another owner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-fe059a36860eed2546cc",
+          "file": "share.browser.spec.ts",
+          "line": 458,
+          "column": 1
+        },
+        {
+          "title": "malformed stored intent fails closed without automatic mutation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-ecc4dc165bd31ee3f652",
+          "file": "share.browser.spec.ts",
+          "line": 491,
+          "column": 1
+        },
+        {
+          "title": "unconfirmed share and failed refresh never present stale quantity as currently available",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-3275c90eda2a668bb1b7",
+          "file": "share.browser.spec.ts",
+          "line": 508,
+          "column": 1
+        },
+        {
+          "title": "newer saved intent appearing during refresh remains explicit and actionable after it finishes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-8daabcd04ab5bd05c773",
+          "file": "share.browser.spec.ts",
+          "line": 534,
+          "column": 1
+        },
+        {
+          "title": "collection refresh timeout keeps old quantity qualified and never retries sharing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-b2bb1200804c6aa3d376",
+          "file": "share.browser.spec.ts",
+          "line": 579,
+          "column": 1
+        },
+        {
+          "title": "companion disappearing during confirmation cancels safely without a request",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-6a97fffde30efc233ab6",
+          "file": "share.browser.spec.ts",
+          "line": 606,
+          "column": 1
+        },
+        {
+          "title": "cancel restores focus and sends no request; companion changes before confirmation remain explicit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-d85bfd53968a000a4a46",
+          "file": "share.browser.spec.ts",
+          "line": 85,
+          "column": 1
+        },
+        {
+          "title": "double activation stays single-flight and depletion retains acquisition identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-8b942a8b6c6a2434efc4",
+          "file": "share.browser.spec.ts",
+          "line": 111,
+          "column": 1
+        },
+        {
+          "title": "failure remains uncertain, blocks different stack and target, and explicit retry reuses exact key",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-e6086f801a1fa4d01947",
+          "file": "share.browser.spec.ts",
+          "line": 155,
+          "column": 1
+        },
+        {
+          "title": "real client timeout stays uncertain and makes no automatic retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-e040a0c9dfe59bd70731",
+          "file": "share.browser.spec.ts",
+          "line": 187,
+          "column": 1
+        },
+        {
+          "title": "lost committed response reloads without mutation; retry ignores old receipt quantity after refill",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-7678aebc0f4b58565dd4",
+          "file": "share.browser.spec.ts",
+          "line": 204,
+          "column": 1
+        },
+        {
+          "title": "pending unmount and remount restores uncertainty without auto-send or stale success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-d99564ee1cc9b57911ce",
+          "file": "share.browser.spec.ts",
+          "line": 235,
+          "column": 1
+        },
+        {
+          "title": "exact acquisition story survives depletion and refill; other stack cannot inherit its moment",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-e696c517c041a595eb66",
+          "file": "share.browser.spec.ts",
+          "line": 261,
+          "column": 1
+        },
+        {
+          "title": "reaction and memory disabled do not fabricate emotional response or Journal entry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-ee42e09850ce73f2e06f",
+          "file": "share.browser.spec.ts",
+          "line": 306,
+          "column": 1
+        },
+        {
+          "title": "mismatched response cannot confirm consumption or authorize a different target",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-52b660b9585417e6e26e",
+          "file": "share.browser.spec.ts",
+          "line": 325,
+          "column": 3
+        },
+        {
+          "title": "unauthorized response cannot confirm consumption or authorize a different target",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-1e455fb92a2c3ec0b7f3",
+          "file": "share.browser.spec.ts",
+          "line": 325,
+          "column": 3
+        },
+        {
+          "title": "depleted receipt refreshes current stock without invented success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-6a63231829bb84b74182",
+          "file": "share.browser.spec.ts",
+          "line": 344,
+          "column": 1
+        },
+        {
+          "title": "failed collection refresh blocks another share until current stock is loaded",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-c378545cd23d492af40a",
+          "file": "share.browser.spec.ts",
+          "line": 358,
+          "column": 1
+        },
+        {
+          "title": "storage removal failure offers local-only cleanup and refreshes before another share",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-20a15eba56daf5779875",
+          "file": "share.browser.spec.ts",
+          "line": 383,
+          "column": 1
+        },
+        {
+          "title": "deleted source stack reload exposes exact saved-target recovery without auto-send",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-8b86e2ed837697467b65",
+          "file": "share.browser.spec.ts",
+          "line": 424,
+          "column": 1
+        },
+        {
+          "title": "account change while stale page remains cannot apply saved intent to another owner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-a1530f6aaa6a399d9981",
+          "file": "share.browser.spec.ts",
+          "line": 458,
+          "column": 1
+        },
+        {
+          "title": "malformed stored intent fails closed without automatic mutation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-a6d4b7c200a17a8d408a",
+          "file": "share.browser.spec.ts",
+          "line": 491,
+          "column": 1
+        },
+        {
+          "title": "unconfirmed share and failed refresh never present stale quantity as currently available",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-41d19112118f51389f25",
+          "file": "share.browser.spec.ts",
+          "line": 508,
+          "column": 1
+        },
+        {
+          "title": "newer saved intent appearing during refresh remains explicit and actionable after it finishes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-828cd5493fb6a050e5e2",
+          "file": "share.browser.spec.ts",
+          "line": 534,
+          "column": 1
+        },
+        {
+          "title": "collection refresh timeout keeps old quantity qualified and never retries sharing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-f50796129040ffbee5d2",
+          "file": "share.browser.spec.ts",
+          "line": 579,
+          "column": 1
+        },
+        {
+          "title": "companion disappearing during confirmation cancels safely without a request",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 40000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "narrow",
+              "projectName": "narrow",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "581de7367338f3bd336c-bc86f8e1c719888b6b43",
+          "file": "share.browser.spec.ts",
+          "line": 606,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-06T04:32:27.579Z",
+    "duration": 551.7120000000004,
+    "expected": 0,
+    "skipped": 40,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

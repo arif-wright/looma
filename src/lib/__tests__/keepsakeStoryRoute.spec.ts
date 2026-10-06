@@ -57,7 +57,7 @@ describe('read-only keepsake route', () => {
   it('loads the collection without any Journal or consent query when no story is selected', async () => {
     const test = fixture();
     expect((await test.run()).storyStatus).toBeNull();
-    expect(test.calls).toHaveLength(4);
+    expect(test.calls).toHaveLength(5);
     for (const call of test.calls) expect(call.filters).toContainEqual(['eq', call.table === 'shop_inventory' ? 'user_id' : 'owner_id', owner]);
   });
   it.each(['', 'invalid', '../../foreign', id(999)])('fails closed on unavailable selection %s without history reads', async (selected) => {

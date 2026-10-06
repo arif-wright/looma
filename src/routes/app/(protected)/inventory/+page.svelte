@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { afterNavigate } from '$app/navigation';
+  import { afterNavigate, invalidateAll } from '$app/navigation';
   import { tick } from 'svelte';
   import KeepsakeStoryPanel from '$lib/components/items/KeepsakeStory.svelte';
   import { keepsakeStoryHref, keepsakeCollectionHref, type KeepsakeStory } from '$lib/items/story';
@@ -7,6 +7,8 @@
   import EmotionalChip from '$lib/components/ui/sanctuary/EmotionalChip.svelte';
   import { recordedRewardBody } from '$lib/companions/rewardHistory';
   import { capabilityLabel, sanctuarySlotLabel } from '$lib/items/presentation';
+  import MoonberryShare from '$lib/components/items/MoonberryShare.svelte';
+  import { canShareMoonberry } from '$lib/items/moonberryUse';
 
   type InventoryRow = {
     acquired_at: string;
@@ -69,6 +71,9 @@
   };
 
   export let data: {
+    ownerId?: string | null;
+    companions?: { id: string; name: string }[];
+    companionsAvailable?: boolean;
     items: InventoryRow[];
     unifiedItems: UnifiedItemRow[];
     companionRewards: CompanionRewardRow[];
@@ -89,6 +94,9 @@
         companion: Array.isArray(row.companion) ? row.companion[0] ?? null : row.companion ?? null
       }))
     : [];
+  $: shareableItemIds = data.companionsAvailable === false ? [] : unifiedItems
+    .filter((owned) => owned.quantity >= 0 && canShareMoonberry({ ...owned, quantity: 1 }))
+    .map((owned) => owned.id);
   $: companionRewards = Array.isArray(data?.companionRewards) ? data.companionRewards : [];
   $: placements = Array.isArray(data?.placements) ? data.placements : [];
   $: error = data?.error ?? null;
@@ -132,7 +140,13 @@
   $: unifiedItemKeys = new Set(unifiedItems.map((owned) => owned.item?.item_key).filter(Boolean));
   $: legacyCompanionRewards = companionRewards.filter((reward) => !unifiedItemKeys.has(reward.reward_key));
   $: collectionCount = items.length + unifiedItems.length + legacyCompanionRewards.length;
+  $: availableCount = items.length + unifiedItems.filter((owned) => owned.quantity > 0).length + legacyCompanionRewards.length;
+  $: depletedCount = unifiedItems.filter((owned) => owned.quantity === 0).length;
   const placementsFor = (id: string) => placements.filter((placement) => placement.user_item_id === id);
+  let uncertainStocks: Record<string, boolean> = {};
+  function setStockUncertain(id: string, uncertain: boolean) {
+    if (uncertainStocks[id] !== uncertain) uncertainStocks = { ...uncertainStocks, [id]: uncertain };
+  }
   let storyRegion: HTMLElement;
   afterNavigate(async () => {
     await tick();
@@ -146,11 +160,15 @@
   subtitle="A place for what you’ve gathered along the way."
 >
   <svelte:fragment slot="actions">
-    <EmotionalChip tone="warm">{collectionCount} owned</EmotionalChip>
+    <EmotionalChip tone="warm">{availableCount} owned{depletedCount > 0 ? ` · ${depletedCount} empty` : ''}</EmotionalChip>
     <EmotionalChip tone="muted">{topRarity ? titleCase(topRarity) : collectionCount > 0 ? 'Your collection' : 'Empty vault'}</EmotionalChip>
   </svelte:fragment>
 
   <main class="inventory-shell">
+    {#if data.ownerId}
+      <MoonberryShare ownerId={data.ownerId} recoveryOnly availableItemIds={shareableItemIds}
+        companions={data.companions ?? []} onChanged={invalidateAll} />
+    {/if}
     {#if data.storyStatus}
       <section id="keepsake-story" class="story-region" bind:this={storyRegion} tabindex="-1" aria-labelledby={data.story ? 'keepsake-story-title' : 'story-unavailable-title'}>
         {#if data.story}
@@ -167,7 +185,7 @@
     <section class="inventory-pulse" aria-label="Keepsakes pulse">
       <div class="inventory-pulse__copy">
         <p class="inventory-pulse__eyebrow">Owned collection</p>
-        <h2>{collectionCount === 0 ? 'Nothing stored yet' : `${collectionCount} items in your collection`}</h2>
+        <h2>{collectionCount === 0 ? 'Nothing stored yet' : `${collectionCount} ${depletedCount > 0 ? 'records' : 'items'} in your collection`}</h2>
         <p class="inventory-pulse__lede">
           {#if error}
             Some collection details could not be loaded right now.
@@ -239,7 +257,7 @@
 
       {#if unifiedItems.length > 0}
         <section class="inventory-grid" aria-label="Meaningful items">
-          {#each unifiedItems as owned}
+          {#each unifiedItems as owned (owned.id)}
             {#if owned.item}
               <article id={`keepsake-${owned.id}`} tabindex="-1" class="inventory-card" aria-label={`${owned.item.title} meaningful item`}>
                 <div class="inventory-media">
@@ -250,7 +268,9 @@
                   <div class="inventory-body__heading">
                     <div>
                       <h3>{owned.item.title}</h3>
-                      {#if owned.quantity > 1}<span class="inventory-quantity">×{owned.quantity}</span>{/if}
+                      {#if owned.item.item_key === 'world-moonberry'}
+                        <span class="inventory-quantity">{owned.quantity} {uncertainStocks[owned.id] ? 'at last refresh' : 'available'}</span>
+                      {:else if owned.quantity > 1}<span class="inventory-quantity">×{owned.quantity}</span>{/if}
                       <p class="subtitle">{owned.source_type === 'chapter_reward' ? recordedRewardBody(owned.item.title) : owned.item.description}</p>
                     </div>
                     <span class="inventory-type">{titleCase(owned.item.kind)}</span>
@@ -260,6 +280,15 @@
                     {owned.companion?.name ? ` with ${owned.companion.name}` : ''}
                   </p>
                   <a class="story-action" href={keepsakeStoryHref(owned.id)} aria-expanded={data.story?.id === owned.id} aria-controls="keepsake-story" on:click={() => { if (data.story?.id === owned.id) storyRegion?.focus(); }}>Read its story<span aria-hidden="true"> ↗</span><span class="sr-only">: {owned.item.title}</span></a>
+                  {#if owned.quantity >= 0 && canShareMoonberry({ ...owned, quantity: 1 }) && data.ownerId}
+                    {#if data.companionsAvailable === false}
+                      <p class="placement-state">Companions could not be loaded. Refresh to try sharing.</p>
+                    {:else}
+                      <MoonberryShare ownerId={data.ownerId} userItemId={owned.id} quantity={owned.quantity}
+                        companions={data.companions ?? []} onChanged={invalidateAll}
+                        onStockUncertain={(uncertain) => setStockUncertain(owned.id, uncertain)} />
+                    {/if}
+                  {/if}
                   <div class="capability-list" aria-label="Item capabilities">
                     {#each owned.item.capabilities as capability}
                       <span>{capabilityLabel(capability)}</span>

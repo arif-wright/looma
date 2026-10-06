@@ -1,0 +1,15 @@
+2026-10-06 03:47:20.259 UTC [37]  @ LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-10-06 03:47:20.260 UTC [37]  @ LOG:  could not create Unix socket for address "/tmp/mv-moonberry-native-2kHImo/socket/.s.PGSQL.55439": Operation not permitted
+2026-10-06 03:47:20.260 UTC [37]  @ WARNING:  could not create Unix-domain socket in directory "/tmp/mv-moonberry-native-2kHImo/socket"
+2026-10-06 03:47:20.260 UTC [37]  @ FATAL:  could not create any Unix-domain sockets
+2026-10-06 03:47:20.260 UTC [37]  @ LOG:  database system is shut down
+2026-10-06 04:07:14.970 UTC [35]  @ LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-10-06 04:07:14.970 UTC [35]  @ LOG:  could not create Unix socket for address "/tmp/mv-moonberry-native-xvzh69/socket/.s.PGSQL.55439": Operation not permitted
+2026-10-06 04:07:14.970 UTC [35]  @ WARNING:  could not create Unix-domain socket in directory "/tmp/mv-moonberry-native-xvzh69/socket"
+2026-10-06 04:07:14.970 UTC [35]  @ FATAL:  could not create any Unix-domain sockets
+2026-10-06 04:07:14.970 UTC [35]  @ LOG:  database system is shut down
+2026-10-06 04:23:29.971 UTC [35]  @ LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-10-06 04:23:29.971 UTC [35]  @ LOG:  could not create Unix socket for address "/tmp/mv-moonberry-native-KrGazm/socket/.s.PGSQL.55439": Operation not permitted
+2026-10-06 04:23:29.971 UTC [35]  @ WARNING:  could not create Unix-domain socket in directory "/tmp/mv-moonberry-native-KrGazm/socket"
+2026-10-06 04:23:29.972 UTC [35]  @ FATAL:  could not create any Unix-domain sockets
+2026-10-06 04:23:29.975 UTC [35]  @ LOG:  database system is shut down

@@ -1,0 +1,4 @@
+2ca1b05c909fefe0d80d32df1052170e1257c276245b9ab7fa01877cc38650f4  src/lib/components/items/MoonberryShare.svelte
+2b025c3fd83120c40c153380df7cbf155dea4abe81bf8b31fbde5a954b28740d  src/lib/items/moonberryShareClient.ts
+8e3319cdb744357de76f157185ec9d9c91ae8b01bac4f3f2bdcfb6b4de7b4169  src/routes/api/items/moonberry/share/+server.ts
+c65ab6c9f827105b400b90bebdc26d19302a14252c369d6ed8a562db051a22fe  src/routes/app/(protected)/inventory/+page.svelte

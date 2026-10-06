@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { visibleStoryJournal } from '$lib/server/items/storyHistory';
-import { buildKeepsakeStory, isOwnedItemId, recordedMoonberryEventId, STORY_MOMENT_LIMIT, type KeepsakeStory, type StoryOwnedItem } from '$lib/items/story';
+import { buildKeepsakeStory, isOwnedItemId, recordedMoonberryEventId, STORY_MOMENT_LIMIT, type KeepsakeStory, type StoryOwnedItem, type MoonberryShareBinding } from '$lib/items/story';
 
 // Each read fails independently: a missing history record must not hide an owned collection.
 const read = async (query: PromiseLike<any>) => {
@@ -11,13 +11,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const supabase = locals.supabase;
   const ownerId = locals.session?.user?.id ?? locals.user?.id ?? null;
   const requestedItem = url.searchParams.get('item');
-  const result = { items: [] as any[], unifiedItems: [] as any[], companionRewards: [] as any[], placements: [] as any[],
+  const result = { ownerId, companions: [] as { id: string; name: string }[], companionsAvailable: false,
+    items: [] as any[], unifiedItems: [] as any[], companionRewards: [] as any[], placements: [] as any[],
     placementsAvailable: false,
     story: null as KeepsakeStory | null, storyStatus: requestedItem !== null ? 'unavailable' : null,
     storyFromSanctuary: url.searchParams.get('from') === 'sanctuary', storySanctuarySelection: null as string | null, error: null as string | null };
   if (!supabase || !ownerId) return { ...result, error: 'Sign in to view your keepsakes.' };
 
-  const [inventoryRes, unifiedItemsRes, rewardsRes, placementsRes] = await Promise.all([
+  const [inventoryRes, unifiedItemsRes, rewardsRes, placementsRes, companionsRes] = await Promise.all([
     read(supabase.from('shop_inventory')
       .select('acquired_at, item:item_id (id, slug, title, subtitle, image_url, rarity, type)')
       .eq('user_id', ownerId).order('acquired_at', { ascending: false })),
@@ -27,8 +28,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     read(supabase.from('companion_chapter_rewards')
       .select('reward_key, reward_title, reward_body, reward_tone, unlocked_at, companion:companion_id (id, name, species)')
       .eq('owner_id', ownerId).order('unlocked_at', { ascending: false })),
-    read(supabase.from('sanctuary_placements').select('id, owner_id, slot_key, item_id, user_item_id').eq('owner_id', ownerId))
+    read(supabase.from('sanctuary_placements').select('id, owner_id, slot_key, item_id, user_item_id').eq('owner_id', ownerId)),
+    read(supabase.from('companions').select('id, owner_id, name').eq('owner_id', ownerId).order('name'))
   ]);
+  result.companionsAvailable = !companionsRes.error;
+  result.companions = !companionsRes.error && Array.isArray(companionsRes.data)
+    ? companionsRes.data.filter((row: any) => row.owner_id === ownerId && isOwnedItemId(row.id) && typeof row.name === 'string')
+      .map((row: any) => ({ id: row.id, name: row.name })) : [];
   result.items = inventoryRes.error ? [] : inventoryRes.data ?? [];
   result.unifiedItems = unifiedItemsRes.error ? [] : (unifiedItemsRes.data ?? []).filter((row: StoryOwnedItem) => row.owner_id === ownerId);
   result.companionRewards = rewardsRes.error ? [] : rewardsRes.data ?? [];
@@ -45,6 +51,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   let historyState: KeepsakeStory['historyState'] = 'ready';
   let journal: any[] = [];
+  let moonberryShares: MoonberryShareBinding[] = [];
   const preferences = await read(supabase.from('user_preferences').select('consent_memory').eq('user_id', ownerId).maybeSingle());
   if (preferences.error) historyState = 'unavailable';
   else if (preferences.data?.consent_memory === false) historyState = 'disabled';
@@ -64,15 +71,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .contains('meta_json', { kind: 'world_gather', itemKey: 'world-moonberry', mapId: 'wilds-exploration' })
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(1))
       : Promise.resolve({ data: [], error: null });
-    const [history, worldHistory] = await Promise.all([historyQuery, worldQuery]);
-    if (history.error || worldHistory.error) historyState = 'unavailable';
+    const item = Array.isArray(owned.item) ? owned.item[0] : owned.item;
+    const shareQuery = item?.item_key === 'world-moonberry'
+      ? read(supabase.rpc('read_moonberry_share_moments', { p_user_item_id: owned.id }))
+      : Promise.resolve({ data: [], error: null });
+    const [history, worldHistory, shareHistory] = await Promise.all([historyQuery, worldQuery, shareQuery]);
+    if (history.error || worldHistory.error || shareHistory.error) historyState = 'unavailable';
     else {
-      try { journal = await visibleStoryJournal(supabase, ownerId, [...(history.data ?? []), ...(worldHistory.data ?? [])]); }
+      // These bindings come only from the private receipt join, never Journal metadata.
+      moonberryShares = (shareHistory.data ?? []).filter((row: any) => row.owner_id === ownerId && isOwnedItemId(row.source_id))
+        .map((row: any) => ({ eventId: row.source_id, userItemId: owned.id, companionId: row.companion_id }));
+      try { journal = await visibleStoryJournal(supabase, ownerId, [...(history.data ?? []), ...(worldHistory.data ?? []), ...(shareHistory.data ?? [])]); }
       catch { historyState = 'unavailable'; }
     }
   }
   result.story = buildKeepsakeStory({ ownerId, owned, placements: result.placements, journal,
-    placementsAvailable: !placementsRes.error, historyState });
+    placementsAvailable: !placementsRes.error, historyState, moonberryShares });
   result.storyStatus = result.story ? 'ready' : 'unavailable';
   return result;
 };

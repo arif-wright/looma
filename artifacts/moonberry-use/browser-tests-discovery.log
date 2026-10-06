@@ -1,0 +1,42 @@
+Listing tests:
+  [desktop] › share.browser.spec.ts:85:1 › cancel restores focus and sends no request; companion changes before confirmation remain explicit
+  [desktop] › share.browser.spec.ts:111:1 › double activation stays single-flight and depletion retains acquisition identity
+  [desktop] › share.browser.spec.ts:155:1 › failure remains uncertain, blocks different stack and target, and explicit retry reuses exact key
+  [desktop] › share.browser.spec.ts:187:1 › real client timeout stays uncertain and makes no automatic retry
+  [desktop] › share.browser.spec.ts:204:1 › lost committed response reloads without mutation; retry ignores old receipt quantity after refill
+  [desktop] › share.browser.spec.ts:235:1 › pending unmount and remount restores uncertainty without auto-send or stale success
+  [desktop] › share.browser.spec.ts:261:1 › exact acquisition story survives depletion and refill; other stack cannot inherit its moment
+  [desktop] › share.browser.spec.ts:306:1 › reaction and memory disabled do not fabricate emotional response or Journal entry
+  [desktop] › share.browser.spec.ts:325:3 › mismatched response cannot confirm consumption or authorize a different target
+  [desktop] › share.browser.spec.ts:325:3 › unauthorized response cannot confirm consumption or authorize a different target
+  [desktop] › share.browser.spec.ts:344:1 › depleted receipt refreshes current stock without invented success
+  [desktop] › share.browser.spec.ts:358:1 › failed collection refresh blocks another share until current stock is loaded
+  [desktop] › share.browser.spec.ts:383:1 › storage removal failure offers local-only cleanup and refreshes before another share
+  [desktop] › share.browser.spec.ts:424:1 › deleted source stack reload exposes exact saved-target recovery without auto-send
+  [desktop] › share.browser.spec.ts:458:1 › account change while stale page remains cannot apply saved intent to another owner
+  [desktop] › share.browser.spec.ts:491:1 › malformed stored intent fails closed without automatic mutation
+  [desktop] › share.browser.spec.ts:508:1 › unconfirmed share and failed refresh never present stale quantity as currently available
+  [desktop] › share.browser.spec.ts:534:1 › newer saved intent appearing during refresh remains explicit and actionable after it finishes
+  [desktop] › share.browser.spec.ts:579:1 › collection refresh timeout keeps old quantity qualified and never retries sharing
+  [desktop] › share.browser.spec.ts:606:1 › companion disappearing during confirmation cancels safely without a request
+  [narrow] › share.browser.spec.ts:85:1 › cancel restores focus and sends no request; companion changes before confirmation remain explicit
+  [narrow] › share.browser.spec.ts:111:1 › double activation stays single-flight and depletion retains acquisition identity
+  [narrow] › share.browser.spec.ts:155:1 › failure remains uncertain, blocks different stack and target, and explicit retry reuses exact key
+  [narrow] › share.browser.spec.ts:187:1 › real client timeout stays uncertain and makes no automatic retry
+  [narrow] › share.browser.spec.ts:204:1 › lost committed response reloads without mutation; retry ignores old receipt quantity after refill
+  [narrow] › share.browser.spec.ts:235:1 › pending unmount and remount restores uncertainty without auto-send or stale success
+  [narrow] › share.browser.spec.ts:261:1 › exact acquisition story survives depletion and refill; other stack cannot inherit its moment
+  [narrow] › share.browser.spec.ts:306:1 › reaction and memory disabled do not fabricate emotional response or Journal entry
+  [narrow] › share.browser.spec.ts:325:3 › mismatched response cannot confirm consumption or authorize a different target
+  [narrow] › share.browser.spec.ts:325:3 › unauthorized response cannot confirm consumption or authorize a different target
+  [narrow] › share.browser.spec.ts:344:1 › depleted receipt refreshes current stock without invented success
+  [narrow] › share.browser.spec.ts:358:1 › failed collection refresh blocks another share until current stock is loaded
+  [narrow] › share.browser.spec.ts:383:1 › storage removal failure offers local-only cleanup and refreshes before another share
+  [narrow] › share.browser.spec.ts:424:1 › deleted source stack reload exposes exact saved-target recovery without auto-send
+  [narrow] › share.browser.spec.ts:458:1 › account change while stale page remains cannot apply saved intent to another owner
+  [narrow] › share.browser.spec.ts:491:1 › malformed stored intent fails closed without automatic mutation
+  [narrow] › share.browser.spec.ts:508:1 › unconfirmed share and failed refresh never present stale quantity as currently available
+  [narrow] › share.browser.spec.ts:534:1 › newer saved intent appearing during refresh remains explicit and actionable after it finishes
+  [narrow] › share.browser.spec.ts:579:1 › collection refresh timeout keeps old quantity qualified and never retries sharing
+  [narrow] › share.browser.spec.ts:606:1 › companion disappearing during confirmation cancels safely without a request
+Total: 40 tests in 1 file

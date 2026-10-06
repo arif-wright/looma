@@ -1,0 +1,5 @@
+84732dbc9f0bbd328f400d6c6d5a3f1786df7fb69ef0b9330c7890bfd7aa621f  scripts/sql/moonberry-use-candidate.sql
+209bca52503970c0ac185941134a4532f3175d12e88ace2199452b4da488116e  tests/sql/moonberry-use-native.mjs
+e437f78488ac224ebf0c5565770322a63b4b327831eb6b0dc5ab8e99d1650931  tests/sql/moonberry-use-transactions.mjs
+8c5299dc6f7021e53e749be7a6b3ef0c9d9f209f98b852a571cbdeab821b71bc  tests/sql/helpers/moonberry-use-fixture.mjs
+13437829129f3031f44130a3cf13e9a4fc929d2f044207a80b2e67c3c739c101  tests/sql/helpers/native-postgres.mjs

@@ -73,7 +73,7 @@ describe('exact Moonberry acquisition story', () => {
 });
 
 type Options = { items?: StoryOwnedItem[]; journal?: StoryJournalRow[]; consent?: boolean; fail?: string;
-  failWorld?: boolean; failVisibility?: boolean; recent?: number; tied?: boolean; companions?: string[]; subscriber?: boolean; selected?: string };
+  shareRows?: StoryJournalRow[]; failShare?: boolean; failWorld?: boolean; failVisibility?: boolean; recent?: number; tied?: boolean; companions?: string[]; subscriber?: boolean; selected?: string };
 const fixture = (options: Options = {}) => {
   const calls: any[] = [];
   const sources: Record<string, any> = {
@@ -93,7 +93,7 @@ const fixture = (options: Options = {}) => {
       let data = sources[table];
       if (table === 'companions') {
         const requested = call.filters.find((entry: any[]) => entry[1] === 'id')?.[2];
-        data = (options.companions ?? [companion]).includes(requested) ? { id: requested } : null;
+        data = requested ? ((options.companions ?? [companion]).includes(requested) ? { id: requested } : null) : (options.companions ?? [companion]).map((id) => ({ id, owner_id: owner, name: 'Lumi' }));
       }
       if (Array.isArray(data)) {
         data = data.filter((row: any) => call.filters.every(([op, column, value]: any[]) =>
@@ -112,15 +112,16 @@ const fixture = (options: Options = {}) => {
       eq: (column: string, value: unknown) => { call.filters.push(['eq', column, value]); return q; },
       in: (column: string, value: unknown) => { call.filters.push(['in', column, value]); return q; },
       contains: (column: string, value: unknown) => { call.filters.push(['contains', column, value]); return q; },
-      order: (column: string, config: unknown) => { call.order.push([column, config]); return q; },
+      order: (column: string, config: unknown = { ascending: true }) => { call.order.push([column, config]); return q; },
       limit: (limit: number) => { call.limit = limit; return q; }, maybeSingle: () => q,
       then: (success: any, failure: any) => Promise.resolve(resolve()).then(success, failure)
     };
     return q;
   });
   const url = new URL(`https://example.test/app/inventory?item=${options.selected ?? ownedId}`);
-  const run = () => load({ locals: { supabase: { from }, user: { id: owner } }, url } as any) as Promise<any>;
-  return { calls, run, url };
+  const rpc = vi.fn().mockResolvedValue(options.failShare ? { data: null, error: { message: 'unavailable' } } : { data: options.shareRows ?? [], error: null });
+  const run = () => load({ locals: { supabase: { from, rpc }, user: { id: owner } }, url } as any) as Promise<any>;
+  return { calls, run, url, rpc };
 };
 const eventReads = (calls: any[]) => calls.filter((call) => call.filters.some((entry: any[]) => entry[1] === 'source_id'));
 const noHiddenMoment = (data: unknown) => {
@@ -197,5 +198,59 @@ describe('Moonberry route privacy and recorded-event boundary', () => {
     const result = await fixture({ journal: [] }).run();
     expect(result.story.historyState).toBe('ready'); expect(result.story.moments).toEqual([]);
     expect(result.unifiedItems[0].quantity).toBe(5);
+  });
+});
+
+const recipient = id(81), shareEvent = id(82);
+const sharedMoment: StoryJournalRow = { ...moment, id: id(83), companion_id: recipient, source_id: shareEvent,
+  title: 'A Moonberry for Moss', body: 'You shared one Moonberry with Moss.',
+  meta_json: { category: 'item_use', action: 'share_moonberry', itemKey: 'world-moonberry', userItemId: ownedId,
+    quantity: 1, ruleVersion: 'moonberry-share-v1' } };
+const sharedBinding = { eventId: shareEvent, userItemId: ownedId, companionId: recipient };
+
+describe('receipt-bound Moonberry sharing story', () => {
+  it('allows an explicitly chosen recipient without replacing original acquisition companion', () => {
+    const result = buildKeepsakeStory({ ownerId: owner, owned: { ...owned, quantity: 0 }, placements: [],
+      journal: [sharedMoment, moment], moonberryShares: [sharedBinding] })!;
+    expect(result.companionName).toBe('Lumi');
+    expect(result.moments.map((m) => m.label)).toContain('Shared a Moonberry');
+    expect(result.moments.find((m) => m.id === sharedMoment.id)?.href).toContain(`companion=${recipient}`);
+    expect(result.sourceNote).toContain('first recorded gather');
+  });
+  it.each([null, { ...sharedBinding, eventId: id(99) }, { ...sharedBinding, userItemId: id(99) },
+    { ...sharedBinding, companionId: id(99) }])('does not infer consumption from Journal metadata alone: %j', (binding) => {
+    const moonberryShares = binding ? [binding] : [];
+    expect(buildKeepsakeStory({ ownerId: owner, owned, placements: [], journal: [sharedMoment], moonberryShares })!.moments).toEqual([]);
+  });
+  it.each([{ quantity: 2 }, { action: 'feed' }, { ruleVersion: 'other' }, { userItemId: id(99) }, { category: 'sanctuary' }])('rejects mismatched shared-moment metadata %j', (changes) => {
+    const journal = [{ ...sharedMoment, meta_json: { ...(sharedMoment.meta_json as object), ...changes } }];
+    expect(buildKeepsakeStory({ ownerId: owner, owned, placements: [], journal, moonberryShares: [sharedBinding] })!.moments).toEqual([]);
+  });
+  it('queries only the selected acquisition and applies normal recipient visibility', async () => {
+    const test = fixture({ items: [{ ...owned, quantity: 0 }], journal: [moment, sharedMoment],
+      shareRows: [sharedMoment], companions: [companion, recipient] });
+    const result = await test.run();
+    expect(test.rpc).toHaveBeenCalledTimes(1);
+    expect(test.rpc).toHaveBeenCalledWith('read_moonberry_share_moments', { p_user_item_id: ownedId });
+    expect(result.story.moments.filter((row: any) => row.label === 'Shared a Moonberry')).toHaveLength(1);
+    expect(result.companions).toEqual([{ id: companion, name: 'Lumi' }, { id: recipient, name: 'Lumi' }]);
+  });
+  it.each([{ consent: false }, { recent: 30 }, { companions: [companion] }, { failShare: true }])('keeps hidden share history closed: %j', async (changes) => {
+    const test = fixture({ journal: [moment, sharedMoment], shareRows: [sharedMoment], companions: [companion, recipient], ...changes });
+    const result = await test.run();
+    expect(result.story.moments.some((row: any) => row.id === sharedMoment.id)).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(sharedMoment.body);
+    if ('consent' in changes) expect(test.rpc).not.toHaveBeenCalled();
+  });
+  it('rejects caller-writable Journal shares not returned by the receipt reader', async () => {
+    const result = await fixture({ journal: [sharedMoment], companions: [companion, recipient] }).run();
+    expect(result.story.moments).toEqual([]);
+  });
+  it('continues to show preserved arrival history after depleted stack refills', async () => {
+    for (const quantity of [0, 1, 20]) {
+      const result = await fixture({ items: [{ ...owned, quantity }] }).run();
+      expect(result.unifiedItems[0].id).toBe(ownedId);
+      expect(result.story.moments[0].id).toBe(moment.id);
+    }
   });
 });

@@ -1,0 +1,21 @@
+(node:6) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v1.6.1 /workspace/scratch/105963ff4370/memvoya-moonberry-use
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(node:37) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryStory.spec.ts  (64 tests) 138ms
+(node:60) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryShareClient.spec.ts  (25 tests) 25ms
+(node:81) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryUse.spec.ts  (33 tests) 43ms
+
+ Test Files  3 passed (3)
+      Tests  122 passed (122)
+   Start at  23:27:23
+   Duration  2.67s (transform 269ms, setup 0ms, collect 397ms, tests 206ms, environment 1ms, prepare 523ms)
+

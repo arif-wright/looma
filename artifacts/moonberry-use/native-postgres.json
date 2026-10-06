@@ -1,0 +1,168 @@
+{
+  "status": "NOT_RUN",
+  "reportOrigin": "Review summary assembled after launcher failed before transaction child execution; not a transaction-engine result.",
+  "attemptStartedAt": "2026-10-06T04:23:27.959Z",
+  "attemptFinishedAt": "2026-10-06T04:23:30.074Z",
+  "reason": "Native PostgreSQL Unix socket creation returned Operation not permitted even for the normal escalated launcher invocation.",
+  "nativeVersion": "postgres (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)",
+  "checkCount": 0,
+  "failureCount": 0,
+  "checks": [],
+  "failures": [],
+  "blockingEvidence": [],
+  "preparedScenarioCount": 29,
+  "preparedLockWaitCount": 9,
+  "preparedScenarios": [
+    {
+      "name": "rollout preflight rejects absent, partial and incorrectly typed consent columns",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "one share preserves exact acquisition and every unrelated progression field",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "negative quantities and non-Moonberry zero are rejected for inserts and updates",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "two independent requests race for the last unit exactly once",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "same-key overlapping retries decrement and write one memory once",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "same key cannot switch owned acquisition or chosen companion",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "same-key concurrent acquisition substitution waits and then rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "same-key concurrent companion substitution waits and then rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "gather then use observes refill after a real advisory-lock wait",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "use then gather at stock limit observes decrement after lock wait",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "gather at full stock commits terminal result before waiting use",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "empty receipt stays empty across gather refill and new request can consume",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "successful receipt preserves event quantity across refill without consuming again",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "foreign owner, foreign companion and missing targets never consume",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "unsupported source, catalog, kind and capabilities never consume",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "malformed, null and signed-out calls and role ACLs are fail-closed",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "receipt insertion failure rolls back quantity, receipt and memory atomically",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "Journal insertion failure rolls back quantity, receipt and memory atomically",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "caller rollback removes a successful share and permits the same request to commit later",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "enabled, disabled, null, absent and reaction-off consent are independent",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "concurrent existing opt-out first suppresses memory after lock wait",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "concurrent use first holds consent through commit and later opt-out hides history",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "concurrent first-time opt-out insert cannot create a memory",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "deleted Journal and subsequent consent changes never resurrect memory on replay",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "deleted recipient keeps receipt replay and target-substitution protection",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "deleted acquisition preserves replay but cannot redirect receipt to replacement",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "history reader requires matching private receipt and exact owner/acquisition/recipient",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "history reader caps at six recent receipt-backed rows and honors absent consent",
+      "status": "NOT_RUN"
+    },
+    {
+      "name": "owner-scoped UUID request keys do not cross accounts",
+      "status": "NOT_RUN"
+    }
+  ],
+  "cleanup": {
+    "serverStopped": true,
+    "serverPidAbsent": true,
+    "pgCtlStatus": 3,
+    "socketRemoved": true,
+    "syntheticClusterDeleted": true
+  },
+  "sourceHashesAfterReview": [
+    {
+      "path": "scripts/sql/moonberry-use-candidate.sql",
+      "sha256": "84732dbc9f0bbd328f400d6c6d5a3f1786df7fb69ef0b9330c7890bfd7aa621f"
+    },
+    {
+      "path": "tests/sql/moonberry-use-native.mjs",
+      "sha256": "209bca52503970c0ac185941134a4532f3175d12e88ace2199452b4da488116e"
+    },
+    {
+      "path": "tests/sql/moonberry-use-transactions.mjs",
+      "sha256": "e437f78488ac224ebf0c5565770322a63b4b327831eb6b0dc5ab8e99d1650931"
+    },
+    {
+      "path": "tests/sql/helpers/moonberry-use-fixture.mjs",
+      "sha256": "8c5299dc6f7021e53e749be7a6b3ef0c9d9f209f98b852a571cbdeab821b71bc"
+    },
+    {
+      "path": "tests/sql/helpers/native-postgres.mjs",
+      "sha256": "13437829129f3031f44130a3cf13e9a4fc929d2f044207a80b2e67c3c739c101"
+    }
+  ],
+  "limitations": [
+    "Candidate SQL was neither applied nor executed by this attempt.",
+    "Fixture additions after the failed launch received JavaScript syntax checks only.",
+    "Existing PGlite installation was unavailable; no package installation or alternate listener was attempted.",
+    "Hosted schema, real authentication, PostgREST, deployment, and UI were outside this verification scope."
+  ]
+}

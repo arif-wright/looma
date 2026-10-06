@@ -1,0 +1,11 @@
+Independent client/API/story review — 2026-10-06
+
+All reported issues are resolved in reviewed source:
+- Failed storage cleanup has an explicit local-only recovery action.
+- Missing/ineligible stacks retain exact-request recovery at collection level.
+- Account mismatch returns 401 before RPC and preserves uncertainty; the expected-owner header is only a guard and never grants SQL authority.
+- Persisted UUIDs normalize to lowercase.
+- Refresh preserves the recoverable phase if a newer intent arrives.
+- Quantities are labelled as last-refreshed during pending, uncertain, or failed-refresh states.
+
+No remaining blocking defect was found in source review of the client, API, inventory or story code. Receipt-based exact-item binding, consent/archival filtering and replay reaction suppression remain intact. Browser acceptance is still NOT_RUN because the environment blocks Chromium and local-preview browser access. Review is not a substitute for executed UI tests.

@@ -1,0 +1,196 @@
+name: Moonberry Share candidate verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/items/**'
+      - 'src/lib/components/items/**'
+      - 'src/lib/__tests__/*moonberry*'
+      - 'src/lib/__tests__/*keepsake*'
+      - 'src/lib/server/**'
+      - 'src/routes/app/(protected)/inventory/**'
+      - 'src/routes/api/items/**'
+      - 'scripts/sql/moonberry-use-candidate.sql'
+      - 'scripts/testing/moonberry-use-preview/**'
+      - 'scripts/ci/moonberry-share-*'
+      - 'tests/sql/**'
+      - 'supabase/migrations/**'
+      - 'docs/moonberry-use*.md'
+      - 'package*.json'
+      - '*config*'
+      - '.github/workflows/moonberry-share.yml'
+
+# Review-only verification. No hosted credentials, deployment or production service.
+permissions:
+  contents: read
+concurrency:
+  group: moonberry-share-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  application-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record exact candidate and verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moonberry-share/application
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Credential-free source checks and build only. No deployment or hosted acceptance.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z src scripts tests supabase/migrations package.json package-lock.json '*config*' .github/workflows/moonberry-share.yml | xargs -0 sha256sum
+          } > test-results/moonberry-share/application/source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install and prepare application
+        id: dependencies
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npx svelte-kit sync
+      - name: Full unit suite
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          VITEST=true npm run test -- --run --pool=forks --maxWorkers=1 --minWorkers=1 --reporter=default --reporter=json --outputFile=test-results/moonberry-share/application/unit-results.json 2>&1 | tee test-results/moonberry-share/application/unit.log
+      - name: Full application check
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run check 2>&1 | tee test-results/moonberry-share/application/check.log
+      - name: Core TypeScript check
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run check:core 2>&1 | tee test-results/moonberry-share/application/core.log
+      - name: Production bundle build only
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee test-results/moonberry-share/application/build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-share-application-${{ github.event.pull_request.head.sha }}
+          path: test-results/moonberry-share/application/
+          if-no-files-found: error
+          retention-days: 14
+
+  native-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record isolated native verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moonberry-share/native
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Synthetic data in a new private Unix-socket PostgreSQL 17 cluster only.'
+            echo 'No TCP listener, hosted connection, production migration or deployment.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z tests/sql scripts/sql scripts/ci/moonberry-share-verify.mjs supabase/migrations docs/moonberry-use*.md .github/workflows/moonberry-share.yml | xargs -0 sha256sum
+          } > test-results/moonberry-share/native/source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install official PostgreSQL 17 binaries without a default cluster
+        run: |
+          set -euo pipefail
+          # Official PGDG packages: https://www.postgresql.org/download/linux/ubuntu/
+          # Installation only. The unprivileged guarded launcher owns its own cluster.
+          sudo install -d /usr/share/postgresql-common/pgdg /etc/postgresql-common
+          sudo curl --fail --show-error --silent --location https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main\n' | sudo tee /etc/apt/sources.list.d/moonberry-share-pgdg.list > /dev/null
+          printf '\ncreate_main_cluster = false\n' | sudo tee -a /etc/postgresql-common/createcluster.conf > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-17 postgresql-client-17 iproute2
+          test ! -d /var/lib/postgresql/17/main
+          dpkg-query -W postgresql-17 postgresql-client-17 libpq5 > test-results/moonberry-share/native/packages.txt
+      - name: Check native source and report verifier
+        run: |
+          set -euo pipefail
+          node --check tests/sql/moonberry-use-native.mjs
+          node --check tests/sql/moonberry-use-transactions.mjs
+          node --check tests/sql/helpers/moonberry-use-fixture.mjs
+          node --check tests/sql/helpers/native-postgres.mjs
+          node scripts/ci/moonberry-share-verify.mjs --self-test
+      - name: Run all native transactions and observed lock waits
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" MEMVOYA_PG_TEST_ONLY=1 node tests/sql/moonberry-use-native.mjs 2>&1 | tee test-results/moonberry-share/native/launcher.log
+          node scripts/ci/moonberry-share-verify.mjs native
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-share-native-${{ github.event.pull_request.head.sha }}
+          path: test-results/moonberry-share/native/
+          if-no-files-found: error
+          retention-days: 14
+
+  synthetic-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record synthetic browser verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moonberry-share
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Real inventory/share/story components with synthetic identities and in-memory transport.'
+            echo 'Only loopback GET/HEAD requests allowed. No real account, hosted service or mutations.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z src scripts/testing/moonberry-use-preview scripts/ci/moonberry-share-verify.mjs package.json package-lock.json .github/workflows/moonberry-share.yml | xargs -0 sha256sum
+          } > test-results/moonberry-share/browser-source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - name: Compile real components in isolated fixture
+        run: |
+          set -euo pipefail
+          {
+            npx svelte-kit sync
+            npx svelte-check --tsconfig scripts/testing/moonberry-use-preview/tsconfig.json
+            npx vite build --config scripts/testing/moonberry-use-preview/vite.config.mjs --outDir ../../../test-results/moonberry-share/fixture-build
+          } 2>&1 | tee test-results/moonberry-share/browser-compile.log
+      - run: npx playwright install --with-deps chromium
+      - name: Exercise all desktop and narrow browser cases
+        run: |
+          set -euo pipefail
+          npx playwright --version > test-results/moonberry-share/playwright-version.txt
+          npx playwright test --config scripts/testing/moonberry-use-preview/playwright.config.ts 2>&1 | tee test-results/moonberry-share/browser.log
+          node scripts/ci/moonberry-share-verify.mjs browser
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-share-synthetic-browser-${{ github.event.pull_request.head.sha }}
+          path: test-results/moonberry-share/
+          if-no-files-found: error
+          retention-days: 14
