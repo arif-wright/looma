@@ -7,7 +7,7 @@ import {
   isConversationMember,
   isUuid
 } from '$lib/server/messenger';
-import { requireModerator } from '$lib/server/moderation';
+import { effectiveModerationState, requireModerator } from '$lib/server/moderation';
 import { resolveAttachmentViewUrls } from '$lib/server/messenger/media';
 
 type MessageRow = {
@@ -184,15 +184,7 @@ export const GET: RequestHandler = async (event) => {
     moderationByUserId = Object.fromEntries(
       (senderPrefs ?? []).map((row) => [
         row.user_id as string,
-        {
-          status:
-            row.moderation_status === 'muted' ||
-            row.moderation_status === 'suspended' ||
-            row.moderation_status === 'banned'
-              ? row.moderation_status
-              : 'active',
-          until: (row.moderation_until as string | null) ?? null
-        }
+        effectiveModerationState(row)
       ])
     );
   }

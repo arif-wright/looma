@@ -1,15 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getAdminFlags } from '$lib/server/admin-guard';
+import { effectiveModerationState, type ModerationState, type ModerationStatus } from './state';
+export { effectiveModerationState } from './state';
+export type { ModerationStatus, ModerationState } from './state';
 
 export const MODERATION_CACHE_HEADERS = { 'cache-control': 'no-store' } as const;
 
 export type ModerationRole = 'user' | 'moderator' | 'admin';
-export type ModerationStatus = 'active' | 'muted' | 'suspended' | 'banned';
-
-export type ModerationState = {
-  status: ModerationStatus;
-  until: string | null;
-};
 
 export const isUuid = (value: string | null | undefined): value is string =>
   Boolean(
@@ -72,33 +69,9 @@ export const getModerationState = async (
     .from('user_preferences')
     .select('moderation_status, moderation_until')
     .eq('user_id', userId)
-    .maybeSingle<{ moderation_status?: ModerationStatus | null; moderation_until?: string | null }>();
+    .maybeSingle<{ moderation_status?: string | null; moderation_until?: string | null }>();
 
-  const rawStatus = data?.moderation_status;
-  const until = data?.moderation_until ?? null;
-  const status: ModerationStatus =
-    rawStatus === 'muted' || rawStatus === 'suspended' || rawStatus === 'banned'
-      ? rawStatus
-      : 'active';
-
-  if ((status === 'muted' || status === 'suspended') && until) {
-    const untilMs = Date.parse(until);
-    if (Number.isFinite(untilMs) && untilMs <= Date.now()) {
-      await supabase
-        .from('user_preferences')
-        .upsert(
-          {
-            user_id: userId,
-            moderation_status: 'active',
-            moderation_until: null
-          },
-          { onConflict: 'user_id', ignoreDuplicates: false }
-        );
-      return { status: 'active', until: null };
-    }
-  }
-
-  return { status, until };
+  return effectiveModerationState(data);
 };
 
 export const enforceSocialActionAllowed = async (
