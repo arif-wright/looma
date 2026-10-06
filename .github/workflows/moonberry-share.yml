@@ -11,6 +11,7 @@ on:
       - 'src/routes/app/(protected)/inventory/**'
       - 'src/routes/api/items/**'
       - 'scripts/sql/moonberry-use-candidate.sql'
+      - 'scripts/sql/review/moonberry-share-v1.sql'
       - 'scripts/testing/moonberry-use-preview/**'
       - 'scripts/ci/moonberry-share-*'
       - 'tests/sql/**'
@@ -144,6 +145,66 @@ jobs:
         with:
           name: moonberry-share-native-${{ github.event.pull_request.head.sha }}
           path: test-results/moonberry-share/native/
+          if-no-files-found: error
+          retention-days: 14
+
+  rollout-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record isolated rollout verification boundary
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/moonberry-share/rollout
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            echo 'Exact reviewed wrapper against synthetic data in a new private Unix-socket PostgreSQL 17 cluster only.'
+            echo 'Synthetic history/response-loss model only; no claim of hosted migration-ledger coatomicity.'
+            echo 'No TCP listener, hosted connection, production migration or deployment.'
+            git rev-parse HEAD HEAD^{tree}
+            git ls-files -z tests/sql scripts/sql scripts/ci/moonberry-share-rollout-verify.mjs supabase/migrations docs/moonberry-use*.md .github/workflows/moonberry-share.yml | xargs -0 sha256sum
+          } > test-results/moonberry-share/rollout/source.txt
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install official PostgreSQL 17 binaries without a default cluster
+        run: |
+          set -euo pipefail
+          # Official PGDG packages: https://www.postgresql.org/download/linux/ubuntu/
+          # Installation only. The unprivileged guarded launcher owns its own cluster.
+          sudo install -d /usr/share/postgresql-common/pgdg /etc/postgresql-common
+          sudo curl --fail --show-error --silent --location https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main\n' | sudo tee /etc/apt/sources.list.d/moonberry-share-pgdg.list > /dev/null
+          printf '\ncreate_main_cluster = false\n' | sudo tee -a /etc/postgresql-common/createcluster.conf > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-17 postgresql-client-17 iproute2
+          test ! -d /var/lib/postgresql/17/main
+          dpkg-query -W postgresql-17 postgresql-client-17 libpq5 > test-results/moonberry-share/rollout/packages.txt
+      - name: Check exact wrapper contract and separate rollout report gate
+        run: |
+          set -euo pipefail
+          node --check tests/sql/moonberry-rollout-native.mjs
+          node --check tests/sql/moonberry-rollout-transactions.mjs
+          node --check tests/sql/helpers/moonberry-rollout-contract.mjs
+          node --check tests/sql/helpers/moonberry-use-fixture.mjs
+          node --check tests/sql/helpers/native-postgres.mjs
+          node scripts/ci/moonberry-share-rollout-verify.mjs --self-test
+      - name: Run all 14 rollout scenarios and observed lock timeout
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" MEMVOYA_PG_TEST_ONLY=1 node tests/sql/moonberry-rollout-native.mjs 2>&1 | tee test-results/moonberry-share/rollout/launcher.log
+          node scripts/ci/moonberry-share-rollout-verify.mjs rollout
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-share-rollout-${{ github.event.pull_request.head.sha }}
+          path: test-results/moonberry-share/rollout/
           if-no-files-found: error
           retention-days: 14
 
