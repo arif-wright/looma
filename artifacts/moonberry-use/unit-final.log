@@ -1,0 +1,291 @@
+(node:5) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v1.6.1 /workspace/scratch/105963ff4370/memvoya-moonberry-use
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(node:35) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/gameSettlementApi.spec.ts  (85 tests) 1251ms
+(node:58) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/__tests__/worldConnection.spec.ts > WorldConnection lifecycle > does not mark an open room unavailable when snapshot presentation throws
+[world] Snapshot synchronization failed. [W-CLIENT]
+
+stderr | src/lib/__tests__/worldConnection.spec.ts > WorldConnection lifecycle > reports a safe diagnostic for ticket and terminal connection failures
+[world] Realtime connection is unavailable.
+
+stderr | src/lib/__tests__/worldConnection.spec.ts > WorldConnection lifecycle > falls back once only after token and fresh-session recovery are exhausted
+[world] Realtime connection is unavailable.
+
+ ✓ src/lib/__tests__/worldConnection.spec.ts  (30 tests) 474ms
+(node:82) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/bondAchievementCaller.spec.ts  (33 tests) 88ms
+(node:102) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/gameSdkSessionLifecycle.spec.ts  (34 tests) 460ms
+(node:122) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/spritePipeline.spec.ts  (45 tests) 275ms
+(node:142) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/__tests__/launchProofIntegrity.spec.ts > launch proof integrity > treats a failed first-bond Journal write as recoverable and incomplete
+[companion-journal] append failed { message: 'journal unavailable' }
+
+ ✓ src/lib/__tests__/launchProofIntegrity.spec.ts  (22 tests) 13ms
+(node:165) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryStory.spec.ts  (64 tests) 82ms
+(node:185) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/hdSpriteMissingArt.spec.ts  (13 tests) 88ms
+(node:205) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/keepsakeStoryRoute.spec.ts  (27 tests) 32ms
+(node:225) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | src/lib/__tests__/threeAreaRuntime.spec.ts > Three area runtime lifecycle > snaps reduced-motion interpolation and removes pending input on blur/context loss
+[world:three] WebGL context lost; world session retained.
+[world:three] WebGL context restored without session rejoin.
+
+ ✓ src/lib/__tests__/threeAreaRuntime.spec.ts  (7 tests) 54ms
+(node:245) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/environmentFoundation.spec.ts  (14 tests) 38ms
+(node:265) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/endlessRunner.spec.ts  (12 tests) 3541ms
+(node:285) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/runnerLanternwaySkin.spec.ts  (14 tests) 40ms
+(node:305) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/keepsakeStory.spec.ts  (30 tests) 25ms
+(node:325) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/orbfield.spec.ts  (16 tests) 70ms
+(node:345) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryShareClient.spec.ts  (25 tests) 23ms
+(node:365) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/environmentPresentation.spec.ts  (13 tests) 15ms
+(node:385) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/__tests__/threeAreaEnvironmentFailures.spec.ts > actual Three supplemental environment failure handling > keeps base-plus-supplemental failure, texture, resource and visibility totals stable across frames
+[world:environment] Production texture failed to load. {
+  assetId: 'rock.large',
+  url: '/game/environment/v1/props/rocks/large-rock-01.png',
+  error: 'base texture unavailable'
+}
+
+ ✓ src/lib/__tests__/threeAreaEnvironmentFailures.spec.ts  (4 tests) 43ms
+(node:405) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionPersonalization.spec.ts  (8 tests) 21ms
+(node:425) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionAgent.spec.ts  (9 tests) 52ms
+(node:445) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/moonberryUse.spec.ts  (33 tests) 163ms
+(node:465) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/orbfieldSkin.spec.ts  (10 tests) 23ms
+(node:485) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/routes/api/events/ingest/server.spec.ts > POST /api/events/ingest receipt handling > fails closed when the admin client is unavailable
+[events] idempotency receipt service unavailable
+
+ ✓ src/routes/api/events/ingest/server.spec.ts  (5 tests) 115ms
+(node:505) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threeAreaPresentation.spec.ts  (5 tests) 50ms
+(node:525) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/sanctuaryPlacementMemory.spec.ts  (10 tests) 56ms
+(node:545) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/achievementSettlement.spec.ts  (20 tests) 32ms
+(node:565) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threeRendererMath.spec.ts  (18 tests) 17ms
+(node:585) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/effectiveCompanionState.spec.ts  (15 tests) 18ms
+(node:605) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/reconnectBondCaller.spec.ts  (3 tests) 31ms
+(node:625) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/chapterHistory.spec.ts  (5 tests) 14ms
+(node:645) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldSession.spec.ts  (4 tests) 12ms
+(node:669) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/absenceRelationshipPersistence.spec.ts  (4 tests) 39ms
+(node:689) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionIdentity.spec.ts  (6 tests) 10ms
+(node:709) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldGameConfig.spec.ts  (7 tests) 49ms
+(node:729) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/sanctuaryRestIdentity.spec.ts  (7 tests) 19ms
+(node:749) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/careKeepsakeQualification.spec.ts  (6 tests) 54ms
+(node:769) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/dailyActivity.spec.ts  (5 tests) 28ms
+(node:789) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/__tests__/gameConfigDiscovery.spec.ts > game config discovery policy > excludes Tiles from PGRST205 schema fallback
+[games] config fallback engaged, schema missing
+
+stderr | src/lib/__tests__/gameConfigDiscovery.spec.ts > game config discovery policy > excludes Tiles from PGRST202 schema fallback
+[games] config fallback engaged, schema missing
+
+ ✓ src/lib/__tests__/gameConfigDiscovery.spec.ts  (11 tests) 83ms
+(node:809) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/landingResolver.spec.ts  (12 tests) 7ms
+(node:829) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/gameDiscovery.spec.ts  (9 tests) 27ms
+(node:849) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/gameCompletionEvent.spec.ts  (11 tests) 20ms
+(node:869) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldPhaserInputAndCache.spec.ts  (7 tests) 7ms
+(node:889) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionRosterState.spec.ts  (2 tests) 1755ms
+(node:909) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionGiftPreferences.spec.ts  (5 tests) 11859ms
+(node:929) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/missionValidation.spec.ts  (7 tests) 9ms
+(node:949) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldTicketEndpoint.spec.ts  (7 tests) 31ms
+(node:969) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/emotionalProfile.spec.ts  (4 tests) 13ms
+(node:989) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldCompanion.spec.ts  (9 tests) 8ms
+(node:1009) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/eventIngestIdempotency.spec.ts  (4 tests) 22ms
+(node:1029) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionDefinitions.spec.ts  (3 tests) 19ms
+(node:1049) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/__tests__/companionElements.spec.ts > companion element framework > falls back gently for unknown elements and archetypes
+[onboarding] unknown archetype or seed; using fallback { value: 'not-real', fallback: 'muse' }
+[onboarding] unknown archetype or seed; using fallback { value: 'not-real', fallback: 'muse' }
+
+ ✓ src/lib/__tests__/companionElements.spec.ts  (4 tests) 9ms
+(node:1069) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/sanctuaryRestRequest.spec.ts  (4 tests) 23ms
+(node:1089) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldPhaserPresentation.spec.ts  (4 tests) 7ms
+(node:1109) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/rewardHistory.spec.ts  (4 tests) 31ms
+(node:1129) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threePresentation.spec.ts  (3 tests) 5ms
+(node:1149) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/alphaGate.spec.ts  (4 tests) 7ms
+(node:1169) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldTicket.spec.ts  (3 tests) 18ms
+(node:1189) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/api/companion-bond.spec.ts  (3 tests) 8ms
+(node:1209) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threeFacing.spec.ts  (11 tests) 8ms
+(node:1229) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldTraversal.spec.ts  (3 tests) 8ms
+(node:1249) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/authRedirect.spec.ts  (3 tests) 6ms
+(node:1269) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/lightweightAnalytics.spec.ts  (1 test) 10ms
+(node:1289) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionEvolution.spec.ts  (2 tests) 5ms
+(node:1309) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threeRoster.spec.ts  (2 tests) 8ms
+(node:1329) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/rewardBonus.spec.ts  (3 tests) 26ms
+(node:1349) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/itemPresentation.spec.ts  (3 tests) 5ms
+(node:1369) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/appOnboardingGate.spec.ts  (3 tests) 6ms
+(node:1389) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/sanctuary.spec.ts  (4 tests) 6ms
+(node:1409) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/movementIntentScheduler.spec.ts  (3 tests) 11ms
+(node:1429) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/api/companion-rituals.spec.ts  (2 tests) 9ms
+(node:1449) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/api/companion-bond-milestones.spec.ts  (2 tests) 3ms
+(node:1469) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionProgression.spec.ts  (2 tests) 11ms
+(node:1489) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/activeCompanion.spec.ts  (2 tests) 10ms
+(node:1509) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/relationshipState.spec.ts  (2 tests) 3ms
+(node:1529) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionMood.spec.ts  (2 tests) 3ms
+(node:1549) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/meaningfulInteraction.spec.ts  (1 test) 5ms
+(node:1569) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/identityResult.spec.ts  (2 tests) 7ms
+(node:1589) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/worldRuntimeRegistry.spec.ts  (1 test) 16ms
+(node:1609) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/rendererSelection.spec.ts  (2 tests) 5ms
+(node:1629) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/threeContextRecovery.spec.ts  (1 test) 8ms
+(node:1649) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/lib/__tests__/companionCopy.spec.ts  (2 tests) 3ms
+
+ Test Files  81 passed (81)
+      Tests  847 passed (847)
+   Start at  23:28:12
+   Duration  265.47s (transform 6.98s, setup 9ms, collect 14.83s, tests 21.57s, environment 23ms, prepare 13.50s)
+

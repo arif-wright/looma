@@ -1,0 +1,9 @@
+PASS syntax: tests/sql/moonberry-use-native.mjs
+PASS syntax: tests/sql/moonberry-use-transactions.mjs
+PASS syntax: tests/sql/helpers/moonberry-use-fixture.mjs
+PASS syntax: tests/sql/helpers/native-postgres.mjs
+PASS guard: missing explicit disposable-cluster guard
+PASS guard: inherited PGHOST rejected
+PASS guard: inherited DATABASE_URL rejected
+PASS native psql framing and SQL quoting helpers
+PASS 8 static/guard groups. Native transaction and concurrency assertions remain NOT_RUN.

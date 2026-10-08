@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-10-06T04:23:27.959Z",
+  "status": "FAILED",
+  "runtime": "/workspace/scratch/105963ff4370/connected-wilds-publication/native-pg-verification/runtime",
+  "node": "/workspace/scratch/105963ff4370/connected-wilds-publication/runtime-node22/node_modules/node/bin/node",
+  "temporary": "/tmp/mv-moonberry-native-KrGazm",
+  "environmentAllowlist": [
+    "HOME",
+    "LC_ALL",
+    "LD_LIBRARY_PATH",
+    "MEMVOYA_MOONBERRY_CLUSTER_ROOT",
+    "MEMVOYA_MOONBERRY_REPORT",
+    "MEMVOYA_PG_TEST_ONLY",
+    "PATH",
+    "PGDATABASE",
+    "PGHOST",
+    "PGPASSFILE",
+    "PGPORT",
+    "PGUSER",
+    "PSQL_BIN",
+    "TZ"
+  ],
+  "noHostedCredentials": true,
+  "cleanup": {
+    "serverStopped": true,
+    "serverPidAbsent": true,
+    "pgCtlStatus": 3,
+    "socketRemoved": true,
+    "syntheticClusterDeleted": true
+  },
+  "postgresVersion": "postgres (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)",
+  "psqlVersion": "psql (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)",
+  "nodeVersion": "v22.23.3",
+  "error": "AssertionError [ERR_ASSERTION]: /workspace/scratch/105963ff4370/connected-wilds-publication/native-pg-verification/runtime/usr/lib/postgresql/17/bin/pg_ctl: waiting for server to start.... stopped waiting\npg_ctl: could not start server\nExamine the log output.\n\n\n1 !== 0\n\n    at file:///workspace/scratch/105963ff4370/memvoya-moonberry-use/tests/sql/moonberry-use-native.mjs:33:74\n    at async file:///workspace/scratch/105963ff4370/memvoya-moonberry-use/tests/sql/moonberry-use-native.mjs:45:3",
+  "finishedAt": "2026-10-06T04:23:30.074Z"
+}

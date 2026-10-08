@@ -1,0 +1,64 @@
+{
+  "status": "NOT_RUN",
+  "scope": "Moonberry Share synthetic local browser fixture",
+  "application_assertions_executed": 0,
+  "screenshots_produced": 0,
+  "checks_completed": [
+    {
+      "check": "Playwright discovery",
+      "status": "PASS",
+      "cases": 40,
+      "log": "browser-tests-discovery.log"
+    },
+    {
+      "check": "Final isolated Svelte typecheck",
+      "status": "PASS",
+      "errors": 0,
+      "warnings": 0,
+      "log": "browser-fixture-types.log"
+    },
+    {
+      "check": "Final Vite fixture build",
+      "status": "PASS",
+      "log": "browser-fixture-build.log"
+    },
+    {
+      "check": "Source unchanged through final compile/build",
+      "status": "PASS",
+      "before": "browser-source-before.sha256",
+      "after": "browser-source-after.sha256"
+    }
+  ],
+  "attempts": [
+    {
+      "route": "installed Chromium through Playwright",
+      "permissions": "default",
+      "result": "Browser failed before page creation",
+      "error": "FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)"
+    },
+    {
+      "route": "installed Chromium through Playwright",
+      "permissions": "require_escalated reviewer-approved request",
+      "result": "Browser failed before page creation",
+      "error": "FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)"
+    },
+    {
+      "route": "supported cloud browser",
+      "target": "http://127.0.0.1:4182",
+      "result": "Navigation blocked",
+      "error": "Browser Use cannot open http://127.0.0.1:4182 in tab 31. Browser reported: net::ERR_BLOCKED_BY_CLIENT"
+    }
+  ],
+  "boundary": "No route bypass, hosted request, hosted mutation, publication, or user data. This record is blocker evidence, not browser acceptance.",
+  "real_ui_components": [
+    "src/routes/app/(protected)/inventory/+page.svelte",
+    "src/lib/components/items/MoonberryShare.svelte",
+    "src/lib/components/items/KeepsakeStory.svelte"
+  ],
+  "prepared_browser_projects": [
+    "desktop: 1280x900",
+    "narrow: 320x844"
+  ],
+  "stopping_condition": "Both supported browser routes blocked; parent directed no further browser route attempts. Local server stopped. No browser acceptance or screenshots claimed.",
+  "post_compile_changes": "README-only wording correction: prepared history coverage says Back navigation; executable source and tests unchanged."
+}

@@ -32,6 +32,7 @@ export type StoryJournalRow = {
   title: string | null; body: string | null; created_at: string; meta_json: unknown;
 };
 export type CareStoryEvent = { id: string; action: 'feed' | 'play' | 'groom'; label: string; occurredAt: string };
+export type MoonberryShareBinding = { eventId: string; userItemId: string; companionId: string };
 
 /** A Moonberry stack retains its first gather event, not a history of later increments. */
 export const recordedMoonberryEventId = (owned: StoryOwnedItem): string | null => {
@@ -72,6 +73,7 @@ export type KeepsakeStory = {
 export const buildKeepsakeStory = (args: {
   ownerId: string; owned: StoryOwnedItem; placements: StoryPlacement[]; journal: StoryJournalRow[];
   placementsAvailable?: boolean; historyState?: KeepsakeStory['historyState'];
+  moonberryShares?: MoonberryShareBinding[];
 }): KeepsakeStory | null => {
   const { ownerId, owned } = args;
   const item = one(owned.item);
@@ -107,6 +109,12 @@ export const buildKeepsakeStory = (args: {
       if (meta.interactionType === 'shared_rest' && meta.action === 'shared_rest' && item.item_key === 'care-moss-seat') label = 'Rested together';
       else if (!meta.interactionType && !meta.action) label = 'Found a place';
       else continue;
+    } else if (item.item_key === 'world-moonberry' && meta.category === 'item_use' && meta.action === 'share_moonberry' &&
+      meta.itemKey === 'world-moonberry' && meta.userItemId === owned.id && meta.quantity === 1 &&
+      meta.ruleVersion === 'moonberry-share-v1' && isOwnedItemId(row.source_id) &&
+      args.moonberryShares?.some((binding) => binding.eventId === row.source_id &&
+        binding.userItemId === owned.id && binding.companionId === row.companion_id)) {
+      label = 'Shared a Moonberry';
     } else if (worldEventId && row.source_id === worldEventId && row.companion_id === owned.companion_id &&
       meta.kind === 'world_gather' && meta.itemKey === 'world-moonberry' && meta.mapId === 'wilds-exploration' &&
       (meta.userItemId === undefined || meta.userItemId === owned.id)) {
