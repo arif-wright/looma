@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-vi.mock('$lib/games/arpg/scenes/GameScene', () => ({ GameScene: { setGameHandlers: vi.fn() } }));
+vi.mock('$lib/games/arpg/scenes/GameScene', () => ({
+  GameScene: class {
+    constructor(public handlers: { onReady: () => void }) {}
+  }
+}));
 
 let created: Array<{ destroy: ReturnType<typeof vi.fn> }>;
 let gameConstructor: Mock<[unknown], { destroy: ReturnType<typeof vi.fn> }>;
@@ -11,7 +15,9 @@ beforeEach(async () => {
   vi.resetModules(); created = [];
   vi.stubGlobal('window', {});
   gameConstructor = vi.fn(function (_config: unknown) {
-    const game = { destroy: vi.fn() }; created.push(game); return game;
+    const game = { destroy: vi.fn() }; created.push(game);
+    (_config as { scene: [{ handlers: { onReady: () => void } }] }).scene[0].handlers.onReady();
+    return game;
   });
   vi.doMock('phaser', () => {
     return { default: { Game: gameConstructor, Scene: class {}, AUTO: 'AUTO', Scale: { RESIZE: 'RESIZE', CENTER_BOTH: 'CENTER_BOTH' } } };

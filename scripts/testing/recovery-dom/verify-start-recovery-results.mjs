@@ -9,6 +9,8 @@ export const UNIT_FILES = {
   'gameSdkStartRecovery.spec.ts': 27,
   'gameIntegrationStartRecovery.spec.ts': 9,
   'arpgBootStartRecovery.spec.ts': 5,
+  'arpgBootSceneReadiness.spec.ts': 12,
+  'arpgGameSceneReadiness.spec.ts': 12,
   'gameFullscreenStartRecovery.spec.ts': 18
 };
 export const DOM_FILES = {

@@ -1,0 +1,115 @@
+name: ARPG scene readiness verification
+
+# Additive credential-free gate for the real ARPG renderer, scene and assets.
+# Authentication and session transport remain synthetic. This does not deploy,
+# contact a hosted backend, replace the recovery gates or establish mobile QA.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+concurrency:
+  group: arpg-scene-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  arpg-scene-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Verify and record exact source, assets and unchanged toolchain
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/arpg-scene-readiness
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$(git rev-parse HEAD:src)" = c7342a54a765e88007bdfedceced679b3c32a7c1
+          test "$(git rev-parse HEAD:static)" = 93f203a8e01263a0066e1632cf2a6d9bd062de5b
+          test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
+          test -z "${ARPG_READINESS_BROWSER_EXECUTABLE:-}"
+          test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"
+          node -e 'if (Number(process.versions.node.split(".")[0]) !== 22) throw new Error("Use the approved Node 22 runtime.")'
+          {
+            echo 'Real ARPG boot, Phaser renderer, GameScene and repository assets; synthetic Auth and session transport.'
+            echo 'Discovery is zero execution. Browser acceptance requires a separate first-attempt execution report with isolation observations.'
+            echo 'No hosted Auth, API, database or deployment acceptance; no mobile coverage.'
+            git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:static HEAD:supabase
+            node --version
+            npm --version
+            git ls-files -z src static scripts/testing/arpg-readiness-preview scripts/testing/recovery-dom/verify-playwright-toolchain.mjs package.json package-lock.json pnpm-lock.yaml .github/workflows/arpg-scene-readiness.yml | xargs -0 sha256sum
+          } > artifacts/arpg-scene-readiness/source.txt
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs candidate before "$PWD" "$PWD" > artifacts/arpg-scene-readiness/toolchain-before.json
+      - name: Install locked dependencies without lifecycle scripts
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          ./node_modules/.bin/svelte-kit sync
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs candidate after "$PWD" "$PWD" > artifacts/arpg-scene-readiness/toolchain-after.json
+      - name: Type-check fixture and test its strict report verifier
+        run: |
+          set -euo pipefail
+          node node_modules/svelte-check/bin/svelte-check --tsconfig scripts/testing/arpg-readiness-preview/tsconfig.json 2>&1 | tee artifacts/arpg-scene-readiness/svelte-check.log
+          node node_modules/typescript/bin/tsc --noEmit -p scripts/testing/arpg-readiness-preview/tsconfig.json 2>&1 | tee artifacts/arpg-scene-readiness/typescript.log
+          node --test scripts/testing/arpg-readiness-preview/verify-results.test.mjs 2>&1 | tee artifacts/arpg-scene-readiness/verifier-tests.log
+      - name: Build the real-asset fixture and validate discovery only
+        run: |
+          set -euo pipefail
+          test ! -e scripts/testing/arpg-readiness-preview/.results/browser-results.json
+          node node_modules/vite/bin/vite.js build --config scripts/testing/arpg-readiness-preview/vite.config.mjs 2>&1 | tee artifacts/arpg-scene-readiness/build.log
+          node node_modules/@playwright/test/cli.js test --config scripts/testing/arpg-readiness-preview/playwright.config.ts --list 2>&1 | tee artifacts/arpg-scene-readiness/discovery.log
+          node scripts/testing/arpg-readiness-preview/verify-results.mjs discovery scripts/testing/arpg-readiness-preview/.results/discovery-results.json | tee artifacts/arpg-scene-readiness/discovery-verification.log
+          test ! -e scripts/testing/arpg-readiness-preview/.results/browser-results.json
+      - name: Install only the locked Playwright-managed Chromium
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/playwright install --with-deps chromium
+          node --input-type=module -e 'import { chromium } from "@playwright/test"; import { readFileSync } from "node:fs"; import { createHash } from "node:crypto"; const executable=chromium.executablePath(); console.log(JSON.stringify({playwright:JSON.parse(readFileSync("node_modules/@playwright/test/package.json","utf8")).version, apiExecutableReference:executable, apiExecutableReferenceSha256:createHash("sha256").update(readFileSync(executable)).digest("hex"), headlessLaunchSelection:"Default headless Chromium is selected by Playwright 1.57.0 as chromium-headless-shell using the revision metadata below. The full Chromium API executable reference hash is not launched-process provenance.", browserRevisions:JSON.parse(readFileSync("node_modules/playwright-core/browsers.json","utf8")).browsers.filter(item=>item.name.startsWith("chromium"))},null,2));' > artifacts/arpg-scene-readiness/managed-browser-provenance.json
+      - name: Execute ARPG browser cases once and validate actual results
+        run: |
+          set -euo pipefail
+          test -z "${ARPG_READINESS_BROWSER_EXECUTABLE:-}"
+          test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"
+          test ! -e scripts/testing/arpg-readiness-preview/.results/browser-results.json
+          node node_modules/@playwright/test/cli.js test --config scripts/testing/arpg-readiness-preview/playwright.config.ts 2>&1 | tee artifacts/arpg-scene-readiness/browser.log
+          node scripts/testing/arpg-readiness-preview/verify-results.mjs execution scripts/testing/arpg-readiness-preview/.results/browser-results.json | tee artifacts/arpg-scene-readiness/execution-verification.log
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs candidate after "$PWD" "$PWD" > artifacts/arpg-scene-readiness/toolchain-final.json
+          git diff --exit-code -- src supabase static services package.json package-lock.json pnpm-lock.yaml scripts/testing/arpg-readiness-preview scripts/testing/recovery-dom .github/workflows/arpg-scene-readiness.yml
+      - name: Gather available fixture evidence even when a check fails
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/arpg-scene-readiness/fixture
+          if [ -d scripts/testing/arpg-readiness-preview/.results ]; then
+            cp -a scripts/testing/arpg-readiness-preview/.results/. artifacts/arpg-scene-readiness/fixture/
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: arpg-scene-readiness-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/arpg-scene-readiness/
+            !artifacts/arpg-scene-readiness/fixture/browser-artifacts/**/trace.zip
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: arpg-scene-readiness-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/arpg-scene-readiness/fixture/browser-artifacts/**/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
