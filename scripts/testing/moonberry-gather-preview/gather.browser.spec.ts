@@ -298,7 +298,9 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
       await page.evaluate((y) => window.scrollTo(0, y), scroll);
     }
   };
+  let layoutCheckIndex = 0;
   const checkLayout = async () => {
+    const checkIndex = ++layoutCheckIndex;
     const selectors = ['.interaction-prompt', '.gather-result', '.camera-controls', '.touch-controls'];
     const regions = [];
     const world = (await page.getByTestId('world-game-mount').boundingBox())!;
@@ -317,18 +319,25 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
       expect(width <= 0 || height <= 0, `${a.selector} overlaps ${b.selector}: ${JSON.stringify({ a, b })}`).toBe(true);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
-    for (const target of await page.locator('.camera-controls button, .camera-controls select, .touch-controls button, .interaction-prompt button, .gather-result a').all()) {
-      if (!(await target.isVisible())) continue;
-      await target.scrollIntoViewIfNeeded();
-      expect(await target.evaluate((element) => {
+    for (const [targetIndex, target] of (await page.locator('.camera-controls button, .camera-controls select, .touch-controls button, .interaction-prompt button, .gather-result a').all()).entries()) {
+      const phase = `checkLayout:${checkIndex}:target:${targetIndex}`;
+      if (!(await observeLayoutPhase(testInfo, `${phase}:visibility`, () => target.isVisible()))) continue;
+      await observeLayoutPhase(testInfo, `${phase}:scroll`, () => target.scrollIntoViewIfNeeded());
+      // Keep Playwright's visible/stable scroll action, then observe the same
+      // hit target, tag and border-box dimensions in one browser round trip.
+      const observed = await observeLayoutPhase(testInfo, `${phase}:read`, () => target.evaluate((element) => {
         const box = element.getClientRects()[0]!;
         const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return hit === element || Boolean(hit && element.contains(hit));
-      }), 'Control/link center must hit the intended target').toBe(true);
-      if (touch && !(await target.evaluate((el) => el.tagName === 'A'))) {
-        const box = (await target.boundingBox())!;
-        expect(box.width).toBeGreaterThanOrEqual(44);
-        expect(box.height).toBeGreaterThanOrEqual(44);
+        const bounds = element.getBoundingClientRect();
+        return {
+          intendedHit: hit === element || Boolean(hit && element.contains(hit)),
+          isLink: element.tagName === 'A', width: bounds.width, height: bounds.height
+        };
+      }));
+      expect(observed.intendedHit, 'Control/link center must hit the intended target').toBe(true);
+      if (touch && !observed.isLink) {
+        expect(observed.width).toBeGreaterThanOrEqual(44);
+        expect(observed.height).toBeGreaterThanOrEqual(44);
       }
     }
   };
