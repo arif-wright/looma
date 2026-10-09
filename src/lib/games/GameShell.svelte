@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { get } from 'svelte/store';
+  import { page } from '$app/stores';
   import { loadOrbfieldSkin, ORBFIELD_SKIN_URLS, type OrbfieldSkinLoad } from './orbfieldSkin';
   import { goto } from '$app/navigation';
   import {
-    startSession, completeSession, abandonSession,
+    startSession, completeSession, abandonSession, watchGameOwner,
     getGameErrorMessage, getGameErrorKind,
     type GameSessionStart, type GameSessionServerResult
   } from '$lib/games/sdk';
@@ -27,6 +29,7 @@
   let session: GameSessionStart | null = null;
   let generation = 0;
   let mounted = false;
+  let startController: AbortController | null = null;
   let pauseOnStart = false;
   let art: OrbfieldSkinLoad = { assets: {}, complete: false };
   let artState: 'loading' | 'ready' | 'fallback' = 'loading';
@@ -34,6 +37,7 @@
   let motionPreference: MediaQueryList | null = null;
   let errorMessage = '';
   let signInRequired = false;
+  let refreshRequired = false;
   let result: LoomaGameResult | null = null;
   let reward: GameSessionServerResult | null = null;
   let completedRituals: CompanionRitual[] = [];
@@ -43,6 +47,7 @@
 
   const stopGame = () => { game?.destroy(); game = null; };
   const releaseSession = () => { if (session) abandonSession(session.sessionId); session = null; };
+  const cancelStart = () => { startController?.abort(); startController = null; };
   const isCurrent = (token: number) => mounted && generation === token;
   const focusStatus = async (token: number) => { await tick(); if (isCurrent(token)) statusEl?.focus(); };
 
@@ -88,16 +93,19 @@
   const startRound = async () => {
     if (!mounted || !canvasEl || ['starting', 'playing', 'paused', 'saving'].includes(phase)) return;
     const token = ++generation;
+    cancelStart();
+    const controller = new AbortController();
+    startController = controller;
     stopGame(); releaseSession();
     pauseOnStart = document.hidden;
-    phase = 'starting'; errorMessage = ''; signInRequired = false;
+    phase = 'starting'; errorMessage = ''; signInRequired = false; refreshRequired = false;
     result = null; reward = null; completedRituals = [];
     state = { score: 0, elapsedMs: 0, slowCharges: 3, slowMoActive: false, playerX: 480, playerY: 270 };
     try {
       // Finish the bounded cosmetic preload before creating a server session.
       const loadedArt = artTask ? await artTask : art;
       if (!isCurrent(token)) return;
-      const context = await startSession(gameId, 'standard', { clientVersion, source: 'orbfield' });
+      const context = await startSession(gameId, 'standard', { clientVersion, source: 'orbfield' }, { signal: controller.signal, ownerId: get(page).data.user?.id ?? null });
       if (!isCurrent(token)) { abandonSession(context.sessionId); return; }
       session = context;
       const min = Number(context.caps?.minDurationMs ?? 10_000);
@@ -122,7 +130,10 @@
       stopGame(); releaseSession();
       errorMessage = getGameErrorMessage(error, 'start');
       signInRequired = getGameErrorKind(error, 'start') === 'unauthorized';
+      refreshRequired = !signInRequired && typeof error === 'object' && error !== null && 'code' in error && error.code === 'start_account_changed';
       phase = 'start-error'; void focusStatus(token);
+    } finally {
+      if (startController === controller) startController = null;
     }
   };
   const pauseRound = () => { if (phase === 'playing') { phase = 'paused'; game?.pause?.(); } };
@@ -131,10 +142,11 @@
     phase = 'playing'; game?.resume?.(); canvasEl?.focus({ preventScroll: true });
   };
   const exit = () => {
-    ++generation; stopGame(); releaseSession();
+    ++generation; cancelStart(); stopGame(); releaseSession();
     void goto('/app/games');
   };
-  const signIn = () => { ++generation; stopGame(); releaseSession(); void goto('/app/auth'); };
+  const refreshPage = () => { ++generation; cancelStart(); stopGame(); releaseSession(); window.location.reload(); };
+  const signIn = () => { ++generation; cancelStart(); stopGame(); releaseSession(); void goto('/app/auth'); };
   const onBackground = () => {
     if (phase === 'starting') pauseOnStart = true;
     else pauseRound();
@@ -142,6 +154,17 @@
   const onVisibility = () => { if (document.hidden) onBackground(); };
   onMount(() => {
     mounted = true;
+    const stopWatchingOwner = watchGameOwner((ownerId) => {
+      if (phase !== 'starting') return;
+      const token = ++generation;
+      cancelStart(); stopGame(); releaseSession();
+      result = null; reward = null;
+      signInRequired = ownerId === null;
+      refreshRequired = !signInRequired;
+      errorMessage = ownerId ? 'Your account changed while starting. Refresh this page before starting again. Any session already created was not cancelled.'
+        : 'You were signed out while starting. Sign in before starting again. Any session already created was not cancelled.';
+      phase = 'start-error'; void focusStatus(token);
+    }, get(page).data.user?.id ?? null);
     const artController = new AbortController();
     motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
     artTask = loadOrbfieldSkin({ signal: artController.signal });
@@ -152,7 +175,7 @@
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onBackground);
     return () => {
-      mounted = false; artController.abort(); motionPreference = null; ++generation; stopGame(); releaseSession();
+      mounted = false; stopWatchingOwner(); artController.abort(); motionPreference = null; ++generation; cancelStart(); stopGame(); releaseSession();
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBackground);
     };
@@ -225,7 +248,7 @@
           <p>Your score is {result?.score}. Checking the server’s result.</p>
         {:else if phase === 'start-error'}
           <p>{errorMessage}</p>
-          <button class="primary" type="button" on:click={signInRequired ? signIn : startRound}>{signInRequired ? 'Sign in' : 'Try again'}</button>
+          <button class="primary" type="button" on:click={signInRequired ? signIn : refreshRequired ? refreshPage : startRound}>{signInRequired ? 'Sign in' : refreshRequired ? 'Refresh page' : 'Start new round'}</button>
         {:else if finished}
           <p>Score {result?.score} · {((result?.durationMs ?? 0) / 1000).toFixed(1)} seconds</p>
           {#if reward}

@@ -1,7 +1,7 @@
 import { onMount } from 'svelte';
 import { writable } from 'svelte/store';
 const initialUrl = new URL(typeof location === 'undefined' ? 'http://127.0.0.1:4177/app/games/dodge' : location.href);
-export const page = writable({ url: initialUrl });
+export const page = writable({ url: initialUrl, data: { user: { id: 'synthetic-owner' } } });
 const after = new Set<() => unknown>();
 const before = new Set<(navigation: any) => unknown>();
 export function afterNavigate(callback: () => unknown) { onMount(() => { after.add(callback); callback(); return () => after.delete(callback); }); }
@@ -16,7 +16,7 @@ export async function goto(href: string, options?: { replaceState?: boolean }) {
   navigated();
 }
 export function navigated() {
-  page.set({ url: new URL(location.href) });
+  page.set({ url: new URL(location.href), data: { user: { id: 'synthetic-owner' } } });
   window.dispatchEvent(new Event('fixture:navigation'));
   for (const callback of after) callback();
 }

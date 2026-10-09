@@ -38,3 +38,30 @@ Prepublication local checks under Node 22.20.0: 868 root units in 82 suites; 96 
 ## Rollback
 
 Revert this code-only release or restore the previous production deployment if recovery regresses. No database rollback is needed. Keep the source pin aligned with whichever reviewed src tree is restored, and rerun the exact-commit release checks.
+
+
+## Separate local start-session recovery candidate
+
+The startup candidate adds SDK27, template9, ARPG boot5 and viewport18 focused unit
+cases, plus 32 maintained-start and 17 legacy-start DOM cases. These exercise real
+Svelte/SDK code with synthetic Auth/network/engines, and real viewport helper logic
+with synthetic browser objects. They do not establish actual browser fullscreen,
+orientation locking or hosted gameplay.
+
+From the root on Node 22, run:
+
+```sh
+bash scripts/testing/recovery-dom/run-start-recovery.sh
+```
+
+This additionally reruns the 3 existing completion and 52 portal DOM cases (104 total).
+The current recovery-release workflow is intentionally preserved unchanged; its DOM
+job runs the original 55 cases. Before publishing this separate startup candidate,
+add the startup runner as an independently reviewed CI step. Root Vitest already
+includes the new focused unit files. See `docs/start-session-recovery-review.md` for
+uncertainty, owner identity, verification and the local-only scope.
+
+The reviewed startup source tree is `1a4751e650e015656492ece5a484964d79ccee1d`.
+The local PostgREST bootstrap pin changes only to that reviewed source tree;
+its isolation/permission guards and the Supabase pin remain unchanged. This pin
+refresh is not evidence of a native/PostgREST run for the startup candidate.

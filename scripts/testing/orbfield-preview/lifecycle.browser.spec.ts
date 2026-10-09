@@ -49,11 +49,11 @@ test('pause, resume and touch warp controls retain the same session', async ({ p
 test('failed start recovers through Try again without fabricating a completion', async ({ page }, info) => {
   await openLifecycle(page, 'start-failure');
   await page.getByRole('button', { name: 'Start round', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start new round', exact: true })).toBeVisible();
   await capture(page, info, 'start-failure');
   expect(await calls(page, 'complete')).toHaveLength(0);
   await page.evaluate(() => window.__orbfieldFixture.configure('success'));
-  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.getByRole('button', { name: 'Start new round', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   expect(await calls(page, 'start')).toHaveLength(2);
 });

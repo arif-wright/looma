@@ -30,6 +30,29 @@ const session = await startSession(gameId, 'standard', {
 });
 ```
 
+Start requests have a 30-second client deadline, including browser Auth initialization,
+fetch, and body reads. Auth identity is used only to discard stale work; the API remains
+authoritative. The current start RPC is **not idempotent**. After an uncertain start,
+only an explicit **Start new run** action may issue another request. It does not recover
+or cancel the unknown first session, which may count toward the daily session limit.
+Never automatically replay start, infer a reward, or send completion to cancel it.
+
+For a screen-bound call, pass a fourth argument with an AbortSignal and the rendered
+`page.data.user?.id ?? null`. Abort it on exit, unmount and superseding navigation.
+Use `watchGameOwner(callback, renderedOwnerId)` across preload/boot and unsubscribe on
+unmount. Invalidate the screen generation before aborting, and check generation after
+every await. An account mismatch requires **Refresh page** (or **Sign in** when signed
+out) before another start; do not silently adopt a new account on an old screen.
+
+```ts
+const session = await startSession(gameId, 'standard', clientMeta, {
+  signal: startController.signal,
+  ownerId: renderedOwnerId
+});
+```
+
+See `start-session-recovery-review.md` for the bounded recovery contract and limitations.
+
 ### Complete
 
 ```ts

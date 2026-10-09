@@ -68,7 +68,7 @@ test('start failure recovers without fabricated completion', async ({ page }, in
   expect(await page.evaluate(() => window.__neonRunFixture.engineEvents)).toEqual([]);
   await capture(page, info, 'start-error');
   await page.evaluate(() => window.__neonRunFixture.configure('success'));
-  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.getByRole('button', { name: 'Start new run', exact: true }).click();
   await phase(page, 'playing');
   expect(await calls(page, 'start')).toHaveLength(2);
 });
