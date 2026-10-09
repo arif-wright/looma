@@ -113,6 +113,11 @@ jobs:
       - run: ./node_modules/.bin/svelte-kit sync
       - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
       - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Stress the mobile portal timeout acceptance boundary
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/moonberry-gather
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts portal.browser.spec.ts --project=phaser-landscape --grep 'same-area timeout keeps guidance until an explicit new attempt$' --repeat-each=10 --reporter=line 2>&1 | tee artifacts/moonberry-gather/recovery-portal-timing-stress.log
       - name: Execute all 80 portal cases in real Chromium
         run: |
           set -euo pipefail

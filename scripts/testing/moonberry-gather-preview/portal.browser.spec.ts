@@ -12,9 +12,15 @@ const portalCount = (page: Page) => page.evaluate(() =>
 const lastPortalId = (page: Page) => page.evaluate(() => String(
   window.__MOONBERRY_FIXTURE__.sent.filter((message) => message.type === 'portal').at(-1)!.payload.requestId));
 const activatePortal = async (page: Page) => {
+  const previousCount = await portalCount(page);
   const button = page.getByRole('button', { name: `Enter ${grove.portal.targetName}`, exact: true });
   if (await page.evaluate(() => navigator.maxTouchPoints > 0)) await button.tap();
   else await button.click();
+  // Touch dispatch can finish before its synthesized click reaches the app.
+  // WorldConnection installs the timeout before sending, so observe that send
+  // before advancing the clock or injecting a result/drop/snapshot.
+  await expect.poll(() => portalCount(page)).toBe(previousCount + 1);
+  await expect(page.getByRole('button', { name: 'Travelling…', exact: true })).toBeDisabled();
 };
 const recoverDestination = (page: Page) => page.evaluate(({ mapId, x, y }) => {
   const room = window.__MOONBERRY_FIXTURE__.current;
