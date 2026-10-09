@@ -18,7 +18,9 @@ export default defineConfig({
     screenshot: 'only-on-failure', launchOptions: executablePath ? { executablePath } : {} },
   projects: [{ name: 'chromium-start-recovery' }],
   webServer: {
-    command: `"${process.execPath}" node_modules/vite/bin/vite.js --config scripts/testing/start-recovery-preview/vite.config.mjs`,
+    // Rebuild this exact candidate before serving it. A Vite dev server injects
+    // a WebSocket client even with hmr:false; the guard must continue rejecting it.
+    command: `"${process.execPath}" node_modules/vite/bin/vite.js build --config scripts/testing/start-recovery-preview/vite.config.mjs && "${process.execPath}" node_modules/vite/bin/vite.js preview --config scripts/testing/start-recovery-preview/vite.config.mjs`,
     cwd: repository, url: 'http://127.0.0.1:4279', reuseExistingServer: false, timeout: 60_000
   },
   reporter: [['list'], ['json', { outputFile: `${fixture}.results/${listingOnly ? 'discovery-results' : 'browser-results'}.json` }]]

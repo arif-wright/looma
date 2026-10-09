@@ -162,13 +162,24 @@ for (const kind of ['neon', 'orbfield'] as const satisfies readonly Kind[]) {
       expect(beforeReload.engines).toEqual([]); expect(beforeReload.events).toEqual([]);
       expect(beforeReload.analytics).toEqual([]);
       expect(beforeReload.api).toHaveLength(1); expect(beforeReload.api[0].aborted).toBe(true);
-      await Promise.all([
+      const beforeUrl = page.url();
+      const documentRequests: string[] = [];
+      page.on('request', (request) => {
+        if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documentRequests.push(request.url());
+      });
+      await page.evaluate(() => { document.documentElement.dataset.startRecoveryReloadProbe = 'old-document'; });
+      const [response] = await Promise.all([
         page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
         page.getByRole('button', { name: 'Refresh page', exact: true }).click()
       ]);
+      expect(response?.request().isNavigationRequest(), 'A real document request, not same-document navigation').toBe(true);
+      expect(response?.url()).toBe(beforeUrl);
       await expect.poll(async () => page.evaluate(() => window.__startRecovery?.ready ?? false)).toBe(true);
       await phase(page, kind, 'ready');
-      expect(await page.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type)).toBe('reload');
+      // Playwright's installed clock intentionally returns no performance entries.
+      // A same-URL document request plus a missing old-document marker proves reload.
+      expect(documentRequests).toEqual([beforeUrl]);
+      await expect(page.locator('html')).not.toHaveAttribute('data-start-recovery-reload-probe');
       expect((await snapshot(page)).persistedStarts).toBe(1);
       expect(await api(page, START)).toHaveLength(0); await noEngine(page);
     });

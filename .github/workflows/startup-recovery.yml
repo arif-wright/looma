@@ -109,6 +109,17 @@ jobs:
         if: always()
         with:
           name: startup-recovery-${{ github.event.pull_request.head.sha || github.sha }}
-          path: artifacts/startup-recovery/
+          # Reports and screenshots stay small enough for bounded review. Keep
+          # failure traces too, in their own artifact rather than dropping them.
+          path: |
+            artifacts/startup-recovery/
+            !artifacts/startup-recovery/fixture/browser-artifacts/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: startup-recovery-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/startup-recovery/fixture/browser-artifacts/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14

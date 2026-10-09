@@ -7,7 +7,11 @@ export type GameSessionResult = { score?: number; durationMs?: number; success?:
 export type CompleteResponse = GameSessionServerResult;
 let serial = 0;
 export async function startSession(...args: unknown[]): Promise<GameSessionStart> {
-  record('start', ...args);
+  // AbortSignal is not browser structured-cloneable; capture its state, not the live handle.
+  const options = args[3] as { signal?: AbortSignal } | undefined;
+  const recordedArgs = [...args];
+  if (options?.signal) recordedArgs[3] = { ...options, signal: { aborted: options.signal.aborted } };
+  record('start', ...recordedArgs);
   const scenario = fixture.scenario;
   if (scenario === 'delayed-start') await delay('start');
   if (scenario === 'start-failure') throw new Error('Synthetic start failure');

@@ -1,7 +1,7 @@
 # Focused start-recovery browser fixture
 
-Status on 2026-10-09: **prepared, not browser-executed**. Forty-two Playwright cases
-are discoverable: 21 for NeonRun and 21 for GameShell/Orbfield, in one desktop-only
+Status on 2026-10-09: **first hosted execution failed; corrected fixture pending
+rerun**. The unchanged matrix contains 42 Playwright cases: 21 for NeonRun and 21 for GameShell/Orbfield, in one desktop-only
 1280 × 900 Chromium project. No mobile/touch/native viewport coverage is claimed.
 No case is marked passed. This fixture does not establish that the recovery
 candidate is ready to ship.
@@ -45,7 +45,7 @@ Supabase, backend, service or deployment is connected.
 
 ## Isolation boundaries
 
-- A separate plain Vite/Svelte root binds only `127.0.0.1:4279`, with strict port
+- A separate built Vite/Svelte preview binds only `127.0.0.1:4279`, with strict port
   checking and no existing-server reuse. It never uses reserved port 4178.
 - `envDir: false`, `publicDir: false`, no SvelteKit application config or `.env`
   loading. Filesystem serving is limited to this fixture, explicit app-source
@@ -56,15 +56,19 @@ Supabase, backend, service or deployment is connected.
   exact POST paths. Unexpected fetches fail and are recorded.
 - Playwright routes reject every external HTTP request, every non-GET/HEAD
   request, every app API network request and all WebSockets. Service workers are
-  blocked and Vite HMR is disabled. Page errors and forbidden requests fail tests.
+  blocked. Browser execution rebuilds the exact fixture, then uses Vite preview
+  so no development client or HMR WebSocket is injected. The WebSocket guard
+  remains unchanged. Page errors and forbidden requests fail tests.
 - The refresh test checks the old page's recorded blocked attempts, state calls,
   engine/events, and aborted start before reloading, so navigation cannot erase
-  those assertions. Outer Playwright request/error observations survive reload.
+  those assertions. It then requires exactly one same-URL main-frame document
+  request and replacement of an old-document marker. This works independently
+  of clock-mocked Performance entries. Outer request/error observations survive reload.
 
 No production source or other fixture is modified by this fixture. Generated
 builds and evidence stay under `.build/` and `.results/` here.
 
-## Prepared case matrix (42 cases, no browser results yet)
+## Case matrix (42 cases; corrected fixture awaiting hosted rerun)
 
 Each maintained shell has the same 21 cases:
 
@@ -94,7 +98,8 @@ Tests install and pause `page.clock` before navigation. The installed 1.57.0
 client/server implementations expose the same awaited install/pause/runFor APIs.
 Its clock source replays installation and paused state in new documents and
 awaits any in-progress automatic timer drain before manual advancement. This is
-source-level compatibility evidence; browser navigation/reload is still unrun.
+source-level compatibility evidence; the corrected navigation/reload check awaits
+a new hosted run.
 
 The tests await the mounted shell, actual artwork decode, start phase, request
 count and fetch/body readiness
@@ -107,7 +112,7 @@ task, exercising the handler's singleflight guard beyond browser disabled-button
 hit testing. A synthetic blur tests the shell background handler; it is not
 proof of native OS tab visibility handling.
 
-## Verified preparation stages
+## Verified local preparation stages
 
 - Node 22.20.0
 - Svelte check: 0 errors, 0 warnings
@@ -116,8 +121,8 @@ proof of native OS tab visibility handling.
 - Vite production fixture build: passed
 - Playwright 1.57.0 discovery: 42 cases in one browser test file, **zero executed**
 - Inherited Playwright 1.57.0 Node-only clock regression control: passed
-- Browser launch/execution: **NOT RUN**
-- Browser screenshots, rendering/accessibility/interaction assertions: **NOT RUN**
+- Corrected fixture browser execution: **NOT RUN**; prior hosted revision failed all 42 cases
+- Local browser launch/screenshots: **NOT RUN**; see hosted failure evidence below
 - Real engine, real Auth/backend, production route and deployment checks: **NOT RUN**
 
 The inherited clock regression control uses the installed Playwright clock source
@@ -199,3 +204,19 @@ before making rendering claims. Any fix requires rerunning checks against the
 final candidate. Even a successful future synthetic-browser run leaves real
 Auth/backend, actual engine and production/deployment validation as separate
 gates.
+
+
+## First hosted execution and fixture correction
+
+Draft PR #14 at `a0f8cd2d23cb52d5387314c5990ab345b8ef39de` executed all 42 cases
+in startup workflow `37940551705`. All failed the strict WebSocket guard because
+Vite's development client attempted local HMR connections despite `hmr: false`.
+The two Refresh cases also used navigation Performance entries that Playwright's
+clock deliberately returns as an empty list. Hosted focused units (112) and DOM
+cases (104) passed. These failures establish fixture problems, not a product
+regression or successful browser acceptance.
+
+The correction serves a freshly rebuilt preview, preserves local/API/network
+isolation, and checks real document replacement instead of mocked Performance.
+The original case matrix, strict no-WebSocket guard and no-retry policy remain
+unchanged. A new hosted run is required before claiming browser acceptance.

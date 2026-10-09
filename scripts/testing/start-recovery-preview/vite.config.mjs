@@ -29,6 +29,17 @@ export default defineConfig({
         response.end(request.method === 'HEAD' ? undefined : readFileSync(`${repository}static${path}`));
       });
     },
+    configurePreviewServer(server) {
+      // The built fixture has no Vite dev client or HMR WebSocket. Keep the
+      // application-API boundary when serving only its generated assets.
+      server.middlewares.use((request, response, next) => {
+        const path = (request.url ?? '').split('?')[0];
+        if (path === '/api' || path.startsWith('/api/')) {
+          response.statusCode = 403; response.end('Application API network calls are forbidden in this fixture.'); return;
+        }
+        next();
+      });
+    },
     generateBundle() {
       for (const path of assets) this.emitFile({ type: 'asset', fileName: path.slice(1), source: readFileSync(`${repository}static${path}`) });
     },
@@ -56,5 +67,6 @@ export default defineConfig({
   server: { host: '127.0.0.1', port: 4279, strictPort: true, hmr: false,
     fs: { allow: [root, ...sourceFiles, realpathSync(`${repository}node_modules`)],
       deny: ['**/.env*', '**/*.{pem,key}', '**/.git/**'] } },
+  preview: { host: '127.0.0.1', port: 4279, strictPort: true },
   build: { outDir: `${root}.build`, emptyOutDir: true }
 });
