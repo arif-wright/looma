@@ -65,8 +65,11 @@ unchanged. Ten projects cover both original desktop/narrow renderer pairs plus
 Three at 320×568, 390×844, 568×320, 667×375, and 844×390, and Phaser at 667×375.
 All four original projects and Phaser landscape retain the six gather recovery
 scenarios. The five extra Three sizes run the new layout and lifecycle scenarios
-only, keeping the existing 20-minute CI budget. This schedules 50 cases: 47
-applicable checks and three explicitly inapplicable Three-layout checks on Phaser.
+only, keeping the existing 20-minute CI budget. The gather/layout/lifecycle
+coverage schedules 50 cases: 47 applicable checks and three explicitly
+inapplicable Three-layout checks on Phaser. The sixteen portal feedback scenarios
+below add 80 applicable checks across the original four projects and Phaser
+landscape, for 130 total cases (127 applicable).
 
 Three-only geometry tests verify that feedback, the gather/portal prompt, the
 movement pad, and the camera cluster remain inside the game and do not overlap.
@@ -87,3 +90,38 @@ observer, or visibility listener is created for that abandoned view, then mounts
 and unmounts again and verifies our component listener is removed. The installed
 Phaser core retains its own visibility callback after normal game disposal; that
 pre-existing library behavior is outside this layout/component-lifecycle change.
+
+## Portal feedback after recovered travel
+
+`portal.browser.spec.ts` checks both delivery orders: failure before a destination
+snapshot and destination before a delayed timeout, drop, or non-success reply.
+Reconnecting in the same area retains guidance; confirmed success survives either
+result/snapshot ordering. Duplicate starts retain the current request's target,
+while fresh return attempts get their own target. Late replies cannot replace a
+fresh attempt's feedback, reconnect does not replay travel, and remounts begin
+without an old portal message. Missing local-player state cannot impersonate a
+return to the default area.
+
+Run only these cases with:
+
+```sh
+npx playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts portal.browser.spec.ts
+```
+
+The fixture's transition and portal-result controls inject synthetic client
+observations. They do not invoke a real portal or prove server persistence,
+real reconnection, or physical-device accessibility.
+
+Correlation stays client-side: the existing connection serializes portal requests
+and filters result callbacks by request ID. The component keeps one UI attempt
+record until that accepted result; repeated start notifications do not replace it.
+The current area has one fixed portal destination, recorded at the fresh start.
+Only non-success guidance for that destination is suppressed; this does not assert
+server success or unblock a still-pending request early. A new attempt replaces the
+record, and merely having visited a destination earlier does not suppress an error
+after leaving it. No protocol, replay, server, or persistence changes are required.
+
+The focused runtime regressions in `threeAreaRuntime.spec.ts` and
+`phaserAreaRuntime.spec.ts` exercise actual renderer adapters with graphics/scene
+doubles, preserving area authority when the local player is absent. They do not
+replace browser acceptance with real assets.

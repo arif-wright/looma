@@ -196,6 +196,46 @@ describe('Three area runtime lifecycle', () => {
     h.runtime.destroy();
   });
 
+  it('retains the authoritative area when a snapshot omits the local player', () => {
+    const h = harness();
+    h.apply(snapshot(player({ mapId: 'wilds-town', transitionRevision: 1, x: 80, y: 270 })));
+    const hollowEnvironment = state.environments.at(-1);
+    expect(h.onPortalPrompt).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'hollow-to-grove' }));
+    h.runtime.enterPortal();
+    expect(h.session.enterPortal).toHaveBeenCalledWith('hollow-to-grove');
+    h.onAreaChange.mockClear();
+    h.session.enterPortal.mockClear();
+    h.session.sendMovement.mockClear();
+
+    const withoutLocal = snapshot(player({ mapId: 'wilds-town', transitionRevision: 1 }));
+    withoutLocal.players.delete('local');
+    h.apply(withoutLocal);
+    // Missing authority must not masquerade as arrival at the fallback Grove.
+    expect(h.onAreaChange).not.toHaveBeenCalled();
+    expect(state.environments).toHaveLength(2);
+    expect(hollowEnvironment.dispose).not.toHaveBeenCalled();
+    expect(activeLabels()).not.toContain('Explorer');
+    expect(activeLabels()).toContain('Wren · Resident');
+    expect(activeLabels()).not.toContain('Rowan · Resident');
+    expect(h.onPortalPrompt).toHaveBeenLastCalledWith(null);
+    key('KeyD');
+    tick();
+    h.runtime.enterPortal();
+    expect(h.session.sendMovement).not.toHaveBeenCalled();
+    expect(h.session.enterPortal).not.toHaveBeenCalled();
+
+    h.apply(snapshot(player({ mapId: 'wilds-town', transitionRevision: 1, x: 80, y: 270 })));
+    expect(h.onAreaChange).not.toHaveBeenCalled();
+    expect(state.environments).toHaveLength(2);
+    expect(h.onPortalPrompt).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'hollow-to-grove' }));
+
+    h.apply(snapshot(player({ mapId: 'wilds-exploration', transitionRevision: 2, x: 804, y: 270 })));
+    expect(h.onAreaChange).toHaveBeenCalledOnce();
+    expect(h.onAreaChange).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wilds-exploration' }));
+    expect(hollowEnvironment.dispose).toHaveBeenCalledOnce();
+    h.runtime.destroy();
+  });
+
   it.each(['disconnected', 'paused'] as const)('suppresses a key first pressed while %s until an actual keyup', (inactive) => {
     const h = harness();
     h.apply(snapshot(player()));

@@ -1,0 +1,13 @@
+{
+  "name": "memvoya-recovery-dom-tests",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "devDependencies": {
+    "happy-dom": "20.0.2",
+    "jsdom": "26.1.0",
+    "vitest": "1.6.1"
+  }
+}

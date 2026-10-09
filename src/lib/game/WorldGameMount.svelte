@@ -4,7 +4,7 @@
   import { fitWorldViewport } from './config';
   import { GameLifecycle, type GameRuntime } from './lifecycle';
   import type { ConnectionDiagnostic, ConnectionStatus } from './protocol';
-  import type { GatherResult } from './protocol';
+  import type { GatherResult, PortalResult } from './protocol';
   import { getWorldArea, type WorldPortal, type WorldArea } from './areas';
   import type { WorldRenderer } from './rendererSelection';
   import { activateWorldRuntime, releaseWorldRuntime } from './worldRuntimeRegistry';
@@ -41,6 +41,8 @@
   let portalPrompt: WorldPortal | null = null;
   let travelling = false;
   let portalMessage = '';
+  let portalResultStatus: PortalResult['status'] | null = null;
+  let portalAttempt: { targetMapId: WorldArea['id']; pending: boolean } | null = null;
   let gathering = false;
   let gatherResult: GatherResult | null = null;
   let contextStatus: WebglContextStatus = 'ready';
@@ -66,13 +68,27 @@
         if (nextStatus !== 'connected') { travelling = false; setDirection(null); }
       },
       onDiagnostic: (diagnostic) => (connectionDiagnostic = diagnostic),
-      onPortalStart: () => { travelling = true; portalMessage = ''; setDirection(null); },
+      onPortalStart: () => {
+        // Session start notifications can repeat while the connection still owns
+        // one request. Keep that attempt's destination until its result arrives.
+        if (portalAttempt?.pending) return;
+        portalAttempt = { targetMapId: area.portal.targetMapId, pending: true };
+        travelling = true;
+        portalMessage = '';
+        portalResultStatus = null;
+        setDirection(null);
+      },
       onPortalResult: (result) => {
         travelling = false;
+        // WorldConnection only delivers the currently pending request's result;
+        // replacing this record on a fresh start isolates successive attempts.
+        if (portalAttempt) portalAttempt.pending = false;
+        portalResultStatus = result.status;
         portalMessage = result.status === 'success' ? `Arrived in ${getWorldArea(result.mapId).name}.`
           : result.status === 'out_of_range' ? 'Move closer to the lantern portal.'
           : result.status === 'cooldown' ? 'The portal is settling. Try again in a moment.'
           : 'The portal is temporarily unavailable. Please wait for the connection or try again.';
+        clearObsoletePortalFeedback();
       },
       onGatherResult: (result) => {
         gathering = false;
@@ -116,8 +132,19 @@
     return mountedRuntime;
   });
 
+  function clearObsoletePortalFeedback() {
+    // A matching authoritative destination makes failure guidance obsolete in
+    // either delivery order. Do not infer success, hide same-area failures, or
+    // carry a previous attempt's arrival into a new attempt.
+    if (portalAttempt?.targetMapId === area.id && portalResultStatus !== null && portalResultStatus !== 'success') {
+      portalMessage = '';
+      portalResultStatus = null;
+    }
+  }
+
   function changeArea(next: WorldArea) {
     area = next;
+    clearObsoletePortalFeedback();
     gatherPrompt = false;
     setDirection(null);
   }

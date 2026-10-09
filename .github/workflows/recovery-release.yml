@@ -1,0 +1,195 @@
+name: Recovery release verification
+
+# Unfiltered PR and main triggers make the release gate visible even for CI-only
+# updates. All targets are credential-free fixtures on disposable hosted runners.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+concurrency:
+  group: recovery-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Record exact candidate
+        run: |
+          mkdir -p artifacts/recovery-release/aggregate
+          git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:supabase > artifacts/recovery-release/aggregate/source.txt
+      - run: npm ci
+      - name: Full application and core diagnostics
+        run: |
+          set -euo pipefail
+          npm run check 2>&1 | tee artifacts/recovery-release/aggregate/check.log
+          npm run check:core 2>&1 | tee artifacts/recovery-release/aggregate/check-core.log
+      - name: Affected recovery units
+        env:
+          VITEST: 'true'
+        run: |
+          set -euo pipefail
+          npm run test -- --run src/lib/__tests__/gameSdkSessionLifecycle.spec.ts src/lib/__tests__/worldConnection.spec.ts src/lib/__tests__/worldSession.spec.ts src/lib/__tests__/threeAreaRuntime.spec.ts src/lib/__tests__/phaserAreaRuntime.spec.ts --reporter=default --reporter=json --outputFile=artifacts/recovery-release/aggregate/affected.json 2>&1 | tee artifacts/recovery-release/aggregate/affected.log
+      - name: Complete root Vitest aggregate
+        env:
+          VITEST: 'true'
+        run: |
+          set -euo pipefail
+          npm run test -- --run --reporter=default --reporter=json --outputFile=artifacts/recovery-release/aggregate/unit.json 2>&1 | tee artifacts/recovery-release/aggregate/unit.log
+      - name: Production build
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee artifacts/recovery-release/aggregate/build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-aggregate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/recovery-release/aggregate/
+          if-no-files-found: error
+          retention-days: 14
+
+  dom-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install two locked dependency sets
+        run: |
+          npm ci --ignore-scripts
+          npm ci --ignore-scripts --prefix scripts/testing/recovery-dom
+          ./node_modules/.bin/svelte-kit sync
+      - name: Execute and count all 55 real-component DOM cases
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/recovery-release/dom
+          git rev-parse HEAD HEAD^{tree} > artifacts/recovery-release/dom/source.txt
+          for suite in neon portal; do
+            report="$PWD/artifacts/recovery-release/dom/$suite.json"
+            node scripts/testing/recovery-dom/node_modules/vitest/vitest.mjs run --config "scripts/testing/recovery-dom/$suite.config.mjs" --reporter=default --reporter=json --outputFile="$report" 2>&1 | tee "artifacts/recovery-release/dom/$suite.log"
+            node scripts/testing/recovery-dom/verify-results.mjs "$suite" "$report"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-dom55-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/recovery-release/dom/
+          if-no-files-found: error
+          retention-days: 14
+
+  portal-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/svelte-kit sync
+      - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Execute all 80 portal cases in real Chromium
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/moonberry-gather
+          git rev-parse HEAD HEAD^{tree} > artifacts/moonberry-gather/recovery-source.txt
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts portal.browser.spec.ts --project=phaser-desktop --project=phaser-narrow --project=three-desktop --project=three-narrow --project=phaser-landscape 2>&1 | tee artifacts/moonberry-gather/recovery-browser.log
+          node scripts/testing/recovery-dom/verify-browser-results.mjs artifacts/moonberry-gather/results.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/
+          if-no-files-found: error
+          retention-days: 14
+
+  world-service:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/world-server
+      - name: Complete world-service types, build and native transport aggregate
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/recovery-release/world-service
+          git rev-parse HEAD HEAD^{tree} > artifacts/recovery-release/world-service/source.txt
+          npm run check --prefix services/world-server 2>&1 | tee artifacts/recovery-release/world-service/check.log
+          npm run build --prefix services/world-server 2>&1 | tee artifacts/recovery-release/world-service/build.log
+          npm test --prefix services/world-server -- --reporter=default --reporter=json --outputFile=../../artifacts/recovery-release/world-service/results.json 2>&1 | tee artifacts/recovery-release/world-service/tests.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-world-service-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/recovery-release/world-service/
+          if-no-files-found: error
+          retention-days: 14
+
+  database-boundaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [native-postgres-concurrency, game-settlement-concurrency, connected-wilds-postgres, game-settlement-postgrest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      # These existing scripts enforce disposable local isolation and preserve
+      # exact reviewed product/Supabase pins. No hosted schema is touched.
+      - run: bash scripts/ci/${{ matrix.suite }}.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-${{ matrix.suite }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: test-results/
+          if-no-files-found: error
+          retention-days: 14
+
+  recovery-release-gate:
+    if: always()
+    needs: [aggregate, dom-recovery, portal-browser, world-service, database-boundaries]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every bounded recovery layer to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module -e 'const jobs=JSON.parse(process.env.RESULTS); for (const [name, job] of Object.entries(jobs)) { if (job.result !== "success") throw new Error(`${name}: ${job.result}`); } console.log("All recovery release layers passed.");'
