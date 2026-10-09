@@ -9,8 +9,17 @@ const loadGame = () => {
   return pendingImports;
 };
 
+export type TownStatus = 'ready' | 'starting' | 'saving' | 'retry' | 'blocked';
+export type ArpgControls = {
+  beginExpedition: (maxDurationMs: number) => void;
+  setTownStatus: (status: TownStatus, message?: string) => void;
+};
+
 export type BootOptions = {
-  onGameOver: (score: number) => void;
+  onGameOver: (score: number, durationMs?: number) => void;
+  onDepartureRequested?: () => void;
+  onRetryRequested?: () => void;
+  onControls?: (controls: ArpgControls) => void;
   signal?: AbortSignal;
 };
 
@@ -57,7 +66,14 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
       isCurrent,
       onReady: resolveReady,
       onError: rejectReady,
-      onGameOver: (score) => { if (isCurrent()) opts.onGameOver(score); }
+      onDepartureRequested: () => { if (isCurrent()) opts.onDepartureRequested?.(); },
+      onRetryRequested: () => { if (isCurrent()) opts.onRetryRequested?.(); },
+      onGameOver: (score, durationMs) => {
+        if (isCurrent()) {
+          if (durationMs === undefined) opts.onGameOver(score);
+          else opts.onGameOver(score, durationMs);
+        }
+      }
     });
     // Attach the failure handlers before constructing Phaser: boot callbacks
     // can run synchronously when the document and textures are already ready.
@@ -88,6 +104,10 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
     }
     await initialized;
     if (!isCurrent()) throw interrupted();
+    opts.onControls?.({
+      beginExpedition: (maxDurationMs) => { if (isCurrent()) scene.beginExpedition(maxDurationMs); },
+      setTownStatus: (status, message) => { if (isCurrent()) scene.setTownStatus(status, message); }
+    });
   } catch (error) {
     cancel();
     throw error;

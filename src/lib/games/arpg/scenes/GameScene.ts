@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
+import type { TownStatus } from '../main';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
 import { dashSystem, movementSystem, type DashInput } from '../ecs/systems';
+
+import { AREAS, createExpedition, enterRuins, recordKill, collectGold, returnToTown, advanceArea, canAdvance, heroLevel, heroMaxHp, heroDamage } from '../expedition';
 
 const MAX_RUN_MS = 90_000;
 const TILE_WIDTH = 128;
@@ -23,7 +26,6 @@ const ENEMY_HP = 45;
 const HERO_ATTACK_COOLDOWN = 320;
 const ENEMY_ATTACK_COOLDOWN = 1_050;
 const ENEMY_ATTACK_RANGE = 85;
-const HERO_ATTACK_DAMAGE = 32;
 const ENEMY_ATTACK_DAMAGE = 12;
 const DASH_COOLDOWN = 700;
 const DASH_POWER = 230;
@@ -31,7 +33,9 @@ const ATTACK_RANGE_OFFSET = 110;
 const ATTACK_RADIUS = 85;
 
 type GameHandlers = {
-  onGameOver: (score: number) => void;
+  onGameOver: (score: number, durationMs?: number) => void;
+  onDepartureRequested?: () => void;
+  onRetryRequested?: () => void;
   onReady: () => void;
   onError: (error: Error) => void;
   isCurrent: () => boolean;
@@ -156,6 +160,16 @@ const VFX_TEXTURES = {
 const frameKeyFromPath = (path: string) => path.replace(/[^a-zA-Z0-9]+/g, '_');
 
 export class GameScene extends Phaser.Scene {
+  private expedition = createExpedition();
+  private expeditionActive = false;
+  private durationLimit = MAX_RUN_MS;
+  private expeditionStartedAt = 0;
+  private townStatus: TownStatus = 'ready';
+  private townMessage = '';
+  private areaEpoch = 0;
+  private interactKey?: Phaser.Input.Keyboard.Key;
+  private areaText!: Phaser.GameObjects.Text;
+  private portalText!: Phaser.GameObjects.Text;
   private startupFailed = false;
   private initialized = false;
   private readonly requiredTextures = new Set<string>();
@@ -282,8 +296,7 @@ export class GameScene extends Phaser.Scene {
     this.setupPlayer();
     this.setupInput();
     this.setupUI();
-    this.spawnSkeletons();
-    this.createProps();
+    this.buildAreaContent();
     this.createOverlays();
     this.setupUICamera();
     this.updateFixedUITransforms();
@@ -291,10 +304,12 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (!this.initialized || !this.handlers.isCurrent() || this.ended || !this.playerId) return;
-    this.elapsed += delta;
-    if (this.elapsed >= MAX_RUN_MS) {
-      this.endRun();
-      return;
+    if (this.expeditionActive) {
+      this.elapsed = Math.min(this.durationLimit, Math.max(0, performance.now() - this.expeditionStartedAt));
+      if (this.elapsed >= this.durationLimit) {
+        this.endRun();
+        return;
+      }
     }
 
     if (this.runState !== 'running') {
@@ -306,21 +321,21 @@ export class GameScene extends Phaser.Scene {
 
     const health = this.world.getHealth(this.playerId);
     if (!health || health.current <= 0) {
-      this.endRun();
+      this.changeArea(returnToTown(this.expedition, true));
       return;
     }
 
+    if (this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey)) this.interactWithPortal();
     this.handleInput();
-    const dashResult = this.handleDash(delta);
-
     const snapshots = this.captureTransforms();
+    const dashResult = this.handleDash(delta);
     movementSystem(this.world, delta);
     this.resolveCollisions(snapshots);
     this.syncSprites();
-    this.updateEnemyBehavior(delta);
+    if (this.expedition.area !== 0) this.updateEnemyBehavior(delta);
     this.updateLootCollection();
 
-    if (this.pointerAttack && this.attackCooldown <= 0 && !this.heroAttacking) {
+    if (this.expedition.area !== 0 && this.pointerAttack && this.attackCooldown <= 0 && !this.heroAttacking) {
       this.performAttack();
     }
 
@@ -345,7 +360,8 @@ export class GameScene extends Phaser.Scene {
     this.skeletons = [];
     this.ended = false;
     this.elapsed = 0;
-    this.runState = 'idle';
+    this.runState = 'running';
+    this.expedition = createExpedition();
   }
 
   private preloadPropTextures() {
@@ -415,8 +431,11 @@ export class GameScene extends Phaser.Scene {
         const pos = this.isoToWorld(tx, ty);
         const isBorder =
           tx === 0 || ty === 0 || tx === ROOM_WIDTH - 1 || ty === ROOM_HEIGHT - 1;
-        if (isBorder) {
-          const texture = Phaser.Utils.Array.GetRandom(WALL_TEXTURES);
+        const isPillar = this.expedition.area === 1
+          ? tx === 8 && ty >= 3 && ty <= 5
+          : this.expedition.area === 2 && ((tx === 10 && ty >= 11 && ty <= 14) || (tx === 20 && ty >= 5 && ty <= 7));
+        if (isBorder || isPillar) {
+          const texture = `wall_${Phaser.Math.Between(0, WALL_TEXTURES.length - 1)}`;
           const wall = this.add.image(pos.x, pos.y - 42, texture);
           wall.setScale(TILE_SCALE);
           wall.setDepth(pos.y + 160);
@@ -424,9 +443,10 @@ export class GameScene extends Phaser.Scene {
           this.wallTiles.add(`${tx},${ty}`);
           recordBounds(pos, 70);
         } else {
-          const texture = Phaser.Utils.Array.GetRandom(FLOOR_TEXTURES);
+          const texture = `floor_${Phaser.Math.Between(0, FLOOR_TEXTURES.length - 1)}`;
           const tile = this.add.image(pos.x, pos.y, texture);
           tile.setScale(TILE_SCALE);
+          tile.setTint(AREAS[this.expedition.area].tint);
           tile.setDepth(pos.y);
           this.addToWorld(tile);
           recordBounds(pos);
@@ -491,6 +511,7 @@ export class GameScene extends Phaser.Scene {
   private setupInput() {
     const keyboard = this.input.keyboard;
     if (!keyboard) return;
+    this.interactKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.cursors = keyboard.createCursorKeys();
     this.wasd = {
       w: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -521,13 +542,13 @@ export class GameScene extends Phaser.Scene {
     this.uiContainer = this.add.container(this.hudMargin.x, this.hudMargin.y);
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(2000);
-    const panel = this.add.rectangle(0, 0, 360, 140, 0x050c18, 0.65).setOrigin(0);
+    const panel = this.add.rectangle(0, 0, 440, 180, 0x050c18, 0.65).setOrigin(0);
     panel.setStrokeStyle(1, 0x0e2244, 0.4);
     this.instructionsText = this.add
       .text(
         16,
         12,
-        'WASD move  •  Space/Shift dash\nLeft click attack  •  Break crates for loot',
+        'WASD move · Space dash · Click attack\nE at the gate · Gold and levels last this run',
         {
           fontFamily: 'Space Grotesk, sans-serif',
           fontSize: '16px',
@@ -552,7 +573,8 @@ export class GameScene extends Phaser.Scene {
     this.hpBarBg.setPosition(16, 120);
     this.hpBarFill.setPosition(16, 120);
     this.drawHpBar(1);
-    this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill]);
+    this.areaText = this.add.text(16, 145, '', { fontFamily: 'Space Grotesk, sans-serif', fontSize: '14px', color: '#f4d59b' });
+    this.uiContainer.add([panel, this.instructionsText, this.scoreText, this.hpText, this.hpBarBg, this.hpBarFill, this.areaText]);
     this.createControlButtons();
   }
 
@@ -581,8 +603,8 @@ export class GameScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#b8d4ff'
     });
-    this.primaryControl = this.createUIButton(16, 34, 'Begin Run', () => this.handlePrimaryControl());
-    this.secondaryControl = this.createUIButton(190, 34, 'Play Again', () => this.restartGameplay());
+    this.primaryControl = this.createUIButton(16, 34, 'Enter ruins', () => this.handlePrimaryControl());
+    this.secondaryControl = this.createUIButton(190, 34, 'Finish visit', () => this.handleReturnControl());
     this.secondaryControl.setAlpha(0.7);
     this.controlContainer.add([panel, this.controlStatus, this.primaryControl, this.secondaryControl]);
     this.updateControlButtons();
@@ -601,7 +623,7 @@ export class GameScene extends Phaser.Scene {
     button.on('pointerover', () => button.setAlpha(1));
     button.on('pointerout', () => button.setAlpha(0.85));
     button.setAlpha(0.85);
-    this.controlContainer.add(button);
+    // The caller inserts the background first, then the controls.
     return button;
   }
 
@@ -626,18 +648,102 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePrimaryControl() {
-    if (this.runState === 'idle') {
-      this.startGameplay();
-    } else if (this.runState === 'running') {
-      this.pauseGameplay();
-    } else {
-      this.resumeGameplay();
-    }
+    if (this.expedition.area === 0) {
+      if (this.townStatus === 'retry') this.handlers.onRetryRequested?.();
+      else if (this.townStatus === 'ready') this.handlers.onDepartureRequested?.();
+    } else if (canAdvance(this.expedition)) {
+      this.changeArea(advanceArea(this.expedition));
+    } else if (this.runState === 'running') this.pauseGameplay();
+    else this.resumeGameplay();
   }
 
-  private startGameplay() {
+  private handleReturnControl() {
+    if (this.expedition.area === 0) this.handlePrimaryControl();
+    else this.changeArea(returnToTown(this.expedition));
+  }
+
+  /** Called only after the route has acquired a current server session. */
+  beginExpedition(maxDurationMs: number) {
+    if (!this.initialized || !this.handlers.isCurrent() || this.expeditionActive || this.expedition.area !== 0) return;
+    if (!Number.isSafeInteger(maxDurationMs) || maxDurationMs <= 0) throw new Error('Invalid expedition duration.');
+    this.durationLimit = Math.min(MAX_RUN_MS, Math.floor(maxDurationMs));
+    this.elapsed = 0;
+    this.expeditionStartedAt = performance.now();
+    this.killCount = 0;
+    this.expeditionActive = true;
+    this.townStatus = 'starting';
+    this.townMessage = '';
+    if (this.playerId) this.world.tagPlayer(this.playerId, { score: 0 });
+    // Each authorized departure starts a new run-local character, not account progression.
+    this.expedition = createExpedition();
+    if (this.playerId) this.world.setHealth(this.playerId, { current: HERO_MAX_HP, max: HERO_MAX_HP });
+    this.changeArea(enterRuins(this.expedition));
+  }
+
+  setTownStatus(status: TownStatus, message = '') {
+    if (!this.handlers.isCurrent()) return;
+    this.townStatus = status;
+    this.townMessage = message;
+    this.updateUIState();
+  }
+
+  private interactWithPortal() {
+    if (!this.playerId || this.runState !== 'running') return;
+    const pos = this.world.getTransform(this.playerId);
+    const gate = this.isoToWorld(18, 9);
+    if (!pos || Math.hypot(pos.x - gate.x, pos.y - gate.y) > 150) return;
+    if (this.expedition.area === 0 || canAdvance(this.expedition)) this.handlePrimaryControl();
+  }
+
+  private changeArea(next: ReturnType<typeof createExpedition>) {
+    if (next === this.expedition || this.ended) return;
+    if (this.hasExpeditionExpired()) {
+      next = returnToTown(this.expedition, true);
+    }
+    const score = this.playerId ? this.world.getPlayer(this.playerId)?.score ?? 0 : 0;
+    const hp = this.playerId ? this.world.getHealth(this.playerId)?.current ?? HERO_MAX_HP : HERO_MAX_HP;
+    this.areaEpoch += 1;
+    this.time.removeAllEvents();
+    this.time.clearPendingEvents();
+    this.tweens.killAll();
+    // Layer.removeAll(true) skips removal callbacks; it does NOT destroy children.
+    for (const child of [...this.worldLayer.list]) {
+      if (child !== this.vignetteSprite) child.destroy();
+    }
+    this.dashAfterimages?.destroy(true);
+    this.world = new World();
+    this.wallTiles.clear();
+    this.props = []; this.loot = []; this.skeletons = [];
+    this.pointerAttack = false; this.heroAttacking = false; this.attackCooldown = 0;
+    this.expedition = next;
     this.runState = 'running';
+    this.buildDungeonRoom();
+    this.setupPlayer();
+    this.world.tagPlayer(this.playerId!, { score });
+    this.world.setHealth(this.playerId!, { max: heroMaxHp(next.xp), current: next.area === 0 ? heroMaxHp(next.xp) : hp });
+    this.buildAreaContent();
     this.updateControlButtons();
+    this.updateUIState();
+    if (next.area === 0 && this.expeditionActive) this.finishExpedition();
+  }
+
+  private buildAreaContent() {
+    if (this.expedition.area !== 0) {
+      this.spawnSkeletons();
+      this.createProps();
+    } else {
+      // Original geometric town markers. Dedicated town art is a later pass.
+      for (const [tx, ty, label] of [[11, 7, 'HEARTH\nRestored on return'], [11, 11, 'SUPPLY STALL\nServices coming later']] as const) {
+        const pos = this.isoToWorld(tx, ty);
+        const marker = this.add.ellipse(pos.x, pos.y, 130, 55, 0xe1b264, 0.65).setDepth(pos.y + 1);
+        this.addToWorld(marker);
+        this.addToWorld(this.add.text(pos.x, pos.y - 80, label, { fontSize: '14px', color: '#ffe6b5', align: 'center', backgroundColor: '#17202b' }).setOrigin(0.5).setDepth(pos.y + 160));
+      }
+    }
+    const gate = this.isoToWorld(18, 9);
+    this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
+    this.portalText = this.add.text(gate.x, gate.y - 75, '', { fontSize: '16px', color: '#c9ffff', backgroundColor: '#102031', align: 'center' }).setOrigin(0.5).setDepth(gate.y + 160);
+    this.addToWorld(this.portalText);
   }
 
   private pauseGameplay() {
@@ -655,22 +761,15 @@ export class GameScene extends Phaser.Scene {
     this.updateControlButtons();
   }
 
-  private restartGameplay() {
-    this.scene.restart();
-  }
-
   private updateControlButtons() {
     if (!this.primaryControl || !this.controlStatus) return;
-    const label =
-      this.runState === 'idle' ? 'Begin Run' : this.runState === 'running' ? 'Pause Run' : 'Resume Run';
-    this.primaryControl.setText(label);
-    const status =
-      this.runState === 'idle'
-        ? 'Status: Waiting to begin'
-        : this.runState === 'running'
-          ? 'Status: Live'
-          : 'Status: Paused';
-    this.controlStatus.setText(status);
+    const town = this.expedition.area === 0;
+    const townLabel = this.townStatus === 'ready' ? 'Enter ruins' : this.townStatus === 'retry' ? 'Retry saving' : this.townStatus === 'starting' ? 'Starting…' : this.townStatus === 'saving' ? 'Saving…' : 'Unavailable';
+    this.primaryControl.setText(town ? townLabel : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'Descend' : 'Return victorious') : this.runState === 'running' ? 'Pause' : 'Resume');
+    this.secondaryControl.setText(town ? '' : 'Return to town');
+    this.secondaryControl.setVisible(!town);
+    const seconds = Math.max(0, Math.ceil((this.durationLimit - this.elapsed) / 1000));
+    this.controlStatus.setText(town ? (this.townMessage || 'Safe town · No time limit') : `${this.runState === 'paused' ? 'Paused' : 'Exploring'} · Expedition ends in ${seconds}s`);
   }
 
   private spawnSkeletons() {
@@ -680,6 +779,7 @@ export class GameScene extends Phaser.Scene {
       [5, ROOM_HEIGHT - 4],
       [ROOM_WIDTH - 6, ROOM_HEIGHT - 4]
     ];
+    if (this.expedition.area === 2) slots.push([10, 4], [20, 10]);
     slots.forEach((slot) => this.spawnSkeleton(slot[0], slot[1]));
   }
 
@@ -688,7 +788,7 @@ export class GameScene extends Phaser.Scene {
     const id = this.world.createEntity();
     this.world.setTransform(id, { x: spawn.x, y: spawn.y, rot: 0 });
     this.world.setVelocity(id, { vx: 0, vy: 0, speed: ENEMY_SPEED });
-    this.world.setHealth(id, { max: ENEMY_HP, current: ENEMY_HP });
+    this.world.setHealth(id, { max: ENEMY_HP + (this.expedition.area - 1) * 15, current: ENEMY_HP + (this.expedition.area - 1) * 15 });
     this.world.tagEnemy(id, {
       speed: ENEMY_SPEED,
       chaseRadius: 420,
@@ -922,7 +1022,7 @@ export class GameScene extends Phaser.Scene {
       return true;
     }
     const offsets: Vec2[] = [
-      { x: 0, y },
+      { x, y },
       { x: x + radius, y },
       { x: x - radius, y },
       { x, y: y + radius },
@@ -987,6 +1087,12 @@ export class GameScene extends Phaser.Scene {
           });
           this.world.destroyEntity(enemy.id);
           this.killCount += 1;
+          const oldLevel = heroLevel(this.expedition.xp);
+          this.expedition = recordKill(this.expedition);
+          if (heroLevel(this.expedition.xp) > oldLevel) {
+            playerHealth.max = heroMaxHp(this.expedition.xp);
+            playerHealth.current = Math.min(playerHealth.max, playerHealth.current + 20);
+          }
           const player = this.world.getPlayer(this.playerId!);
           if (player) {
             player.score += 400;
@@ -1017,7 +1123,9 @@ export class GameScene extends Phaser.Scene {
           velocity.vy = 0;
           const animKey = `skeleton-${SKELETON_ANIM_KEYS.attack}-${enemy.facing}`;
           enemy.sprite.play(animKey);
+          const epoch = this.areaEpoch;
           enemy.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+            if (epoch !== this.areaEpoch || this.runState !== 'running' || this.ended || this.hasExpeditionExpired() || !enemy.alive || (this.world.getHealth(enemy.id)?.current ?? 0) <= 0) return;
             if (Phaser.Math.Distance.Between(playerTransform.x, playerTransform.y, transform.x, transform.y) < ENEMY_ATTACK_RANGE + 20) {
               playerHealth.current = Math.max(0, playerHealth.current - ENEMY_ATTACK_DAMAGE);
               playerVelocity.vx -= dirX * 60;
@@ -1045,11 +1153,13 @@ export class GameScene extends Phaser.Scene {
       }
       if (Phaser.Math.Distance.Between(playerTransform.x, playerTransform.y, loot.sprite.x, loot.sprite.y) < 90) {
         loot.collected = true;
+        this.expedition = collectGold(this.expedition);
         const player = this.world.getPlayer(this.playerId!);
         if (player) {
           player.score += 200;
         }
         this.createSwooshEffect({ x: loot.sprite.x, y: loot.sprite.y - 20 }, new Phaser.Math.Vector2(0, -1));
+        loot.sprite.destroy(); loot.indicator.destroy(); loot.glint.destroy();
         return false;
       }
       return true;
@@ -1062,21 +1172,24 @@ export class GameScene extends Phaser.Scene {
     if (!transform) return;
 
     this.heroAttacking = true;
+    const epoch = this.areaEpoch;
     const animKey = `hero-${HERO_ANIM_KEYS.attack}-${this.heroFacing}`;
     this.playerSprite.play(animKey);
     this.playerSprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-      this.heroAttacking = false;
+      if (epoch === this.areaEpoch) this.heroAttacking = false;
     });
 
     const attackDir = this.heroFacingVec.lengthSq() > 0 ? this.heroFacingVec.clone() : new Phaser.Math.Vector2(0, 1);
     attackDir.normalize();
     const origin = { x: transform.x, y: transform.y };
-    this.time.delayedCall(140, () => this.applyAttackHit(origin, attackDir.clone()));
+    this.time.delayedCall(140, () => {
+      if (epoch === this.areaEpoch) this.applyAttackHit(origin, attackDir.clone());
+    });
     this.attackCooldown = HERO_ATTACK_COOLDOWN;
   }
 
   private applyAttackHit(origin: Vec2, direction: Phaser.Math.Vector2) {
-    if (!this.playerId) return;
+    if (!this.playerId || this.runState !== 'running' || this.expedition.area === 0 || this.ended || this.hasExpeditionExpired()) return;
     const center = {
       x: origin.x + direction.x * ATTACK_RANGE_OFFSET,
       y: origin.y + direction.y * ATTACK_RANGE_OFFSET
@@ -1090,7 +1203,7 @@ export class GameScene extends Phaser.Scene {
       const enemyHealth = this.world.getHealth(enemy.id);
       if (!enemyTransform || !enemyHealth) return;
       if (Phaser.Geom.Circle.Contains(hitCircle, enemyTransform.x, enemyTransform.y)) {
-        enemyHealth.current = Math.max(0, enemyHealth.current - HERO_ATTACK_DAMAGE);
+        enemyHealth.current = Math.max(0, enemyHealth.current - heroDamage(this.expedition.xp));
         enemy.sprite.setTintFill(0xffffff);
         this.time.delayedCall(120, () => enemy.sprite.clearTint());
         const velocity = this.world.getVelocity(enemy.id);
@@ -1104,7 +1217,7 @@ export class GameScene extends Phaser.Scene {
     this.props.forEach((prop) => {
       if (!prop.alive) return;
       if (Phaser.Geom.Circle.Contains(hitCircle, prop.center.x, prop.center.y)) {
-        prop.hp -= HERO_ATTACK_DAMAGE;
+        prop.hp -= heroDamage(this.expedition.xp);
         if (prop.hp <= 0) {
           this.breakProp(prop);
         }
@@ -1160,7 +1273,11 @@ export class GameScene extends Phaser.Scene {
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
-    this.scoreText.setText(`Kills ${this.killCount}  •  Score ${score}`);
+    this.scoreText.setText(`Hero Lv ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
+    const area = AREAS[this.expedition.area];
+    this.areaText.setText(`${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
+    if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? `${this.expedition.returned ? this.expedition.outcome.toUpperCase() : 'GATE TO MOSSGATE'}\n${this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : 'Please wait'}` : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);
+    this.updateControlButtons();
     if (health) {
       this.hpText.setText(`HP ${Math.max(0, Math.ceil(health.current))}/${health.max}`);
       this.drawHpBar(health.current / health.max);
@@ -1230,14 +1347,27 @@ export class GameScene extends Phaser.Scene {
     return this.wasd[key].isDown;
   }
 
+  private hasExpeditionExpired() {
+    return this.expeditionActive && performance.now() - this.expeditionStartedAt >= this.durationLimit;
+  }
+
+  private finishExpedition() {
+    if (!this.expeditionActive) return;
+    this.elapsed = Math.min(this.durationLimit, Math.max(this.elapsed, performance.now() - this.expeditionStartedAt, 0));
+    this.expeditionActive = false;
+    this.pointerAttack = false;
+    this.townStatus = 'saving';
+    this.townMessage = 'Saving expedition result…';
+    const player = this.playerId ? this.world.getPlayer(this.playerId) : undefined;
+    const score = Math.max(0, Math.floor(player?.score ?? this.killCount * 250));
+    if (this.initialized && this.handlers.isCurrent()) this.handlers.onGameOver(score, this.elapsed);
+    this.updateUIState();
+  }
+
   private endRun() {
-    if (this.ended) return;
-    this.ended = true;
-    const player = this.playerId ? (this.world.getPlayer(this.playerId) as Player | undefined) : undefined;
-    const score = player?.score ?? this.killCount * 250;
-    if (this.initialized && this.handlers.isCurrent()) {
-      this.handlers.onGameOver(Math.max(0, Math.floor(score)));
-    }
-    this.scene.pause();
+    if (!this.expeditionActive) return;
+    // The expedition has a logical deadline even when a frame arrives late.
+    // Timeout returns to safe town; browsing town never consumes a session clock.
+    this.changeArea(returnToTown(this.expedition, true));
   }
 }

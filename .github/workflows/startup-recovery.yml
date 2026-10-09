@@ -37,11 +37,11 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/startup-recovery
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$(git rev-parse HEAD:src)" = c7342a54a765e88007bdfedceced679b3c32a7c1
+          test "$(git rev-parse HEAD:src)" = dacfeeadab4041eb14af38422504dcfd08527c6c
           test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
           test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"
           {
-            echo '136 focused units + 104 component-DOM cases + a separate 42-case synthetic-browser execution gate.'
+            echo '196 focused units + 130 component-DOM cases + a separate 42-case synthetic-browser execution gate.'
             echo 'Real shells and SDK; synthetic Auth, transport and engines. No hosted backend, real engine, mobile coverage or deployment acceptance.'
             git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:supabase
             node --version
@@ -60,17 +60,17 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/testing/recovery-dom/verify-start-recovery-results.test.mjs 2>&1 | tee artifacts/startup-recovery/verifier-tests.log
-      - name: Run and verify all 136 focused session and startup unit cases
+      - name: Run and verify all 196 focused session and startup unit cases
         env:
           VITEST: 'true'
         run: |
           set -euo pipefail
-          node node_modules/vitest/vitest.mjs run src/lib/__tests__/gameSdkSessionLifecycle.spec.ts src/lib/__tests__/gameSdkStartRecovery.spec.ts src/lib/__tests__/gameIntegrationStartRecovery.spec.ts src/lib/__tests__/arpgBootStartRecovery.spec.ts src/lib/__tests__/arpgBootSceneReadiness.spec.ts src/lib/__tests__/arpgGameSceneReadiness.spec.ts src/lib/__tests__/gameFullscreenStartRecovery.spec.ts --pool=forks --poolOptions.forks.singleFork=true --retry=0 --allowOnly=false --reporter=default --reporter=json --outputFile=artifacts/startup-recovery/unit.json 2>&1 | tee artifacts/startup-recovery/unit.log
+          node node_modules/vitest/vitest.mjs run src/lib/__tests__/gameSdkSessionLifecycle.spec.ts src/lib/__tests__/gameSdkStartRecovery.spec.ts src/lib/__tests__/gameIntegrationStartRecovery.spec.ts src/lib/__tests__/arpgBootStartRecovery.spec.ts src/lib/__tests__/arpgBootSceneReadiness.spec.ts src/lib/__tests__/arpgGameSceneReadiness.spec.ts src/lib/__tests__/gameFullscreenStartRecovery.spec.ts src/lib/__tests__/arpgExpedition.spec.ts src/lib/__tests__/arpgExpeditionScene.spec.ts src/lib/__tests__/arpgTownSession.spec.ts --pool=forks --poolOptions.forks.singleFork=true --retry=0 --allowOnly=false --reporter=default --reporter=json --outputFile=artifacts/startup-recovery/unit.json 2>&1 | tee artifacts/startup-recovery/unit.log
           node scripts/testing/recovery-dom/verify-start-recovery-results.mjs unit artifacts/startup-recovery/unit.json
-      - name: Run and verify all 104 component-DOM cases
+      - name: Run and verify all 130 component-DOM cases
         run: |
           set -euo pipefail
-          for suite in neon portal start legacy; do
+          for suite in neon portal start legacy arpg-town; do
             report="$PWD/artifacts/startup-recovery/$suite-dom.json"
             node scripts/testing/recovery-dom/node_modules/vitest/vitest.mjs run --config "scripts/testing/recovery-dom/$suite.config.mjs" --retry=0 --allowOnly=false --reporter=default --reporter=json --outputFile="$report" 2>&1 | tee "artifacts/startup-recovery/$suite-dom.log"
             node scripts/testing/recovery-dom/verify-results.mjs "$suite" "$report"

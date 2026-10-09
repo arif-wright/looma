@@ -8,6 +8,7 @@ const assets = JSON.parse(readFileSync(`${root}asset-paths.json`, 'utf8'));
 const sources = [
   'routes/app/(game)/games/arpg/+page.svelte', 'lib/games/arpg/main.ts',
   'lib/games/arpg/scenes/GameScene.ts', 'lib/games/arpg/assets/manifest.ts',
+  'lib/games/arpg/expedition.ts', 'lib/games/arpg/townSession.ts',
   'lib/games/arpg/ecs/components.ts', 'lib/games/arpg/ecs/systems.ts',
   'lib/games/sdk.ts', 'lib/games/types.ts', 'lib/safeMessages.ts',
   'lib/games/rewardBonus.ts', 'lib/companions/rituals.ts'

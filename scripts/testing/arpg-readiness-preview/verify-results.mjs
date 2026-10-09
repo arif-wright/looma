@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TITLES, isExpectedConsoleError } from './cases.mjs';
+import { verifyObservation } from './verify-observations.mjs';
 const FILE = 'readiness.browser.spec.ts', PROJECT = 'chromium-arpg-readiness';
 export const SCREENSHOTS = [
-  'initialized-scene-known-floor-wall-visual-defect', 'actual-route-image-download-failure',
-  'actual-route-image-decode-failure', 'actual-route-native-30-second-asset-timeout'
+  'initialized-town-real-decoded-assets', 'actual-route-image-download-failure',
+  'actual-route-image-decode-failure', 'actual-route-native-30-second-asset-timeout',
+  ...Array(6).fill(null), 'returned-town-synthetic-zero-value-receipt'
 ];
 const empty = (value, reason) => assert.deepEqual(value, [], reason);
 export function verify(report, mode) {
@@ -54,30 +56,9 @@ export function verify(report, mode) {
     for (const key of ['blocked', 'errors', 'unexpectedConsoleErrors', 'cleanupErrors']) empty(observation[key], key);
     assert(Array.isArray(observation.consoleErrors));
     empty(observation.consoleErrors.filter(message => !isExpectedConsoleError(spec.title, message)), 'Recheck exact injected console-error allowlist');
-    const state = observation.state, cleanup = observation.afterCleanup;
-    assert.equal(state?.ready, true); assert(cleanup);
-    for (const value of [state, cleanup]) {
-      empty(value.blocked, 'No forbidden fetch'); empty(value.rewardMutations, 'No reward mutation');
-      assert(Array.isArray(value.api) && value.api.length > 0);
-      for (const call of value.api) assert(
-        (call.path === '/api/games/session/start' && call.method === 'POST') ||
-        (call.path === '/api/leaderboard/arpg/alltime' && call.method === 'GET'), 'Only synthetic start and leaderboard calls');
-      assert(Array.isArray(value.scenes) && value.scenes.length > 0);
-      for (const scene of value.scenes) assert.equal(new Set(scene.queuedKeys).size, 249, 'Actual scene must queue its image set');
-    }
-    assert.equal(cleanup.canvasCount, 0); assert.equal(cleanup.authCallbacks, 0); empty(cleanup.mountedPages, 'No mounted page after cleanup');
-    assert(cleanup.scenes.every(scene => scene.destroyed === true));
     const index = TITLES.indexOf(spec.title);
-    const expectedStarts = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2][index];
-    assert.equal(state.api.filter(call => call.path === '/api/games/session/start').length, expectedStarts);
-    if ([0, 1, 2, 3, 8, 9].includes(index)) {
-      const active = state.scenes.filter(scene => !scene.destroyed);
-      assert.equal(active.length, 1); assert.notEqual(active[0].createAt, null);
-      assert.equal(active[0].decodedKeys.length, 249); empty(active[0].missingKeys, 'No missing decoded image on successful startup');
-      assert(active[0].framesAfterCreate > 0);
-      assert(state.pages.some(page => page.status === 'Session live — survive and dash!'));
-    }
-    if (index < SCREENSHOTS.length) {
+    verifyObservation(observation, index);
+    if (SCREENSHOTS[index]) {
       const images = result.attachments.filter(item => item.name === SCREENSHOTS[index]);
       assert.equal(images.length, 1); assert.equal(images[0].contentType, 'image/png');
       assert.equal(typeof images[0].body, 'string');
@@ -89,8 +70,8 @@ export function verify(report, mode) {
   assert.equal(report.stats.skipped, execution ? 0 : TITLES.length);
   assert.equal(report.stats.unexpected, 0); assert.equal(report.stats.flaky, 0);
   return execution
-    ? 'Verified 10 executed actual-route/SDK/Phaser browser cases with synthetic Auth/transport; zero skips, failures or retries. Visual/gameplay acceptance remains separate.'
-    : 'Verified discovery of 10 ARPG browser cases; ZERO executed. Discovery is not a browser pass.';
+    ? `Verified ${TITLES.length} executed actual-route/SDK/Phaser browser cases with synthetic Auth/transport, including bounded movement/return; zero skips, failures or retries. Hosted reward and full gameplay acceptance remain separate.`
+    : `Verified discovery of ${TITLES.length} ARPG browser cases; ZERO executed. Discovery is not a browser pass.`;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [mode, path, ...extra] = process.argv.slice(2);

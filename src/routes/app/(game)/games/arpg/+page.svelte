@@ -8,7 +8,8 @@
   import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
   import LeaderboardList from '$lib/components/games/LeaderboardList.svelte';
   import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
-  import { bootGame, shutdownGame } from '$lib/games/arpg/main';
+  import { bootGame, shutdownGame, type ArpgControls } from '$lib/games/arpg/main';
+  import { createTownSession, type TownSession, type TownSessionState } from '$lib/games/arpg/townSession';
   import {
     abandonSession,
     completeSession,
@@ -16,6 +17,8 @@
     getGameErrorKind,
     getGameErrorMessage,
     startSession,
+    signCompletion,
+    type GameSessionServerResult,
     watchGameOwner,
     type SessionAchievement
   } from '$lib/games/sdk';
@@ -40,15 +43,6 @@
   const minVersion = game.min_version ?? '1.0.0';
   const devBanner = import.meta.env.DEV;
 
-  type SessionContext = {
-    sessionId: string;
-    nonce: string;
-    caps?: {
-      minDurationMs?: number;
-      maxDurationMs?: number;
-    };
-  };
-
   type SessionReward = {
     xpDelta: number;
     baseXp?: number | null;
@@ -69,32 +63,29 @@
   };
 
   let containerEl: HTMLDivElement | null = null;
-  let session: SessionContext | null = null;
-  let sessionStartWall = 0;
-  let sessionStartClock = 0;
-  let sessionLoading = false;
-  let sessionFinalizing = false;
+  let controls: ArpgControls | null = null;
+  let townSession: TownSession | null = null;
+  let townState: TownSessionState | null = null;
+  let bootLoading = false;
+  let bootController: AbortController | null = null;
   let reward: SessionReward | null = null;
   let ritualCompletions: CompanionRitual[] = [];
   let errorMessage: string | null = null;
-  let status = 'Preparing Memvoya ARPG…';
+  let status = 'Preparing Lantern Square…';
   let mounted = false;
-  let startGeneration = 0;
-  let startController: AbortController | null = null;
-  let startFailed = false;
+  let workGeneration = 0;
+  let pageBlocked = false;
   let startRecoveryAction: 'refresh' | 'signin' | null = null;
 
-  const cancelStart = () => {
-    ++startGeneration;
-    startController?.abort();
-    startController = null;
-    if (sessionLoading && session) abandonSession(session.sessionId);
-    if (sessionLoading) {
-      session = null;
-      sessionStartWall = 0;
-      sessionStartClock = 0;
-    }
-    sessionLoading = false;
+  const stopPageWork = () => {
+    ++workGeneration;
+    bootController?.abort();
+    bootController = null;
+    townSession?.dispose();
+    townSession = null;
+    controls = null;
+    bootLoading = false;
+    if (containerEl) shutdownGame(containerEl);
   };
 
   type LeaderboardState = {
@@ -118,6 +109,7 @@
     alltime: createLeaderboardState()
   };
   const leaderboardPageSize = 25;
+  const leaderboardRequests: Record<LeaderboardScope, number> = { daily: 0, weekly: 0, alltime: 0 };
 
   const mutateLeaderboardState = (scope: LeaderboardScope, partial: Partial<LeaderboardState>) => {
     leaderboardStates = {
@@ -130,6 +122,10 @@
   };
 
   const loadLeaderboard = async (scope: LeaderboardScope, page = 1, append = false) => {
+    if (!mounted || pageBlocked) return;
+    const generation = workGeneration;
+    const request = ++leaderboardRequests[scope];
+    const isCurrent = () => mounted && !pageBlocked && generation === workGeneration && request === leaderboardRequests[scope];
     mutateLeaderboardState(scope, { loading: true });
     const previousRows = leaderboardStates[scope].rows;
 
@@ -139,6 +135,7 @@
       );
       if (!response.ok) throw new Error('Unable to load leaderboard');
       const payload = await response.json();
+      if (!isCurrent()) return;
       const nextRows: LeaderboardDisplayRow[] = append
         ? [...previousRows, ...payload.rows]
         : payload.rows;
@@ -149,6 +146,7 @@
         fetched: true
       });
     } catch (err) {
+      if (!isCurrent()) return;
       console.warn('[arpg] leaderboard fetch failed', err);
       mutateLeaderboardState(scope, { loading: false, fetched: true });
     }
@@ -188,227 +186,286 @@
       })
     : null;
 
-  const startRun = async () => {
-    if (!mounted || sessionLoading || sessionFinalizing || session) return;
-    // Acquire the guard before the first await, including the container tick.
-    sessionLoading = true;
-    const generation = ++startGeneration;
-    const controller = new AbortController();
-    startController = controller;
-    const isCurrent = () => mounted && generation === startGeneration && !controller.signal.aborted;
-    let startedSession: SessionContext | null = null;
-    let bootTimer: ReturnType<typeof setTimeout> | null = null;
-    let bootTimedOut = false;
-    reward = null;
-    errorMessage = null;
-    startFailed = false;
-    status = 'Connecting to Memvoya ARPG…';
+  const acceptSettlement = (result: GameSessionServerResult, isCurrent: () => boolean) => {
+    if (!isCurrent()) return;
+    // Preserve the SDK's optional session-summary counter. Only this confirmed,
+    // current-owner receipt may update it; blocked storage never invalidates save.
+    try {
+      const current = Number(window.sessionStorage.getItem('looma_session_games_played') ?? '0');
+      const next = Number.isFinite(current) && current > 0 ? Math.floor(current) + 1 : 1;
+      window.sessionStorage.setItem('looma_session_games_played', String(next));
+    } catch (storageErr) {
+      console.debug('[arpg] session counter unavailable', storageErr);
+    }
+    const fallbackBaseXp =
+      typeof result.baseXp === 'number'
+        ? result.baseXp
+        : typeof result.baseXpDelta === 'number'
+          ? result.baseXpDelta
+          : result.xpDelta;
+    const fallbackFinalXp = typeof result.finalXp === 'number' ? result.finalXp : result.xpDelta;
+    const inferredCompanionXp = Math.max(0, fallbackFinalXp - fallbackBaseXp);
 
+    const companionBonus = result.companionBonus
+      ? {
+          companionId: result.companionBonus.companionId ?? null,
+          name: result.companionBonus.name ?? null,
+          bondLevel: result.companionBonus.bondLevel ?? 0,
+          xpMultiplier: result.companionBonus.xpMultiplier ?? 1
+        }
+      : null;
+
+    const sessionReward: SessionReward = {
+      xpDelta: result.xpDelta,
+      baseXp: fallbackBaseXp,
+      finalXp: fallbackFinalXp,
+      xpFromCompanion: result.xpFromCompanion ?? inferredCompanionXp,
+      xpFromStreak: result.xpFromStreak ?? null,
+      xpMultiplier: result.xpMultiplier ?? null,
+      companionBonus,
+      currencyDelta: result.currencyDelta,
+      baseCurrencyDelta: result.baseCurrencyDelta ?? null,
+      currencyMultiplier: result.currencyMultiplier ?? null,
+      achievements: Array.isArray(result.achievements) ? result.achievements : []
+    };
+    reward = sessionReward;
+
+    if (result.rituals?.list) {
+      applyRitualUpdate(result.rituals.list as CompanionRitual[]);
+      ritualCompletions = (result.rituals.completed as CompanionRitual[]) ?? [];
+    } else {
+      ritualCompletions = [];
+    }
+
+    status = 'Result saved. Town is untimed; depart again whenever you’re ready.';
+    recordRewardResult({
+      xpDelta: result.xpDelta,
+      baseXpDelta: result.baseXpDelta ?? null,
+      xpMultiplier: result.xpMultiplier ?? null,
+      baseXp: fallbackBaseXp,
+      finalXp: fallbackFinalXp,
+      xpFromCompanion: sessionReward.xpFromCompanion ?? inferredCompanionXp,
+      xpFromStreak: result.xpFromStreak ?? null,
+      companionBonus,
+      currencyDelta: result.currencyDelta,
+      baseCurrencyDelta: result.baseCurrencyDelta ?? null,
+      currencyMultiplier: result.currencyMultiplier ?? null,
+      game: slug,
+      gameName: game.name
+    });
+
+    // The captured run/page owner must still match after every asynchronous read.
+    void (async () => {
+      try {
+        const latest = await fetchPlayerState();
+        if (isCurrent()) applyPlayerState(latest);
+      } catch (refreshErr) {
+        if (isCurrent()) console.warn('[arpg] failed to refresh player state', refreshErr);
+      }
+    })();
+    void loadLeaderboard(leaderboardScope);
+  };
+
+  const reflectTownState = (next: TownSessionState) => {
+    townState = next;
+    errorMessage = null;
+    startRecoveryAction = null;
+    switch (next.phase) {
+      case 'starting':
+        reward = null;
+        ritualCompletions = [];
+        status = 'Starting your expedition…';
+        controls?.setTownStatus('starting', status);
+        break;
+      case 'expedition':
+        status = 'Expedition in progress. Return to town to save your result.';
+        break;
+      case 'waiting':
+        status = `Back in town. Your result is fixed; saving after the minimum session time (up to ${Math.ceil(next.waitMs / 1000)} seconds).`;
+        controls?.setTownStatus('saving', 'Result fixed. Waiting for minimum session time…');
+        break;
+      case 'saving':
+        status = 'Back in town. Saving your expedition result…';
+        controls?.setTownStatus('saving', 'Saving this expedition…');
+        break;
+      case 'retry':
+        status = 'Save not confirmed. Retry this result before departing again.';
+        errorMessage = next.issue ? getGameErrorMessage(next.issue.error, 'complete') : null;
+        controls?.setTownStatus('retry', 'Save not confirmed. Retry the same result.');
+        break;
+      case 'rejected':
+        status = 'The server rejected this expedition result. New departures are blocked.';
+        errorMessage = (next.issue?.error as { code?: string })?.code === 'invalid_score_rate'
+          ? 'This expedition exceeded the server score-rate limit. Its score and duration are fixed; waiting in town cannot make this result valid.'
+          : 'This result cannot be changed or retried here. Return to the hub to review your account before another expedition.';
+        controls?.setTownStatus('blocked', 'Result rejected. Review the message below.');
+        break;
+      case 'blocked':
+        startRecoveryAction = 'refresh';
+        if (next.issue?.context === 'entry') {
+          // A failed area rebuild can leave a partial world. Stop its renderer,
+          // rather than letting another accepted session silently target it.
+          controls = null;
+          if (containerEl) shutdownGame(containerEl);
+          status = 'The dungeon could not open. Refresh to reload the town.';
+          errorMessage = 'A session was already created and may count toward your daily limit; it was not cancelled. Refresh before starting another expedition.';
+        } else {
+          status = 'Expeditions unavailable with the current server limits.';
+          errorMessage = 'The server timing limits do not fit this expedition. Refresh before trying again. A session was already created and may count toward your daily limit; it was not cancelled.';
+          controls?.setTownStatus('blocked', 'Server timing limits incompatible. Refresh the page.');
+        }
+        break;
+      case 'ready':
+        status = 'Town is untimed. Depart when you’re ready.';
+        if (next.issue) {
+          errorMessage = getGameErrorMessage(next.issue.error, 'start');
+          if (next.issue.sessionCreated) errorMessage += ' A session was already created and may count toward your daily limit; it was not cancelled.';
+          startRecoveryAction = getGameErrorKind(next.issue.error, 'start') === 'unauthorized'
+            ? 'signin'
+            : (next.issue.error as { code?: string })?.code === 'start_account_changed' ? 'refresh' : null;
+          status = 'Departure was not confirmed. Review the message before trying again.';
+        }
+        controls?.setTownStatus(startRecoveryAction ? 'blocked' : 'ready',
+          next.issue ? 'Departure not confirmed. Check the message below.' : 'Town is untimed. Depart when ready.');
+        break;
+    }
+  };
+
+  const depart = () => {
+    if (!mounted || pageBlocked || bootLoading || startRecoveryAction) return;
+    void townSession?.depart();
+  };
+
+  const bootTown = async () => {
+    if (!mounted || pageBlocked || bootLoading || townSession) return;
+    bootLoading = true;
+    const generation = ++workGeneration;
+    const controller = new AbortController();
+    bootController = controller;
+    const isCurrent = () => mounted && !pageBlocked && generation === workGeneration && !controller.signal.aborted;
+    let bootTimedOut = false;
+    let bootTimer: ReturnType<typeof setTimeout> | null = null;
+    errorMessage = null;
+    status = 'Loading Lantern Square…';
     try {
       if (!containerEl) await tick();
       if (!isCurrent()) return;
       if (!containerEl) throw new Error('The game container is unavailable.');
-      const target = containerEl;
-      startedSession = await startSession(slug, 'standard', {
-        clientVersion: minVersion,
-        source: 'arpg_page'
-      }, { signal: controller.signal, ownerId: get(page).data.user?.id ?? null });
-      if (!isCurrent()) {
-        abandonSession(startedSession.sessionId);
-        return;
-      }
-      session = startedSession;
-      sessionStartWall = Date.now();
-      sessionStartClock = typeof performance !== 'undefined' ? performance.now() : sessionStartWall;
-      bootTimer = setTimeout(() => {
-        bootTimedOut = true;
-        controller.abort();
-      }, 30_000);
-      await bootGame(target, {
+      bootTimer = setTimeout(() => { bootTimedOut = true; controller.abort(); }, 30_000);
+      await bootGame(containerEl, {
         signal: controller.signal,
-        onGameOver: (score) => {
-          if (isCurrent()) void finalizeRun(score);
+        onControls: (nextControls) => {
+          if (isCurrent()) controls = nextControls;
+        },
+        onDepartureRequested: () => { if (isCurrent()) depart(); },
+        onRetryRequested: () => { if (isCurrent()) void townSession?.retry(); },
+        onGameOver: (score, durationMs) => {
+          if (isCurrent()) void townSession?.returnToTown(score, durationMs);
         }
       });
       if (!isCurrent()) return;
-      status = 'Session live — survive and dash!';
-    } catch (err) {
-      if (!mounted || generation !== startGeneration) return;
-      if (startedSession) abandonSession(startedSession.sessionId);
-      session = null;
-      sessionStartWall = 0;
-      sessionStartClock = 0;
-      errorMessage = bootTimedOut
-        ? 'The game took too long to load. Its session may already count toward your daily limit. Start a new run when ready.'
-        : getGameErrorMessage(err, 'start');
-      startFailed = true;
-      startRecoveryAction = getGameErrorKind(err, 'start') === 'unauthorized'
-        ? 'signin'
-        : (err as { code?: string })?.code === 'start_account_changed' ? 'refresh' : null;
-      status = 'Session failed to start';
-    } finally {
-      if (bootTimer) clearTimeout(bootTimer);
-      if (generation === startGeneration) {
-        startController = null;
-        sessionLoading = false;
-      }
-    }
-  };
-
-  const finalizeRun = async (score: number) => {
-    if (!session || sessionFinalizing) return;
-    sessionFinalizing = true;
-    status = 'Finalizing session…';
-
-    try {
-      const sanitizedScore = Math.max(0, Math.floor(score));
-      let durationMs = Math.max(0, Date.now() - sessionStartWall);
-      const nowClock = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const elapsedClock = sessionStartClock ? Math.floor(nowClock - sessionStartClock) : durationMs;
-      durationMs = Math.max(durationMs, elapsedClock);
-
-      const minDuration = Number(session.caps?.minDurationMs ?? 0);
-      if (minDuration > 0 && durationMs < minDuration) {
-        const waitMs = minDuration - durationMs;
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-        const latestClock = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        const postWaitElapsed = sessionStartClock
-          ? Math.floor(latestClock - sessionStartClock)
-          : Date.now() - sessionStartWall;
-        durationMs = Math.max(minDuration, postWaitElapsed);
-      }
-
-      const result = await completeSession(session.sessionId, {
-        score: sanitizedScore,
-        durationMs,
-        success: true,
-        stats: {
-          mode: 'standard'
+      if (!controls) throw new Error('The town controls are unavailable.');
+      townSession = createTownSession({
+        start: (signal) => startSession(slug, 'standard', {
+          clientVersion: minVersion, source: 'arpg_page'
+        }, { signal, ownerId: get(page).data.user?.id ?? null }),
+        beginExpedition: (maximum) => controls?.beginExpedition(maximum),
+        sign: async (session, result) => {
+          const signed = await signCompletion({
+            sessionId: session.sessionId, slug, nonce: session.nonce,
+            score: result.score, durationMs: result.durationMs, clientVersion: minVersion
+          });
+          return signed.signature;
+        },
+        // Use the explicit request overload so SDK event/reaction continuations
+        // cannot update a different owner's UI after this screen is invalidated.
+        complete: (session, result, signature) => completeSession({
+          sessionId: session.sessionId, nonce: session.nonce, signature,
+          clientVersion: minVersion, ...result
+        }),
+        abandon: abandonSession,
+        now: () => performance.now(),
+        onState: (next) => { if (isCurrent()) reflectTownState(next); },
+        onSettled: (result, isRunCurrent) => {
+          acceptSettlement(result, () => isCurrent() && isRunCurrent());
         }
       });
-      if (!result) {
-        throw new Error('Unable to complete session');
-      }
-
-      const fallbackBaseXp =
-        typeof result.baseXp === 'number'
-          ? result.baseXp
-          : typeof result.baseXpDelta === 'number'
-            ? result.baseXpDelta
-            : result.xpDelta;
-      const fallbackFinalXp = typeof result.finalXp === 'number' ? result.finalXp : result.xpDelta;
-      const inferredCompanionXp = Math.max(0, fallbackFinalXp - fallbackBaseXp);
-
-      const companionBonus = result.companionBonus
-        ? {
-            companionId: result.companionBonus.companionId ?? null,
-            name: result.companionBonus.name ?? null,
-            bondLevel: result.companionBonus.bondLevel ?? 0,
-            xpMultiplier: result.companionBonus.xpMultiplier ?? 1
-          }
-        : null;
-
-      const sessionReward: SessionReward = {
-        xpDelta: result.xpDelta,
-        baseXp: fallbackBaseXp,
-        finalXp: fallbackFinalXp,
-        xpFromCompanion: result.xpFromCompanion ?? inferredCompanionXp,
-        xpFromStreak: result.xpFromStreak ?? null,
-        xpMultiplier: result.xpMultiplier ?? null,
-        companionBonus,
-        currencyDelta: result.currencyDelta,
-        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
-        currencyMultiplier: result.currencyMultiplier ?? null,
-        achievements: Array.isArray(result.achievements) ? result.achievements : []
-      };
-      reward = sessionReward;
-
-      if (result.rituals?.list) {
-        applyRitualUpdate(result.rituals.list as CompanionRitual[]);
-        ritualCompletions = (result.rituals.completed as CompanionRitual[]) ?? [];
-      } else {
-        ritualCompletions = [];
-      }
-
-      status = 'Session complete';
-      recordRewardResult({
-        xpDelta: result.xpDelta,
-        baseXpDelta: result.baseXpDelta ?? null,
-        xpMultiplier: result.xpMultiplier ?? null,
-        baseXp: fallbackBaseXp,
-        finalXp: fallbackFinalXp,
-        xpFromCompanion: sessionReward.xpFromCompanion ?? inferredCompanionXp,
-        xpFromStreak: result.xpFromStreak ?? null,
-        companionBonus,
-        currencyDelta: result.currencyDelta,
-        baseCurrencyDelta: result.baseCurrencyDelta ?? null,
-        currencyMultiplier: result.currencyMultiplier ?? null,
-        game: slug,
-        gameName: game.name
-      });
-
-      try {
-        const latest = await fetchPlayerState();
-        applyPlayerState(latest);
-      } catch (refreshErr) {
-        console.warn('[arpg] failed to refresh player state', refreshErr);
-      }
-
-      session = null;
+      reflectTownState(townSession.state);
     } catch (err) {
-      errorMessage = getGameErrorMessage(err, 'complete');
-      status = 'Result submission failed';
+      if (!mounted || pageBlocked || generation !== workGeneration) return;
+      controls = null;
+      if (containerEl) shutdownGame(containerEl);
+      errorMessage = bootTimedOut
+        ? 'Town took too long to load. Try loading it again. No expedition session was started.'
+        : getGameErrorMessage(err, 'load');
+      status = 'Town could not load. No expedition session was started.';
     } finally {
-      if (session) {
-        session = null;
-      }
-      sessionFinalizing = false;
+      if (bootTimer) clearTimeout(bootTimer);
+      if (generation === workGeneration) bootLoading = false;
     }
   };
 
   const replay = () => {
-    if (sessionLoading || sessionFinalizing) return;
+    if (bootLoading) return;
     if (startRecoveryAction === 'refresh') {
       window.location.reload();
     } else if (startRecoveryAction === 'signin') {
       void goto('/app/auth');
+    } else if (townState?.phase === 'retry') {
+      void townSession?.retry();
+    } else if (!townSession) {
+      void bootTown();
     } else {
-      void startRun();
+      depart();
     }
   };
 
+  $: actionDisabled = bootLoading || ['starting', 'expedition', 'waiting', 'saving', 'rejected'].includes(townState?.phase ?? '');
+  $: actionLabel = startRecoveryAction === 'refresh' ? 'Refresh page'
+    : startRecoveryAction === 'signin' ? 'Sign in'
+    : bootLoading ? 'Loading town…'
+    : townState?.phase === 'starting' ? 'Starting…'
+    : townState?.phase === 'expedition' ? 'Expedition in progress…'
+    : townState?.phase === 'waiting' ? 'Waiting to save…'
+    : townState?.phase === 'saving' ? 'Saving…'
+    : townState?.phase === 'retry' ? 'Retry save'
+    : townState?.phase === 'rejected' ? 'Result rejected'
+    : !townSession ? 'Retry loading town' : 'Depart on expedition';
+
   const goBack = () => {
-    cancelStart();
-    if (containerEl) shutdownGame(containerEl);
-    void goto('/app/games');
+    // Successful navigation unmounts and invalidates this screen. Do not stop a
+    // live town for a cancelled/failed navigation or an in-place query change.
+    void goto('/app/games').catch(() => {
+      if (mounted && !pageBlocked) errorMessage = 'Unable to return to the hub. Please try again.';
+    });
   };
 
   onMount(() => {
     mounted = true;
-    const target = containerEl;
     const stopWatchingOwner = watchGameOwner((ownerId) => {
-      if (!sessionLoading) return;
-      cancelStart();
-      if (target) shutdownGame(target);
-      startFailed = true;
+      if (!mounted || pageBlocked) return;
+      pageBlocked = true;
+      stopPageWork();
+      townState = null;
+      reward = null;
+      ritualCompletions = [];
       startRecoveryAction = ownerId ? 'refresh' : 'signin';
       errorMessage = ownerId
-        ? 'Your account changed while starting. Refresh the page before starting a new run.'
-        : 'You signed out while starting. Sign in before starting a new run.';
-      status = 'Start interrupted';
+        ? 'Your account changed. Refresh before playing again. Any expedition already created was not cancelled.'
+        : 'You signed out. Sign in before playing again. Any expedition already created was not cancelled.';
+      status = 'Play stopped because your account changed.';
     }, get(page).data.user?.id ?? null);
     const bootstrap = async () => {
       await tick();
-      if (!mounted) return;
-      await startRun();
-      if (mounted) void loadLeaderboard('alltime');
+      if (!mounted || pageBlocked) return;
+      await bootTown();
+      if (mounted && !pageBlocked) void loadLeaderboard('alltime');
     };
     void bootstrap();
     return () => {
       mounted = false;
-      cancelStart();
+      stopPageWork();
       stopWatchingOwner();
-      if (target) shutdownGame(target);
     };
   });
 
@@ -433,23 +490,23 @@
       <header class="flex flex-col gap-2 text-white">
         <p class="text-xs uppercase tracking-[0.3em] text-white/40">Now playing</p>
         <h1 class="text-3xl font-semibold">{game.name}</h1>
-        <p class="text-sm text-white/70">Stay alive, stack pulses, and secure the shards.</p>
+        <p class="text-sm text-white/70">Rest in Lantern Square, explore two dungeon floors, and return to save your expedition.</p>
       </header>
 
       <div class="game-frame">
         <div class="arpg-container" bind:this={containerEl}></div>
       </div>
 
-      <p class="game-status">{status}</p>
+      <p class="game-status" role="status" aria-live="polite">{status}</p>
 
       <div class="session-actions">
         <button
           class="toast-button"
           type="button"
           on:click={replay}
-          disabled={sessionLoading || sessionFinalizing || !!session}
+          disabled={actionDisabled}
         >
-          {sessionLoading ? 'Starting…' : session ? 'Run in progress…' : startRecoveryAction === 'refresh' ? 'Refresh page' : startRecoveryAction === 'signin' ? 'Sign in' : startFailed ? 'Start new run' : 'Replay'}
+          {actionLabel}
         </button>
         <button class="toast-button secondary" type="button" on:click={goBack}>
           Back to hub
@@ -480,7 +537,7 @@
           {/if}
           <div class="toast-actions">
             <button class="toast-button" type="button" on:click={replay}>
-              Replay
+              Depart again
             </button>
             <button class="toast-button secondary" type="button" on:click={goBack}>
               Back to hub

@@ -40,28 +40,58 @@ Prepublication local checks under Node 22.20.0: 868 root units in 82 suites; 96 
 Revert this code-only release or restore the previous production deployment if recovery regresses. No database rollback is needed. Keep the source pin aligned with whichever reviewed src tree is restored, and rerun the exact-commit release checks.
 
 
-## Separate local start-session recovery candidate
+## Local startup and untimed-town integration
 
-The startup candidate adds SDK27, template9, ARPG boot5 and viewport18 focused unit
-cases, plus 32 maintained-start and 17 legacy-start DOM cases. These exercise real
-Svelte/SDK code with synthetic Auth/network/engines, and real viewport helper logic
-with synthetic browser objects. They do not establish actual browser fullscreen,
-orientation locking or hosted gameplay.
+The local runner verifies 196 focused unit cases in 10 exact files:
+SDK lifecycle 53, SDK start recovery 27, template start recovery 9, ARPG boot
+start recovery 5, boot scene readiness 13, game scene readiness 12,
+expedition model 8, expedition scene 21, town coordinator 30 and viewport 18.
 
-From the root on Node 22, run:
+It also verifies 130 real-component DOM cases: Neon completion 3, portal 52,
+maintained-shell start 32, legacy Wrapper/ARPG 17 and dedicated ARPG town 26.
+The nine Wrapper cases retain their prior coverage. The eight legacy ARPG cases
+now exercise explicit departures after town boot, cancellation and owner changes,
+uncertain-start recovery, fail-closed accepted-session cleanup when expedition entry partially fails,
+and isolated town-load retries. The dedicated town suite covers untimed browsing,
+repeat expeditions, frozen save retries, reward ownership and stale continuations.
+
+From the root, with dependencies installed as above, run:
 
 ```sh
 bash scripts/testing/recovery-dom/run-start-recovery.sh
+# An installed Node 22 binary can be selected explicitly:
+NODE_BIN=/absolute/path/to/node22 bash scripts/testing/recovery-dom/run-start-recovery.sh
 ```
 
-This additionally reruns the 3 existing completion and 52 portal DOM cases (104 total).
-The current recovery-release workflow is intentionally preserved unchanged; its DOM
-job runs the original 55 cases. Before publishing this separate startup candidate,
-add the startup runner as an independently reviewed CI step. Root Vitest already
-includes the new focused unit files. See `docs/start-session-recovery-review.md` for
-uncertainty, owner identity, verification and the local-only scope.
+The runner records the actual Node version, JSON reports and logs under
+`artifacts/start-recovery/`, and first executes 190 report-verifier self-tests.
+Both DOM verifier entry points use the same exact-file/count checks and reject
+failed, skipped, pending, todo, duplicate and reported-retry cases. Every Vitest
+invocation disables retries and focused-only tests. DOM runs deliberately use the
+nested, locked fixture Vitest so happy-dom and jsdom resolve correctly. The
+self-tests use synthetic report objects; they are not application test execution.
 
-The reviewed startup source tree is `1a4751e650e015656492ece5a484964d79ccee1d`.
-The local PostgREST bootstrap pin changes only to that reviewed source tree;
-its isolation/permission guards and the Supabase pin remain unchanged. This pin
-refresh is not evidence of a native/PostgREST run for the startup candidate.
+These tests exercise actual Svelte/SDK/coordinator/scene logic with synthetic
+Auth, transport and engines. They do not establish hosted settlement, actual
+browser rendering, fullscreen, orientation locking or mobile behavior. Browser
+execution remains a separate gate. CI/release acceptance uses Node 22; a local
+pass under another runtime must be identified as such.
+
+### Workflow/source-pin integration
+
+The startup workflow must run the same 10 focused unit files and all five DOM
+suites as this local runner, with exact totals of 196 units and 130 DOM cases.
+Compared with the inherited PR15 workflow (136 units and 104 DOM), this adds
+`arpgExpedition.spec.ts`, `arpgExpeditionScene.spec.ts`, `arpgTownSession.spec.ts`
+and the `arpg-town` DOM suite; the boot-readiness file also gains one case.
+The existing no-retry, no-skip, isolation, browser and dependency guards must
+remain intact.
+
+The inherited PR15 source tree is
+`c7342a54a765e88007bdfedceced679b3c32a7c1`. Every candidate source pin must match
+the final reviewed source tree: the startup and ARPG-readiness workflows, the
+candidate `expected_src` in `.github/workflows/recovery-release.yml`, and the
+source guard in `tests/sql/helpers/game-postgrest-bootstrap.mjs`. The separate
+recovery baseline comparison pin must not change. Keep unchanged database,
+asset and toolchain pins unchanged. Neither a pin refresh nor this local aggregate
+is proof that browser, native transport or disposable database gates ran.

@@ -147,10 +147,11 @@ describe('real ARPG scene initialization contract with fake Phaser effects', () 
       playerId: 1,
       world: { getPlayer: () => ({ score: 42 }) },
       updateUIState: vi.fn(),
-      scene: { pause: vi.fn() }
+      expeditionActive: true,
+      elapsed: 90000
     });
-    scene.update(0, 100_000);
-    expect(handlers.onGameOver.mock.calls).toEqual([[42]]);
+    (scene as any).finishExpedition();
+    expect(handlers.onGameOver.mock.calls).toEqual([[42, 90000]]);
     expect(other.onGameOver).not.toHaveBeenCalled();
   });
 });

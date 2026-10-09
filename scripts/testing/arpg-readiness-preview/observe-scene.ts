@@ -1,6 +1,32 @@
 import Phaser from 'phaser';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
-import { fixture, type SceneObservation } from './runtime';
+import { fixture, type SceneObservation, type GameplayObservation } from './runtime';
+import type { World, EntityId } from '../../../src/lib/games/arpg/ecs/components';
+import type { Expedition } from '../../../src/lib/games/arpg/expedition';
+
+// Read-only inspection of real scene state. No field, clock, callback, input,
+// texture or combat outcome is replaced. Browser input drives the scene.
+type ObservedState = {
+  initialized: boolean; expedition: Expedition; expeditionActive: boolean;
+  durationLimit: number; elapsed: number; world: World; playerId: EntityId | null;
+  primaryControl: Phaser.GameObjects.Text; secondaryControl: Phaser.GameObjects.Text;
+};
+function readGameplay(scene: GameScene): GameplayObservation | null {
+  const state = scene as unknown as ObservedState;
+  if (!state.initialized || state.playerId === null) return null;
+  const position = state.world.getTransform(state.playerId), health = state.world.getHealth(state.playerId);
+  if (!position || !health) return null;
+  const rect = scene.sys.game.canvas.getBoundingClientRect();
+  const control = (text: Phaser.GameObjects.Text) => {
+    const bounds = text.getBounds();
+    return { label: text.text, x: bounds.centerX * rect.width / scene.scale.width, y: bounds.centerY * rect.height / scene.scale.height };
+  };
+  return { at: performance.now(), area: state.expedition.area, elapsed: state.elapsed,
+    durationLimit: state.durationLimit, expeditionActive: state.expeditionActive,
+    outcome: state.expedition.outcome, returned: state.expedition.returned,
+    x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
+    primary: control(state.primaryControl), secondary: control(state.secondaryControl) };
+}
 
 // Observation only: execute the real preload unchanged and listen to genuine
 // loader/scene/game events. Never call a readiness callback or simulate CREATE.
@@ -13,7 +39,7 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
   const observation: SceneObservation = {
     id: fixture.scenes.length + 1, pageId: parent ? Number(parent.dataset.fixturePage) : null,
     preloadAt: performance.now(), createAt: null, queuedKeys: [], decodedKeys: [], missingKeys: [],
-    loadErrors: [], loadComplete: false, totalFailed: null, framesAfterCreate: 0, destroyed: false
+    loadErrors: [], loadComplete: false, totalFailed: null, framesAfterCreate: 0, destroyed: false, gameplay: null
   };
   fixture.scenes.push(observation);
   scene.load.on(Phaser.Loader.Events.ADD, (key: string, type: string) => {
@@ -28,7 +54,10 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
   });
   scene.events.once(Phaser.Scenes.Events.CREATE, () => { observation.createAt = performance.now(); });
   game.events.on(Phaser.Core.Events.POST_RENDER, () => {
-    if (observation.createAt !== null) observation.framesAfterCreate++;
+    if (observation.createAt !== null) {
+      observation.framesAfterCreate++;
+      observation.gameplay = readGameplay(scene);
+    }
   });
   game.events.once(Phaser.Core.Events.DESTROY, () => { observation.destroyed = true; });
   return originalPreload.apply(this, args);

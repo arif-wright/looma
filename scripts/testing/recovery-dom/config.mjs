@@ -35,6 +35,7 @@ export function componentConfig(kind) {
     },
     ssr: { noExternal: ['svelte'] },
     test: {
+      retry: 0, allowOnly: false,
       environment: neon ? 'happy-dom' : 'jsdom',
       include: [`${kind}-component.spec.ts`],
       pool: 'forks', poolOptions: { forks: { singleFork: true } },

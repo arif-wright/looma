@@ -1,5 +1,5 @@
 export const TITLES = [
-  'held image keeps the actual route starting until real scene initialization',
+  'town assets and a valid departure response gate the first expedition',
   'HTTP image failure rejects startup and explicit retry creates an independent scene',
   'undecodable image rejects startup without false route readiness',
   'the actual 30-second asset deadline cancels loading and ignores a late response',
@@ -7,8 +7,9 @@ export const TITLES = [
   'sign out during asset loading interrupts the actual route',
   'unmount during asset loading destroys the owned game and ignores late images',
   'navigation back during asset loading cannot revive the obsolete page',
-  'same-owner token refresh during loading preserves the original start',
-  'an older page cleanup cannot destroy its replacement scene'
+  'same-owner token refresh during loading preserves the original town',
+  'an older page cleanup cannot destroy its replacement scene',
+  'real movement and return preserve untimed town around a bounded expedition'
 ];
 
 // Exact injected errors only. Every other console error remains a gate failure.
