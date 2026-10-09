@@ -2,7 +2,8 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('phaser', () => ({ default: {
   Scene: class {},
-  Math: { Vector2: class { constructor(public x = 0, public y = 0) {} }, Between: (min: number) => min, Distance: { Between: (x: number, y: number, a: number, b: number) => Math.hypot(x - a, y - b) } },
+  BlendModes: { NORMAL: 'normal', MULTIPLY: 'multiply' },
+  Math: { Vector2: class { constructor(public x = 0, public y = 0) {} }, Between: (min: number) => min, Linear: (start: number, end: number, amount: number) => start + (end - start) * amount, Distance: { Between: (x: number, y: number, a: number, b: number) => Math.hypot(x - a, y - b) } },
   Input: { Keyboard: { JustDown: () => false } },
   Animations: { Events: { ANIMATION_COMPLETE: 'animationcomplete' } }
 } }));
@@ -63,6 +64,62 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(counts[0]).toBeLessThan(counts[1]!);
     expect(counts[1]).toBeLessThan(counts[2]!);
   });
+  it.each([0, 1, 2])('keeps every floor tile below markers and actors on area %s while preserving wall depth', (area) => {
+    const s = make(); s.expedition.area = area; s.world = new World();
+    const objects: any[] = [];
+    const object = (kind: string, x: number, y: number, texture?: string) => {
+      const value: any = { kind, x, y, texture, depth: 0, scaleX: 1 };
+      for (const method of ['setScale', 'setTint', 'setAlpha', 'setOrigin', 'setBlendMode', 'play']) {
+        value[method] = vi.fn(() => value);
+      }
+      value.setDepth = vi.fn((depth: number) => { value.depth = depth; return value; });
+      value.setPosition = vi.fn((nextX: number, nextY: number) => { value.x = nextX; value.y = nextY; return value; });
+      objects.push(value); return value;
+    };
+    s.add = {
+      image: (x: number, y: number, key: string) => object('image', x, y, key),
+      sprite: (x: number, y: number, key: string) => object('sprite', x, y, key),
+      ellipse: (x: number, y: number) => object('ellipse', x, y),
+      text: (x: number, y: number) => object('text', x, y),
+      group: vi.fn()
+    };
+    s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
+    s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
+    s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
+    const floors = objects.filter(value => value.texture?.startsWith('floor_'));
+    const foreground = objects.filter(value => !value.texture?.startsWith('floor_'));
+    expect(floors.length).toBeGreaterThan(0); expect(foreground.length).toBeGreaterThan(0);
+    expect(Math.max(...floors.map(value => value.depth))).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
+    const offset = floors[0].depth - floors[0].y;
+    expect(offset).toBeLessThan(0);
+    expect(floors.every(value => value.depth - value.y === offset)).toBe(true);
+    // Wall sprites are placed 42px above their isometric foot position. Their
+    // original y sorting remains intact; only the floor plane moves backwards.
+    const walls = objects.filter(value => value.texture?.startsWith('wall_'));
+    expect(walls.every(value => value.depth === value.y + 42 + 160)).toBe(true);
+    expect(s.heroRing.setAlpha).toHaveBeenCalledWith(0.75);
+    expect(s.heroRing.setBlendMode).toHaveBeenCalledWith('normal');
+    expect(s.heroRing.setTint).not.toHaveBeenCalled();
+    expect(s.playerShadow.depth).toBeLessThan(s.heroRing.depth);
+    expect(s.heroRing.depth).toBeLessThan(s.playerSprite.depth);
+    // Keep the same relative ordering when moving to a shallower floor row.
+    s.world.setTransform(s.playerId, { x: 1100, y: -100, rot: 0 });
+    s.syncSprites();
+    expect(s.playerShadow.depth).toBe(-105);
+    expect(s.heroRing.depth).toBe(-104);
+    expect(s.playerSprite.depth).toBe(-80);
+  });
+
+  it('uses a lighter town vignette and restores dungeon strength across area changes', () => {
+    const s = make();
+    s.vignetteSprite = { width: 100, height: 100, setPosition: vi.fn(), setScale: vi.fn(), setAlpha: vi.fn() };
+    s.scale = { gameSize: { width: 960, height: 540 } };
+    for (const area of [0, 1, 2, 0]) {
+      s.expedition.area = area; s.resizeVignette();
+    }
+    expect(s.vignetteSprite.setAlpha.mock.calls).toEqual([[0.25], [0.65], [0.65], [0.25]]);
+  });
+
   it('checks the actual entity center for collision, rather than x=0', () => {
     const s = make(); s.props = [];
     s.worldToTile = vi.fn(() => ({ tx: 3, ty: 3 }));
@@ -77,6 +134,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     const child = { destroy: vi.fn() };
     s.worldLayer = { list: [child] }; s.dashAfterimages = { destroy: vi.fn() };
     s.buildDungeonRoom = vi.fn(); s.buildAreaContent = vi.fn(); s.updateControlButtons = vi.fn(); s.updateUIState = vi.fn();
+    s.resizeVignette = vi.fn();
     s.setupPlayer = () => { s.playerId = s.world.createEntity(); };
     s.changeArea(enterRuins(s.expedition));
     expect(s.time.removeAllEvents).toHaveBeenCalledOnce();
@@ -85,6 +143,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(s.world.getPlayer(s.playerId).score).toBe(1200);
     expect(s.world.getHealth(s.playerId).current).toBe(87);
     expect(s.areaEpoch).toBe(1);
+    expect(s.resizeVignette).toHaveBeenCalledOnce();
   });
   it('rejects a queued sword hit and completion from the previous area', () => {
     const s = make(); s.world = new World(); s.playerId = s.world.createEntity();

@@ -30,8 +30,10 @@ export const fixture = {
   releaseStart() { releaseStart?.(); releaseStart = null; },
   record(label: string, pageId = 1) {
     const scene = fixture.scenes.find(scene => scene.pageId === pageId && !scene.destroyed) ?? null;
-    fixture.checkpoints.push({ label, at: performance.now(), starts: fixture.api.filter(call => call.path === '/api/games/session/start').length,
-      scene: scene ? structuredClone(scene) : null });
+    const checkpoint = { label, at: performance.now(), starts: fixture.api.filter(call => call.path === '/api/games/session/start').length,
+      scene: scene ? structuredClone(scene) : null };
+    fixture.checkpoints.push(checkpoint);
+    return checkpoint.scene?.gameplay ?? null;
   },
   emitAuth(event: string, owner: string | null) {
     fixture.owner = owner;

@@ -68,7 +68,7 @@ and real post-create frames together.
     with W, and click the real return button before timeout. Require one unchanged
     sign/complete submission, the zero-value synthetic receipt and continued town
     readiness without another session. Native idle intervals before departure
-    and after return each exceed this case's synthetic five-second server cap;
+    and after return each exceed this case's synthetic twenty-second server cap;
     the real scene clock stays off/frozen in town. This is bounded timer isolation,
     not a 90-second endurance run, a two-floor combat clear or production settlement.
 
@@ -115,23 +115,29 @@ node scripts/testing/arpg-readiness-preview/verify-results.mjs execution scripts
 ```
 
 There is no executable override, custom security flag or alternate launch. The
-locked managed Chromium is required. Native clocks are used; this fixture never
+locked managed Chromium is required. The bounded movement/return case has a
+120-second test budget so both native town-idle intervals exceed the synthetic
+twenty-second cap, with headroom for software-rendered frames and browser input.
+All other test budgets are unchanged. Native clocks are used; this fixture never
 patches requestAnimationFrame or advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the five expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 72 unit
+submission fields and the exact zero-value presentation payload. Its 73 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
 The local browser denial was not retried. Local preparation executes zero browser
-cases. Real image decoding, input delivery and rendering remain unverified until
-permitted CI actually runs on the full assets and its artifacts are reviewed.
-Any CI result applies only to its exact commit.
+cases. The first hosted attempt passed the ten readiness/lifecycle cases. Its
+movement/return case moved the hero, then reached the original five-second
+fixture cap before the return control was sampled; that case failed. This
+corrected twenty-second version still requires a new hosted run and artifact
+review. The earlier attempt is not a full-suite pass. Any CI result applies only
+to its exact commit.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does

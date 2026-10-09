@@ -36,3 +36,15 @@ The fixture does not establish full combat, kill/loot balance, complete floor tr
 See the package VERIFICATION.md for the exact final counts and commands. Local runtime is Node24.19.0, while approved release workflows still require Node22. The prior local browser launch denial was not retried; this snapshot still lacks the repository PNG bytes. No browser-results.json exists for this candidate. Permitted exact-candidate release/browser/native/SQL gates and actual screenshot review remain necessary before publication or a playable/visual quality claim.
 
 Production art generation remains paused pending style review. Run-local character levels/gold, placeholder town markers and the 90-second expedition cap retain their previously documented limitations. Town itself is untimed.
+
+## Hosted review follow-up
+
+After explicit approval, the exact candidate was published to the separate `codex/memvoya-untimed-town-20261009` branch and draft PR16, without merge or production replacement. Initial head e32dcb954069057f14baf6e045ed04d5f028eee9 used the source tree above. Its Node22 root suite passed 1,011 tests; startup gates passed 196 focused units, 130 DOM cases and 42 synthetic browser cases.
+
+Actual-engine run 37986054143 passed ten readiness/lifecycle cases and failed the eleventh. Native observations show start response at 14,736.6ms, movement checkpoint at 19,288.5ms with 4,251.2ms expedition elapsed, then timeout signing at 19,917.5ms with duration 5000. The return control was sampled after the five-second synthetic cap had correctly rescued the hero. This is retained as a failing attempt, not relabeled as success.
+
+The fixture-only correction uses a 20-second synthetic cap, >20-second native town-idle periods on each side, fewer readback roundtrips and a 120-second budget for case 11 only. It still requires actual keyboard/canvas input, explicit pretimeout retreat, frozen town elapsed, one session and one matching synthetic settlement; no retries, fake clocks or security changes. Its verifier now has 73 self-tests.
+
+Genuine screenshot review also exposed foreground floor textures overpainting world actors and markers. A small rendering correction puts all floor tiles into a lower, internally y-sorted depth band; walls and actors retain their original sorting. The existing blue hero ring is visible above its shadow, both ground indicators track movement depth, and the town vignette is lighter while the dungeon value stays unchanged. Four regressions raise the scene suite to 25 and focused units to 200. New source tree: 5c77b21fb1a313170beb3b12ad92db76be59fc29; all four metadata pins and strict counts are updated accordingly.
+
+These changes add no artwork. The existing dark patchwork floor, placeholder town markers, some HUD/marker overlap and small hero remain visual limitations. Neither these screenshots nor a passing fixture establish painterly art, full combat/two-floor balance, actual-phone performance or real account settlement. A fresh exact-head hosted run and screenshot review are required after this correction.

@@ -17,6 +17,9 @@ const ROOM_WIDTH = 28;
 const ROOM_HEIGHT = 18;
 const ROOM_ORIGIN_X = ROOM_HEIGHT * HALF_TILE_WIDTH;
 const ROOM_ORIGIN_Y = -200;
+// Floor PNGs overlap neighboring cells. Keep their entire y-sorted range below
+// all room actors/markers, rather than letting foreground floor rows cover them.
+const FLOOR_DEPTH_OFFSET = -(ROOM_WIDTH + ROOM_HEIGHT) * HALF_TILE_HEIGHT;
 const CAMERA_ZOOM = 1.35;
 const CAMERA_PADDING = 140;
 const HERO_SPEED = 220;
@@ -447,7 +450,7 @@ export class GameScene extends Phaser.Scene {
           const tile = this.add.image(pos.x, pos.y, texture);
           tile.setScale(TILE_SCALE);
           tile.setTint(AREAS[this.expedition.area].tint);
-          tile.setDepth(pos.y);
+          tile.setDepth(FLOOR_DEPTH_OFFSET + pos.y);
           this.addToWorld(tile);
           recordBounds(pos);
         }
@@ -497,10 +500,11 @@ export class GameScene extends Phaser.Scene {
 
     this.heroRing = this.add.image(spawn.x, spawn.y + 12, 'ringBlue');
     this.heroRing.setScale(0.26);
-    this.heroRing.setAlpha(0.35);
-    this.heroRing.setTint(0x1a1f2b);
-    this.heroRing.setBlendMode(Phaser.BlendModes.MULTIPLY);
-    this.heroRing.setDepth(spawn.y - 10);
+    // The existing blue selection asset should identify the hero, not multiply
+    // another dark patch into the floor. Draw it above the shadow, below the hero.
+    this.heroRing.setAlpha(0.75);
+    this.heroRing.setBlendMode(Phaser.BlendModes.NORMAL);
+    this.heroRing.setDepth(spawn.y - 4);
     this.addToWorld(this.heroRing);
 
     this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
@@ -583,8 +587,7 @@ export class GameScene extends Phaser.Scene {
       .image(0, 0, 'vignette')
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(2500)
-      .setAlpha(0.65);
+      .setDepth(2500);
     this.addToWorld(this.vignetteSprite);
     this.resizeVignette();
     this.scale.on('resize', () => {
@@ -722,6 +725,7 @@ export class GameScene extends Phaser.Scene {
     this.world.tagPlayer(this.playerId!, { score });
     this.world.setHealth(this.playerId!, { max: heroMaxHp(next.xp), current: next.area === 0 ? heroMaxHp(next.xp) : hp });
     this.buildAreaContent();
+    this.resizeVignette();
     this.updateControlButtons();
     this.updateUIState();
     if (next.area === 0 && this.expeditionActive) this.finishExpedition();
@@ -1044,7 +1048,9 @@ export class GameScene extends Phaser.Scene {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
       this.playerShadow.setPosition(transform.x, transform.y + 14);
+      this.playerShadow.setDepth(transform.y - 5);
       this.heroRing.setPosition(transform.x, transform.y + 12);
+      this.heroRing.setDepth(transform.y - 4);
       const squish = velocity.vx !== 0 || velocity.vy !== 0 ? 0.9 : 1.05;
       this.playerShadow.setScale(Phaser.Math.Linear(this.playerShadow.scaleX, squish, 0.12), 1);
     }
@@ -1305,6 +1311,8 @@ export class GameScene extends Phaser.Scene {
 
   private resizeVignette() {
     if (!this.vignetteSprite) return;
+    // Keep the safe town readable while preserving the dungeon's existing mood.
+    this.vignetteSprite.setAlpha(this.expedition.area === 0 ? 0.25 : 0.65);
     const { width, height } = this.scale.gameSize;
     this.vignetteSprite.setPosition(width / 2, height / 2);
     const scale = Math.max(width / this.vignetteSprite.width, height / this.vignetteSprite.height) * 1.3;

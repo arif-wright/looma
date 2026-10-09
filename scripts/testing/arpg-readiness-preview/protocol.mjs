@@ -1,5 +1,7 @@
 // Credential-free, exact request shapes for this fixture only. No live fallback.
-export const FLOW_CAP_MS = 5000;
+// Leave room for genuine software-rendered frames and browser command latency.
+// The idle checks still exceed this native-time cap before and after departure.
+export const FLOW_CAP_MS = 20_000;
 export const SIGNATURE = 'fixture-only-not-a-real-signature';
 export const PLAYER_STATE = { xp: 0, currency: 0 };
 export const RECEIPT = { settlementVersion: 1, sessionId: 'fixture-arpg-1', xpDelta: 0, currencyDelta: 0, achievements: [] };

@@ -143,6 +143,9 @@ test(TITLES[9]!, async ({ page }) => {
 
 
 test(TITLES[10]!, async ({ page }, info) => {
+  // Two native idle periods must each exceed the synthetic server cap, with
+  // headroom for actual software rendering and input on hosted Chromium.
+  test.setTimeout(120_000);
   await page.addInitScript(() => { window.__arpgReturnFlow = true; });
   await open(page); await town(page); await record(page, 'town-before-idle');
   // Native elapsed time exceeds this case's synthetic server expedition cap.
@@ -152,22 +155,26 @@ test(TITLES[10]!, async ({ page }, info) => {
   expect(await gameplay(page)).toMatchObject({ area: 0, elapsed: 0, expeditionActive: false });
   await record(page, 'town-after-idle');
   await clickControl(page, 'primary', 'Enter ruins');
-  await expedition(page); await record(page, 'expedition-started');
-  const before = await gameplay(page);
-  expect(before.durationLimit).toBe(FLOW_CAP_MS);
+  await expedition(page);
+  const before = await record(page, 'expedition-started');
+  expect(before).not.toBeNull();
+  expect(before!.durationLimit).toBe(FLOW_CAP_MS);
   await page.keyboard.down('w');
   try {
-    await expect.poll(async () => Math.hypot((await gameplay(page)).x - before.x, (await gameplay(page)).y - before.y), { timeout: 1500 }).toBeGreaterThan(20);
+    await expect.poll(async () => {
+      const current = await gameplay(page);
+      return Math.hypot(current.x - before!.x, current.y - before!.y);
+    }, { timeout: 1500 }).toBeGreaterThan(20);
   } finally { await page.keyboard.up('w'); }
   await record(page, 'hero-moved');
   await clickControl(page, 'secondary', 'Return to town');
   await expect(screen(page).locator('.game-status')).toHaveText('Result saved. Town is untimed; depart again whenever you’re ready.');
   await expect.poll(async () => (await snapshot(page)).rewardMutations.length).toBe(2);
   await expect.poll(() => gameplay(page)).toMatchObject({ area: 0, expeditionActive: false, returned: true, outcome: 'retreated' });
-  await record(page, 'returned-and-saved');
-  const returned = await gameplay(page);
+  const returned = await record(page, 'returned-and-saved');
+  expect(returned).not.toBeNull();
   await page.waitForTimeout(FLOW_CAP_MS + 250);
-  expect(await gameplay(page)).toMatchObject({ area: 0, expeditionActive: false, elapsed: returned.elapsed, outcome: 'retreated' });
+  expect(await gameplay(page)).toMatchObject({ area: 0, expeditionActive: false, elapsed: returned!.elapsed, outcome: 'retreated' });
   expect(await starts(page)).toHaveLength(1);
   expect((await snapshot(page)).api.filter(call => call.path === '/api/games/sign')).toHaveLength(1);
   expect((await snapshot(page)).api.filter(call => call.path === '/api/games/session/complete')).toHaveLength(1);

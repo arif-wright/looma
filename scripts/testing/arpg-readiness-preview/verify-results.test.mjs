@@ -31,21 +31,23 @@ function report(mode = 'execution') {
     }
     if (index === 10) {
       state.rewardMutations = structuredClone(EXPECTED_REWARD_MUTATIONS);
-      api[0].at = 16500; api[0].responseAt = 16501;
+      const beforeAt = 10000, idleAt = beforeAt + FLOW_CAP_MS + 1000, beganAt = idleAt + 1000;
+      const returnedAt = beganAt + 1000, restedAt = returnedAt + FLOW_CAP_MS + 1000;
+      api[0].at = idleAt + 500; api[0].responseAt = idleAt + 501;
       const active = { ...game, area: 1, expeditionActive: true, durationLimit: FLOW_CAP_MS };
       const returned = { ...game, elapsed: 500, returned: true, outcome: 'retreated', durationLimit: FLOW_CAP_MS };
-      state.checkpoints = [point('town-before-idle', 10000, 0), point('town-after-idle', 16000, 0), point('expedition-started', 17000, 1, active), point('hero-moved', 17300, 1, { ...active, x: 30 }), point('returned-and-saved', 18000, 1, returned), point('returned-town-after-idle', 24000, 1, returned)];
+      state.checkpoints = [point('town-before-idle', beforeAt, 0), point('town-after-idle', idleAt, 0), point('expedition-started', beganAt, 1, active), point('hero-moved', beganAt + 300, 1, { ...active, x: 30 }), point('returned-and-saved', returnedAt, 1, returned), point('returned-town-after-idle', restedAt, 1, returned)];
       scene.gameplay = returned;
       state.pages[0].status = 'Result saved. Town is untimed; depart again whenever you’re ready.';
       const signed = { sessionId: 'fixture-arpg-1', slug: 'arpg', nonce: 'nonce-fixture-arpg-1', score: 0, durationMs: 1000, clientVersion: '1.0.0' };
       const { slug: _slug, ...completion } = signed;
-      api.push({ path: '/api/games/sign', method: 'POST', at: 17990, body: signed },
-        { path: '/api/games/session/complete', method: 'POST', at: 17995, body: { ...completion, signature: SIGNATURE, success: true, stats: { mode: 'standard', expeditionDurationMs: 500 } } },
-        { path: '/api/games/player/state', method: 'GET', at: 17996 });
+      api.push({ path: '/api/games/sign', method: 'POST', at: returnedAt - 10, body: signed },
+        { path: '/api/games/session/complete', method: 'POST', at: returnedAt - 5, body: { ...completion, signature: SIGNATURE, success: true, stats: { mode: 'standard', expeditionDurationMs: 500 } } },
+        { path: '/api/games/player/state', method: 'GET', at: returnedAt - 4 });
     }
     const observation = { browserVersion: '143.0.7499.4', blocked: [], errors: [], unexpectedConsoleErrors: [], cleanupErrors: [], consoleErrors: [], state,
       afterCleanup: { ...structuredClone(state), scenes: state.scenes.map(scene => ({ ...scene, destroyed: true })), canvasCount: 0, authCallbacks: 0, mountedPages: [] } };
-    return { title, id: `case-${index}`, file: FILE, ok: true, tests: [{ projectId: PROJECT, projectName: PROJECT, expectedStatus: 'passed', annotations: [], status: execution ? 'expected' : 'skipped', results: execution ? [{ status: 'passed', retry: 0, errors: [], annotations: [], workerIndex: 0, startTime: '2026-10-09T00:00:00Z', duration: 30000,
+    return { title, id: `case-${index}`, file: FILE, ok: true, tests: [{ projectId: PROJECT, projectName: PROJECT, expectedStatus: 'passed', annotations: [], status: execution ? 'expected' : 'skipped', results: execution ? [{ status: 'passed', retry: 0, errors: [], annotations: [], workerIndex: 0, startTime: '2026-10-09T00:00:00Z', duration: index === 10 ? 2 * FLOW_CAP_MS + 10000 : 30000,
       attachments: [{ name: 'arpg-real-engine-observations', contentType: 'application/json', body: Buffer.from(JSON.stringify(observation)).toString('base64') }, ...(SCREENSHOTS[index] ? [{ name: SCREENSHOTS[index], contentType: 'image/png', body: image }] : [])] }] : [] }] };
   });
   return { config: { version: '1.57.0', forbidOnly: true, workers: 1, shard: null, projects: [{ id: PROJECT, name: PROJECT, repeatEach: 1, retries: 0, testMatch: [FILE] }] }, errors: [], suites: [{ file: FILE, title: FILE, specs }], stats: { expected: execution ? TITLES.length : 0, skipped: execution ? 0 : TITLES.length, unexpected: 0, flaky: 0 } };
@@ -93,6 +95,7 @@ const mutations={
   'hidden attempt error':r=>result(r).errors=[{message:'bad'}],
   'global error':r=>r.errors=[{message:'bad'}],
   'too-short native deadline':r=>r.suites[0].specs[3].tests[0].results[0].duration=100,
+  'too-short native town idle':r=>r.suites[0].specs[10].tests[0].results[0].duration=2*FLOW_CAP_MS-1,
   'missing observations':r=>result(r).attachments.shift(),
   'unreviewed browser':r=>observation(r,o=>o.browserVersion='other'),
   'blocked network':r=>observation(r,o=>o.blocked=['external']),
@@ -153,6 +156,6 @@ test('strict sign/completion schemas reject extra data and changed submission', 
   const { slug: _slug, ...payload } = sign;
   const complete = { ...payload, signature: SIGNATURE, success: true, stats: { mode: 'standard', expeditionDurationMs: 500 } };
   assert(validSign(sign)); assert(validComplete(complete, sign));
-  for (const value of [null, [], { ...sign, extra: true }, { ...sign, durationMs: 5001 }, { ...sign, score: -1 }, { ...sign, sessionId: 'different' }]) assert(!validSign(value));
+  for (const value of [null, [], { ...sign, extra: true }, { ...sign, durationMs: FLOW_CAP_MS + 1 }, { ...sign, score: -1 }, { ...sign, sessionId: 'different' }]) assert(!validSign(value));
   for (const value of [null, [], { ...complete, slug: 'arpg' }, { ...complete, signature: 'other' }, { ...complete, score: 5 }, { ...complete, stats: { ...complete.stats, extra: true } }, { ...complete, stats: { ...complete.stats, expeditionDurationMs: 1001 } }]) assert(!validComplete(value, sign));
 });

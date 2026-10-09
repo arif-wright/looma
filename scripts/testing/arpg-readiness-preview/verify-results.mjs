@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TITLES, isExpectedConsoleError } from './cases.mjs';
 import { verifyObservation } from './verify-observations.mjs';
+import { FLOW_CAP_MS } from './protocol.mjs';
 const FILE = 'readiness.browser.spec.ts', PROJECT = 'chromium-arpg-readiness';
 export const SCREENSHOTS = [
   'initialized-town-real-decoded-assets', 'actual-route-image-download-failure',
@@ -48,6 +49,7 @@ export function verify(report, mode) {
     assert(Number.isFinite(Date.parse(result.startTime)));
     assert(Number.isFinite(result.duration) && result.duration >= 0);
     if (spec.title === TITLES[3]) assert(result.duration >= 29_000, 'Native deadline case must actually wait');
+    if (spec.title === TITLES[10]) assert(result.duration >= 2 * FLOW_CAP_MS, 'Both town idle intervals must use native elapsed time');
     const attachments = result.attachments.filter(item => item.name === 'arpg-real-engine-observations');
     assert.equal(attachments.length, 1); assert.equal(attachments[0].contentType, 'application/json');
     assert.equal(typeof attachments[0].body, 'string');

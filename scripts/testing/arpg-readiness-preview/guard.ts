@@ -81,9 +81,11 @@ export const expedition = async (page: Page, id = 1) => {
 };
 export const record = (page: Page, label: string, id = 1) => page.evaluate(({ label, id }) => window.__arpgFixture.record(label, id), { label, id });
 export const gameplay = async (page: Page, id = 1) => {
-  const scene = (await snapshot(page)).scenes.find(scene => scene.pageId === id && !scene.destroyed);
-  expect(scene?.gameplay).not.toBeNull();
-  return scene!.gameplay!;
+  // Poll only the real gameplay observation, not all 249 texture keys, API
+  // bodies and accumulated checkpoints on every browser round trip.
+  const state = await page.evaluate(id => window.__arpgFixture.scenes.find(scene => scene.pageId === id && !scene.destroyed)?.gameplay ?? null, id);
+  expect(state).not.toBeNull();
+  return state!;
 };
 export const clickControl = async (page: Page, control: 'primary' | 'secondary', label: string, id = 1) => {
   await screen(page, id).locator('canvas').scrollIntoViewIfNeeded();
