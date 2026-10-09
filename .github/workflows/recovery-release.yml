@@ -117,8 +117,8 @@ jobs:
       - name: Stress the mobile portal timeout acceptance boundary
         run: |
           set -euo pipefail
-          mkdir -p artifacts/moonberry-gather
-          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts portal.browser.spec.ts --project=phaser-landscape --grep 'same-area timeout keeps guidance until an explicit new attempt$' --repeat-each=10 --reporter=line 2>&1 | tee artifacts/moonberry-gather/recovery-portal-timing-stress.log
+          mkdir -p artifacts/moonberry-gather/portal-timing-stress
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts portal.browser.spec.ts --project=phaser-landscape --grep 'same-area timeout keeps guidance until an explicit new attempt$' --repeat-each=10 --output=artifacts/moonberry-gather/portal-timing-stress/browser --reporter=line 2>&1 | tee artifacts/moonberry-gather/recovery-portal-timing-stress.log
       - name: Execute all 80 portal cases in real Chromium
         run: |
           set -euo pipefail
@@ -130,11 +130,106 @@ jobs:
         if: always()
         with:
           name: recovery-portal-browser-${{ github.event.pull_request.head.sha || github.sha }}
-          path: artifacts/moonberry-gather/
+          path: |
+            artifacts/moonberry-gather/
+            !artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve full portal browser traces separately
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-browser-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/browser/**/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 0 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-0-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 1 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-1-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat1/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 2 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-2-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat2/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 3 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-3-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat3/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 4 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-4-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat4/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 5 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-5-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat5/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 6 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-6-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat6/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 7 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-7-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat7/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 8 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-8-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat8/trace.zip
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve portal timeout repeat 9 trace independently
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-portal-timeout-trace-9-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/portal-timing-stress/browser/*-phaser-landscape-repeat9/trace.zip
+          if-no-files-found: ignore
           retention-days: 14
 
   three-layout-stress:
+    name: Native layout stress (${{ matrix.project }})
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [three-desktop, three-medium-landscape, three-landscape]
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -149,17 +244,17 @@ jobs:
       - run: ./node_modules/.bin/svelte-kit sync
       - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
       - run: ./node_modules/.bin/playwright install --with-deps chromium
-      - name: Repeat both Three landscape layout and real-touch cases
+      - name: Repeat the declared native layout viewport
         run: |
           set -euo pipefail
           mkdir -p artifacts/moonberry-gather
           git rev-parse HEAD HEAD^{tree} > artifacts/moonberry-gather/three-layout-source.txt
-          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-medium-landscape --project=three-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/three-layout-stress.log
-          node scripts/testing/recovery-dom/verify-native-layout-results.mjs stress
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=${{ matrix.project }} --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/three-layout-stress.log
+          node scripts/testing/recovery-dom/verify-native-layout-results.mjs focused artifacts/moonberry-gather/results.json "${{ matrix.project }}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: recovery-three-layout-stress-${{ github.event.pull_request.head.sha || github.sha }}
+          name: recovery-three-layout-stress-${{ matrix.project }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/moonberry-gather/
             !artifacts/moonberry-gather/**/trace.zip
@@ -169,7 +264,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: recovery-three-layout-stress-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          name: recovery-three-layout-stress-traces-${{ matrix.project }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: ignore
           retention-days: 14
@@ -210,7 +305,7 @@ jobs:
           fixture="$GITHUB_WORKSPACE/fixture"
           {
             echo "Native-clock product comparison: $COMPARISON_SOURCE"
-            echo 'No mocked-clock browser baseline is rerun. The separate installed-clock control deliberately selects adversarial internal continuation order; it does not establish browser-native ordering or a passed application test.'
+            echo 'No mocked-clock browser baseline is rerun. The installed Playwright 1.57.0 engine regression checks FIFO drain synchronization, native monotonicity and timer/frame continuation; it is not a passed application browser test or proof of the earlier portal failure cause.'
             git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:supabase HEAD:static
             git -C "$fixture" rev-parse HEAD HEAD^{tree}
             node --version
@@ -218,22 +313,28 @@ jobs:
           expected_src=7e9fcfb1af33d0a09db4b2dfaaccd63d6f23bc0e
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
           test "$(git rev-parse HEAD:src)" = "$expected_src"
-          cmp package.json "$fixture/package.json"
-          cmp package-lock.json "$fixture/package-lock.json"
+          node "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" "$COMPARISON_SOURCE" before "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-before-overlay.json
+          cp "$fixture/package.json" "$fixture/package-lock.json" "$fixture/pnpm-lock.yaml" .
           test "$(git rev-parse HEAD:static)" = "$(git -C "$fixture" rev-parse HEAD:static)"
           cp -a "$fixture/scripts/testing/moonberry-gather-preview/." scripts/testing/moonberry-gather-preview/
           cp "$fixture/scripts/testing/recovery-dom/reproduce-clock-overlap.cjs" scripts/testing/recovery-dom/
           cp "$fixture/scripts/testing/recovery-dom/verify-native-layout-results.mjs" scripts/testing/recovery-dom/
-          git diff --exit-code -- src supabase package.json package-lock.json static services
+          cp "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" scripts/testing/recovery-dom/
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs "$COMPARISON_SOURCE" after "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-after-overlay.json
+          git diff --exit-code -- src supabase static services
           find scripts/testing/moonberry-gather-preview -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/moonberry-gather/fixture-sha256.txt
           (cd "$fixture" && find scripts/testing/moonberry-gather-preview -type f -print0 | sort -z | xargs -0 sha256sum) > artifacts/moonberry-gather/expected-fixture-sha256.txt
           cmp artifacts/moonberry-gather/fixture-sha256.txt artifacts/moonberry-gather/expected-fixture-sha256.txt
-          sha256sum package.json package-lock.json scripts/testing/recovery-dom/reproduce-clock-overlap.cjs scripts/testing/recovery-dom/verify-native-layout-results.mjs > artifacts/moonberry-gather/tooling-sha256.txt
+          sha256sum package.json package-lock.json pnpm-lock.yaml scripts/testing/recovery-dom/reproduce-clock-overlap.cjs scripts/testing/recovery-dom/verify-native-layout-results.mjs scripts/testing/recovery-dom/verify-playwright-toolchain.mjs > artifacts/moonberry-gather/tooling-sha256.txt
           git status --short > artifacts/moonberry-gather/test-overlay-status.txt
-      - run: npm ci --ignore-scripts
+      - name: Install and recheck the identical reviewed test toolchain
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs "${{ matrix.source }}" after "$PWD" "$GITHUB_WORKSPACE/fixture" > artifacts/moonberry-gather/toolchain-after-install.json
       - run: ./node_modules/.bin/svelte-kit sync
       - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
-      - name: Record FIFO and adversarial internal clock-ordering experiments
+      - name: Verify the installed Playwright clock synchronization regression
         run: |
           set -euo pipefail
           node scripts/testing/recovery-dom/reproduce-clock-overlap.cjs "$PWD" | tee artifacts/moonberry-gather/clock-overlap-control.json
@@ -243,7 +344,8 @@ jobs:
           set -euo pipefail
           ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-medium-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/native-layout-comparison.log
           node scripts/testing/recovery-dom/verify-native-layout-results.mjs comparison
-          git diff --exit-code -- src supabase package.json package-lock.json static services
+          node scripts/testing/recovery-dom/verify-playwright-toolchain.mjs "${{ matrix.source }}" after "$PWD" "$GITHUB_WORKSPACE/fixture" > artifacts/moonberry-gather/toolchain-after-browser.json
+          git diff --exit-code -- src supabase static services
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

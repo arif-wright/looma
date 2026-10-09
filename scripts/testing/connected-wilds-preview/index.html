@@ -4,12 +4,27 @@ import { WorldScene } from '/src/lib/game/WorldScene.ts';
 const touch={x:0,y:0};const scene=new WorldScene(touch);
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'world',width:960,height:540,backgroundColor:'#17382e',antialias:true,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH,width:960,height:540},scene:[scene]});
 let mapId='wilds-exploration',revision=0; let x=440,y=270; let tick=0;
+let pendingPlacementRevision=null, acknowledgePlacement=null;
 const player={connected:true,acknowledgedSequence:0,colorIndex:0,displayName:'Explorer',handle:'fixture',playerBody:'female',companionPresent:true,companionName:'Muse',companionKind:'muse',companionStatus:'idle',companionRevision:1};
 function snapshot(){return {localPlayerId:'local',tick,players:new Map([['local',{...player,mapId,x,y,transitionRevision:revision}],['other',{...player,mapId,x:525,y:292,displayName:'Ellis',playerBody:'male',companionPresent:false}],['hidden',{...player,mapId:mapId==='wilds-town'?'wilds-exploration':'wilds-town',x:400,y:300,displayName:'Wrong area'}]]),npcs:new Map([['resident',{id:'resident',mapId,name:mapId==='wilds-town'?'Wren':'Rowan',kind:'resident',playerBody:mapId==='wilds-town'?'female':'male',x:650+Math.sin(tick/15)*45,y:305+Math.cos(tick/15)*20,moving:true}],['hidden-npc',{id:'hidden-npc',mapId:mapId==='wilds-town'?'wilds-exploration':'wilds-town',name:'Wrong area',kind:'resident',playerBody:'male',x:520,y:330,moving:false}]])}}
+// Dataset coordinates are published by WorldScene.update, not applyNetworkSnapshot.
+// Do not echo an older rendered position over a newer explicit placement.
+function putLocal(nextX,nextY){
+  if(acknowledgePlacement)scene.events.off(Phaser.Scenes.Events.POST_UPDATE,acknowledgePlacement);
+  x=nextX;y=nextY;revision++;
+  const placementRevision=revision;
+  pendingPlacementRevision=placementRevision;
+  acknowledgePlacement=()=>{
+    if(pendingPlacementRevision!==placementRevision)return;
+    pendingPlacementRevision=null;acknowledgePlacement=null;
+  };
+  scene.events.once(Phaser.Scenes.Events.POST_UPDATE,acknowledgePlacement);
+  scene.applyNetworkSnapshot(snapshot());
+}
 scene.setConnectionActive(true);scene.applyNetworkSnapshot(snapshot());
-scene.setMovementSender(()=>{});scene.setPortalHandlers(()=>{mapId=mapId==='wilds-town'?'wilds-exploration':'wilds-town';revision++;x=mapId==='wilds-town'?160:804;y=270;scene.applyNetworkSnapshot(snapshot())},()=>{});
-for(const [id,map] of [['grove','wilds-exploration'],['hollow','wilds-town']])document.getElementById(id).onclick=()=>{mapId=map;revision++;x=440;y=270;scene.applyNetworkSnapshot(snapshot())};
-const timer=setInterval(()=>{const canvas=game.canvas;if(canvas?.dataset.localPlayerX){x=Number(canvas.dataset.localPlayerX);y=Number(canvas.dataset.localPlayerY);tick++;scene.applyNetworkSnapshot(snapshot());}},100);
-window.addEventListener('pagehide',()=>{clearInterval(timer);game.destroy(true)},{once:true});
-window.__WILDS_FIXTURE__={game,scene,touch,snapshot,putLocal:(nextX,nextY)=>{x=nextX;y=nextY;revision++;scene.applyNetworkSnapshot(snapshot())},apply:(s)=>scene.applyNetworkSnapshot(s),switchArea:(id)=>document.getElementById(id).click()};
+scene.setMovementSender(()=>{});scene.setPortalHandlers(()=>{mapId=mapId==='wilds-town'?'wilds-exploration':'wilds-town';putLocal(mapId==='wilds-town'?160:804,270)},()=>{});
+for(const [id,map] of [['grove','wilds-exploration'],['hollow','wilds-town']])document.getElementById(id).onclick=()=>{mapId=map;putLocal(440,270)};
+const timer=setInterval(()=>{const canvas=game.canvas;if(canvas?.dataset.localPlayerX){if(pendingPlacementRevision===null){x=Number(canvas.dataset.localPlayerX);y=Number(canvas.dataset.localPlayerY);}tick++;scene.applyNetworkSnapshot(snapshot());}},100);
+window.addEventListener('pagehide',()=>{clearInterval(timer);if(acknowledgePlacement)scene.events.off(Phaser.Scenes.Events.POST_UPDATE,acknowledgePlacement);acknowledgePlacement=null;pendingPlacementRevision=null;game.destroy(true)},{once:true});
+window.__WILDS_FIXTURE__={game,scene,touch,snapshot,putLocal,apply:(s)=>scene.applyNetworkSnapshot(s),switchArea:(id)=>document.getElementById(id).click()};
 </script></html>

@@ -7,10 +7,10 @@ test.use({ trace: { mode: 'on', screenshots: false, snapshots: true, sources: tr
 const THREE_LAYOUT_TEST = 'Three feedback, gather and independent movement/camera targets never overlap';
 const NATIVE_GATHER_OBSERVATION_MS = 12_000;
 const layoutTimings = new WeakMap<TestInfo, { started: number; phases: Array<{ phase: string; elapsedMs: number }> }>();
-const recordLayoutPhase = (testInfo: TestInfo, phase: string) => {
+const recordLayoutPhase = (testInfo: TestInfo, phase: string, details: Record<string, unknown> = {}) => {
   const timing = layoutTimings.get(testInfo);
   if (!timing) return;
-  const entry = { phase, elapsedMs: Math.round((testPerformance.now() - timing.started) * 10) / 10 };
+  const entry = { phase, elapsedMs: Math.round((testPerformance.now() - timing.started) * 10) / 10, ...details };
   timing.phases.push(entry);
   console.log('[native-layout-phase]', JSON.stringify({ project: testInfo.project.name,
     repeat: testInfo.repeatEachIndex, timeoutMs: testInfo.timeout, ...entry }));
@@ -260,7 +260,10 @@ test('authoritative proximity and both result states fit the viewport', async ({
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
   }
+  const previousCount = await gatherCount(page);
   await activateGather(page);
+  await expect.poll(() => gatherCount(page)).toBe(previousCount + 1);
+  await expect(page.getByRole('button', { name: 'Gathering…', exact: true })).toBeDisabled();
   await page.clock.fastForward(10_050);
   await uncertainty(page);
   const result = await page.locator('.gather-result').boundingBox();
@@ -302,43 +305,63 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   const checkLayout = async () => {
     const checkIndex = ++layoutCheckIndex;
     const selectors = ['.interaction-prompt', '.gather-result', '.camera-controls', '.touch-controls'];
-    const regions = [];
     const world = (await page.getByTestId('world-game-mount').boundingBox())!;
-    for (const selector of selectors) {
-      if (!(await page.locator(selector).isVisible())) continue;
-      const box = (await page.locator(selector).boundingBox())!;
-      expect(box.x, `${selector} left`).toBeGreaterThanOrEqual(world.x);
-      expect(box.x + box.width, `${selector} right`).toBeLessThanOrEqual(world.x + world.width);
-      expect(box.y, `${selector} top`).toBeGreaterThanOrEqual(world.y);
-      expect(box.y + box.height, `${selector} bottom`).toBeLessThanOrEqual(world.y + world.height);
-      regions.push({ selector, ...box });
+    // Use Playwright's own visibility engine, and sample passive region geometry
+    // together. Counts include hidden matches to retain strict-selector failures.
+    const batch = await observeLayoutPhase(testInfo, `checkLayout:${checkIndex}:regions`, () =>
+      page.locator(selectors.join(', ')).filter({ visible: true }).evaluateAll((elements, selectors) => ({
+        matches: selectors.map(selector => ({ selector, count: document.querySelectorAll(selector).length })),
+        regions: selectors.flatMap(selector => {
+          const element = elements.find(element => element.matches(selector));
+          if (!element) return [];
+          const box = element.getBoundingClientRect();
+          return [{ selector, x: box.x, y: box.y, width: box.width, height: box.height }];
+        }),
+        scrollWidth: document.documentElement.scrollWidth
+      }), selectors));
+    for (const match of batch.matches) expect(match.count, `${match.selector} must remain unambiguous`).toBeLessThanOrEqual(1);
+    const regions = batch.regions;
+    recordLayoutPhase(testInfo, `checkLayout:${checkIndex}:regions-selected`, { count: regions.length });
+    for (const box of regions) {
+      expect(box.x, `${box.selector} left`).toBeGreaterThanOrEqual(world.x);
+      expect(box.x + box.width, `${box.selector} right`).toBeLessThanOrEqual(world.x + world.width);
+      expect(box.y, `${box.selector} top`).toBeGreaterThanOrEqual(world.y);
+      expect(box.y + box.height, `${box.selector} bottom`).toBeLessThanOrEqual(world.y + world.height);
     }
     for (const [index, a] of regions.entries()) for (const b of regions.slice(index + 1)) {
       const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
       const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
       expect(width <= 0 || height <= 0, `${a.selector} overlaps ${b.selector}: ${JSON.stringify({ a, b })}`).toBe(true);
     }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
-    for (const [targetIndex, target] of (await page.locator('.camera-controls button, .camera-controls select, .touch-controls button, .interaction-prompt button, .gather-result a').all()).entries()) {
-      const phase = `checkLayout:${checkIndex}:target:${targetIndex}`;
-      if (!(await observeLayoutPhase(testInfo, `${phase}:visibility`, () => target.isVisible()))) continue;
-      await observeLayoutPhase(testInfo, `${phase}:scroll`, () => target.scrollIntoViewIfNeeded());
-      // Keep Playwright's visible/stable scroll action, then observe the same
-      // hit target, tag and border-box dimensions in one browser round trip.
-      const observed = await observeLayoutPhase(testInfo, `${phase}:read`, () => target.evaluate((element) => {
-        const box = element.getClientRects()[0]!;
-        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        const bounds = element.getBoundingClientRect();
-        return {
-          intendedHit: hit === element || Boolean(hit && element.contains(hit)),
-          isLink: element.tagName === 'A', width: bounds.width, height: bounds.height
-        };
-      }));
-      expect(observed.intendedHit, 'Control/link center must hit the intended target').toBe(true);
-      if (touch && !observed.isLink) {
-        expect(observed.width).toBeGreaterThanOrEqual(44);
-        expect(observed.height).toBeGreaterThanOrEqual(44);
+    expect(batch.scrollWidth).toBeLessThanOrEqual(page.viewportSize()!.width);
+    // Stable handles pin the selected DOM identities; later scrolls cannot cause
+    // a filtered nth-locator to silently resolve to a different control.
+    const targets = await observeLayoutPhase(testInfo, `checkLayout:${checkIndex}:visible-targets`, () =>
+      page.locator('.camera-controls button, .camera-controls select, .touch-controls button, .interaction-prompt button, .gather-result a')
+        .filter({ visible: true }).elementHandles());
+    recordLayoutPhase(testInfo, `checkLayout:${checkIndex}:targets-selected`, { count: targets.length });
+    try {
+      for (const [targetIndex, target] of targets.entries()) {
+        const phase = `checkLayout:${checkIndex}:target:${targetIndex}`;
+        await observeLayoutPhase(testInfo, `${phase}:scroll`, () => target.scrollIntoViewIfNeeded());
+        const observed = await observeLayoutPhase(testInfo, `${phase}:read`, () => target.evaluate((node) => {
+          const element = node as Element;
+          const box = element.getClientRects()[0]!;
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          const bounds = element.getBoundingClientRect();
+          return {
+            intendedHit: hit === element || Boolean(hit && element.contains(hit)),
+            isLink: element.tagName === 'A', width: bounds.width, height: bounds.height
+          };
+        }));
+        expect(observed.intendedHit, 'Control/link center must hit the intended target').toBe(true);
+        if (touch && !observed.isLink) {
+          expect(observed.width).toBeGreaterThanOrEqual(44);
+          expect(observed.height).toBeGreaterThanOrEqual(44);
+        }
       }
+    } finally {
+      await Promise.all(targets.map(target => target.dispose().catch(() => {})));
     }
   };
   await observeLayoutPhase(testInfo, 'checkLayout:initial', checkLayout);
@@ -373,7 +396,17 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   await expect(page.getByRole('combobox', { name: 'Camera preset' })).toHaveValue('wide');
   await page.getByRole('combobox', { name: 'Camera preset' }).selectOption('classic');
   const up = page.getByRole('button', { name: 'Move up', exact: true });
-  if (await up.isVisible()) {
+  const upVisible = await up.isVisible();
+  const inputMode = { declaredTouch: touch, upVisible, ...await page.evaluate(() => ({
+    maxTouchPoints: navigator.maxTouchPoints, coarsePointer: matchMedia('(pointer: coarse)').matches
+  })) };
+  const inputModePath = testInfo.outputPath('touch-input-mode.json');
+  writeFileSync(inputModePath, JSON.stringify(inputMode, null, 2));
+  await testInfo.attach('touch-input-mode', { path: inputModePath, contentType: 'application/json' });
+  expect(inputMode.upVisible).toBe(touch);
+  expect(inputMode.maxTouchPoints > 0).toBe(touch);
+  expect(inputMode.coarsePointer).toBe(touch);
+  if (upVisible) {
     await up.scrollIntoViewIfNeeded();
     const box = (await up.boundingBox())!;
     recordLayoutPhase(testInfo, 'input-start');

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { performance as testPerformance } from 'node:perf_hooks';
 import type { WorldArea } from '../../../src/lib/game/areas';
 
 const WORLD_AREAS = JSON.parse(readFileSync(new URL('../../../services/world-server/src/world/areas.json', import.meta.url), 'utf8')) as Record<'wilds-exploration' | 'wilds-town', WorldArea>;
@@ -186,14 +187,60 @@ for (const outcome of ['timeout', 'drop', 'unavailable', 'failure', 'out_of_rang
   });
 }
 
-test('same-area timeout keeps guidance until an explicit new attempt', async ({ page }) => {
-  await activatePortal(page);
-  await page.clock.fastForward(10_050);
-  await page.evaluate(({ x, y }) => window.__MOONBERRY_FIXTURE__.current.snapshot(x, y), grove.portal);
-  await expect(page.locator('.portal-result')).toHaveText(unavailable);
-  await activatePortal(page);
-  await expect(page.locator('.portal-result')).toHaveCount(0);
-  expect(await portalCount(page)).toBe(2);
+test('same-area timeout keeps guidance until an explicit new attempt', async ({ page }, testInfo) => {
+  const started = testPerformance.now();
+  const samples: unknown[] = [];
+  const sample = async (phase: string) => {
+    const browser = await page.evaluate(() => {
+      const fixture = window.__MOONBERRY_FIXTURE__;
+      const room = fixture.current;
+      const local = room.state.players.get(room.sessionId);
+      const requests = fixture.sent.filter(message => message.type === 'portal');
+      const travelling = [...document.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Travelling…');
+      return {
+        date: Date.now(), performance: performance.now(), timeOrigin: performance.timeOrigin,
+        url: location.href, visibility: document.visibilityState,
+        portalCount: requests.length, lastPortalRequest: requests.at(-1) ?? null,
+        travelling: travelling ? { text: travelling.textContent, disabled: travelling.disabled } : null,
+        result: document.querySelector('.portal-result')?.textContent ?? null,
+        displayedArea: document.querySelector('[data-testid="world-area"]')?.textContent ?? null,
+        authoritative: local ? { mapId: local.mapId, transitionRevision: local.transitionRevision,
+          x: local.x, y: local.y, connected: local.connected } : null,
+        room: { index: room.index, left: room.left, tick: room.state.tick }
+      };
+    });
+    const entry = { phase, elapsedMs: Math.round((testPerformance.now() - started) * 10) / 10, browser };
+    samples.push(entry);
+    console.log('[portal-clock-diagnostic]', JSON.stringify({ project: testInfo.project.name,
+      repeat: testInfo.repeatEachIndex, ...entry }));
+  };
+  try {
+    await sample('before-activation');
+    await activatePortal(page);
+    await sample('accepted-before-fast-forward');
+    await page.clock.fastForward(10_050);
+    await sample('after-fast-forward');
+    await page.evaluate(({ x, y }) => window.__MOONBERRY_FIXTURE__.current.snapshot(x, y), grove.portal);
+    await sample('after-same-area-snapshot');
+    await expect(page.locator('.portal-result')).toHaveText(unavailable);
+    await sample('timeout-guidance-visible');
+    await activatePortal(page);
+    await expect(page.locator('.portal-result')).toHaveCount(0);
+    expect(await portalCount(page)).toBe(2);
+    await sample('new-attempt-accepted');
+  } finally {
+    await sample('final').catch(error => {
+      const diagnosticError = { phase: 'final', diagnosticError: String(error) };
+      samples.push(diagnosticError);
+      console.log('[portal-clock-diagnostic]', JSON.stringify(diagnosticError));
+    });
+    const filename = testInfo.outputPath('portal-clock-diagnostics.json');
+    writeFileSync(filename, JSON.stringify({ project: testInfo.project.name, repeat: testInfo.repeatEachIndex,
+      productionTimeoutMs: 10_000, requestedFastForwardMs: 10_050,
+      note: 'Timer is installed between before-activation and accepted-before-fast-forward. Samples are passive; no exact timer callback or scheduling time is instrumented.',
+      samples }, null, 2));
+    await testInfo.attach('portal-clock-diagnostics', { path: filename, contentType: 'application/json' });
+  }
 });
 
 test('duplicate keyboard starts after arrival preserve the pending destination', async ({ page }) => {
