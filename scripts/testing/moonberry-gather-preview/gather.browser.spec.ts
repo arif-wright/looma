@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 const grovePortal = JSON.parse(readFileSync(new URL('../../../services/world-server/src/world/areas.json', import.meta.url), 'utf8'))['wilds-exploration'].portal as { x: number; y: number; targetName: string };
 
 // Exercises production UI, session, connection, and renderers against an explicitly
@@ -294,13 +294,69 @@ test('Three feedback, gather and independent movement/camera targets never overl
   if (await up.isVisible()) {
     await up.scrollIntoViewIfNeeded();
     const box = (await up.boundingBox())!;
-    await devtools.send('Input.dispatchTouchEvent', { type: 'touchStart',
-      touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }] });
-    await expect(up).toHaveClass(/active/);
-    await expect.poll(() => page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.some((m) => m.type === 'move' && Number(m.payload.y) < 0))).toBe(true);
-    await devtools.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
-    await expect(up).not.toHaveClass(/active/);
-    await expect.poll(() => page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.filter((m) => m.type === 'move').at(-1)?.payload.y)).toBe(0);
+    const sentBeforePress = await page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.length);
+    const inputProbe = await page.evaluateHandle(() => {
+      const events: Array<{ type: string; time: number; target: string | null }> = [];
+      const eventTypes = ['blur', 'focus', 'visibilitychange', 'pointerdown', 'pointerup', 'pointercancel', 'pointerleave'];
+      const recordEvent = (event: Event) => {
+        const target = event.target instanceof Element ? event.target.getAttribute('aria-label') ?? event.target.tagName : null;
+        events.push({ type: event.type, time: performance.now(), target });
+        if (events.length > 30) events.shift();
+      };
+      for (const type of eventTypes) window.addEventListener(type, recordEvent, true);
+      return {
+        snapshot() {
+          const fixture = window.__MOONBERRY_FIXTURE__;
+          const room = fixture.current;
+          const active = document.activeElement;
+          return {
+            time: { date: Date.now(), performance: performance.now() }, events: [...events],
+            visibility: document.visibilityState, focused: document.hasFocus(),
+            activeElement: active ? { tag: active.tagName, label: active.getAttribute('aria-label') } : null,
+            upActive: document.querySelector('[aria-label="Move up"]')?.classList.contains('active'),
+            canvas: { ...(document.querySelector('canvas')?.dataset ?? {}) },
+            connection: document.querySelector('.connection-status')?.textContent ?? null,
+            room: { index: room.index, left: room.left, localPlayerId: room.sessionId },
+            localPlayer: room.state.players.get(room.sessionId) ?? null,
+            recentMoves: fixture.sent.filter(message => message.type === 'move').slice(-20)
+          };
+        },
+        stop() {
+          for (const type of eventTypes) window.removeEventListener(type, recordEvent, true);
+        }
+      };
+    });
+    let beforeInput: unknown = null;
+    let acceptedInput: unknown = null;
+    let drivenFrames: unknown = null;
+    let inputPassed = false;
+    try {
+      beforeInput = await inputProbe.evaluate(probe => probe.snapshot());
+      await devtools.send('Input.dispatchTouchEvent', { type: 'touchStart',
+        touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }] });
+      await expect(up).toHaveClass(/active/);
+      acceptedInput = await inputProbe.evaluate(probe => probe.snapshot());
+      // The installed clock owns animation frames. Explicitly drive a bounded
+      // interval after the real pointer is accepted, then require a new move.
+      await page.clock.runFor(100);
+      drivenFrames = await inputProbe.evaluate(probe => probe.snapshot());
+      await expect.poll(() => page.evaluate((start) => window.__MOONBERRY_FIXTURE__.sent.slice(start).some((m) => m.type === 'move' && Number(m.payload.y) < 0), sentBeforePress)).toBe(true);
+      await devtools.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      await expect(up).not.toHaveClass(/active/);
+      await page.clock.runFor(100);
+      await expect.poll(() => page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.filter((m) => m.type === 'move').at(-1)?.payload.y)).toBe(0);
+      inputPassed = true;
+    } finally {
+      const finalState = await inputProbe.evaluate(probe => probe.snapshot())
+        .catch(diagnosticError => ({ diagnosticError: String(diagnosticError) }));
+      const diagnosticPath = testInfo.outputPath('touch-movement-diagnostics.json');
+      try {
+        writeFileSync(diagnosticPath, JSON.stringify({ inputPassed, sentBeforePress, beforeInput, acceptedInput, drivenFrames, finalState }, null, 2));
+        await testInfo.attach('touch-movement-diagnostics', { path: diagnosticPath, contentType: 'application/json' });
+      } catch { /* Diagnostic failure must not replace the original input assertion. */ }
+      await inputProbe.evaluate(probe => probe.stop()).catch(() => {});
+      await inputProbe.dispose().catch(() => {});
+    }
     await page.evaluate(() => window.__MOONBERRY_FIXTURE__.current.snapshot());
     await ready(page);
   }

@@ -133,6 +133,70 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  three-layout-stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/svelte-kit sync
+      - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Repeat both Three landscape layout and real-touch cases
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/moonberry-gather
+          git rev-parse HEAD HEAD^{tree} > artifacts/moonberry-gather/three-layout-source.txt
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-medium-landscape --project=three-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/three-layout-stress.log
+          node --input-type=module <<'VERIFY'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('artifacts/moonberry-gather/results.json', 'utf8'));
+          const tests = [];
+          function visit(suite) {
+            for (const spec of suite.specs ?? []) {
+              assert.equal(spec.title, 'Three feedback, gather and independent movement/camera targets never overlap');
+              assert.equal(spec.ok, true);
+              tests.push(...spec.tests);
+            }
+            for (const child of suite.suites ?? []) visit(child);
+          }
+          for (const suite of report.suites) visit(suite);
+          assert.equal(tests.length, 6);
+          for (const project of ['three-medium-landscape', 'three-landscape']) {
+            assert.equal(tests.filter(test => test.projectName === project).length, 3);
+          }
+          for (const test of tests) {
+            assert.equal(test.expectedStatus, 'passed');
+            assert.equal(test.status, 'expected');
+            assert.equal(test.results.length, 1);
+            assert.equal(test.results[0].status, 'passed');
+            const attachment = test.results[0].attachments.find(item => item.name === 'touch-movement-diagnostics');
+            assert(attachment?.path, 'Every stress repetition must preserve its input/frame evidence');
+            const evidence = JSON.parse(readFileSync(attachment.path, 'utf8'));
+            assert.equal(evidence.inputPassed, true);
+            assert(Number(evidence.drivenFrames.canvas.frame) > Number(evidence.acceptedInput.canvas.frame), 'The real renderer must advance after accepted input');
+          }
+          assert.equal(report.errors.length, 0);
+          assert.equal(report.stats.unexpected, 0);
+          assert.equal(report.stats.skipped, 0);
+          assert.equal(report.stats.flaky, 0);
+          console.log('Verified all six Three landscape repetitions, with no skips or retries.');
+          VERIFY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-three-layout-stress-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/
+          if-no-files-found: error
+          retention-days: 14
+
   world-service:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
@@ -189,7 +253,7 @@ jobs:
 
   recovery-release-gate:
     if: always()
-    needs: [aggregate, dom-recovery, portal-browser, world-service, database-boundaries]
+    needs: [aggregate, dom-recovery, portal-browser, three-layout-stress, world-service, database-boundaries]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
