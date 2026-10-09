@@ -1,9 +1,14 @@
 import { FLOW_CAP_MS, SIGNATURE, PLAYER_STATE, RECEIPT, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
 export type AuthSession = { user: { id: string } } | null;
 export type AuthCallback = (event: string, session: AuthSession) => void;
+export type ArtObjectObservation = {
+  key: string; x: number; y: number; depth: number; originX: number; originY: number;
+  scaleX: number; scaleY: number;
+};
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
+  townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[] } | null;
   primary: { label: string; x: number; y: number }; secondary: { label: string; x: number; y: number };
 };
 export type SceneObservation = {
@@ -14,6 +19,11 @@ export type SceneObservation = {
 };
 type ApiCall = { path: string; method: string; sessionId?: string; at: number; responseAt?: number; body?: unknown };
 export type Checkpoint = { label: string; at: number; starts: number; scene: SceneObservation | null };
+export type VisualObservation = {
+  label: string; at: number; starts: number; viewport: { width: number; height: number };
+  documentWidth: number; canvas: { x: number; y: number; width: number; height: number; pixelWidth: number; pixelHeight: number };
+  scene: SceneObservation | null;
+};
 let releaseStart: (() => void) | null = null;
 let holdNextStart = false;
 export const fixture = {
@@ -22,7 +32,7 @@ export const fixture = {
   owner: 'owner-a' as string | null,
   callbacks: new Set<AuthCallback>(),
   api: [] as ApiCall[], blocked: [] as string[], rewardMutations: [] as unknown[],
-  navigations: [] as string[], scenes: [] as SceneObservation[], checkpoints: [] as Checkpoint[],
+  navigations: [] as string[], scenes: [] as SceneObservation[], checkpoints: [] as Checkpoint[], visuals: [] as VisualObservation[],
   mountAnother: async (): Promise<number> => { throw new Error('Not mounted'); },
   unmountPage: async (_id: number): Promise<void> => { throw new Error('Not mounted'); },
   unmountAll: async (): Promise<void> => { throw new Error('Not mounted'); },
@@ -35,13 +45,27 @@ export const fixture = {
     fixture.checkpoints.push(checkpoint);
     return checkpoint.scene?.gameplay ?? null;
   },
+  recordVisual(label: string, pageId = 1) {
+    const canvas = document.querySelector<HTMLCanvasElement>(`[data-fixture-page="${pageId}"] canvas`);
+    if (!canvas) throw new Error('A real rendered canvas is required');
+    const rect = canvas.getBoundingClientRect();
+    const scene = fixture.scenes.find(scene => scene.pageId === pageId && !scene.destroyed) ?? null;
+    const observation: VisualObservation = {
+      label, at: performance.now(), starts: fixture.api.filter(call => call.path === '/api/games/session/start').length,
+      viewport: { width: innerWidth, height: innerHeight }, documentWidth: document.documentElement.scrollWidth,
+      canvas: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, pixelWidth: canvas.width, pixelHeight: canvas.height },
+      scene: scene ? structuredClone(scene) : null
+    };
+    fixture.visuals.push(observation);
+    return observation;
+  },
   emitAuth(event: string, owner: string | null) {
     fixture.owner = owner;
     for (const callback of [...fixture.callbacks]) callback(event, owner ? { user: { id: owner } } : null);
   },
   snapshot() {
     return { ready: fixture.ready, profile: fixture.profile, authCallbacks: fixture.callbacks.size, owner: fixture.owner, api: fixture.api, blocked: fixture.blocked,
-      rewardMutations: fixture.rewardMutations, navigations: fixture.navigations, checkpoints: fixture.checkpoints,
+      rewardMutations: fixture.rewardMutations, navigations: fixture.navigations, checkpoints: fixture.checkpoints, visuals: fixture.visuals,
       scenes: fixture.scenes, canvasCount: document.querySelectorAll('canvas').length, pages: [...document.querySelectorAll<HTMLElement>('[data-fixture-page]')].map(el => ({ id: Number(el.dataset.fixturePage), status: el.querySelector('.game-status')?.textContent ?? null, canvases: el.querySelectorAll('canvas').length })), mountedPages: [...document.querySelectorAll('[data-fixture-page]')].map(el => Number((el as HTMLElement).dataset.fixturePage)) };
   }
 };

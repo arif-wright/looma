@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
+import { createTownCorner, TOWN_CORNER_ASSETS, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
 import { dashSystem, movementSystem, type DashInput } from '../ecs/systems';
 
@@ -176,6 +177,12 @@ export class GameScene extends Phaser.Scene {
   private startupFailed = false;
   private initialized = false;
   private readonly requiredTextures = new Set<string>();
+  private townCorner: TownCorner | null = null;
+
+  private clearTownCorner = () => {
+    this.townCorner?.destroy();
+    this.townCorner = null;
+  };
 
   private readonly handleLoadError = () => {
     this.failStartup(new Error('Game assets could not be loaded. Please start a new run.'));
@@ -184,6 +191,7 @@ export class GameScene extends Phaser.Scene {
   private failStartup(error: unknown) {
     if (this.startupFailed || this.initialized || !this.handlers.isCurrent()) return;
     this.startupFailed = true;
+    this.clearTownCorner();
     this.ended = true;
     this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleLoadError);
     this.handlers.onError(error instanceof Error ? error : new Error('Game initialization failed.'));
@@ -264,6 +272,7 @@ export class GameScene extends Phaser.Scene {
     VFX_TEXTURES.glint.forEach((path, idx) => this.queueImage(`vfx_glint_${idx}`, path));
     this.queueImage('vfx_glow', '/games/arpg/vfx/glow.png');
     this.queueImage('vfx_zone', '/games/arpg/vfx/zone.png');
+    Object.values(TOWN_CORNER_ASSETS).forEach(({ key, url }) => this.queueImage(key, url));
   }
 
   create() {
@@ -289,6 +298,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private initializeScene() {
+    const releaseTownCorner = () => {
+      this.clearTownCorner();
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
+      this.events.off(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
+    this.events.once(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
     this.cameras.main.setBackgroundColor(0x05060a);
     this.world = new World();
     this.worldLayer = this.add.layer();
@@ -488,18 +504,23 @@ export class GameScene extends Phaser.Scene {
       HERO_MANIFEST[HERO_ANIM_KEYS.idle]?.S?.[0] ?? HERO_MANIFEST[HERO_ANIM_KEYS.idle]?.N?.[0] ?? ''
     );
     this.playerSprite = this.add.sprite(spawn.x, spawn.y, initialFrame);
-    this.playerSprite.setOrigin(0.5, 0.8);
+    // The 68 measured idle/walk/attack PNGs place their feet around y=130 on a
+    // 256px canvas. Use one centered ground pivot across poses; anchoring to the
+    // canvas bottom floats the hero, while per-frame bounds would jitter.
+    this.playerSprite.setOrigin(0.5, 0.5);
     this.playerSprite.setDepth(spawn.y + 20);
     this.playerSprite.play(`hero-${HERO_ANIM_KEYS.idle}-S`);
     this.addToWorld(this.playerSprite);
 
-    this.playerShadow = this.add.ellipse(spawn.x, spawn.y + 14, 84, 28, 0x000000, 0.55);
+    this.playerShadow = this.add.ellipse(spawn.x, spawn.y, 32, 14, 0x000000, 0.28);
     this.playerShadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
     this.playerShadow.setDepth(spawn.y - 5);
     this.addToWorld(this.playerShadow);
 
-    this.heroRing = this.add.image(spawn.x, spawn.y + 12, 'ringBlue');
-    this.heroRing.setScale(0.26);
+    this.heroRing = this.add.image(spawn.x, spawn.y, 'ringBlue');
+    // Its 256px canvas contains only a 27x20px opaque ring. Scale that visible
+    // footprint to about 32x16 world pixels, rather than shrinking the padding.
+    this.heroRing.setScale(1.2, 0.8);
     // The existing blue selection asset should identify the hero, not multiply
     // another dark patch into the floor. Draw it above the shadow, below the hero.
     this.heroRing.setAlpha(0.75);
@@ -709,6 +730,7 @@ export class GameScene extends Phaser.Scene {
     this.time.removeAllEvents();
     this.time.clearPendingEvents();
     this.tweens.killAll();
+    this.clearTownCorner();
     // Layer.removeAll(true) skips removal callbacks; it does NOT destroy children.
     for (const child of [...this.worldLayer.list]) {
       if (child !== this.vignetteSprite) child.destroy();
@@ -736,7 +758,11 @@ export class GameScene extends Phaser.Scene {
       this.spawnSkeletons();
       this.createProps();
     } else {
-      // Original geometric town markers. Dedicated town art is a later pass.
+      this.townCorner = createTownCorner(
+        this, image => this.addToWorld(image), (tx, ty) => this.isoToWorld(tx, ty),
+        FLOOR_DEPTH_OFFSET + this.roomBounds.maxY + 1
+      );
+      // Keep the existing service markers; the new shop is scenery, not a shop UI.
       for (const [tx, ty, label] of [[11, 7, 'HEARTH\nRestored on return'], [11, 11, 'SUPPLY STALL\nServices coming later']] as const) {
         const pos = this.isoToWorld(tx, ty);
         const marker = this.add.ellipse(pos.x, pos.y, 130, 55, 0xe1b264, 0.65).setDepth(pos.y + 1);
@@ -1000,8 +1026,9 @@ export class GameScene extends Phaser.Scene {
     const apply = (entity: EntityId, radius: number) => {
       const transform = this.world.getTransform(entity);
       if (!transform) return;
-      if (this.isBlocked(transform.x, transform.y, radius)) {
-        const prev = previous.get(entity);
+      const prev = previous.get(entity);
+      if (this.isBlocked(transform.x, transform.y, radius) ||
+          (prev && this.townCorner?.blocksMovement(prev, transform, radius))) {
         if (prev) {
           transform.x = prev.x;
           transform.y = prev.y;
@@ -1037,6 +1064,7 @@ export class GameScene extends Phaser.Scene {
       if (!t) return true;
       if (this.wallTiles.has(`${t.tx},${t.ty}`)) return true;
     }
+    if (this.townCorner?.blocksMovement({ x, y }, { x, y }, radius)) return true;
     return this.props.some((prop) => prop.alive && Phaser.Math.Distance.Between(x, y, prop.center.x, prop.center.y) < radius + prop.blockingRadius);
   }
 
@@ -1047,9 +1075,9 @@ export class GameScene extends Phaser.Scene {
     if (transform && velocity) {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
-      this.playerShadow.setPosition(transform.x, transform.y + 14);
+      this.playerShadow.setPosition(transform.x, transform.y);
       this.playerShadow.setDepth(transform.y - 5);
-      this.heroRing.setPosition(transform.x, transform.y + 12);
+      this.heroRing.setPosition(transform.x, transform.y);
       this.heroRing.setDepth(transform.y - 4);
       const squish = velocity.vx !== 0 || velocity.vy !== 0 ? 0.9 : 1.05;
       this.playerShadow.setScale(Phaser.Math.Linear(this.playerShadow.scaleX, squish, 0.12), 1);
@@ -1251,6 +1279,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.playerSprite || !this.dashAfterimages) return;
     const frameName = this.playerSprite.frame.texture.key;
     const image = this.add.sprite(this.playerSprite.x, this.playerSprite.y, frameName).setAlpha(0.5);
+    image.setOrigin(this.playerSprite.originX, this.playerSprite.originY);
     image.setDepth(this.playerSprite.depth - 1);
     image.setScale(this.playerSprite.scale);
     image.setBlendMode(Phaser.BlendModes.ADD);

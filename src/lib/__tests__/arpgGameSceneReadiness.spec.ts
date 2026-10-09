@@ -59,6 +59,16 @@ describe('real ARPG scene initialization contract with fake Phaser effects', () 
     expect(handlers.onReady).not.toHaveBeenCalled();
   });
 
+  it.each(['town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'])('requires the town source texture %s before initialization', (key) => {
+    scene.preload(); finishAssets();
+    expect(queued.get(key)).toMatch(/^\/games\/arpg\/town-corner-v1\/.*\.png$/);
+    expect(queued.size).toBe(252);
+    textures.delete(key); create();
+    expect(handlers.onError).toHaveBeenCalledOnce();
+    expect(initialize).not.toHaveBeenCalled();
+    expect(handlers.onReady).not.toHaveBeenCalled();
+  });
+
   it('rejects a download failure once and never initializes or resolves after loader completion', () => {
     scene.preload();
     loader.emit('loaderror', { key: queued.keys().next().value });

@@ -1,6 +1,7 @@
-# ARPG town readiness and bounded return through the actual scene
+# ARPG town readiness, bounded return and painterly viewport previews
 
-Credential-free desktop Chromium fixture for the actual ARPG route, SDK,
+Credential-free desktop Chromium fixture, including one phone-sized viewport,
+for the actual ARPG route, SDK,
 `bootGame`, `GameScene`, Phaser 3.90 and checked-in PNGs. It prepares a draft PR
 validation gate; discovery/build alone are not browser execution.
 
@@ -20,7 +21,8 @@ validation gate; discovery/build alone are not browser execution.
 Auth notifications, transport, peripheral presentation, state-mutation
 destinations and navigation plumbing are synthetic. The fetch shim has no
 native fallback. Start requests must match the exact SDK body. The first ten
-cases forbid signing, completion, player-state refresh and reward mutations.
+cases and the phone-sized preview forbid signing, completion, player-state refresh
+and reward mutations.
 Only case eleven enables exact-shape synthetic signing/completion/player-state
 responses for `fixture-arpg-1`, with a deliberately non-cryptographic signature
 and a zero-value receipt. Changed or extra body fields, mismatched submission
@@ -28,12 +30,14 @@ values, extra signing/completion calls and all other fetches fail closed.
 The receipt reaches in-memory presentation spies only. It proves client flow,
 not server validation, real signing, account rewards or persistence.
 
-Native browser traffic is restricted to local fixture JS/CSS and 250 declared
-real images (249 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
+Native browser traffic is restricted to local fixture JS/CSS and 253 declared
+real images (252 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
 undeclared paths and WebSockets are rejected; service workers are blocked.
 No credentials or hosted backend are used. The Vite build rejects unexpected
 application or live-service imports, while explicitly including the real
-`expedition.ts` and `townSession.ts` modules.
+`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The three
+new source PNGs are explicitly allowlisted; the real scene derives its cobble
+patch from the approved floor PNG without fixture-generated substitute art.
 
 `observe-scene.ts` wraps only preload to register event listeners before calling
 the real preload exactly once. It never invokes readiness or gameplay callbacks,
@@ -44,7 +48,7 @@ means module-import latency is outside this fixture. Raw Phaser CREATE can
 follow a caught create failure, so success requires route state, decoded textures
 and real post-create frames together.
 
-## Eleven cases
+## Twelve cases
 
 1. Hold the first floor image. Town stays loading with zero sessions, even after
    a forced disabled-button click. Release to real town readiness, still with
@@ -71,14 +75,25 @@ and real post-create frames together.
     and after return each exceed this case's synthetic twenty-second server cap;
     the real scene clock stays off/frozen in town. This is bounded timer isolation,
     not a 90-second endurance run, a two-floor combat clear or production settlement.
+    Capture a desktop canvas close-up of the new town art before departure.
+12. Load the real scene at a 390×844 viewport with zero session starts. Require
+    all 252 source textures, the instantiated cobble/shop/lantern objects, a
+    nonempty canvas within the viewport width, and no horizontal document overflow.
+    Capture the full phone-sized viewport. This runs desktop Chromium without
+    mobile-device or touch emulation; it does not establish phone playability.
 
 The observation artifact retains the actual browser.version(), loader/scene
 observations, route state, strict API bodies, named lifecycle/gameplay checkpoints,
 cleanup and console/page errors. Only the exact injected HTTP/decode messages
-are allowed in their corresponding cases. Five labeled screenshots cover the
-initialized town, HTTP/decode/deadline failures and returned town. Traces remain
-available on failure. Current source uses registered floor/wall texture keys;
-visual correctness still requires review of a genuinely executed screenshot.
+are allowed in their corresponding cases. Seven labeled screenshots retain the
+existing initialized-town, HTTP/decode/deadline and returned-town captures, and
+add desktop-canvas and 390×844 art previews. Visual observations record the actual
+viewport, canvas bounds, document width, decoded art keys, and real hero/shop/
+lantern/floor position, origin, scale and depth. Checks preserve the measured shop
+foot anchor and floor-below-actors ordering; they do not certify pixel-perfect
+occlusion or artistic quality. Traces remain available on failure. Actual
+screenshot review is still required, including cropped HUD or controls at narrow
+widths even when the page itself does not overflow.
 
 ## Local preparation and hosted execution
 
@@ -103,7 +118,7 @@ integrated source tree. Refresh its `HEAD:src` pin after any subsequent source
 change; never substitute a fixture-only build for that full-tree check.
 Keep the static/Supabase pins and locked toolchain checks unchanged unless their
 reviewed contents actually change. This fixture adaptation does not edit workflows.
-The verifier derives its exact eleven-case count from `cases.mjs`; the workflow
+The verifier derives its exact twelve-case count from `cases.mjs`; the workflow
 itself has no separate numeric case-count setting.
 
 Only in a permitted environment with the full repository assets:
@@ -123,24 +138,22 @@ patches requestAnimationFrame or advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
-checkpoints, cleanup and the five expected PNG attachments. For the bounded flow
+checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 73 unit
+submission fields and the exact zero-value presentation payload. Its 86 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
 The local browser denial was not retried. Local preparation executes zero browser
-cases. The first hosted attempt passed the ten readiness/lifecycle cases. Its
-movement/return case moved the hero, then reached the original five-second
-fixture cap before the return control was sampled; that case failed. This
-corrected twenty-second version still requires a new hosted run and artifact
-review. The earlier attempt is not a full-suite pass. Any CI result applies only
-to its exact commit.
+cases. Earlier hosted results predate these painterly assets and viewport checks;
+this twelve-case candidate requires a new hosted run and screenshot review on
+its exact source, asset and fixture commit. Prior results are not evidence that
+the new art or phone-sized viewport passed.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does
 not certify attacks, kill/loot balance, floor transitions, a full-length timeout,
-mobile/touch, hosted Auth, real session persistence, server reward settlement,
+real-phone rendering/performance, touch interaction, hosted Auth, real session persistence, server reward settlement,
 post-ready account changes or deployment.

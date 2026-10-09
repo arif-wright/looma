@@ -6,11 +6,8 @@ import { TITLES, isExpectedConsoleError } from './cases.mjs';
 import { verifyObservation } from './verify-observations.mjs';
 import { FLOW_CAP_MS } from './protocol.mjs';
 const FILE = 'readiness.browser.spec.ts', PROJECT = 'chromium-arpg-readiness';
-export const SCREENSHOTS = [
-  'initialized-town-real-decoded-assets', 'actual-route-image-download-failure',
-  'actual-route-image-decode-failure', 'actual-route-native-30-second-asset-timeout',
-  ...Array(6).fill(null), 'returned-town-synthetic-zero-value-receipt'
-];
+export { SCREENSHOTS } from './screenshots.mjs';
+import { requiredScreenshots } from './screenshots.mjs';
 const empty = (value, reason) => assert.deepEqual(value, [], reason);
 export function verify(report, mode) {
   assert(['discovery', 'execution'].includes(mode));
@@ -60,8 +57,8 @@ export function verify(report, mode) {
     empty(observation.consoleErrors.filter(message => !isExpectedConsoleError(spec.title, message)), 'Recheck exact injected console-error allowlist');
     const index = TITLES.indexOf(spec.title);
     verifyObservation(observation, index);
-    if (SCREENSHOTS[index]) {
-      const images = result.attachments.filter(item => item.name === SCREENSHOTS[index]);
+    for (const name of requiredScreenshots(index)) {
+      const images = result.attachments.filter(item => item.name === name);
       assert.equal(images.length, 1); assert.equal(images[0].contentType, 'image/png');
       assert.equal(typeof images[0].body, 'string');
       const png = Buffer.from(images[0].body, 'base64');

@@ -1,9 +1,27 @@
 import { test, expect, snapshot, screen, starts, open, initializing, town, expedition, gameplay, record, clickControl, failed, HOLD_PATH, holdFirstImage } from './guard';
 import { TITLES } from './cases.mjs';
 import { FLOW_CAP_MS } from './protocol.mjs';
+import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 
 const screenshot = async (page: import('@playwright/test').Page, info: import('@playwright/test').TestInfo, label: string) => {
   await info.attach(label, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+};
+const townArtScreenshot = async (page: import('@playwright/test').Page, info: import('@playwright/test').TestInfo, label: string, viewport: { width: number; height: number }) => {
+  const canvas = screen(page).locator('canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  const visual = await page.evaluate(label => window.__arpgFixture.recordVisual(label), label);
+  expect(page.viewportSize()).toEqual(viewport);
+  expect(visual.viewport).toEqual(viewport);
+  expect(visual.documentWidth).toBeLessThanOrEqual(viewport.width);
+  expect(visual.canvas.width).toBeGreaterThan(0);
+  expect(visual.canvas.height).toBeGreaterThan(0);
+  expect(visual.canvas.x).toBeGreaterThanOrEqual(-1);
+  expect(visual.canvas.x + visual.canvas.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(visual.starts).toBe(0);
+  expect(visual.scene?.gameplay).toMatchObject({ area: 0, expeditionActive: false, elapsed: 0 });
+  // Desktop gets a canvas close-up; the phone-sized capture preserves the full
+  // 390x844 viewport. Neither changes camera, scene, controls, textures or state.
+  await info.attach(label, { body: label === PHONE_TOWN_SCREENSHOT ? await page.screenshot({ fullPage: false }) : await canvas.screenshot(), contentType: 'image/png' });
 };
 test(TITLES[0]!, async ({ page }, info) => {
   const hold = await holdFirstImage(page);
@@ -147,7 +165,9 @@ test(TITLES[10]!, async ({ page }, info) => {
   // headroom for actual software rendering and input on hosted Chromium.
   test.setTimeout(120_000);
   await page.addInitScript(() => { window.__arpgReturnFlow = true; });
-  await open(page); await town(page); await record(page, 'town-before-idle');
+  await open(page); await town(page);
+  await townArtScreenshot(page, info, DESKTOP_TOWN_SCREENSHOT, { width: 1280, height: 900 });
+  await record(page, 'town-before-idle');
   // Native elapsed time exceeds this case's synthetic server expedition cap.
   // The actual scene clock must stay off in town; no clock or update is patched.
   await page.waitForTimeout(FLOW_CAP_MS + 250);
@@ -181,4 +201,14 @@ test(TITLES[10]!, async ({ page }, info) => {
   await expect(screen(page).getByRole('button', { name: 'Depart on expedition', exact: true })).toBeEnabled();
   await record(page, 'returned-town-after-idle');
   await screenshot(page, info, 'returned-town-synthetic-zero-value-receipt');
+});
+
+
+test(TITLES[11]!, async ({ page }, info) => {
+  // Desktop Chromium with a narrow viewport only. No mobile device, touch,
+  // throttling, performance or phone playability is simulated or certified.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page); await town(page);
+  expect(await starts(page)).toHaveLength(0);
+  await townArtScreenshot(page, info, PHONE_TOWN_SCREENSHOT, { width: 390, height: 844 });
 });

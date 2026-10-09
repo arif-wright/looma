@@ -9,7 +9,8 @@ export const TITLES = [
   'navigation back during asset loading cannot revive the obsolete page',
   'same-owner token refresh during loading preserves the original town',
   'an older page cleanup cannot destroy its replacement scene',
-  'real movement and return preserve untimed town around a bounded expedition'
+  'real movement and return preserve untimed town around a bounded expedition',
+  'phone-sized viewport renders decoded town art without starting an expedition'
 ];
 
 // Exact injected errors only. Every other console error remains a gate failure.

@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TITLES, isExpectedConsoleError } from './cases.mjs';
-import { SCREENSHOTS, verify } from './verify-results.mjs';
+import { verify } from './verify-results.mjs';
+import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT, requiredScreenshots } from './screenshots.mjs';
 import { EXPECTED_STARTS } from './verify-observations.mjs';
 import { EXPECTED_REWARD_MUTATIONS, expectedStart, FLOW_CAP_MS, SIGNATURE, validSign, validComplete } from './protocol.mjs';
 const FILE = 'readiness.browser.spec.ts', PROJECT = 'chromium-arpg-readiness';
@@ -12,8 +13,10 @@ const image = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc
 function report(mode = 'execution') {
   const execution = mode === 'execution';
   const specs = TITLES.map((title, index) => {
-    const keys = Array.from({ length: 249 }, (_, i) => `key-${i}`);
-    const game = { at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 0, y: 0, hp: 140, kills: 0 };
+    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
+    const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1 });
+    const townArt = { hero: artObject('hero-idle', 500, 520), objects: [artObject('town_corner_cobble_patch_v1', 600, -1000), artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620)] };
+    const game = { at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 0, y: 0, hp: 140, kills: 0, townArt };
     const scene = { id: 1, queuedKeys: keys, decodedKeys: keys, missingKeys: [], createAt: 1, framesAfterCreate: 1, destroyed: false, loadErrors: [], loadComplete: true, gameplay: { ...game } };
     const scenes = [scene];
     if ([1, 2, 3, 9].includes(index)) {
@@ -22,7 +25,7 @@ function report(mode = 'execution') {
     }
     if ([4, 5, 6, 7].includes(index)) { scene.destroyed = true; scene.createAt = null; scene.gameplay = null; }
     const api = Array.from({ length: EXPECTED_STARTS[index] }, () => ({ path: '/api/games/session/start', method: 'POST', at: 100, responseAt: 200, body: structuredClone(expectedStart) }));
-    const state = { ready: true, profile: index === 10 ? 'return-flow' : 'readiness', blocked: [], rewardMutations: [], api, scenes, checkpoints: [], pages: [{ status: 'Town is untimed. Depart when you’re ready.' }] };
+    const state = { ready: true, profile: index === 10 ? 'return-flow' : 'readiness', blocked: [], rewardMutations: [], api, scenes, checkpoints: [], visuals: [], pages: [{ status: 'Town is untimed. Depart when you’re ready.' }] };
     const point = (label, at, starts, gameplay = { ...game }, createAt = 1) => ({ label, at, starts, scene: { ...structuredClone(scene), createAt, gameplay } });
     if (index === 0) {
       scene.gameplay = { ...game, area: 1, expeditionActive: true };
@@ -45,10 +48,16 @@ function report(mode = 'execution') {
         { path: '/api/games/session/complete', method: 'POST', at: returnedAt - 5, body: { ...completion, signature: SIGNATURE, success: true, stats: { mode: 'standard', expeditionDurationMs: 500 } } },
         { path: '/api/games/player/state', method: 'GET', at: returnedAt - 4 });
     }
+    if ([10, 11].includes(index)) {
+      const viewport = index === 11 ? { width: 390, height: 844 } : { width: 1280, height: 900 };
+      state.visuals = [{ label: index === 11 ? PHONE_TOWN_SCREENSHOT : DESKTOP_TOWN_SCREENSHOT, at: 9000, starts: 0, viewport,
+        documentWidth: viewport.width, canvas: { x: 16, y: 160, width: viewport.width - 32, height: 200, pixelWidth: viewport.width - 32, pixelHeight: 200 },
+        scene: { ...structuredClone(scene), gameplay: structuredClone(game) } }];
+    }
     const observation = { browserVersion: '143.0.7499.4', blocked: [], errors: [], unexpectedConsoleErrors: [], cleanupErrors: [], consoleErrors: [], state,
       afterCleanup: { ...structuredClone(state), scenes: state.scenes.map(scene => ({ ...scene, destroyed: true })), canvasCount: 0, authCallbacks: 0, mountedPages: [] } };
     return { title, id: `case-${index}`, file: FILE, ok: true, tests: [{ projectId: PROJECT, projectName: PROJECT, expectedStatus: 'passed', annotations: [], status: execution ? 'expected' : 'skipped', results: execution ? [{ status: 'passed', retry: 0, errors: [], annotations: [], workerIndex: 0, startTime: '2026-10-09T00:00:00Z', duration: index === 10 ? 2 * FLOW_CAP_MS + 10000 : 30000,
-      attachments: [{ name: 'arpg-real-engine-observations', contentType: 'application/json', body: Buffer.from(JSON.stringify(observation)).toString('base64') }, ...(SCREENSHOTS[index] ? [{ name: SCREENSHOTS[index], contentType: 'image/png', body: image }] : [])] }] : [] }] };
+      attachments: [{ name: 'arpg-real-engine-observations', contentType: 'application/json', body: Buffer.from(JSON.stringify(observation)).toString('base64') }, ...requiredScreenshots(index).map(name => ({ name, contentType: 'image/png', body: image }))] }] : [] }] };
   });
   return { config: { version: '1.57.0', forbidOnly: true, workers: 1, shard: null, projects: [{ id: PROJECT, name: PROJECT, repeatEach: 1, retries: 0, testMatch: [FILE] }] }, errors: [], suites: [{ file: FILE, title: FILE, specs }], stats: { expected: execution ? TITLES.length : 0, skipped: execution ? 0 : TITLES.length, unexpected: 0, flaky: 0 } };
 }
@@ -65,8 +74,9 @@ const coherentObservation = (r, mutate, index = 0) => observation(r, value => {
   value.afterCleanup.api = structuredClone(value.state.api);
   value.afterCleanup.checkpoints = structuredClone(value.state.checkpoints);
   value.afterCleanup.rewardMutations = structuredClone(value.state.rewardMutations);
+  value.afterCleanup.visuals = structuredClone(value.state.visuals);
 }, index);
-test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/11 executed/));
+test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/12 executed/));
 test('discovery explicitly means zero execution',()=>assert.match(verify(report('discovery'),'discovery'),/ZERO executed/));
 test('discovery cannot satisfy execution',()=>assert.throws(()=>verify(report('discovery'),'execution')));
 test('execution cannot be relabeled discovery',()=>assert.throws(()=>verify(report(),'discovery')));
@@ -136,7 +146,20 @@ const mutations={
   'flow with changed completion score':r=>coherentObservation(r,o=>o.state.api[2].body.score+=1,10),
   'flow with extra completion field':r=>coherentObservation(r,o=>o.state.api[2].body.account='unapproved',10),
   'flow with extra completion stats':r=>coherentObservation(r,o=>o.state.api[2].body.stats.unknown=true,10),
-  'flow with missing receipt screenshot':r=>r.suites[0].specs[10].tests[0].results[0].attachments.pop(),
+  'flow with missing receipt screenshot':r=>r.suites[0].specs[10].tests[0].results[0].attachments.splice(1,1),
+  'missing desktop art screenshot':r=>r.suites[0].specs[10].tests[0].results[0].attachments.pop(),
+  'missing phone art screenshot':r=>r.suites[0].specs[11].tests[0].results[0].attachments.pop(),
+  'missing phone geometry evidence':r=>coherentObservation(r,o=>o.state.visuals=[],11),
+  'wrong phone viewport':r=>coherentObservation(r,o=>o.state.visuals[0].viewport.width=1280,11),
+  'phone page overflow':r=>coherentObservation(r,o=>o.state.visuals[0].documentWidth=391,11),
+  'phone canvas overflow':r=>coherentObservation(r,o=>o.state.visuals[0].canvas.width=400,11),
+  'empty phone canvas':r=>coherentObservation(r,o=>o.state.visuals[0].canvas.pixelWidth=0,11),
+  'phone autostart':r=>coherentObservation(r,o=>o.state.visuals[0].starts=1,11),
+  'undecoded town art':r=>coherentObservation(r,o=>o.state.visuals[0].scene.decodedKeys.pop(),11),
+  'missing instantiated shop':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects.splice(1,1),11),
+  'wrong shop foot anchor':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[1].originY=1,11),
+  'floor drawn over hero':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[0].depth=9999,11),
+  'desktop capture after departure':r=>coherentObservation(r,o=>o.state.visuals[0].at=o.state.api[0].at+1,10),
   'flaky count':r=>r.stats.flaky=1
 };
 for(const [name,mutate] of Object.entries(mutations))test(`reject ${name}`,()=>{const value=report();mutate(value);assert.throws(()=>verify(value,'execution'));});

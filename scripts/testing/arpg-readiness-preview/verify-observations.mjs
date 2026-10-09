@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
+import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 import { FLOW_CAP_MS, EXPECTED_REWARD_MUTATIONS, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
-export const EXPECTED_STARTS = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-const EXPECTED_SCENES = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1];
+export const EXPECTED_STARTS = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+const EXPECTED_SCENES = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1];
 const empty = (value, reason) => assert.deepEqual(value, [], reason);
 const finite = value => assert(Number.isFinite(value) && value >= 0);
 const apiCalls = (state, path) => state.api.filter(call => call.path === path);
 const imageSet = scene => {
-  assert.equal(new Set(scene.queuedKeys).size, 249, 'Actual scene queues its complete image set');
+  assert.equal(new Set(scene.queuedKeys).size, 252, 'Actual scene queues its complete image set');
+  for (const key of ['town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1']) assert(scene.queuedKeys.includes(key), 'All three approved town PNGs are required');
 };
 const rendered = scene => {
   imageSet(scene); finite(scene.createAt);
-  assert.equal(scene.decodedKeys.length, 249);
+  assert.equal(scene.decodedKeys.length, 252);
   assert.deepEqual([...scene.decodedKeys].sort(), [...scene.queuedKeys].sort(), 'Every queued texture is genuinely decoded');
   empty(scene.missingKeys, 'No missing decoded textures');
   assert(scene.framesAfterCreate > 0); assert(scene.gameplay); finite(scene.gameplay.at);
@@ -46,7 +48,7 @@ export function verifyObservation(observation, index) {
   assert.equal(cleanup.canvasCount, 0); assert.equal(cleanup.authCallbacks, 0); empty(cleanup.mountedPages, 'No mounted page after cleanup');
   assert(cleanup.scenes.every(scene => scene.destroyed === true));
   const active = state.scenes.filter(scene => !scene.destroyed);
-  if ([0, 1, 2, 3, 8, 9, 10].includes(index)) {
+  if ([0, 1, 2, 3, 8, 9, 10, 11].includes(index)) {
     assert.equal(active.length, 1); rendered(active[0]);
     if (index === 0) {
       assert.equal(active[0].gameplay.area, 1); assert.equal(active[0].gameplay.expeditionActive, true);
@@ -67,6 +69,35 @@ export function verifyObservation(observation, index) {
   if (index === 2) {
     assert.equal(state.scenes[0].loadComplete, true); assert(state.scenes[0].missingKeys.includes('floor_0'));
     empty(state.scenes[0].loadErrors, 'Decode failure is distinct from download failure');
+  }
+  const visuals = state.visuals;
+  assert(Array.isArray(visuals));
+  assert.deepEqual(cleanup.visuals, visuals, 'Cleanup preserves captured art observations');
+  assert.deepEqual(visuals.map(item => item.label), index === 10 ? [DESKTOP_TOWN_SCREENSHOT] : index === 11 ? [PHONE_TOWN_SCREENSHOT] : []);
+  for (const visual of visuals) {
+    finite(visual.at); assert.equal(visual.starts, 0);
+    if (index === 10) assert(visual.at < apiCalls(state, '/api/games/session/start')[0].at, 'Desktop art is captured before departure');
+    rendered(visual.scene); town(visual.scene.gameplay);
+    assert.equal(visual.scene.id, active[0].id);
+    const viewport = index === 11 ? { width: 390, height: 844 } : { width: 1280, height: 900 };
+    assert.deepEqual(visual.viewport, viewport);
+    assert(visual.documentWidth > 0 && visual.documentWidth <= viewport.width, 'No horizontal document overflow');
+    const canvas = visual.canvas;
+    assert(canvas.width > 0 && canvas.height > 0 && canvas.pixelWidth > 0 && canvas.pixelHeight > 0, 'A real nonempty canvas is required');
+    assert(canvas.x >= -1 && canvas.x + canvas.width <= viewport.width + 1, 'Canvas fits the current viewport horizontally');
+    const art = visual.scene.gameplay.townArt;
+    assert(art); assert.deepEqual(art.objects.map(item => item.key).sort(), ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'].sort());
+    const shop = art.objects.find(item => item.key === 'town_corner_shop_v1');
+    const floor = art.objects.find(item => item.key === 'town_corner_cobble_patch_v1');
+    const lantern = art.objects.find(item => item.key === 'town_corner_lantern_v1');
+    for (const object of [art.hero, ...art.objects]) {
+      for (const key of ['x', 'y', 'depth', 'originX', 'originY', 'scaleX', 'scaleY']) assert(Number.isFinite(object[key]));
+      assert(object.scaleX > 0 && object.scaleY > 0);
+    }
+    assert.equal(shop.originX, 618 / 1254); assert.equal(shop.originY, 1175 / 1254);
+    assert.equal(shop.depth, shop.y + 20); assert.equal(lantern.depth, lantern.y + 20);
+    assert.equal(art.hero.depth, art.hero.y + 20);
+    assert(floor.depth < Math.min(shop.depth, lantern.depth, art.hero.depth), 'Ground art remains beneath actors and props');
   }
   const checkpoints = state.checkpoints;
   assert(Array.isArray(checkpoints));

@@ -10,9 +10,10 @@ export const UNIT_FILES = {
   'gameIntegrationStartRecovery.spec.ts': 9,
   'arpgBootStartRecovery.spec.ts': 5,
   'arpgBootSceneReadiness.spec.ts': 13,
-  'arpgGameSceneReadiness.spec.ts': 12,
+  'arpgGameSceneReadiness.spec.ts': 15,
   'arpgExpedition.spec.ts': 8,
-  'arpgExpeditionScene.spec.ts': 25,
+  'arpgExpeditionScene.spec.ts': 30,
+  'arpgTownCorner.spec.ts': 13,
   'arpgTownSession.spec.ts': 30,
   'gameFullscreenStartRecovery.spec.ts': 18
 };

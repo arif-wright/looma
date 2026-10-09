@@ -2,7 +2,8 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('phaser', () => ({ default: {
   Scene: class {},
-  BlendModes: { NORMAL: 'normal', MULTIPLY: 'multiply' },
+  Scenes: { Events: { SHUTDOWN: 'shutdown', DESTROY: 'destroy' } },
+  BlendModes: { NORMAL: 'normal', MULTIPLY: 'multiply', ADD: 'add' },
   Math: { Vector2: class { constructor(public x = 0, public y = 0) {} }, Between: (min: number) => min, Linear: (start: number, end: number, amount: number) => start + (end - start) * amount, Distance: { Between: (x: number, y: number, a: number, b: number) => Math.hypot(x - a, y - b) } },
   Input: { Keyboard: { JustDown: () => false } },
   Animations: { Events: { ANIMATION_COMPLETE: 'animationcomplete' } }
@@ -79,15 +80,23 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.add = {
       image: (x: number, y: number, key: string) => object('image', x, y, key),
       sprite: (x: number, y: number, key: string) => object('sprite', x, y, key),
-      ellipse: (x: number, y: number) => object('ellipse', x, y),
+      ellipse: vi.fn((x: number, y: number) => object('ellipse', x, y)),
       text: (x: number, y: number) => object('text', x, y),
       group: vi.fn()
     };
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
+    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage'].map(key => [key, vi.fn()]));
+    s.textures = { exists: () => false, createCanvas: () => ({ context, refresh: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
-    const foreground = objects.filter(value => !value.texture?.startsWith('floor_'));
+    const patch = objects.filter(value => value.texture === 'town_corner_cobble_patch_v1');
+    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_corner_cobble_patch_v1');
+    expect(patch).toHaveLength(area === 0 ? 1 : 0);
+    if (patch.length) {
+      expect(patch[0].depth).toBeGreaterThan(Math.max(...floors.map(value => value.depth)));
+      expect(patch[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
+    }
     expect(floors.length).toBeGreaterThan(0); expect(foreground.length).toBeGreaterThan(0);
     expect(Math.max(...floors.map(value => value.depth))).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
     const offset = floors[0].depth - floors[0].y;
@@ -97,6 +106,11 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     // original y sorting remains intact; only the floor plane moves backwards.
     const walls = objects.filter(value => value.texture?.startsWith('wall_'));
     expect(walls.every(value => value.depth === value.y + 42 + 160)).toBe(true);
+    expect(s.playerSprite.setOrigin).toHaveBeenCalledWith(0.5, 0.5);
+    expect(s.heroRing.setScale).toHaveBeenCalledWith(1.2, 0.8);
+    expect(s.add.ellipse).toHaveBeenCalledWith(s.playerSprite.x, s.playerSprite.y, 32, 14, 0x000000, 0.28);
+    expect([s.playerShadow.x, s.playerShadow.y]).toEqual([s.playerSprite.x, s.playerSprite.y]);
+    expect([s.heroRing.x, s.heroRing.y]).toEqual([s.playerSprite.x, s.playerSprite.y]);
     expect(s.heroRing.setAlpha).toHaveBeenCalledWith(0.75);
     expect(s.heroRing.setBlendMode).toHaveBeenCalledWith('normal');
     expect(s.heroRing.setTint).not.toHaveBeenCalled();
@@ -108,6 +122,25 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(s.playerShadow.depth).toBe(-105);
     expect(s.heroRing.depth).toBe(-104);
     expect(s.playerSprite.depth).toBe(-80);
+    expect([s.playerShadow.x, s.playerShadow.y]).toEqual([1100, -100]);
+    expect([s.heroRing.x, s.heroRing.y]).toEqual([1100, -100]);
+  });
+
+  it.each([[0.5, 0.5], [0.3, 0.6]])('copies the hero pivot (%s,%s) into dash afterimages', (originX, originY) => {
+    const s = make();
+    s.playerSprite = { x: 100, y: 200, depth: 220, scale: 1, originX, originY,
+      frame: { texture: { key: 'hero-measured-frame' } } };
+    const ghost: any = { destroy: vi.fn() };
+    for (const method of ['setOrigin', 'setDepth', 'setScale', 'setBlendMode', 'setAlpha']) {
+      ghost[method] = vi.fn(() => ghost);
+    }
+    s.add = { sprite: vi.fn(() => ghost) }; s.addToWorld = vi.fn();
+    s.dashAfterimages = { add: vi.fn() }; s.tweens = { add: vi.fn() };
+    s.spawnDashAfterimage();
+    expect(s.add.sprite).toHaveBeenCalledWith(100, 200, 'hero-measured-frame');
+    expect(ghost.setOrigin).toHaveBeenCalledWith(originX, originY);
+    expect(ghost.setScale).toHaveBeenCalledWith(1);
+    expect(ghost.setDepth).toHaveBeenCalledWith(219);
   });
 
   it('uses a lighter town vignette and restores dungeon strength across area changes', () => {
@@ -136,7 +169,10 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.buildDungeonRoom = vi.fn(); s.buildAreaContent = vi.fn(); s.updateControlButtons = vi.fn(); s.updateUIState = vi.fn();
     s.resizeVignette = vi.fn();
     s.setupPlayer = () => { s.playerId = s.world.createEntity(); };
+    const townCorner = { destroy: vi.fn() }; s.townCorner = townCorner;
     s.changeArea(enterRuins(s.expedition));
+    expect(townCorner.destroy).toHaveBeenCalledOnce();
+    expect(s.townCorner).toBeNull();
     expect(s.time.removeAllEvents).toHaveBeenCalledOnce();
     expect(s.time.clearPendingEvents).toHaveBeenCalledOnce();
     expect(child.destroy).toHaveBeenCalledOnce();
@@ -145,6 +181,34 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(s.areaEpoch).toBe(1);
     expect(s.resizeVignette).toHaveBeenCalledOnce();
   });
+
+  it('rolls back a dash that crosses the town shop even when the destination is clear', () => {
+    const s = make(); s.world = new World(); s.playerId = s.world.createEntity();
+    s.world.setTransform(s.playerId, { x: 1764, y: 518, rot: 0 });
+    s.world.setVelocity(s.playerId, { vx: 200, vy: 0, speed: 220 });
+    const previous = { x: 1564, y: 518 };
+    s.isBlocked = vi.fn(() => false);
+    let sweptDestination: unknown;
+    s.townCorner = { blocksMovement: vi.fn((_from, to) => { sweptDestination = { ...to }; return true; }) };
+    s.resolveCollisions(new Map([[s.playerId, previous]]));
+    expect(sweptDestination).toMatchObject({ x: 1764, y: 518 });
+    expect(s.townCorner.blocksMovement).toHaveBeenCalledWith(previous, expect.any(Object), 38);
+    expect(s.world.getTransform(s.playerId)).toMatchObject(previous);
+    expect(s.world.getVelocity(s.playerId)).toMatchObject({ vx: 0, vy: 0 });
+  });
+
+  it.each(['shutdown', 'destroy'])('clears town scenery on scene %s and can clear it again safely', (event) => {
+    const s = make(); const callbacks = new EventEmitter(); s.events = callbacks;
+    // Stop initialization after its shutdown listener is registered.
+    s.cameras = { main: { setBackgroundColor: () => { throw new Error('stop after listener'); } } };
+    expect(() => s.initializeScene()).toThrow('stop after listener');
+    const corner = { destroy: vi.fn() }; s.townCorner = corner;
+    callbacks.emit(event); s.clearTownCorner();
+    expect(callbacks.listenerCount('shutdown')).toBe(0);
+    expect(callbacks.listenerCount('destroy')).toBe(0);
+    expect(corner.destroy).toHaveBeenCalledOnce(); expect(s.townCorner).toBeNull();
+  });
+
   it('rejects a queued sword hit and completion from the previous area', () => {
     const s = make(); s.world = new World(); s.playerId = s.world.createEntity();
     s.world.setTransform(s.playerId, { x: 100, y: 100, rot: 0 });

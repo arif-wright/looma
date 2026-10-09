@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
-import { fixture, type SceneObservation, type GameplayObservation } from './runtime';
+import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation } from './runtime';
 import type { World, EntityId } from '../../../src/lib/games/arpg/ecs/components';
 import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 
@@ -9,8 +9,14 @@ import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 type ObservedState = {
   initialized: boolean; expedition: Expedition; expeditionActive: boolean;
   durationLimit: number; elapsed: number; world: World; playerId: EntityId | null;
+  worldLayer: Phaser.GameObjects.Layer; playerSprite: Phaser.GameObjects.Sprite;
   primaryControl: Phaser.GameObjects.Text; secondaryControl: Phaser.GameObjects.Text;
 };
+const ART_KEYS = ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
+const readArtObject = (object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite): ArtObjectObservation => ({
+  key: object.texture.key, x: object.x, y: object.y, depth: object.depth, originX: object.originX, originY: object.originY,
+  scaleX: object.scaleX, scaleY: object.scaleY
+});
 function readGameplay(scene: GameScene): GameplayObservation | null {
   const state = scene as unknown as ObservedState;
   if (!state.initialized || state.playerId === null) return null;
@@ -25,6 +31,10 @@ function readGameplay(scene: GameScene): GameplayObservation | null {
     durationLimit: state.durationLimit, expeditionActive: state.expeditionActive,
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
+    townArt: state.expedition.area === 0 ? {
+      hero: readArtObject(state.playerSprite),
+      objects: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && ART_KEYS.includes(object.texture.key)).map(readArtObject)
+    } : null,
     primary: control(state.primaryControl), secondary: control(state.secondaryControl) };
 }
 

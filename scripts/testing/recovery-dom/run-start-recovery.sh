@@ -17,6 +17,7 @@ mkdir -p "$artifacts"
   src/lib/__tests__/arpgGameSceneReadiness.spec.ts \
   src/lib/__tests__/arpgExpedition.spec.ts \
   src/lib/__tests__/arpgExpeditionScene.spec.ts \
+  src/lib/__tests__/arpgTownCorner.spec.ts \
   src/lib/__tests__/arpgTownSession.spec.ts \
   src/lib/__tests__/gameFullscreenStartRecovery.spec.ts \
   --pool=forks --poolOptions.forks.singleFork=true --retry=0 --allowOnly=false \
@@ -33,4 +34,4 @@ for suite in neon portal start legacy arpg-town; do
   "$node_bin" scripts/testing/recovery-dom/verify-results.mjs "$suite" "$report"
   "$node_bin" scripts/testing/recovery-dom/verify-start-recovery-results.mjs "$suite" "$report"
 done
-printf '%s\n' 'Verified 200 focused unit cases + 130 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'
+printf '%s\n' 'Verified 221 focused unit cases + 130 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'
