@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 import { FLOW_CAP_MS, EXPECTED_REWARD_MUTATIONS, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
 export const EXPECTED_STARTS = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
@@ -85,6 +86,11 @@ export function verifyObservation(observation, index) {
     const canvas = visual.canvas;
     assert(canvas.width > 0 && canvas.height > 0 && canvas.pixelWidth > 0 && canvas.pixelHeight > 0, 'A real nonempty canvas is required');
     assert(canvas.x >= -1 && canvas.x + canvas.width <= viewport.width + 1, 'Canvas fits the current viewport horizontally');
+    if (index === 11) {
+      const geometry = visual.scene.gameplay.viewportGeometry;
+      empty(phoneGeometryIssues(geometry), 'Phone HUD, controls, hero and full shop must fit their rendered unobstructed regions');
+      assert.equal(geometry.canvas.width, canvas.width); assert.equal(geometry.canvas.height, canvas.height);
+    }
     const art = visual.scene.gameplay.townArt;
     assert(art); assert.deepEqual(art.objects.map(item => item.key).sort(), ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'].sort());
     const shop = art.objects.find(item => item.key === 'town_corner_shop_v1');

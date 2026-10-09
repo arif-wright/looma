@@ -16,7 +16,15 @@ function report(mode = 'execution') {
     const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
     const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1 });
     const townArt = { hero: artObject('hero-idle', 500, 520), objects: [artObject('town_corner_cobble_patch_v1', 600, -1000), artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620)] };
-    const game = { at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 0, y: 0, hp: 140, kills: 0, townArt };
+    const viewportGeometry = {
+      canvas: { width: 358, height: 200 },
+      camera: { x: 0, y: 0, width: 358, height: 200, zoom: 0.3, scrollX: 1000, scrollY: 300, matrix: [0.3, 0, 0, 0.3, 125.3, 70] },
+      hud: { x: 8, y: 8, width: 342, height: 44 }, controls: { x: 8, y: 138, width: 342, height: 54 },
+      hudItems: [{ name: 'score', bounds: { x: 16, y: 13, width: 100, height: 14 } }, { name: 'hp', bounds: { x: 16, y: 33, width: 60, height: 12 } }, { name: 'area', bounds: { x: 148, y: 33, width: 80, height: 12 } }],
+      controlItems: [{ name: 'status', bounds: { x: 16, y: 143, width: 160, height: 13 } }, { name: 'primary', bounds: { x: 16, y: 163, width: 90, height: 20 } }],
+      heroGround: { x: 120, y: 120 }, shop: { x: 180, y: 60, width: 60, height: 60 }
+    };
+    const game = { viewportGeometry, at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 0, y: 0, hp: 140, kills: 0, townArt };
     const scene = { id: 1, queuedKeys: keys, decodedKeys: keys, missingKeys: [], createAt: 1, framesAfterCreate: 1, destroyed: false, loadErrors: [], loadComplete: true, gameplay: { ...game } };
     const scenes = [scene];
     if ([1, 2, 3, 9].includes(index)) {
@@ -159,6 +167,20 @@ const mutations={
   'missing instantiated shop':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects.splice(1,1),11),
   'wrong shop foot anchor':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[1].originY=1,11),
   'floor drawn over hero':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[0].depth=9999,11),
+  'phone geometry missing':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry=null,11),
+  'phone HUD beyond canvas':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.hud.width=440,11),
+  'phone controls beyond canvas':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.controls.y=210,11),
+  'phone HUD text beyond panel':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.hudItems[0].bounds.width=440,11),
+  'phone control text beyond panel':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.controlItems[0].bounds.width=440,11),
+  'phone missing actual control text':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.controlItems=[],11),
+  'phone hero under HUD':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.heroGround.y=30,11),
+  'phone hero under controls':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.heroGround.y=150,11),
+  'phone hero outside canvas':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.heroGround.x=-5,11),
+  'phone shop clipped sideways':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.shop.x=340,11),
+  'phone shop behind HUD':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.shop.y=44,11),
+  'phone shop behind controls':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.shop.height=100,11),
+  'phone camera transform missing':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.camera.matrix=[],11),
+  'phone geometry canvas mismatch':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.canvas.width=360,11),
   'desktop capture after departure':r=>coherentObservation(r,o=>o.state.visuals[0].at=o.state.api[0].at+1,10),
   'flaky count':r=>r.stats.flaky=1
 };

@@ -10,6 +10,7 @@ const sources = [
   'lib/games/arpg/scenes/GameScene.ts', 'lib/games/arpg/assets/manifest.ts',
   'lib/games/arpg/assets/townCorner.ts',
   'lib/games/arpg/expedition.ts', 'lib/games/arpg/townSession.ts',
+  'lib/games/arpg/viewportLayout.ts',
   'lib/games/arpg/ecs/components.ts', 'lib/games/arpg/ecs/systems.ts',
   'lib/games/sdk.ts', 'lib/games/types.ts', 'lib/safeMessages.ts',
   'lib/games/rewardBonus.ts', 'lib/companions/rituals.ts'

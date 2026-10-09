@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
+import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
 import { createTownCorner, TOWN_CORNER_ASSETS, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
@@ -21,7 +22,7 @@ const ROOM_ORIGIN_Y = -200;
 // Floor PNGs overlap neighboring cells. Keep their entire y-sorted range below
 // all room actors/markers, rather than letting foreground floor rows cover them.
 const FLOOR_DEPTH_OFFSET = -(ROOM_WIDTH + ROOM_HEIGHT) * HALF_TILE_HEIGHT;
-const CAMERA_ZOOM = 1.35;
+const CAMERA_ZOOM = ARPG_DESKTOP_ZOOM;
 const CAMERA_PADDING = 140;
 const HERO_SPEED = 220;
 const ENEMY_SPEED = 135;
@@ -227,6 +228,11 @@ export class GameScene extends Phaser.Scene {
   private hpBarFill!: Phaser.GameObjects.Graphics;
   private hpBarBg!: Phaser.GameObjects.Graphics;
   private uiContainer!: Phaser.GameObjects.Container;
+  private hudPanel!: Phaser.GameObjects.Rectangle;
+  private controlPanel!: Phaser.GameObjects.Rectangle;
+  private compactHUD = false;
+  private viewportLayoutKey = '';
+  private hpBarSize = { width: 240, height: 16 };
   private controlContainer!: Phaser.GameObjects.Container;
   private primaryControl!: Phaser.GameObjects.Text;
   private secondaryControl!: Phaser.GameObjects.Text;
@@ -366,6 +372,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetState() {
+    this.viewportLayoutKey = '';
+    this.compactHUD = false;
+    this.hpBarSize = { width: 240, height: 16 };
     this.previousPositions.clear();
     this.killCount = 0;
     this.attackCooldown = 0;
@@ -433,6 +442,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildDungeonRoom() {
+    // Rebuilding resets the camera, even when viewport and area are unchanged.
+    this.viewportLayoutKey = '';
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
@@ -568,6 +579,7 @@ export class GameScene extends Phaser.Scene {
     this.uiContainer.setScrollFactor(0);
     this.uiContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 440, 180, 0x050c18, 0.65).setOrigin(0);
+    this.hudPanel = panel;
     panel.setStrokeStyle(1, 0x0e2244, 0.4);
     this.instructionsText = this.add
       .text(
@@ -611,10 +623,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(2500);
     this.addToWorld(this.vignetteSprite);
     this.resizeVignette();
-    this.scale.on('resize', () => {
-      this.resizeVignette();
-      this.updateFixedUITransforms();
-    });
+    this.scale.on('resize', () => this.updateFixedUITransforms());
   }
 
   private createControlButtons() {
@@ -622,6 +631,7 @@ export class GameScene extends Phaser.Scene {
     this.controlContainer.setScrollFactor(0);
     this.controlContainer.setDepth(2000);
     const panel = this.add.rectangle(0, 0, 360, 72, 0x040912, 0.55).setOrigin(0);
+    this.controlPanel = panel;
     this.controlStatus = this.add.text(16, 10, 'Status: Waiting', {
       fontFamily: 'Space Grotesk, sans-serif',
       fontSize: '14px',
@@ -653,9 +663,41 @@ export class GameScene extends Phaser.Scene {
 
   private updateFixedUITransforms() {
     if (!this.uiContainer || !this.controlContainer) return;
-    this.uiContainer.setScale(1).setPosition(this.hudMargin.x, this.hudMargin.y);
-    this.controlContainer.setScale(1).setPosition(this.controlOffset.x, this.controlOffset.y);
-    this.uiCamera?.setSize(this.scale.width, this.scale.height);
+    const key = `${this.scale.width}x${this.scale.height}:${this.expedition.area}`;
+    if (key === this.viewportLayoutKey) return;
+    this.viewportLayoutKey = key;
+    const layout = arpgViewportLayout(this.scale.width, this.scale.height, this.expedition.area === 0);
+    this.compactHUD = layout.compact;
+    this.uiContainer.setScale(1).setPosition(layout.hud.x, layout.hud.y);
+    this.controlContainer.setScale(1).setPosition(layout.controls.x, layout.controls.y);
+    this.hudPanel.setSize(layout.hud.width, layout.hud.height);
+    this.controlPanel.setSize(layout.controls.width, layout.controls.height);
+    this.instructionsText.setVisible(!layout.compact);
+    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 58)
+      .setFontSize(layout.compact ? 12 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 98).setFontSize(layout.compact ? 11 : 16);
+    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : { width: 240, height: 16 };
+    this.hpBarBg.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
+    this.hpBarFill.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
+    this.areaText.setPosition(layout.compact ? 140 : 16, layout.compact ? 25 : 145)
+      .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.controlStatus.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 10)
+      .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? layout.controls.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.primaryControl.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 34);
+    this.secondaryControl.setPosition(layout.compact ? Math.floor(layout.controls.width / 2) + 4 : 190, layout.compact ? 25 : 34);
+    for (const button of [this.primaryControl, this.secondaryControl]) {
+      button.setFontSize(layout.compact ? 12 : 16).setPadding(layout.compact ? 8 : 10, 4)
+        .setWordWrapWidth(layout.compact ? Math.max(1, layout.controls.width / 2 - 24) : 0).setMaxLines(layout.compact ? 1 : 0);
+    }
+    this.uiCamera?.setSize(layout.width, layout.height);
+    const camera = this.cameras.main;
+    camera.setZoom(layout.camera.zoom);
+    camera.setFollowOffset(layout.camera.offsetX, layout.camera.offsetY);
+    if (this.playerSprite) {
+      camera.centerOn(this.playerSprite.x - layout.camera.offsetX, this.playerSprite.y - layout.camera.offsetY);
+    }
+    this.resizeVignette();
+    this.updateUIState();
   }
 
   private setupUICamera() {
@@ -750,6 +792,7 @@ export class GameScene extends Phaser.Scene {
     this.resizeVignette();
     this.updateControlButtons();
     this.updateUIState();
+    this.updateFixedUITransforms();
     if (next.area === 0 && this.expeditionActive) this.finishExpedition();
   }
 
@@ -795,11 +838,18 @@ export class GameScene extends Phaser.Scene {
     if (!this.primaryControl || !this.controlStatus) return;
     const town = this.expedition.area === 0;
     const townLabel = this.townStatus === 'ready' ? 'Enter ruins' : this.townStatus === 'retry' ? 'Retry saving' : this.townStatus === 'starting' ? 'Starting…' : this.townStatus === 'saving' ? 'Saving…' : 'Unavailable';
-    this.primaryControl.setText(town ? townLabel : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'Descend' : 'Return victorious') : this.runState === 'running' ? 'Pause' : 'Resume');
-    this.secondaryControl.setText(town ? '' : 'Return to town');
+    this.primaryControl.setText(town ? townLabel : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'Descend' : this.compactHUD ? 'Return home' : 'Return victorious') : this.runState === 'running' ? 'Pause' : 'Resume');
+    this.secondaryControl.setText(town ? '' : this.compactHUD ? 'Retreat' : 'Return to town');
     this.secondaryControl.setVisible(!town);
     const seconds = Math.max(0, Math.ceil((this.durationLimit - this.elapsed) / 1000));
-    this.controlStatus.setText(town ? (this.townMessage || 'Safe town · No time limit') : `${this.runState === 'paused' ? 'Paused' : 'Exploring'} · Expedition ends in ${seconds}s`);
+    const compactTownStatus: Record<TownStatus, string> = {
+      ready: 'Town · No time limit', starting: 'Starting expedition…', saving: 'Saving expedition…',
+      retry: 'Save unconfirmed · Retry', blocked: 'Expedition unavailable'
+    };
+    this.controlStatus.setText(town
+      ? (this.compactHUD ? compactTownStatus[this.townStatus] : this.townMessage || 'Safe town · No time limit')
+      : this.compactHUD ? `${this.runState === 'paused' ? 'Paused' : 'Exploring'} · ${seconds}s left`
+        : `${this.runState === 'paused' ? 'Paused' : 'Exploring'} · Expedition ends in ${seconds}s`);
   }
 
   private spawnSkeletons() {
@@ -1308,9 +1358,12 @@ export class GameScene extends Phaser.Scene {
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
-    this.scoreText.setText(`Hero Lv ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
+    this.scoreText.setText(`${this.compactHUD ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
     const area = AREAS[this.expedition.area];
-    this.areaText.setText(`${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
+    const compactArea = ['Lantern Sq.', 'Mossgate', 'Ember Vault'][this.expedition.area];
+    this.areaText.setText(this.compactHUD
+      ? `${compactArea} · G${this.expedition.carriedGold}/${this.expedition.bankedGold}`
+      : `${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
     if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? `${this.expedition.returned ? this.expedition.outcome.toUpperCase() : 'GATE TO MOSSGATE'}\n${this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : 'Please wait'}` : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);
     this.updateControlButtons();
     if (health) {
@@ -1320,11 +1373,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawHpBar(ratio: number) {
-    const width = 240;
-    const height = 16;
+    const { width, height } = this.hpBarSize;
+    const radius = Math.min(8, height / 2);
     this.hpBarBg.clear();
     this.hpBarBg.fillStyle(0x0c1b27, 0.8);
-    this.hpBarBg.fillRoundedRect(0, 0, width, height, 8);
+    this.hpBarBg.fillRoundedRect(0, 0, width, height, radius);
     this.hpBarFill.clear();
     const clamped = Phaser.Math.Clamp(ratio, 0, 1);
     const color = Phaser.Display.Color.Interpolate.ColorWithColor(
@@ -1335,7 +1388,7 @@ export class GameScene extends Phaser.Scene {
     );
     const fillColor = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
     this.hpBarFill.fillStyle(fillColor, 1);
-    this.hpBarFill.fillRoundedRect(0, 0, width * clamped, height, 8);
+    this.hpBarFill.fillRoundedRect(0, 0, width * clamped, height, radius);
   }
 
   private resizeVignette() {
@@ -1345,7 +1398,9 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale.gameSize;
     this.vignetteSprite.setPosition(width / 2, height / 2);
     const scale = Math.max(width / this.vignetteSprite.width, height / this.vignetteSprite.height) * 1.3;
-    this.vignetteSprite.setScale(scale);
+    // Preserve the desktop overlay extent when the narrow camera zooms out.
+    const zoom = this.cameras?.main?.zoom ?? CAMERA_ZOOM;
+    this.vignetteSprite.setScale(scale * Math.max(1, CAMERA_ZOOM / zoom));
   }
 
   private tileToWorld(tx: number, ty: number): Vec2 {

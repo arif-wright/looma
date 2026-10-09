@@ -79,6 +79,9 @@ and real post-create frames together.
 12. Load the real scene at a 390×844 viewport with zero session starts. Require
     all 252 source textures, the instantiated cobble/shop/lantern objects, a
     nonempty canvas within the viewport width, and no horizontal document overflow.
+    After actual render, require HUD/control panels and visible text within the
+    canvas, the hero ground point clear of both panels, and the full shop bounds
+    inside the unobstructed band between them.
     Capture the full phone-sized viewport. This runs desktop Chromium without
     mobile-device or touch emulation; it does not establish phone playability.
 
@@ -93,7 +96,9 @@ lantern/floor position, origin, scale and depth. Checks preserve the measured sh
 foot anchor and floor-below-actors ordering; they do not certify pixel-perfect
 occlusion or artistic quality. Traces remain available on failure. Actual
 screenshot review is still required, including cropped HUD or controls at narrow
-widths even when the page itself does not overflow.
+widths even when the page itself does not overflow. The strengthened phone gate
+projects real object bounds with Phaser’s actual post-render camera matrices;
+it does not use the production viewport-layout helper as its geometry oracle.
 
 ## Local preparation and hosted execution
 
@@ -140,17 +145,17 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 86 unit
+submission fields and the exact zero-value presentation payload. Its 100 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
 The local browser denial was not retried. Local preparation executes zero browser
-cases. Earlier hosted results predate these painterly assets and viewport checks;
-this twelve-case candidate requires a new hosted run and screenshot review on
-its exact source, asset and fixture commit. Prior results are not evidence that
-the new art or phone-sized viewport passed.
+cases. The first art run passed the original twelve-case gate, but its narrow screenshot
+revealed HUD obstruction and shop clipping that page-overflow checks missed.
+The responsive source and stronger rendered-geometry gate require a fresh hosted
+run and screenshot review on their exact source, asset and fixture commit.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does

@@ -1,6 +1,7 @@
 import { test, expect, snapshot, screen, starts, open, initializing, town, expedition, gameplay, record, clickControl, failed, HOLD_PATH, holdFirstImage } from './guard';
 import { TITLES } from './cases.mjs';
 import { FLOW_CAP_MS } from './protocol.mjs';
+import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 
 const screenshot = async (page: import('@playwright/test').Page, info: import('@playwright/test').TestInfo, label: string) => {
@@ -9,6 +10,10 @@ const screenshot = async (page: import('@playwright/test').Page, info: import('@
 const townArtScreenshot = async (page: import('@playwright/test').Page, info: import('@playwright/test').TestInfo, label: string, viewport: { width: number; height: number }) => {
   const canvas = screen(page).locator('canvas');
   await canvas.scrollIntoViewIfNeeded();
+  if (label === PHONE_TOWN_SCREENSHOT) {
+    // Wait only for real post-render camera/UI observations to settle.
+    await expect.poll(async () => phoneGeometryIssues((await gameplay(page)).viewportGeometry)).toEqual([]);
+  }
   const visual = await page.evaluate(label => window.__arpgFixture.recordVisual(label), label);
   expect(page.viewportSize()).toEqual(viewport);
   expect(visual.viewport).toEqual(viewport);
@@ -18,6 +23,7 @@ const townArtScreenshot = async (page: import('@playwright/test').Page, info: im
   expect(visual.canvas.x).toBeGreaterThanOrEqual(-1);
   expect(visual.canvas.x + visual.canvas.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(visual.starts).toBe(0);
+  if (label === PHONE_TOWN_SCREENSHOT) expect(phoneGeometryIssues(visual.scene?.gameplay?.viewportGeometry)).toEqual([]);
   expect(visual.scene?.gameplay).toMatchObject({ area: 0, expeditionActive: false, elapsed: 0 });
   // Desktop gets a canvas close-up; the phone-sized capture preserves the full
   // 390x844 viewport. Neither changes camera, scene, controls, textures or state.

@@ -1,6 +1,8 @@
-# Original town-corner local prototype
+# Original town-corner prototype: initial local record
 
-This is a local-only addition to the frozen PR16 base c490e95d7d999366d186d63546e526f18f078d48, preserving the existing local hero ground-anchor correction. Nothing was pushed, published, deployed, or merged. Browser execution was denied earlier and was not retried. This is not a playable-scene or screenshot verification claim.
+This opening record describes the initial local-only snapshot before the separately approved PR16 preview publication. Later hosted results are recorded below.
+
+This was a local-only addition to the frozen PR16 base c490e95d7d999366d186d63546e526f18f078d48, preserving the existing local hero ground-anchor correction. Nothing was pushed, published, deployed, or merged. Browser execution was denied earlier and was not retried. This is not a playable-scene or screenshot verification claim.
 
 ## Scope and assets
 
@@ -36,3 +38,14 @@ The first DOM attempt used the root Vitest entrypoint and could not resolve `hap
 The three source PNGs total 5,096,297 bytes (5.10 MB compressed), with a decoded RGBA lower bound of 18,873,872 bytes (18.0 MiB). The derived 512×256 canvas adds 524,288 bytes (0.5 MiB) per pixel buffer; browser image, canvas and GPU copies can raise actual memory. Sources are retained by the game texture manager until game destruction. Local checks used Node 24.19.0 and the existing installed dependencies; release workflows still pin Node 22, and were neither repinned nor run.
 
 Remaining review requires an authorized browser environment with the complete baseline assets: inspect actual painterly scale/HUD clearance, walk and dash around all sides of the shop, inspect y-sorting in front/behind, and repeat town → expedition → town plus route shutdown. Floor material scale may need a later reduction to 256×128; the chosen 512×256 is the manifest's starting size, not a visually certified final size. There are no new screenshots or animation claims.
+
+
+## Approved hosted art preview and responsive correction
+
+The user subsequently approved adding this art preview to the same unmerged draft PR16. Head f1c8f0741b2d511cbf38bae7b47552884f795761 passed all 12 actual-route/SDK/Phaser browser cases, with seven real screenshots. The new 390×844 case means a phone-sized desktop-Chromium viewport, not touch interaction or real-device performance. The actual desktop image shows the painterly shop, lantern and normalized cobbles, and the hero is grounded at its selection ring.
+
+The phone screenshot revealed that the inherited 440×180 HUD and desktop zoom obstructed the art on a 374×280 canvas. The bounded correction uses a compact two-row HUD and bottom action strip, plus narrow-only camera framing. World coordinates, collision, input, art scale, expedition cap and settlement methods remain unchanged. Desktop geometry, labels and zoom restore exactly; same-dimension scene rebuilds invalidate the layout cache. Eighteen dedicated responsive tests raise root coverage to 1,054 and focused coverage to 239.
+
+The historical native-layout comparison also exposed an obsolete whole-static-tree equality assumption. It now pins the original baseline static tree and new candidate static tree separately, and compares all 9,102 existing blob identities, modes and paths unchanged after excluding exactly the three approved new town-corner files. No baseline asset is replaced. Toolchain, permission and network guards remain intact.
+
+Separate Docker Hub unauthenticated pull-rate limits prevented the isolated PostgreSQL scenarios from starting on the first art head. Those are infrastructure failures, not passing tests; no credentials or network bypass were added. The responsive/static-guard correction requires a fresh exact-head hosted run and screenshot review before acceptance. Its source tree is 50406669b90fbf5ec9c65320f8a59d5a18dceae8; static tree remains ce7bf3577bef2eaf68722181ddbd147e93b4f87a.

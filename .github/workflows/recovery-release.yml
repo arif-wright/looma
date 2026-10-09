@@ -310,12 +310,22 @@ jobs:
             git -C "$fixture" rev-parse HEAD HEAD^{tree}
             node --version
           } > artifacts/moonberry-gather/comparison-source.txt
-          expected_src=e8bccd82ceca08fcb7e092ff39a1ec7445fa2690
+          expected_src=50406669b90fbf5ec9c65320f8a59d5a18dceae8
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
           test "$(git rev-parse HEAD:src)" = "$expected_src"
           node "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" "$COMPARISON_SOURCE" before "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-before-overlay.json
           cp "$fixture/package.json" "$fixture/package-lock.json" "$fixture/pnpm-lock.yaml" .
-          test "$(git rev-parse HEAD:static)" = "$(git -C "$fixture" rev-parse HEAD:static)"
+          # The art preview adds exactly three ARPG PNGs. Preserve the historical
+          # baseline and require every pre-existing static blob/mode/path unchanged.
+          expected_static=ce7bf3577bef2eaf68722181ddbd147e93b4f87a
+          if [ "$COMPARISON_SOURCE" = baseline ]; then expected_static=93f203a8e01263a0066e1632cf2a6d9bd062de5b; fi
+          test "$(git rev-parse HEAD:static)" = "$expected_static"
+          test "$(git -C "$fixture" rev-parse HEAD:static)" = ce7bf3577bef2eaf68722181ddbd147e93b4f87a
+          if [ "$COMPARISON_SOURCE" = baseline ]; then
+            git ls-tree -r HEAD:static > artifacts/moonberry-gather/baseline-static-tree.txt
+            git -C "$fixture" ls-tree -r HEAD:static | grep -v $'\tgames/arpg/town-corner-v1/' > artifacts/moonberry-gather/candidate-existing-static-tree.txt
+            cmp artifacts/moonberry-gather/baseline-static-tree.txt artifacts/moonberry-gather/candidate-existing-static-tree.txt
+          fi
           cp -a "$fixture/scripts/testing/moonberry-gather-preview/." scripts/testing/moonberry-gather-preview/
           cp "$fixture/scripts/testing/recovery-dom/reproduce-clock-overlap.cjs" scripts/testing/recovery-dom/
           cp "$fixture/scripts/testing/recovery-dom/verify-native-layout-results.mjs" scripts/testing/recovery-dom/

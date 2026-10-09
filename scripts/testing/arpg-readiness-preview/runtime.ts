@@ -5,9 +5,18 @@ export type ArtObjectObservation = {
   key: string; x: number; y: number; depth: number; originX: number; originY: number;
   scaleX: number; scaleY: number;
 };
+export type ScreenRect = { x: number; y: number; width: number; height: number };
+export type ViewportGeometry = {
+  canvas: { width: number; height: number };
+  camera: { x: number; y: number; width: number; height: number; zoom: number; scrollX: number; scrollY: number; matrix: number[] };
+  hud: ScreenRect; controls: ScreenRect;
+  hudItems: Array<{ name: string; bounds: ScreenRect }>; controlItems: Array<{ name: string; bounds: ScreenRect }>;
+  heroGround: { x: number; y: number }; shop: ScreenRect | null;
+};
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
+  viewportGeometry: ViewportGeometry | null;
   townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[] } | null;
   primary: { label: string; x: number; y: number }; secondary: { label: string; x: number; y: number };
 };

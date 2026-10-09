@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
-import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation } from './runtime';
+import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry } from './runtime';
 import type { World, EntityId } from '../../../src/lib/games/arpg/ecs/components';
 import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 
@@ -10,6 +10,10 @@ type ObservedState = {
   initialized: boolean; expedition: Expedition; expeditionActive: boolean;
   durationLimit: number; elapsed: number; world: World; playerId: EntityId | null;
   worldLayer: Phaser.GameObjects.Layer; playerSprite: Phaser.GameObjects.Sprite;
+  uiCamera?: Phaser.Cameras.Scene2D.Camera;
+  hudPanel: Phaser.GameObjects.Rectangle; controlPanel: Phaser.GameObjects.Rectangle;
+  instructionsText: Phaser.GameObjects.Text; scoreText: Phaser.GameObjects.Text; hpText: Phaser.GameObjects.Text;
+  areaText: Phaser.GameObjects.Text; controlStatus: Phaser.GameObjects.Text;
   primaryControl: Phaser.GameObjects.Text; secondaryControl: Phaser.GameObjects.Text;
 };
 const ART_KEYS = ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
@@ -17,6 +21,35 @@ const readArtObject = (object: Phaser.GameObjects.Image | Phaser.GameObjects.Spr
   key: object.texture.key, x: object.x, y: object.y, depth: object.depth, originX: object.originX, originY: object.originY,
   scaleX: object.scaleX, scaleY: object.scaleY
 });
+type RenderCamera = Phaser.Cameras.Scene2D.Camera & { readonly matrix: Phaser.GameObjects.Components.TransformMatrix };
+// Phaser keeps its rendered matrix internally; this type exposes it read-only.
+// Project actual post-render bounds with Phaser's current camera matrix and
+// scroll. No import of viewportLayout or recomputation of its desired layout.
+function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRect, ground: { x: number; y: number }): ViewportGeometry | null {
+  const main = scene.cameras.main as RenderCamera, ui = state.uiCamera as RenderCamera | undefined;
+  if (!ui) return null;
+  const point = (camera: RenderCamera, x: number, y: number) => {
+    const transformed = camera.matrix.transformPoint(x - camera.scrollX, y - camera.scrollY);
+    return { x: transformed.x * css.width / scene.scale.width, y: transformed.y * css.height / scene.scale.height };
+  };
+  const bounds = (camera: RenderCamera, object: { getBounds(): Phaser.Geom.Rectangle }): ScreenRect => {
+    const rect = object.getBounds();
+    const points = [point(camera, rect.left, rect.top), point(camera, rect.right, rect.top), point(camera, rect.left, rect.bottom), point(camera, rect.right, rect.bottom)];
+    const x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y));
+    return { x, y, width: Math.max(...points.map(p => p.x)) - x, height: Math.max(...points.map(p => p.y)) - y };
+  };
+  const texts = (entries: Array<[string, Phaser.GameObjects.Text]>) => entries.filter(([, text]) => text.visible && text.text.length > 0).map(([name, text]) => ({ name, bounds: bounds(ui, text) }));
+  const shop = state.worldLayer.list.find((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && object.texture.key === 'town_corner_shop_v1');
+  return {
+    canvas: { width: css.width, height: css.height },
+    camera: { x: main.x, y: main.y, width: main.width, height: main.height, zoom: main.zoom, scrollX: main.scrollX, scrollY: main.scrollY,
+      matrix: [main.matrix.a, main.matrix.b, main.matrix.c, main.matrix.d, main.matrix.e, main.matrix.f] },
+    hud: bounds(ui, state.hudPanel), controls: bounds(ui, state.controlPanel),
+    hudItems: texts([['instructions', state.instructionsText], ['score', state.scoreText], ['hp', state.hpText], ['area', state.areaText]]),
+    controlItems: texts([['status', state.controlStatus], ['primary', state.primaryControl], ['secondary', state.secondaryControl]]),
+    heroGround: point(main, ground.x, ground.y), shop: shop ? bounds(main, shop) : null
+  };
+}
 function readGameplay(scene: GameScene): GameplayObservation | null {
   const state = scene as unknown as ObservedState;
   if (!state.initialized || state.playerId === null) return null;
@@ -31,6 +64,7 @@ function readGameplay(scene: GameScene): GameplayObservation | null {
     durationLimit: state.durationLimit, expeditionActive: state.expeditionActive,
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
+    viewportGeometry: state.expedition.area === 0 ? readViewportGeometry(scene, state, rect, position) : null,
     townArt: state.expedition.area === 0 ? {
       hero: readArtObject(state.playerSprite),
       objects: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && ART_KEYS.includes(object.texture.key)).map(readArtObject)
