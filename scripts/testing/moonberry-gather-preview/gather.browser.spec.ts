@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
+const THREE_LAYOUT_TEST = 'Three feedback, gather and independent movement/camera targets never overlap';
+
 const grovePortal = JSON.parse(readFileSync(new URL('../../../services/world-server/src/world/areas.json', import.meta.url), 'utf8'))['wilds-exploration'].portal as { x: number; y: number; targetName: string };
 
 // Exercises production UI, session, connection, and renderers against an explicitly
@@ -29,8 +31,8 @@ const ready = async (page: Page) => {
   await expect(page.locator('canvas')).toHaveCount(1);
   await expect(page.locator('canvas')).toHaveAttribute('data-local-sprite-load', 'loaded', { timeout: 30_000 });
 };
-const uncertainty = async (page: Page) => {
-  await expect(page.locator('.gather-result')).toContainText(/could not confirm|couldn[’']t confirm|unconfirmed|not confirmed/i);
+const uncertainty = async (page: Page, timeout = 5_000) => {
+  await expect(page.locator('.gather-result')).toContainText(/could not confirm|couldn[’']t confirm|unconfirmed|not confirmed/i, { timeout });
   await expect(page.getByRole('link', { name: /View in Keepsakes/i })).toHaveAttribute('href', '/app/inventory');
   await expect(page.locator('.gather-result')).not.toContainText('Gathered 1 Moonberry');
   await expect(page.getByRole('button', { name: 'Gathering…', exact: true })).toHaveCount(0);
@@ -53,7 +55,9 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
   // This fixture has no live transport. Advancing time below tests only the
   // production client timeout; it cannot advance a real service or reward clock.
-  await page.clock.install();
+  // Keep native animation frames for the combined layout/input acceptance case.
+  // Dedicated timeout scenarios below still exercise the mocked clock.
+  if (testInfo.title !== THREE_LAYOUT_TEST) await page.clock.install();
   await page.goto(`/?renderer=${testInfo.project.metadata.renderer}`);
   await ready(page);
   expect(await page.evaluate(() => window.__MOONBERRY_FIXTURE__.sdk)).toBe('synthetic-colyseus-no-sockets');
@@ -216,7 +220,7 @@ test('authoritative proximity and both result states fit the viewport', async ({
   await page.screenshot({ path: testInfo.outputPath('viewport-uncertainty.png'), fullPage: true });
 });
 
-test('Three feedback, gather and independent movement/camera targets never overlap', async ({ page }, testInfo) => {
+test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   test.skip(testInfo.project.metadata.renderer !== 'three', 'Three-only layout; Phaser retains the original HUD.');
   const touch = Boolean(testInfo.project.use.hasTouch);
   const devtools = await page.context().newCDPSession(page);
@@ -276,9 +280,23 @@ test('Three feedback, gather and independent movement/camera targets never overl
     }
   };
   await checkLayout();
-  await activateGather(page);
-  await page.clock.fastForward(10_050);
-  await uncertainty(page);
+  const gathersBeforeTimeout = await gatherCount(page);
+  const deadlineBefore = await page.evaluate(() => ({ date: Date.now(), performance: performance.now() }));
+  let deadlineAfter: { date: number; performance: number } | null = null;
+  try {
+    await activateGather(page);
+    await expect.poll(() => gatherCount(page)).toBe(gathersBeforeTimeout + 1);
+    await expect(page.getByRole('button', { name: 'Gathering…', exact: true })).toBeDisabled();
+    // Observe the real production 10-second deadline. The 12-second assertion
+    // bound allows delivery/rendering; it does not change that deadline.
+    await uncertainty(page, 12_000);
+  } finally {
+    deadlineAfter = await page.evaluate(() => ({ date: Date.now(), performance: performance.now() }));
+    const diagnosticPath = testInfo.outputPath('gather-deadline-diagnostics.json');
+    writeFileSync(diagnosticPath, JSON.stringify({ clock: 'native', before: deadlineBefore, after: deadlineAfter }, null, 2));
+    await testInfo.attach('gather-deadline-diagnostics', { path: diagnosticPath, contentType: 'application/json' });
+  }
+  expect(deadlineAfter.performance - deadlineBefore.performance).toBeGreaterThanOrEqual(10_000);
   await checkLayout();
   for (const name of ['Rotate camera left', 'Rotate camera right', 'Zoom camera out', 'Zoom camera in', 'Reset camera']) {
     const button = page.getByRole('button', { name, exact: true });
@@ -336,14 +354,11 @@ test('Three feedback, gather and independent movement/camera targets never overl
         touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }] });
       await expect(up).toHaveClass(/active/);
       acceptedInput = await inputProbe.evaluate(probe => probe.snapshot());
-      // The installed clock owns animation frames. Explicitly drive a bounded
-      // interval after the real pointer is accepted, then require a new move.
-      await page.clock.runFor(100);
-      drivenFrames = await inputProbe.evaluate(probe => probe.snapshot());
+      // Observe real renderer input; never move this case's browser clock.
       await expect.poll(() => page.evaluate((start) => window.__MOONBERRY_FIXTURE__.sent.slice(start).some((m) => m.type === 'move' && Number(m.payload.y) < 0), sentBeforePress)).toBe(true);
+      drivenFrames = await inputProbe.evaluate(probe => probe.snapshot());
       await devtools.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
       await expect(up).not.toHaveClass(/active/);
-      await page.clock.runFor(100);
       await expect.poll(() => page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.filter((m) => m.type === 'move').at(-1)?.payload.y)).toBe(0);
       inputPassed = true;
     } finally {

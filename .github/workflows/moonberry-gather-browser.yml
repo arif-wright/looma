@@ -68,6 +68,8 @@ jobs:
             artifacts/moonberry-gather/*.json
             artifacts/moonberry-gather/browser/**/*.png
             artifacts/moonberry-gather/browser/**/error-context.md
+            artifacts/moonberry-gather/browser/**/gather-deadline-diagnostics.json
+            artifacts/moonberry-gather/browser/**/attachments/gather-deadline-diagnostics-*.json
             artifacts/moonberry-gather/browser/**/touch-movement-diagnostics.json
             artifacts/moonberry-gather/browser/**/attachments/touch-movement-diagnostics-*.json
             artifacts/moonberry-gather/browser/**/trace.zip

@@ -154,46 +154,90 @@ jobs:
           mkdir -p artifacts/moonberry-gather
           git rev-parse HEAD HEAD^{tree} > artifacts/moonberry-gather/three-layout-source.txt
           ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-medium-landscape --project=three-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/three-layout-stress.log
-          node --input-type=module <<'VERIFY'
-          import assert from 'node:assert/strict';
-          import { readFileSync } from 'node:fs';
-          const report = JSON.parse(readFileSync('artifacts/moonberry-gather/results.json', 'utf8'));
-          const tests = [];
-          function visit(suite) {
-            for (const spec of suite.specs ?? []) {
-              assert.equal(spec.title, 'Three feedback, gather and independent movement/camera targets never overlap');
-              assert.equal(spec.ok, true);
-              tests.push(...spec.tests);
-            }
-            for (const child of suite.suites ?? []) visit(child);
-          }
-          for (const suite of report.suites) visit(suite);
-          assert.equal(tests.length, 6);
-          for (const project of ['three-medium-landscape', 'three-landscape']) {
-            assert.equal(tests.filter(test => test.projectName === project).length, 3);
-          }
-          for (const test of tests) {
-            assert.equal(test.expectedStatus, 'passed');
-            assert.equal(test.status, 'expected');
-            assert.equal(test.results.length, 1);
-            assert.equal(test.results[0].status, 'passed');
-            const attachment = test.results[0].attachments.find(item => item.name === 'touch-movement-diagnostics');
-            assert(attachment?.path, 'Every stress repetition must preserve its input/frame evidence');
-            const evidence = JSON.parse(readFileSync(attachment.path, 'utf8'));
-            assert.equal(evidence.inputPassed, true);
-            assert(Number(evidence.drivenFrames.canvas.frame) > Number(evidence.acceptedInput.canvas.frame), 'The real renderer must advance after accepted input');
-          }
-          assert.equal(report.errors.length, 0);
-          assert.equal(report.stats.unexpected, 0);
-          assert.equal(report.stats.skipped, 0);
-          assert.equal(report.stats.flaky, 0);
-          console.log('Verified all six Three landscape repetitions, with no skips or retries.');
-          VERIFY
+          node scripts/testing/recovery-dom/verify-native-layout-results.mjs stress
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: recovery-three-layout-stress-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/moonberry-gather/
+          if-no-files-found: error
+          retention-days: 14
+
+  native-layout-comparison:
+    name: Native layout comparison (${{ matrix.source }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [baseline, candidate]
+    defaults:
+      run:
+        working-directory: subject
+    steps:
+      - name: Check out the exact reviewed fixture revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: fixture
+          persist-credentials: false
+      - name: Check out the controlled product source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ matrix.source == 'baseline' && '98e9049c00b167200d39774a53f7edca77d9dc4e' || github.event.pull_request.head.sha || github.sha }}
+          path: subject
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Record product identity and overlay identical test-only fixtures
+        env:
+          COMPARISON_SOURCE: ${{ matrix.source }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/moonberry-gather scripts/testing/recovery-dom
+          fixture="$GITHUB_WORKSPACE/fixture"
+          {
+            echo "Native-clock product comparison: $COMPARISON_SOURCE"
+            echo 'No mocked-clock browser baseline is rerun. The separate installed-clock control deliberately selects adversarial internal continuation order; it does not establish browser-native ordering or a passed application test.'
+            git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:supabase HEAD:static
+            git -C "$fixture" rev-parse HEAD HEAD^{tree}
+            node --version
+          } > artifacts/moonberry-gather/comparison-source.txt
+          expected_src=7e9fcfb1af33d0a09db4b2dfaaccd63d6f23bc0e
+          if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
+          test "$(git rev-parse HEAD:src)" = "$expected_src"
+          cmp package.json "$fixture/package.json"
+          cmp package-lock.json "$fixture/package-lock.json"
+          test "$(git rev-parse HEAD:static)" = "$(git -C "$fixture" rev-parse HEAD:static)"
+          cp -a "$fixture/scripts/testing/moonberry-gather-preview/." scripts/testing/moonberry-gather-preview/
+          cp "$fixture/scripts/testing/recovery-dom/reproduce-clock-overlap.cjs" scripts/testing/recovery-dom/
+          cp "$fixture/scripts/testing/recovery-dom/verify-native-layout-results.mjs" scripts/testing/recovery-dom/
+          git diff --exit-code -- src supabase package.json package-lock.json static services
+          find scripts/testing/moonberry-gather-preview -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/moonberry-gather/fixture-sha256.txt
+          (cd "$fixture" && find scripts/testing/moonberry-gather-preview -type f -print0 | sort -z | xargs -0 sha256sum) > artifacts/moonberry-gather/expected-fixture-sha256.txt
+          cmp artifacts/moonberry-gather/fixture-sha256.txt artifacts/moonberry-gather/expected-fixture-sha256.txt
+          sha256sum package.json package-lock.json scripts/testing/recovery-dom/reproduce-clock-overlap.cjs scripts/testing/recovery-dom/verify-native-layout-results.mjs > artifacts/moonberry-gather/tooling-sha256.txt
+          git status --short > artifacts/moonberry-gather/test-overlay-status.txt
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/svelte-kit sync
+      - run: ./node_modules/.bin/svelte-check --tsconfig scripts/testing/moonberry-gather-preview/tsconfig.json
+      - name: Record FIFO and adversarial internal clock-ordering experiments
+        run: |
+          set -euo pipefail
+          node scripts/testing/recovery-dom/reproduce-clock-overlap.cjs "$PWD" | tee artifacts/moonberry-gather/clock-overlap-control.json
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Require three native-clock baseline or candidate passes
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-medium-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=3 --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/native-layout-comparison.log
+          node scripts/testing/recovery-dom/verify-native-layout-results.mjs comparison
+          git diff --exit-code -- src supabase package.json package-lock.json static services
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-layout-comparison-${{ matrix.source }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: subject/artifacts/moonberry-gather/
           if-no-files-found: error
           retention-days: 14
 
@@ -253,7 +297,7 @@ jobs:
 
   recovery-release-gate:
     if: always()
-    needs: [aggregate, dom-recovery, portal-browser, three-layout-stress, world-service, database-boundaries]
+    needs: [aggregate, dom-recovery, portal-browser, three-layout-stress, native-layout-comparison, world-service, database-boundaries]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
