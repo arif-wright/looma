@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const [kind, filename] = process.argv.slice(2);
-const expected = { neon: 3, portal: 52 }[kind];
-assert(expected, 'Expected neon or portal report');
+const expected = { neon: 3, portal: 52, start: 32, legacy: 17 }[kind];
+assert(expected, 'Expected neon, portal, start or legacy report');
 const report = JSON.parse(readFileSync(filename, 'utf8'));
 assert.equal(report.success, true, `${kind}: test process must succeed`);
 assert.equal(report.numTotalTests, expected, `${kind}: all recovery cases must be discovered`);

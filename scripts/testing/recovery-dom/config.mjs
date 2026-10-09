@@ -3,12 +3,12 @@ import { compile } from 'svelte/compiler';
 
 export const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const fixture = `${repository}scripts/testing/moonberry-gather-preview/`;
-const mockedImports = ['$app/navigation', '$lib/games/endlessRunner', '$lib/games/audio',
-  '$lib/games/runnerLanternwaySkin', '$lib/stores/companionRituals', '$lib/games/state',
+const mockedImports = ['$app/stores', '$lib/supabase/client', '$app/navigation', '$lib/games/endlessRunner', '$lib/games/audio',
+  '$lib/games/runnerLanternwaySkin', '$lib/games/orbfieldSkin', '$lib/stores/companionRituals', '$lib/games/state',
   '$lib/stores/companions', '$lib/utils/analytics', '$lib/client/events/sendEvent', '$lib/stores/companionReactions'];
 
 export function componentConfig(kind) {
-  const neon = kind === 'neon';
+  const neon = kind === 'neon' || kind === 'start';
   return {
     root: fileURLToPath(new URL('.', import.meta.url)),
     plugins: [{
@@ -24,6 +24,7 @@ export function componentConfig(kind) {
     resolve: {
       conditions: ['browser'],
       alias: [
+        ...(neon ? [{ find: './orbfieldSkin', replacement: 'recovery-test-mock:$lib/games/orbfieldSkin' }] : []),
         ...(neon ? mockedImports.map(id => ({ find: id, replacement: `recovery-test-mock:${id}` })) : [
           { find: '$app/environment', replacement: `${fixture}environment.ts` },
           { find: '@colyseus/sdk', replacement: `${fixture}fake-colyseus.ts` }

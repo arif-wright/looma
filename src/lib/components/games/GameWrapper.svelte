@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { dev } from '$app/environment';
+  import { page } from '$app/stores';
+  import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import {
     enterFullscreen,
@@ -18,13 +20,16 @@ import {
   toggleAudioEnabled
 } from '$lib/games/audio';
   import {
+    abandonSession,
     awardShards,
     awardXP,
     completeSession,
     getMood,
+    GameClientError,
     getGameErrorKind,
     getGameErrorMessage,
     startSession,
+    watchGameOwner,
     type GameErrorKind,
     type GameSessionResult,
     type GameSessionServerResult,
@@ -34,7 +39,7 @@ import {
   import '$lib/progression/listeners';
 
   export let gameId: string;
-  export let onLoaded: (() => void | Promise<void>) | null = null;
+  export let onLoaded: ((options?: { signal: AbortSignal }) => void | Promise<void>) | null = null;
   export let ready = false;
   export let gameInstance: { pause?: () => void; resume?: () => void; reset?: () => void } | null = null;
 
@@ -55,9 +60,13 @@ import {
   let containerEl: HTMLDivElement | null = null;
   let overlayVisible = true;
   let activating = false;
+  let mounted = false;
+  let startGeneration = 0;
+  let startController: AbortController | null = null;
   let fullscreenActive = false;
   let hasLoaded = false;
   let overlayError: string | null = null;
+  let startRecoveryAction: 'refresh' | 'signin' | null = null;
   let completionFailure: { kind: GameErrorKind; message: string } | null = null;
   let isPaused = false;
   let showResults = false;
@@ -102,7 +111,7 @@ import {
     sessionStartClock = typeof window !== 'undefined' ? performance.now() : Date.now();
     sessionActive = true;
     dispatch('sessionstart', { sessionId: context.sessionId, context });
-    startMoodUpdates();
+    if (mounted && sessionActive && currentSessionId === context.sessionId) startMoodUpdates();
   };
 
   const resetSessionContext = () => {
@@ -116,42 +125,108 @@ import {
     stopSound('bgm');
   };
 
-  const startNewSession = async () => {
-    const context = await startSession(gameId);
-    applySessionContext(context);
+  const cancelActivation = () => {
+    ++startGeneration;
+    startController?.abort();
+    startController = null;
+    if (activating) {
+      if (currentSessionId) abandonSession(currentSessionId);
+      resetSessionContext();
+    }
+    activating = false;
+  };
+
+  const loadGame = async (signal: AbortSignal) => {
+    const load = onLoaded;
+    if (hasLoaded || !load) return;
+    let finishLoadWait = () => {};
+    await new Promise<void>((resolve, reject) => {
+      const interrupted = () => reject(new DOMException('Game loading was interrupted.', 'AbortError'));
+      const timer = setTimeout(() => reject(new GameClientError({
+        message: 'The game took too long to load. Its session may already count toward your daily limit. Start a new run when ready.',
+        kind: 'generic',
+        code: 'game_load_timeout'
+      })), 30_000);
+      signal.addEventListener('abort', interrupted, { once: true });
+      void Promise.resolve().then(() => {
+        if (signal.aborted) throw new DOMException('Game loading was interrupted.', 'AbortError');
+        return load({ signal });
+      }).then(resolve, reject);
+      finishLoadWait = () => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', interrupted);
+      };
+    }).finally(() => finishLoadWait());
   };
 
   const activateGame = async () => {
-    if (!containerEl || activating) return;
+    if (!mounted || !containerEl || activating || sessionActive) return;
     activating = true;
+    const generation = ++startGeneration;
+    const controller = new AbortController();
+    startController = controller;
+    const isCurrent = () => mounted && generation === startGeneration && !controller.signal.aborted;
+    let startedSessionId: string | null = null;
     overlayError = null;
     ready = false;
     try {
-      await enterFullscreen(containerEl);
+      // These optional browser prompts must not hold the session request open.
+      void enterFullscreen(containerEl, { signal: controller.signal }).then(() => {
+        if (isCurrent()) return requestLandscape({ signal: controller.signal });
+      }).catch((err) => {
+        if (isCurrent()) console.info('[GameWrapper] fullscreen preflight unavailable', err);
+      });
       playSound('bgm', { loop: true });
-      await requestLandscape();
-      await startNewSession();
-      overlayVisible = false;
-      if (!hasLoaded && typeof onLoaded === 'function') {
-        await onLoaded();
+      const context = await startSession(gameId, undefined, undefined, {
+        signal: controller.signal, ownerId: get(page).data.user?.id ?? null
+      });
+      startedSessionId = context.sessionId;
+      if (!isCurrent()) {
+        abandonSession(context.sessionId);
+        return;
       }
+      applySessionContext(context);
+      if (!isCurrent()) return;
+      await loadGame(controller.signal);
+      if (!isCurrent()) return;
+      overlayVisible = false;
       hasLoaded = true;
       ready = true;
     } catch (err) {
-      stopSound('bgm');
+      if (!mounted || generation !== startGeneration) return;
+      controller.abort();
+      if (startedSessionId) abandonSession(startedSessionId);
+      resetSessionContext();
       console.error('[GameWrapper] activation failed', err);
       overlayVisible = true;
       overlayError = getGameErrorMessage(err, 'start');
+      startRecoveryAction = getGameErrorKind(err, 'start') === 'unauthorized'
+        ? 'signin'
+        : (err as { code?: string })?.code === 'start_account_changed' ? 'refresh' : null;
       dispatch('sessionerror', {
         stage: 'start',
         kind: getGameErrorKind(err, 'start'),
         message: overlayError
       });
-      ready = false;
     } finally {
-      syncContainerSize();
-      updateFullscreenState();
-      activating = false;
+      if (generation === startGeneration) {
+        // Retain the signal until reset/unmount so optional fullscreen work stays cancellable.
+        activating = false;
+        if (mounted) {
+          syncContainerSize();
+          updateFullscreenState();
+        }
+      }
+    }
+  };
+
+  const handleStartAction = () => {
+    if (startRecoveryAction === 'refresh') {
+      window.location.reload();
+    } else if (startRecoveryAction === 'signin') {
+      handleSignIn();
+    } else {
+      void activateGame();
     }
   };
 
@@ -183,8 +258,10 @@ import {
   };
 
   const refreshMood = async () => {
+    const sessionId = currentSessionId;
     try {
-      mood = await getMood();
+      const nextMood = await getMood();
+      if (mounted && sessionId === currentSessionId) mood = nextMood;
     } catch (err) {
       console.warn('[GameWrapper] failed to fetch companion mood', err);
     }
@@ -304,6 +381,7 @@ import {
   }
 
   const handleQuit = async () => {
+    cancelActivation();
     isPaused = false;
     showResults = false;
     if (sessionActive && currentSessionId) {
@@ -323,6 +401,7 @@ import {
   };
 
   const handlePlayAgain = () => {
+    cancelActivation();
     completionFailure = null;
     resetSessionContext();
     showResults = false;
@@ -340,11 +419,13 @@ import {
   }
 
   const handleBackToHub = () => {
+    cancelActivation();
     completionFailure = null;
     goto('/app/games');
   };
 
   const handleSignIn = () => {
+    cancelActivation();
     completionFailure = null;
     goto('/app/auth');
   };
@@ -378,6 +459,16 @@ import {
   $: moodClass = mood?.state ? `mood-${mood.state}` : '';
 
   onMount(() => {
+    mounted = true;
+    const stopWatchingOwner = watchGameOwner((ownerId) => {
+      if (!activating) return;
+      cancelActivation();
+      overlayVisible = true;
+      startRecoveryAction = ownerId ? 'refresh' : 'signin';
+      overlayError = ownerId
+        ? 'Your account changed while starting. Refresh the page before starting a new run.'
+        : 'You signed out while starting. Sign in before starting a new run.';
+    }, get(page).data.user?.id ?? null);
     syncContainerSize();
     updateFullscreenState();
 
@@ -395,6 +486,9 @@ import {
     document.addEventListener('fullscreenchange', onFullscreenChange);
 
     return () => {
+      mounted = false;
+      cancelActivation();
+      stopWatchingOwner();
       window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
@@ -463,10 +557,10 @@ import {
   </div>
 
   {#if overlayVisible}
-    <button class="start-overlay" type="button" on:click={activateGame} disabled={activating} aria-live="polite">
+    <button class="start-overlay" type="button" on:click={handleStartAction} disabled={activating} aria-live="polite">
       <div class="pulse-circle"></div>
       <div class="start-orb"></div>
-      <h2 class="start-title">{activating ? 'Preparing…' : overlayError ? 'Tap to Retry' : 'Tap to Begin'}</h2>
+      <h2 class="start-title">{activating ? 'Preparing…' : startRecoveryAction === 'refresh' ? 'Refresh page' : startRecoveryAction === 'signin' ? 'Sign in' : overlayError ? 'Start new run' : 'Tap to Begin'}</h2>
       <p class="start-subtitle">Enter fullscreen to play</p>
       {#if overlayError}
         <span class="activation-hint">{overlayError}</span>

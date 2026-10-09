@@ -11,6 +11,13 @@ const h = vi.hoisted(() => ({
   }),
   rituals: vi.fn(), applyPlayerState: vi.fn(), goto: vi.fn()
 }));
+vi.mock('$app/stores', () => ({ page: { subscribe: (run: any) => { run({ data: { user: { id: 'local-owner' } } }); return () => {}; } } }));
+vi.mock('$lib/supabase/client', () => ({ createSupabaseBrowserClient: () => ({ auth: {
+  onAuthStateChange: (callback: any) => {
+    void Promise.resolve().then(() => callback('INITIAL_SESSION', { user: { id: 'local-owner' } }));
+    return { data: { subscription: { unsubscribe: vi.fn() } } };
+  }
+} }) }));
 vi.mock('$app/navigation', () => ({ goto: h.goto }));
 vi.mock('$lib/games/endlessRunner', () => ({ createEndlessRunner: h.createGame }));
 vi.mock('$lib/games/audio', () => ({

@@ -39,3 +39,6 @@ export function getGameErrorKind(_error: unknown, context = 'load'): 'network' |
 }
 
 export function abandonSession(sessionId: string) { record('abandon', sessionId); }
+
+// Preview fixtures contain no authenticated owner or live Auth client.
+export const watchGameOwner = (_onChange: (ownerId: string | null) => void, _expectedOwnerId?: string | null) => () => {};

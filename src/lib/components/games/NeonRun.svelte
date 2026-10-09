@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { get } from 'svelte/store';
+  import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { createEndlessRunner, type EndlessRunnerOptions, type EndlessRunnerInstance, type EndlessRunnerState } from '$lib/games/endlessRunner';
   import type { LoomaGameResult } from '$lib/games/types';
-  import { startSession, completeSession, abandonSession, getGameErrorKind, getGameErrorMessage,
+  import { startSession, completeSession, abandonSession, watchGameOwner, getGameErrorKind, getGameErrorMessage,
     type GameSessionStart, type GameSessionResult, type GameSessionServerResult } from '$lib/games/sdk';
   import { playSound, stopSound, isAudioEnabled, toggleAudioEnabled } from '$lib/games/audio';
   import { loadRunnerLanternwaySkin, RUNNER_LANTERNWAY_URLS, type RunnerLanternwayAssets } from '$lib/games/runnerLanternwaySkin';
@@ -25,6 +27,7 @@
   let game: EndlessRunnerInstance | null = null;
   let session: GameSessionStart | null = null;
   let mounted = false;
+  let startController: AbortController | null = null;
   let generation = 0;
   let pauseOnStart = false;
   let minimumDuration = 10_000;
@@ -33,6 +36,7 @@
   let reward: GameSessionServerResult | null = null;
   let errorMessage = '';
   let signInRequired = false;
+  let refreshRequired = false;
   let audioOn = isAudioEnabled();
   let art: { assets: RunnerLanternwayAssets; complete: boolean } = { assets: {}, complete: false };
   let artState: 'loading' | 'ready' | 'fallback' = 'loading';
@@ -43,6 +47,7 @@
     powerups: { shield: true, magnet: 0, doubleShards: 0, slowMo: 0, dash: 0, dreamSurge: 0 } });
   let state = initialState();
 
+  const cancelStart = () => { startController?.abort(); startController = null; };
   const isCurrent = (token: number) => mounted && generation === token;
   const stopGame = () => { game?.destroy(); game = null; stopSound('bgm'); };
   const releaseSession = () => { if (session) abandonSession(session.sessionId); session = null; };
@@ -100,14 +105,17 @@
   const startRun = async () => {
     if (!mounted || !canvasEl || ['starting', 'playing', 'paused', 'saving'].includes(phase)) return;
     const token = ++generation;
+    cancelStart();
+    const controller = new AbortController();
+    startController = controller;
     stopGame(); releaseSession();
     phase = 'starting'; pauseOnStart = document.hidden;
-    result = null; reward = null; errorMessage = ''; signInRequired = false; state = initialState();
+    result = null; reward = null; errorMessage = ''; signInRequired = false; refreshRequired = false; state = initialState();
     try {
       // Finish bounded cosmetic loading before opening a server session.
       const loadedArt = artTask ? await artTask : art;
       if (!isCurrent(token)) return;
-      const context = await startSession('runner', 'standard', { clientVersion: '1.0.0', source: 'neon-run' });
+      const context = await startSession('runner', 'standard', { clientVersion: '1.0.0', source: 'neon-run' }, { signal: controller.signal, ownerId: get(page).data.user?.id ?? null });
       if (!isCurrent(token)) { abandonSession(context.sessionId); return; }
       session = context;
       const min = context.caps.minDurationMs;
@@ -130,7 +138,10 @@
       stopGame(); releaseSession();
       signInRequired = getGameErrorKind(error, 'start') === 'unauthorized';
       errorMessage = getGameErrorMessage(error, 'start');
+      refreshRequired = !signInRequired && typeof error === 'object' && error !== null && 'code' in error && error.code === 'start_account_changed';
       phase = 'start-error'; void focusStatus(token);
+    } finally {
+      if (startController === controller) startController = null;
     }
   };
 
@@ -177,14 +188,26 @@
     await tick();
     if (mounted && viewGeneration === token && phase === 'playing') canvasEl?.focus({ preventScroll: true });
   };
-  const exit = () => { ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/games'); };
-  const signIn = () => { ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/auth'); };
+  const exit = () => { ++generation; ++viewGeneration; cancelStart(); stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/games'); };
+  const refreshPage = () => { ++generation; cancelStart(); stopGame(); releaseSession(); window.location.reload(); };
+  const signIn = () => { ++generation; ++viewGeneration; cancelStart(); stopGame(); releaseSession(); void releaseFullscreen(); void goto('/app/auth'); };
   const onBackground = () => { if (phase === 'starting') pauseOnStart = true; else pauseRun(); };
   const onVisibility = () => { if (document.hidden) onBackground(); };
   const toggleAudio = () => { audioOn = toggleAudioEnabled(); };
 
   onMount(() => {
     mounted = true;
+    const stopWatchingOwner = watchGameOwner((ownerId) => {
+      if (phase !== 'starting') return;
+      const token = ++generation;
+      cancelStart(); stopGame(); releaseSession();
+      result = null; reward = null;
+      signInRequired = ownerId === null;
+      refreshRequired = !signInRequired;
+      errorMessage = ownerId ? 'Your account changed while starting. Refresh this page before starting again. Any session already created was not cancelled.'
+        : 'You were signed out while starting. Sign in before starting again. Any session already created was not cancelled.';
+      phase = 'start-error'; void focusStatus(token);
+    }, get(page).data.user?.id ?? null);
     fullscreenAvailable = Boolean(document.fullscreenEnabled && typeof shellEl?.requestFullscreen === 'function');
     document.addEventListener('fullscreenchange', syncFullscreen);
     const artController = new AbortController();
@@ -197,7 +220,7 @@
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onBackground);
     return () => {
-      mounted = false; artController.abort(); motionPreference = null; ++generation; ++viewGeneration; stopGame(); releaseSession(); void releaseFullscreen();
+      mounted = false; stopWatchingOwner(); artController.abort(); motionPreference = null; ++generation; ++viewGeneration; cancelStart(); stopGame(); releaseSession(); void releaseFullscreen();
       document.removeEventListener('fullscreenchange', syncFullscreen);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBackground);
@@ -275,7 +298,7 @@
           <p>Score {result?.score}. Checking the server’s result.</p>
         {:else if phase === 'start-error'}
           <p>{errorMessage}</p>
-          <button class="primary" type="button" on:click={signInRequired ? signIn : startRun}>{signInRequired ? 'Sign in' : 'Try again'}</button>
+          <button class="primary" type="button" on:click={signInRequired ? signIn : refreshRequired ? refreshPage : startRun}>{signInRequired ? 'Sign in' : refreshRequired ? 'Refresh page' : 'Start new run'}</button>
         {:else}
           <p>Score {result?.score} · {((result?.durationMs ?? 0) / 1000).toFixed(1)} seconds</p>
           {#if reward}

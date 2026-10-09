@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"], "strict": true,
+    "allowJs": true, "checkJs": false, "esModuleInterop": true,
+    "resolveJsonModule": true, "skipLibCheck": true,
+    "types": ["node", "svelte", "vite/client"], "baseUrl": "../../..",
+    "paths": {
+      "$lib/supabase/client": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/games/state": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/stores/companions": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/stores/companionRituals": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/stores/companionReactions": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/utils/analytics": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/client/events/sendEvent": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/games/audio": ["scripts/testing/start-recovery-preview/collaborators.ts"],
+      "$lib/games/endlessRunner": ["scripts/testing/start-recovery-preview/engines.ts"],
+      "$lib/games/runnerLanternwaySkin": ["scripts/testing/start-recovery-preview/skins.ts"],
+      "$app/stores": ["scripts/testing/start-recovery-preview/navigation.ts"],
+      "$app/navigation": ["scripts/testing/start-recovery-preview/navigation.ts"],
+      "$lib/*": ["src/lib/*"]
+    }
+  },
+  "include": ["./*.ts", "./*.svelte", "../../../src/lib/components/games/NeonRun.svelte", "../../../src/lib/games/GameShell.svelte", "../../../src/lib/games/sdk.ts"],
+  "exclude": [".build", ".results"]
+}

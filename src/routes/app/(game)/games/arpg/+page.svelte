@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { get } from 'svelte/store';
   import BackgroundStack from '$lib/ui/BackgroundStack.svelte';
   import OrbPanel from '$lib/components/ui/OrbPanel.svelte';
   import LeaderboardTabs from '$lib/components/games/LeaderboardTabs.svelte';
@@ -8,10 +10,13 @@
   import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
   import { bootGame, shutdownGame } from '$lib/games/arpg/main';
   import {
+    abandonSession,
     completeSession,
     fetchPlayerState,
+    getGameErrorKind,
     getGameErrorMessage,
     startSession,
+    watchGameOwner,
     type SessionAchievement
   } from '$lib/games/sdk';
   import { applyPlayerState, recordRewardResult } from '$lib/games/state';
@@ -73,6 +78,24 @@
   let ritualCompletions: CompanionRitual[] = [];
   let errorMessage: string | null = null;
   let status = 'Preparing Memvoya ARPG…';
+  let mounted = false;
+  let startGeneration = 0;
+  let startController: AbortController | null = null;
+  let startFailed = false;
+  let startRecoveryAction: 'refresh' | 'signin' | null = null;
+
+  const cancelStart = () => {
+    ++startGeneration;
+    startController?.abort();
+    startController = null;
+    if (sessionLoading && session) abandonSession(session.sessionId);
+    if (sessionLoading) {
+      session = null;
+      sessionStartWall = 0;
+      sessionStartClock = 0;
+    }
+    sessionLoading = false;
+  };
 
   type LeaderboardState = {
     rows: LeaderboardDisplayRow[];
@@ -166,31 +189,69 @@
     : null;
 
   const startRun = async () => {
-    if (sessionLoading || sessionFinalizing || session) return;
-    if (!containerEl) {
-      await tick();
-    }
-    if (!containerEl) return;
-
+    if (!mounted || sessionLoading || sessionFinalizing || session) return;
+    // Acquire the guard before the first await, including the container tick.
     sessionLoading = true;
+    const generation = ++startGeneration;
+    const controller = new AbortController();
+    startController = controller;
+    const isCurrent = () => mounted && generation === startGeneration && !controller.signal.aborted;
+    let startedSession: SessionContext | null = null;
+    let bootTimer: ReturnType<typeof setTimeout> | null = null;
+    let bootTimedOut = false;
     reward = null;
     errorMessage = null;
+    startFailed = false;
     status = 'Connecting to Memvoya ARPG…';
 
     try {
-      session = await startSession(slug, 'standard', {
+      if (!containerEl) await tick();
+      if (!isCurrent()) return;
+      if (!containerEl) throw new Error('The game container is unavailable.');
+      const target = containerEl;
+      startedSession = await startSession(slug, 'standard', {
         clientVersion: minVersion,
         source: 'arpg_page'
-      });
+      }, { signal: controller.signal, ownerId: get(page).data.user?.id ?? null });
+      if (!isCurrent()) {
+        abandonSession(startedSession.sessionId);
+        return;
+      }
+      session = startedSession;
       sessionStartWall = Date.now();
       sessionStartClock = typeof performance !== 'undefined' ? performance.now() : sessionStartWall;
-      await bootGame(containerEl, { onGameOver: finalizeRun });
+      bootTimer = setTimeout(() => {
+        bootTimedOut = true;
+        controller.abort();
+      }, 30_000);
+      await bootGame(target, {
+        signal: controller.signal,
+        onGameOver: (score) => {
+          if (isCurrent()) void finalizeRun(score);
+        }
+      });
+      if (!isCurrent()) return;
       status = 'Session live — survive and dash!';
     } catch (err) {
-      errorMessage = getGameErrorMessage(err, 'start');
+      if (!mounted || generation !== startGeneration) return;
+      if (startedSession) abandonSession(startedSession.sessionId);
+      session = null;
+      sessionStartWall = 0;
+      sessionStartClock = 0;
+      errorMessage = bootTimedOut
+        ? 'The game took too long to load. Its session may already count toward your daily limit. Start a new run when ready.'
+        : getGameErrorMessage(err, 'start');
+      startFailed = true;
+      startRecoveryAction = getGameErrorKind(err, 'start') === 'unauthorized'
+        ? 'signin'
+        : (err as { code?: string })?.code === 'start_account_changed' ? 'refresh' : null;
       status = 'Session failed to start';
     } finally {
-      sessionLoading = false;
+      if (bootTimer) clearTimeout(bootTimer);
+      if (generation === startGeneration) {
+        startController = null;
+        sessionLoading = false;
+      }
     }
   };
 
@@ -307,29 +368,50 @@
 
   const replay = () => {
     if (sessionLoading || sessionFinalizing) return;
-    void startRun();
+    if (startRecoveryAction === 'refresh') {
+      window.location.reload();
+    } else if (startRecoveryAction === 'signin') {
+      void goto('/app/auth');
+    } else {
+      void startRun();
+    }
   };
 
-  const goBack = () => goto('/app/games');
+  const goBack = () => {
+    cancelStart();
+    if (containerEl) shutdownGame(containerEl);
+    void goto('/app/games');
+  };
 
   onMount(() => {
-    let cancelled = false;
+    mounted = true;
+    const target = containerEl;
+    const stopWatchingOwner = watchGameOwner((ownerId) => {
+      if (!sessionLoading) return;
+      cancelStart();
+      if (target) shutdownGame(target);
+      startFailed = true;
+      startRecoveryAction = ownerId ? 'refresh' : 'signin';
+      errorMessage = ownerId
+        ? 'Your account changed while starting. Refresh the page before starting a new run.'
+        : 'You signed out while starting. Sign in before starting a new run.';
+      status = 'Start interrupted';
+    }, get(page).data.user?.id ?? null);
     const bootstrap = async () => {
       await tick();
-      if (cancelled) return;
+      if (!mounted) return;
       await startRun();
-      void loadLeaderboard('alltime');
+      if (mounted) void loadLeaderboard('alltime');
     };
     void bootstrap();
     return () => {
-      cancelled = true;
-      shutdownGame();
+      mounted = false;
+      cancelStart();
+      stopWatchingOwner();
+      if (target) shutdownGame(target);
     };
   });
 
-  onDestroy(() => {
-    shutdownGame();
-  });
 </script>
 
 <svelte:head>
@@ -367,7 +449,7 @@
           on:click={replay}
           disabled={sessionLoading || sessionFinalizing || !!session}
         >
-          {session ? 'Run in progress…' : sessionLoading ? 'Starting…' : 'Replay'}
+          {sessionLoading ? 'Starting…' : session ? 'Run in progress…' : startRecoveryAction === 'refresh' ? 'Refresh page' : startRecoveryAction === 'signin' ? 'Sign in' : startFailed ? 'Start new run' : 'Replay'}
         </button>
         <button class="toast-button secondary" type="button" on:click={goBack}>
           Back to hub

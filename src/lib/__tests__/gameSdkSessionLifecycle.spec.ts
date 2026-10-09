@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
+vi.mock('$lib/supabase/client', () => ({ createSupabaseBrowserClient: () => ({ auth: {
+  onAuthStateChange: (callback: any) => {
+    void Promise.resolve().then(() => callback('INITIAL_SESSION', { user: { id: 'local-owner' } }));
+    return { data: { subscription: { unsubscribe: vi.fn() } } };
+  }
+} }) }));
 vi.mock('$lib/games/state', () => ({
   applyPlayerState: vi.fn(),
   getPlayerProgressSnapshot: vi.fn(() => ({ xp: 0, currency: 0 }))

@@ -87,6 +87,7 @@ import type {
 import { getActiveCompanionSnapshot } from '$lib/stores/companions';
 import { sendAnalytics } from '$lib/utils/analytics';
 import { sendEvent } from '$lib/client/events/sendEvent';
+import { createSupabaseBrowserClient } from '$lib/supabase/client';
 
 export const CLIENT_VERSION = '1.0.0';
 const SESSION_GAMES_PLAYED_KEY = 'looma_session_games_played';
@@ -228,10 +229,65 @@ export const getGameErrorMessage = (err: unknown, context: GameErrorContext = 'l
 export const getGameErrorKind = (err: unknown, context: GameErrorContext = 'load') =>
   toGameClientError(err, context).kind;
 
+// Auth events only invalidate stale client work. The start route remains the
+// authority for authentication/ownership; no client identity is sent as proof.
+const observeGameOwner = (onChange: (ownerId: string | null) => void, expectedOwnerId?: string | null) => {
+  let initialized = false;
+  let ownerId: string | null = null;
+  let stopped = false;
+  let ready!: (ownerId: string | null) => void;
+  const initialOwner = new Promise<string | null>((resolve) => { ready = resolve; });
+  const { data: { subscription } } = createSupabaseBrowserClient().auth.onAuthStateChange((_event, session) => {
+    if (stopped) return;
+    const nextOwner = session?.user?.id ?? null;
+    if (!initialized) {
+      initialized = true; ownerId = nextOwner; ready(ownerId);
+      if (expectedOwnerId !== undefined && ownerId !== expectedOwnerId) onChange(ownerId);
+    } else if (nextOwner !== ownerId) {
+      ownerId = nextOwner;
+      onChange(ownerId);
+    }
+  });
+  return { initialOwner, stop: () => { stopped = true; subscription.unsubscribe(); } };
+};
+
+/** Watch the current screen as well as pending requests, including preload/boot. */
+export const watchGameOwner = (onChange: (ownerId: string | null) => void, expectedOwnerId?: string | null): (() => void) => {
+  try { return observeGameOwner(onChange, expectedOwnerId).stop; }
+  catch {
+    // Mounting a screen must remain safe when Auth is unavailable. startSession
+    // independently initializes Auth and fails closed before sending a request.
+    return () => {};
+  }
+};
+
+export type GameSessionStartOptions = { signal?: AbortSignal; ownerId?: string | null };
+const START_REQUEST_TIMEOUT_MS = 30_000;
+const UNCERTAIN_START_MESSAGE = 'We couldn’t confirm the start. A session may already exist. Starting again creates a new session and may count toward your daily limit.';
+const uncertainStart = (code: string, status: number | null = null) => new GameClientError({
+  message: UNCERTAIN_START_MESSAGE, kind: 'network', code, status
+});
+const cancelledStart = () => new GameClientError({
+  message: 'Starting was interrupted. Any session already created was not cancelled.', kind: 'generic', code: 'start_cancelled'
+});
+
+const validStartResponse = (value: unknown): value is StartResponse => {
+  if (!isRecord(value) || typeof value.sessionId !== 'string' || !value.sessionId.trim() ||
+      typeof value.nonce !== 'string' || !value.nonce.trim() ||
+      !Number.isFinite(value.serverTime) || value.serverTime < 0 || !isRecord(value.caps)) return false;
+  const caps = value.caps;
+  return Number.isSafeInteger(caps.minDurationMs) && caps.minDurationMs >= 0 &&
+    Number.isSafeInteger(caps.maxDurationMs) && caps.maxDurationMs >= Math.max(1, caps.minDurationMs) &&
+    Number.isSafeInteger(caps.maxScore) && caps.maxScore >= 0 &&
+    Number.isFinite(caps.maxScorePerMin) && caps.maxScorePerMin > 0 &&
+    typeof caps.minClientVer === 'string' && isSemverLike(caps.minClientVer);
+};
+
 export async function startSession(
   gameId: string,
   mode?: string,
-  clientMeta?: Record<string, unknown>
+  clientMeta?: Record<string, unknown>,
+  options?: GameSessionStartOptions
 ): Promise<StartResponse>;
 export async function startSession(
   gameId: string,
@@ -240,7 +296,8 @@ export async function startSession(
 export async function startSession(
   gameId: string,
   second?: StartSessionMeta | string,
-  third?: Record<string, unknown>
+  third?: Record<string, unknown>,
+  options: GameSessionStartOptions = {}
 ): Promise<StartResponse> {
   let mode: string | undefined;
   let clientMeta: Record<string, any> | undefined;
@@ -267,36 +324,64 @@ export async function startSession(
     ...(clientMeta ? { clientMeta } : {})
   };
 
+  const controller = new AbortController();
+  let interruption: GameClientError | null = null;
+  let interrupt!: (error: GameClientError) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { interrupt = reject; });
+  const cancel = (error: GameClientError) => {
+    if (interruption) return;
+    interruption = error;
+    // Reject before abort so an AbortError cannot obscure the precise outcome.
+    interrupt(error); controller.abort();
+  };
+  const onAbort = () => cancel(cancelledStart());
+  let stopWatching: (() => void) | undefined;
+  let requestSent = false;
+  const timer = setTimeout(() => cancel(requestSent ? uncertainStart('start_timeout') : new GameClientError({
+    message: 'We couldn’t check your sign-in. Please try starting again.', kind: 'network', code: 'start_auth_timeout'
+  })), START_REQUEST_TIMEOUT_MS);
+  options.signal?.addEventListener('abort', onAbort, { once: true });
+
   try {
-    const response = await fetch('/api/games/session/start', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        slug: gameId,
-        clientVersion,
-        metadata: {
-          ...(clientMeta ?? {}),
-          gameId,
-          mode: mode ?? null
-        },
-        gameId: startRequest.gameId,
-        mode: startRequest.mode,
-        clientMeta: startRequest.clientMeta
-      })
-    });
-
-    if (!response.ok) {
-      const { payload, code } = await parseApiErrorPayload(response);
-      throw toGameClientError(
-        { status: response.status, code },
-        'start',
-        response.status,
-        code,
-        payload
-      );
-    }
-
-    const payload = (await response.json()) as StartResponse;
+    if (options.signal?.aborted) onAbort();
+    const request = async () => {
+      if (interruption) throw interruption;
+      const owner = observeGameOwner((ownerId) => cancel(new GameClientError({
+        message: ownerId ? 'Your account changed while starting. Refresh this page before starting again. Any session already created was not cancelled.'
+          : 'You were signed out while starting. Sign in before starting again. Any session already created was not cancelled.',
+        kind: ownerId ? 'generic' : 'unauthorized', code: 'start_account_changed'
+      })), options.ownerId);
+      stopWatching = owner.stop;
+      // Establish the account before the request, ignoring same-owner refreshes.
+      const ownerId = await owner.initialOwner;
+      if (interruption) throw interruption;
+      if (!ownerId) throw toGameClientError({ status: 401, code: 'unauthorized' }, 'start');
+      requestSent = true;
+      const response = await fetch('/api/games/session/start', {
+        method: 'POST', signal: controller.signal,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          slug: gameId,
+          clientVersion,
+          metadata: { ...(clientMeta ?? {}), gameId, mode: mode ?? null },
+          gameId: startRequest.gameId,
+          mode: startRequest.mode,
+          clientMeta: startRequest.clientMeta
+        })
+      });
+      if (!response.ok) {
+        const { payload, code } = await parseApiErrorPayload(response);
+        // The route can fail after inserting a session. Do not claim a 5xx
+        // response means no session exists, or retry a non-idempotent start.
+        if (response.status >= 500) throw uncertainStart(code ?? 'start_failed', response.status);
+        throw toGameClientError({ status: response.status, code }, 'start', response.status, code, payload);
+      }
+      return await response.json();
+    };
+    // Race fetch AND body reads. The losing operation has no bookkeeping/events.
+    const payload: unknown = await Promise.race([request(), interrupted]);
+    if (interruption) throw interruption;
+    if (!validStartResponse(payload)) throw uncertainStart('invalid_start');
     const context: SessionContext = {
       ...payload,
       gameId,
@@ -326,7 +411,14 @@ export async function startSession(
     ).catch((err) => console.debug('[games/sdk] start event unavailable', err));
     return payload;
   } catch (err) {
+    if (err instanceof GameClientError) throw err;
+    // A lost/malformed response cannot prove that the insert did not happen.
+    if (requestSent) throw uncertainStart('start_failed');
     throw toGameClientError(err, 'start');
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onAbort);
+    stopWatching?.();
   }
 }
 
