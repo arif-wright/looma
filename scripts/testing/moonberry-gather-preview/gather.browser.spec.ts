@@ -1,6 +1,17 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { performance as testPerformance } from 'node:perf_hooks';
 import { readFileSync, writeFileSync } from 'node:fs';
 const THREE_LAYOUT_TEST = 'Three feedback, gather and independent movement/camera targets never overlap';
+const NATIVE_GATHER_OBSERVATION_MS = 12_000;
+const layoutTimings = new WeakMap<TestInfo, { started: number; phases: Array<{ phase: string; elapsedMs: number }> }>();
+const recordLayoutPhase = (testInfo: TestInfo, phase: string) => {
+  const timing = layoutTimings.get(testInfo);
+  if (!timing) return;
+  const entry = { phase, elapsedMs: Math.round((testPerformance.now() - timing.started) * 10) / 10 };
+  timing.phases.push(entry);
+  console.log('[native-layout-phase]', JSON.stringify({ project: testInfo.project.name,
+    repeat: testInfo.repeatEachIndex, timeoutMs: testInfo.timeout, ...entry }));
+};
 
 const grovePortal = JSON.parse(readFileSync(new URL('../../../services/world-server/src/world/areas.json', import.meta.url), 'utf8'))['wilds-exploration'].portal as { x: number; y: number; targetName: string };
 
@@ -40,6 +51,13 @@ const uncertainty = async (page: Page, timeout = 5_000) => {
 
 const observations = new WeakMap<Page, { errors: string[]; blocked: string[]; sockets: string[] }>();
 test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title === THREE_LAYOUT_TEST && testInfo.project.metadata.renderer === 'three') {
+    // Preserve the original 60-second work envelope and account only for the
+    // newly real deadline observation, previously an immediate virtual jump.
+    testInfo.setTimeout(60_000 + NATIVE_GATHER_OBSERVATION_MS);
+    layoutTimings.set(testInfo, { started: testPerformance.now(), phases: [] });
+    recordLayoutPhase(testInfo, 'case-start');
+  }
   const observed = { errors: [] as string[], blocked: [] as string[], sockets: [] as string[] };
   observations.set(page, observed);
   page.on('pageerror', (error) => observed.errors.push(error.message));
@@ -63,14 +81,31 @@ test.beforeEach(async ({ page }, testInfo) => {
   expect(await page.evaluate(() => window.__MOONBERRY_FIXTURE__.sdk)).toBe('synthetic-colyseus-no-sockets');
   expect(await page.evaluate(() => window.__MOONBERRY_FIXTURE__.tickets)).toBe(1);
 });
-test.afterEach(async ({ page }) => {
-  const observed = observations.get(page)!;
-  expect(observed.blocked, 'No request may leave the local fixture origin').toEqual([]);
-  expect(observed.sockets.filter((url) => {
-    const socket = new URL(url);
-    return socket.origin !== 'ws://127.0.0.1:4178' || socket.pathname !== '/';
-  }), 'Only Vite’s local development socket is allowed; never an application socket').toEqual([]);
-  expect(observed.errors, 'No page exceptions or failed game assets').toEqual([]);
+test.afterEach(async ({ page }, testInfo) => {
+  try {
+    const observed = observations.get(page)!;
+    expect(observed.blocked, 'No request may leave the local fixture origin').toEqual([]);
+    expect(observed.sockets.filter((url) => {
+      const socket = new URL(url);
+      return socket.origin !== 'ws://127.0.0.1:4178' || socket.pathname !== '/';
+    }), 'Only Vite’s local development socket is allowed; never an application socket').toEqual([]);
+    expect(observed.errors, 'No page exceptions or failed game assets').toEqual([]);
+  } finally {
+    const timing = layoutTimings.get(testInfo);
+    if (timing) {
+      recordLayoutPhase(testInfo, 'final');
+      const filename = testInfo.outputPath('layout-phase-timings.json');
+      writeFileSync(filename, JSON.stringify({
+        clock: 'Node monotonic performance; elapsed from beforeEach entry',
+        note: 'The case budget also includes fixture setup before this timing origin.',
+        project: testInfo.project.name, repeat: testInfo.repeatEachIndex,
+        timeoutMs: testInfo.timeout, runnerStatusAtArchive: testInfo.status,
+        reportedDurationMs: testInfo.duration, phases: timing.phases
+      }, null, 2));
+      await testInfo.attach('layout-phase-timings', { path: filename, contentType: 'application/json' });
+      layoutTimings.delete(testInfo);
+    }
+  }
 });
 
 test('keyboard and button share one pending gather and delayed success unlocks both', async ({ page }, testInfo) => {
@@ -222,6 +257,7 @@ test('authoritative proximity and both result states fit the viewport', async ({
 
 test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   test.skip(testInfo.project.metadata.renderer !== 'three', 'Three-only layout; Phaser retains the original HUD.');
+  recordLayoutPhase(testInfo, 'body-start');
   const touch = Boolean(testInfo.project.use.hasTouch);
   const devtools = await page.context().newCDPSession(page);
   const restoreTouch = async () => {
@@ -280,6 +316,7 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     }
   };
   await checkLayout();
+  recordLayoutPhase(testInfo, 'deadline-start');
   const gathersBeforeTimeout = await gatherCount(page);
   const deadlineBefore = await page.evaluate(() => ({ date: Date.now(), performance: performance.now() }));
   let deadlineAfter: { date: number; performance: number } | null = null;
@@ -289,8 +326,9 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     await expect(page.getByRole('button', { name: 'Gathering…', exact: true })).toBeDisabled();
     // Observe the real production 10-second deadline. The 12-second assertion
     // bound allows delivery/rendering; it does not change that deadline.
-    await uncertainty(page, 12_000);
+    await uncertainty(page, NATIVE_GATHER_OBSERVATION_MS);
   } finally {
+    recordLayoutPhase(testInfo, 'deadline-end');
     deadlineAfter = await page.evaluate(() => ({ date: Date.now(), performance: performance.now() }));
     const diagnosticPath = testInfo.outputPath('gather-deadline-diagnostics.json');
     writeFileSync(diagnosticPath, JSON.stringify({ clock: 'native', before: deadlineBefore, after: deadlineAfter }, null, 2));
@@ -312,6 +350,7 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   if (await up.isVisible()) {
     await up.scrollIntoViewIfNeeded();
     const box = (await up.boundingBox())!;
+    recordLayoutPhase(testInfo, 'input-start');
     const sentBeforePress = await page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.length);
     const inputProbe = await page.evaluateHandle(() => {
       const events: Array<{ type: string; time: number; target: string | null }> = [];
@@ -361,7 +400,9 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
       await expect(up).not.toHaveClass(/active/);
       await expect.poll(() => page.evaluate(() => window.__MOONBERRY_FIXTURE__.sent.filter((m) => m.type === 'move').at(-1)?.payload.y)).toBe(0);
       inputPassed = true;
+      recordLayoutPhase(testInfo, 'input-complete');
     } finally {
+      recordLayoutPhase(testInfo, 'input-finished');
       const finalState = await inputProbe.evaluate(probe => probe.snapshot())
         .catch(diagnosticError => ({ diagnosticError: String(diagnosticError) }));
       const diagnosticPath = testInfo.outputPath('touch-movement-diagnostics.json');
@@ -405,14 +446,27 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
   await page.route('**/app/inventory', (route) => route.fulfill({ contentType: 'text/html',
     body: '<!doctype html><title>Synthetic Keepsakes destination</title><p>Local Keepsakes link target only. No inventory or saved rewards.</p>' }));
   const link = page.getByRole('link', { name: 'View in Keepsakes' });
+  recordLayoutPhase(testInfo, 'navigation-start');
+  recordLayoutPhase(testInfo, 'link-action-start');
   if (touch) await link.tap();
   else await link.click();
+  recordLayoutPhase(testInfo, 'link-action-end');
   await expect(page).toHaveURL('http://127.0.0.1:4178/app/inventory');
+  recordLayoutPhase(testInfo, 'inventory-url-reached');
   await expect(page.getByText('Local Keepsakes link target only. No inventory or saved rewards.')).toBeVisible();
+  recordLayoutPhase(testInfo, 'inventory-content-visible');
+  recordLayoutPhase(testInfo, 'goBack-start');
   await page.goBack();
+  recordLayoutPhase(testInfo, 'goBack-end');
   await ready(page);
+  recordLayoutPhase(testInfo, 'goBack-ready');
   await expect(page.locator('.gather-result')).toHaveCount(0);
+  recordLayoutPhase(testInfo, 'goForward-start');
   await page.goForward();
+  recordLayoutPhase(testInfo, 'goForward-end');
   await expect(page).toHaveURL('http://127.0.0.1:4178/app/inventory');
+  recordLayoutPhase(testInfo, 'goForward-url-reached');
+  recordLayoutPhase(testInfo, 'navigation-end');
   await devtools.detach();
+  recordLayoutPhase(testInfo, 'body-end');
 });
