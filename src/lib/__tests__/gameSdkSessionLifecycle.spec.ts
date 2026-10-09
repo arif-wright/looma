@@ -208,6 +208,212 @@ const postedBodies = (endpoint: string) => fetchMock.mock.calls
   .map(([, init]) => JSON.parse(init!.body as string));
 const completionEvents = () => vi.mocked(sendEvent).mock.calls.filter(([type]) => type === 'game.complete');
 
+describe('game SDK bounded completion recovery', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  const timeoutError = { kind: 'network', code: 'request_timeout' };
+  const endpointFor = (stage: 'sign' | 'complete') => stage === 'sign'
+    ? '/api/games/sign' : '/api/games/session/complete';
+
+  for (const stage of ['sign', 'complete'] as const) {
+    for (const stalledPart of ['headers', 'body'] as const) {
+      it(`bounds stalled ${stage} ${stalledPart}, retains exact retry and ignores late resolution`, async () => {
+        const session = await sdk.startSession('runner');
+        const original = { score: 84, success: false, stats: { shards: 4, powerupsUsed: { shield: 1 } } };
+        await vi.advanceTimersByTimeAsync(8123);
+        const endpoint = endpointFor(stage);
+        let release!: (value: any) => void;
+        let timedSignal: AbortSignal | null | undefined;
+        let stall = true;
+        fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+          if (url === endpoint && stall) {
+            stall = false;
+            timedSignal = init?.signal;
+            const pending = new Promise<any>((resolve) => { release = resolve; });
+            // Deliberately ignore abort to prove that a late transport cannot
+            // continue to settlement, erase retry context or award twice.
+            return stalledPart === 'headers' ? pending : { ok: true, json: () => pending } as Response;
+          }
+          if (url === '/api/games/sign') return Response.json({ signature: 'signed' });
+          if (url === '/api/games/session/complete') return Response.json(serverReward);
+          throw new Error(`Unexpected request: ${url}`);
+        });
+        let failure: unknown;
+        const pending = sdk.completeSession(session.sessionId, original).catch((error) => { failure = error; });
+        await vi.advanceTimersByTimeAsync(29_999);
+        expect(failure).toBeUndefined();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(failure).toMatchObject(timeoutError);
+        await pending;
+        expect(timedSignal?.aborted).toBe(true);
+        expect(setItem).not.toHaveBeenCalled();
+        expect(completionEvents()).toEqual([]);
+        expect(applyPlayerState).not.toHaveBeenCalled();
+        expect(postedBodies('/api/games/session/start')).toHaveLength(1);
+
+        const countAfterTimeout = fetchMock.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(fetchMock).toHaveBeenCalledTimes(countAfterTimeout); // No automatic retry.
+        await expect(sdk.completeSession(session.sessionId, { ...original, score: 85 })).rejects.toMatchObject({ code: 'conflict' });
+        expect(fetchMock).toHaveBeenCalledTimes(countAfterTimeout);
+
+        // An explicit identical retry reuses the frozen first duration and stats.
+        expect(await sdk.completeSession(session.sessionId, structuredClone(original))).toEqual(serverReward);
+        const signs = postedBodies('/api/games/sign');
+        expect(signs).toHaveLength(2);
+        expect(signs[1]).toEqual(signs[0]);
+        expect(signs[1]).toMatchObject({ sessionId: session.sessionId, score: 84, durationMs: 8123 });
+        const saves = postedBodies('/api/games/session/complete');
+        expect(saves).toHaveLength(stage === 'complete' ? 2 : 1);
+        if (stage === 'complete') expect(saves[1]).toEqual(saves[0]);
+        expect(saves.at(-1)).toMatchObject({ ...original, durationMs: 8123 });
+        expect(completionEvents()).toHaveLength(1);
+        expect(completionEvents()[0]?.[2]).toEqual({ sessionId: session.sessionId, idempotencyKey: `game.complete:${session.sessionId}` });
+        expect(setItem).toHaveBeenCalledTimes(1);
+
+        const reply = stage === 'sign' ? { signature: 'late-signature' } : { xpDelta: 999, currencyDelta: 999 };
+        release(stalledPart === 'headers' ? Response.json(reply) : reply);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(postedBodies('/api/games/session/complete')).toHaveLength(stage === 'complete' ? 2 : 1);
+        expect(completionEvents()).toHaveLength(1);
+        expect(setItem).toHaveBeenCalledTimes(1);
+        expect(vi.getTimerCount()).toBe(0);
+      });
+    }
+  }
+
+  it('coalesces repeated clicks before and after a timeout without a late response clearing the retry', async () => {
+    const session = await sdk.startSession('runner');
+    const releases: Array<(response: Response) => void> = [];
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/games/sign') return Response.json({ signature: 'signed' });
+      if (url === '/api/games/session/complete') return new Promise((resolve) => releases.push(resolve));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    const first = sdk.completeSession(session.sessionId, run).catch((error) => error);
+    const twin = sdk.completeSession(session.sessionId, run).catch((error) => error);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(await first).toMatchObject(timeoutError);
+    expect(await twin).toMatchObject(timeoutError);
+    expect(releases).toHaveLength(1);
+
+    const retry = sdk.completeSession(session.sessionId, run);
+    const retryTwin = sdk.completeSession(session.sessionId, run);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(releases).toHaveLength(2);
+    releases[0]!(Response.json(serverReward));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setItem).not.toHaveBeenCalled();
+    expect(completionEvents()).toEqual([]);
+    const afterLateResponse = sdk.completeSession(session.sessionId, run);
+    expect(releases).toHaveLength(2);
+    releases[1]!(Response.json(serverReward));
+    expect(await Promise.all([retry, retryTwin, afterLateResponse])).toEqual([serverReward, serverReward, serverReward]);
+    expect(postedBodies('/api/games/sign')).toHaveLength(2);
+    expect(postedBodies('/api/games/session/complete')).toHaveLength(2);
+    expect(setItem).toHaveBeenCalledTimes(1);
+    expect(completionEvents()).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not restart or settle a timed-out run after explicit abandonment', async () => {
+    const session = await sdk.startSession('runner');
+    let release!: (response: Response) => void;
+    fetchMock.mockImplementation(async () => new Promise((resolve) => { release = resolve; }));
+    let failure: unknown;
+    const pending = sdk.completeSession(session.sessionId, run).catch((error) => { failure = error; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(failure).toMatchObject(timeoutError);
+    await pending;
+    sdk.abandonSession(session.sessionId);
+    const count = fetchMock.mock.calls.length;
+    release(Response.json({ signature: 'late-signature' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await sdk.completeSession(session.sessionId, run)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(count);
+    expect(postedBodies('/api/games/session/complete')).toEqual([]);
+    expect(setItem).not.toHaveBeenCalled();
+    expect(completionEvents()).toEqual([]);
+  });
+
+  it.each(['runner', 'orbfield', 'tiles-run', 'arpg'])(
+    'preserves successful %s completion and clears request timers', async (gameId) => {
+      const session = await sdk.startSession(gameId);
+      expect(await sdk.completeSession(session.sessionId, run)).toEqual(serverReward);
+      expect(vi.getTimerCount()).toBe(0);
+      const count = fetchMock.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(fetchMock).toHaveBeenCalledTimes(count);
+      expect(setItem).toHaveBeenCalledTimes(1);
+      expect(completionEvents()).toHaveLength(1);
+      expect(applyPlayerState).not.toHaveBeenCalled();
+    }
+  );
+
+  it('bounds the pre-signed completion overload without local bookkeeping or automatic retries', async () => {
+    fetchMock.mockImplementation(async () => new Promise(() => {}));
+    let failure: unknown;
+    const pending = sdk.completeSession({ sessionId: 'direct', score: 84, durationMs: 8000, nonce: 'nonce', signature: 'signed' })
+      .catch((error) => { failure = error; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(failure).toMatchObject(timeoutError);
+    await pending;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(postedBodies('/api/games/sign')).toEqual([]);
+    expect(setItem).not.toHaveBeenCalled();
+    expect(completionEvents()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([
+    ['sign', 401], ['sign', 409], ['complete', 401], ['complete', 409]
+  ] as const)('preserves %s HTTP %s classification and cleans its timer', async (stage, status) => {
+    const session = await sdk.startSession('runner');
+    fetchMock.mockImplementation(async (url: string) => url === endpointFor(stage)
+      ? Response.json({ code: status === 401 ? 'unauthorized' : 'conflict' }, { status })
+      : Response.json({ signature: 'signed' }));
+    await expect(sdk.completeSession(session.sessionId, run)).rejects.toMatchObject({
+      status, code: status === 401 ? 'unauthorized' : 'conflict'
+    });
+    expect(vi.getTimerCount()).toBe(0);
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it.each(['sign', 'complete'] as const)('keeps the timeout classification when %s transport rejects on abort', async (stage) => {
+    const session = await sdk.startSession('runner');
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url !== endpointFor(stage)) return Response.json({ signature: 'signed' });
+      return new Promise((_resolve, reject) => init!.signal!.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'));
+      }, { once: true }));
+    });
+    let failure: unknown;
+    const pending = sdk.completeSession(session.sessionId, run).catch((error) => { failure = error; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(failure).toMatchObject(timeoutError);
+    await pending;
+    expect(setItem).not.toHaveBeenCalled();
+    expect(completionEvents()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['sign', 'complete'] as const)('bounds a stalled non-OK %s response body', async (stage) => {
+    const session = await sdk.startSession('runner');
+    fetchMock.mockImplementation(async (url: string) => url === endpointFor(stage)
+      ? { ok: false, status: 401, json: () => new Promise(() => {}) } as Response
+      : Response.json({ signature: 'signed' }));
+    let failure: unknown;
+    const pending = sdk.completeSession(session.sessionId, run).catch((error) => { failure = error; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(failure).toMatchObject(timeoutError);
+    await pending;
+    expect(setItem).not.toHaveBeenCalled();
+    expect(completionEvents()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
 describe('game SDK immutable completion submission', () => {
   it('sends success and stats to settlement and uses one stable session event key', async () => {
     const session = await sdk.startSession('orbfield');

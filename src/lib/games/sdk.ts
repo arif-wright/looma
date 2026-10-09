@@ -394,11 +394,37 @@ export type GameSessionResult = {
   server?: GameSessionServerResult;
 } & Record<string, unknown>;
 
-const postSessionCompletion = async (args: CompleteArgs) => {
+// Bound both signing and receipt reads, including a stalled response body. A
+// deadline only ends our wait: the server may already have committed the run.
+// Keep local retry context and leave all bookkeeping outside this request race.
+const COMPLETION_REQUEST_TIMEOUT_MS = 30_000;
+const withCompletionRequestDeadline = async <T>(request: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new GameClientError({
+        message: 'We couldn’t confirm the saved result. Your run may already have saved.',
+        kind: 'network', code: 'request_timeout'
+      }));
+      controller.abort();
+    }, COMPLETION_REQUEST_TIMEOUT_MS);
+  });
+  try {
+    // Race as well as abort: late or non-abortable transports cannot keep the
+    // singleflight entry pending, submit a later stage, or apply rewards late.
+    return await Promise.race([request(controller.signal), deadline]);
+  } finally {
+    clearTimeout(timer!);
+  }
+};
+
+const postSessionCompletion = (args: CompleteArgs) => withCompletionRequestDeadline(async (signal) => {
   const payload = { ...args, clientVersion: args.clientVersion ?? CLIENT_VERSION };
   try {
     const response = await fetch('/api/games/session/complete', {
       method: 'POST',
+      signal,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -423,7 +449,7 @@ const postSessionCompletion = async (args: CompleteArgs) => {
   } catch (err) {
     throw toGameClientError(err, 'complete');
   }
-};
+});
 
 const resolveActiveContext = (sessionId: string): SessionContext | null => {
   const context = activeSessions.get(sessionId) ?? null;
@@ -607,7 +633,7 @@ type SignArgs = {
   clientVersion?: string;
 };
 
-export const signCompletion = async (args: SignArgs) => {
+export const signCompletion = (args: SignArgs) => withCompletionRequestDeadline(async (signal) => {
   const payload = {
     ...args,
     clientVersion: args.clientVersion ?? CLIENT_VERSION
@@ -615,6 +641,7 @@ export const signCompletion = async (args: SignArgs) => {
   try {
     const response = await fetch('/api/games/sign', {
       method: 'POST',
+      signal,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -634,7 +661,7 @@ export const signCompletion = async (args: SignArgs) => {
   } catch (err) {
     throw toGameClientError(err, 'sign');
   }
-};
+});
 
 export const fetchConfig = async () => {
   try {

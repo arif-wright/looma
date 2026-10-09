@@ -110,6 +110,11 @@ jobs:
           } > artifacts/connected-wilds/phaser-browser/source.txt
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Verify deterministic fixture snapshot readback ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/testing/connected-wilds-preview/snapshot-readback.test.mjs 2>&1 | tee artifacts/connected-wilds/phaser-browser/snapshot-readback.log
       - name: Run credential-free Phaser browser flows
         shell: bash
         run: |
@@ -123,5 +128,14 @@ jobs:
           path: |
             artifacts/connected-wilds/phaser-browser/
             test-results/connected-wilds-browser/
+            !test-results/connected-wilds-browser/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve large DOM traces separately from JSON and PNG evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: connected-wilds-phaser-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: test-results/connected-wilds-browser/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14

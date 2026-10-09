@@ -327,7 +327,8 @@ export const createThreeWorld = (host: HTMLElement, options: ThreeWorldOptions):
     if (destroyed) return;
     localPlayerId = snapshot.localPlayerId;
     localSnapshot = snapshot.players.get(localPlayerId);
-    const nextArea = getWorldArea(localSnapshot?.mapId);
+    // A missing local player is not evidence of travel back to the default area.
+    const nextArea = localSnapshot ? getWorldArea(localSnapshot.mapId) : activeArea;
     const nextTransitionKey = localSnapshot ? playerTransitionKey(localSnapshot) : null;
     const transitioned = nextTransitionKey !== localTransitionKey;
     if (transitioned) {

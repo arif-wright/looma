@@ -27,7 +27,8 @@ concurrency:
 jobs:
   synthetic-client-recovery:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Original 20min + ceil((3 × 72s native cases + 60s extra Vite start)/60).
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -53,11 +54,19 @@ jobs:
             npx playwright --version
             git ls-files -z src/lib/game scripts/testing/moonberry-gather-preview package.json package-lock.json | xargs -0 sha256sum
           } > artifacts/moonberry-gather/source.txt
+      - name: Require native layout preflight before the full browser suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/moonberry-gather/preflight
+          PLAYWRIGHT_JSON_OUTPUT_FILE="$PWD/artifacts/moonberry-gather/preflight/results.json" \
+            npx playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts gather.browser.spec.ts --project=three-desktop --project=three-medium-landscape --project=three-landscape --grep 'Three feedback, gather and independent movement/camera targets never overlap$' --repeat-each=1 --trace=retain-on-failure --output=artifacts/moonberry-gather/preflight/browser --reporter=line,json 2>&1 | tee artifacts/moonberry-gather/preflight/browser.log
+          node scripts/testing/recovery-dom/verify-native-layout-results.mjs preflight artifacts/moonberry-gather/preflight/results.json
       - name: Exercise keyboard, touch, timeout, reconnect and teardown
         shell: bash
         run: |
           set -euo pipefail
-          npx playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts 2>&1 | tee artifacts/moonberry-gather/browser.log
+          npx playwright test --config scripts/testing/moonberry-gather-preview/playwright.config.ts --trace=retain-on-failure 2>&1 | tee artifacts/moonberry-gather/browser.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -66,7 +75,29 @@ jobs:
             artifacts/moonberry-gather/*.txt
             artifacts/moonberry-gather/*.log
             artifacts/moonberry-gather/*.json
+            artifacts/moonberry-gather/preflight/
             artifacts/moonberry-gather/browser/**/*.png
             artifacts/moonberry-gather/browser/**/error-context.md
+            artifacts/moonberry-gather/browser/**/portal-clock-diagnostics.json
+            artifacts/moonberry-gather/browser/**/attachments/portal-clock-diagnostics-*.json
+            artifacts/moonberry-gather/browser/**/second-gather-diagnostics.json
+            artifacts/moonberry-gather/browser/**/attachments/second-gather-diagnostics-*.json
+            artifacts/moonberry-gather/browser/**/layout-phase-timings.json
+            artifacts/moonberry-gather/browser/**/attachments/layout-phase-timings-*.json
+            artifacts/moonberry-gather/browser/**/gather-deadline-diagnostics.json
+            artifacts/moonberry-gather/browser/**/attachments/gather-deadline-diagnostics-*.json
+            artifacts/moonberry-gather/browser/**/touch-input-mode.json
+            artifacts/moonberry-gather/browser/**/attachments/touch-input-mode-*.json
+            artifacts/moonberry-gather/browser/**/touch-movement-diagnostics.json
+            artifacts/moonberry-gather/browser/**/attachments/touch-movement-diagnostics-*.json
+            !artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve DOM traces separately from JSON and PNG evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-gather-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14

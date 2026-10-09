@@ -1,5 +1,6 @@
 /** Local fixture transport only. No socket, account, persistence, or reward service. */
 import type { PlayerSnapshot } from '../../../src/lib/game/protocol';
+import type { WorldAreaId } from '../../../src/lib/game/areas';
 import { MOONBERRY_INTERACTION } from '../../../src/lib/game/traversal';
 
 type Handler = (...args: any[]) => void;
@@ -52,7 +53,8 @@ export class Room<T = any> {
   }
   async leave(_consented = true) { this.left = true; this.emit('leave', 1000); }
   snapshot(x: number = MOONBERRY_INTERACTION.x, y: number = MOONBERRY_INTERACTION.y) {
-    Object.assign(this.state.players.get(this.sessionId)!, { x, y });
+    const player = this.state.players.get(this.sessionId);
+    if (player) Object.assign(player, { x, y });
     this.state.tick += 1;
     this.emit('state', this.state);
   }
@@ -60,6 +62,16 @@ export class Room<T = any> {
     // Deliberately permit delivery after leave, so destroyed-client guards are tested.
     this.emit('message:gather-result', { requestId, status,
       ...(status === 'success' ? { itemTitle: 'Moonberry', quantity: 1, reaction: 'Moss notices the Moonberry.', inventoryHref: '/app/inventory' } : {}) });
+  }
+  transition(mapId: WorldAreaId, x: number, y: number) {
+    const player = this.state.players.get(this.sessionId)!;
+    player.mapId = mapId;
+    player.transitionRevision = (player.transitionRevision ?? 0) + 1;
+    this.snapshot(x, y);
+  }
+  portalResult(requestId: string, status = 'success', mapId?: WorldAreaId) {
+    // Like gather replies, allow deliberately late delivery to test stale guards.
+    this.emit('message:portal-result', { requestId, status, ...(mapId ? { mapId } : {}) });
   }
   drop() { this.emit('drop', 1006); }
   reconnect() { this.emit('reconnect'); this.snapshot(); }
