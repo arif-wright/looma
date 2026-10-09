@@ -214,11 +214,11 @@ async function main() {
   assert(!process.env.PGPASSWORD, 'Passwords are refused');
   assert(!process.env.PGDATABASE || process.env.PGDATABASE === 'postgres', 'Bootstrap must connect to postgres');
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim();
-  // Preserve exact-tree checking. Independent start-recovery review (2026-10-09)
-  // verified this local client-lifecycle candidate against the prior recovery
-  // src tree 7e9fcfb1af33d0a09db4b2dfaaccd63d6f23bc0e. No server/SQL edits.
+  // Preserve exact-tree checking. Independent ARPG scene-readiness review
+  // (2026-10-09) verified this local startup candidate against the prior startup
+  // src tree 1a4751e650e015656492ece5a484964d79ccee1d. No server/SQL edits.
   // Keep Supabase pinned independently; this is not a hosted-schema claim.
-  for (const [directory, expected] of Object.entries({src:'1a4751e650e015656492ece5a484964d79ccee1d',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
+  for (const [directory, expected] of Object.entries({src:'c7342a54a765e88007bdfedceced679b3c32a7c1',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

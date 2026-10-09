@@ -30,7 +30,12 @@ const DASH_POWER = 230;
 const ATTACK_RANGE_OFFSET = 110;
 const ATTACK_RADIUS = 85;
 
-type GameHandlers = { onGameOver: (score: number) => void };
+type GameHandlers = {
+  onGameOver: (score: number) => void;
+  onReady: () => void;
+  onError: (error: Error) => void;
+  isCurrent: () => boolean;
+};
 
 type EnemyActor = {
   id: EntityId;
@@ -151,10 +156,20 @@ const VFX_TEXTURES = {
 const frameKeyFromPath = (path: string) => path.replace(/[^a-zA-Z0-9]+/g, '_');
 
 export class GameScene extends Phaser.Scene {
-  private static handlers: GameHandlers | null = null;
+  private startupFailed = false;
+  private initialized = false;
+  private readonly requiredTextures = new Set<string>();
 
-  static setGameHandlers(handlers: GameHandlers) {
-    GameScene.handlers = handlers;
+  private readonly handleLoadError = () => {
+    this.failStartup(new Error('Game assets could not be loaded. Please start a new run.'));
+  };
+
+  private failStartup(error: unknown) {
+    if (this.startupFailed || this.initialized || !this.handlers.isCurrent()) return;
+    this.startupFailed = true;
+    this.ended = true;
+    this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleLoadError);
+    this.handlers.onError(error instanceof Error ? error : new Error('Game initialization failed.'));
   }
 
   private world!: World;
@@ -202,24 +217,61 @@ export class GameScene extends Phaser.Scene {
   private readonly hudMargin = { x: 36, y: 32 };
   private readonly controlOffset = { x: 36, y: 210 };
 
-  constructor() {
+  constructor(private readonly handlers: GameHandlers) {
     super({ key: 'GameScene' });
   }
 
   preload() {
-    FLOOR_TEXTURES.forEach((path, idx) => this.load.image(`floor_${idx}`, path));
-    WALL_TEXTURES.forEach((path, idx) => this.load.image(`wall_${idx}`, path));
+    if (!this.handlers.isCurrent() || this.startupFailed) return;
+    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleLoadError);
+    try {
+      this.queueAssets();
+    } catch (error) {
+      this.failStartup(error);
+    }
+  }
+
+  private queueImage(key: string, path: string) {
+    this.requiredTextures.add(key);
+    this.load.image(key, path);
+  }
+
+  private queueAssets() {
+    FLOOR_TEXTURES.forEach((path, idx) => this.queueImage(`floor_${idx}`, path));
+    WALL_TEXTURES.forEach((path, idx) => this.queueImage(`wall_${idx}`, path));
     this.preloadPropTextures();
     this.preloadCharacterManifest(HERO_MANIFEST);
     this.preloadCharacterManifest(SKELETON_MANIFEST);
-    Object.entries(UI_TEXTURES).forEach(([key, path]) => this.load.image(key, path));
-    VFX_TEXTURES.swoosh.forEach((path, idx) => this.load.image(`vfx_swoosh_${idx}`, path));
-    VFX_TEXTURES.glint.forEach((path, idx) => this.load.image(`vfx_glint_${idx}`, path));
-    this.load.image('vfx_glow', '/games/arpg/vfx/glow.png');
-    this.load.image('vfx_zone', '/games/arpg/vfx/zone.png');
+    Object.entries(UI_TEXTURES).forEach(([key, path]) => this.queueImage(key, path));
+    VFX_TEXTURES.swoosh.forEach((path, idx) => this.queueImage(`vfx_swoosh_${idx}`, path));
+    VFX_TEXTURES.glint.forEach((path, idx) => this.queueImage(`vfx_glint_${idx}`, path));
+    this.queueImage('vfx_glow', '/games/arpg/vfx/glow.png');
+    this.queueImage('vfx_zone', '/games/arpg/vfx/zone.png');
   }
 
   create() {
+    if (!this.handlers.isCurrent() || this.startupFailed) return;
+    this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleLoadError);
+    try {
+      // Phaser loaderror covers download failures but not every image decode
+      // failure. Its loader can complete without adding the failed texture.
+      if ([...this.requiredTextures].some((key) => !this.textures.exists(key))) {
+        throw new Error('Game assets could not be loaded. Please start a new run.');
+      }
+      this.initializeScene();
+      // Phaser emits CREATE only after create() returns and the scene is running.
+      // This is scene initialization evidence, not a first-render guarantee.
+      this.events.once(Phaser.Scenes.Events.CREATE, () => {
+        if (!this.handlers.isCurrent() || this.startupFailed) return;
+        this.initialized = true;
+        this.handlers.onReady();
+      });
+    } catch (error) {
+      this.failStartup(error);
+    }
+  }
+
+  private initializeScene() {
     this.cameras.main.setBackgroundColor(0x05060a);
     this.world = new World();
     this.worldLayer = this.add.layer();
@@ -238,7 +290,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.ended || !this.playerId) return;
+    if (!this.initialized || !this.handlers.isCurrent() || this.ended || !this.playerId) return;
     this.elapsed += delta;
     if (this.elapsed >= MAX_RUN_MS) {
       this.endRun();
@@ -299,13 +351,13 @@ export class GameScene extends Phaser.Scene {
   private preloadPropTextures() {
     Object.entries(PROP_TEXTURES).forEach(([key, value]) => {
       if (typeof value === 'string') {
-        this.load.image(key, value);
+        this.queueImage(key, value);
       } else {
-        Array.from(value).forEach((path, idx) => this.load.image(`${key}_${idx}`, path));
+        Array.from(value).forEach((path, idx) => this.queueImage(`${key}_${idx}`, path));
       }
     });
     SCENERY_TEXTURES.forEach((path, idx) => {
-      this.load.image(`scenery_${idx}`, path);
+      this.queueImage(`scenery_${idx}`, path);
     });
   }
 
@@ -315,7 +367,7 @@ export class GameScene extends Phaser.Scene {
         frames.forEach((path) => {
           const key = frameKeyFromPath(path);
           if (!this.textures.exists(key)) {
-            this.load.image(key, path);
+            this.queueImage(key, path);
           }
         });
       });
@@ -1183,7 +1235,9 @@ export class GameScene extends Phaser.Scene {
     this.ended = true;
     const player = this.playerId ? (this.world.getPlayer(this.playerId) as Player | undefined) : undefined;
     const score = player?.score ?? this.killCount * 250;
-    GameScene.handlers?.onGameOver(Math.max(0, Math.floor(score)));
+    if (this.initialized && this.handlers.isCurrent()) {
+      this.handlers.onGameOver(Math.max(0, Math.floor(score)));
+    }
     this.scene.pause();
   }
 }

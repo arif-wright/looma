@@ -1,0 +1,73 @@
+{
+  "extends": "../../../.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "types": [
+      "node",
+      "svelte",
+      "vite/client"
+    ],
+    "baseUrl": "../../..",
+    "paths": {
+      "$lib/supabase/client": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/games/state": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/stores/companions": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/stores/companionRituals": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/stores/companionReactions": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/utils/analytics": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/client/events/sendEvent": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$lib/achievements/store": [
+        "scripts/testing/arpg-readiness-preview/collaborators.ts"
+      ],
+      "$app/stores": [
+        "scripts/testing/arpg-readiness-preview/navigation.ts"
+      ],
+      "$app/navigation": [
+        "scripts/testing/arpg-readiness-preview/navigation.ts"
+      ],
+      "$lib/*": [
+        "src/lib/*"
+      ]
+    }
+  },
+  "include": [
+    "./*.ts",
+    "./*.svelte",
+    "../../../src/routes/app/(game)/games/arpg/+page.svelte",
+    "../../../src/app.d.ts",
+    "../../../src/types/**/*.d.ts",
+    "../../../.svelte-kit/ambient.d.ts",
+    "../../../.svelte-kit/non-ambient.d.ts"
+  ],
+  "exclude": [
+    ".build",
+    ".results"
+  ]
+}

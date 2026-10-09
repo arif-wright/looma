@@ -1,10 +1,7 @@
 type PhaserGameInstance = import('phaser').Game;
 
-let activeGame: PhaserGameInstance | null = null;
-let activeParent: HTMLDivElement | null = null;
-let removeActiveAbortListener: (() => void) | null = null;
-let bootGeneration = 0;
-let pendingParent: HTMLDivElement | null = null;
+type BootOwner = { parent: HTMLDivElement; cancel: () => void };
+let activeBoot: BootOwner | null = null;
 const importGame = () => Promise.all([import('phaser'), import('./scenes/GameScene')]);
 let pendingImports: ReturnType<typeof importGame> | null = null;
 const loadGame = () => {
@@ -19,43 +16,54 @@ export type BootOptions = {
 
 const interrupted = () => new DOMException('Game loading was interrupted.', 'AbortError');
 
+/** Resolves after the owned scene finishes initialization, not at renderer construction. */
 export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
   if (typeof window === 'undefined') return;
   if (!parent) throw new Error('Game container missing');
   if (opts.signal?.aborted) throw interrupted();
 
-  const generation = ++bootGeneration;
-  pendingParent = parent;
   let ownedGame: PhaserGameInstance | null = null;
+  let cancelled = false;
   let rejectAbort!: (reason: unknown) => void;
   const aborted = new Promise<never>((_resolve, reject) => { rejectAbort = reject; });
-  const onAbort = () => {
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
     rejectAbort(interrupted());
-    // A late cancellation belongs only to the instance created by this boot.
-    if (ownedGame && activeGame === ownedGame) {
-      activeGame.destroy(true);
-      activeGame = null;
-      activeParent = null;
-      removeActiveAbortListener?.();
-      removeActiveAbortListener = null;
-    }
+    opts.signal?.removeEventListener('abort', cancel);
+    // Phaser destruction is deferred to its next frame. Scene callbacks must
+    // also check this owner before that frame can remove the old renderer.
+    ownedGame?.destroy(true);
+    ownedGame = null;
+    if (activeBoot === owner) activeBoot = null;
   };
-  const removeAbortListener = () => opts.signal?.removeEventListener('abort', onAbort);
-  opts.signal?.addEventListener('abort', onAbort, { once: true });
+  const owner: BootOwner = { parent, cancel };
+  const isCurrent = () => activeBoot === owner && !cancelled && !opts.signal?.aborted;
+  activeBoot?.cancel();
+  activeBoot = owner;
+  opts.signal?.addEventListener('abort', cancel, { once: true });
 
   try {
-    const [{ default: Phaser }, { GameScene }] = await Promise.race([
-      loadGame(),
-      aborted
-    ]);
-    if (generation !== bootGeneration || opts.signal?.aborted) throw interrupted();
+    const [{ default: Phaser }, { GameScene }] = await Promise.race([loadGame(), aborted]);
+    if (!isCurrent()) throw interrupted();
 
-    removeActiveAbortListener?.();
-    activeGame?.destroy(true);
-    activeGame = null;
-    activeParent = null;
-
-    GameScene.setGameHandlers({ onGameOver: opts.onGameOver });
+    let resolveReady!: () => void;
+    let rejectReady!: (reason: unknown) => void;
+    const ready = new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    });
+    const scene = new GameScene({
+      isCurrent,
+      onReady: resolveReady,
+      onError: rejectReady,
+      onGameOver: (score) => { if (isCurrent()) opts.onGameOver(score); }
+    });
+    // Attach the failure handlers before constructing Phaser: boot callbacks
+    // can run synchronously when the document and textures are already ready.
+    const initialized = Promise.race([ready, aborted]);
+    // A constructor throw skips the await below; still observe later cancellation.
+    void initialized.catch(() => {});
     ownedGame = new Phaser.Game({
       type: Phaser.AUTO,
       parent,
@@ -71,32 +79,22 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
         default: 'arcade',
         arcade: { debug: false, gravity: { x: 0, y: 0 } }
       },
-      scene: [GameScene]
+      scene: [scene]
     });
-    if (generation !== bootGeneration || opts.signal?.aborted) {
+    if (!isCurrent()) {
       ownedGame.destroy(true);
+      ownedGame = null;
       throw interrupted();
     }
-    activeGame = ownedGame;
-    activeParent = parent;
-    removeActiveAbortListener = removeAbortListener;
-  } finally {
-    if (generation === bootGeneration) pendingParent = null;
-    if (!ownedGame || activeGame !== ownedGame) removeAbortListener();
+    await initialized;
+    if (!isCurrent()) throw interrupted();
+  } catch (error) {
+    cancel();
+    throw error;
   }
 };
 
 /** An optional container limits cleanup to this page's boot and game. */
 export const shutdownGame = (parent?: HTMLDivElement) => {
-  if (!parent || pendingParent === parent) {
-    ++bootGeneration;
-    pendingParent = null;
-  }
-  if (!parent || activeParent === parent) {
-    removeActiveAbortListener?.();
-    removeActiveAbortListener = null;
-    activeGame?.destroy(true);
-    activeGame = null;
-    activeParent = null;
-  }
+  if (!parent || activeBoot?.parent === parent) activeBoot?.cancel();
 };
