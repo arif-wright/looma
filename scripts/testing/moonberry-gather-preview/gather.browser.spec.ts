@@ -416,8 +416,32 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     await page.evaluate(() => window.__MOONBERRY_FIXTURE__.current.snapshot());
     await ready(page);
   }
-  await activateGather(page);
-  await settle(page, await lastId(page));
+  recordLayoutPhase(testInfo, 'second-gather-start');
+  const secondGather = {
+    previousRequestId: await lastId(page), countBefore: await gatherCount(page),
+    requestId: null as string | null, countAfter: null as number | null, successObserved: false
+  };
+  try {
+    await activateGather(page);
+    // A completed tap is not proof that its synthesized click reached the app.
+    // Accept exactly one new request before choosing which result to deliver.
+    await expect.poll(() => gatherCount(page)).toBe(secondGather.countBefore + 1);
+    await expect(page.getByRole('button', { name: 'Gathering…', exact: true })).toBeDisabled();
+    secondGather.requestId = await lastId(page);
+    secondGather.countAfter = await gatherCount(page);
+    expect(secondGather.requestId).not.toBe(secondGather.previousRequestId);
+    recordLayoutPhase(testInfo, 'second-gather-accepted');
+    await settle(page, secondGather.requestId);
+    await expect(page.locator('.gather-result')).toContainText('Gathered 1 Moonberry.');
+    secondGather.successObserved = true;
+    recordLayoutPhase(testInfo, 'second-gather-success');
+  } finally {
+    recordLayoutPhase(testInfo, 'second-gather-finished');
+    console.log('[native-layout-second-gather]', JSON.stringify(secondGather));
+    const filename = testInfo.outputPath('second-gather-diagnostics.json');
+    writeFileSync(filename, JSON.stringify(secondGather, null, 2));
+    await testInfo.attach('second-gather-diagnostics', { path: filename, contentType: 'application/json' });
+  }
   await checkLayout();
   await page.evaluate(() => window.scrollTo(0, 0));
   await captureLayout('separate-mobile-controls.png');

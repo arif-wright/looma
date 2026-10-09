@@ -99,6 +99,7 @@ jobs:
           retention-days: 14
 
   portal-browser:
+    needs: [three-layout-stress, native-layout-comparison]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

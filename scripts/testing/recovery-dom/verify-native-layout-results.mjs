@@ -34,6 +34,12 @@ for (const test of tests) {
   // Native RAF can process a real press before the post-active snapshot runs.
   assert(Number(input.drivenFrames.canvas.frame) > Number(input.beforeInput.canvas.frame),
     'The actual renderer must advance after the pre-input snapshot');
+  const secondGather = evidence('second-gather-diagnostics');
+  assert.equal(secondGather.countAfter, secondGather.countBefore + 1);
+  assert.equal(typeof secondGather.requestId, 'string');
+  assert(secondGather.requestId.length > 0);
+  assert.notEqual(secondGather.requestId, secondGather.previousRequestId);
+  assert.equal(secondGather.successObserved, true);
   const deadline = evidence('gather-deadline-diagnostics');
   assert.equal(deadline.clock, 'native');
   assert(deadline.after.performance - deadline.before.performance >= 10_000,
