@@ -1,6 +1,9 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { performance as testPerformance } from 'node:perf_hooks';
 import { readFileSync, writeFileSync } from 'node:fs';
+// Keep DOM/action traces and manual/failure PNGs; omit continuous trace screencast.
+// File-level scope is required because Playwright's trace option is worker-scoped.
+test.use({ trace: { mode: 'on', screenshots: false, snapshots: true, sources: true, attachments: true } });
 const THREE_LAYOUT_TEST = 'Three feedback, gather and independent movement/camera targets never overlap';
 const NATIVE_GATHER_OBSERVATION_MS = 12_000;
 const layoutTimings = new WeakMap<TestInfo, { started: number; phases: Array<{ phase: string; elapsedMs: number }> }>();
@@ -11,6 +14,18 @@ const recordLayoutPhase = (testInfo: TestInfo, phase: string) => {
   timing.phases.push(entry);
   console.log('[native-layout-phase]', JSON.stringify({ project: testInfo.project.name,
     repeat: testInfo.repeatEachIndex, timeoutMs: testInfo.timeout, ...entry }));
+};
+
+const observeLayoutPhase = async <T>(testInfo: TestInfo, phase: string, action: () => Promise<T>): Promise<T> => {
+  recordLayoutPhase(testInfo, `${phase}:start`);
+  try {
+    const result = await action();
+    recordLayoutPhase(testInfo, `${phase}:end`);
+    return result;
+  } catch (error) {
+    recordLayoutPhase(testInfo, `${phase}:error`);
+    throw error;
+  }
 };
 
 const grovePortal = JSON.parse(readFileSync(new URL('../../../services/world-server/src/world/areas.json', import.meta.url), 'utf8'))['wilds-exploration'].portal as { x: number; y: number; targetName: string };
@@ -271,12 +286,14 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     await restoreTouch();
     // Keep the real viewport/media queries. Full-page captures reset Chromium's
     // touch mode; short landscape gets a second, visibly labeled controls view.
-    await page.screenshot({ path: testInfo.outputPath(filename), fullPage: false });
+    await observeLayoutPhase(testInfo, `png:${filename}`, () =>
+      page.screenshot({ path: testInfo.outputPath(filename), fullPage: false }));
     if (touch) await expect.poll(() => page.evaluate(() => navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches)).toBe(true);
     if (page.viewportSize()!.width > page.viewportSize()!.height) {
       const scroll = await page.evaluate(() => window.scrollY);
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await page.screenshot({ path: testInfo.outputPath(filename.replace('.png', '-controls.png')), fullPage: false });
+      await observeLayoutPhase(testInfo, `png:${filename.replace('.png', '-controls.png')}`, () =>
+        page.screenshot({ path: testInfo.outputPath(filename.replace('.png', '-controls.png')), fullPage: false }));
       if (touch) await expect.poll(() => page.evaluate(() => navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches)).toBe(true);
       await page.evaluate((y) => window.scrollTo(0, y), scroll);
     }
@@ -315,7 +332,7 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
       }
     }
   };
-  await checkLayout();
+  await observeLayoutPhase(testInfo, 'checkLayout:initial', checkLayout);
   recordLayoutPhase(testInfo, 'deadline-start');
   const gathersBeforeTimeout = await gatherCount(page);
   const deadlineBefore = await page.evaluate(() => ({ date: Date.now(), performance: performance.now() }));
@@ -335,7 +352,7 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     await testInfo.attach('gather-deadline-diagnostics', { path: diagnosticPath, contentType: 'application/json' });
   }
   expect(deadlineAfter.performance - deadlineBefore.performance).toBeGreaterThanOrEqual(10_000);
-  await checkLayout();
+  await observeLayoutPhase(testInfo, 'checkLayout:uncertain-feedback', checkLayout);
   for (const name of ['Rotate camera left', 'Rotate camera right', 'Zoom camera out', 'Zoom camera in', 'Reset camera']) {
     const button = page.getByRole('button', { name, exact: true });
     for (let press = 0; press < 2; press++) {
@@ -442,26 +459,30 @@ test(THREE_LAYOUT_TEST, async ({ page }, testInfo) => {
     writeFileSync(filename, JSON.stringify(secondGather, null, 2));
     await testInfo.attach('second-gather-diagnostics', { path: filename, contentType: 'application/json' });
   }
-  await checkLayout();
+  await observeLayoutPhase(testInfo, 'checkLayout:success-feedback', checkLayout);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await captureLayout('separate-mobile-controls.png');
+  await observeLayoutPhase(testInfo, 'captureLayout:separate-mobile-controls.png', () => captureLayout('separate-mobile-controls.png'));
   await restoreTouch();
   // The link remains a real, keyboard-accessible navigation target after feedback.
+  recordLayoutPhase(testInfo, 'keepsakes-focus:start');
   await page.getByRole('link', { name: 'View in Keepsakes' }).focus();
   await expect(page.getByRole('link', { name: 'View in Keepsakes' })).toBeFocused();
+  recordLayoutPhase(testInfo, 'keepsakes-focus:end');
   const portal = grovePortal;
   await page.evaluate(({ x, y }) => window.__MOONBERRY_FIXTURE__.current.snapshot(x, y), portal);
   await expect(page.getByRole('button', { name: `Enter ${portal.targetName}`, exact: true })).toBeVisible();
-  await checkLayout();
+  await observeLayoutPhase(testInfo, 'checkLayout:portal-prompt', checkLayout);
   if (touch) {
     const landscape = page.viewportSize()!.width > page.viewportSize()!.height;
     const insets = { top: 0, left: landscape ? 32 : 0, right: landscape ? 32 : 0, bottom: landscape ? 21 : 34 };
+    recordLayoutPhase(testInfo, 'safe-area-override:start');
     await devtools.send('Emulation.setSafeAreaInsetsOverride', { insets });
     await expect.poll(() => page.getByTestId('world-game-mount').evaluate((element) =>
       parseFloat(getComputedStyle(element).minHeight))).toBe((landscape ? 304 : 400) + insets.bottom);
-    await checkLayout();
+    recordLayoutPhase(testInfo, 'safe-area-override:end');
+    await observeLayoutPhase(testInfo, 'checkLayout:safe-area', checkLayout);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await captureLayout('safe-area-mobile-controls.png');
+    await observeLayoutPhase(testInfo, 'captureLayout:safe-area-mobile-controls.png', () => captureLayout('safe-area-mobile-controls.png'));
     await devtools.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, left: 0, right: 0, bottom: 0 } });
     await restoreTouch();
   }

@@ -85,6 +85,14 @@ jobs:
             artifacts/moonberry-gather/browser/**/attachments/gather-deadline-diagnostics-*.json
             artifacts/moonberry-gather/browser/**/touch-movement-diagnostics.json
             artifacts/moonberry-gather/browser/**/attachments/touch-movement-diagnostics-*.json
-            artifacts/moonberry-gather/browser/**/trace.zip
+            !artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve DOM traces separately from JSON and PNG evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: moonberry-gather-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14

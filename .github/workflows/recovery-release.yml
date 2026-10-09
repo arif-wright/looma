@@ -160,8 +160,18 @@ jobs:
         if: always()
         with:
           name: recovery-three-layout-stress-${{ github.event.pull_request.head.sha || github.sha }}
-          path: artifacts/moonberry-gather/
+          path: |
+            artifacts/moonberry-gather/
+            !artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve DOM traces separately from JSON and PNG evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: recovery-three-layout-stress-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/moonberry-gather/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14
 
   native-layout-comparison:
@@ -238,8 +248,18 @@ jobs:
         if: always()
         with:
           name: native-layout-comparison-${{ matrix.source }}-${{ github.event.pull_request.head.sha || github.sha }}
-          path: subject/artifacts/moonberry-gather/
+          path: |
+            subject/artifacts/moonberry-gather/
+            !subject/artifacts/moonberry-gather/**/trace.zip
           if-no-files-found: error
+          retention-days: 14
+      - name: Preserve DOM traces separately from JSON and PNG evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-layout-comparison-${{ matrix.source }}-traces-${{ github.event.pull_request.head.sha || github.sha }}
+          path: subject/artifacts/moonberry-gather/**/trace.zip
+          if-no-files-found: ignore
           retention-days: 14
 
   world-service:
