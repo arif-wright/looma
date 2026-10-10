@@ -218,7 +218,7 @@ async function main() {
   // It extends deployed PR15 src c7342a54a765e88007bdfedceced679b3c32a7c1.
   // Only this source-pin metadata changed here; no server/SQL logic changed.
   // Keep Supabase pinned independently; this is not a hosted-schema claim.
-  for (const [directory, expected] of Object.entries({src:'efe4c7243a29f28f17bd82dc7524d68bcc025353',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
+  for (const [directory, expected] of Object.entries({src:'3b267bb0b00f14a48b057300da5462bf503517ab',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };

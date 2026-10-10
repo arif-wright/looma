@@ -9,6 +9,7 @@ export function townGroundIssues(gameplay) {
   const floor = plane[0], gate = entrance[0];
   if (floor.x !== 128 || floor.y !== -168 || floor.originX !== 0 || floor.originY !== 0 || floor.scaleX !== 2 || floor.scaleY !== 2 || floor.displayWidth !== 2688 || floor.displayHeight !== 1344 || floor.depth !== -161) issues.push('Ground plane transform or extent changed');
   if (ground.textureWidth !== 1344 || ground.textureHeight !== 672) issues.push('Wrong actual derived ground texture size');
+  if (ground.filterMode !== 0) issues.push('Actual derived ground texture must use LINEAR filtering');
   if (ground.legacyFloorCount !== 0) issues.push('Legacy floor tiles remain visible in town');
   if (ground.largeMarkerCount !== 0) issues.push('Oversized geometric town markers remain');
   if (gate.x !== 1728 || gate.y !== 664 || gate.depth !== 684) issues.push('Entrance left its original gate contact/depth');

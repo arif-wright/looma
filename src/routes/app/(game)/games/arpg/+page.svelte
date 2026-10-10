@@ -783,4 +783,12 @@
       aspect-ratio: 4 / 3;
     }
   }
+
+  /* A narrow portrait view needs room for the complete town route. Preserve
+     desktop 16:9 and short-landscape 4:3; this does not add touch controls. */
+  @media (max-width: 640px) and (orientation: portrait) {
+    .arpg-container {
+      aspect-ratio: 3 / 4;
+    }
+  }
 </style>

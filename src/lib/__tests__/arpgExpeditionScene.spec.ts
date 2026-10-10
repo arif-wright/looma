@@ -88,7 +88,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
     const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
     Object.assign(context, { createPattern: vi.fn(() => ({})) });
-    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
     const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');

@@ -42,7 +42,7 @@ Revert this code-only release or restore the previous production deployment if r
 
 ## Local startup and untimed-town integration
 
-The local runner verifies 251 focused unit cases in 12 exact files:
+The local runner verifies 257 focused unit cases in 12 exact files:
 SDK lifecycle 53, SDK start recovery 27, template start recovery 9, ARPG boot
 start recovery 5, boot scene readiness 13, game scene readiness 15,
 expedition model 8, expedition scene 30, town art 13, responsive layout 18, town coordinator 30 and viewport 18.
@@ -80,7 +80,7 @@ pass under another runtime must be identified as such.
 ### Workflow/source-pin integration
 
 The startup workflow must run the same 12 focused unit files and all five DOM
-suites as this local runner, with exact totals of 251 units and 130 DOM cases.
+suites as this local runner, with exact totals of 257 units and 130 DOM cases.
 Compared with the inherited PR15 workflow (136 units and 104 DOM), this adds
 `arpgExpedition.spec.ts`, `arpgExpeditionScene.spec.ts`, `arpgTownSession.spec.ts`,
 `arpgTownCorner.spec.ts`, `arpgViewportLayout.spec.ts`

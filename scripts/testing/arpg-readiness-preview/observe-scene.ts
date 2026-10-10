@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
+import { scanAlphaBounds, VISIBLE_ALPHA_THRESHOLD } from './alpha-bounds.mjs';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
-import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry, type TownGroundObservation } from './runtime';
+import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry, type TownGroundObservation, type VisibleSpriteObservation } from './runtime';
 import type { World, EntityId } from '../../../src/lib/games/arpg/ecs/components';
 import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 
@@ -39,7 +40,21 @@ function readTownGround(state: ObservedState, hero: { x: number; y: number }): T
   });
   return { legacyFloorCount: images.filter(image => /^floor_\d+$/.test(image.texture.key)).length,
     largeMarkerCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Ellipse && object.width >= 120 && object.height >= 50).length,
-    textureWidth: canvas?.width ?? 0, textureHeight: canvas?.height ?? 0, samples };
+    textureWidth: canvas?.width ?? 0, textureHeight: canvas?.height ?? 0, filterMode: plane?.frame.source.scaleMode ?? null, samples };
+}
+const alphaCache = new WeakMap<Phaser.Textures.Frame, ReturnType<typeof scanAlphaBounds>>();
+function decodedAlphaBounds(frame: Phaser.Textures.Frame) {
+  if (alphaCache.has(frame)) return alphaCache.get(frame)!;
+  // Copy the already decoded frame into a detached analysis canvas at 1:1.
+  // It is never appended, registered with Phaser, rendered, or used as art.
+  const analysis = document.createElement('canvas');
+  analysis.width = frame.cutWidth; analysis.height = frame.cutHeight;
+  const context = analysis.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Decoded alpha inspection requires a 2D context');
+  context.drawImage(frame.source.image as CanvasImageSource, frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight, 0, 0, frame.cutWidth, frame.cutHeight);
+  const alpha = scanAlphaBounds(context.getImageData(0, 0, analysis.width, analysis.height).data, analysis.width, analysis.height);
+  alphaCache.set(frame, alpha);
+  return alpha;
 }
 type RenderCamera = Phaser.Cameras.Scene2D.Camera & { readonly matrix: Phaser.GameObjects.Components.TransformMatrix };
 // Phaser keeps its rendered matrix internally; this type exposes it read-only.
@@ -58,6 +73,20 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     const x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y));
     return { x, y, width: Math.max(...points.map(p => p.x)) - x, height: Math.max(...points.map(p => p.y)) - y };
   };
+  const visibleSprite = (object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite): VisibleSpriteObservation | null => {
+    const alpha = decodedAlphaBounds(object.frame);
+    if (!alpha) return null;
+    const transform = object.getWorldTransformMatrix();
+    const left = object.frame.x + alpha.x - object.displayOriginX;
+    const top = object.frame.y + alpha.y - object.displayOriginY;
+    const points = [[left, top], [left + alpha.width, top], [left, top + alpha.height], [left + alpha.width, top + alpha.height]].map(([x, y]) => {
+      const world = transform.transformPoint(x!, y!);
+      return point(main, world.x, world.y);
+    });
+    const x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y));
+    return { textureKey: object.texture.key, alphaThreshold: VISIBLE_ALPHA_THRESHOLD, frameWidth: object.frame.cutWidth, frameHeight: object.frame.cutHeight,
+      sourceBounds: alpha, screenBounds: { x, y, width: Math.max(...points.map(p => p.x)) - x, height: Math.max(...points.map(p => p.y)) - y } };
+  };
   const texts = (entries: Array<[string, Phaser.GameObjects.Text]>) => entries.filter(([, text]) => text.visible && text.text.length > 0).map(([name, text]) => ({ name, bounds: bounds(ui, text) }));
   const entrance = state.worldLayer.list.find((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && object.texture.key === 'town_ruins_entrance_v1');
   const shop = state.worldLayer.list.find((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && object.texture.key === 'town_corner_shop_v1');
@@ -68,6 +97,7 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     hud: bounds(ui, state.hudPanel), controls: bounds(ui, state.controlPanel),
     hudItems: texts([['instructions', state.instructionsText], ['score', state.scoreText], ['hp', state.hpText], ['area', state.areaText]]),
     controlItems: texts([['status', state.controlStatus], ['primary', state.primaryControl], ['secondary', state.secondaryControl]]),
+    heroVisible: visibleSprite(state.playerSprite), entranceVisible: entrance ? visibleSprite(entrance) : null,
     heroGround: point(main, ground.x, ground.y), shop: shop ? bounds(main, shop) : null, entrance: entrance ? bounds(main, entrance) : null,
     entranceLabel: state.portalText?.visible && state.portalText.text ? bounds(main, state.portalText) : null
   };

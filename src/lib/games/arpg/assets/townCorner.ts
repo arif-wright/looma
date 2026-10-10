@@ -20,7 +20,9 @@ export const TOWN_COBBLE_PATCH_KEY = 'town_corner_cobble_patch_v1';
 export const TOWN_GROUND_KEY = 'town_ground_plane_v1';
 export const TOWN_MATERIAL_KEY = 'town_ground_mirrored_material_v1';
 export const TOWN_GROUND_RESOLUTION = 0.5;
-export const TOWN_MATERIAL_CELL_PIXELS = 64;
+// 128px source quadrants span four logical cells. The doubled cobble scale
+// avoids dense speckle while keeping the temporary material size unchanged.
+export const TOWN_MATERIAL_CELL_PIXELS = 32;
 export const TOWN_MATERIAL_SIZE = 256;
 export const TOWN_CORNER_LAYOUT = {
   // Relative to spawn (14,9), the shop's body sits above/right. Its front
@@ -79,16 +81,25 @@ export function townGroundLayout(isoToWorld: (tx: number, ty: number) => Vec2, c
 /** Explicit mirror addressing, not a claim that the source has periodic edges. */
 export function paintTownMaterial(context: CanvasRenderingContext2D, source: CanvasImageSource) {
   const half = TOWN_MATERIAL_SIZE / 2;
-  context.clearRect(0, 0, TOWN_MATERIAL_SIZE, TOWN_MATERIAL_SIZE);
-  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
-    context.save();
-    try {
-      context.translate(x ? TOWN_MATERIAL_SIZE : 0, y ? TOWN_MATERIAL_SIZE : 0);
-      context.scale(x ? -1 : 1, y ? -1 : 1);
-      context.drawImage(source, 0, 0, half, half);
-    } finally {
-      context.restore();
+  context.save();
+  try {
+    // Phaser's global pixelArt setting disables pooled-canvas smoothing. This
+    // painterly material needs filtered downsampling; restore the caller state.
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.clearRect(0, 0, TOWN_MATERIAL_SIZE, TOWN_MATERIAL_SIZE);
+    for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
+      context.save();
+      try {
+        context.translate(x ? TOWN_MATERIAL_SIZE : 0, y ? TOWN_MATERIAL_SIZE : 0);
+        context.scale(x ? -1 : 1, y ? -1 : 1);
+        context.drawImage(source, 0, 0, half, half);
+      } finally {
+        context.restore();
+      }
     }
+  } finally {
+    context.restore();
   }
 }
 
@@ -100,6 +111,8 @@ export function paintTownGround(context: CanvasRenderingContext2D, material: Can
   const resolution = TOWN_GROUND_RESOLUTION;
   context.save();
   try {
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
     context.clearRect(0, 0, layout.pixelWidth, layout.pixelHeight);
     context.beginPath();
     layout.corners.forEach((point, index) => {
@@ -195,6 +208,9 @@ export function createTownCorner(
     paintTownGround(ground.context, material.canvas, layout);
     releaseTexture(TOWN_MATERIAL_KEY);
     ground.refresh();
+    // Phaser.Textures.FilterMode.LINEAR = 0. Keep global pixelArt and every
+    // source/actor texture untouched; only this generated ground is filtered.
+    ground.setFilter(0);
     const add = (position: Vec2, key: string) => {
       const image = scene.add.image(position.x, position.y, key);
       images.push(image);

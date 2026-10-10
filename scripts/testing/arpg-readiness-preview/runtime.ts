@@ -6,15 +6,20 @@ export type ArtObjectObservation = {
   scaleX: number; scaleY: number; displayWidth: number; displayHeight: number;
 };
 export type ScreenRect = { x: number; y: number; width: number; height: number };
+export type VisibleSpriteObservation = {
+  textureKey: string; alphaThreshold: number; frameWidth: number; frameHeight: number;
+  sourceBounds: ScreenRect & { opaquePixels: number }; screenBounds: ScreenRect;
+};
 export type ViewportGeometry = {
   canvas: { width: number; height: number };
   camera: { x: number; y: number; width: number; height: number; zoom: number; scrollX: number; scrollY: number; matrix: number[] };
   hud: ScreenRect; controls: ScreenRect;
   hudItems: Array<{ name: string; bounds: ScreenRect }>; controlItems: Array<{ name: string; bounds: ScreenRect }>;
+  heroVisible: VisibleSpriteObservation | null; entranceVisible: VisibleSpriteObservation | null;
   heroGround: { x: number; y: number }; shop: ScreenRect | null; entrance: ScreenRect | null; entranceLabel: ScreenRect | null;
 };
 export type TownGroundObservation = {
-  legacyFloorCount: number; largeMarkerCount: number; textureWidth: number; textureHeight: number;
+  legacyFloorCount: number; largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
   samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
 export type GameplayObservation = {

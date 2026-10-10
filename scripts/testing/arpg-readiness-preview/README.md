@@ -84,7 +84,10 @@ and real post-create frames together.
     After actual render, require HUD/control panels and visible text within the
     canvas, the hero ground point clear of both panels, and the full shop bounds
     inside the unobstructed band between them. The new entrance and its live
-    gate-label bounds must also fit the same clear band.
+    gate-label bounds must also fit the same clear band. Require a portrait
+    canvas at least 480 CSS pixels tall, with visible hero alpha bounds at least
+    12×24 CSS pixels and entrance alpha bounds at least 60×60 CSS pixels. These
+    modest display-size floors do not certify playability or aesthetics.
     Capture the full phone-sized viewport. This runs desktop Chromium without
     mobile-device or touch emulation; it does not establish phone playability.
 
@@ -97,7 +100,9 @@ add desktop-canvas and 390×844 art previews. Ground checks require exactly one
 derived plane and entrance, zero legacy town floor images or oversized geometric
 markers, unchanged gate contact, and opaque native-canvas samples at five points
 on the hero-to-gate line. The same checks run after returning and idling in town.
-These samples establish bounded coverage, not seamlessness or artistic quality. Visual observations record the actual
+These samples establish bounded coverage, not seamlessness or artistic quality.
+The actual derived-ground texture must report LINEAR filtering before departure
+and after return; this is checked independently of the production painter. Visual observations record the actual
 viewport, canvas bounds, document width, decoded art keys, and real hero/shop/
 lantern/floor/entrance position, origin, scale and depth. Checks preserve the measured shop
 foot anchor and floor-below-actors ordering; they do not certify pixel-perfect
@@ -106,6 +111,11 @@ screenshot review is still required, including cropped HUD or controls at narrow
 widths even when the page itself does not overflow. The strengthened phone gate
 projects real object bounds with Phaser’s actual post-render camera matrices;
 it does not use the production viewport-layout helper as its geometry oracle.
+For readable-size checks, already decoded hero/entrance frames are copied at
+1:1 into detached analysis canvases. Cached alpha≥32 pixel bounds are projected
+through the real object and camera transforms. These canvases never enter the
+DOM or Phaser texture manager, and never replace scene pixels. Transparent
+256×256 hero-frame padding therefore cannot satisfy the visible-size checks.
 
 ## Local preparation and hosted execution
 
@@ -152,18 +162,20 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 121 unit
+submission fields and the exact zero-value presentation payload. Its 137 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
 The local browser denial was not retried. Local preparation executes zero browser
-cases. This ground/entrance slice is local only, based on the frozen published
-art preview. Its new material, entrance, continuous-floor coverage and expanded
-phone framing have not been rendered in a permitted browser yet. Existing
-published screenshots and execution artifacts are unchanged and cannot prove
-this new slice passed. New hosted execution needs separate authorization.
+cases. The frozen 8607613 hosted run passed all twelve cases, but its reviewed
+screenshots showed noisy ground and a tiny phone-sized hero. This visual followup
+adds taller portrait framing, minimum visible-silhouette checks and actual ground
+filter evidence. It has not been rendered in a permitted browser yet. The frozen
+8607613 fixture and hosted screenshots remain unchanged; their pass does not
+establish that this followup renders correctly. New execution and visual review
+must apply to the exact followup commit.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does

@@ -91,6 +91,8 @@ export function verifyObservation(observation, index) {
       const geometry = visual.scene.gameplay.viewportGeometry;
       empty(phoneGeometryIssues(geometry), 'Phone HUD, controls, hero and full shop must fit their rendered unobstructed regions');
       assert.equal(geometry.canvas.width, canvas.width); assert.equal(geometry.canvas.height, canvas.height);
+      assert.equal(geometry.heroVisible.textureKey, visual.scene.gameplay.townArt.hero.key, 'Measured silhouette belongs to the actual hero frame');
+      assert.equal(geometry.entranceVisible.textureKey, 'town_ruins_entrance_v1', 'Measured silhouette belongs to the entrance');
     }
     empty(townGroundIssues(visual.scene.gameplay), 'Continuous town ground and original entrance position required');
     const art = visual.scene.gameplay.townArt;

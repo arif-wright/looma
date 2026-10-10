@@ -6,16 +6,26 @@ import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, 
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
 const make = () => {
   const source = {};
-  const context = () => ({
-    save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
-    moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
-    translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
-    createPattern: vi.fn(() => ({})), fillStyle: null as any
-  });
+  const context = () => {
+    const value = {
+      save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
+      moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
+      translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
+      createPattern: vi.fn(() => ({})), fillStyle: null as any,
+      imageSmoothingEnabled: false, imageSmoothingQuality: 'low' as ImageSmoothingQuality
+    };
+    const stack: Array<[boolean, ImageSmoothingQuality]> = [];
+    value.save.mockImplementation(() => { stack.push([value.imageSmoothingEnabled, value.imageSmoothingQuality]); });
+    value.restore.mockImplementation(() => {
+      const previous = stack.pop();
+      if (previous) [value.imageSmoothingEnabled, value.imageSmoothingQuality] = previous;
+    });
+    return value;
+  };
   const keys = new Set<string>();
   const images: any[] = [];
-  const ground = { context: context(), refresh: vi.fn(), canvas: {} };
-  const material = { context: context(), refresh: vi.fn(), canvas: {} };
+  const ground = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
+  const material = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
   const scene: any = {
     textures: {
       exists: (key: string) => keys.has(key),
@@ -56,8 +66,8 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
     expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'repeat');
     expect(context.translate).toHaveBeenCalledWith(512, -16);
-    expect(context.transform).toHaveBeenCalledWith(0.5, 0.25, -0.5, 0.25, 0, 0);
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 1792, 1152);
+    expect(context.transform).toHaveBeenCalledWith(1, 0.5, -1, 0.5, 0, 0);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 896, 576);
     expect(context.clip.mock.invocationCallOrder[0]).toBeLessThan(context.fillRect.mock.invocationCallOrder[0]!);
     expect(context.drawImage).not.toHaveBeenCalled();
     expect(context.restore).toHaveBeenCalledOnce();
@@ -70,7 +80,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.translate.mock.calls).toEqual([[0, 0], [256, 0], [0, 256], [256, 256]]);
     expect(context.scale.mock.calls).toEqual([[1, 1], [-1, 1], [1, -1], [-1, -1]]);
     expect(context.drawImage.mock.calls).toEqual(Array.from({ length: 4 }, () => [source, 0, 0, 128, 128]));
-    expect(context.save).toHaveBeenCalledTimes(4); expect(context.restore).toHaveBeenCalledTimes(4);
+    expect(context.save).toHaveBeenCalledTimes(5); expect(context.restore).toHaveBeenCalledTimes(5);
     // The exact reflection above duplicates adjacent and wrapped edge samples.
     // This checks addressing, not browser interpolation or visual quality.
     const reflected = (pixel: number) => pixel < 128 ? pixel : 255 - pixel;
@@ -78,11 +88,34 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(reflected(255)).toBe(reflected(0));
   });
 
+  it.each([
+    ['material', false], ['material', true], ['ground', false], ['ground', true]
+  ] as const)('filters %s painting and restores inherited pixelArt canvas state (throws=%s)', (kind, throws) => {
+    const { context, source } = make();
+    const operation = kind === 'material' ? context.drawImage : context.fillRect;
+    operation.mockImplementation(() => {
+      expect(context.imageSmoothingEnabled).toBe(true);
+      expect(context.imageSmoothingQuality).toBe('high');
+      if (throws) throw new Error('paint rejected');
+    });
+    const paint = () => kind === 'material'
+      ? paintTownMaterial(context as any, source as any)
+      : paintTownGround(context as any, source as any, townGroundLayout(iso));
+    if (throws) expect(paint).toThrow('paint rejected'); else paint();
+    expect(operation).toHaveBeenCalled();
+    expect(context.imageSmoothingEnabled).toBe(false);
+    expect(context.imageSmoothingQuality).toBe('low');
+    expect(context.save.mock.calls.length).toBe(context.restore.mock.calls.length);
+  });
+
   it('adds four area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {
     const { scene, images, ground, material, add } = make();
     createTownCorner(scene, add, iso, -161);
     expect(scene.textures.createCanvas.mock.calls).toEqual([[TOWN_GROUND_KEY, 1344, 672], [TOWN_MATERIAL_KEY, 256, 256]]);
     expect(ground.refresh).toHaveBeenCalledOnce(); expect(material.refresh).not.toHaveBeenCalled();
+    expect(ground.setFilter.mock.calls).toEqual([[0]]); // LINEAR only for generated ground.
+    expect(ground.refresh.mock.invocationCallOrder[0]).toBeLessThan(ground.setFilter.mock.invocationCallOrder[0]!);
+    expect(material.setFilter).not.toHaveBeenCalled();
     expect(add).toHaveBeenCalledTimes(4);
     expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key]);
     expect(images[0]).toMatchObject({ x: 128, y: -168 });
@@ -121,7 +154,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     const { scene, material, add } = make();
     material.context.drawImage.mockImplementation(() => { throw new Error('paint failed'); });
     expect(() => createTownCorner(scene, add, iso, -161)).toThrow('paint failed');
-    expect(material.context.restore).toHaveBeenCalledOnce();
+    expect(material.context.restore).toHaveBeenCalledTimes(2);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
     expect(add).not.toHaveBeenCalled();
   });

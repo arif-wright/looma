@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM, TOWN_FRAMING_BOUNDS } from '../games/arpg/viewportLayout';
 import { TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
@@ -64,6 +65,28 @@ describe('ARPG narrow viewport geometry (no renderer)', () => {
     // Actual text metrics and camera transforms remain a hosted-render gate.
     const label = project(layout, 256, 128 + art.entranceLabelOffsetY);
     for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, layout.playfield);
+  });
+
+  it('gives the actual phone portrait canvas enough height without changing framing bounds', () => {
+    const width = 374, height = width * 4 / 3;
+    const layout = arpgViewportLayout(width, height, true);
+    expect(layout.camera.zoom).toBeCloseTo((width - 32) / 470);
+    expect(layout.camera.zoom).toBeGreaterThanOrEqual(0.72);
+    expect(layout.camera.zoom / arpgViewportLayout(width, 280, true).camera.zoom).toBeGreaterThan(2);
+    for (const x of [TOWN_FRAMING_BOUNDS.left, TOWN_FRAMING_BOUNDS.right]) {
+      for (const y of [TOWN_FRAMING_BOUNDS.top, TOWN_FRAMING_BOUNDS.bottom]) within(project(layout, x, y), layout.playfield);
+    }
+    const label = project(layout, 256, 168);
+    for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, layout.playfield);
+  });
+
+  it('scopes the taller route ratio to narrow portrait and preserves desktop and landscape CSS', () => {
+    const source = readFileSync('src/routes/app/(game)/games/arpg/+page.svelte', 'utf8');
+    expect(source).toMatch(/\.arpg-container\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9;/);
+    expect(source).toMatch(/@media \(max-width: 768px\)\s*\{[\s\S]*?\.arpg-container\s*\{\s*aspect-ratio:\s*4\s*\/\s*3;/);
+    const portrait = source.match(/@media \(max-width: 640px\) and \(orientation: portrait\)\s*\{\s*\.arpg-container\s*\{\s*aspect-ratio:\s*3\s*\/\s*4;/);
+    expect(portrait).not.toBeNull();
+    expect(portrait!.index).toBeGreaterThan(source.indexOf('@media (max-width: 768px)'));
   });
 
   it.each([true, false])('preserves the desktop layout and camera exactly (town=%s)', (town) => {
