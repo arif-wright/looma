@@ -21,3 +21,12 @@ export const NAVIGATION_PHASES = {
   gateEast:[[1856,432],[2000,432],[2000,600],[1800,600]],
   gateSouth:[[1800,760],[1728,760]]
 };
+
+// One native key per bounded pulse, followed by an observed key-release frame.
+// No browser round-trip or geometry read occurs while a key remains held.
+export function waypointPulse(position, x, y) {
+  const keys=waypointKeys(position,x,y);if(!keys.length)return null;
+  const dx=x-position.x,dy=y-position.y;
+  const key=Math.abs(dx)>=Math.abs(dy)?(dx>0?'d':'a'):(dy>0?'s':'w');
+  return { key, delay: Math.max(Math.abs(dx),Math.abs(dy))>80?64:16 };
+}

@@ -26,7 +26,9 @@ layer overlapping a conservative hero envelope fades to 0.28 when the hero is
 behind it and returns to 1 outside that occlusion. Foundation alpha remains 1.
 The original shop uses its unchanged raster and measured foundation with the
 same conservative cutaway policy. All images belong to the town visit; source
-textures remain game-owned, and the derived ground is destroyed on exit.
+textures remain game-owned, and the derived ground is destroyed on exit. The
+non-solid entrance keeps its original contact/depth and fades as one image only
+while an overlapping hero is behind or tied with it, then restores full opacity.
 
 The camera follows exploration at a fixed viewport-dependent zoom. It does not
 shrink the town to show every building. Peripheral roofs/walls can crop as they

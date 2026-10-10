@@ -70,6 +70,18 @@ export function townFacadePresentation(actor: Vec2, contact: Vec2, footprint: re
   return { depth: !behind && overlaps ? Math.min(contact.y + 20, actor.y + 19) : contact.y + 20, alpha: cutaway ? TOWN_CUTAWAY_ALPHA : 1 };
 }
 
+/** The entrance is a non-solid single-image arch, not a building foundation.
+ * Its static foot depth stays intact. Fade only when the arch can cover a
+ * behind/tied hero; equality matters because the arch was inserted after him. */
+export function townPassageAlpha(actor: Vec2, contact: Vec2) {
+  if (actor.y > contact.y) return 1;
+  const e = TOWN_ACTOR_ENVELOPE, b = TOWN_ENTRANCE_SOURCE_BOUNDS;
+  const x = actor.x - contact.x, y = actor.y - contact.y;
+  const overlaps = x + e.right >= b.left && x + e.left <= b.right &&
+    y + e.bottom >= b.top && y + e.top <= b.bottom;
+  return overlaps ? TOWN_CUTAWAY_ALPHA : 1;
+}
+
 /** Fixed zoom. Preserve gate/arrival context locally; reveal peripheral town by
  * following exploration, never by squeezing the entire plaza onto a phone. */
 export function townExplorationOffset(layout: ReturnType<typeof arpgViewportLayout>, actor: Vec2, spawn: Vec2, gate: Vec2) {

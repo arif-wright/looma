@@ -98,6 +98,8 @@ Require a single bounded synthetic expedition and newly owned town images on
 return. The original twelve cases above remain, with only exact asset-count and
 approved source/asset allowlist updates.
 
+The original twelve cases keep full per-render observations. The added cases request expensive full geometry/alpha probes only after native keys are released. Each checkpoint must carry a new request ID and request/response timestamps from a later real POST_RENDER frame; stale cached geometry cannot pass. Initial creation and area transitions still obtain actual full state. Every frame continues to supply a lightweight motion/dash/intent sample.
+
 The added observer records a bounded (maximum12,000 entries, overflow fails)
 post-render movement trace, real ECS dash cooldown/direction, and stable WeakMap
 identities for the five named town images. Every consecutive town movement segment
@@ -109,10 +111,10 @@ fixed camera zoom, measured hero size and actual UI/entrance/prompt bounds. A bo
 positions and expected polygons are independently transcribed constants; no
 production collision or camera helper is imported as the acceptance oracle.
 
-Ten additional PNG captures show each viewport at the rear front, rear cutaway,
-endcap cutaway, eastern gate approach and returned town. Captures are paired
+Twelve additional PNG captures show each viewport at the rear front, rear cutaway,
+endcap cutaway, eastern gate approach, the gate threshold and returned town. Captures are paired
 atomically with their observed movement checkpoint. The original seven required
-PNG captures are preserved, giving seventeen required attachments. Appearance,
+PNG captures are preserved, giving nineteen required attachments. Appearance,
 pixel occlusion, paving quality and navigation feel still require actual screenshot
 review; object alpha and geometry do not prove final composited pixels. Synthetic
 schema factories are imported only by verifier tests, never browser code.
@@ -181,14 +183,14 @@ There is no executable override, custom security flag or alternate launch. The
 locked managed Chromium is required. The bounded movement/return case has a
 120-second test budget so both native town-idle intervals exceed the synthetic
 twenty-second cap, with headroom for software-rendered frames and browser input.
-The two additive exploration cases each allow 180 seconds for native movement and one bounded return. Other original test budgets are unchanged. Native waypoint steering permits8world pixels per axis, verified offline at15/30/60fps; even independent8px endpoint errors leave41.14px minimum clearance against radius38 solids. The6.5second per-waypoint deadline still fails on a real stall. Native clocks are used; this fixture never
+The two additive exploration cases each allow 180 seconds for native movement and one bounded return. Other original test budgets are unchanged. Native waypoint steering sends bounded single-key pulses, then confirms a neutral-input frame before reading position. It keeps the8world-pixel per-axis target, now enforced again at settled checkpoints. Offline15/30/60fps checks and a provenance-pinned replay of the failed hosted47ms cadence with delayed feedback exercise convergence; even independent8px endpoint errors leave41.14px minimum clearance against radius38 solids. The6.5second per-waypoint deadline still fails on a real stall. Native clocks are used; this fixture never
 patches requestAnimationFrame or advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
-checkpoints, cleanup and the seventeen expected PNG attachments. For the bounded flow
+checkpoints, cleanup and the nineteen expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 182 unit
+submission fields and the exact zero-value presentation payload. Its 196 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -197,8 +199,7 @@ Discovery has zero attempts and cannot satisfy execution mode.
 The persistent local-browser denial remains in force: no local launch,
 escalation, alternate flags or alternate browser was attempted. Local preparation
 executes zero browser cases. PR17 e73cad94's twelve passing hosted cases are
-baseline evidence only. This larger-plaza candidate needs a new authorized hosted
-run and visual review against its exact commit. Its architecture is an unfinished
+baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. This repair keeps all safety/readability gates, adds two threshold captures, and requires a new authorized hosted run against its exact commit. Its architecture is an unfinished
 code-native projection prototype, not completed painterly town art. Peripheral
 architecture may intentionally leave the viewport as the hero explores.
 

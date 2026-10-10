@@ -22,7 +22,7 @@ let nextObjectId = 1;
 const objectId = (object: object) => { if (!objectIds.has(object)) objectIds.set(object, nextObjectId++); return objectIds.get(object)!; };
 const ART_KEYS = ['town_ground_plane_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'];
 const readArtObject = (object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite): ArtObjectObservation => ({
-  key: object.texture.key, x: object.x, y: object.y, depth: object.depth, originX: object.originX, originY: object.originY,
+  alpha: object.alpha, key: object.texture.key, x: object.x, y: object.y, depth: object.depth, originX: object.originX, originY: object.originY,
   scaleX: object.scaleX, scaleY: object.scaleY, displayWidth: object.displayWidth, displayHeight: object.displayHeight
 });
 // Read the actual derived floor canvas only. No draw, texture replacement or
@@ -153,7 +153,7 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     entranceLabel: state.portalText?.visible && state.portalText.text ? bounds(main, state.portalText) : null
   };
 }
-function readGameplay(scene: GameScene): GameplayObservation | null {
+function readGameplay(scene: GameScene, observedAt = performance.now()): GameplayObservation | null {
   const state = scene as unknown as ObservedState;
   if (!state.initialized || state.playerId === null) return null;
   const position = state.world.getTransform(state.playerId), health = state.world.getHealth(state.playerId);
@@ -163,10 +163,11 @@ function readGameplay(scene: GameScene): GameplayObservation | null {
     const bounds = text.getBounds();
     return { label: text.text, x: bounds.centerX * rect.width / scene.scale.width, y: bounds.centerY * rect.height / scene.scale.height };
   };
-  return { at: performance.now(), area: state.expedition.area, elapsed: state.elapsed,
+  return { at: observedAt, area: state.expedition.area, elapsed: state.elapsed,
     durationLimit: state.durationLimit, expeditionActive: state.expeditionActive,
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
+    plazaProbe: null,
     plazaVisibility: window.__arpgPlazaFlow === true && state.expedition.area === 0 ? readHeroVisibility(scene, state) : null,
     intent: { x: state.movementInput.x, y: state.movementInput.y },
     dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null,
@@ -204,14 +205,36 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
     observation.missingKeys = observation.queuedKeys.filter(key => !scene.textures.exists(key));
   });
   scene.events.once(Phaser.Scenes.Events.CREATE, () => { observation.createAt = performance.now(); });
+  let fulfilledProbeId = 0;
   game.events.on(Phaser.Core.Events.POST_RENDER, () => {
-    if (observation.createAt !== null) {
-      observation.framesAfterCreate++;
+    if (observation.createAt === null) return;
+    observation.framesAfterCreate++;
+    if (window.__arpgPlazaFlow !== true) {
+      // Original twelve cases retain their full post-render observations.
       observation.gameplay = readGameplay(scene);
-      if (window.__arpgPlazaFlow === true && observation.gameplay) {
-        const { at, area, x, y, dash, intent } = observation.gameplay;
-        if (fixture.plazaMotion.length < 12000) fixture.plazaMotion.push({ at, area, x, y, dash, intent });
-        else fixture.plazaMotionOverflow = true;
+      return;
+    }
+    const state = scene as unknown as ObservedState;
+    if (!state.initialized || state.playerId === null) return;
+    const position = state.world.getTransform(state.playerId);
+    if (!position) return;
+    const at = performance.now(), area = state.expedition.area;
+    // Preserve EVERY native post-render movement/dash sample. Full pixel reads
+    // are expensive and are only requested while keys are released, never on
+    // the control loop's hot path. No game clock or update is changed.
+    const motion = { at, area, x: position.x, y: position.y,
+      intent: { x: state.movementInput.x, y: state.movementInput.y },
+      dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null };
+    fixture.plazaLatestMotion = motion;
+    if (fixture.plazaMotion.length < 12000) fixture.plazaMotion.push(motion);
+    else fixture.plazaMotionOverflow = true;
+    const request = fixture.plazaProbeRequest;
+    const requested = request !== null && request.id > fulfilledProbeId && at >= request.requestedAt;
+    if (requested || observation.gameplay === null || observation.gameplay.area !== area) {
+      observation.gameplay = readGameplay(scene, at);
+      if (requested && observation.gameplay) {
+        observation.gameplay.plazaProbe = { ...request, respondedAt: at };
+        fulfilledProbeId = request.id;
       }
     }
   });

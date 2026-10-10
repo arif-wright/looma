@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { FOOTPRINTS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
+import { FOOTPRINTS, CHECKPOINT_TARGETS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
 import { PLAZA_VIEWS, plazaScreenshot } from './screenshots.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { townGroundIssues } from './town-ground.mjs';
@@ -23,14 +23,21 @@ export function verifyPlaza(state, cleanup, index) {
     for(const polygon of Object.values(FOOTPRINTS))assert(sweptDistance(previous,xy(p),polygon)>=37.5,'Every observed movement segment clears the radius-38 solid (0.5px numeric tolerance)');
   });
   const home=points[0].scene.gameplay, zoom=home.viewportGeometry.camera.zoom;
+  assert.equal(home.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1').alpha,1,'Initial entrance opacity is unchanged');
   for(let i=0;i<points.length;i++){
     const p=points[i],g=p.scene?.gameplay;
     assert(g&&p.scene.id===state.scenes.find(s=>!s.destroyed).id);
+    const probe=g.plazaProbe;
+    assert(probe&&Number.isSafeInteger(probe.id)&&probe.id>0&&Number.isFinite(probe.requestedAt)&&probe.requestedAt<=probe.respondedAt&&probe.respondedAt===g.at,'Fresh explicit post-render probe response required');
+    if(i)assert(probe.id>points[i-1].scene.gameplay.plazaProbe.id&&probe.requestedAt>points[i-1].at,'A prior checkpoint probe cannot supply current geometry');
     assert(p.scene.framesAfterCreate>0&&g.at<=p.at&&p.at-g.at<1000,'Checkpoint is a recent genuine rendered frame');
     if(i)assert(p.at>=points[i-1].at);
     assert(motion.some(t=>t.at===g.at&&t.x===g.x&&t.y===g.y&&t.area===g.area),'Checkpoint comes from the native movement trace');
     if(p.label==='plaza-departed') { assert.equal(g.area,1);assert.equal(g.expeditionActive,true);assert.deepEqual(g.plaza,[]);continue; }
     assert.equal(g.area,0);assert.equal(g.expeditionActive,false);
+    assert.deepEqual(g.intent,{x:0,y:0},'Every full town probe observes confirmed released keys');
+    const target=CHECKPOINT_TARGETS[p.label];
+    if(target)assert(Math.abs(g.x-target[0])<=8&&Math.abs(g.y-target[1])<=8,'Settled checkpoint stays inside the unchanged8px native waypoint target');
     assert.equal(p.starts,p.label==='plaza-returned-owned'?1:0);
     if(p.starts===0)assert.equal(g.elapsed,0,'Town exploration never starts the clock');
     empty(plazaObjectsIssues(g),'Exact owned facade transforms, solidity and actor scale');
@@ -72,14 +79,18 @@ export function verifyPlaza(state, cleanup, index) {
   }
   const east=at(points,'gate-east-approach').scene.gameplay,south=at(points,'gate-south-approach').scene.gameplay;
   assert(east.x>1780&&Math.hypot(east.x-1728,east.y-664)<150,'Readability tested approaching gate from east');
+  assert.equal(east.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1').alpha,.28,'East approach always exercises entrance cutaway before exact threshold');
   assert(south.y>740&&Math.hypot(south.x-1728,south.y-664)<150,'Readability tested approaching gate from south');
   const arrived=at(points,'gate-arrived'),departed=at(points,'plaza-departed'),returned=at(points,'plaza-returned-owned');
   assert(Math.hypot(arrived.scene.gameplay.x-1728,arrived.scene.gameplay.y-664)<12);
+  const arch=arrived.scene.gameplay.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1');
+  assert.equal(arch.alpha,arrived.scene.gameplay.y<=664?.28:1,'Gate upper art must cut away when the threshold hero sorts behind it');
   assert.equal(departed.starts,1);assert.equal(departed.scene.gameplay.durationLimit,FLOW_CAP_MS);
   const g=returned.scene.gameplay;assert.equal(g.returned,true);assert.equal(g.outcome,'retreated');assert(g.elapsed>0&&g.elapsed<FLOW_CAP_MS);
   empty(townGroundIssues(g),'Returned town has one owned ground and entrance');
   assert(g.plaza.every(o=>!home.plaza.some(old=>old.objectId===o.objectId)),'Return rebuilds every town-owned image rather than reusing destroyed instances');
   assert(g.plaza.every(o=>o.alpha===1),'All returned town cutaways reset');
+  assert.equal(g.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1').alpha,1,'Returned entrance opacity restores');
   assert(Math.hypot(g.x-1472,g.y-536)<1,'Return preserves original spawn');
   const calls=path=>state.api.filter(c=>c.path===path),[start]=calls('/api/games/session/start'),sign=calls('/api/games/sign'),complete=calls('/api/games/session/complete'),player=calls('/api/games/player/state');
   assert.equal(sign.length,1);assert.equal(complete.length,1);assert.equal(player.length,1);
@@ -92,7 +103,7 @@ export function verifyPlaza(state, cleanup, index) {
     assert.deepEqual(visual.viewport,index===13?{width:390,height:844}:{width:1280,height:900});
     assert(visual.documentWidth>0&&visual.documentWidth<=visual.viewport.width);
     assert(visual.canvas.width>0&&visual.canvas.height>0&&visual.canvas.pixelWidth>0&&visual.canvas.pixelHeight>0&&visual.canvas.x>=-1&&visual.canvas.x+visual.canvas.width<=visual.viewport.width+1);
-    const label=['rear-front-ready','rear-back-cutaway','endcap-roof-cutaway','gate-east-approach','plaza-returned-owned'][i],checkpoint=at(points,label);
+    const label=['rear-front-ready','rear-back-cutaway','endcap-roof-cutaway','gate-east-approach','gate-arrived','plaza-returned-owned'][i],checkpoint=at(points,label);
     assert.deepEqual(visual.scene.gameplay,checkpoint.scene.gameplay,'Screenshot records its actual movement checkpoint');
     assert.equal(visual.starts,checkpoint.starts);
   }

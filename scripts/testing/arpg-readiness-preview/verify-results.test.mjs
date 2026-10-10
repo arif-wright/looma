@@ -1,4 +1,5 @@
-import { WAYPOINT_TOLERANCE, NAVIGATION_PHASES, waypointKeys } from './plaza-navigation.mjs';
+import { readFileSync } from 'node:fs';
+import { WAYPOINT_TOLERANCE, NAVIGATION_PHASES, waypointKeys, waypointPulse } from './plaza-navigation.mjs';
 import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
 import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 // Verifier schema tests; these never launch or impersonate executed browsers.
@@ -266,6 +267,14 @@ test('invalid alpha buffers fail closed', () => assert.throws(() => scanAlphaBou
 // Additive corruption gates for real-input exploration evidence. Each mutation
 // keeps cleanup copies coherent, rather than failing an unrelated snapshot check.
 const plazaMutations = {
+  'plaza settled checkpoint still holds movement key': o=>o.state.checkpoints[6].scene.gameplay.intent={x:1,y:0},
+  'plaza initial entrance opacity changed': o=>o.state.checkpoints[0].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
+  'plaza checkpoint reuses stale geometry': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe=structuredClone(o.state.checkpoints[5].scene.gameplay.plazaProbe),
+  'plaza probe precedes request': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe.requestedAt+=100,
+  'plaza missing explicit probe': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe=null,
+  'plaza never exercises entrance cutaway on east approach': o=>o.state.checkpoints[14].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza opaque entrance at threshold': o=>o.state.checkpoints[16].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza entrance fails to restore on return': o=>o.state.checkpoints[18].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
   'plaza missing native checkpoint': o=>o.state.checkpoints.splice(6,1),
   'plaza missing movement trace': o=>o.state.plazaMotion=[],
   'plaza trace overflow': o=>o.state.plazaMotionOverflow=true,
@@ -344,4 +353,40 @@ test('all route segments preserve radius38 with independent8px endpoint errors',
     before=after;
   }
   assert(minimum>41);
+});
+
+const hostedReplay=JSON.parse(readFileSync(new URL('./plaza-feedback-replay.json',import.meta.url),'utf8'));
+test('hosted trace records held input after first in-tolerance frame',()=>{
+ const excerpt=hostedReplay.first_leg_excerpt,first=excerpt.find(p=>Math.abs(p.x-1368)<=8),released=excerpt.find(p=>p.intent.x===0);
+ assert(first&&released);assert(released.at-first.at>300);assert(Math.abs(released.x-1368)>8);
+ assert.equal(hostedReplay.provenance.run_id,38092384077);
+});
+for(const feedbackLag of[0,160,315,500])test(`release-before-feedback pulses tolerate${feedbackLag}ms read lag on hosted47ms cadence`,()=>{
+ const steps=hostedReplay.moving_frame_steps;assert(steps.length>10);
+ let frame=0,clock=0;const p={x:1472,y:536};
+ for(const [x,y]of Object.values(NAVIGATION_PHASES).flat()){
+  let pulses=0;
+  while(waypointPulse(p,x,y)){
+   assert(++pulses<150,'Native steering must converge without a larger target');
+   const pulse=waypointPulse(p,x,y);let held=0;
+   // Key release is sent before any feedback read. Delayed feedback extends
+   // neutral frames, not the movement pulse. Each active displacement is from
+   // the recorded hosted cadence; the real browser must still confirm this.
+   while(held<pulse.delay){
+    const step=steps[frame++%steps.length],before=[p.x,p.y];held+=step.dt;clock+=step.dt;
+    p.x+=(pulse.key==='d'?1:pulse.key==='a'?-1:0)*step.distance;
+    p.y+=(pulse.key==='s'?1:pulse.key==='w'?-1:0)*step.distance;
+    assert(Object.values(FOOTPRINTS).every(poly=>sweptDistance(before,[p.x,p.y],poly)>38));
+   }
+   const released={...p};clock+=feedbackLag;assert.deepEqual(p,released);
+  }
+  assert(Math.abs(p.x-x)<=8&&Math.abs(p.y-y)<=8);
+ }
+ assert(clock>0);
+});
+
+test('reject missing gate-arrival screenshot independently of existing17 images',()=>{
+ const r=report(),result=r.suites[0].specs[13].tests[0].results[0];
+ result.attachments=result.attachments.filter(a=>a.name!=='phone-plaza-gate-arrived');
+ assert.throws(()=>verify(r,'execution'));
 });

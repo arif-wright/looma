@@ -2,7 +2,7 @@ import { FLOW_CAP_MS, SIGNATURE, PLAYER_STATE, RECEIPT, expectedStart, sameJson,
 export type AuthSession = { user: { id: string } } | null;
 export type AuthCallback = (event: string, session: AuthSession) => void;
 export type ArtObjectObservation = {
-  key: string; x: number; y: number; depth: number; originX: number; originY: number;
+  alpha: number; key: string; x: number; y: number; depth: number; originX: number; originY: number;
   scaleX: number; scaleY: number; displayWidth: number; displayHeight: number;
 };
 export type ScreenRect = { x: number; y: number; width: number; height: number };
@@ -27,6 +27,7 @@ export type PlazaMotion = { intent: { x: number; y: number }; at: number; area: 
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
+  plazaProbe: { id: number; requestedAt: number; respondedAt: number } | null;
   plazaVisibility: { samples: number; readable: number; meanTransmission: number; occluders: string[] } | null;
   intent: PlazaMotion['intent']; dash: PlazaMotion['dash']; plaza: PlazaObjectObservation[];
   viewportGeometry: ViewportGeometry | null;
@@ -55,6 +56,13 @@ export const fixture = {
   callbacks: new Set<AuthCallback>(),
   api: [] as ApiCall[], blocked: [] as string[], rewardMutations: [] as unknown[],
   plazaMotion: [] as PlazaMotion[], plazaMotionOverflow: false,
+  plazaLatestMotion: null as PlazaMotion | null,
+  plazaProbeRequest: null as { id: number; requestedAt: number } | null,
+  requestPlazaProbe() {
+    if (window.__arpgPlazaFlow !== true) throw new Error('Full plaza probe is limited to the two exploration cases');
+    fixture.plazaProbeRequest = { id: (fixture.plazaProbeRequest?.id ?? 0) + 1, requestedAt: performance.now() };
+    return fixture.plazaProbeRequest;
+  },
   navigations: [] as string[], scenes: [] as SceneObservation[], checkpoints: [] as Checkpoint[], visuals: [] as VisualObservation[],
   mountAnother: async (): Promise<number> => { throw new Error('Not mounted'); },
   unmountPage: async (_id: number): Promise<void> => { throw new Error('Not mounted'); },

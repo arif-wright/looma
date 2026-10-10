@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crossesTownFootprint, townFacadePresentation, townFrontY, townExplorationOffset, TOWN_CUTAWAY_ALPHA } from '../games/arpg/townPlaza';
+import { crossesTownFootprint, townFacadePresentation, townFrontY, townExplorationOffset, townPassageAlpha, TOWN_CUTAWAY_ALPHA } from '../games/arpg/townPlaza';
 import { TOWN_FACADES } from '../games/arpg/assets/townFacadeData';
 import { TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 import { arpgViewportLayout, TOWN_ENTRANCE_SOURCE_BOUNDS } from '../games/arpg/viewportLayout';
@@ -159,6 +159,19 @@ describe('larger town foundations and actor-aware presentation (pure geometry)',
         expect(crossesTownFootprint(b, a, 49.999, polygon)).toBe(false);
       }
     }
+  });
+
+  it.each([
+    ['recorded hosted arrival', { x: 1728.2249516406953, y: 662.9645570713918 }, 0.28],
+    ['equal-depth contact', { x: 1728, y: 664 }, 0.28],
+    ['behind the arch', { x: 1728, y: 620 }, 0.28],
+    ['front of the arch', { x: 1728, y: 665 }, 1],
+    ['returned spawn', { x: 1472, y: 536 }, 1],
+    ['outside the source horizontally', { x: 2000, y: 620 }, 1],
+    ['outside the source vertically', { x: 1728, y: 420 }, 1]
+  ] as const)('keeps entrance overlap readable at %s without adding a solid', (_name, actor, alpha) => {
+    expect(townPassageAlpha(actor, gate)).toBe(alpha);
+    for (const polygon of solids()) expect(crossesTownFootprint(actor, actor, 38, polygon)).toBe(false);
   });
 
 });

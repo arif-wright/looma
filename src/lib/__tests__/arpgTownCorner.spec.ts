@@ -208,6 +208,32 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(images.every(image => image.setAlpha.mock.calls.length === 0)).toBe(true);
   });
 
+  it('fades the actual entrance at the hosted hidden-hero position, restores it, and never blocks passage', () => {
+    const { scene, images, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    const gate = images[3];
+    for (const actor of [{ x: 1728.2249516406953, y: 662.9645570713918 }, iso(18, 9)]) {
+      corner.updateActor(actor);
+      expect(gate.setAlpha).toHaveBeenLastCalledWith(0.28);
+      expect(gate.setDepth.mock.calls).toEqual([[684]]);
+      expect(corner.blocksMovement(actor, actor, 38)).toBe(false);
+    }
+    expect(corner.blocksMovement({ x: 1728, y: 620 }, { x: 1728, y: 720 }, 38)).toBe(false);
+    corner.updateActor({ x: 1728, y: 665 });
+    expect(gate.setAlpha).toHaveBeenLastCalledWith(1);
+    corner.updateActor(iso(14, 9));
+    expect(gate.setAlpha).toHaveBeenLastCalledWith(1);
+    corner.destroy(); gate.setAlpha.mockClear();
+    corner.updateActor(iso(18, 9));
+    expect(gate.setAlpha).not.toHaveBeenCalled();
+    const returned = createTownCorner(scene, add, iso, -161);
+    returned.updateActor(iso(14, 9));
+    expect(images[11]).not.toBe(gate);
+    expect(images[11].setAlpha).toHaveBeenLastCalledWith(1);
+    expect(images[11].setDepth.mock.calls).toEqual([[684]]);
+    returned.destroy();
+  });
+
   it('cleans every partial facade allocation if world registration fails, without removing source textures', () => {
     const { scene, images, keys } = make();
     let registrations = 0;

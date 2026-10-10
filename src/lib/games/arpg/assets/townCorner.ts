@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { Vec2 } from '../ecs/components';
-import { crossesTownFootprint, townFacadePresentation } from '../townPlaza';
+import { crossesTownFootprint, townFacadePresentation, townPassageAlpha } from '../townPlaza';
 import { TOWN_FACADES } from './townFacadeData';
 
 // Original, untrimmed source PNGs. Contacts are measured source pixels, not a
@@ -252,7 +252,7 @@ export function createTownCorner(
       .setOrigin(TOWN_CORNER_LAYOUT.lanternOrigin.x, TOWN_CORNER_LAYOUT.lanternOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.lanternScale).setDepth(lantern.y + 20);
     const entrance = isoToWorld(TOWN_CORNER_LAYOUT.entranceTile.x, TOWN_CORNER_LAYOUT.entranceTile.y);
-    add(entrance, TOWN_RUNTIME_ASSETS.entrance.key)
+    const entranceImage = add(entrance, TOWN_RUNTIME_ASSETS.entrance.key)
       .setOrigin(TOWN_CORNER_LAYOUT.entranceOrigin.x, TOWN_CORNER_LAYOUT.entranceOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.entranceScale).setDepth(entrance.y + 20);
     const facades = TOWN_FACADES.map(facade => {
@@ -276,6 +276,7 @@ export function createTownCorner(
         if (destroyed) return;
         const shopState = townFacadePresentation(actor, shop, TOWN_CORNER_LAYOUT.shopFootprint, shopArt);
         shopImage.setDepth(shopState.depth).setAlpha(shopState.alpha);
+        entranceImage.setAlpha(townPassageAlpha(actor, entrance));
         for (const { facade, layers } of facades) {
           const state = townFacadePresentation(actor, facade.contact, facade.footprint, facade.upperPolygons);
           for (const { image, layer } of layers) image.setDepth(state.depth).setAlpha(layer === 'upper' ? state.alpha : 1);
