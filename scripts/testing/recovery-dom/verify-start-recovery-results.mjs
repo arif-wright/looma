@@ -9,15 +9,21 @@ export const UNIT_FILES = {
   'gameSdkStartRecovery.spec.ts': 27,
   'gameIntegrationStartRecovery.spec.ts': 9,
   'arpgBootStartRecovery.spec.ts': 5,
-  'arpgBootSceneReadiness.spec.ts': 12,
-  'arpgGameSceneReadiness.spec.ts': 12,
+  'arpgBootSceneReadiness.spec.ts': 13,
+  'arpgGameSceneReadiness.spec.ts': 16,
+  'arpgExpedition.spec.ts': 8,
+  'arpgExpeditionScene.spec.ts': 31,
+  'arpgTownCorner.spec.ts': 24,
+  'arpgViewportLayout.spec.ts': 23,
+  'arpgTownSession.spec.ts': 30,
   'gameFullscreenStartRecovery.spec.ts': 18
 };
 export const DOM_FILES = {
   neon: { 'neon-component.spec.ts': 3 },
   portal: { 'portal-component.spec.ts': 52 },
   start: { 'start-component.spec.ts': 32 },
-  legacy: { 'legacy-component.spec.ts': 17 }
+  legacy: { 'legacy-component.spec.ts': 17 },
+  'arpg-town': { 'arpg-town-component.spec.ts': 26 }
 };
 export const BROWSER_TITLES = [
   ...['fetch', 'body', 'error-body'].map(stage => `30-second ${stage} timeout is uncertain, never auto-replayed, and ignores a late reply`),
@@ -45,9 +51,12 @@ const basename = value => value.replaceAll('\\', '/').split('/').at(-1);
 
 export function verifyVitest(report, kind) {
   const files = kind === 'unit' ? UNIT_FILES : DOM_FILES[kind];
-  assert(files, 'Expected unit, neon, portal, start or legacy');
+  assert(files, 'Expected unit, neon, portal, start, legacy or arpg-town');
   const count = Object.values(files).reduce((sum, value) => sum + value, 0);
   assert.equal(report.success, true, 'Vitest process must succeed');
+  if (report.wasInterrupted !== undefined) assert.equal(report.wasInterrupted, false);
+  if (report.unhandledErrors !== undefined) empty(report.unhandledErrors, 'No unhandled errors');
+  if (report.numRuntimeErrorTestSuites !== undefined) assert.equal(report.numRuntimeErrorTestSuites, 0);
   for (const name of ['numFailedTests', 'numPendingTests', 'numTodoTests', 'numFailedTestSuites', 'numPendingTestSuites']) assert.equal(report[name], 0, name);
   assert.equal(report.numTotalTests, count, 'Exact expected test count');
   assert.equal(report.numPassedTests, count, 'Every expected test passed');
@@ -73,6 +82,7 @@ export function verifyVitest(report, kind) {
       empty(result.failureMessages, 'No assertion failures');
       // Some reporter versions expose retry counts; never accept them if present.
       if (result.retryCount !== undefined) assert.equal(result.retryCount, 0);
+      if (result.invocations !== undefined) assert.equal(result.invocations, 1);
     }
   }
   return `Verified ${count} passing ${kind} cases in ${seenFiles.size} files; none skipped.`;
@@ -161,7 +171,7 @@ export function verifyBrowser(report, mode) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [kind, filename, ...extra] = process.argv.slice(2);
-  assert(filename && extra.length === 0, 'Usage: node verify-start-recovery-results.mjs <unit|neon|portal|start|legacy|discovery|execution> <report.json>');
+  assert(filename && extra.length === 0, 'Usage: node verify-start-recovery-results.mjs <unit|neon|portal|start|legacy|arpg-town|discovery|execution> <report.json>');
   const report = JSON.parse(readFileSync(filename, 'utf8'));
   console.log(['discovery', 'execution'].includes(kind) ? verifyBrowser(report, kind) : verifyVitest(report, kind));
 }

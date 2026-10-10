@@ -1,58 +1,121 @@
-# ARPG startup through the actual scene
+# ARPG town readiness, bounded return and painterly viewport previews
 
-Credential-free desktop Chromium fixture for the actual ARPG route, SDK,
+Credential-free desktop Chromium fixture, including one phone-sized viewport,
+for the actual ARPG route, SDK,
 `bootGame`, `GameScene`, Phaser 3.90 and checked-in PNGs. It prepares a draft PR
 validation gate; discovery/build alone are not browser execution.
 
 ## What stays real
 
-- The ARPG route's automatic start, disabled/repeated start control, 30-second
-  engine-loading deadline, owner watcher, recovery action, navigation cleanup
-  and unmount behavior.
-- SDK start validation, identity bookkeeping and abandonment.
-- Phaser renderer construction, its image download/decoding pipeline, the real
-  scene's preload/create, texture lookup and eventual game destruction.
+- The ARPG route's town-first startup, explicit departure controls, 30-second
+  engine-loading deadline, owner watcher, recovery, navigation and unmount.
+- The real town session coordinator and expedition logic. Town loading and time
+  in town create no reward session. Only an explicit departure plus a validated
+  SDK start response starts an expedition.
+- SDK request construction, validation, identity bookkeeping and abandonment.
+- Phaser renderer construction, real image download/decoding, scene preload and
+  create, texture lookup, render events and eventual game destruction.
+- In the bounded return case, native mouse/keyboard input, hero movement, the
+  scene's return button and elapsed-time accounting.
 
-Only Auth notifications, start/leaderboard transport, peripheral presentation,
-state mutation destinations and navigation plumbing are synthetic. The fetch
-shim has no native fallback. Signing/completion/reward requests are forbidden.
-Native browser traffic is restricted to the local fixture's built JS/CSS and
-250 declared real images (249 loader PNGs plus `cursor_gauntlet_blue.png`
-for the CSS cursor); APIs, off-origin URLs, undeclared paths and WebSockets
-are rejected. Service workers are blocked. No credentials or hosted backend is
-used. The Vite build rejects unexpected application or live-service imports.
+Auth notifications, transport, peripheral presentation, state-mutation
+destinations and navigation plumbing are synthetic. The fetch shim has no
+native fallback. Start requests must match the exact SDK body. The first ten
+cases and the phone-sized preview forbid signing, completion, player-state refresh
+and reward mutations.
+Only case eleven enables exact-shape synthetic signing/completion/player-state
+responses for `fixture-arpg-1`, with a deliberately non-cryptographic signature
+and a zero-value receipt. Changed or extra body fields, mismatched submission
+values, extra signing/completion calls and all other fetches fail closed.
+The receipt reaches in-memory presentation spies only. It proves client flow,
+not server validation, real signing, account rewards or persistence.
+
+Native browser traffic is restricted to local fixture JS/CSS and 254 declared
+real images (253 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
+undeclared paths and WebSockets are rejected; service workers are blocked.
+No credentials or hosted backend are used. The Vite build rejects unexpected
+application or live-service imports, while explicitly including the real
+`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The two new
+ground/entrance PNGs are explicitly allowlisted alongside the existing shop and
+lantern. The superseded small cobble patch is no longer queued or allowlisted.
+The real scene derives its continuous ground plane from the approved material
+PNG without fixture-generated substitute art.
 
 `observe-scene.ts` wraps only preload to register event listeners before calling
-the real preload exactly once. It never invokes a readiness callback or emits
-CREATE. Its eager import means module-import latency is outside this fixture.
-The recorded `createAt` is a raw Phaser event: Phaser may emit CREATE after the
-scene's create method caught a failure. Successful readiness therefore requires
-both the actual route's live state and real decoded-texture/event observations.
+the real preload exactly once. It never invokes readiness or gameplay callbacks,
+emits CREATE, mutates scene state, grants kills, teleports, changes timers or
+injects textures. It observes scene fields and control bounds after actual render
+events. All gameplay actions use browser mouse/keyboard input. Its eager import
+means module-import latency is outside this fixture. Raw Phaser CREATE can
+follow a caught create failure, so success requires route state, decoded textures
+and real post-create frames together.
 
-## Ten cases
+## Twelve cases
 
-1. Hold the first floor image before navigation/autostart. The actual route must
-   stay Starting with one session until release, then become live after real
-   scene initialization. This catches the old constructor-only handoff.
-2. Return HTTP 503 for that image; require startup failure and independent retry.
+1. Hold the first floor image. Town stays loading with zero sessions, even after
+   a forced disabled-button click. Release to real town readiness, still with
+   zero sessions. Explicit departure issues one held start request; repeated
+   clicks cannot duplicate it and the scene stays in town until its valid response.
+2. Return HTTP 503 for that image; fail town loading and independently retry,
+   without creating a session.
 3. Return invalid PNG bytes with HTTP 200; require missing decoded texture,
-   failure without false route readiness, and a successful fresh retry.
-4. Hold an image through the actual 30-second route deadline using the native
+   failure without false readiness, and a fresh successful zero-session retry.
+4. Hold an image through the actual 30-second route deadline with the native
    clock. Retry and release the old request; the old scene cannot return.
-5. Switch owner during asset loading; require the route's Refresh page action.
-6. Sign out during loading; require the route's Sign in action.
+5. Switch owner during town loading; require the route's Refresh page action.
+6. Sign out during town loading; require the route's Sign in action.
 7. Unmount during loading and release old assets; no scene/canvas returns.
-8. Navigate Back to hub while loading; obsolete scene remains destroyed.
-9. Refresh the same owner's token during loading; keep the original start.
-10. Mount a replacement route while the old route is loading, then unmount the
-    old route. Its scoped cleanup cannot destroy the newer live scene.
+8. Navigate Back to hub while loading; the obsolete scene remains destroyed.
+9. Refresh the same owner's token during loading; preserve the original town
+   load without starting a session.
+10. Mount a replacement route during loading, then unmount the old route. Its
+    scoped cleanup cannot destroy the newer town; neither load starts a session.
+11. Idle in town, explicitly depart using the real canvas button, move the hero
+    with W, and click the real return button before timeout. Require one unchanged
+    sign/complete submission, the zero-value synthetic receipt and continued town
+    readiness without another session. Native idle intervals before departure
+    and after return each exceed this case's synthetic twenty-second server cap;
+    the real scene clock stays off/frozen in town. This is bounded timer isolation,
+    not a 90-second endurance run, a two-floor combat clear or production settlement.
+    Capture a desktop canvas close-up of the new town art before departure.
+12. Load the real scene at a 390×844 viewport with zero session starts. Require
+    all 253 source textures, the instantiated ground/shop/lantern/entrance objects, a
+    nonempty canvas within the viewport width, and no horizontal document overflow.
+    After actual render, require HUD/control panels and visible text within the
+    canvas, the hero ground point clear of both panels, and the full shop bounds
+    inside the unobstructed band between them. The new entrance and its live
+    gate-label bounds must also fit the same clear band. Require a portrait
+    canvas at least 480 CSS pixels tall, with visible hero alpha bounds at least
+    12×24 CSS pixels and entrance alpha bounds at least 60×60 CSS pixels. These
+    modest display-size floors do not certify playability or aesthetics.
+    Capture the full phone-sized viewport. This runs desktop Chromium without
+    mobile-device or touch emulation; it does not establish phone playability.
 
-The guard retains actual browser.version(), scene/loader observations, route
-state, API attempts, cleanup and console/page errors. Only exact injected HTTP
-503/decode messages in their corresponding cases are allowed console errors.
-Cleanup failures are attached before the test fails. Four labeled screenshots
-capture the initialized view and the HTTP, decode and deadline failure screens.
-Traces are retained on failure.
+The observation artifact retains the actual browser.version(), loader/scene
+observations, route state, strict API bodies, named lifecycle/gameplay checkpoints,
+cleanup and console/page errors. Only the exact injected HTTP/decode messages
+are allowed in their corresponding cases. Seven labeled screenshots retain the
+existing initialized-town, HTTP/decode/deadline and returned-town captures, and
+add desktop-canvas and 390×844 art previews. Ground checks require exactly one
+derived plane and entrance, zero legacy town floor images or oversized geometric
+markers, unchanged gate contact, and opaque native-canvas samples at five points
+on the hero-to-gate line. The same checks run after returning and idling in town.
+These samples establish bounded coverage, not seamlessness or artistic quality.
+The actual derived-ground texture must report LINEAR filtering before departure
+and after return; this is checked independently of the production painter. Visual observations record the actual
+viewport, canvas bounds, document width, decoded art keys, and real hero/shop/
+lantern/floor/entrance position, origin, scale and depth. Checks preserve the measured shop
+foot anchor and floor-below-actors ordering; they do not certify pixel-perfect
+occlusion or artistic quality. Traces remain available on failure. Actual
+screenshot review is still required, including cropped HUD or controls at narrow
+widths even when the page itself does not overflow. The strengthened phone gate
+projects real object bounds with Phaser’s actual post-render camera matrices;
+it does not use the production viewport-layout helper as its geometry oracle.
+For readable-size checks, already decoded hero/entrance frames are copied at
+1:1 into detached analysis canvases. Cached alpha≥32 pixel bounds are projected
+through the real object and camera transforms. These canvases never enter the
+DOM or Phaser texture manager, and never replace scene pixels. Transparent
+256×256 hero-frame padding therefore cannot satisfy the visible-size checks.
 
 ## Local preparation and hosted execution
 
@@ -61,6 +124,7 @@ Use Node 22 and the repository's unchanged locked dependencies:
 ```sh
 npm ci --ignore-scripts
 ./node_modules/.bin/svelte-kit sync
+node node_modules/svelte-check/bin/svelte-check --tsconfig scripts/testing/arpg-readiness-preview/tsconfig.json
 node node_modules/typescript/bin/tsc --noEmit -p scripts/testing/arpg-readiness-preview/tsconfig.json
 node --test scripts/testing/arpg-readiness-preview/verify-results.test.mjs
 node node_modules/vite/bin/vite.js build --config scripts/testing/arpg-readiness-preview/vite.config.mjs
@@ -68,10 +132,16 @@ node node_modules/@playwright/test/cli.js test --config scripts/testing/arpg-rea
 node scripts/testing/arpg-readiness-preview/verify-results.mjs discovery scripts/testing/arpg-readiness-preview/.results/discovery-results.json
 ```
 
-A bundle build can run in the local reconstruction without its omitted PNG
-bytes. The preview server reads all declared PNGs from `static/` and fails before
-serving if any is absent. It never generates substitutes. The CI workflow uses
-a full checkout and pins the reviewed source, static assets and Supabase trees.
+A bundle build can run in this reconstruction without its omitted PNG bytes.
+The preview server reads all declared PNGs from `static/` and fails before serving
+if any is absent. It never generates substitutes. Before an authorized hosted
+run, `.github/workflows/arpg-scene-readiness.yml` must pin the final reviewed
+integrated source tree. Refresh its `HEAD:src` pin after any subsequent source
+change; never substitute a fixture-only build for that full-tree check.
+Keep the static/Supabase pins and locked toolchain checks unchanged unless their
+reviewed contents actually change. This fixture adaptation does not edit workflows.
+The verifier derives its exact twelve-case count from `cases.mjs`; the workflow
+itself has no separate numeric case-count setting.
 
 Only in a permitted environment with the full repository assets:
 
@@ -81,30 +151,34 @@ node node_modules/@playwright/test/cli.js test --config scripts/testing/arpg-rea
 node scripts/testing/arpg-readiness-preview/verify-results.mjs execution scripts/testing/arpg-readiness-preview/.results/browser-results.json
 ```
 
-There is no browser executable override, custom security flag or alternate
-launch. The locked managed Chromium is required. Native clocks are used; this
-fixture never patches requestAnimationFrame or advances Playwright's clock.
+There is no executable override, custom security flag or alternate launch. The
+locked managed Chromium is required. The bounded movement/return case has a
+120-second test budget so both native town-idle intervals exceed the synthetic
+twenty-second cap, with headroom for software-rendered frames and browser input.
+All other test budgets are unchanged. Native clocks are used; this fixture never
+patches requestAnimationFrame or advances Playwright's clock.
 
-The strict verifier requires all ten declared cases, one successful attempt
-each, no retries/skips/flakes/errors, isolation observations, cleanup, expected
-session counts and the four PNG attachments. Discovery has zero attempts and
-cannot satisfy the execution mode. Its own unit tests are synthetic report
-schema tests, never evidence that a browser ran.
+The strict verifier requires every declared case, one successful attempt each,
+no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
+checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
+it also requires observed movement, explicit return, frozen town time, matching
+submission fields and the exact zero-value presentation payload. Its 137 unit
+tests are synthetic report/protocol schema tests, never browser evidence.
+Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
-The local browser denial was not retried. Local preparation executed zero
-browser cases; hosted draft-PR CI is the next execution gate. Real image decoding
-and rendering are unverified until that gate actually runs and its artifacts
-are reviewed. Any later CI result applies only to its exact commit.
+The local browser denial was not retried. Local preparation executes zero browser
+cases. The frozen 8607613 hosted run passed all twelve cases, but its reviewed
+screenshots showed noisy ground and a tiny phone-sized hero. This visual followup
+adds taller portrait framing, minimum visible-silhouette checks and actual ground
+filter evidence. It has not been rendered in a permitted browser yet. The frozen
+8607613 fixture and hosted screenshots remain unchanged; their pass does not
+establish that this followup renders correctly. New execution and visual review
+must apply to the exact followup commit.
 
-The existing floor/wall texture-key mismatch is deliberately unchanged: preload
-registers `floor_0`/`wall_0` keys, while the room builder selects URL strings.
-Phaser can substitute missing textures despite successful initialization. The
-success screenshot is explicitly labeled with this known visual defect.
-
-A scene CREATE and a subsequent render event establish lifecycle progress,
-not visually correct or playable pixels. This gate does not certify gameplay,
-mobile/touch controls, hosted Auth, real session persistence, reward settlement,
-post-ready account handling, or deployment. New dungeon/town features belong
-to a separate change.
+A scene CREATE and render event establish lifecycle progress, not visually
+correct or fully playable pixels. The added flow is deliberately small; it does
+not certify attacks, kill/loot balance, floor transitions, a full-length timeout,
+real-phone rendering/performance, touch interaction, hosted Auth, real session persistence, server reward settlement,
+post-ready account changes or deployment.

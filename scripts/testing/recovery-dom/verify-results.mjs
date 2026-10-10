@@ -1,17 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { DOM_FILES, verifyVitest } from './verify-start-recovery-results.mjs';
 
-const [kind, filename] = process.argv.slice(2);
-const expected = { neon: 3, portal: 52, start: 32, legacy: 17 }[kind];
-assert(expected, 'Expected neon, portal, start or legacy report');
+// Keep the original DOM gate entry point, sharing the exact-file/count and
+// no-skip/no-retry checks with the startup/town aggregate.
+const [kind, filename, ...extra] = process.argv.slice(2);
+assert(Object.hasOwn(DOM_FILES, kind) && filename && extra.length === 0,
+  'Usage: node verify-results.mjs <neon|portal|start|legacy|arpg-town> <report.json>');
 const report = JSON.parse(readFileSync(filename, 'utf8'));
-assert.equal(report.success, true, `${kind}: test process must succeed`);
-assert.equal(report.numTotalTests, expected, `${kind}: all recovery cases must be discovered`);
-assert.equal(report.numPassedTests, expected, `${kind}: every recovery case must pass`);
-assert.equal(report.numFailedTests, 0);
-assert.equal(report.numPendingTests, 0);
-assert.equal(report.numTodoTests, 0);
-const assertions = report.testResults.flatMap(result => result.assertionResults);
-assert.equal(assertions.length, expected);
-assert(assertions.every(result => result.status === 'passed'), `${kind}: no skipped assertions`);
-console.log(`Verified ${expected} passing ${kind} DOM recovery cases; none skipped.`);
+console.log(verifyVitest(report, kind));

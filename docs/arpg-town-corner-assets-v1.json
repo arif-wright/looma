@@ -1,0 +1,238 @@
+{
+  "title": "Local original town-corner asset contract v1",
+  "baseCommit": "c490e95d7d999366d186d63546e526f18f078d48",
+  "status": "Local-only implementation; not browser-verified, published or deployed",
+  "sourceDecodedRgbaBytes": 18873872,
+  "derivedCanvasRgbaBytes": 524288,
+  "projection": {
+    "tileSizePx": [
+      128,
+      64
+    ],
+    "roomCells": [
+      28,
+      18
+    ],
+    "origin": [
+      1152,
+      -200
+    ],
+    "cameraZoom": 1.35,
+    "actorDepth": "front ground-contact y + 20"
+  },
+  "assets": [
+    {
+      "file": "town-cobble-floor.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        254
+      ],
+      "bytes": 2123118,
+      "sha256": "ad397a376a97fb4cf4b522754d90a3c233b1c1b6dba93bcd34b9db9181a7cdd1",
+      "key": "town_corner_cobble_source_v1",
+      "url": "/games/arpg/town-corner-v1/town-cobble-floor.png",
+      "sourceBytesUnchanged": true,
+      "sourceContactPx": [
+        766,
+        546
+      ],
+      "sourceFramePx": [
+        64,
+        162,
+        1408,
+        768
+      ],
+      "measuredSignificantCornersPx": [
+        [
+          66,
+          539
+        ],
+        [
+          767.5,
+          164
+        ],
+        [
+          1466,
+          540
+        ],
+        [
+          762,
+          928
+        ]
+      ],
+      "runtime": {
+        "key": "town_corner_cobble_patch_v1",
+        "sizePx": [
+          512,
+          256
+        ],
+        "clipDiamondPx": [
+          [
+            256,
+            0
+          ],
+          [
+            512,
+            128
+          ],
+          [
+            256,
+            256
+          ],
+          [
+            0,
+            128
+          ]
+        ],
+        "operation": "CanvasTexture: clip exact diamond; scale measured source rectangle into it; refresh once",
+        "origin": [
+          0.5,
+          0.5
+        ],
+        "tileCenter": [
+          15.5,
+          7.5
+        ],
+        "worldCenter": [
+          1664,
+          536
+        ],
+        "depth": -161,
+        "depthFormula": "FLOOR_DEPTH_OFFSET + roomBounds.maxY + 1; above all base floors, below all actors/markers/walls",
+        "repeatCount": 1,
+        "seamlessTilingVerified": false
+      }
+    },
+    {
+      "file": "town-corner-shop.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bytes": 2109457,
+      "sha256": "8adc22a6d083154e0e44085359dcdf546008f3e9dd257cc65789e1a4967bb243",
+      "key": "town_corner_shop_v1",
+      "url": "/games/arpg/town-corner-v1/town-corner-shop.png",
+      "sourceBytesUnchanged": true,
+      "sourceContactPx": [
+        618,
+        1175
+      ],
+      "origin": [
+        0.49282296650717705,
+        0.9370015948963317
+      ],
+      "uniformScale": 0.20414673046251994,
+      "fullSourceDisplayPx": [
+        256,
+        256
+      ],
+      "tileContact": [
+        16,
+        8
+      ],
+      "worldContact": [
+        1664,
+        568
+      ],
+      "depth": 588,
+      "blocker": {
+        "type": "swept-circle versus convex foundation polygon",
+        "relativeVerticesPx": [
+          [
+            -106,
+            -44
+          ],
+          [
+            -1,
+            -94
+          ],
+          [
+            105,
+            -51
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "actorRadiusPx": 38,
+        "townOnly": true,
+        "blocksDashCrossing": true
+      }
+    },
+    {
+      "file": "town-lantern-plinth.png",
+      "width": 1199,
+      "height": 1312,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bytes": 863722,
+      "sha256": "3dfa89b28f778ac5ba80af672539394bfc65839b27f54d7ca45dc70b2b6d81bf",
+      "key": "town_corner_lantern_v1",
+      "url": "/games/arpg/town-corner-v1/town-lantern-plinth.png",
+      "sourceBytesUnchanged": true,
+      "sourceContactPx": [
+        606,
+        1174
+      ],
+      "origin": [
+        0.5054211843202668,
+        0.8948170731707317
+      ],
+      "uniformScale": 0.06097560975609756,
+      "fullSourceDisplayPx": [
+        73.10975609756098,
+        80
+      ],
+      "tileContact": [
+        15,
+        8.5
+      ],
+      "worldContact": [
+        1568,
+        552
+      ],
+      "depth": 572,
+      "collider": false,
+      "animation": false
+    }
+  ],
+  "ownership": {
+    "sourceImages": "Phaser game TextureManager; loaded once through requiredTextures",
+    "derivedCanvasAndImages": "Town area; destroy images then remove CanvasTexture on departure, shutdown or direct destruction; recreate on return",
+    "failure": "Missing source aborts readiness; partial canvas/image construction cleans itself"
+  },
+  "fixture": {
+    "loaderImages": 252,
+    "networkPngsIncludingCursor": 253,
+    "generatedCanvasIsNetworkAsset": false,
+    "browserCasesDiscovered": 11,
+    "browserCasesExecuted": 0
+  },
+  "validationLimits": [
+    "No browser launched: existing denial respected.",
+    "All 250 legacy PNGs are absent in this local snapshot; strict asset server would fail closed.",
+    "Painterly scale, HUD clearance and actual depth/collision appearance need a permitted full-asset browser review.",
+    "No seamless tiling or raster animation claim."
+  ],
+  "sourcePngBytes": 5096297,
+  "memoryBudgetNote": "18.0 MiB source RGBA lower bound plus 0.5 MiB derived canvas per buffer; CPU/GPU copies may raise actual usage",
+  "validation": {
+    "rootUnitTests": 1036,
+    "focusedRecoveryUnitTests": 221,
+    "componentDomTests": 130,
+    "recoveryVerifierTests": 190,
+    "sceneFixtureProtocolTests": 73,
+    "browserExecuted": 0
+  }
+}

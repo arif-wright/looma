@@ -93,6 +93,11 @@ const vitestMutations = {
   'pending count': r => { r.numPendingTests = 1; },
   'todo count': r => { r.numTodoTests = 1; },
   'failed suite count': r => { r.numFailedTestSuites = 1; },
+  'pending suite count': r => { r.numPendingTestSuites = 1; },
+  'incorrect total count': r => { r.numTotalTests++; },
+  'interrupted execution': r => { r.wasInterrupted = true; },
+  'unhandled errors': r => { r.unhandledErrors = [{ message: 'Unhandled rejection' }]; },
+  'runtime error suite': r => { r.numRuntimeErrorTestSuites = 1; },
   'partial passed count': r => { r.numPassedTests--; },
   'missing assertion': r => { r.testResults[0].assertionResults.pop(); },
   'duplicate assertion': r => { r.testResults[0].assertionResults[1].fullName = r.testResults[0].assertionResults[0].fullName; },
@@ -100,9 +105,32 @@ const vitestMutations = {
   'failed assertion': r => { r.testResults[0].assertionResults[0].status = 'failed'; },
   'assertion errors': r => { r.testResults[0].assertionResults[0].failureMessages = ['Failure']; },
   'suite errors': r => { r.testResults[0].message = 'AfterAll failed'; },
-  'reported retry': r => { r.testResults[0].assertionResults[0].retryCount = 1; }
+  'reported retry': r => { r.testResults[0].assertionResults[0].retryCount = 1; },
+  'repeated assertion': r => { r.testResults[0].assertionResults[0].invocations = 2; }
 };
-for (const [name, mutate] of Object.entries(vitestMutations)) test(`reject Vitest ${name}`, () => { const report = vitest(); mutate(report); assert.throws(() => verifyVitest(report, 'unit')); });
+for (const kind of ['unit', ...Object.keys(DOM_FILES)]) {
+  for (const [name, mutate] of Object.entries(vitestMutations)) test(`reject ${kind} Vitest ${name}`, () => {
+    const report = vitest(kind); mutate(report); assert.throws(() => verifyVitest(report, kind));
+  });
+}
+test('original DOM CLI applies the same strict gate to every DOM suite, including town', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'dom-report-selftest-'));
+  const helper = fileURLToPath(new URL('./verify-results.mjs', import.meta.url));
+  try {
+    for (const kind of Object.keys(DOM_FILES)) {
+      const filename = join(directory, `${kind}.json`);
+      writeFileSync(filename, JSON.stringify(vitest(kind)));
+      assert.equal(spawnSync(process.execPath, [helper, kind, filename]).status, 0);
+      for (const mutate of Object.values(vitestMutations)) {
+        const report = vitest(kind); mutate(report); writeFileSync(filename, JSON.stringify(report));
+        assert.notEqual(spawnSync(process.execPath, [helper, kind, filename]).status, 0);
+      }
+    }
+    for (const args of [[], ['unit', join(directory, 'neon.json')], ['arpg-town', join(directory, 'missing.json')]]) {
+      assert.notEqual(spawnSync(process.execPath, [helper, ...args]).status, 0);
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
 test('CLI fails closed for missing, malformed, empty, unknown-mode and discovery-as-execution input', () => {
   const directory = mkdtempSync(join(tmpdir(), 'startup-report-selftest-'));
   const helper = fileURLToPath(new URL('./verify-start-recovery-results.mjs', import.meta.url));

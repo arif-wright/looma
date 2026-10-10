@@ -248,5 +248,9 @@
   "/games/arpg/vfx/glint/glint_7.png",
   "/games/arpg/vfx/glow.png",
   "/games/arpg/vfx/zone.png",
-  "/games/arpg/ui/cursor/cursor_gauntlet_blue.png"
+  "/games/arpg/ui/cursor/cursor_gauntlet_blue.png",
+  "/games/arpg/town-corner-v1/town-corner-shop.png",
+  "/games/arpg/town-corner-v1/town-lantern-plinth.png",
+  "/games/arpg/town-ground-v1/town-cobble-material-v1.png",
+  "/games/arpg/town-ground-v1/town-ruins-entrance-v1.png"
 ]

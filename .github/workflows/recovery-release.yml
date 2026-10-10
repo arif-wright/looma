@@ -310,12 +310,36 @@ jobs:
             git -C "$fixture" rev-parse HEAD HEAD^{tree}
             node --version
           } > artifacts/moonberry-gather/comparison-source.txt
-          expected_src=c7342a54a765e88007bdfedceced679b3c32a7c1
+          expected_src=3b267bb0b00f14a48b057300da5462bf503517ab
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
           test "$(git rev-parse HEAD:src)" = "$expected_src"
           node "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" "$COMPARISON_SOURCE" before "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-before-overlay.json
           cp "$fixture/package.json" "$fixture/package-lock.json" "$fixture/pnpm-lock.yaml" .
-          test "$(git rev-parse HEAD:static)" = "$(git -C "$fixture" rev-parse HEAD:static)"
+          # Preserve all 9,102 historical static entries and the three original
+          # town-corner PNGs; only the two approved ground/entrance PNGs are new.
+          expected_static=3ea277ea86a6444b9662ea24a0f0c4c4bf07da84
+          if [ "$COMPARISON_SOURCE" = baseline ]; then expected_static=93f203a8e01263a0066e1632cf2a6d9bd062de5b; fi
+          test "$(git rev-parse HEAD:static)" = "$expected_static"
+          test "$(git -C "$fixture" rev-parse HEAD:static)" = 3ea277ea86a6444b9662ea24a0f0c4c4bf07da84
+          git -C "$fixture" ls-tree -r HEAD:static > artifacts/moonberry-gather/candidate-static-tree.txt
+          test "$(wc -l < artifacts/moonberry-gather/candidate-static-tree.txt)" -eq 9107
+          # Exact mode/blob/path lines, never a directory-wide exclusion.
+          printf '%s\n' \
+            $'100644 blob 185d3071a40e0ebb4ef44b216c37f07ee1524c40\tgames/arpg/town-corner-v1/town-cobble-floor.png' \
+            $'100644 blob eb18fa5114583bccfeba95d108f2a308ec266500\tgames/arpg/town-corner-v1/town-corner-shop.png' \
+            $'100644 blob 4da53c5c0bf91f30fb29bf952cda1fc736d6c78f\tgames/arpg/town-corner-v1/town-lantern-plinth.png' \
+            $'100644 blob f592a718aec1e3209e95268ee144892d775b0c70\tgames/arpg/town-ground-v1/town-cobble-material-v1.png' \
+            $'100644 blob d770575f26153c22a678fb9f8fe11aee5daea9b8\tgames/arpg/town-ground-v1/town-ruins-entrance-v1.png' \
+            > artifacts/moonberry-gather/approved-art-static-tree.txt
+          grep -F -x -f artifacts/moonberry-gather/approved-art-static-tree.txt artifacts/moonberry-gather/candidate-static-tree.txt > artifacts/moonberry-gather/candidate-art-static-tree.txt
+          cmp artifacts/moonberry-gather/approved-art-static-tree.txt artifacts/moonberry-gather/candidate-art-static-tree.txt
+          grep -F -x -v -f artifacts/moonberry-gather/approved-art-static-tree.txt artifacts/moonberry-gather/candidate-static-tree.txt > artifacts/moonberry-gather/candidate-existing-static-tree.txt
+          test "$(wc -l < artifacts/moonberry-gather/candidate-existing-static-tree.txt)" -eq 9102
+          if [ "$COMPARISON_SOURCE" = baseline ]; then
+            git ls-tree -r HEAD:static > artifacts/moonberry-gather/baseline-static-tree.txt
+            test "$(wc -l < artifacts/moonberry-gather/baseline-static-tree.txt)" -eq 9102
+            cmp artifacts/moonberry-gather/baseline-static-tree.txt artifacts/moonberry-gather/candidate-existing-static-tree.txt
+          fi
           cp -a "$fixture/scripts/testing/moonberry-gather-preview/." scripts/testing/moonberry-gather-preview/
           cp "$fixture/scripts/testing/recovery-dom/reproduce-clock-overlap.cjs" scripts/testing/recovery-dom/
           cp "$fixture/scripts/testing/recovery-dom/verify-native-layout-results.mjs" scripts/testing/recovery-dom/

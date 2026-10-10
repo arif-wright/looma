@@ -16,9 +16,9 @@ const presentation = [
 export default {
   root,
   plugins: [{
-    name: 'legacy-start-real-components',
-    resolveId(id) { if (id.startsWith('legacy-test:')) return `\0${id}`; },
-    load(id) { if (id.startsWith('\0legacy-test:')) return 'export {};'; },
+    name: 'arpg-town-real-route',
+    resolveId(id) { if (id.startsWith('arpg-town-test:')) return `\0${id}`; },
+    load(id) { if (id.startsWith('\0arpg-town-test:')) return 'export {};'; },
     transform(source, id) {
       if (!id.endsWith('.svelte')) return;
       const output = compile(source, { filename: id, generate: 'client', css: 'injected', dev: true });
@@ -28,8 +28,8 @@ export default {
   resolve: {
     conditions: ['browser'],
     alias: [
-      ...fake.map(id => ({ find: id, replacement: `legacy-test:${id}` })),
-      ...presentation.map(id => ({ find: id, replacement: `${root}/LegacyPresentationStub.svelte` })),
+      ...fake.map(id => ({ find: id, replacement: `arpg-town-test:${id}` })),
+      ...presentation.map(id => ({ find: id, replacement: `${root}/${id.endsWith('LeaderboardList.svelte') ? 'ArpgTownLeaderboardStub' : 'LegacyPresentationStub'}.svelte` })),
       { find: /^svelte$/, replacement: `${repository}node_modules/svelte/src/index-client.js` },
       { find: '$lib', replacement: `${repository}src/lib` }
     ]
@@ -37,7 +37,7 @@ export default {
   ssr: { noExternal: ['svelte'] },
   test: {
     retry: 0, allowOnly: false,
-    environment: 'happy-dom', include: ['legacy-component.spec.ts'],
+    environment: 'happy-dom', include: ['arpg-town-component.spec.ts'],
     pool: 'forks', poolOptions: { forks: { singleFork: true } },
     server: { deps: { inline: ['svelte'] } }
   }

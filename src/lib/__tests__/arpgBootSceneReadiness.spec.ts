@@ -3,13 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Handlers = {
   onReady: () => void;
   onError: (error: Error) => void;
-  onGameOver: (score: number) => void;
+  onGameOver: (score: number, durationMs?: number) => void;
+  onDepartureRequested?: () => void;
+  onRetryRequested?: () => void;
   isCurrent: () => boolean;
 };
-type Scene = { handlers: Handlers };
+type Scene = { handlers: Handlers; beginExpedition: ReturnType<typeof vi.fn>; setTownStatus: ReturnType<typeof vi.fn> };
 type FakeGame = { destroy: ReturnType<typeof vi.fn>; scene: Scene };
 vi.mock('$lib/games/arpg/scenes/GameScene', () => ({
   GameScene: class {
+    beginExpedition = vi.fn();
+    setTownStatus = vi.fn();
     constructor(public handlers: Handlers) {}
   }
 }));
@@ -175,4 +179,31 @@ describe('ARPG boot waits for its owned scene', () => {
     main.shutdownGame();
     expect(next.game.destroy.mock.calls).toEqual([[true]]);
   });
+  it('exposes town controls only after readiness and ignores obsolete controls/callbacks', async () => {
+    const onControls = vi.fn(); const onDepartureRequested = vi.fn(); const onRetryRequested = vi.fn();
+    const onGameOver = vi.fn();
+    const promise = main.bootGame(parent(), { onControls, onDepartureRequested, onRetryRequested, onGameOver });
+    await flush();
+    const scene = created.at(-1)!.scene;
+    expect(onControls).not.toHaveBeenCalled();
+    scene.handlers.onReady(); await promise;
+    const controls = onControls.mock.calls[0]![0];
+    controls.beginExpedition(90000); controls.setTownStatus('saving', 'Saving…');
+    expect(scene.beginExpedition).toHaveBeenCalledWith(90000);
+    expect(scene.setTownStatus).toHaveBeenCalledWith('saving', 'Saving…');
+    scene.handlers.onDepartureRequested!(); scene.handlers.onRetryRequested!();
+    scene.handlers.onGameOver(400, 12000);
+    expect(onDepartureRequested).toHaveBeenCalledOnce();
+    expect(onRetryRequested).toHaveBeenCalledOnce();
+    expect(onGameOver.mock.calls).toEqual([[400, 12000]]);
+    main.shutdownGame();
+    controls.beginExpedition(90000); controls.setTownStatus('ready');
+    scene.handlers.onDepartureRequested!(); scene.handlers.onRetryRequested!(); scene.handlers.onGameOver(900, 13000);
+    expect(scene.beginExpedition).toHaveBeenCalledOnce();
+    expect(scene.setTownStatus).toHaveBeenCalledOnce();
+    expect(onDepartureRequested).toHaveBeenCalledOnce();
+    expect(onRetryRequested).toHaveBeenCalledOnce();
+    expect(onGameOver).toHaveBeenCalledOnce();
+  });
+
 });

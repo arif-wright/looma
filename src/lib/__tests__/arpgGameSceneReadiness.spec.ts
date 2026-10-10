@@ -59,6 +59,16 @@ describe('real ARPG scene initialization contract with fake Phaser effects', () 
     expect(handlers.onReady).not.toHaveBeenCalled();
   });
 
+  it.each(['town_cobble_material_v1', 'town_ruins_entrance_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'])('requires the town source texture %s before initialization', (key) => {
+    scene.preload(); finishAssets();
+    expect(queued.get(key)).toMatch(/^\/games\/arpg\/town-(corner|ground)-v1\/.*\.png$/);
+    expect(queued.size).toBe(253);
+    textures.delete(key); create();
+    expect(handlers.onError).toHaveBeenCalledOnce();
+    expect(initialize).not.toHaveBeenCalled();
+    expect(handlers.onReady).not.toHaveBeenCalled();
+  });
+
   it('rejects a download failure once and never initializes or resolves after loader completion', () => {
     scene.preload();
     loader.emit('loaderror', { key: queued.keys().next().value });
@@ -147,10 +157,11 @@ describe('real ARPG scene initialization contract with fake Phaser effects', () 
       playerId: 1,
       world: { getPlayer: () => ({ score: 42 }) },
       updateUIState: vi.fn(),
-      scene: { pause: vi.fn() }
+      expeditionActive: true,
+      elapsed: 90000
     });
-    scene.update(0, 100_000);
-    expect(handlers.onGameOver.mock.calls).toEqual([[42]]);
+    (scene as any).finishExpedition();
+    expect(handlers.onGameOver.mock.calls).toEqual([[42, 90000]]);
     expect(other.onGameOver).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { test as base, expect, type Page, type Route } from '@playwright/test';
-import { isExpectedConsoleError } from './cases.mjs';
+import { isExpectedConsoleError, TITLES } from './cases.mjs';
+import { EXPECTED_REWARD_MUTATIONS } from './protocol.mjs';
 import { readFileSync } from 'node:fs';
 const assets = JSON.parse(readFileSync(new URL('./asset-paths.json', import.meta.url), 'utf8')) as string[];
 const ORIGIN = 'http://127.0.0.1:4281';
@@ -39,7 +40,11 @@ export const test = base.extend<{ isolation: void }>({
     expect(unexpectedConsoleErrors, 'Only the case-specific injected image errors are expected').toEqual([]);
     expect(state, 'Runtime snapshot required').not.toBeNull();
     expect(state?.blocked, 'No forbidden in-memory API/reward call').toEqual([]);
-    expect(state?.rewardMutations, 'No XP, reward or ritual mutation').toEqual([]);
+    if (info.title !== TITLES[10]) expect(state?.rewardMutations, 'No XP, reward or ritual mutation').toEqual([]);
+    else {
+      expect(state?.profile).toBe('return-flow');
+      expect(state?.rewardMutations).toEqual(EXPECTED_REWARD_MUTATIONS);
+    }
     expect(afterCleanup?.authCallbacks, 'Unmount removes Auth subscriptions').toBe(0);
     expect(afterCleanup?.canvasCount, 'Unmount removes all canvases').toBe(0);
     expect(blocked, 'No off-origin requests, API network traffic or WebSockets').toEqual([]);
@@ -55,20 +60,42 @@ export const open = async (page: Page) => {
   await expect.poll(async () => (await snapshot(page)).ready).toBe(true);
 };
 export const initializing = async (page: Page, id = 1) => {
-  await expect(screen(page, id).getByRole('button', { name: 'Starting…', exact: true })).toBeDisabled();
-  await expect(screen(page, id).locator('.game-status')).toHaveText('Connecting to Memvoya ARPG…');
+  await expect(screen(page, id).getByRole('button', { name: 'Loading town…', exact: true })).toBeDisabled();
+  await expect(screen(page, id).locator('.game-status')).toHaveText('Loading Lantern Square…');
 };
-export const live = async (page: Page, id = 1) => {
-  await expect(screen(page, id).locator('.game-status')).toHaveText('Session live — survive and dash!');
+export const town = async (page: Page, id = 1) => {
+  await expect(screen(page, id).locator('.game-status')).toHaveText('Town is untimed. Depart when you’re ready.');
   await expect.poll(async () => {
     const scenes = (await snapshot(page)).scenes.filter(scene => scene.pageId === id && !scene.destroyed);
-    return scenes.length === 1 && scenes[0]!.createAt !== null && scenes[0]!.decodedKeys.length === 249 &&
-      scenes[0]!.missingKeys.length === 0 && scenes[0]!.framesAfterCreate > 0;
+    return scenes.length === 1 && scenes[0]!.createAt !== null && scenes[0]!.decodedKeys.length === 253 &&
+      scenes[0]!.missingKeys.length === 0 && scenes[0]!.framesAfterCreate > 0 &&
+      scenes[0]!.gameplay?.area === 0 && scenes[0]!.gameplay?.expeditionActive === false;
   }).toBe(true);
 };
+export const expedition = async (page: Page, id = 1) => {
+  await expect(screen(page, id).locator('.game-status')).toHaveText('Expedition in progress. Return to town to save your result.');
+  await expect.poll(async () => {
+    const scene = (await snapshot(page)).scenes.find(scene => scene.pageId === id && !scene.destroyed);
+    return scene?.gameplay?.area === 1 && scene.gameplay.expeditionActive;
+  }).toBe(true);
+};
+export const record = (page: Page, label: string, id = 1) => page.evaluate(({ label, id }) => window.__arpgFixture.record(label, id), { label, id });
+export const gameplay = async (page: Page, id = 1) => {
+  // Poll only the real gameplay observation, not all 253 texture keys, API
+  // bodies and accumulated checkpoints on every browser round trip.
+  const state = await page.evaluate(id => window.__arpgFixture.scenes.find(scene => scene.pageId === id && !scene.destroyed)?.gameplay ?? null, id);
+  expect(state).not.toBeNull();
+  return state!;
+};
+export const clickControl = async (page: Page, control: 'primary' | 'secondary', label: string, id = 1) => {
+  await screen(page, id).locator('canvas').scrollIntoViewIfNeeded();
+  const button = (await gameplay(page, id))[control];
+  expect(button.label).toBe(label);
+  await screen(page, id).locator('canvas').click({ position: { x: button.x, y: button.y } });
+};
 export const failed = async (page: Page) => {
-  await expect(screen(page).locator('.game-status')).toHaveText('Session failed to start');
-  await expect(screen(page).getByRole('button', { name: 'Start new run', exact: true })).toBeEnabled();
+  await expect(screen(page).locator('.game-status')).toHaveText('Town could not load. No expedition session was started.');
+  await expect(screen(page).getByRole('button', { name: 'Retry loading town', exact: true })).toBeEnabled();
 };
 export const HOLD_PATH = '/games/arpg/tiles/ground_stone1.png';
 export const holdFirstImage = async (page: Page) => {
