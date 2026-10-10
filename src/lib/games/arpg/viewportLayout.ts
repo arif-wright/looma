@@ -1,9 +1,11 @@
 /** Screen-space layout only. World positions, art scale and game timing stay unchanged. */
 export const ARPG_DESKTOP_ZOOM = 1.35;
 
-// Conservative untrimmed shop bounds relative to spawn (14,9), plus the hero.
-// The source shop is 256 world pixels at (16,8) with its measured contact origin.
-export const TOWN_FRAMING_BOUNDS = { left: -40, right: 330, top: -216, bottom: 56 } as const;
+// Conservative untrimmed shop + entrance bounds relative to spawn (14,9).
+// The gate contact at (18,9) is +256,+128; its readable prompt sits +40 below.
+// Compact framing deliberately makes the hero smaller to keep this whole route
+// clear of both UI strips. Desktop zoom and all world positions are unchanged.
+export const TOWN_FRAMING_BOUNDS = { left: -40, right: 430, top: -216, bottom: 212 } as const;
 
 export function arpgViewportLayout(rawWidth: number, rawHeight: number, town: boolean) {
   const width = Number.isFinite(rawWidth) && rawWidth > 0 ? rawWidth : 960;

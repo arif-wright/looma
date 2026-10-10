@@ -3,7 +3,7 @@ export type AuthSession = { user: { id: string } } | null;
 export type AuthCallback = (event: string, session: AuthSession) => void;
 export type ArtObjectObservation = {
   key: string; x: number; y: number; depth: number; originX: number; originY: number;
-  scaleX: number; scaleY: number;
+  scaleX: number; scaleY: number; displayWidth: number; displayHeight: number;
 };
 export type ScreenRect = { x: number; y: number; width: number; height: number };
 export type ViewportGeometry = {
@@ -11,13 +11,17 @@ export type ViewportGeometry = {
   camera: { x: number; y: number; width: number; height: number; zoom: number; scrollX: number; scrollY: number; matrix: number[] };
   hud: ScreenRect; controls: ScreenRect;
   hudItems: Array<{ name: string; bounds: ScreenRect }>; controlItems: Array<{ name: string; bounds: ScreenRect }>;
-  heroGround: { x: number; y: number }; shop: ScreenRect | null;
+  heroGround: { x: number; y: number }; shop: ScreenRect | null; entrance: ScreenRect | null; entranceLabel: ScreenRect | null;
+};
+export type TownGroundObservation = {
+  legacyFloorCount: number; largeMarkerCount: number; textureWidth: number; textureHeight: number;
+  samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
   viewportGeometry: ViewportGeometry | null;
-  townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[] } | null;
+  townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[]; ground: TownGroundObservation } | null;
   primary: { label: string; x: number; y: number }; secondary: { label: string; x: number; y: number };
 };
 export type SceneObservation = {

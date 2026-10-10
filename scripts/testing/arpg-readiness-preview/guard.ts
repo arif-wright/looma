@@ -67,7 +67,7 @@ export const town = async (page: Page, id = 1) => {
   await expect(screen(page, id).locator('.game-status')).toHaveText('Town is untimed. Depart when you’re ready.');
   await expect.poll(async () => {
     const scenes = (await snapshot(page)).scenes.filter(scene => scene.pageId === id && !scene.destroyed);
-    return scenes.length === 1 && scenes[0]!.createAt !== null && scenes[0]!.decodedKeys.length === 252 &&
+    return scenes.length === 1 && scenes[0]!.createAt !== null && scenes[0]!.decodedKeys.length === 253 &&
       scenes[0]!.missingKeys.length === 0 && scenes[0]!.framesAfterCreate > 0 &&
       scenes[0]!.gameplay?.area === 0 && scenes[0]!.gameplay?.expeditionActive === false;
   }).toBe(true);
@@ -81,7 +81,7 @@ export const expedition = async (page: Page, id = 1) => {
 };
 export const record = (page: Page, label: string, id = 1) => page.evaluate(({ label, id }) => window.__arpgFixture.record(label, id), { label, id });
 export const gameplay = async (page: Page, id = 1) => {
-  // Poll only the real gameplay observation, not all 252 texture keys, API
+  // Poll only the real gameplay observation, not all 253 texture keys, API
   // bodies and accumulated checkpoints on every browser round trip.
   const state = await page.evaluate(id => window.__arpgFixture.scenes.find(scene => scene.pageId === id && !scene.destroyed)?.gameplay ?? null, id);
   expect(state).not.toBeNull();

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
-import { createTownCorner, TOWN_CORNER_ASSETS, type TownCorner } from '../assets/townCorner';
+import { createTownCorner, TOWN_RUNTIME_ASSETS, TOWN_CORNER_LAYOUT, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
 import { dashSystem, movementSystem, type DashInput } from '../ecs/systems';
 
@@ -278,7 +278,7 @@ export class GameScene extends Phaser.Scene {
     VFX_TEXTURES.glint.forEach((path, idx) => this.queueImage(`vfx_glint_${idx}`, path));
     this.queueImage('vfx_glow', '/games/arpg/vfx/glow.png');
     this.queueImage('vfx_zone', '/games/arpg/vfx/zone.png');
-    Object.values(TOWN_CORNER_ASSETS).forEach(({ key, url }) => this.queueImage(key, url));
+    Object.values(TOWN_RUNTIME_ASSETS).forEach(({ key, url }) => this.queueImage(key, url));
   }
 
   create() {
@@ -473,12 +473,16 @@ export class GameScene extends Phaser.Scene {
           this.wallTiles.add(`${tx},${ty}`);
           recordBounds(pos, 70);
         } else {
-          const texture = `floor_${Phaser.Math.Between(0, FLOOR_TEXTURES.length - 1)}`;
-          const tile = this.add.image(pos.x, pos.y, texture);
-          tile.setScale(TILE_SCALE);
-          tile.setTint(AREAS[this.expedition.area].tint);
-          tile.setDepth(FLOOR_DEPTH_OFFSET + pos.y);
-          this.addToWorld(tile);
+          // Town uses one continuous, clipped surface. Keep the same cell
+          // bounds and collision loop; dungeon floor rendering is unchanged.
+          if (this.expedition.area !== 0) {
+            const texture = `floor_${Phaser.Math.Between(0, FLOOR_TEXTURES.length - 1)}`;
+            const tile = this.add.image(pos.x, pos.y, texture);
+            tile.setScale(TILE_SCALE);
+            tile.setTint(AREAS[this.expedition.area].tint);
+            tile.setDepth(FLOOR_DEPTH_OFFSET + pos.y);
+            this.addToWorld(tile);
+          }
           recordBounds(pos);
         }
       }
@@ -692,6 +696,9 @@ export class GameScene extends Phaser.Scene {
     this.uiCamera?.setSize(layout.width, layout.height);
     const camera = this.cameras.main;
     camera.setZoom(layout.camera.zoom);
+    // Keep the compact entrance prompt readable while its art remains at world
+    // scale. Only resize on layout changes, never rerasterize it every frame.
+    if (this.portalText) this.portalText.setScale(this.expedition.area === 0 && layout.compact ? 1 / layout.camera.zoom : 1);
     camera.setFollowOffset(layout.camera.offsetX, layout.camera.offsetY);
     if (this.playerSprite) {
       camera.centerOn(this.playerSprite.x - layout.camera.offsetX, this.playerSprite.y - layout.camera.offsetY);
@@ -805,17 +812,14 @@ export class GameScene extends Phaser.Scene {
         this, image => this.addToWorld(image), (tx, ty) => this.isoToWorld(tx, ty),
         FLOOR_DEPTH_OFFSET + this.roomBounds.maxY + 1
       );
-      // Keep the existing service markers; the new shop is scenery, not a shop UI.
-      for (const [tx, ty, label] of [[11, 7, 'HEARTH\nRestored on return'], [11, 11, 'SUPPLY STALL\nServices coming later']] as const) {
-        const pos = this.isoToWorld(tx, ty);
-        const marker = this.add.ellipse(pos.x, pos.y, 130, 55, 0xe1b264, 0.65).setDepth(pos.y + 1);
-        this.addToWorld(marker);
-        this.addToWorld(this.add.text(pos.x, pos.y - 80, label, { fontSize: '14px', color: '#ffe6b5', align: 'center', backgroundColor: '#17202b' }).setOrigin(0.5).setDepth(pos.y + 160));
-      }
+
     }
     const gate = this.isoToWorld(18, 9);
-    this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
-    this.portalText = this.add.text(gate.x, gate.y - 75, '', { fontSize: '16px', color: '#c9ffff', backgroundColor: '#102031', align: 'center' }).setOrigin(0.5).setDepth(gate.y + 160);
+    if (this.expedition.area !== 0) this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
+    const town = this.expedition.area === 0;
+    this.portalText = this.add.text(gate.x, gate.y + (town ? TOWN_CORNER_LAYOUT.entranceLabelOffsetY : -75), '', town
+      ? { fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#fff0cc', backgroundColor: '#17202b', align: 'center', padding: { x: 5, y: 3 } }
+      : { fontSize: '16px', color: '#c9ffff', backgroundColor: '#102031', align: 'center' }).setOrigin(0.5).setDepth(gate.y + 160);
     this.addToWorld(this.portalText);
   }
 
@@ -1364,7 +1368,7 @@ export class GameScene extends Phaser.Scene {
     this.areaText.setText(this.compactHUD
       ? `${compactArea} · G${this.expedition.carriedGold}/${this.expedition.bankedGold}`
       : `${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
-    if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? `${this.expedition.returned ? this.expedition.outcome.toUpperCase() : 'GATE TO MOSSGATE'}\n${this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : 'Please wait'}` : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);
+    if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? (this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : this.townStatus === 'blocked' ? 'Unavailable' : 'Please wait…') : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);
     this.updateControlButtons();
     if (health) {
       this.hpText.setText(`HP ${Math.max(0, Math.ceil(health.current))}/${health.max}`);

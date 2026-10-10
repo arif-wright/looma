@@ -1,23 +1,26 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { createTownCorner, crossesTownShop, paintTownCobble, TOWN_CORNER_ASSETS, TOWN_COBBLE_PATCH_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
+import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
 const make = () => {
   const source = {};
-  const context = {
+  const context = () => ({
     save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
-    moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn()
-  };
+    moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
+    translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
+    createPattern: vi.fn(() => ({})), fillStyle: null as any
+  });
   const keys = new Set<string>();
   const images: any[] = [];
-  const texture = { context, refresh: vi.fn() };
+  const ground = { context: context(), refresh: vi.fn(), canvas: {} };
+  const material = { context: context(), refresh: vi.fn(), canvas: {} };
   const scene: any = {
     textures: {
       exists: (key: string) => keys.has(key),
       get: vi.fn(() => ({ getSourceImage: () => source })),
-      createCanvas: vi.fn((key: string) => { keys.add(key); return texture; }),
+      createCanvas: vi.fn((key: string) => { keys.add(key); return key === TOWN_MATERIAL_KEY ? material : ground; }),
       remove: vi.fn((key: string) => keys.delete(key))
     },
     add: { image: vi.fn((x: number, y: number, key: string) => {
@@ -26,10 +29,10 @@ const make = () => {
       images.push(image); return image;
     }) }
   };
-  return { scene, images, texture, context, source, keys, add: vi.fn() };
+  return { scene, images, ground, material, context: ground.context, source, keys, add: vi.fn() };
 };
 
-describe('original town-corner art contract (renderer mocked)', () => {
+describe('town ground and retained original art contract (renderer mocked)', () => {
   it('clips the measured source frame into exactly one 512x256 diamond', () => {
     const { context, source } = make();
     paintTownCobble(context as any, source as any);
@@ -42,13 +45,50 @@ describe('original town-corner art contract (renderer mocked)', () => {
     expect(context.save).toHaveBeenCalledOnce(); expect(context.restore).toHaveBeenCalledOnce();
   });
 
-  it('adds only three area-owned images with measured full-source pivots and uniform scale', () => {
-    const { scene, images, texture, add } = make();
-    createTownCorner(scene, add, iso, -199);
-    expect(scene.textures.createCanvas.mock.calls).toEqual([[TOWN_COBBLE_PATCH_KEY, 512, 256]]);
-    expect(texture.refresh).toHaveBeenCalledOnce(); expect(add).toHaveBeenCalledTimes(3);
-    expect(images.map(image => image.key)).toEqual([TOWN_COBBLE_PATCH_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key]);
-    expect(images[0].setDepth).toHaveBeenCalledWith(-199);
+  it('clips the continuous plane to exact walkable interior edges', () => {
+    const layout = townGroundLayout(iso);
+    expect(layout).toMatchObject({ x: 128, y: -168, width: 2688, height: 1344, pixelWidth: 1344, pixelHeight: 672 });
+    expect(layout.corners).toEqual([iso(0.5, 0.5), iso(26.5, 0.5), iso(26.5, 16.5), iso(0.5, 16.5)]);
+    const { context, material } = make();
+    paintTownGround(context as any, material.canvas as any, layout);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 1344, 672);
+    expect(context.moveTo).toHaveBeenCalledWith(512, 0);
+    expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
+    expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'repeat');
+    expect(context.translate).toHaveBeenCalledWith(512, -16);
+    expect(context.transform).toHaveBeenCalledWith(0.5, 0.25, -0.5, 0.25, 0, 0);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 1792, 1152);
+    expect(context.clip.mock.invocationCallOrder[0]).toBeLessThan(context.fillRect.mock.invocationCallOrder[0]!);
+    expect(context.drawImage).not.toHaveBeenCalled();
+    expect(context.restore).toHaveBeenCalledOnce();
+  });
+
+  it('mirrors both source axes into one bounded material without editing source pixels', () => {
+    const { context, source } = make();
+    paintTownMaterial(context as any, source as any);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 256, 256);
+    expect(context.translate.mock.calls).toEqual([[0, 0], [256, 0], [0, 256], [256, 256]]);
+    expect(context.scale.mock.calls).toEqual([[1, 1], [-1, 1], [1, -1], [-1, -1]]);
+    expect(context.drawImage.mock.calls).toEqual(Array.from({ length: 4 }, () => [source, 0, 0, 128, 128]));
+    expect(context.save).toHaveBeenCalledTimes(4); expect(context.restore).toHaveBeenCalledTimes(4);
+    // The exact reflection above duplicates adjacent and wrapped edge samples.
+    // This checks addressing, not browser interpolation or visual quality.
+    const reflected = (pixel: number) => pixel < 128 ? pixel : 255 - pixel;
+    expect(reflected(127)).toBe(reflected(128));
+    expect(reflected(255)).toBe(reflected(0));
+  });
+
+  it('adds four area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {
+    const { scene, images, ground, material, add } = make();
+    createTownCorner(scene, add, iso, -161);
+    expect(scene.textures.createCanvas.mock.calls).toEqual([[TOWN_GROUND_KEY, 1344, 672], [TOWN_MATERIAL_KEY, 256, 256]]);
+    expect(ground.refresh).toHaveBeenCalledOnce(); expect(material.refresh).not.toHaveBeenCalled();
+    expect(add).toHaveBeenCalledTimes(4);
+    expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key]);
+    expect(images[0]).toMatchObject({ x: 128, y: -168 });
+    expect(images[0].setOrigin).toHaveBeenCalledWith(0, 0);
+    expect(images[0].setScale).toHaveBeenCalledWith(2);
+    expect(images[0].setDepth).toHaveBeenCalledWith(-161);
     expect(images[1]).toMatchObject(iso(16, 8));
     expect(images[1].setOrigin).toHaveBeenCalledWith(618 / 1254, 1175 / 1254);
     expect(images[1].setScale).toHaveBeenCalledWith(256 / 1254);
@@ -56,48 +96,63 @@ describe('original town-corner art contract (renderer mocked)', () => {
     expect(images[2].setOrigin).toHaveBeenCalledWith(606 / 1199, 1174 / 1312);
     expect(images[2].setScale).toHaveBeenCalledWith(80 / 1312);
     expect(images[2].setDepth).toHaveBeenCalledWith(572);
+    expect(images[3]).toMatchObject(iso(18, 9));
+    expect(images[3].setOrigin).toHaveBeenCalledWith(666 / 1536, 826 / 1024);
+    expect(images[3].setScale).toHaveBeenCalledWith(110 / 780);
+    expect(images[3].setDepth).toHaveBeenCalledWith(684);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY]]);
   });
 
-  it('destroys area objects and its derived texture once, retaining game-owned sources', () => {
-    const { scene, images, add } = make();
-    const corner = createTownCorner(scene, add, iso, -199);
+  it('destroys objects before their ground texture once and recreates only on reentry', () => {
+    const { scene, images, add, keys } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    expect(keys).toEqual(new Set([TOWN_GROUND_KEY]));
     corner.destroy(); corner.destroy();
     expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
-    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_COBBLE_PATCH_KEY]]);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
+    expect(images[0].destroy.mock.invocationCallOrder[0]).toBeLessThan(scene.textures.remove.mock.invocationCallOrder[1]!);
     expect(corner.blocksMovement(iso(16, 8), iso(16, 8), 38)).toBe(false);
-    const next = createTownCorner(scene, add, iso, -199);
-    expect(scene.textures.createCanvas).toHaveBeenCalledTimes(2);
-    next.destroy();
-    expect(scene.textures.remove).toHaveBeenCalledTimes(2);
+    const next = createTownCorner(scene, add, iso, -161);
+    expect(scene.textures.createCanvas).toHaveBeenCalledTimes(4);
+    next.destroy(); expect(keys.size).toBe(0);
   });
 
-  it('cleans a partially created canvas on painting failure and restores the canvas state', () => {
-    const { scene, context, add } = make();
-    context.drawImage.mockImplementation(() => { throw new Error('paint failed'); });
-    expect(() => createTownCorner(scene, add, iso, -199)).toThrow('paint failed');
-    expect(context.restore).toHaveBeenCalledOnce();
-    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_COBBLE_PATCH_KEY]]);
+  it('cleans both canvases on source painting failure and restores material canvas state', () => {
+    const { scene, material, add } = make();
+    material.context.drawImage.mockImplementation(() => { throw new Error('paint failed'); });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('paint failed');
+    expect(material.context.restore).toHaveBeenCalledOnce();
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('cleans both canvases if pattern creation fails', () => {
+    const { scene, context, add } = make(); context.createPattern.mockReturnValue(null as any);
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('pattern could not be created');
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
     expect(add).not.toHaveBeenCalled();
   });
 
   it('destroys partially created images if world insertion fails', () => {
     const { scene, images } = make();
-    expect(() => createTownCorner(scene, () => { throw new Error('layer failed'); }, iso, -199)).toThrow('layer failed');
+    expect(() => createTownCorner(scene, () => { throw new Error('layer failed'); }, iso, -161)).toThrow('layer failed');
     expect(images).toHaveLength(1); expect(images[0].destroy).toHaveBeenCalledOnce();
-    expect(scene.textures.remove).toHaveBeenCalledWith(TOWN_COBBLE_PATCH_KEY);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
   });
 
-  it('never replaces or removes a generated texture owned by another instance', () => {
-    const { scene, keys, add } = make(); keys.add(TOWN_COBBLE_PATCH_KEY);
-    expect(() => createTownCorner(scene, add, iso, -199)).toThrow('already exists');
-    expect(scene.textures.createCanvas).not.toHaveBeenCalled();
-    expect(scene.textures.remove).not.toHaveBeenCalled();
+  it.each([TOWN_GROUND_KEY, TOWN_MATERIAL_KEY])('never replaces or removes another owner texture %s', (key) => {
+    const { scene, keys, add } = make(); keys.add(key);
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('already exists');
+    expect(scene.textures.remove.mock.calls.map((args: [string]) => args[0])).not.toContain(key);
+    expect(keys).toEqual(new Set([key]));
   });
 
-  it('fails explicitly if a CanvasTexture cannot be allocated', () => {
-    const { scene, add } = make(); scene.textures.createCanvas.mockReturnValue(null);
-    expect(() => createTownCorner(scene, add, iso, -199)).toThrow('could not be created');
-    expect(scene.textures.remove).not.toHaveBeenCalled();
+  it.each([1, 2])('rolls back if canvas allocation %s fails', (allocation) => {
+    const { scene, add, keys } = make();
+    if (allocation === 1) scene.textures.createCanvas.mockReturnValueOnce(null);
+    else scene.textures.createCanvas.mockImplementationOnce((key: string) => { keys.add(key); return make().ground; }).mockReturnValueOnce(null);
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('could not be created');
+    expect(keys.size).toBe(0); expect(add).not.toHaveBeenCalled();
   });
 
   it('blocks the narrow foundation rather than the full roof rectangle', () => {
@@ -128,6 +183,16 @@ describe('original town-corner art contract (renderer mocked)', () => {
     expect(crossesTownShop(gate, gate, 38, shop)).toBe(false);
     expect(crossesTownShop(spawn, gate, 38, shop)).toBe(false);
     expect(crossesTownShop(gate, spawn, 38, shop)).toBe(false);
+  });
+
+  it.each([
+    ['ground', 1254, 1254, '526eb5f6e3424f29bef03a6714d7482d8401d940638884eb0c885ea194bfe436'],
+    ['entrance', 1536, 1024, '98ccc4b0ff921b241be233b07f9bcd09bc35d005ea8913483b4210ed302ed15d']
+  ] as const)('uses original %s source bytes and dimensions unchanged', (name, width, height, sha256) => {
+    const bytes = readFileSync(`static${TOWN_RUNTIME_ASSETS[name].url}`);
+    expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([width, height]);
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(sha256);
   });
 
   it.each([

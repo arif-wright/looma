@@ -13,18 +13,23 @@ const image = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc
 function report(mode = 'execution') {
   const execution = mode === 'execution';
   const specs = TITLES.map((title, index) => {
-    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
-    const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1 });
-    const townArt = { hero: artObject('hero-idle', 500, 520), objects: [artObject('town_corner_cobble_patch_v1', 600, -1000), artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620)] };
+    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'];
+    const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1, displayWidth: 100, displayHeight: 100 });
+    const townArt = { hero: { ...artObject('hero-idle', 536, 556), x: 1472 }, objects: [
+      { ...artObject('town_ground_plane_v1', -168, -161, 0, 0), x: 128, scaleX: 2, scaleY: 2, displayWidth: 2688, displayHeight: 1344 },
+      artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620),
+      { ...artObject('town_ruins_entrance_v1', 664, 684, 666 / 1536, 826 / 1024), x: 1728, scaleX: 110 / 780, scaleY: 110 / 780 }
+    ], ground: { legacyFloorCount: 0, largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672,
+      samples: Array.from({ length: 5 }, (_, index) => ({ worldX: 1472 + index * 64, worldY: 536 + index * 32, pixelX: 672 + index * 32, pixelY: 352 + index * 16, alpha: 255 })) } };
     const viewportGeometry = {
       canvas: { width: 358, height: 200 },
       camera: { x: 0, y: 0, width: 358, height: 200, zoom: 0.3, scrollX: 1000, scrollY: 300, matrix: [0.3, 0, 0, 0.3, 125.3, 70] },
       hud: { x: 8, y: 8, width: 342, height: 44 }, controls: { x: 8, y: 138, width: 342, height: 54 },
       hudItems: [{ name: 'score', bounds: { x: 16, y: 13, width: 100, height: 14 } }, { name: 'hp', bounds: { x: 16, y: 33, width: 60, height: 12 } }, { name: 'area', bounds: { x: 148, y: 33, width: 80, height: 12 } }],
       controlItems: [{ name: 'status', bounds: { x: 16, y: 143, width: 160, height: 13 } }, { name: 'primary', bounds: { x: 16, y: 163, width: 90, height: 20 } }],
-      heroGround: { x: 120, y: 120 }, shop: { x: 180, y: 60, width: 60, height: 60 }
+      heroGround: { x: 120, y: 120 }, shop: { x: 180, y: 60, width: 60, height: 60 }, entrance: { x: 260, y: 95, width: 40, height: 30 }, entranceLabel: { x: 245, y: 125, width: 70, height: 10 }
     };
-    const game = { viewportGeometry, at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 0, y: 0, hp: 140, kills: 0, townArt };
+    const game = { viewportGeometry, at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 1472, y: 536, hp: 140, kills: 0, townArt };
     const scene = { id: 1, queuedKeys: keys, decodedKeys: keys, missingKeys: [], createAt: 1, framesAfterCreate: 1, destroyed: false, loadErrors: [], loadComplete: true, gameplay: { ...game } };
     const scenes = [scene];
     if ([1, 2, 3, 9].includes(index)) {
@@ -47,7 +52,7 @@ function report(mode = 'execution') {
       api[0].at = idleAt + 500; api[0].responseAt = idleAt + 501;
       const active = { ...game, area: 1, expeditionActive: true, durationLimit: FLOW_CAP_MS };
       const returned = { ...game, elapsed: 500, returned: true, outcome: 'retreated', durationLimit: FLOW_CAP_MS };
-      state.checkpoints = [point('town-before-idle', beforeAt, 0), point('town-after-idle', idleAt, 0), point('expedition-started', beganAt, 1, active), point('hero-moved', beganAt + 300, 1, { ...active, x: 30 }), point('returned-and-saved', returnedAt, 1, returned), point('returned-town-after-idle', restedAt, 1, returned)];
+      state.checkpoints = [point('town-before-idle', beforeAt, 0), point('town-after-idle', idleAt, 0), point('expedition-started', beganAt, 1, active), point('hero-moved', beganAt + 300, 1, { ...active, x: 1502 }), point('returned-and-saved', returnedAt, 1, returned), point('returned-town-after-idle', restedAt, 1, returned)];
       scene.gameplay = returned;
       state.pages[0].status = 'Result saved. Town is untimed; depart again whenever you’re ready.';
       const signed = { sessionId: 'fixture-arpg-1', slug: 'arpg', nonce: 'nonce-fixture-arpg-1', score: 0, durationMs: 1000, clientVersion: '1.0.0' };
@@ -145,7 +150,7 @@ const mutations={
   'hidden request body field':r=>coherentObservation(r,o=>o.state.api[0].body.leaked='no'),
   'loading retry creates session':r=>coherentObservation(r,o=>o.state.api.push({path:'/api/games/session/start',method:'POST',at:1,responseAt:2,body:expectedStart}),1),
   'flow with wrong profile':r=>coherentObservation(r,o=>o.state.profile='readiness',10),
-  'flow without real movement':r=>coherentObservation(r,o=>o.state.checkpoints[3].scene.gameplay.x=0,10),
+  'flow without real movement':r=>coherentObservation(r,o=>o.state.checkpoints[3].scene.gameplay.x=1472,10),
   'flow with short town idle':r=>coherentObservation(r,o=>o.state.checkpoints[1].at=10001,10),
   'flow with active town timer':r=>coherentObservation(r,o=>o.state.checkpoints[5].scene.gameplay.elapsed+=1,10),
   'flow with timeout instead of explicit return':r=>coherentObservation(r,o=>o.state.checkpoints[4].scene.gameplay.outcome='rescued',10),
@@ -181,6 +186,27 @@ const mutations={
   'phone shop behind controls':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.shop.height=100,11),
   'phone camera transform missing':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.camera.matrix=[],11),
   'phone geometry canvas mismatch':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.canvas.width=360,11),
+  'missing continuous ground observation':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground=null,11),
+  'town legacy floor tiles remain':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.legacyFloorCount=1,11),
+  'town oversized markers remain':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.largeMarkerCount=1,11),
+  'wrong derived ground resolution':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.textureWidth=512,11),
+  'ground plane wrong extent':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[0].displayWidth=512,11),
+  'ground plane wrong position':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[0].x+=1,11),
+  'missing ground path sample':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.samples.pop(),11),
+  'transparent ground at gate':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.samples[4].alpha=0,11),
+  'unsampled derived canvas':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.samples[0].alpha=null,11),
+  'incorrect sample texture coordinate':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.ground.samples[0].pixelX+=1,11),
+  'entrance moved off gate':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[3].x+=1,11),
+  'entrance wrong foot anchor':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[3].originY=1,11),
+  'entrance wrong scale':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.townArt.objects[3].scaleX=1,11),
+  'phone entrance missing':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entrance=null,11),
+  'phone entrance clipped':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entrance.x=350,11),
+  'phone entrance covered by controls':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entrance.y=130,11),
+  'phone gate label missing':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entranceLabel=null,11),
+  'phone gate label clipped':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entranceLabel.x=350,11),
+  'phone gate label covered by controls':r=>coherentObservation(r,o=>o.state.visuals[0].scene.gameplay.viewportGeometry.entranceLabel.y=150,11),
+  'returned town missing ground':r=>coherentObservation(r,o=>o.state.checkpoints[4].scene.gameplay.townArt.ground=null,10),
+  'returned town duplicate ground':r=>coherentObservation(r,o=>o.state.checkpoints[5].scene.gameplay.townArt.objects.push({...o.state.checkpoints[5].scene.gameplay.townArt.objects[0]}),10),
   'desktop capture after departure':r=>coherentObservation(r,o=>o.state.visuals[0].at=o.state.api[0].at+1,10),
   'flaky count':r=>r.stats.flaky=1
 };

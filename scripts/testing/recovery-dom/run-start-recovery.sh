@@ -35,4 +35,4 @@ for suite in neon portal start legacy arpg-town; do
   "$node_bin" scripts/testing/recovery-dom/verify-results.mjs "$suite" "$report"
   "$node_bin" scripts/testing/recovery-dom/verify-start-recovery-results.mjs "$suite" "$report"
 done
-printf '%s\n' 'Verified 239 focused unit cases + 130 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'
+printf '%s\n' 'Verified 251 focused unit cases + 130 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'

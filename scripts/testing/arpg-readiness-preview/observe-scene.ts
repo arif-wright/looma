@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
-import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry } from './runtime';
+import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry, type TownGroundObservation } from './runtime';
 import type { World, EntityId } from '../../../src/lib/games/arpg/ecs/components';
 import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 
@@ -13,14 +13,34 @@ type ObservedState = {
   uiCamera?: Phaser.Cameras.Scene2D.Camera;
   hudPanel: Phaser.GameObjects.Rectangle; controlPanel: Phaser.GameObjects.Rectangle;
   instructionsText: Phaser.GameObjects.Text; scoreText: Phaser.GameObjects.Text; hpText: Phaser.GameObjects.Text;
-  areaText: Phaser.GameObjects.Text; controlStatus: Phaser.GameObjects.Text;
+  areaText: Phaser.GameObjects.Text; portalText: Phaser.GameObjects.Text; controlStatus: Phaser.GameObjects.Text;
   primaryControl: Phaser.GameObjects.Text; secondaryControl: Phaser.GameObjects.Text;
 };
-const ART_KEYS = ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'];
+const ART_KEYS = ['town_ground_plane_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'];
 const readArtObject = (object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite): ArtObjectObservation => ({
   key: object.texture.key, x: object.x, y: object.y, depth: object.depth, originX: object.originX, originY: object.originY,
-  scaleX: object.scaleX, scaleY: object.scaleY
+  scaleX: object.scaleX, scaleY: object.scaleY, displayWidth: object.displayWidth, displayHeight: object.displayHeight
 });
+// Read the actual derived floor canvas only. No draw, texture replacement or
+// synthetic readiness: these five points sample the hero-to-gate walking line.
+function readTownGround(state: ObservedState, hero: { x: number; y: number }): TownGroundObservation {
+  const images = state.worldLayer.list.filter((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image);
+  const plane = images.find(image => image.texture.key === 'town_ground_plane_v1');
+  const source = plane?.texture.getSourceImage();
+  const canvas = source instanceof HTMLCanvasElement ? source : null;
+  const context = canvas?.getContext('2d');
+  const samples = Array.from({ length: 5 }, (_, index) => {
+    const t = index / 4, worldX = hero.x + (1728 - hero.x) * t, worldY = hero.y + (664 - hero.y) * t;
+    const local = plane?.getWorldTransformMatrix().applyInverse(worldX, worldY);
+    const pixelX = local && plane ? Math.floor(local.x + plane.displayOriginX) : -1;
+    const pixelY = local && plane ? Math.floor(local.y + plane.displayOriginY) : -1;
+    const inBounds = canvas && pixelX >= 0 && pixelY >= 0 && pixelX < canvas.width && pixelY < canvas.height;
+    return { worldX, worldY, pixelX, pixelY, alpha: context && inBounds ? context.getImageData(pixelX, pixelY, 1, 1).data[3]! : null };
+  });
+  return { legacyFloorCount: images.filter(image => /^floor_\d+$/.test(image.texture.key)).length,
+    largeMarkerCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Ellipse && object.width >= 120 && object.height >= 50).length,
+    textureWidth: canvas?.width ?? 0, textureHeight: canvas?.height ?? 0, samples };
+}
 type RenderCamera = Phaser.Cameras.Scene2D.Camera & { readonly matrix: Phaser.GameObjects.Components.TransformMatrix };
 // Phaser keeps its rendered matrix internally; this type exposes it read-only.
 // Project actual post-render bounds with Phaser's current camera matrix and
@@ -39,6 +59,7 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     return { x, y, width: Math.max(...points.map(p => p.x)) - x, height: Math.max(...points.map(p => p.y)) - y };
   };
   const texts = (entries: Array<[string, Phaser.GameObjects.Text]>) => entries.filter(([, text]) => text.visible && text.text.length > 0).map(([name, text]) => ({ name, bounds: bounds(ui, text) }));
+  const entrance = state.worldLayer.list.find((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && object.texture.key === 'town_ruins_entrance_v1');
   const shop = state.worldLayer.list.find((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && object.texture.key === 'town_corner_shop_v1');
   return {
     canvas: { width: css.width, height: css.height },
@@ -47,7 +68,8 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     hud: bounds(ui, state.hudPanel), controls: bounds(ui, state.controlPanel),
     hudItems: texts([['instructions', state.instructionsText], ['score', state.scoreText], ['hp', state.hpText], ['area', state.areaText]]),
     controlItems: texts([['status', state.controlStatus], ['primary', state.primaryControl], ['secondary', state.secondaryControl]]),
-    heroGround: point(main, ground.x, ground.y), shop: shop ? bounds(main, shop) : null
+    heroGround: point(main, ground.x, ground.y), shop: shop ? bounds(main, shop) : null, entrance: entrance ? bounds(main, entrance) : null,
+    entranceLabel: state.portalText?.visible && state.portalText.text ? bounds(main, state.portalText) : null
   };
 }
 function readGameplay(scene: GameScene): GameplayObservation | null {
@@ -66,7 +88,7 @@ function readGameplay(scene: GameScene): GameplayObservation | null {
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
     viewportGeometry: state.expedition.area === 0 ? readViewportGeometry(scene, state, rect, position) : null,
     townArt: state.expedition.area === 0 ? {
-      hero: readArtObject(state.playerSprite),
+      hero: readArtObject(state.playerSprite), ground: readTownGround(state, position),
       objects: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && ART_KEYS.includes(object.texture.key)).map(readArtObject)
     } : null,
     primary: control(state.primaryControl), secondary: control(state.secondaryControl) };

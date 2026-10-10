@@ -18,7 +18,7 @@ const within = (point: { x: number; y: number }, rect: { x: number; y: number; w
 
 describe('ARPG narrow viewport geometry (no renderer)', () => {
   it.each([[280, 280], [320, 280], [374, 280], [600, 340], [390, 420], [844, 320]])(
-    'fits the full hero/shop framing box between readable UI strips at %sx%s', (width, height) => {
+    'fits the full hero/shop/entrance framing box between readable UI strips at %sx%s', (width, height) => {
       const layout = arpgViewportLayout(width, height, true);
       expect(layout.compact).toBe(true);
       for (const rect of [layout.hud, layout.controls]) {
@@ -50,6 +50,20 @@ describe('ARPG narrow viewport geometry (no renderer)', () => {
     expect(TOWN_FRAMING_BOUNDS.left).toBeLessThan(-32);
     expect(TOWN_FRAMING_BOUNDS.top).toBeLessThan(-50);
     expect(TOWN_FRAMING_BOUNDS.bottom).toBeGreaterThan(15);
+  });
+
+  it.each([[374, 280], [844, 320], [280, 280]])('fits entrance contact, full source and a conservative readable prompt at %sx%s', (width, height) => {
+    const layout = arpgViewportLayout(width, height, true), art = TOWN_CORNER_LAYOUT;
+    const x = 256 - art.entranceOrigin.x * 1536 * art.entranceScale;
+    const y = 128 - art.entranceOrigin.y * 1024 * art.entranceScale;
+    within(project(layout, 256, 128), layout.playfield);
+    for (const px of [x, x + 1536 * art.entranceScale]) for (const py of [y, y + 1024 * art.entranceScale]) {
+      within(project(layout, px, py), layout.playfield);
+    }
+    // The town label is13screen-px; reserve120×24screen-px including padding.
+    // Actual text metrics and camera transforms remain a hosted-render gate.
+    const label = project(layout, 256, 128 + art.entranceLabelOffsetY);
+    for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, layout.playfield);
   });
 
   it.each([true, false])('preserves the desktop layout and camera exactly (town=%s)', (town) => {
@@ -88,7 +102,7 @@ function uiObject() {
 function makeScene(width = 374, height = 280) {
   const s: any = new GameScene({ isCurrent: () => true, onReady: vi.fn(), onError: vi.fn(), onGameOver: vi.fn() });
   for (const name of ['uiContainer', 'controlContainer', 'hudPanel', 'controlPanel', 'instructionsText',
-    'scoreText', 'hpText', 'hpBarBg', 'hpBarFill', 'areaText', 'controlStatus', 'primaryControl', 'secondaryControl', 'vignetteSprite']) {
+    'scoreText', 'hpText', 'hpBarBg', 'hpBarFill', 'areaText', 'controlStatus', 'primaryControl', 'secondaryControl', 'vignetteSprite', 'portalText']) {
     s[name] = uiObject();
   }
   const camera: any = { zoom: 1.35, centerOn: vi.fn(), setFollowOffset: vi.fn(), setBounds: vi.fn() };
@@ -128,7 +142,9 @@ describe('real ARPG scene applies and restores responsive layout (renderer mocke
     expect(s.playerSprite).toEqual({ x: 1472, y: 536 });
     expect([s.elapsed, s.durationLimit, s.expeditionActive]).toEqual([1234, 90_000, false]);
     expect(s.handlers.onGameOver).not.toHaveBeenCalled();
-    expect(s.cameras.main.setZoom.mock.calls[0][0]).toBeCloseTo(150 / 272);
+    expect(s.cameras.main.setZoom.mock.calls[0][0]).toBeCloseTo(150 / 428);
+    expect(s.portalText.setScale).toHaveBeenLastCalledWith(428 / 150);
+    expect(s.portalText.text).toBe('E · Enter ruins');
   });
 
   it('restores desktop positions, text, sizes, wrapping and camera after a resize', () => {
@@ -150,6 +166,7 @@ describe('real ARPG scene applies and restores responsive layout (renderer mocke
     expect(s.primaryControl.setMaxLines).toHaveBeenLastCalledWith(0);
     expect(s.hpBarSize).toEqual({ width: 240, height: 16 });
     expect(s.cameras.main.setZoom).toHaveBeenLastCalledWith(1.35);
+    expect(s.portalText.setScale).toHaveBeenLastCalledWith(1);
     expect(s.cameras.main.setFollowOffset).toHaveBeenLastCalledWith(0, 0);
     expect(s.cameras.main.centerOn).toHaveBeenLastCalledWith(1472, 536);
     expect(s.uiCamera.setSize).toHaveBeenLastCalledWith(1068, 600);
@@ -179,7 +196,7 @@ describe('real ARPG scene applies and restores responsive layout (renderer mocke
     expect(s.viewportLayoutKey).toBe('');
     expect(s.cameras.main.zoom).toBe(1.35);
     s.updateFixedUITransforms();
-    expect(s.cameras.main.zoom).toBeCloseTo(150 / 272);
+    expect(s.cameras.main.zoom).toBeCloseTo(150 / 428);
     expect(s.cameras.main.centerOn).toHaveBeenCalledTimes(2);
   });
 
@@ -193,7 +210,7 @@ describe('real ARPG scene applies and restores responsive layout (renderer mocke
     expect(s.controlStatus.text).toBe('Exploring · 89s left');
     expect(s.expeditionActive).toBe(true); expect(s.elapsed).toBe(1234); expect(s.durationLimit).toBe(90_000);
     s.expedition.area = 0; s.updateFixedUITransforms();
-    expect(s.cameras.main.setFollowOffset.mock.calls.at(-1)[0]).toBe(-145);
+    expect(s.cameras.main.setFollowOffset.mock.calls.at(-1)[0]).toBe(-195);
     expect(s.secondaryControl.visible).toBe(false);
     s.scale = { width: 1068, height: 600, gameSize: { width: 1068, height: 600 } };
     s.updateFixedUITransforms();

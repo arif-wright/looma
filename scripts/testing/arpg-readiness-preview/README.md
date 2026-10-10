@@ -30,14 +30,16 @@ values, extra signing/completion calls and all other fetches fail closed.
 The receipt reaches in-memory presentation spies only. It proves client flow,
 not server validation, real signing, account rewards or persistence.
 
-Native browser traffic is restricted to local fixture JS/CSS and 253 declared
-real images (252 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
+Native browser traffic is restricted to local fixture JS/CSS and 254 declared
+real images (253 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
 undeclared paths and WebSockets are rejected; service workers are blocked.
 No credentials or hosted backend are used. The Vite build rejects unexpected
 application or live-service imports, while explicitly including the real
-`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The three
-new source PNGs are explicitly allowlisted; the real scene derives its cobble
-patch from the approved floor PNG without fixture-generated substitute art.
+`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The two new
+ground/entrance PNGs are explicitly allowlisted alongside the existing shop and
+lantern. The superseded small cobble patch is no longer queued or allowlisted.
+The real scene derives its continuous ground plane from the approved material
+PNG without fixture-generated substitute art.
 
 `observe-scene.ts` wraps only preload to register event listeners before calling
 the real preload exactly once. It never invokes readiness or gameplay callbacks,
@@ -77,11 +79,12 @@ and real post-create frames together.
     not a 90-second endurance run, a two-floor combat clear or production settlement.
     Capture a desktop canvas close-up of the new town art before departure.
 12. Load the real scene at a 390×844 viewport with zero session starts. Require
-    all 252 source textures, the instantiated cobble/shop/lantern objects, a
+    all 253 source textures, the instantiated ground/shop/lantern/entrance objects, a
     nonempty canvas within the viewport width, and no horizontal document overflow.
     After actual render, require HUD/control panels and visible text within the
     canvas, the hero ground point clear of both panels, and the full shop bounds
-    inside the unobstructed band between them.
+    inside the unobstructed band between them. The new entrance and its live
+    gate-label bounds must also fit the same clear band.
     Capture the full phone-sized viewport. This runs desktop Chromium without
     mobile-device or touch emulation; it does not establish phone playability.
 
@@ -90,9 +93,13 @@ observations, route state, strict API bodies, named lifecycle/gameplay checkpoin
 cleanup and console/page errors. Only the exact injected HTTP/decode messages
 are allowed in their corresponding cases. Seven labeled screenshots retain the
 existing initialized-town, HTTP/decode/deadline and returned-town captures, and
-add desktop-canvas and 390×844 art previews. Visual observations record the actual
+add desktop-canvas and 390×844 art previews. Ground checks require exactly one
+derived plane and entrance, zero legacy town floor images or oversized geometric
+markers, unchanged gate contact, and opaque native-canvas samples at five points
+on the hero-to-gate line. The same checks run after returning and idling in town.
+These samples establish bounded coverage, not seamlessness or artistic quality. Visual observations record the actual
 viewport, canvas bounds, document width, decoded art keys, and real hero/shop/
-lantern/floor position, origin, scale and depth. Checks preserve the measured shop
+lantern/floor/entrance position, origin, scale and depth. Checks preserve the measured shop
 foot anchor and floor-below-actors ordering; they do not certify pixel-perfect
 occlusion or artistic quality. Traces remain available on failure. Actual
 screenshot review is still required, including cropped HUD or controls at narrow
@@ -145,17 +152,18 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 100 unit
+submission fields and the exact zero-value presentation payload. Its 121 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
 The local browser denial was not retried. Local preparation executes zero browser
-cases. The first art run passed the original twelve-case gate, but its narrow screenshot
-revealed HUD obstruction and shop clipping that page-overflow checks missed.
-The responsive source and stronger rendered-geometry gate require a fresh hosted
-run and screenshot review on their exact source, asset and fixture commit.
+cases. This ground/entrance slice is local only, based on the frozen published
+art preview. Its new material, entrance, continuous-floor coverage and expanded
+phone framing have not been rendered in a permitted browser yet. Existing
+published screenshots and execution artifacts are unchanged and cannot prove
+this new slice passed. New hosted execution needs separate authorization.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does

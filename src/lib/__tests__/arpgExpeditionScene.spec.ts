@@ -86,22 +86,34 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     };
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
-    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage'].map(key => [key, vi.fn()]));
-    s.textures = { exists: () => false, createCanvas: () => ({ context, refresh: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
+    Object.assign(context, { createPattern: vi.fn(() => ({})) });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
-    const patch = objects.filter(value => value.texture === 'town_corner_cobble_patch_v1');
-    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_corner_cobble_patch_v1');
-    expect(patch).toHaveLength(area === 0 ? 1 : 0);
-    if (patch.length) {
-      expect(patch[0].depth).toBeGreaterThan(Math.max(...floors.map(value => value.depth)));
-      expect(patch[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
+    const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');
+    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_ground_plane_v1');
+    expect(ground).toHaveLength(area === 0 ? 1 : 0);
+    expect(foreground.length).toBeGreaterThan(0);
+    if (area === 0) {
+      expect(floors).toHaveLength(0);
+      expect(ground[0].depth).toBe(-161);
+      expect(ground[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
+      expect(s.add.ellipse).toHaveBeenCalledTimes(1); // Only the hero shadow, no fake service/entrance markers.
+      const entrance = objects.find(value => value.texture === 'town_ruins_entrance_v1');
+      expect(entrance).toMatchObject({ x: 1728, y: 664, depth: 684 });
+      expect(s.portalText).toMatchObject({ x: 1728, y: 704 });
+      expect(s.roomBounds).toEqual({ minX: 0, maxX: 2944, minY: -168, maxY: 1310 });
+      expect(s.wallTiles.size).toBe(88);
+      expect(s.wallTiles.has('14,9')).toBe(false); expect(s.wallTiles.has('18,9')).toBe(false);
+      expect(s.cameras.main.setBounds).toHaveBeenCalledWith(-140, -308, 3224, 1758);
+    } else {
+      expect(floors.length).toBeGreaterThan(0);
+      expect(Math.max(...floors.map(value => value.depth))).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
+      const offset = floors[0].depth - floors[0].y;
+      expect(offset).toBeLessThan(0);
+      expect(floors.every(value => value.depth - value.y === offset)).toBe(true);
     }
-    expect(floors.length).toBeGreaterThan(0); expect(foreground.length).toBeGreaterThan(0);
-    expect(Math.max(...floors.map(value => value.depth))).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
-    const offset = floors[0].depth - floors[0].y;
-    expect(offset).toBeLessThan(0);
-    expect(floors.every(value => value.depth - value.y === offset)).toBe(true);
     // Wall sprites are placed 42px above their isometric foot position. Their
     // original y sorting remains intact; only the floor plane moves backwards.
     const walls = objects.filter(value => value.texture?.startsWith('wall_'));
@@ -207,6 +219,18 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(callbacks.listenerCount('shutdown')).toBe(0);
     expect(callbacks.listenerCount('destroy')).toBe(0);
     expect(corner.destroy).toHaveBeenCalledOnce(); expect(s.townCorner).toBeNull();
+  });
+
+  it('keeps the entrance interaction at exactly (18,9) with its original 150px radius', () => {
+    const s = make(); s.world = new World(); s.playerId = s.world.createEntity();
+    s.runState = 'running'; s.handlePrimaryControl = vi.fn();
+    const gate = s.isoToWorld(18, 9);
+    for (const distance of [0, 150, 150.001]) {
+      s.world.setTransform(s.playerId, { x: gate.x + distance, y: gate.y, rot: 0 });
+      s.interactWithPortal();
+    }
+    expect(gate).toEqual({ x: 1728, y: 664 });
+    expect(s.handlePrimaryControl).toHaveBeenCalledTimes(2);
   });
 
   it('rejects a queued sword hit and completion from the previous area', () => {

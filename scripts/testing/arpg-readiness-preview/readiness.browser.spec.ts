@@ -1,6 +1,7 @@
 import { test, expect, snapshot, screen, starts, open, initializing, town, expedition, gameplay, record, clickControl, failed, HOLD_PATH, holdFirstImage } from './guard';
 import { TITLES } from './cases.mjs';
 import { FLOW_CAP_MS } from './protocol.mjs';
+import { townGroundIssues } from './town-ground.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 
@@ -23,6 +24,7 @@ const townArtScreenshot = async (page: import('@playwright/test').Page, info: im
   expect(visual.canvas.x).toBeGreaterThanOrEqual(-1);
   expect(visual.canvas.x + visual.canvas.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(visual.starts).toBe(0);
+  expect(townGroundIssues(visual.scene?.gameplay)).toEqual([]);
   if (label === PHONE_TOWN_SCREENSHOT) expect(phoneGeometryIssues(visual.scene?.gameplay?.viewportGeometry)).toEqual([]);
   expect(visual.scene?.gameplay).toMatchObject({ area: 0, expeditionActive: false, elapsed: 0 });
   // Desktop gets a canvas close-up; the phone-sized capture preserves the full
@@ -199,13 +201,15 @@ test(TITLES[10]!, async ({ page }, info) => {
   await expect.poll(() => gameplay(page)).toMatchObject({ area: 0, expeditionActive: false, returned: true, outcome: 'retreated' });
   const returned = await record(page, 'returned-and-saved');
   expect(returned).not.toBeNull();
+  expect(townGroundIssues(returned)).toEqual([]);
   await page.waitForTimeout(FLOW_CAP_MS + 250);
   expect(await gameplay(page)).toMatchObject({ area: 0, expeditionActive: false, elapsed: returned!.elapsed, outcome: 'retreated' });
   expect(await starts(page)).toHaveLength(1);
   expect((await snapshot(page)).api.filter(call => call.path === '/api/games/sign')).toHaveLength(1);
   expect((await snapshot(page)).api.filter(call => call.path === '/api/games/session/complete')).toHaveLength(1);
   await expect(screen(page).getByRole('button', { name: 'Depart on expedition', exact: true })).toBeEnabled();
-  await record(page, 'returned-town-after-idle');
+  const rested = await record(page, 'returned-town-after-idle');
+  expect(townGroundIssues(rested)).toEqual([]);
   await screenshot(page, info, 'returned-town-synthetic-zero-value-receipt');
 });
 

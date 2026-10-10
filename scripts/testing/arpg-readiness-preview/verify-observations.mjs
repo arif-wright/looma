@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { townGroundIssues } from './town-ground.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 import { FLOW_CAP_MS, EXPECTED_REWARD_MUTATIONS, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
@@ -8,12 +9,12 @@ const empty = (value, reason) => assert.deepEqual(value, [], reason);
 const finite = value => assert(Number.isFinite(value) && value >= 0);
 const apiCalls = (state, path) => state.api.filter(call => call.path === path);
 const imageSet = scene => {
-  assert.equal(new Set(scene.queuedKeys).size, 252, 'Actual scene queues its complete image set');
-  for (const key of ['town_corner_cobble_source_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1']) assert(scene.queuedKeys.includes(key), 'All three approved town PNGs are required');
+  assert.equal(new Set(scene.queuedKeys).size, 253, 'Actual scene queues its complete image set');
+  for (const key of ['town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1']) assert(scene.queuedKeys.includes(key), 'All four runtime town PNGs are required');
 };
 const rendered = scene => {
   imageSet(scene); finite(scene.createAt);
-  assert.equal(scene.decodedKeys.length, 252);
+  assert.equal(scene.decodedKeys.length, 253);
   assert.deepEqual([...scene.decodedKeys].sort(), [...scene.queuedKeys].sort(), 'Every queued texture is genuinely decoded');
   empty(scene.missingKeys, 'No missing decoded textures');
   assert(scene.framesAfterCreate > 0); assert(scene.gameplay); finite(scene.gameplay.at);
@@ -91,13 +92,14 @@ export function verifyObservation(observation, index) {
       empty(phoneGeometryIssues(geometry), 'Phone HUD, controls, hero and full shop must fit their rendered unobstructed regions');
       assert.equal(geometry.canvas.width, canvas.width); assert.equal(geometry.canvas.height, canvas.height);
     }
+    empty(townGroundIssues(visual.scene.gameplay), 'Continuous town ground and original entrance position required');
     const art = visual.scene.gameplay.townArt;
-    assert(art); assert.deepEqual(art.objects.map(item => item.key).sort(), ['town_corner_cobble_patch_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1'].sort());
+    assert(art); assert.deepEqual(art.objects.map(item => item.key).sort(), ['town_ground_plane_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'].sort());
     const shop = art.objects.find(item => item.key === 'town_corner_shop_v1');
-    const floor = art.objects.find(item => item.key === 'town_corner_cobble_patch_v1');
+    const floor = art.objects.find(item => item.key === 'town_ground_plane_v1');
     const lantern = art.objects.find(item => item.key === 'town_corner_lantern_v1');
     for (const object of [art.hero, ...art.objects]) {
-      for (const key of ['x', 'y', 'depth', 'originX', 'originY', 'scaleX', 'scaleY']) assert(Number.isFinite(object[key]));
+      for (const key of ['x', 'y', 'depth', 'originX', 'originY', 'scaleX', 'scaleY', 'displayWidth', 'displayHeight']) assert(Number.isFinite(object[key]));
       assert(object.scaleX > 0 && object.scaleY > 0);
     }
     assert.equal(shop.originX, 618 / 1254); assert.equal(shop.originY, 1175 / 1254);
@@ -139,6 +141,7 @@ export function verifyObservation(observation, index) {
     for (const point of [returned, rested]) {
       assert.equal(point.starts, 1); town(point.scene.gameplay, duration);
       assert.equal(point.scene.gameplay.returned, true); assert.equal(point.scene.gameplay.outcome, 'retreated');
+      empty(townGroundIssues(point.scene.gameplay), 'Returned town rebuilds the continuous ground and entrance exactly once');
     }
     assert(rested.at - returned.at >= FLOW_CAP_MS, 'Native returned-town idle exceeds the expedition cap');
     const sign = apiCalls(state, '/api/games/sign'), complete = apiCalls(state, '/api/games/session/complete'), player = apiCalls(state, '/api/games/player/state');
