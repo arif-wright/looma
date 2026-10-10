@@ -1,0 +1,149 @@
+{
+  "status": "PASS",
+  "deterministicRebuildChecked": true,
+  "originalFrozenProofHashChecked": false,
+  "rasterInputsRead": 0,
+  "browserProcessesLaunched": 0,
+  "renderedWith": "Offline Inkscape CLI",
+  "verified": [
+    "exact +/-0.5 ground axes and vertical z axis",
+    "all polygon vertices derive from the single projection basis",
+    "solid/footprint extent is exactly 4 x 1 grid units",
+    "foundation vertices in z=0..8, upper vertices in z=8..ridge",
+    "foundation interiors are fully opaque",
+    "same integer-sized 2 px/world viewBox and pixel pivot in each layer pair",
+    "finite actual-polygon bounds expanded by the actual stroke",
+    "major upper cutaway planes exactly match rendered geometry",
+    "closed 20 x 44 human-size decorative doors",
+    "no raster SVG inputs, filters, transformed decals, or clipping",
+    "original proof provenance hash retained",
+    "deterministic SVG, PNG, runtime data, and manifest bytes"
+  ],
+  "assets": [
+    {
+      "id": "rear",
+      "footprintWorld": [
+        {
+          "x": 1240,
+          "y": 304
+        },
+        {
+          "x": 1304,
+          "y": 272
+        },
+        {
+          "x": 1560,
+          "y": 400
+        },
+        {
+          "x": 1496,
+          "y": 432
+        }
+      ],
+      "sourcePixelDimensions": [
+        656,
+        544
+      ],
+      "contactPixels": {
+        "x": 520,
+        "y": 536
+      },
+      "scale": 0.5,
+      "exactAxisEdgesChecked": {
+        "u": 358,
+        "v": 33,
+        "vertical": 258
+      },
+      "alphaBoundsPixels": {
+        "foundation": [
+          7,
+          263,
+          649,
+          537
+        ],
+        "upper": [
+          7,
+          7,
+          649,
+          521
+        ]
+      },
+      "polygonCount": 211,
+      "majorUpperPlanes": 5,
+      "closedDoorWorldSize": {
+        "horizontal": 20,
+        "vertical": 44
+      }
+    },
+    {
+      "id": "endcap",
+      "footprintWorld": [
+        {
+          "x": 1728,
+          "y": 376
+        },
+        {
+          "x": 1984,
+          "y": 248
+        },
+        {
+          "x": 1920,
+          "y": 216
+        },
+        {
+          "x": 1664,
+          "y": 344
+        }
+      ],
+      "sourcePixelDimensions": [
+        656,
+        480
+      ],
+      "contactPixels": {
+        "x": 136,
+        "y": 472
+      },
+      "scale": 0.5,
+      "exactAxisEdgesChecked": {
+        "u": 33,
+        "v": 306,
+        "vertical": 206
+      },
+      "alphaBoundsPixels": {
+        "foundation": [
+          7,
+          199,
+          649,
+          473
+        ],
+        "upper": [
+          7,
+          7,
+          649,
+          457
+        ]
+      },
+      "polygonCount": 185,
+      "majorUpperPlanes": 5,
+      "closedDoorWorldSize": {
+        "horizontal": 20,
+        "vertical": 44
+      }
+    }
+  ],
+  "outputSha256": {
+    "scripts/art/town-plaza-v1/facade-manifest.json": "0dbb575fc6d0e190141e3419a7c618def6534ab2bd196e6d059ad85447b3259a",
+    "scripts/art/town-plaza-v1/facade-hashes.json": "d645253b4a429f2fc355cd7e5bc265595e04282a3607127761751af989455597",
+    "src/lib/games/arpg/assets/townFacadeData.ts": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_v1.svg": "b8dffe28bff8e10cb587cbc288e75d6cf95cf3d4655a7032534dc94800226b0a",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.svg": "08bf18892214fd374311117ff94b6339ff444a3dbd8f4a17074681e0cd80b063",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.png": "1a83b07d2c3ea4985a7fa2ce8e3f79c4ab49151c264dbd8c9936092735351dd4",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg": "766b05b1e284d2041c5ae14d1712bf4143cd4858eda10ffbf7ed02641c57f312",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png": "41bc8c5ab99b57b8082543127daa73094f2442b9c2ecef6b9944381792e8a0e6",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_v1.svg": "b25269a75c95f2ed3d9c6754ac8c3bd84e5bd0bb49d7311091cbc64e8b01a76d",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.svg": "f9d642320180e0cbc62f4f419d4403138055a09ca6b1d7581e191f75d263506e",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.png": "a9c015b65e3887866d3de1d609763251a8b4830eac8d341aeb9dc71cbfcd9f17",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg": "b950e9cbd9df4379896dadb6ef965189272561e3cc1e7803afc9dc490aee3b54",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png": "19c9c1c929c46c1b185361e755d14814dc8c3cf0680d485ed9323c02147c6c25"
+  }
+}

@@ -1,3 +1,6 @@
+import { WAYPOINT_TOLERANCE, NAVIGATION_PHASES, waypointKeys } from './plaza-navigation.mjs';
+import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
+import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 // Verifier schema tests; these never launch or impersonate executed browsers.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -14,7 +17,7 @@ const image = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc
 function report(mode = 'execution') {
   const execution = mode === 'execution';
   const specs = TITLES.map((title, index) => {
-    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'];
+    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1', ...PLAZA_KEYS];
     const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1, displayWidth: 100, displayHeight: 100 });
     const townArt = { hero: { ...artObject('hero-idle', 536, 556), x: 1472 }, objects: [
       { ...artObject('town_ground_plane_v1', -168, -161, 0, 0), x: 128, scaleX: 2, scaleY: 2, displayWidth: 2688, displayHeight: 1344 },
@@ -70,6 +73,7 @@ function report(mode = 'execution') {
         documentWidth: viewport.width, canvas: { x: 16, y: 160, width: viewport.width - 32, height: index === 11 ? 500 : 200, pixelWidth: viewport.width - 32, pixelHeight: index === 11 ? 500 : 200 },
         scene: { ...structuredClone(scene), gameplay: structuredClone(game) } }];
     }
+    if (index >= 12) fabricatePlazaSchema(state, scene, game, index);
     const observation = { browserVersion: '143.0.7499.4', blocked: [], errors: [], unexpectedConsoleErrors: [], cleanupErrors: [], consoleErrors: [], state,
       afterCleanup: { ...structuredClone(state), scenes: state.scenes.map(scene => ({ ...scene, destroyed: true })), canvasCount: 0, authCallbacks: 0, mountedPages: [] } };
     return { title, id: `case-${index}`, file: FILE, ok: true, tests: [{ projectId: PROJECT, projectName: PROJECT, expectedStatus: 'passed', annotations: [], status: execution ? 'expected' : 'skipped', results: execution ? [{ status: 'passed', retry: 0, errors: [], annotations: [], workerIndex: 0, startTime: '2026-10-09T00:00:00Z', duration: index === 10 ? 2 * FLOW_CAP_MS + 10000 : 30000,
@@ -92,7 +96,7 @@ const coherentObservation = (r, mutate, index = 0) => observation(r, value => {
   value.afterCleanup.rewardMutations = structuredClone(value.state.rewardMutations);
   value.afterCleanup.visuals = structuredClone(value.state.visuals);
 }, index);
-test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/12 executed/));
+test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/14 executed/));
 test('discovery explicitly means zero execution',()=>assert.match(verify(report('discovery'),'discovery'),/ZERO executed/));
 test('discovery cannot satisfy execution',()=>assert.throws(()=>verify(report('discovery'),'execution')));
 test('execution cannot be relabeled discovery',()=>assert.throws(()=>verify(report(),'discovery')));
@@ -258,3 +262,86 @@ test('alpha bounds use the documented alpha32 threshold', () => {
 });
 test('transparent decoded frame cannot supply visible bounds', () => assert.equal(scanAlphaBounds(new Uint8ClampedArray(16), 2, 2), null));
 test('invalid alpha buffers fail closed', () => assert.throws(() => scanAlphaBounds(new Uint8ClampedArray(15), 2, 2)));
+
+// Additive corruption gates for real-input exploration evidence. Each mutation
+// keeps cleanup copies coherent, rather than failing an unrelated snapshot check.
+const plazaMutations = {
+  'plaza missing native checkpoint': o=>o.state.checkpoints.splice(6,1),
+  'plaza missing movement trace': o=>o.state.plazaMotion=[],
+  'plaza trace overflow': o=>o.state.plazaMotionOverflow=true,
+  'plaza trace through rear foundation': o=>{const t=o.state.plazaMotion.find(t=>t.x===1368&&t.y===411);t.y=320;},
+  'plaza walk input never reaches real scene': o=>o.state.plazaMotion.forEach(t=>t.intent={x:0,y:0}),
+  'plaza dash cooldown never activates': o=>o.state.plazaMotion.forEach(t=>t.dash.cd=0),
+  'plaza dash wrong native direction': o=>o.state.plazaMotion.filter(t=>t.dash.cd>=600).forEach(t=>t.dash.lastDir={x:0,y:1}),
+  'plaza checkpoint without trace frame': o=>o.state.checkpoints[6].scene.gameplay.at+=.5,
+  'plaza premature expedition clock': o=>o.state.checkpoints[6].scene.gameplay.elapsed=1,
+  'plaza missing owned facade': o=>o.state.checkpoints[6].scene.gameplay.plaza.pop(),
+  'plaza duplicated owner id': o=>{const a=o.state.checkpoints[6].scene.gameplay.plaza;a[1].objectId=a[0].objectId;},
+  'plaza wrong facade pivot': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].originX=.5,
+  'plaza wrong facade contact': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].x+=1,
+  'plaza facade nonuniform scaling': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].scaleX=.49,
+  'plaza translucent solid foundation': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].alpha=.28,
+  'plaza opaque cutaway hides hero': o=>o.state.checkpoints[6].scene.gameplay.plaza[2].alpha=1,
+  'plaza cutaway not restored': o=>o.state.checkpoints[7].scene.gameplay.plaza[2].alpha=.28,
+  'plaza lifted above original depth': o=>o.state.checkpoints[6].scene.gameplay.plaza[2].depth=5000,
+  'plaza split foundation upper depths': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].depth-=1,
+  'plaza hidden hero scale change': o=>o.state.checkpoints[6].scene.gameplay.townArt.hero.scaleX=.8,
+  'plaza zoom down to fit architecture': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.camera.zoom-=.01,
+  'plaza tiny hero alpha hull': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroVisible.screenBounds.height=5,
+  'plaza missing source-alpha visibility': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility=null,
+  'plaza foreground completely obscures hero': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility.readable=0,
+  'plaza foreground overly dims hero': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility.meanTransmission=.1,
+  'plaza hero behind HUD': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroVisible.screenBounds.y=30,
+  'plaza exploration camera does not follow': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroGround.x=80,
+  'plaza east gate label clipped': o=>o.state.checkpoints[14].scene.gameplay.viewportGeometry.entranceLabel.x=-20,
+  'plaza south entrance under HUD': o=>o.state.checkpoints[15].scene.gameplay.viewportGeometry.entrance.y=30,
+  'plaza missed actual gate approach': o=>o.state.checkpoints[16].scene.gameplay.x=1472,
+  'plaza departed facade leaked': o=>o.state.checkpoints[17].scene.gameplay.plaza=[{}],
+  'plaza returned old image ownership': o=>{o.state.checkpoints[18].scene.gameplay.plaza[0].objectId=o.state.checkpoints[0].scene.gameplay.plaza[0].objectId;},
+  'plaza returned cutaway not reset': o=>o.state.checkpoints[18].scene.gameplay.plaza[2].alpha=.28,
+  'plaza unbounded expedition': o=>o.state.checkpoints[17].scene.gameplay.durationLimit=90000,
+  'plaza extra settlement request': o=>o.state.api.push(structuredClone(o.state.api[1])),
+  'plaza missing exploration screenshot observation': o=>o.state.visuals.pop(),
+  'plaza capture from another checkpoint': o=>o.state.visuals[0].scene.gameplay.x+=1,
+  'plaza wrong phone viewport': o=>o.state.visuals[0].viewport.width=1280,
+};
+for(const [name,mutate] of Object.entries(plazaMutations))test(`reject ${name}`,()=>{
+  const r=report();coherentObservation(r,o=>{mutate(o);o.afterCleanup.plazaMotion=structuredClone(o.state.plazaMotion);o.afterCleanup.plazaMotionOverflow=o.state.plazaMotionOverflow;},13);
+  assert.throws(()=>verify(r,'execution'));
+});
+test('independent sweep rejects tunneling with both endpoints clear',()=>{
+  for(const [a,b,id]of [[[1368,411],[1368,181],'rear'],[[1200,260],[1430,260],'rear'],[[1640,260],[1640+230*Math.SQRT1_2,260+230*Math.SQRT1_2],'endcap']]){
+    assert(sweptDistance(a,a,FOOTPRINTS[id])>38);assert(sweptDistance(b,b,FOOTPRINTS[id])>38);
+    assert(sweptDistance(a,b,FOOTPRINTS[id])<38);assert(roomAllows(a)&&roomAllows(b));
+  }
+});
+test('independent sweep distinguishes tangent radius from centerline crossing',()=>{
+  assert.equal(sweptDistance([1200,260],[1430,260],FOOTPRINTS.rear),12);
+  assert.equal(sweptDistance([1368,411],[1368,181],FOOTPRINTS.rear),0);
+});
+test('independent footprint route preserves spawn to original gate',()=>assert(Object.values(FOOTPRINTS).every(p=>sweptDistance([1472,536],[1728,664],p)>38)));
+
+for(const fps of [15,30,60])test(`native steering converges at${fps}fps without physics or clock changes`,()=>{
+  const position={x:1472,y:536};
+  for(const [x,y] of Object.values(NAVIGATION_PHASES).flat()){
+    let steps=0;
+    for(;steps<fps*6;steps++){
+      const keys=waypointKeys(position,x,y);if(!keys.length)break;
+      const dx=Number(keys.includes('d'))-Number(keys.includes('a')),dy=Number(keys.includes('s'))-Number(keys.includes('w')),length=Math.hypot(dx,dy);
+      const before=[position.x,position.y];position.x+=dx/length*220/fps;position.y+=dy/length*220/fps;
+      assert(Object.values(FOOTPRINTS).every(p=>sweptDistance(before,[position.x,position.y],p)>38));
+    }
+    assert(steps<fps*6,'Steering cannot oscillate forever around a waypoint');
+    assert(Math.abs(position.x-x)<=WAYPOINT_TOLERANCE&&Math.abs(position.y-y)<=WAYPOINT_TOLERANCE);
+  }
+});
+test('all route segments preserve radius38 with independent8px endpoint errors',()=>{
+  let before=[1472,536],minimum=Infinity;
+  for(const after of Object.values(NAVIGATION_PHASES).flat()){
+    for(const ax of[-8,8])for(const ay of[-8,8])for(const bx of[-8,8])for(const by of[-8,8]){
+      minimum=Math.min(minimum,...Object.values(FOOTPRINTS).map(poly=>sweptDistance([before[0]+ax,before[1]+ay],[after[0]+bx,after[1]+by],poly)));
+    }
+    before=after;
+  }
+  assert(minimum>41);
+});

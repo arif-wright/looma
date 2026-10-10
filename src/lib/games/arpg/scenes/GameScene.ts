@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
+import { townExplorationOffset } from '../townPlaza';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
 import { createTownCorner, TOWN_RUNTIME_ASSETS, TOWN_CORNER_LAYOUT, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
@@ -232,6 +233,7 @@ export class GameScene extends Phaser.Scene {
   private controlPanel!: Phaser.GameObjects.Rectangle;
   private compactHUD = false;
   private viewportLayoutKey = '';
+  private viewportLayout: ReturnType<typeof arpgViewportLayout> | null = null;
   private hpBarSize = { width: 240, height: 16 };
   private controlContainer!: Phaser.GameObjects.Container;
   private primaryControl!: Phaser.GameObjects.Text;
@@ -369,10 +371,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateUIState();
     this.updateFixedUITransforms();
+    this.updateTownCamera();
   }
 
   private resetState() {
     this.viewportLayoutKey = '';
+    this.viewportLayout = null;
     this.compactHUD = false;
     this.hpBarSize = { width: 240, height: 16 };
     this.previousPositions.clear();
@@ -543,7 +547,8 @@ export class GameScene extends Phaser.Scene {
     this.heroRing.setDepth(spawn.y - 4);
     this.addToWorld(this.heroRing);
 
-    this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
+    const followLerp = this.expedition.area === 0 ? 1 : 0.12;
+    this.cameras.main.startFollow(this.playerSprite, true, followLerp, followLerp);
 
     this.dashAfterimages = this.add.group();
   }
@@ -671,6 +676,7 @@ export class GameScene extends Phaser.Scene {
     if (key === this.viewportLayoutKey) return;
     this.viewportLayoutKey = key;
     const layout = arpgViewportLayout(this.scale.width, this.scale.height, this.expedition.area === 0);
+    this.viewportLayout = layout;
     const townOverview = !layout.compact && this.expedition.area === 0;
     this.compactHUD = layout.compact;
     this.uiContainer.setScale(1).setPosition(layout.hud.x, layout.hud.y);
@@ -702,12 +708,21 @@ export class GameScene extends Phaser.Scene {
     // Keep the compact entrance prompt readable while its art remains at world
     // scale. Only resize on layout changes, never rerasterize it every frame.
     if (this.portalText) this.portalText.setScale(this.expedition.area === 0 && layout.compact ? 1 / layout.camera.zoom : 1);
-    camera.setFollowOffset(layout.camera.offsetX, layout.camera.offsetY);
+    const offset = this.expedition.area === 0 && this.playerSprite
+      ? townExplorationOffset(layout, this.playerSprite, this.isoToWorld(14, 9), this.isoToWorld(18, 9)) : layout.camera;
+    camera.setFollowOffset(offset.offsetX, offset.offsetY);
     if (this.playerSprite) {
-      camera.centerOn(this.playerSprite.x - layout.camera.offsetX, this.playerSprite.y - layout.camera.offsetY);
+      camera.centerOn(this.playerSprite.x - offset.offsetX, this.playerSprite.y - offset.offsetY);
     }
     this.resizeVignette();
     this.updateUIState();
+  }
+
+  private updateTownCamera() {
+    if (this.expedition.area !== 0 || !this.playerSprite || !this.viewportLayout) return;
+    const offset = townExplorationOffset(this.viewportLayout, this.playerSprite,
+      this.isoToWorld(14, 9), this.isoToWorld(18, 9));
+    this.cameras.main.setFollowOffset(offset.offsetX, offset.offsetY);
   }
 
   private setupUICamera() {
@@ -815,7 +830,7 @@ export class GameScene extends Phaser.Scene {
         this, image => this.addToWorld(image), (tx, ty) => this.isoToWorld(tx, ty),
         FLOOR_DEPTH_OFFSET + this.roomBounds.maxY + 1
       );
-
+      this.townCorner.updateActor(this.playerSprite);
     }
     const gate = this.isoToWorld(18, 9);
     if (this.expedition.area !== 0) this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
@@ -1132,6 +1147,7 @@ export class GameScene extends Phaser.Scene {
     if (transform && velocity) {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
+      this.townCorner?.updateActor(transform);
       this.playerShadow.setPosition(transform.x, transform.y);
       this.playerShadow.setDepth(transform.y - 5);
       this.heroRing.setPosition(transform.x, transform.y);

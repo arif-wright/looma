@@ -9,6 +9,8 @@ const sources = [
   'routes/app/(game)/games/arpg/+page.svelte', 'lib/games/arpg/main.ts',
   'lib/games/arpg/scenes/GameScene.ts', 'lib/games/arpg/assets/manifest.ts',
   'lib/games/arpg/assets/townCorner.ts',
+  'lib/games/arpg/assets/townFacadeData.ts',
+  'lib/games/arpg/townPlaza.ts',
   'lib/games/arpg/expedition.ts', 'lib/games/arpg/townSession.ts',
   'lib/games/arpg/viewportLayout.ts',
   'lib/games/arpg/ecs/components.ts', 'lib/games/arpg/ecs/systems.ts',

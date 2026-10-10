@@ -9,14 +9,20 @@ export const TOWN_FRAMING_BOUNDS = { left: -40, right: 430, top: -216, bottom: 2
 // Alpha>=32 right edge of the original entrance relative to spawn. Its large
 // transparent source margin is not a visual boundary. Source bytes are pinned.
 export const TOWN_VISIBLE_RIGHT = 256 + (1214 - 666) * (110 / 780);
-export const TOWN_SOURCE_RIGHT = 256 + (1536 - 666) * (110 / 780);
+export const TOWN_ENTRANCE_SOURCE_BOUNDS = {
+  left: -666 * (110 / 780), right: (1536 - 666) * (110 / 780),
+  top: -826 * (110 / 780), bottom: (1024 - 826) * (110 / 780)
+} as const;
+export const TOWN_SOURCE_RIGHT = 256 + TOWN_ENTRANCE_SOURCE_BOUNDS.right;
 export const TOWN_HERO_SCREEN_FRACTION = 0.26;
 export const TOWN_VISIBLE_EDGE_CLEARANCE = 24;
 
 export function arpgViewportLayout(rawWidth: number, rawHeight: number, town: boolean) {
   const width = Number.isFinite(rawWidth) && rawWidth > 0 ? rawWidth : 960;
   const height = Number.isFinite(rawHeight) && rawHeight > 0 ? rawHeight : 540;
-  const compact = width < 640 || height < 360;
+  // The wide town panels leave no safe gate/hero column on small tablets.
+  // Keep the released phone and full desktop layouts; use strips in between.
+  const compact = width < 640 || height < 360 || (town && (width < 1024 || height < 480));
   if (!compact) {
     return {
       compact, width, height,

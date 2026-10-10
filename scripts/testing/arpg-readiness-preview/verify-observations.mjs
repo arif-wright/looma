@@ -1,20 +1,22 @@
+import { verifyPlaza } from './verify-plaza.mjs';
+import { PLAZA_KEYS } from './plaza-contract.mjs';
 import assert from 'node:assert/strict';
 import { townGroundIssues } from './town-ground.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
 import { DESKTOP_TOWN_SCREENSHOT, PHONE_TOWN_SCREENSHOT } from './screenshots.mjs';
 import { FLOW_CAP_MS, EXPECTED_REWARD_MUTATIONS, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
-export const EXPECTED_STARTS = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
-const EXPECTED_SCENES = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1];
+export const EXPECTED_STARTS = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1];
+const EXPECTED_SCENES = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1];
 const empty = (value, reason) => assert.deepEqual(value, [], reason);
 const finite = value => assert(Number.isFinite(value) && value >= 0);
 const apiCalls = (state, path) => state.api.filter(call => call.path === path);
 const imageSet = scene => {
-  assert.equal(new Set(scene.queuedKeys).size, 253, 'Actual scene queues its complete image set');
-  for (const key of ['town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1']) assert(scene.queuedKeys.includes(key), 'All four runtime town PNGs are required');
+  assert.equal(new Set(scene.queuedKeys).size, 257, 'Actual scene queues its complete image set');
+  for (const key of ['town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1', ...PLAZA_KEYS]) assert(scene.queuedKeys.includes(key), 'All eight runtime town PNGs are required');
 };
 const rendered = scene => {
   imageSet(scene); finite(scene.createAt);
-  assert.equal(scene.decodedKeys.length, 253);
+  assert.equal(scene.decodedKeys.length, 257);
   assert.deepEqual([...scene.decodedKeys].sort(), [...scene.queuedKeys].sort(), 'Every queued texture is genuinely decoded');
   empty(scene.missingKeys, 'No missing decoded textures');
   assert(scene.framesAfterCreate > 0); assert(scene.gameplay); finite(scene.gameplay.at);
@@ -26,9 +28,9 @@ export function verifyObservation(observation, index) {
   const state = observation.state, cleanup = observation.afterCleanup;
   assert.equal(state?.ready, true); assert(cleanup);
   for (const value of [state, cleanup]) {
-    assert.equal(value.profile, index === 10 ? 'return-flow' : 'readiness');
+    assert.equal(value.profile, [10, 12, 13].includes(index) ? 'return-flow' : 'readiness');
     empty(value.blocked, 'No forbidden fetch');
-    assert.deepEqual(value.rewardMutations, index === 10 ? EXPECTED_REWARD_MUTATIONS : [], 'Only the flow case records its synthetic zero-value receipt');
+    assert.deepEqual(value.rewardMutations, [10, 12, 13].includes(index) ? EXPECTED_REWARD_MUTATIONS : [], 'Only the flow case records its synthetic zero-value receipt');
     assert(Array.isArray(value.api));
     for (const call of value.api) {
       finite(call.at);
@@ -37,7 +39,7 @@ export function verifyObservation(observation, index) {
       } else if (call.path === '/api/leaderboard/arpg/alltime' && call.method === 'GET') {
         assert.equal(call.body, undefined);
       } else {
-        assert.equal(index, 10, 'Settlement is forbidden outside the explicit return-flow case');
+        assert([10, 12, 13].includes(index), 'Settlement is forbidden outside the three explicit return-flow cases');
         assert(['/api/games/sign', '/api/games/session/complete', '/api/games/player/state'].includes(call.path));
         assert.equal(call.method, call.path === '/api/games/player/state' ? 'GET' : 'POST');
       }
@@ -50,13 +52,13 @@ export function verifyObservation(observation, index) {
   assert.equal(cleanup.canvasCount, 0); assert.equal(cleanup.authCallbacks, 0); empty(cleanup.mountedPages, 'No mounted page after cleanup');
   assert(cleanup.scenes.every(scene => scene.destroyed === true));
   const active = state.scenes.filter(scene => !scene.destroyed);
-  if ([0, 1, 2, 3, 8, 9, 10, 11].includes(index)) {
+  if ([0, 1, 2, 3, 8, 9, 10, 11, 12, 13].includes(index)) {
     assert.equal(active.length, 1); rendered(active[0]);
     if (index === 0) {
       assert.equal(active[0].gameplay.area, 1); assert.equal(active[0].gameplay.expeditionActive, true);
       assert.equal(active[0].gameplay.durationLimit, 90000, 'Default expedition remains capped at ninety seconds');
       assert(state.pages.some(page => page.status === 'Expedition in progress. Return to town to save your result.'));
-    } else if (index === 10) {
+    } else if ([10, 12, 13].includes(index)) {
       town(active[0].gameplay, active[0].gameplay.elapsed);
       assert(state.pages.some(page => page.status === 'Result saved. Town is untimed; depart again whenever you’re ready.'));
     } else {
@@ -72,6 +74,7 @@ export function verifyObservation(observation, index) {
     assert.equal(state.scenes[0].loadComplete, true); assert(state.scenes[0].missingKeys.includes('floor_0'));
     empty(state.scenes[0].loadErrors, 'Decode failure is distinct from download failure');
   }
+  if (index >= 12) { verifyPlaza(state, cleanup, index); return; }
   const visuals = state.visuals;
   assert(Array.isArray(visuals));
   assert.deepEqual(cleanup.visuals, visuals, 'Cleanup preserves captured art observations');

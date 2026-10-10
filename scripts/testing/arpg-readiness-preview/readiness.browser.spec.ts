@@ -1,3 +1,4 @@
+import { runPlazaExploration } from './plaza-browser';
 import { test, expect, snapshot, screen, starts, open, initializing, town, expedition, gameplay, record, clickControl, failed, HOLD_PATH, holdFirstImage } from './guard';
 import { TITLES } from './cases.mjs';
 import { FLOW_CAP_MS } from './protocol.mjs';
@@ -221,4 +222,10 @@ test(TITLES[11]!, async ({ page }, info) => {
   await open(page); await town(page);
   expect(await starts(page)).toHaveLength(0);
   await townArtScreenshot(page, info, PHONE_TOWN_SCREENSHOT, { width: 390, height: 844 });
+});
+
+// Additive native-input exploration gates. Existing twelve cases above retain
+// their clock, failure, auth, cleanup and returned-town assertions.
+for (const index of [12, 13]) test(TITLES[index]!, async ({page}, info) => {
+  await runPlazaExploration(page, info, index);
 });

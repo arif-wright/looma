@@ -1,6 +1,6 @@
-# ARPG town readiness, bounded return and painterly viewport previews
+# ARPG readiness, native plaza exploration and viewport evidence
 
-Credential-free desktop Chromium fixture, including one phone-sized viewport,
+Credential-free desktop Chromium fixture, including phone-sized viewport cases,
 for the actual ARPG route, SDK,
 `bootGame`, `GameScene`, Phaser 3.90 and checked-in PNGs. It prepares a draft PR
 validation gate; discovery/build alone are not browser execution.
@@ -23,21 +23,19 @@ destinations and navigation plumbing are synthetic. The fetch shim has no
 native fallback. Start requests must match the exact SDK body. The first ten
 cases and the phone-sized preview forbid signing, completion, player-state refresh
 and reward mutations.
-Only case eleven enables exact-shape synthetic signing/completion/player-state
+Only cases eleven, thirteen and fourteen enable exact-shape synthetic signing/completion/player-state
 responses for `fixture-arpg-1`, with a deliberately non-cryptographic signature
 and a zero-value receipt. Changed or extra body fields, mismatched submission
 values, extra signing/completion calls and all other fetches fail closed.
 The receipt reaches in-memory presentation spies only. It proves client flow,
 not server validation, real signing, account rewards or persistence.
 
-Native browser traffic is restricted to local fixture JS/CSS and 254 declared
-real images (253 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
+Native browser traffic is restricted to local fixture JS/CSS and 258 declared
+real images (257 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
 undeclared paths and WebSockets are rejected; service workers are blocked.
 No credentials or hosted backend are used. The Vite build rejects unexpected
 application or live-service imports, while explicitly including the real
-`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The two new
-ground/entrance PNGs are explicitly allowlisted alongside the existing shop and
-lantern. The superseded small cobble patch is no longer queued or allowlisted.
+`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The worn-paving source replaces the prior material URL under the same loader key; four exact foundation/upper facade PNG URLs are added. Source modules townPlaza.ts and assets/townFacadeData.ts are explicitly allowed. Existing shop, lantern and entrance remain allowlisted. The superseded small cobble patch is no longer queued or allowlisted.
 The real scene derives its continuous ground plane from the approved material
 PNG without fixture-generated substitute art.
 
@@ -50,7 +48,7 @@ means module-import latency is outside this fixture. Raw Phaser CREATE can
 follow a caught create failure, so success requires route state, decoded textures
 and real post-create frames together.
 
-## Twelve cases
+## Fourteen cases
 
 1. Hold the first floor image. Town stays loading with zero sessions, even after
    a forced disabled-button click. Release to real town readiness, still with
@@ -79,7 +77,7 @@ and real post-create frames together.
     not a 90-second endurance run, a two-floor combat clear or production settlement.
     Capture a desktop canvas close-up of the new town art before departure.
 12. Load the real scene at a 390×844 viewport with zero session starts. Require
-    all 253 source textures, the instantiated ground/shop/lantern/entrance objects, a
+    all 257 source textures, the instantiated ground/shop/lantern/entrance objects, a
     nonempty canvas within the viewport width, and no horizontal document overflow.
     After actual render, require HUD/control panels and visible text within the
     canvas, the hero ground point clear of both panels, and the full shop bounds
@@ -90,6 +88,34 @@ and real post-create frames together.
     modest display-size floors do not certify playability or aesthetics.
     Capture the full phone-sized viewport. This runs desktop Chromium without
     mobile-device or touch emulation; it does not establish phone playability.
+
+13–14. Desktop1280×900 and phone-sized390×844 native exploration: walk into the
+rear and endcap foundations, activate three real directional dashes whose full
+230px rays intersect a facade but whose endpoints clear it, walk around reachable
+sides to rear/side cutaways, restore their opacity in front, approach the gate from
+east and south, press E at the original gate, then use the real return control.
+Require a single bounded synthetic expedition and newly owned town images on
+return. The original twelve cases above remain, with only exact asset-count and
+approved source/asset allowlist updates.
+
+The added observer records a bounded (maximum12,000 entries, overflow fails)
+post-render movement trace, real ECS dash cooldown/direction, and stable WeakMap
+identities for the five named town images. Every consecutive town movement segment
+must clear all three independent radius38 footprints. Dash evidence requires an
+observed cooldown activation and an isolated crossing ray, so an endpoint-only
+collision implementation cannot pass. Checkpoints retain source pivots, scale,
+front/behind depth, opaque foundations, translucent upper layers, alpha restoration,
+fixed camera zoom, measured hero size and actual UI/entrance/prompt bounds. A bounded read-only alpha diagnostic samples every third opaque hero source pixel against higher-depth images at their actual transforms: at least half must retain50% transmission, and mean transmission must remain at least40%. This catches an additional opaque layer hiding the hero while the target roof correctly reports0.28alpha. It is an analytical source/depth check, not framebuffer pixel proof. World
+positions and expected polygons are independently transcribed constants; no
+production collision or camera helper is imported as the acceptance oracle.
+
+Ten additional PNG captures show each viewport at the rear front, rear cutaway,
+endcap cutaway, eastern gate approach and returned town. Captures are paired
+atomically with their observed movement checkpoint. The original seven required
+PNG captures are preserved, giving seventeen required attachments. Appearance,
+pixel occlusion, paving quality and navigation feel still require actual screenshot
+review; object alpha and geometry do not prove final composited pixels. Synthetic
+schema factories are imported only by verifier tests, never browser code.
 
 The observation artifact retains the actual browser.version(), loader/scene
 observations, route state, strict API bodies, named lifecycle/gameplay checkpoints,
@@ -155,27 +181,26 @@ There is no executable override, custom security flag or alternate launch. The
 locked managed Chromium is required. The bounded movement/return case has a
 120-second test budget so both native town-idle intervals exceed the synthetic
 twenty-second cap, with headroom for software-rendered frames and browser input.
-All other test budgets are unchanged. Native clocks are used; this fixture never
+The two additive exploration cases each allow 180 seconds for native movement and one bounded return. Other original test budgets are unchanged. Native waypoint steering permits8world pixels per axis, verified offline at15/30/60fps; even independent8px endpoint errors leave41.14px minimum clearance against radius38 solids. The6.5second per-waypoint deadline still fails on a real stall. Native clocks are used; this fixture never
 patches requestAnimationFrame or advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
-checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
+checkpoints, cleanup and the seventeen expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 137 unit
+submission fields and the exact zero-value presentation payload. Its 182 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
-The local browser denial was not retried. Local preparation executes zero browser
-cases. The frozen 8607613 hosted run passed all twelve cases, but its reviewed
-screenshots showed noisy ground and a tiny phone-sized hero. This visual followup
-adds taller portrait framing, minimum visible-silhouette checks and actual ground
-filter evidence. It has not been rendered in a permitted browser yet. The frozen
-8607613 fixture and hosted screenshots remain unchanged; their pass does not
-establish that this followup renders correctly. New execution and visual review
-must apply to the exact followup commit.
+The persistent local-browser denial remains in force: no local launch,
+escalation, alternate flags or alternate browser was attempted. Local preparation
+executes zero browser cases. PR17 e73cad94's twelve passing hosted cases are
+baseline evidence only. This larger-plaza candidate needs a new authorized hosted
+run and visual review against its exact commit. Its architecture is an unfinished
+code-native projection prototype, not completed painterly town art. Peripheral
+architecture may intentionally leave the viewport as the hero explores.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does
