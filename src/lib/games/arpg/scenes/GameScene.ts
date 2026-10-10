@@ -671,20 +671,23 @@ export class GameScene extends Phaser.Scene {
     if (key === this.viewportLayoutKey) return;
     this.viewportLayoutKey = key;
     const layout = arpgViewportLayout(this.scale.width, this.scale.height, this.expedition.area === 0);
+    const townOverview = !layout.compact && this.expedition.area === 0;
     this.compactHUD = layout.compact;
     this.uiContainer.setScale(1).setPosition(layout.hud.x, layout.hud.y);
     this.controlContainer.setScale(1).setPosition(layout.controls.x, layout.controls.y);
     this.hudPanel.setSize(layout.hud.width, layout.hud.height);
     this.controlPanel.setSize(layout.controls.width, layout.controls.height);
-    this.instructionsText.setVisible(!layout.compact);
-    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 58)
-      .setFontSize(layout.compact ? 12 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
-    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 98).setFontSize(layout.compact ? 11 : 16);
-    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : { width: 240, height: 16 };
-    this.hpBarBg.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.hpBarFill.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.areaText.setPosition(layout.compact ? 140 : 16, layout.compact ? 25 : 145)
-      .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.instructionsText.setVisible(!layout.compact)
+      .setText(townOverview ? 'WASD move · Space dash · Click attack · E at gate' : 'WASD move · Space dash · Click attack\nE at the gate · Gold and levels last this run')
+      .setPosition(16, townOverview ? 10 : 12).setFontSize(townOverview ? 13 : 16);
+    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : townOverview ? 34 : 58)
+      .setFontSize(layout.compact ? 12 : townOverview ? 17 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : townOverview ? 64 : 98).setFontSize(layout.compact ? 11 : townOverview ? 14 : 16);
+    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : townOverview ? { width: 96, height: 10 } : { width: 240, height: 16 };
+    this.hpBarBg.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.hpBarFill.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.areaText.setPosition(layout.compact ? 140 : townOverview ? 216 : 16, layout.compact ? 25 : townOverview ? 65 : 145)
+      .setFontSize(layout.compact ? 11 : townOverview ? 13 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
     this.controlStatus.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 10)
       .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? layout.controls.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
     this.primaryControl.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 34);
@@ -1362,10 +1365,11 @@ export class GameScene extends Phaser.Scene {
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
-    this.scoreText.setText(`${this.compactHUD ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
+    const conciseStatus = this.compactHUD || this.expedition.area === 0;
+    this.scoreText.setText(`${conciseStatus ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
     const area = AREAS[this.expedition.area];
     const compactArea = ['Lantern Sq.', 'Mossgate', 'Ember Vault'][this.expedition.area];
-    this.areaText.setText(this.compactHUD
+    this.areaText.setText(conciseStatus
       ? `${compactArea} · G${this.expedition.carriedGold}/${this.expedition.bankedGold}`
       : `${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
     if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? (this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : this.townStatus === 'blocked' ? 'Unavailable' : 'Please wait…') : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);

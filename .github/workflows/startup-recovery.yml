@@ -37,11 +37,11 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/startup-recovery
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$(git rev-parse HEAD:src)" = 3b267bb0b00f14a48b057300da5462bf503517ab
+          test "$(git rev-parse HEAD:src)" = 2f8f2318f3fb720ea54f3330fffe51c0bb9ebb20
           test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
           test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"
           {
-            echo '257 focused units + 130 component-DOM cases + a separate 42-case synthetic-browser execution gate.'
+            echo '263 focused units + 130 component-DOM cases + a separate 42-case synthetic-browser execution gate.'
             echo 'Real shells and SDK; synthetic Auth, transport and engines. No hosted backend, real engine, mobile coverage or deployment acceptance.'
             git rev-parse HEAD HEAD^{tree} HEAD:src HEAD:supabase
             node --version
@@ -60,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/testing/recovery-dom/verify-start-recovery-results.test.mjs 2>&1 | tee artifacts/startup-recovery/verifier-tests.log
-      - name: Run and verify all 257 focused session and startup unit cases
+      - name: Run and verify all 263 focused session and startup unit cases
         env:
           VITEST: 'true'
         run: |
