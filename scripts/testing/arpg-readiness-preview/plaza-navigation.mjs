@@ -3,6 +3,7 @@
 // Every route segment with independent ±8px endpoint error still clears the
 // approved solids by at least41.14px, exceeding the actor's38px radius.
 export const WAYPOINT_TOLERANCE = 8;
+export const WAYPOINT_DEADLINE_MS = 6500;
 export function waypointKeys(position, x, y) {
   const dx=x-position.x,dy=y-position.y,keys=[];
   if(Math.abs(dx)>WAYPOINT_TOLERANCE)keys.push(dx>0?'d':'a');
@@ -24,9 +25,24 @@ export const NAVIGATION_PHASES = {
 
 // One native key per bounded pulse, followed by an observed key-release frame.
 // No browser round-trip or geometry read occurs while a key remains held.
-export function waypointPulse(position, x, y) {
+export function waypointPulse(position, x, y, missedPulses=0) {
   const keys=waypointKeys(position,x,y);if(!keys.length)return null;
   const dx=x-position.x,dy=y-position.y;
   const key=Math.abs(dx)>=Math.abs(dy)?(dx>0?'d':'a'):(dy>0?'s':'w');
-  return { key, delay: Math.max(Math.abs(dx),Math.abs(dy))>80?64:16 };
+  const remaining=Math.max(Math.abs(dx),Math.abs(dy));
+  // At 220 world px/s, a far pulse reserves 16 px for frame quantization and
+  // key-up quantization, and never holds longer than 240 ms. Fine pulses start
+  // at 16 ms. Only an actually unchanged released position increases the next
+  // pulse, capped at 48 ms and by remaining distance; no frame is guaranteed.
+  const fine=Math.min(48,16*(missedPulses+1),Math.max(16,Math.floor((remaining-8)/.22)));
+  const delay=remaining>32?Math.min(240,Math.floor((remaining-16)/.22)):fine;
+  return { key, delay };
+}
+
+// Success is assessed from the released observation before deadline failure.
+export function waypointStep(position,x,y,elapsed,missedPulses=0){
+  const pulse=waypointPulse(position,x,y,missedPulses);
+  if(!pulse)return null;
+  if(elapsed>=WAYPOINT_DEADLINE_MS)throw new Error(`Native route stalled before ${x},${y}: ${JSON.stringify(position)}`);
+  return pulse;
 }

@@ -183,14 +183,33 @@ There is no executable override, custom security flag or alternate launch. The
 locked managed Chromium is required. The bounded movement/return case has a
 120-second test budget so both native town-idle intervals exceed the synthetic
 twenty-second cap, with headroom for software-rendered frames and browser input.
-The two additive exploration cases each allow 180 seconds for native movement and one bounded return. Other original test budgets are unchanged. Native waypoint steering sends bounded single-key pulses, then confirms a neutral-input frame before reading position. It keeps the8world-pixel per-axis target, now enforced again at settled checkpoints. Offline15/30/60fps checks and a provenance-pinned replay of the failed hosted47ms cadence with delayed feedback exercise convergence; even independent8px endpoint errors leave41.14px minimum clearance against radius38 solids. The6.5second per-waypoint deadline still fails on a real stall. Native clocks are used; this fixture never
-patches requestAnimationFrame or advances Playwright's clock.
+The two additive exploration cases each allow 180 seconds for native movement
+and one bounded return. Other original test budgets are unchanged. Native waypoint
+steering sends single-key pulses capped at240ms, reserves16worldpx on longer
+moves, then obtains a fresh neutral POST_RENDER position in one read-only browser
+request. Fine pulses start at16ms; an observed zero-displacement pulse alone ramps
+the next hold up to48ms, bounded by remaining distance. Input is released before
+feedback is read. Successful released moves do not send five redundant key-ups;
+error and outer-case paths retain exhaustive cleanup.
+
+The8world-pixel per-axis target and6.5second per-waypoint deadline are unchanged.
+A final released position is checked before deadline rejection, fixing the second
+hosted phone failure that had already reached its target. Every lightweight
+motion/dash sample, hard overflow failure and fresh checkpoint request/response
+remain intact. Offline15/30/60fps checks and provenance-pinned47/64/22ms cadence
+replays cover delayed neutral feedback, startup delta clamping, event/frame phase
+and hypothetical missed pulses. The second hosted trace actually showed movement
+for every navigation press; its failure was dominated by redundant traced reads.
+The replay keeps native scheduling assumptions explicit and cannot prove browser
+success. Independent8px endpoint errors still leave41.14px minimum clearance
+against radius38 solids. The fixture never patches requestAnimationFrame or
+advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the nineteen expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 196 unit
+submission fields and the exact zero-value presentation payload. Its 206 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -199,7 +218,7 @@ Discovery has zero attempts and cannot satisfy execution mode.
 The persistent local-browser denial remains in force: no local launch,
 escalation, alternate flags or alternate browser was attempted. Local preparation
 executes zero browser cases. PR17 e73cad94's twelve passing hosted cases are
-baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. This repair keeps all safety/readability gates, adds two threshold captures, and requires a new authorized hosted run against its exact commit. Its architecture is an unfinished
+baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. The second head a446a031 again passed the original twelve but exhausted waypoint deadlines before either entrance-cutaway check. Desktop made slow progress through seven pulses; phone reached its target in the final released sample but rejected it after the deadline. This fixture-only correction keeps all nineteen captures and safety/readability gates. Entrance-cutaway acceptance still requires a new authorized hosted run against the exact candidate. Its architecture is an unfinished
 code-native projection prototype, not completed painterly town art. Peripheral
 architecture may intentionally leave the viewport as the hero explores.
 

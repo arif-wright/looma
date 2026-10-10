@@ -148,5 +148,888 @@
       "dt": 47.4,
       "distance": 10.265199999999993
     }
-  ]
+  ],
+  "bounded_pulse_failure": {
+    "provenance": {
+      "commit": "a446a031129b9004bb677f2c88520dabd9b57532",
+      "run_id": 38093516123,
+      "artifact_id": 11685620193,
+      "artifact_sha256": "8fcdb3b8883de6dbbd47954162d94bcd369661ac833efc72397db4078cbf19aa",
+      "trace_artifact_id": 11685550262,
+      "trace_sha256": "7d882e0daedcd21c941bae9119b7c48213b8d4d544394c01531887642d113ee3",
+      "note": "Command-level before/after reads establish every observed navigation press moved. The model also tests hypothetical phase-missed pulses; those were not observed in this run."
+    },
+    "cases": {
+      "desktop": {
+        "target": [
+          1368,
+          536
+        ],
+        "final_neutral": {
+          "at": 10527.5,
+          "area": 0,
+          "x": 1387.2963333333328,
+          "y": 536,
+          "intent": {
+            "x": 0,
+            "y": 0
+          },
+          "dash": {
+            "cd": 0,
+            "cdMax": 700,
+            "power": 230,
+            "duration": 140,
+            "timer": 0,
+            "lastDir": {
+              "x": 1,
+              "y": 0
+            }
+          }
+        },
+        "pulse_count": 7,
+        "zero_movement_pulses": 0,
+        "median_frame_ms": 63.75,
+        "median_cycle_ms": 893.9670000000042,
+        "moving_frame_steps": [
+          {
+            "dt": 65.0,
+            "distance": 3.666667
+          },
+          {
+            "dt": 62.8,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.9,
+            "distance": 3.666667
+          },
+          {
+            "dt": 64.0,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.7,
+            "distance": 3.666667
+          },
+          {
+            "dt": 65.7,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.8,
+            "distance": 9.901467
+          },
+          {
+            "dt": 61.6,
+            "distance": 11.0
+          },
+          {
+            "dt": 63.9,
+            "distance": 13.9348
+          },
+          {
+            "dt": 63.8,
+            "distance": 13.9348
+          },
+          {
+            "dt": 63.7,
+            "distance": 13.9326
+          }
+        ],
+        "presses": [
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 253.20799999998417,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 251.6689999999944,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 256.92799999998533,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 252.11100000000442,
+            "distance": 20.901466666666693
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 189.19000000000233,
+            "distance": 13.934799999999996
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 189.28099999998813,
+            "distance": 13.934799999999996
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 187.06399999998393,
+            "distance": 13.932600000000093
+          }
+        ]
+      },
+      "phone": {
+        "target": [
+          1160,
+          430
+        ],
+        "final_neutral": {
+          "at": 24624.20000000001,
+          "area": 0,
+          "x": 1165.8905333333325,
+          "y": 424.9022,
+          "intent": {
+            "x": 0,
+            "y": 0
+          },
+          "dash": {
+            "cd": 0,
+            "cdMax": 700,
+            "power": 230,
+            "duration": 140,
+            "timer": 0,
+            "lastDir": {
+              "x": 0,
+              "y": -1
+            }
+          }
+        },
+        "pulse_count": 57,
+        "zero_movement_pulses": 0,
+        "median_frame_ms": 21.899999999965075,
+        "median_cycle_ms": 293.9774999999936,
+        "moving_frame_steps": [
+          {
+            "dt": 22.2,
+            "distance": 3.662267
+          },
+          {
+            "dt": 22.8,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.8,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.5,
+            "distance": 3.663733
+          },
+          {
+            "dt": 22.9,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.6,
+            "distance": 3.662267
+          },
+          {
+            "dt": 23.0,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.9,
+            "distance": 3.663733
+          },
+          {
+            "dt": 25.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 25.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.6,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.7,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.6,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.2,
+            "distance": 5.1348
+          },
+          {
+            "dt": 22.5,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.9,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1348
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.5,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.6,
+            "distance": 5.1304
+          },
+          {
+            "dt": 22.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.5,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.2,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.6,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.3,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.5
+          },
+          {
+            "dt": 21.3,
+            "distance": 5.1348
+          },
+          {
+            "dt": 23.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.4,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.8,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.9,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 21.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.6,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.3978
+          },
+          {
+            "dt": 21.1,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.6,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.4,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 19.7,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4022
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.7,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.3978
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.5,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.2,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.6,
+            "distance": 4.4
+          },
+          {
+            "dt": 20,
+            "distance": 4.3978
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.3978
+          },
+          {
+            "dt": 19.8,
+            "distance": 4.4
+          }
+        ],
+        "presses": [
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 131.06599999999162,
+            "distance": 14.650533333333442
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 109.09599999999045,
+            "distance": 10.98680000000013
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.8289999999979,
+            "distance": 3.6637333333333117
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.78699999998207,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 62.92899999997462,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.96199999999953,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.5800000000163,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.97500000000582,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.8859999999986,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 66.24800000002142,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 70.22200000000885,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.07500000001164,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 66.92199999999139,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.65600000001723,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.45000000001164,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.39900000000489,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.9890000000014,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "w",
+            "delay": 64,
+            "duration_ms": 110.92800000001444,
+            "distance": 15.402200000000107
+          },
+          {
+            "key": "w",
+            "delay": 64,
+            "duration_ms": 111.42900000000373,
+            "distance": 15.037000000000035
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.89400000000023,
+            "distance": 5.132600000000025
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.27100000000792,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.5340000000142,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 62.453999999997905,
+            "distance": 5.134799999999984
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.97600000002421,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 63.74100000000908,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 63.779999999998836,
+            "distance": 5.130400000000009
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.07300000000396,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.26900000000023,
+            "distance": 5.132600000000025
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.41800000000512,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.32699999999022,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.57300000000396,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 62.75800000000163,
+            "distance": 4.767400000000009
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.11699999999837,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "s",
+            "delay": 16,
+            "duration_ms": 45.60800000000745,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "s",
+            "delay": 16,
+            "duration_ms": 63.037000000011176,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 128.41799999997602,
+            "distance": 19.067399999999907
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 105.67900000000373,
+            "distance": 14.297800000000052
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 125.03900000001886,
+            "distance": 18.697800000000143
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 121.99199999999837,
+            "distance": 18.700000000000045
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 122.9429999999993,
+            "distance": 18.69560000000024
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 124.81400000001304,
+            "distance": 18.330400000000054
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 121.34999999997672,
+            "distance": 18.334800000000087
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 119.86600000000908,
+            "distance": 17.967400000000225
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.506999999983236,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 57.880999999993946,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.703999999997905,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 52.87099999998463,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.93900000001304,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.470000000001164,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.39700000002631,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 57.663999999989755,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.53499999997439,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 62.28100000001723,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 58.68499999999767,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.75899999999092,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.718000000022585,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.68299999998999,
+            "distance": 4.400000000000091
+          }
+        ]
+      }
+    }
+  }
 }

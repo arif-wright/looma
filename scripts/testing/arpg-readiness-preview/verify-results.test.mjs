@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { WAYPOINT_TOLERANCE, NAVIGATION_PHASES, waypointKeys, waypointPulse } from './plaza-navigation.mjs';
+import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep } from './plaza-navigation.mjs';
 import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
 import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 // Verifier schema tests; these never launch or impersonate executed browsers.
@@ -361,28 +361,89 @@ test('hosted trace records held input after first in-tolerance frame',()=>{
  assert(first&&released);assert(released.at-first.at>300);assert(Math.abs(released.x-1368)>8);
  assert.equal(hostedReplay.provenance.run_id,38092384077);
 });
-for(const feedbackLag of[0,160,315,500])test(`release-before-feedback pulses tolerate${feedbackLag}ms read lag on hosted47ms cadence`,()=>{
- const steps=hostedReplay.moving_frame_steps;assert(steps.length>10);
- let frame=0,clock=0;const p={x:1472,y:536};
- for(const [x,y]of Object.values(NAVIGATION_PHASES).flat()){
-  let pulses=0;
-  while(waypointPulse(p,x,y)){
-   assert(++pulses<150,'Native steering must converge without a larger target');
-   const pulse=waypointPulse(p,x,y);let held=0;
-   // Key release is sent before any feedback read. Delayed feedback extends
-   // neutral frames, not the movement pulse. Each active displacement is from
-   // the recorded hosted cadence; the real browser must still confirm this.
-   while(held<pulse.delay){
-    const step=steps[frame++%steps.length],before=[p.x,p.y];held+=step.dt;clock+=step.dt;
-    p.x+=(pulse.key==='d'?1:pulse.key==='a'?-1:0)*step.distance;
-    p.y+=(pulse.key==='s'?1:pulse.key==='w'?-1:0)*step.distance;
+// Discrete update replay. Only update boundaries inside a native key interval
+// move the actor; a pulse wholly between boundaries causes zero movement.
+// This is a hypothetical scheduling model, not browser execution or a claim
+// that the second hosted run missed input (its command-level trace did not).
+function replayPulses(steps,phase,readLag,cooldownFrames=0){
+ const p={x:1472,y:536};let clock=0,next=phase,frame=0,misses=0,zero=0,maxLeg=0;
+ const advance=(until,key)=>{
+  let moved=0;
+  while(next<=until){
+   const step=steps[Math.min(frame,steps.length-1)];
+   const distance=frame<cooldownFrames?220/60:step.distance;
+   if(key){
+    const before=[p.x,p.y];
+    p.x+=(key==='d'?1:key==='a'?-1:0)*distance;
+    p.y+=(key==='s'?1:key==='w'?-1:0)*distance;
     assert(Object.values(FOOTPRINTS).every(poly=>sweptDistance(before,[p.x,p.y],poly)>38));
+    assert(roomAllows([p.x,p.y]));moved++;
    }
-   const released={...p};clock+=feedbackLag;assert.deepEqual(p,released);
+   next+=step.dt;frame++;
+  }
+  clock=until;return moved;
+ };
+ for(const[x,y]of Object.values(NAVIGATION_PHASES).flat()){
+  const started=clock;let pulses=0;misses=0;advance(clock+readLag,null);
+  while(waypointPulse(p,x,y)){
+   assert(++pulses<500,'Native steering must converge without growing its target');
+   const pulse=waypointPulse(p,x,y,misses);
+   advance(clock+readLag,null); // command overhead, no held movement
+   if(advance(clock+pulse.delay,pulse.key))misses=0;else{misses++;zero++;}
+   const released={...p};advance(clock+readLag,null);assert.deepEqual(p,released);
   }
   assert(Math.abs(p.x-x)<=8&&Math.abs(p.y-y)<=8);
+  maxLeg=Math.max(maxLeg,clock-started);
  }
- assert(clock>0);
+ return {zero,maxLeg,clock};
+}
+for(const feedbackLag of[0,160,315,500])test(`release-before-feedback pulses tolerate${feedbackLag}ms neutral read lag on hosted47ms cadence`,()=>{
+ for(const phase of[0,1,16,31,47])replayPulses(hostedReplay.moving_frame_steps,phase,feedbackLag);
+ // This checks finite convergence only. Arbitrarily slow calls may still fail
+ // the unchanged real deadline; the model never changes the browser clock.
+});
+const boundedReplay=hostedReplay.bounded_pulse_failure;
+test('second hosted trace establishes overhead without claiming missed input',()=>{
+ assert.equal(boundedReplay.provenance.run_id,38093516123);
+ assert.equal(boundedReplay.cases.desktop.pulse_count,7);
+ assert.equal(boundedReplay.cases.phone.pulse_count,57);
+ for(const c of Object.values(boundedReplay.cases))assert.equal(c.zero_movement_pulses,0);
+ assert(boundedReplay.cases.desktop.median_cycle_ms>890);
+ assert(boundedReplay.cases.phone.median_cycle_ms>290);
+ assert(boundedReplay.cases.desktop.presses.slice(0,3).every(p=>p.delay===64&&Math.abs(p.distance-22/3)<1e-6));
+});
+test('a final released in-target position succeeds before checking elapsed deadline',()=>{
+ const c=boundedReplay.cases.phone;
+ assert.equal(waypointStep(c.final_neutral,...c.target,WAYPOINT_DEADLINE_MS+1),null);
+ const d=boundedReplay.cases.desktop;
+ assert.throws(()=>waypointStep(d.final_neutral,...d.target,WAYPOINT_DEADLINE_MS),/Native route stalled/);
+});
+test('bounded pulses retain target and limit only after actually missed updates',()=>{
+ assert.equal(waypointPulse({x:0,y:0},8,8),null);
+ assert.equal(waypointPulse({x:0,y:0},1000,0).delay,240);
+ assert.equal(waypointPulse({x:0,y:0},30,0).delay,16);
+ assert.equal(waypointPulse({x:0,y:0},30,0,1).delay,32);
+ assert.equal(waypointPulse({x:0,y:0},30,0,99).delay,48);
+ assert.equal(waypointPulse({x:0,y:0},9,0,99).delay,16);
+});
+for(const name of['desktop','phone'])for(const lag of(name==='desktop'?[63,126,190]:[21,42,70]))test(`phase-aware${name} replay with${lag}ms call overhead preserves deadline and solid sweeps`,()=>{
+ const c=boundedReplay.cases[name];
+ for(const cooldown of(name==='desktop'?[40,46,60]:[0]))for(const phase of[0,1,16,31,47,63]){
+  // Desktop's last confirmed target-clamped move and first smoothed move
+  // bracket the remaining startup cooldown.40 frames fits the observed interval;46 brackets it conservatively,
+  // and60 covers navigation beginning earlier after fewer reads. This is
+  // an explicit model assumption, not a measured raw engine delta history.
+  const result=replayPulses(c.moving_frame_steps,phase,lag,cooldown);
+  assert(result.zero>0,'Replay must exercise pulses missed between frames');
+  assert(result.maxLeg<WAYPOINT_DEADLINE_MS);
+  assert(result.clock<140_000,'Leave room within180s for checkpoints/return');
+ }
+});
+test('a pulse wholly between two real update boundaries produces no displacement',()=>{
+ const period=boundedReplay.cases.desktop.median_frame_ms;
+ assert(period>63);assert(16<period);
+ const frames=[0,period,period*2],start=20,end=36;
+ assert.equal(frames.filter(at=>at>=start&&at<end).length,0);
 });
 
 test('reject missing gate-arrival screenshot independently of existing17 images',()=>{

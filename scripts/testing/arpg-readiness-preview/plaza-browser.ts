@@ -1,4 +1,4 @@
-import { waypointPulse, NAVIGATION_PHASES } from './plaza-navigation.mjs';
+import { waypointStep, NAVIGATION_PHASES } from './plaza-navigation.mjs';
 import type { Page, TestInfo } from '@playwright/test';
 import { test, expect, open, town, gameplay, expedition, screen, snapshot, clickControl } from './guard';
 import { plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
@@ -11,11 +11,19 @@ async function position(page: Page) {
   return page.evaluate(() => { const g=window.__arpgFixture.plazaLatestMotion; if(!g)throw new Error('Missing native post-render motion'); return g; });
 }
 async function releasedFrame(page: Page) {
-  const releasedAt=await page.evaluate(()=>performance.now());
-  await expect.poll(async()=>{
-    const p=await position(page);return p.at>releasedAt&&p.intent.x===0&&p.intent.y===0;
-  },{timeout:3000,intervals:[16,25,50]}).toBe(true);
-  return position(page);
+  // One read-only browser request, rather than three traced round trips. The
+  // promise resolves only from a new real POST_RENDER observation after entry.
+  // RAF/timers are native and never replaced or advanced by this fixture.
+  return page.evaluate(() => new Promise<NonNullable<typeof window.__arpgFixture.plazaLatestMotion>>((resolve,reject)=>{
+    const requestedAt=performance.now();let frame=0;
+    const timer=setTimeout(()=>{cancelAnimationFrame(frame);reject(new Error('No fresh neutral native frame within 3000 ms'));},3000);
+    const read=()=>{
+      const p=window.__arpgFixture.plazaLatestMotion;
+      if(p&&p.at>requestedAt&&p.intent.x===0&&p.intent.y===0){clearTimeout(timer);resolve(p);return;}
+      frame=requestAnimationFrame(read);
+    };
+    frame=requestAnimationFrame(read);
+  }));
 }
 async function freshGameplay(page: Page) {
   const request=await page.evaluate(()=>window.__arpgFixture.requestPlazaProbe());
@@ -25,17 +33,22 @@ async function freshGameplay(page: Page) {
   return gameplay(page);
 }
 async function move(page: Page, x: number, y: number) {
-  const deadline=Date.now()+6500;
+  const startedAt=Date.now();let missedPulses=0;
   try {
     let p=await releasedFrame(page);
-    while(Date.now()<deadline){
-      const pulse=waypointPulse(p,x,y);
-      if(!pulse)return; // Position is confirmed AFTER key release, not before.
+    for(;;){
+      const pulse=waypointStep(p,x,y,Date.now()-startedAt,missedPulses);
+      if(!pulse)return; // Final neutral position is checked even at the deadline.
       await page.keyboard.press(pulse.key,{delay:pulse.delay});
-      p=await releasedFrame(page);
+      const next=await releasedFrame(page);
+      missedPulses=next.x===p.x&&next.y===p.y?missedPulses+1:0;
+      p=next;
     }
-    throw new Error(`Native route stalled before ${x},${y}: ${JSON.stringify(await position(page))}`);
-  } finally { await release(page); }
+  } catch(error) { await release(page);throw error; }
+  // keyboard.press has already released its key and releasedFrame confirmed
+  // neutral intent. Five redundant key-up calls per successful leg add no
+  // coverage; exceptional paths and the outer case retain exhaustive cleanup.
+
 }
 async function route(page: Page, points: number[][]) { for(const [x,y] of points)await move(page,x!,y!); }
 async function walkInto(page: Page, key: string) {
