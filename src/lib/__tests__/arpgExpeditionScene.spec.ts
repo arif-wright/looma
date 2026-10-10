@@ -87,7 +87,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
     const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
-    Object.assign(context, { createPattern: vi.fn(() => ({})) });
+    Object.assign(context, { createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })) });
     s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));

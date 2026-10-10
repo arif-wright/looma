@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
+import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, paintTownLighting, TOWN_LIGHTING_PROOF, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
 const make = () => {
@@ -11,14 +11,15 @@ const make = () => {
       save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
       moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
       translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
-      createPattern: vi.fn(() => ({})), fillStyle: null as any,
+      createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })), fillStyle: null as any,
+      globalAlpha: 0.7, globalCompositeOperation: 'multiply' as GlobalCompositeOperation,
       imageSmoothingEnabled: false, imageSmoothingQuality: 'low' as ImageSmoothingQuality
     };
-    const stack: Array<[boolean, ImageSmoothingQuality]> = [];
-    value.save.mockImplementation(() => { stack.push([value.imageSmoothingEnabled, value.imageSmoothingQuality]); });
+    const stack: Array<[boolean, ImageSmoothingQuality, number, GlobalCompositeOperation, any]> = [];
+    value.save.mockImplementation(() => { stack.push([value.imageSmoothingEnabled, value.imageSmoothingQuality, value.globalAlpha, value.globalCompositeOperation, value.fillStyle]); });
     value.restore.mockImplementation(() => {
       const previous = stack.pop();
-      if (previous) [value.imageSmoothingEnabled, value.imageSmoothingQuality] = previous;
+      if (previous) [value.imageSmoothingEnabled, value.imageSmoothingQuality, value.globalAlpha, value.globalCompositeOperation, value.fillStyle] = previous;
     });
     return value;
   };
@@ -106,6 +107,55 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.imageSmoothingEnabled).toBe(false);
     expect(context.imageSmoothingQuality).toBe('low');
     expect(context.save.mock.calls.length).toBe(context.restore.mock.calls.length);
+  });
+
+  it('bakes exactly two amber pools and three cool contacts inside the existing floor clip', () => {
+    const { context } = make();
+    const layout = townGroundLayout(iso);
+    paintTownLighting(context as any, layout, iso);
+    expect(TOWN_LIGHTING_PROOF.warmPools).toHaveLength(2);
+    expect(TOWN_LIGHTING_PROOF.coolContacts).toHaveLength(3);
+    expect(context.moveTo).toHaveBeenCalledWith(512, 0);
+    expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
+    expect(context.clip).toHaveBeenCalledOnce();
+    expect(context.clip.mock.invocationCallOrder[0]).toBeLessThan(context.fillRect.mock.invocationCallOrder[0]!);
+    expect(context.translate.mock.calls).toEqual([[762, 347], [810, 419.5], [721, 361], [720, 360], [787, 415]]);
+    expect(context.scale.mock.calls).toEqual([[78, 37.5], [47.5, 18.5], [11.5, 5], [52, 28], [37, 20]]);
+    expect(context.fillRect.mock.calls).toEqual(Array.from({ length: 5 }, () => [-1, -1, 2, 2]));
+    expect(context.clearRect).not.toHaveBeenCalled(); // Existing paving outside pools is untouched.
+    expect(context.createRadialGradient.mock.calls).toEqual(Array.from({ length: 5 }, () => [0, 0, 0, 0, 0, 1]));
+    for (const [index, result] of context.createRadialGradient.mock.results.entries()) {
+      expect(result.value.addColorStop.mock.calls).toEqual(index < 3
+        ? [[0, 'rgba(18,30,47,0.30)'], [0.55, 'rgba(18,30,47,0.12)'], [1, 'rgba(18,30,47,0)']]
+        : [[0, 'rgba(242,177,83,0.18)'], [0.55, 'rgba(242,177,83,0.07)'], [1, 'rgba(242,177,83,0)']]);
+    }
+    expect(context.save).toHaveBeenCalledTimes(6);
+    expect(context.restore).toHaveBeenCalledTimes(6);
+    expect([context.globalAlpha, context.globalCompositeOperation, context.fillStyle]).toEqual([0.7, 'multiply', null]);
+  });
+
+  it.each(['gradient', 'fill'] as const)('restores every canvas state when lighting %s fails', (failure) => {
+    const { context } = make();
+    const reject = () => {
+      expect(context.globalAlpha).toBe(1);
+      expect(context.globalCompositeOperation).toBe('source-over');
+      throw new Error('lighting failed');
+    };
+    if (failure === 'gradient') context.createRadialGradient.mockImplementation(reject);
+    else context.fillRect.mockImplementation(reject);
+    expect(() => paintTownLighting(context as any, townGroundLayout(iso), iso)).toThrow('lighting failed');
+    expect(context.save).toHaveBeenCalledTimes(2); expect(context.restore).toHaveBeenCalledTimes(2);
+    expect([context.globalAlpha, context.globalCompositeOperation, context.fillStyle]).toEqual([0.7, 'multiply', null]);
+    expect([context.imageSmoothingEnabled, context.imageSmoothingQuality]).toEqual([false, 'low']);
+  });
+
+  it('rolls back both derived canvases when lighting fails before world insertion', () => {
+    const { scene, context, add, keys, ground } = make();
+    context.createRadialGradient.mockImplementation(() => { throw new Error('lighting unavailable'); });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('lighting unavailable');
+    expect(keys.size).toBe(0);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
+    expect(add).not.toHaveBeenCalled(); expect(ground.refresh).not.toHaveBeenCalled();
   });
 
   it('adds four area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {

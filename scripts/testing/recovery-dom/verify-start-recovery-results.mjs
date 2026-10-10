@@ -13,8 +13,8 @@ export const UNIT_FILES = {
   'arpgGameSceneReadiness.spec.ts': 16,
   'arpgExpedition.spec.ts': 8,
   'arpgExpeditionScene.spec.ts': 31,
-  'arpgTownCorner.spec.ts': 24,
-  'arpgViewportLayout.spec.ts': 23,
+  'arpgTownCorner.spec.ts': 28,
+  'arpgViewportLayout.spec.ts': 25,
   'arpgTownSession.spec.ts': 30,
   'gameFullscreenStartRecovery.spec.ts': 18
 };

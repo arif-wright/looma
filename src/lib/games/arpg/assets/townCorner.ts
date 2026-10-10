@@ -132,6 +132,53 @@ export function paintTownGround(context: CanvasRenderingContext2D, material: Can
   }
 }
 
+// Local composition proof only: floor shading anchored to existing physical
+// contacts. No new architecture, sprites, collider or texture allocation.
+export const TOWN_LIGHTING_PROOF = {
+  warmPools: [
+    { tile: { x: 15, y: 8.5 }, offset: { x: 0, y: 0 }, radius: { x: 104, y: 56 } },
+    { tile: { x: 18, y: 9 }, offset: { x: -26, y: -2 }, radius: { x: 74, y: 40 } }
+  ],
+  coolContacts: [
+    { tile: { x: 16, y: 8 }, offset: { x: -12, y: -42 }, radius: { x: 156, y: 75 } },
+    { tile: { x: 18, y: 9 }, offset: { x: 20, y: 7 }, radius: { x: 95, y: 37 } },
+    { tile: { x: 15, y: 8.5 }, offset: { x: 2, y: 2 }, radius: { x: 23, y: 10 } }
+  ]
+} as const;
+
+/** Bounded local light pools; unshaded paving retains its source midtones. */
+export function paintTownLighting(context: CanvasRenderingContext2D,
+  layout: ReturnType<typeof townGroundLayout>, isoToWorld: (tx: number, ty: number) => Vec2) {
+  const resolution = TOWN_GROUND_RESOLUTION;
+  context.save();
+  try {
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = 'source-over';
+    context.beginPath();
+    layout.corners.forEach((point, index) => {
+      const x = (point.x - layout.x) * resolution, y = (point.y - layout.y) * resolution;
+      if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+    });
+    context.closePath(); context.clip();
+    const pool = (entry: typeof TOWN_LIGHTING_PROOF.warmPools[number] | typeof TOWN_LIGHTING_PROOF.coolContacts[number], warm: boolean) => {
+      const point = isoToWorld(entry.tile.x, entry.tile.y);
+      context.save();
+      try {
+        context.translate((point.x + entry.offset.x - layout.x) * resolution, (point.y + entry.offset.y - layout.y) * resolution);
+        context.scale(entry.radius.x * resolution, entry.radius.y * resolution);
+        const gradient = context.createRadialGradient(0, 0, 0, 0, 0, 1);
+        gradient.addColorStop(0, warm ? 'rgba(242,177,83,0.18)' : 'rgba(18,30,47,0.30)');
+        gradient.addColorStop(0.55, warm ? 'rgba(242,177,83,0.07)' : 'rgba(18,30,47,0.12)');
+        gradient.addColorStop(1, warm ? 'rgba(242,177,83,0)' : 'rgba(18,30,47,0)');
+        context.fillStyle = gradient;
+        context.fillRect(-1, -1, 2, 2);
+      } finally { context.restore(); }
+    };
+    for (const contact of TOWN_LIGHTING_PROOF.coolContacts) pool(contact, false);
+    for (const light of TOWN_LIGHTING_PROOF.warmPools) pool(light, true);
+  } finally { context.restore(); }
+}
+
 function pointSegmentDistanceSquared(point: Vec2, a: Vec2, b: Vec2) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const length = dx * dx + dy * dy;
@@ -206,6 +253,7 @@ export function createTownCorner(
     const material = canvas(TOWN_MATERIAL_KEY, TOWN_MATERIAL_SIZE, TOWN_MATERIAL_SIZE);
     paintTownMaterial(material.context, scene.textures.get(TOWN_RUNTIME_ASSETS.ground.key).getSourceImage() as CanvasImageSource);
     paintTownGround(ground.context, material.canvas, layout);
+    paintTownLighting(ground.context, layout, isoToWorld);
     releaseTexture(TOWN_MATERIAL_KEY);
     ground.refresh();
     // Phaser.Textures.FilterMode.LINEAR = 0. Keep global pixelArt and every
