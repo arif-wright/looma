@@ -24,6 +24,7 @@
     "unexpected images, source hashes, paths, affine placements, clips, transforms and SVG elements rejected",
     "no repeat or mirrored addressing, no building raster, filters or displacement",
     "all upper/foundation alpha bytes, foundation SVG/PNG bytes and runtime descriptors match accepted baseline",
+    "exact original character accents wholly inside existing inset wall planes",
     "original proof provenance hash retained",
     "deterministic SVG, PNG, runtime data, and manifest bytes"
   ],
@@ -58,9 +59,9 @@
       },
       "scale": 0.5,
       "exactAxisEdgesChecked": {
-        "u": 886,
+        "u": 927,
         "v": 33,
-        "vertical": 330
+        "vertical": 370
       },
       "alphaBoundsPixels": {
         "foundation": [
@@ -76,7 +77,7 @@
           521
         ]
       },
-      "polygonCount": 460,
+      "polygonCount": 486,
       "majorUpperPlanes": 5,
       "closedDoorWorldSize": {
         "horizontal": 20,
@@ -113,9 +114,9 @@
       },
       "scale": 0.5,
       "exactAxisEdgesChecked": {
-        "u": 33,
-        "v": 804,
-        "vertical": 248
+        "u": 43,
+        "v": 900,
+        "vertical": 354
       },
       "alphaBoundsPixels": {
         "foundation": [
@@ -131,7 +132,7 @@
           457
         ]
       },
-      "polygonCount": 419,
+      "polygonCount": 472,
       "majorUpperPlanes": 5,
       "closedDoorWorldSize": {
         "horizontal": 20,
@@ -140,18 +141,18 @@
     }
   ],
   "outputSha256": {
-    "scripts/art/town-plaza-v1/facade-manifest.json": "d40c1a1350947195faba3ccb9c51f1382626ec13882aacc82667f74159aa1b2f",
-    "scripts/art/town-plaza-v1/facade-hashes.json": "0663ff67c8d1eaa1c4b350b608e400236b1d99f7b41def0219c4aced6ee597a8",
+    "scripts/art/town-plaza-v1/facade-manifest.json": "a90d2fd70d8b2b5470204360bccb6dc924263b322558e320d3246452ff86b560",
+    "scripts/art/town-plaza-v1/facade-hashes.json": "2f314af168338c2c995d309e761969514754ce60293a2ec5d6bd2fd0e4b11491",
     "src/lib/games/arpg/assets/townFacadeData.ts": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_v1.svg": "71d24e3d07cfd9aadf71d04e185e44a64c064ba3fb7ab38a6090936188143282",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_v1.svg": "fa6b84c1adde15e6c34cbc4b4532044e4e7a0b05beac463f57e61054d5eb064c",
     "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.svg": "08bf18892214fd374311117ff94b6339ff444a3dbd8f4a17074681e0cd80b063",
     "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.png": "1a83b07d2c3ea4985a7fa2ce8e3f79c4ab49151c264dbd8c9936092735351dd4",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg": "819ec28a5f5e56b617169c89e1057673fa715daa2b82acd810ac92e11a539428",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png": "e2b19dfc6f64f03fac8bd9c791d783935de1f91722b7e5c26b80880fcdbaa52b",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_v1.svg": "11080a5c512d2ab9928e5de1786b117d7ca2513a8f53b494ecc1c55751757ec6",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg": "23eba360664c8d9475dbe575abf866f02de00236a92b76fcbeaee0c4b041bcc4",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png": "e7e2291240062ca85d376232013d118efb8f5b00f344bf807225c242f7e4d617",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_v1.svg": "c392dc7ae8eb52e6b3261d9ebf8dd15165eff8d764cd09b1176d0f3af671fa1b",
     "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.svg": "f9d642320180e0cbc62f4f419d4403138055a09ca6b1d7581e191f75d263506e",
     "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.png": "a9c015b65e3887866d3de1d609763251a8b4830eac8d341aeb9dc71cbfcd9f17",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg": "e8fea51379a62832672806684ce9ddc837624b04ead9bcf9d529e225db151449",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png": "89b8b9561117134ca01faf25e8358eba99245adcb2c0ea6c633a67f9ad7f38a8"
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg": "8e88adfdcae5f7ac7f0669036ef6e490996250ea19085a17903c14498c30e822",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png": "d7f719c91b6815f3c851496fe22fa176247345ac3944b390d4715d3d03cfaf1e"
   }
 }

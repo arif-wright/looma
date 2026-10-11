@@ -42,3 +42,23 @@ export function townBoundaryShadow(iso: (x: number, y: number) => Vec2, columns 
       points: [point, outer[(edge + 1) % 4]!, inner[(edge + 1) % 4]!, inner[edge]!].map(p => iso(p.x, p.y)) }));
   });
 }
+
+export type TownBackdropFace = TownBoundaryFace & { kind: 'field' };
+
+/** Quiet exterior color only. Every convex face stays beyond the FULL
+ * blocked-cell diamond, not merely beyond walkable ground. One create-time
+ * Graphics owns four fills; no raster, collider, camera or update work. */
+export function townBackdropGeometry(iso: (x: number, y: number) => Vec2) {
+  const [top, right, bottom, left] = ring(-0.5, 28, 18).map(p => iso(p.x, p.y)) as [Vec2, Vec2, Vec2, Vec2];
+  const bounds = { x: left.x - 256, y: top.y - 256, width: right.x - left.x + 512, height: bottom.y - top.y + 512 };
+  const x2 = bounds.x + bounds.width, y2 = bounds.y + bounds.height;
+  const ot = { x: top.x, y: bounds.y }, or = { x: x2, y: right.y };
+  const ob = { x: bottom.x, y: y2 }, ol = { x: bounds.x, y: left.y };
+  const faces: TownBackdropFace[] = [
+    { kind: 'field', color: 0x172125, points: [top, right, or, { x: x2, y: bounds.y }, ot] },
+    { kind: 'field', color: 0x141d21, points: [right, bottom, ob, { x: x2, y: y2 }, or] },
+    { kind: 'field', color: 0x141d21, points: [bottom, left, ol, { x: bounds.x, y: y2 }, ob] },
+    { kind: 'field', color: 0x1a2427, points: [left, top, ot, { x: bounds.x, y: bounds.y }, ol] }
+  ];
+  return { faces, bounds };
+}

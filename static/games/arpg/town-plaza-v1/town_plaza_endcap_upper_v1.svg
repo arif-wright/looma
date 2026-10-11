@@ -49,9 +49,9 @@
     <polygon id="endcap-upper-door-plank-1" points="133,-74.5 132.616,-74.308 132.616,-110.308 133,-110.5" fill="#3f342a" />
     <polygon id="endcap-upper-door-plank-2" points="128,-72 127.616,-71.808 127.616,-107.808 128,-108" fill="#3f342a" />
     <polygon id="endcap-upper-door-plank-3" points="123,-69.5 122.616,-69.308 122.616,-105.308 123,-105.5" fill="#3f342a" />
-    <polygon id="endcap-upper-left-door-jamb" points="139.6,-77.8 138,-77 138,-113 139.6,-113.8" fill="#514333" />
-    <polygon id="endcap-upper-right-door-jamb" points="118,-67 116.4,-66.2 116.4,-102.2 118,-103" fill="#514333" />
-    <polygon id="endcap-door-top-jamb" points="139.6,-113.8 116.4,-102.2 116.4,-105.2 139.6,-116.8" fill="#514333" />
+    <polygon id="endcap-upper-left-door-jamb" points="139.6,-77.8 138,-77 138,-113 139.6,-113.8" fill="#3b3028" />
+    <polygon id="endcap-upper-right-door-jamb" points="118,-67 116.4,-66.2 116.4,-102.2 118,-103" fill="#3b3028" />
+    <polygon id="endcap-door-top-jamb" points="139.6,-113.8 116.4,-102.2 116.4,-105.2 139.6,-116.8" fill="#3b3028" />
     <polygon id="endcap-door-brace-0" points="138,-80 118,-70 118,-71.5 138,-81.5" fill="#473b2e" />
     <polygon id="endcap-door-brace-1" points="138,-104 118,-94 118,-95.5 138,-105.5" fill="#473b2e" />
     <polygon id="endcap-door-latch" points="121.712,-81.856 119.152,-80.576 119.152,-82.576 121.712,-83.856" fill="#b6a16b" />
@@ -104,6 +104,59 @@
     <polygon id="endcap-short-window-frame" points="-46.72,-51.36 -21.76,-38.88 -21.76,-59.88 -46.72,-72.36" fill="#514938" />
     <polygon id="endcap-short-window-left" points="-44.8,-52.4 -35.2,-47.6 -35.2,-64.6 -44.8,-69.4" fill="#697468" />
     <polygon id="endcap-short-window-right" points="-33.92,-46.96 -23.68,-41.84 -23.68,-58.84 -33.92,-63.96" fill="#7b8271" />
+    <polygon id="endcap-character-apron-0-bed" points="253.44,-136.72 142.08,-81.04 142.08,-91.04 253.44,-146.72" fill="#474e4a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-0" points="252.992,-136.996 237.97942857,-129.48971429 237.97942857,-138.48971429 252.992,-145.996" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-1" points="237.08342857,-129.04171429 222.07085714,-121.53542857 222.07085714,-130.53542857 237.08342857,-138.04171429" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-edge-1" points="235.48342857,-136.24171429 223.99085714,-130.49542857 223.99085714,-131.19542857 235.48342857,-136.94171429" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-2" points="221.17485714,-121.08742857 206.16228571,-113.58114286 206.16228571,-122.58114286 221.17485714,-130.08742857" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-3" points="205.26628571,-113.13314286 190.25371429,-105.62685714 190.25371429,-114.62685714 205.26628571,-122.13314286" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-4" points="189.35771429,-105.17885714 174.34514286,-97.67257143 174.34514286,-106.67257143 189.35771429,-114.17885714" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-edge-4" points="187.75771429,-112.37885714 176.26514286,-106.63257143 176.26514286,-107.33257143 187.75771429,-113.07885714" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-5" points="173.44914286,-97.22457143 158.43657143,-89.71828571 158.43657143,-98.71828571 173.44914286,-106.22457143" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-0-stone-6" points="157.54057143,-89.27028571 142.528,-81.764 142.528,-90.764 157.54057143,-98.27028571" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-bed" points="113.92,-66.96 2.56,-11.28 2.56,-21.28 113.92,-76.96" fill="#474e4a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-0" points="113.472,-67.236 98.45942857,-59.72971429 98.45942857,-68.72971429 113.472,-76.236" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-1" points="97.56342857,-59.28171429 82.55085714,-51.77542857 82.55085714,-60.77542857 97.56342857,-68.28171429" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-edge-1" points="95.96342857,-66.48171429 84.47085714,-60.73542857 84.47085714,-61.43542857 95.96342857,-67.18171429" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-2" points="81.65485714,-51.32742857 66.64228571,-43.82114286 66.64228571,-52.82114286 81.65485714,-60.32742857" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-3" points="65.74628571,-43.37314286 50.73371429,-35.86685714 50.73371429,-44.86685714 65.74628571,-52.37314286" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-4" points="49.83771429,-35.41885714 34.82514286,-27.91257143 34.82514286,-36.91257143 49.83771429,-44.41885714" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-edge-4" points="48.23771429,-42.61885714 36.74514286,-36.87257143 36.74514286,-37.57257143 48.23771429,-43.31885714" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-5" points="33.92914286,-27.46457143 18.91657143,-19.95828571 18.91657143,-28.95828571 33.92914286,-36.46457143" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-apron-1-stone-6" points="18.02057143,-19.51028571 3.008,-12.004 3.008,-21.004 18.02057143,-28.51028571" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-short-apron-bed" points="-61.44,-40.72 -2.56,-11.28 -2.56,-21.28 -61.44,-50.72" fill="#474e4a" clip-path="url(#endcap-surface-short-wall-plane-clip)" />
+    <polygon id="endcap-character-short-apron-stone-0" points="-60.992,-40.996 -47.168,-34.084 -47.168,-43.084 -60.992,-49.996" fill="#76756a" clip-path="url(#endcap-surface-short-wall-plane-clip)" />
+    <polygon id="endcap-character-short-apron-stone-1" points="-46.272,-33.636 -32.448,-26.724 -32.448,-35.724 -46.272,-42.636" fill="#76756a" clip-path="url(#endcap-surface-short-wall-plane-clip)" />
+    <polygon id="endcap-character-short-apron-stone-2" points="-31.552,-26.276 -17.728,-19.364 -17.728,-28.364 -31.552,-35.276" fill="#76756a" clip-path="url(#endcap-surface-short-wall-plane-clip)" />
+    <polygon id="endcap-character-short-apron-stone-3" points="-16.832,-18.916 -3.008,-12.004 -3.008,-21.004 -16.832,-27.916" fill="#76756a" clip-path="url(#endcap-surface-short-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-shadow" points="245.12,-167.06 215.68,-152.34 215.68,-158.34 245.12,-173.06" fill="#474e4a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-stone-0" points="244.608,-167.504 235.81866667,-163.10933333 235.81866667,-167.90933333 244.608,-172.304" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-edge-0" points="243.968,-171.084 236.45866667,-167.32933333 236.45866667,-167.92933333 243.968,-171.684" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-stone-1" points="234.79466667,-162.59733333 226.00533333,-158.20266667 226.00533333,-163.00266667 234.79466667,-167.39733333" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-edge-1" points="234.15466667,-166.17733333 226.64533333,-162.42266667 226.64533333,-163.02266667 234.15466667,-166.77733333" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-stone-2" points="224.98133333,-157.69066667 216.192,-153.296 216.192,-158.096 224.98133333,-162.49066667" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-edge-2" points="224.34133333,-161.27066667 216.832,-157.516 216.832,-158.116 224.34133333,-161.87066667" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-0-quoin" points="245.12,-161.56 243.008,-160.504 243.008,-165.504 245.12,-166.56" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-shadow" points="91.52,-90.26 62.08,-75.54 62.08,-81.54 91.52,-96.26" fill="#474e4a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-stone-0" points="91.008,-90.704 82.21866667,-86.30933333 82.21866667,-91.10933333 91.008,-95.504" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-edge-0" points="90.368,-94.284 82.85866667,-90.52933333 82.85866667,-91.12933333 90.368,-94.884" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-stone-1" points="81.19466667,-85.79733333 72.40533333,-81.40266667 72.40533333,-86.20266667 81.19466667,-90.59733333" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-edge-1" points="80.55466667,-89.37733333 73.04533333,-85.62266667 73.04533333,-86.22266667 80.55466667,-89.97733333" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-stone-2" points="71.38133333,-80.89066667 62.592,-76.496 62.592,-81.296 71.38133333,-85.69066667" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-edge-2" points="70.74133333,-84.47066667 63.232,-80.716 63.232,-81.316 70.74133333,-85.07066667" fill="#aaa08a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lintel-1-quoin" points="91.52,-84.76 89.408,-83.704 89.408,-88.704 91.52,-89.76" fill="#76756a" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-leaf-0" points="36.288,-44.144 26.24,-39.12 26.24,-54.12 36.288,-59.144" fill="#665443" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-plank-gap-0" points="31.264,-41.632 30.752,-41.376 30.752,-56.376 31.264,-56.632" fill="#2c2824" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-strap-0" points="35.648,-47.824 26.88,-43.44 26.88,-44.94 35.648,-49.324" fill="#43372d" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-wear-0" points="35.776,-45.888 35.264,-45.632 35.264,-56.632 35.776,-56.888" fill="#81674b" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-leaf-1" points="24.96,-38.48 14.912,-33.456 14.912,-48.456 24.96,-53.48" fill="#665443" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-plank-gap-1" points="19.936,-35.968 19.424,-35.712 19.424,-50.712 19.936,-50.968" fill="#2c2824" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-strap-1" points="24.32,-42.16 15.552,-37.776 15.552,-39.276 24.32,-43.66" fill="#43372d" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-lower-bay-4-closed-wear-1" points="24.448,-40.224 23.936,-39.968 23.936,-50.968 24.448,-51.224" fill="#81674b" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-sconce-body" points="108.16,-89.08 104.16,-87.08 104.16,-95.08 108.16,-97.08" fill="#302d29" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-sconce-amber" points="107.52,-89.86 104.8,-88.5 104.8,-94.1 107.52,-95.46" fill="#d7a158" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-sconce-core" points="106.56,-90.28 105.728,-89.864 105.728,-93.664 106.56,-94.08" fill="#efc77d" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
+    <polygon id="endcap-character-sconce-top" points="108.672,-96.836 103.648,-94.324 103.648,-95.624 108.672,-98.136" fill="#302d29" clip-path="url(#endcap-surface-long-wall-plane-clip)" />
     <polygon id="endcap-near-gable-plane" points="-64,-104 0,-72 -32,-104" fill="#897650" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
     <g id="endcap-surface-near-gable-plane" clip-path="url(#endcap-surface-near-gable-plane-clip)">
       <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 0 0.20414673 -179.2 -273.6)" />

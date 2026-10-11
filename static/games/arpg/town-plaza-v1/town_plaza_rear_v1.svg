@@ -100,9 +100,9 @@
     <polygon id="rear-upper-door-plank-1" points="-30.6,-23.3 -30.216,-23.108 -30.216,-59.108 -30.6,-59.3" fill="#3f342a" />
     <polygon id="rear-upper-door-plank-2" points="-25.6,-20.8 -25.216,-20.608 -25.216,-56.608 -25.6,-56.8" fill="#3f342a" />
     <polygon id="rear-upper-door-plank-3" points="-20.6,-18.3 -20.216,-18.108 -20.216,-54.108 -20.6,-54.3" fill="#3f342a" />
-    <polygon id="rear-upper-left-door-jamb" points="-37.2,-26.6 -35.6,-25.8 -35.6,-61.8 -37.2,-62.6" fill="#514333" />
-    <polygon id="rear-upper-right-door-jamb" points="-15.6,-15.8 -14,-15 -14,-51 -15.6,-51.8" fill="#514333" />
-    <polygon id="rear-door-top-jamb" points="-37.2,-62.6 -14,-51 -14,-54 -37.2,-65.6" fill="#514333" />
+    <polygon id="rear-upper-left-door-jamb" points="-37.2,-26.6 -35.6,-25.8 -35.6,-61.8 -37.2,-62.6" fill="#3b3028" />
+    <polygon id="rear-upper-right-door-jamb" points="-15.6,-15.8 -14,-15 -14,-51 -15.6,-51.8" fill="#3b3028" />
+    <polygon id="rear-door-top-jamb" points="-37.2,-62.6 -14,-51 -14,-54 -37.2,-65.6" fill="#3b3028" />
     <polygon id="rear-door-brace-0" points="-35.6,-28.8 -15.6,-18.8 -15.6,-20.3 -35.6,-30.3" fill="#473b2e" />
     <polygon id="rear-door-brace-1" points="-35.6,-52.8 -15.6,-42.8 -15.6,-44.3 -35.6,-54.3" fill="#473b2e" />
     <polygon id="rear-door-latch" points="-19.312,-30.656 -16.752,-29.376 -16.752,-31.376 -19.312,-32.656" fill="#b6a16b" />
@@ -195,6 +195,32 @@
     <polygon id="rear-short-window-frame" points="46.72,-51.36 21.76,-38.88 21.76,-59.88 46.72,-72.36" fill="#514938" />
     <polygon id="rear-short-window-left" points="44.8,-52.4 35.2,-47.6 35.2,-64.6 44.8,-69.4" fill="#697468" />
     <polygon id="rear-short-window-right" points="33.92,-46.96 23.68,-41.84 23.68,-58.84 33.92,-63.96" fill="#7b8271" />
+    <polygon id="rear-character-knee-brace-0" points="-254.464,-189.732 -253.248,-190.324 -230.4,-170.9 -232.32,-170.66" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-knee-brace-wear-0" points="-253.6736,-190.1168 -253.4304,-190.2352 -230.688,-170.864 -231.072,-170.816" fill="#81674b" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-knee-brace-1" points="-102.944,-113.972 -101.728,-114.564 -76.8,-94.1 -78.72,-93.86" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-knee-brace-wear-1" points="-102.1536,-114.3568 -101.9104,-114.4752 -77.088,-94.064 -77.472,-94.016" fill="#81674b" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-leaf-0" points="-189.888,-161.944 -179.84,-156.92 -179.84,-173.92 -189.888,-178.944" fill="#665443" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-plank-gap-0" points="-184.864,-159.432 -184.352,-159.176 -184.352,-176.176 -184.864,-176.432" fill="#2c2824" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-strap-0" points="-189.248,-165.624 -180.48,-161.24 -180.48,-162.74 -189.248,-167.124" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-wear-0" points="-189.376,-163.688 -188.864,-163.432 -188.864,-176.432 -189.376,-176.688" fill="#81674b" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-leaf-1" points="-178.56,-156.28 -168.512,-151.256 -168.512,-168.256 -178.56,-173.28" fill="#665443" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-plank-gap-1" points="-173.536,-153.768 -173.024,-153.512 -173.024,-170.512 -173.536,-170.768" fill="#2c2824" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-strap-1" points="-177.92,-159.96 -169.152,-155.576 -169.152,-157.076 -177.92,-161.46" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-upper-bay-1-closed-wear-1" points="-178.048,-158.024 -177.536,-157.768 -177.536,-170.768 -178.048,-171.024" fill="#81674b" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-lower-bay-3-half-leaf-0" points="-76.16,-64.08 -66.112,-59.056 -66.112,-74.056 -76.16,-79.08" fill="#665443" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-lower-bay-3-half-plank-gap-0" points="-71.136,-61.568 -70.624,-61.312 -70.624,-76.312 -71.136,-76.568" fill="#2c2824" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-lower-bay-3-half-strap-0" points="-75.52,-67.76 -66.752,-63.376 -66.752,-64.876 -75.52,-69.26" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-lower-bay-3-half-wear-0" points="-75.648,-65.824 -75.136,-65.568 -75.136,-76.568 -75.648,-76.824" fill="#81674b" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-body" points="-163.6,-99 -159.12,-95.56 -146.16,-90.58 -143.6,-88.6 -143.6,-119.8 -163.6,-129.8" fill="#cbb48f" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-fold-light" points="-160.72,-97.36 -158.16,-95.28 -156.88,-126.44 -159.12,-127.56" fill="#dcc59d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-fold-shadow" points="-149.36,-91.88 -147.12,-90.96 -148.08,-122.04 -150.64,-123.32" fill="#9a8260" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-rail" points="-164.6,-131.3 -142.6,-120.3 -142.6,-122.3 -164.6,-133.3" fill="#43372d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-tab-0" points="-162,-128.5 -160.72,-127.86 -160.72,-130.36 -162,-131" fill="#cbb48f" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-linen-tab-1" points="-146.48,-120.74 -145.2,-120.1 -145.2,-122.6 -146.48,-123.24" fill="#cbb48f" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-sconce-body" points="-9.6,-39.8 -5.6,-37.8 -5.6,-45.8 -9.6,-47.8" fill="#302d29" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-sconce-amber" points="-8.96,-40.58 -6.24,-39.22 -6.24,-44.82 -8.96,-46.18" fill="#d7a158" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-sconce-core" points="-8,-41 -7.168,-40.584 -7.168,-44.384 -8,-44.8" fill="#efc77d" clip-path="url(#rear-surface-long-wall-plane-clip)" />
+    <polygon id="rear-character-sconce-top" points="-10.112,-47.556 -5.088,-45.044 -5.088,-46.344 -10.112,-48.856" fill="#302d29" clip-path="url(#rear-surface-long-wall-plane-clip)" />
     <polygon id="rear-near-gable-plane" points="64,-128 0,-96 32,-136" fill="#897650" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
     <g id="rear-surface-near-gable-plane" clip-path="url(#rear-surface-near-gable-plane-clip)">
       <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0 0.20414673 112 -192)" />

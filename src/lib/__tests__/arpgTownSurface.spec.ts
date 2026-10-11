@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleTownSurface, townSurfaceTriangle } from '../games/arpg/assets/townGroundSurface';
-import { townBoundaryGeometry, townBoundaryShadow } from '../games/arpg/assets/townBoundary';
+import { townBackdropGeometry, townBoundaryGeometry, townBoundaryShadow } from '../games/arpg/assets/townBoundary';
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
 const inverse = (x: number, y: number) => ({ x: ((x - 1152) / 64 + (y + 200) / 32) / 2, y: ((y + 200) / 32 - (x - 1152) / 64) / 2 });
 const fixture = () => {
@@ -76,5 +76,54 @@ describe('town surface sampling and blocked-ring rendering (no renderer)', () =>
       expect(shadow.alpha).toBeGreaterThan(0);expect(shadow.alpha).toBeLessThanOrEqual(.16);
       expect(shadow.points.map(p => inverse(p.x, p.y)).every(p => p.x >= .5 - 1e-10 && p.x <= 26.5 + 1e-10 && p.y >= .5 - 1e-10 && p.y <= 16.5 + 1e-10)).toBe(true);
     }
+  });
+});
+
+const area = (points: {x: number; y: number}[]) => Math.abs(points.reduce((sum, p, i) => {
+  const q = points[(i + 1) % points.length]!;return sum + p.x * q.y - p.y * q.x;
+}, 0)) / 2;
+describe('quiet exterior field geometry (no renderer)', () => {
+  it('uses exactly four deterministic bounded exterior fills', () => {
+    const first = townBackdropGeometry(iso);
+    expect(first).toEqual(townBackdropGeometry(iso));
+    expect(first.faces).toHaveLength(4);
+    expect(first.faces.reduce((sum, face) => sum + face.points.length, 0)).toBe(20);
+    expect(first.faces.reduce((sum, face) => sum + face.points.length - 2, 0)).toBe(12);
+    expect(first.bounds).toEqual({ x: -256, y: -488, width: 3456, height: 1984 });
+    for (const p of first.faces.flatMap(face => face.points)) {
+      expect(p.x).toBeGreaterThanOrEqual(first.bounds.x);expect(p.y).toBeGreaterThanOrEqual(first.bounds.y);
+      expect(p.x).toBeLessThanOrEqual(first.bounds.x + first.bounds.width);
+      expect(p.y).toBeLessThanOrEqual(first.bounds.y + first.bounds.height);
+    }
+  });
+  it('keeps every WHOLE convex face outside the full blocked-cell diamond', () => {
+    for (const face of townBackdropGeometry(iso).faces) {
+      const p = face.points.map(point => inverse(point.x, point.y));
+      expect(p.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))).toBe(true);
+      expect([p.every(q => q.x <= -.5 + 1e-10), p.every(q => q.x >= 27.5 - 1e-10),
+        p.every(q => q.y <= -.5 + 1e-10), p.every(q => q.y >= 17.5 - 1e-10)].some(Boolean)).toBe(true);
+      const turns = p.map((a, i) => {
+        const b = p[(i + 1) % p.length]!, c = p[(i + 2) % p.length]!;
+        return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      });
+      expect(turns.every(turn => turn >= -1e-10) || turns.every(turn => turn <= 1e-10)).toBe(true);
+      expect(area(face.points)).toBeGreaterThan(0);
+    }
+  });
+  it('covers the padded exterior rectangle exactly without a fill over the blocked ring', () => {
+    const { faces, bounds } = townBackdropGeometry(iso), field = faces.filter(f => f.kind === 'field');
+    const outer = [iso(-.5, -.5), iso(27.5, -.5), iso(27.5, 17.5), iso(-.5, 17.5)];
+    expect(field).toHaveLength(4);
+    expect(field.reduce((sum, f) => sum + area(f.points), 0)).toBe(bounds.width * bounds.height - area(outer));
+    for (let i = 0; i < 4; i++) {
+      const a = field[i]!.points, b = field[(i + 1) % 4]!.points;
+      expect(a[1]).toEqual(b[0]);expect(a[2]).toEqual(b[4]);
+    }
+  });
+  it('uses only subdued cool field colors without scenery or destination cues', () => {
+    const faces = townBackdropGeometry(iso).faces;
+    expect(new Set(faces.map(f => f.kind))).toEqual(new Set(['field']));
+    expect(faces.map(f => f.color)).toEqual([0x172125, 0x141d21, 0x141d21, 0x1a2427]);
+    expect(faces.every(f => Math.max(f.color >> 16, (f.color >> 8) & 255, f.color & 255) <= 39)).toBe(true);
   });
 });

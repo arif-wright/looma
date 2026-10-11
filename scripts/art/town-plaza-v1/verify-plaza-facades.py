@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 
 from PIL import Image
 from facade_surfaces import inputs as material_inputs, verify_svg, INVARIANTS_SHA256
+from facade_character import verify as verify_character
 
 
 HERE = Path(__file__).resolve().parent
@@ -51,6 +52,7 @@ def verify(args):
     assert digest(invariants_path) == INVARIANTS_SHA256 == m['invariantsSha256']
     invariants=json.loads(invariants_path.read_text())
     assert m['materialInputs'] == material_inputs(checkout)
+    assert m['characterContractSha256'] == digest(args.author_script.with_name('facade_character.py'))
     assert m['surfaceContractSha256'] == digest(args.author_script.with_name('facade_surfaces.py'))
     assert digest(TS) == invariants['runtimeDataSha256']
     assert len(m['assets']) == 2
@@ -69,6 +71,7 @@ def verify(args):
     assert concise['authorScriptSha256'] == digest(args.author_script)
     generated_files = [MANIFEST, hashes, TS]
     for asset in m['assets']:
+        verify_character(asset)
         frozen=next(a for a in invariants['assets'] if a['id']==asset['id'])
         for key,value in frozen.items():
             if key not in ['layerAlphaSha256','foundationFiles']:
@@ -174,7 +177,10 @@ def verify(args):
                 assert 'opacity' not in actual.attrib and 'fill-opacity' not in actual.attrib
                 clip=expected.get('surfaceClip')
                 assert actual.attrib.get('clip-path') == (f'url(#{clip})' if clip else None)
-                if clip:
+                if clip and expected['id'].startswith('character-'):
+                    detail=next(d for d in asset['characterDetails'] if d['id']==expected['id'])
+                    assert actual.attrib['fill']==detail['fill'], 'character paint changed'
+                elif clip:
                     side='far' if expected['id'].startswith('far-') else 'near'
                     assert clip == f"{asset['id']}-surface-roof-{side}-plane-clip"
                     for vertex in expected['grid']:
@@ -240,6 +246,7 @@ def verify(args):
                             'unexpected images, source hashes, paths, affine placements, clips, transforms and SVG elements rejected',
                             'no repeat or mirrored addressing, no building raster, filters or displacement',
                             'all upper/foundation alpha bytes, foundation SVG/PNG bytes and runtime descriptors match accepted baseline',
+                            'exact original character accents wholly inside existing inset wall planes',
                             'frozen original Python proof script unchanged' if args.original_proof_source else 'original proof provenance hash retained',
                             'deterministic SVG, PNG, runtime data, and manifest bytes' if args.rebuild else 'existing output hashes'],
                   assets=summary, outputSha256=before)

@@ -175,7 +175,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(ground.setFilter.mock.calls).toEqual([[0]]); // LINEAR only for generated ground.
     expect(ground.refresh.mock.invocationCallOrder[0]).toBeLessThan(ground.setFilter.mock.invocationCallOrder[0]!);
     expect(material.setFilter).not.toHaveBeenCalled();
-    expect(add).toHaveBeenCalledTimes(9);
+    expect(add).toHaveBeenCalledTimes(10);
     expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key, ...TOWN_FACADES.flatMap(facade => Object.values(facade.layers).map(layer => layer.key))]);
     expect(images[0]).toMatchObject({ x: 128, y: -168 });
     expect(images[0].setOrigin).toHaveBeenCalledWith(0, 0);
@@ -195,23 +195,30 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY]]);
   });
 
-  it('owns one bounded below-actor perimeter and releases it once without rebuilding on updates', () => {
+  it('owns bounded perimeter and exterior layers, releases both once, and never rebuilds on updates', () => {
     const { scene, images, boundaries, material, add } = make();
     const corner = createTownCorner(scene, add, iso, -161);
-    expect(boundaries).toHaveLength(1);
+    expect(boundaries).toHaveLength(2);
     expect(boundaries[0].setName).toHaveBeenCalledWith('town-perimeter-rim');
     expect(boundaries[0].setDepth).toHaveBeenCalledWith(-160);
     expect(boundaries[0].fillPoints.mock.calls.length).toBeLessThan(120);
+    expect(boundaries[1].setName).toHaveBeenCalledWith('town-exterior-backdrop');
+    expect(boundaries[1].setDepth).toHaveBeenCalledWith(-162);
+    expect(boundaries[1].fillPoints).toHaveBeenCalledTimes(4);
     expect(material.setSize).toHaveBeenCalledWith(896, 576);
     expect(material.context.putImageData).toHaveBeenCalledOnce();
     for (let i = 0; i < 20; i++) corner.updateActor({ x: 1472 + i, y: 536 });
     expect(material.context.putImageData).toHaveBeenCalledOnce();
+    expect(boundaries[1].fillPoints).toHaveBeenCalledTimes(4);
+    expect(scene.add.graphics).toHaveBeenCalledTimes(2);
     corner.destroy(); corner.destroy();
     expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(boundaries[1].destroy).toHaveBeenCalledOnce();
     expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
     const next = createTownCorner(scene, add, iso, -161);
-    expect(boundaries).toHaveLength(2);expect(boundaries[1]).not.toBe(boundaries[0]);
-    next.destroy();expect(boundaries[1].destroy).toHaveBeenCalledOnce();
+    expect(boundaries).toHaveLength(4);
+    expect(boundaries[2]).not.toBe(boundaries[0]);expect(boundaries[3]).not.toBe(boundaries[1]);
+    next.destroy();expect(boundaries.every(value => value.destroy.mock.calls.length === 1)).toBe(true);
   });
 
   it.each(['getImageData', 'createImageData', 'putImageData'] as const)('rolls back derived textures when surface %s fails', (method) => {
@@ -242,6 +249,45 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(() => createTownCorner(scene, add, iso, -161)).toThrow('boundary draw failed');
     expect(boundaries[0].destroy).toHaveBeenCalledOnce();
     expect(images[0].destroy).toHaveBeenCalledOnce();expect(keys.size).toBe(0);
+  });
+
+  it('rolls back the existing rim and ground if exterior Graphics allocation fails', () => {
+    const { scene, boundaries, images, keys, add } = make();
+    const original = scene.add.graphics.getMockImplementation();
+    scene.add.graphics.mockImplementation(() => {
+      if (boundaries.length === 1) throw new Error('exterior allocation failed');
+      return original();
+    });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('exterior allocation failed');
+    expect(boundaries).toHaveLength(1);expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images).toHaveLength(1);expect(images[0].destroy).toHaveBeenCalledOnce();
+    expect(keys.size).toBe(0);
+  });
+
+  it.each(['setName', 'setDepth', 'fillStyle', 'fillPoints', 'registration'])('rolls back both Graphics when exterior %s fails and permits clean reentry', (method) => {
+    const { scene, boundaries, images, keys, add } = make();
+    const original = scene.add.graphics.getMockImplementation();
+    scene.add.graphics.mockImplementation(() => {
+      const graphic = original();
+      if (boundaries.length === 2 && method !== 'registration') {
+        graphic[method].mockImplementation(() => { throw new Error('backdrop rejected'); });
+      }
+      return graphic;
+    });
+    const register = (object: any) => {
+      if (method === 'registration' && object === boundaries[1]) throw new Error('backdrop rejected');
+      add(object);
+    };
+    expect(() => createTownCorner(scene, register, iso, -161)).toThrow('backdrop rejected');
+    expect(boundaries).toHaveLength(2);
+    expect(boundaries.every(value => value.destroy.mock.calls.length === 1)).toBe(true);
+    expect(images).toHaveLength(1);expect(images[0].destroy).toHaveBeenCalledOnce();
+    expect(keys.size).toBe(0);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
+    const returned = createTownCorner(scene, add, iso, -161);
+    expect(boundaries).toHaveLength(4);returned.destroy();
+    expect(boundaries.every(value => value.destroy.mock.calls.length === 1)).toBe(true);
+    expect(keys.size).toBe(0);
   });
 
   it('keeps foundation opaque while the real owned upper layer cuts away and recovers', () => {
@@ -294,7 +340,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
   it('cleans every partial facade allocation if world registration fails, without removing source textures', () => {
     const { scene, images, keys } = make();
     let registrations = 0;
-    expect(() => createTownCorner(scene, () => { if (++registrations === 8) throw new Error('facade layer rejected'); }, iso, -161)).toThrow('facade layer rejected');
+    expect(() => createTownCorner(scene, () => { if (++registrations === 9) throw new Error('facade layer rejected'); }, iso, -161)).toThrow('facade layer rejected');
     expect(images).toHaveLength(7);
     expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);

@@ -148,6 +148,8 @@ export function verifyObservation(observation, index) {
       assert.equal(point.scene.gameplay.returned, true); assert.equal(point.scene.gameplay.outcome, 'retreated');
       empty(townGroundIssues(point.scene.gameplay), 'Returned town rebuilds the continuous ground and entrance exactly once');
     }
+    assert.notEqual(returned.scene.gameplay.townArt.ground.backdrop[0].objectId,before.scene.gameplay.townArt.ground.backdrop[0].objectId,'Return recreates the exterior field owner');
+    assert.equal(rested.scene.gameplay.townArt.ground.backdrop[0].objectId,returned.scene.gameplay.townArt.ground.backdrop[0].objectId,'Idle does not rebuild the exterior field');
     assert(rested.at - returned.at >= FLOW_CAP_MS, 'Native returned-town idle exceeds the expedition cap');
     const sign = apiCalls(state, '/api/games/sign'), complete = apiCalls(state, '/api/games/session/complete'), player = apiCalls(state, '/api/games/player/state');
     assert.equal(sign.length, 1); assert.equal(complete.length, 1); assert.equal(player.length, 1);

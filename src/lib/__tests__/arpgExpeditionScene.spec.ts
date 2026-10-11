@@ -76,6 +76,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
         value[method] = vi.fn(() => value);
       }
       value.setDepth = vi.fn((depth: number) => { value.depth = depth; return value; });
+      value.setName = vi.fn((name: string) => { value.name = name; return value; });
       value.setPosition = vi.fn((nextX: number, nextY: number) => { value.x = nextX; value.y = nextY; return value; });
       objects.push(value); return value;
     };
@@ -99,14 +100,18 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
     const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');
-    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_ground_plane_v1');
+    const exterior = objects.filter(value => value.name === 'town-exterior-backdrop');
+    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_ground_plane_v1' && value.name !== 'town-exterior-backdrop');
     expect(ground).toHaveLength(area === 0 ? 1 : 0);
+    expect(exterior).toHaveLength(area === 0 ? 1 : 0);
     expect(foreground.length).toBeGreaterThan(0);
     if (area === 0) {
       expect(floors).toHaveLength(0);
       expect(objects.filter(value => value.texture?.startsWith('wall_'))).toHaveLength(0);
       expect(objects.find(value => value.kind === 'graphics').depth).toBe(-160);
       expect(ground[0].depth).toBe(-161);
+      expect(exterior[0].depth).toBe(-162);
+      expect(exterior[0].depth).toBeLessThan(ground[0].depth);
       expect(ground[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
       expect(s.add.ellipse).toHaveBeenCalledTimes(1); // Only the hero shadow, no fake service/entrance markers.
       const entrance = objects.find(value => value.texture === 'town_ruins_entrance_v1');

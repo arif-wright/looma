@@ -219,7 +219,7 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the twenty-one expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 254 unit
+submission fields and the exact zero-value presentation payload. Its 276 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -316,3 +316,30 @@ fits and is rejected. Those model limits are tests, not claimed browser passes.
 All actual routes, named checkpoints,21 PNG requirements,14 cases, collision,
 visibility, network and lifecycle gates stay intact. Full hosted execution is
 still required to accept this candidate.
+
+
+## Local character candidate: exterior field observation
+
+The local continuation from verified 990328 keeps all 14 cases, 21 explicit PNG
+captures, native clocks/keyboard movement, 8px targets, 6.5s leg deadlines,
+continuous collision sweeps and alpha visibility gates unchanged. The new
+read-only observation requires exactly one town-owned exterior Graphics below
+the ground at depth −162 and exactly two world-layer Graphics total (field/rim).
+It copies the real Graphics command buffer only when its length is at most 256;
+overflow is reported and rejected rather than truncated. No setter or rendering
+command is executed by the observer.
+
+The independent verifier requires the exact 99-number Phaser buffer: transparent
+constructor styles plus four fixed exterior pentagon fills. They lie outside
+the full blocked-cell diamond UV [-.5,27.5]×[-.5,17.5], with left world corner (0,344).
+The same object remains during town idle; return must create a fresh owner.
+Extra roof/detail commands, extra Graphics, shifted/scaled/camera-fixed fields,
+wrong depth, missing/duplicate/stale owners and altered colors/points fail.
+The 276 schema/replay tests include these negative cases. Historical 990328
+reports are valid only for their own baseline; this candidate rejects them for
+missing the new field observation.
+
+The candidate intentionally contains only quiet exterior color. Two roofline
+studies were rejected offline. No distant street, new enclosure, or rendered
+quality improvement is asserted. New hosted execution remains required; local
+schema tests, type/build checks and 14-case discovery are not browser evidence.

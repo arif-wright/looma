@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { BACKDROP_FIELDS, expectedBackdropCommands, townBackdropIssues } from './town-ground.mjs';
 import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep, waypointCorrection, chordEnvelope, safeChordEnvelope, chordEndpointAllowed } from './plaza-navigation.mjs';
 import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
 import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
@@ -24,7 +25,8 @@ function report(mode = 'execution') {
       { ...artObject('town_ground_plane_v1', -168, -161, 0, 0), x: 128, scaleX: 2, scaleY: 2, displayWidth: 2688, displayHeight: 1344 },
       artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620),
       { ...artObject('town_ruins_entrance_v1', 664, 684, 666 / 1536, 826 / 1024), x: 1728, scaleX: 110 / 780, scaleY: 110 / 780 }
-    ], ground: { legacyFloorCount: 0, legacyWallCount: 0,
+    ], ground: { legacyFloorCount: 0, legacyWallCount: 0, worldGraphicsCount: 2,
+      backdrop: [{ objectId: 101, depth: -162, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1, active: true, visible: true, scrollFactorX: 1, scrollFactorY: 1, commandCount: 99, commands: expectedBackdropCommands() }],
       perimeter: [{ objectId: 100, depth: -160, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1, active: true, visible: true }], largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672, filterMode: 0,
       samples: Array.from({ length: 5 }, (_, index) => ({ worldX: 1472 + index * 64, worldY: 536 + index * 32, pixelX: 672 + index * 32, pixelY: 352 + index * 16, alpha: 255 })) } };
     const viewportGeometry = {
@@ -59,7 +61,8 @@ function report(mode = 'execution') {
       const returnedAt = beganAt + 1000, restedAt = returnedAt + FLOW_CAP_MS + 1000;
       api[0].at = idleAt + 500; api[0].responseAt = idleAt + 501;
       const active = { ...game, area: 1, expeditionActive: true, durationLimit: FLOW_CAP_MS };
-      const returned = { ...game, elapsed: 500, returned: true, outcome: 'retreated', durationLimit: FLOW_CAP_MS };
+      const returned = { ...structuredClone(game), elapsed: 500, returned: true, outcome: 'retreated', durationLimit: FLOW_CAP_MS };
+      returned.townArt.ground.backdrop[0].objectId=201;
       state.checkpoints = [point('town-before-idle', beforeAt, 0), point('town-after-idle', idleAt, 0), point('expedition-started', beganAt, 1, active), point('hero-moved', beganAt + 300, 1, { ...active, x: 1502 }), point('returned-and-saved', returnedAt, 1, returned), point('returned-town-after-idle', restedAt, 1, returned)];
       scene.gameplay = returned;
       state.pages[0].status = 'Result saved. Town is untimed; depart again whenever you’re ready.';
@@ -645,4 +648,51 @@ for(const q of[20.9,22.36])test(`constant${q}px whole-route stress fails closed 
   }
  },q===20.9?/Native route stalled before 1368,-8/:/No independently safe native chord envelope near 1660,400/);
  assert(frames>100&&corrections>0&&minimum>38);
+});
+
+
+// Exterior observation gates are additive: original behavior, movement, pixel
+// visibility, clocks, request logs,14 cases and21 PNGs retain their checks.
+const backdropPoint=o=>perimeterPoint(o).scene.gameplay.townArt.ground;
+const backdropMutations={
+ 'exterior missing in old accepted shape':g=>delete g.backdrop,
+ 'exterior duplicate owner':g=>g.backdrop.push(structuredClone(g.backdrop[0])),
+ 'exterior uses rim identity':g=>g.backdrop[0].objectId=g.perimeter[0].objectId,
+ 'exterior over ground':g=>g.backdrop[0].depth=-160,
+ 'exterior shifted onto ring':g=>g.backdrop[0].x=1,
+ 'exterior scaled':g=>g.backdrop[0].scaleY=.99,
+ 'exterior camera-fixed':g=>g.backdrop[0].scrollFactorX=0,
+ 'exterior hidden':g=>g.backdrop[0].visible=false,
+ 'exterior opacity changed':g=>g.backdrop[0].alpha=.9,
+ 'extra roof Graphics':g=>g.worldGraphicsCount=3,
+ 'exterior commands absent':g=>g.backdrop[0].commands=null,
+ 'exterior overflow rather than truncation':g=>{g.backdrop[0].commands=null;g.backdrop[0].commandCount=257;},
+ 'exterior count forged':g=>g.backdrop[0].commandCount=98,
+ 'exterior polygon enters blocked diamond':g=>g.backdrop[0].commands[12]=1472,
+ 'exterior incorrect left diamond vertex':g=>{const c=g.backdrop[0].commands;c[c.indexOf(344)]=312;},
+ 'exterior palette changed':g=>g.backdrop[0].commands[8]=0xffffff,
+ 'exterior nonfinite vertex':g=>g.backdrop[0].commands[12]=null,
+ 'rejected roof commands appended':g=>{g.backdrop[0].commands.push(3,100,100,50,50);g.backdrop[0].commandCount+=5;}
+};
+for(const[name,mutate]of Object.entries(backdropMutations))test(`reject ${name}`,()=>{
+ const r=report();coherentObservation(r,o=>mutate(backdropPoint(o)),13);assert.throws(()=>verify(r,'execution'));
+});
+test('reject reused exterior after plaza return',()=>{
+ const r=report();coherentObservation(r,o=>{perimeterPoint(o,'plaza-returned-owned').scene.gameplay.townArt.ground.backdrop[0].objectId=perimeterPoint(o,'plaza-home').scene.gameplay.townArt.ground.backdrop[0].objectId;},12);assert.throws(()=>verify(r,'execution'));
+});
+test('reject reused exterior after original return-flow case',()=>{
+ const r=report();coherentObservation(r,o=>o.state.checkpoints[4].scene.gameplay.townArt.ground.backdrop[0].objectId=o.state.checkpoints[0].scene.gameplay.townArt.ground.backdrop[0].objectId,10);assert.throws(()=>verify(r,'execution'));
+});
+test('reject exterior rebuilt during original untimed idle',()=>{
+ const r=report();coherentObservation(r,o=>o.state.checkpoints[5].scene.gameplay.townArt.ground.backdrop[0].objectId=999,10);assert.throws(()=>verify(r,'execution'));
+});
+test('independent exterior contract has only four whole polygons beyond the full blocked-cell diamond',()=>{
+ assert.equal(BACKDROP_FIELDS.length,4);assert.equal(expectedBackdropCommands().length,99);
+ const project=([u,v])=>[1152+64*(u-v),32*(u+v)-200];
+ assert.deepEqual(BACKDROP_FIELDS.map(f=>f.points[0]),[[-.5,-.5],[27.5,-.5],[27.5,17.5],[-.5,17.5]].map(project));
+ for(const face of BACKDROP_FIELDS){
+   assert.equal(face.points.length,5);
+   const points=face.points.map(([x,y])=>[((x-1152)/64+(y+200)/32)/2,((y+200)/32-(x-1152)/64)/2]);
+   assert([points.every(p=>p[0]<=-.5),points.every(p=>p[0]>=27.5),points.every(p=>p[1]<=-.5),points.every(p=>p[1]>=17.5)].some(Boolean));
+ }
 });

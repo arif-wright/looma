@@ -15,7 +15,7 @@ python scripts/art/town-plaza-v1/author-plaza-facades.py --checkout . --manifest
 python scripts/art/town-plaza-v1/verify-plaza-facades.py --checkout . --manifest scripts/art/town-plaza-v1/facade-manifest.json --rebuild
 ```
 
-The four Python files and frozen invariant JSON form one authoring toolset. The
+The five Python files and frozen invariant JSON form one authoring toolset. The
 SVG material references are relative to the repository layout, so retain the
 `static/games/arpg/town-plaza-v1` and `art-source/arpg/town-surface-v1` paths.
 Run the bounded negative/positive contract checks with:
@@ -98,6 +98,39 @@ all alpha bytes. Both foundation SVG/PNG pairs and `townFacadeData.ts` remain
 byte-identical to the accepted baseline. Only the two full SVGs and their two
 upper SVG/PNG pairs change. Runtime still loads exactly four facade PNGs.
 
+## Bounded character pass from 990328c2
+
+The same upper-plane masks now contain a small, original character treatment:
+
+- Rear: one closed paired shutter and one half-closed shutter inside the existing
+  upper bay 1 and lower bay 3 apertures; the warm upper bay 4 remains unchanged.
+  Two broad knee braces join the existing posts to the middle beam within blank
+  wall below the upper-window row. One plain 20 x 32 linen panel hangs on a
+  short rail in the central lower-window gap, with two broad folds and an
+  unbordered uneven hem. It has no text, emblem or interaction.
+- Endcap: a subdued stone apron at z=10..20, two compact lintel/quoin groups,
+  and a closed shutter inside lower bay 4; warm lower bay 1 remains unchanged.
+- Each closed decorative door keeps its original 20 x 44 bounds and deeper
+  frame color. A single flush 4 x 8 world-pixel painted sconce adds restrained
+  amber. It has no halo, floor spill, bloom, dynamic light or interaction.
+
+`facade_character.py` defines a finite per-facade list of literal-color polygons.
+Each vertex uses the original projection and lies inside the corresponding
+existing 1.25-world-pixel inset wall clip. The manifest pins this module and the
+verifier reconstructs its exact IDs, planes, vertices, projected points, colors,
+and clip assignments. Duplicate/unexpected details, foreign planes, altered
+paints, out-of-clip points, foundation placement and added strokes are rejected.
+The tests separately reserve the existing door/window apertures and at least
+2 world pixels between the stone apron and the door jambs.
+
+No new material, SVG filter, external URI, runtime asset or runtime layer was
+introduced. All alpha bytes, foundations, descriptors, major planes, pivots,
+source dimensions and roof geometry remain exact. This changes building
+character within the tested masses; it does not create new enclosure geometry
+or establish final painterly quality. Native/desktop/phone comparison sheets are
+offline diagnostics. New Phaser rendering and visibility proof require hosted
+execution; the 990328 screenshots are evidence for the inherited baseline only.
+
 ## Evidence and limits
 
 - `facade-manifest.json`: complete grid vertices, drawn planes and polygons,
@@ -106,7 +139,7 @@ upper SVG/PNG pairs change. Runtime still loads exactly four facade PNGs.
 - `facade-hashes.json`: concise exact hashes and pixel-pivot contract.
 - `facade-verification.json`: exact-axis, z-split, bounds, full alpha-mask,
   foundation-byte, pivot, generated-data parity and deterministic rebuild checks.
-- `test-facade-surfaces.py`: 43 positive/negative contract checks.
+- `test-facade-surfaces.py`: 58 positive/negative contract checks.
 - Offline native and desktop/phone-scale inspection shows a quieter roof,
   worn plaster and restrained recess/trim detail. This is an incremental material
   improvement; it remains visibly geometric and is not finished concept artwork.

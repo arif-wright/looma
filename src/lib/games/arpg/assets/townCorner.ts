@@ -3,7 +3,7 @@ import type { Vec2 } from '../ecs/components';
 import { crossesTownFootprint, townFacadePresentation, townPassageAlpha } from '../townPlaza';
 import { TOWN_FACADES } from './townFacadeData';
 import { sampleTownSurface } from './townGroundSurface';
-import { townBoundaryGeometry, townBoundaryShadow } from './townBoundary';
+import { townBackdropGeometry, townBoundaryGeometry, townBoundaryShadow } from './townBoundary';
 
 // Original, untrimmed source PNGs. Contacts are measured source pixels, not a
 // generic bottom pivot. Historical sources are retained byte-for-byte.
@@ -214,6 +214,7 @@ export function createTownCorner(
 ): TownCorner {
   const images: Phaser.GameObjects.Image[] = [];
   let boundary: Phaser.GameObjects.Graphics | null = null;
+  let backdrop: Phaser.GameObjects.Graphics | null = null;
   const shop = isoToWorld(TOWN_CORNER_LAYOUT.shopTile.x, TOWN_CORNER_LAYOUT.shopTile.y);
   const ownedTextures = new Set<string>();
   let destroyed = false;
@@ -227,6 +228,7 @@ export function createTownCorner(
     for (const image of images) image.destroy();
     images.length = 0;
     boundary?.destroy(); boundary = null;
+    backdrop?.destroy(); backdrop = null;
     for (const key of ownedTextures) releaseTexture(key);
   };
   try {
@@ -271,6 +273,12 @@ export function createTownCorner(
       boundary.fillStyle(face.color, 1).fillPoints(face.points, true);
     }
     addToWorld(boundary);
+    backdrop = scene.add.graphics();
+    backdrop.setName('town-exterior-backdrop').setDepth(floorDepth - 1);
+    for (const face of townBackdropGeometry(isoToWorld).faces) {
+      backdrop.fillStyle(face.color, 1).fillPoints(face.points, true);
+    }
+    addToWorld(backdrop);
     const shopImage = add(shop, TOWN_CORNER_ASSETS.shop.key).setName('town-plaza-shop')
       .setOrigin(TOWN_CORNER_LAYOUT.shopOrigin.x, TOWN_CORNER_LAYOUT.shopOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.shopScale).setDepth(shop.y + 20);

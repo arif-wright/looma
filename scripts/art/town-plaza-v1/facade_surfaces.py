@@ -9,6 +9,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from PIL import Image
+from facade_character import verify as verify_character
 
 NS = 'http://www.w3.org/2000/svg'
 INSET = 1.25
@@ -111,6 +112,7 @@ class SurfacePainter:
 def verify_svg(root, asset, layers):
     """Exact local-image/hash/affine/clip allowlist, including the full source SVG."""
     ns='{'+NS+'}'
+    character={d['id']:d for d in verify_character(asset)} if 'upper' in layers else {}
     tags={'svg','title','desc','defs','g','polygon','clipPath','image'}
     for node in root.iter():
         assert node.tag.startswith(ns) and node.tag[len(ns):] in tags, ('unapproved SVG element',node.tag)
@@ -138,6 +140,7 @@ def verify_svg(root, asset, layers):
         for node,record in zip(nodes,polygons):
             attrs={'id':f"{asset['id']}-{record['id']}", 'points':' '.join(f"{fmt(p['x'])},{fmt(p['y'])}" for p in record['projected']), 'fill':node.attrib.get('fill','')}
             assert re.fullmatch(r'#[0-9a-fA-F]{6}',attrs['fill']), 'unapproved native paint'
+            if record['id'] in character:assert attrs['fill']==character[record['id']]['fill'], 'character paint changed'
             if record['strokeWidth']:
                 attrs.update(stroke='#493e33', **{'stroke-width':fmt(record['strokeWidth']),'stroke-linejoin':'round'})
             if record.get('surfaceClip'):attrs['clip-path']=f"url(#{record['surfaceClip']})"

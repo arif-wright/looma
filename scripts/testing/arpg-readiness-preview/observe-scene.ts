@@ -44,6 +44,14 @@ function readTownGround(state: ObservedState, hero: { x: number; y: number }): T
   return { legacyFloorCount: images.filter(image => /^floor_\d+$/.test(image.texture.key)).length,
     legacyWallCount: images.filter(image => /^wall_\d+$/.test(image.texture.key)).length,
     perimeter: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Graphics => object instanceof Phaser.GameObjects.Graphics && object.name === 'town-perimeter-rim').map(object => ({ objectId: objectId(object), depth: object.depth, x: object.x, y: object.y, scaleX: object.scaleX, scaleY: object.scaleY, rotation: object.rotation, alpha: object.alpha, active: object.active, visible: object.visible })),
+    worldGraphicsCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Graphics).length,
+    // Read the real engine command buffer, never execute or replace it. A hard
+    // length cap reports overflow as null and fails verification, not truncation.
+    backdrop: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Graphics => object instanceof Phaser.GameObjects.Graphics && object.name === 'town-exterior-backdrop').map(object => ({
+      objectId: objectId(object), depth: object.depth, x: object.x, y: object.y, scaleX: object.scaleX, scaleY: object.scaleY, rotation: object.rotation, alpha: object.alpha, active: object.active, visible: object.visible,
+      scrollFactorX: object.scrollFactorX, scrollFactorY: object.scrollFactorY, commandCount: object.commandBuffer.length,
+      commands: object.commandBuffer.length <= 256 ? [...object.commandBuffer] : null
+    })),
     largeMarkerCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Ellipse && object.width >= 120 && object.height >= 50).length,
     textureWidth: canvas?.width ?? 0, textureHeight: canvas?.height ?? 0, filterMode: plane?.frame.source.scaleMode ?? null, samples };
 }

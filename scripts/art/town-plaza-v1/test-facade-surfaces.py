@@ -14,6 +14,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from PIL import Image
 from facade_surfaces import inputs, verify_svg, texture_coordinates, MATERIALS
+from facade_character import verify as verify_character
 
 HERE=Path(__file__).resolve().parent
 CHECKOUT=HERE.parents[2]
@@ -112,5 +113,85 @@ class SurfaceContract(unittest.TestCase):
             spec=importlib.util.spec_from_file_location('strict_facade_verify',HERE/'verify-plaza-facades.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             args=SimpleNamespace(checkout=target,manifest=mp,author_script=HERE/'author-plaza-facades.py',original_proof_source=None,rebuild=False)
             with self.assertRaisesRegex(AssertionError,message),contextlib.redirect_stdout(io.StringIO()):module.verify(args)
+
+
+    def test_character_details_obey_finite_wall_contract(self):
+        for asset in MANIFEST['assets']:
+            self.assertEqual(verify_character(asset),asset['characterDetails'])
+    def test_character_unknown_detail_rejected(self):
+        def mutate(r,a):a['characterDetails'].append(deepcopy(a['characterDetails'][0]))
+        assert_rejected(mutate)
+    def test_duplicate_character_polygon_rejected(self):
+        def mutate(r,a):a['polygons'].append(deepcopy(next(p for p in a['polygons'] if p['id'].startswith('character-'))))
+        assert_rejected(mutate)
+    def test_character_contract_off_plane_rejected(self):
+        def mutate(r,a):a['characterDetails'][0]['grid'][0][1]=.1
+        assert_rejected(mutate)
+    def test_character_polygon_off_plane_rejected(self):
+        def mutate(r,a):next(p for p in a['polygons'] if p['id'].startswith('character-'))['grid'][0][1]=.1
+        assert_rejected(mutate)
+    def test_character_projected_vertex_outside_clip_rejected(self):
+        def mutate(r,a):next(p for p in a['polygons'] if p['id'].startswith('character-'))['projected'][0]['x']=10000
+        assert_rejected(mutate)
+    def test_character_wrong_wall_clip_rejected(self):
+        def mutate(r,a):next(p for p in a['polygons'] if p['id'].startswith('character-'))['surfaceClip']='rear-surface-roof-far-plane-clip'
+        assert_rejected(mutate)
+    def test_character_paint_rejected_even_if_literal_rgb(self):
+        def mutate(r,a):r.find(".//"+NS+"polygon[@id='rear-character-knee-brace-0']").set('fill','#ffffff')
+        assert_rejected(mutate)
+    def test_character_foundation_layer_rejected(self):
+        def mutate(r,a):next(p for p in a['polygons'] if p['id'].startswith('character-'))['layer']='foundation'
+        assert_rejected(mutate)
+    def test_character_stroke_rejected(self):
+        def mutate(r,a):next(p for p in a['polygons'] if p['id'].startswith('character-'))['strokeWidth']=1
+        assert_rejected(mutate)
+    def test_character_full_source_paint_rejected(self):
+        asset=deepcopy(MANIFEST['assets'][0]);root=ET.parse(STATIC/asset['fullSvg']).getroot()
+        root.find(".//"+NS+"polygon[@id='rear-character-knee-brace-0']").set('fill','#ffffff')
+        with self.assertRaisesRegex(AssertionError,'character paint changed'):verify_svg(root,asset,['foundation','upper'])
+    def test_character_reserves_existing_door_and_window_apertures(self):
+        for asset in MANIFEST['assets']:
+            def rect(points):
+                td=[(v[0],v[2]) if asset['axis']=='u' else (v[1],v[2]) for v in points]
+                return min(t for t,z in td),max(t for t,z in td),min(z for t,z in td),max(z for t,z in td)
+            door=rect(asset['features'][0]['grid'])
+            windows={p['id']:rect(p['grid']) for p in asset['polygons'] if p['id'].endswith('-frame') and p['id'].startswith(('upper-window-','lower-window-'))}
+            shutter_targets={'upper-bay-1':'upper-window-1-frame','lower-bay-3':'lower-window-3-frame'} if asset['id']=='rear' else {'lower-bay-4':'lower-window-4-frame'}
+            for detail in asset['characterDetails']:
+                if detail['plane']!='long-wall-plane':continue
+                a,b,z0,z1=rect(detail['grid']);da,db,dz0,dz1=door
+                self.assertTrue(b<=da or a>=db or z1<=dz0 or z0>=dz1,detail['id'])
+                own=next((target for key,target in shutter_targets.items() if key in detail['id']),None)
+                for name,(wa,wb,wz0,wz1) in windows.items():
+                    if name==own:self.assertTrue(wa<a<b<wb and wz0<z0<z1<wz1)
+                    else:self.assertTrue(b<=wa or a>=wb or z1<=wz0 or z0>=wz1,detail['id'])
+                if 'apron-' in detail['id']:
+                    self.assertTrue(b<da-.025 or a>db+.025)
+                    self.assertGreaterEqual(min(abs(b-(da-.025)),abs(a-(db+.025)))*64,2)
+    def test_single_plain_linen_panel_fits_existing_central_gap(self):
+        rear,endcap=MANIFEST['assets'];linen=[d for d in rear['characterDetails'] if d['id'].startswith('character-linen-')]
+        self.assertEqual(len(linen),6)
+        self.assertFalse(any(d['id'].startswith('character-linen-') for d in endcap['characterDetails']))
+        body=next(d for d in linen if d['id']=='character-linen-body');t=[v[0] for v in body['grid']];z=[v[2] for v in body['grid']]
+        self.assertEqual((max(t)-min(t))*64,20);self.assertEqual(max(z)-min(z),32)
+        self.assertTrue(all(-2.61<v[0]<-2.19 and 15<v[2]<52 and v[1]==0 for d in linen for v in d['grid']))
+
+    def test_rear_braces_meet_existing_posts_and_middle_beam(self):
+        rear=MANIFEST['assets'][0];polys={p['id']:p for p in rear['polygons']}
+        for i,bay in enumerate([0,3]):
+            brace=polys[f'character-knee-brace-{i}']['grid'];post=polys[f'bay-post-{bay}']['grid']
+            x0=min(p[0] for p in post);x1=max(p[0] for p in post)
+            self.assertTrue(all(x0<=p[0]<=x1 for p in brace[:2]))
+            beam=polys['long-timber-beam-2']['grid'];z0=min(p[2] for p in beam);z1=max(p[2] for p in beam)
+            self.assertTrue(any(z0<=p[2]<=z1 for p in brace[2:]))
+
+    def test_character_budget_keeps_one_flush_sconce_and_existing_warm_panes(self):
+        for asset in MANIFEST['assets']:
+            records=asset['characterDetails'];body=[p for p in records if p['id']=='character-sconce-body']
+            self.assertEqual(len(body),1)
+            p=body[0];t=[v[0] if asset['axis']=='u' else v[1] for v in p['grid']];z=[v[2] for v in p['grid']]
+            self.assertEqual((max(t)-min(t))*64,4);self.assertEqual(max(z)-min(z),8)
+            root=svg(asset);name='upper-window-4-right' if asset['id']=='rear' else 'lower-window-1-right'
+            self.assertEqual(root.find(f".//{NS}polygon[@id='{asset['id']}-{name}']").get('fill'),'#97693c')
 
 if __name__=='__main__':unittest.main(verbosity=2)

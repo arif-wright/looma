@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { FOOTPRINTS, CHECKPOINT_TARGETS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
 import { PLAZA_VIEWS, plazaScreenshot } from './screenshots.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
-import { townGroundIssues, townBoundaryIssues } from './town-ground.mjs';
+import { townGroundIssues, townBoundaryIssues, townBackdropIssues } from './town-ground.mjs';
 import { FLOW_CAP_MS, validSign, validComplete } from './protocol.mjs';
 const xy=g=>[g.x,g.y];
 const empty=(v,m)=>assert.deepEqual(v,[],m);
@@ -41,6 +41,7 @@ export function verifyPlaza(state, cleanup, index) {
     assert.equal(p.starts,p.label==='plaza-returned-owned'?1:0);
     if(p.starts===0)assert.equal(g.elapsed,0,'Town exploration never starts the clock');
     empty(townBoundaryIssues(g),'Flat perimeter remains below hero feet');
+    empty(townBackdropIssues(g),'Owned field stays outside blocked diamond and below ground without scenery');
     empty(plazaObjectsIssues(g),'Exact owned facade transforms, solidity and actor scale');
     empty(plazaGeometryIssues(g,p.label.startsWith('gate-')),'Actual hero and approach features stay readable without zooming out');
     assert.equal(g.viewportGeometry.camera.zoom,zoom,'Exploration never reduces hero zoom to fit buildings');
@@ -98,6 +99,7 @@ export function verifyPlaza(state, cleanup, index) {
   assert.equal(departed.starts,1);assert.equal(departed.scene.gameplay.durationLimit,FLOW_CAP_MS);
   const g=returned.scene.gameplay;assert.equal(g.returned,true);assert.equal(g.outcome,'retreated');assert(g.elapsed>0&&g.elapsed<FLOW_CAP_MS);
   empty(townGroundIssues(g),'Returned town has one owned ground and entrance');
+  assert.notEqual(g.townArt.ground.backdrop[0].objectId,home.townArt.ground.backdrop[0].objectId,'Return rebuilds the owned exterior field');
   assert.notEqual(g.townArt.ground.perimeter[0].objectId,home.townArt.ground.perimeter[0].objectId,'Return rebuilds the owned perimeter drawing');
   assert(g.plaza.every(o=>!home.plaza.some(old=>old.objectId===o.objectId)),'Return rebuilds every town-owned image rather than reusing destroyed instances');
   assert(g.plaza.every(o=>o.alpha===1),'All returned town cutaways reset');

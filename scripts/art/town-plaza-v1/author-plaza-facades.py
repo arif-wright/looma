@@ -19,6 +19,7 @@ from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
 from facade_surfaces import SurfacePainter, inputs as material_inputs, INVARIANTS_SHA256
+from facade_character import details as character_details
 
 
 AUTHORING = Path(__file__).resolve().parent
@@ -158,9 +159,9 @@ def make_facade(cfg):
         for i in range(1, 4):
             a = door0 + (door1 - door0) * i / 4
             long(layer, f'{layer}-door-plank-{i}', a, a + 0.006, z0, z1, '#3f342a')
-        long(layer, f'{layer}-left-door-jamb', door0 - 0.025, door0, z0, z1, '#514333')
-        long(layer, f'{layer}-right-door-jamb', door1, door1 + 0.025, z0, z1, '#514333')
-    long('upper', 'door-top-jamb', door0 - 0.025, door1 + 0.025, door_height, door_height + 3, '#514333')
+        long(layer, f'{layer}-left-door-jamb', door0 - 0.025, door0, z0, z1, '#3b3028' if layer == 'upper' else '#514333')
+        long(layer, f'{layer}-right-door-jamb', door1, door1 + 0.025, z0, z1, '#3b3028' if layer == 'upper' else '#514333')
+    long('upper', 'door-top-jamb', door0 - 0.025, door1 + 0.025, door_height, door_height + 3, '#3b3028')
     for i, z in enumerate([11, door_height - 9]):
         long('upper', f'door-brace-{i}', door0, door1, z, z + 1.5, '#473b2e')
     long('upper', 'door-latch', door1 - 0.058, door1 - 0.018, 21, 23, '#b6a16b')
@@ -199,6 +200,12 @@ def make_facade(cfg):
     short('upper', 'short-window-frame', -0.73, -0.34, 28, 49, '#514938')
     short('upper', 'short-window-left', -0.70, -0.55, 30, 47, '#697468')
     short('upper', 'short-window-right', -0.53, -0.37, 30, 47, '#7b8271')
+
+    # Finite plane-bound character accents; unchanged silhouette and masks.
+    character = character_details(cfg)
+    for detail in character:
+        poly('upper', detail['id'], detail['grid'], detail['fill'],
+             clip=f"{ident}-surface-{detail['plane']}-clip")
 
     poly('upper', 'near-gable-plane', [xyz(0, -depth, height), xyz(0, 0, height),
                                       xyz(0, -depth / 2, height + ridge)], '#897650', True, True)
@@ -320,7 +327,7 @@ def make_facade(cfg):
                     contactInSvgWorld=[0, 0], contactPixels=contact_px, origin=origin,
                     fullSvg=svg_full.name, fullSvgSha256=hash_file(svg_full),
                     layers=export_records, features=features, majorPlanes=planes, polygons=polygons,
-                    runtime=descriptor, surfaces=surfaces.records)
+                    runtime=descriptor, surfaces=surfaces.records, characterDetails=character)
     return descriptor, contract
 
 
@@ -350,6 +357,7 @@ def main():
     manifest = dict(
         schemaVersion=2, status='Original material-treated exact-grid prototype; finish and hosted review remain separate',
         source='Code-native planes; two original pinned flat diffuse inputs; no building raster, repeat, or frozen-geometry edits',
+        characterContractSha256=hash_file(Path(__file__).with_name('facade_character.py')),
         materialInputs=materials, surfaceContractSha256=hash_file(Path(__file__).with_name('facade_surfaces.py')), invariantsSha256=INVARIANTS_SHA256,
         adaptedFrom=PROVENANCE,
         authorScriptSha256=hash_file(Path(__file__)),
