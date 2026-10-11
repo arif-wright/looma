@@ -34,6 +34,12 @@ export function plazaGeometryIssues(g, gate=false) {
   const overlaps=(a,b,pad=0)=>a.x<b.x+b.width+pad&&a.x+a.width>b.x-pad&&a.y<b.y+b.height+pad&&a.y+a.height>b.y-pad;
   if(!v||!rect({x:0,y:0,...v.canvas})||!rect(v.hud)||!rect(v.controls))return['Missing actual viewport geometry'];
   const canvas={x:0,y:0,...v.canvas};
+  const prompt=v.entrancePrompt;
+  if(!prompt||typeof prompt.visible!=='boolean'||prompt.active!==true||prompt.alpha!==1||typeof prompt.text!=='string'||!prompt.text||!rect(prompt.screenBounds))errors.push('Missing actual entrance prompt state');
+  else if(prompt.visible){
+    if(!within(prompt.screenBounds,canvas,1)||[v.hud,v.controls].some(p=>overlaps(prompt.screenBounds,p,1)))errors.push('Visible entrance prompt is clipped or behind UI');
+    if(JSON.stringify(v.entranceLabel)!==JSON.stringify(prompt.screenBounds))errors.push('Visible entrance prompt bounds disagree');
+  }else if(v.entranceLabel!==null)errors.push('Hidden entrance prompt still reports visible bounds');
   for(const [items,panel,names] of [[v.hudItems,v.hud,['score','hp','area']],[v.controlItems,v.controls,['status','primary']]]) {
     if(!within(panel,canvas)||!Array.isArray(items)||!names.every(n=>items.some(i=>i.name===n)))errors.push('Missing or clipped UI');
     for(const item of items??[])if(!within(item.bounds,panel)||!within(item.bounds,canvas))errors.push('UI text outside panel');

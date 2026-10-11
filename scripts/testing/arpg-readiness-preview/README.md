@@ -343,3 +343,31 @@ The candidate intentionally contains only quiet exterior color. Two roofline
 studies were rejected offline. No distant street, new enclosure, or rendered
 quality improvement is asserted. New hosted execution remains required; local
 schema tests, type/build checks and 14-case discovery are not browser evidence.
+
+### Whole gate-prompt visibility
+
+The town entrance prompt is culled as one complete label when its actual scaled
+bounds leave the main camera viewport or overlap the fixed HUD/control panels.
+The scene checks the settled camera matrix on Phaser 3.90's FOLLOW_UPDATE event,
+which follows camera scroll/matrix updates and precedes visible-child rendering.
+It does not alter the gate at tile (18,9), its 150px interaction radius, camera
+framing, collision, input, or expedition state. In-frame prompts remain visible
+at spawn, east/south approach, arrival, and the rebuilt town after returning.
+
+The existing verifier command also runs gate-prompt-scene.test.mjs using the
+repository's TypeScript dev dependency. These are offline, renderer-mocked tests
+of the real GameScene methods and pure imports, not Phaser or browser execution.
+The checked-in gate-prompt-geometry.json contains twelve small pre-fix hosted
+geometry excerpts (source commit and observation SHA-256s included). Their replay
+checks the candidate against the observed phone/desktop bounds; it does not
+create or replace browser evidence.
+
+Post-render observations now preserve the prompt's text, active/visible flags,
+alpha, and measured bounds even when hidden. All plaza checkpoints reject visible
+clipped/covered prompts; phone rear-front checkpoints require whole-label hiding.
+The existing approach and returned-town checks still require the visible prompt.
+The fourteen browser cases, twenty-one screenshots, native input driver,
+waypoint/timing tolerances, and existing geometry/gameplay guards are unchanged.
+A new hosted run against the eventual exact candidate commit, including review
+of rear-front, east approach, gate-arrived, and returned-town screenshots, is
+required before claiming real-renderer validation of this fix.

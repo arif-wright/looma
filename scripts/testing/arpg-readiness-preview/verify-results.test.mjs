@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import './gate-prompt-scene.test.mjs';
 import { BACKDROP_FIELDS, expectedBackdropCommands, townBackdropIssues } from './town-ground.mjs';
 import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep, waypointCorrection, chordEnvelope, safeChordEnvelope, chordEndpointAllowed } from './plaza-navigation.mjs';
 import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
@@ -39,6 +40,7 @@ function report(mode = 'execution') {
       heroVisible: { textureKey: 'hero-idle', alphaThreshold: 32, frameWidth: 256, frameHeight: 256, sourceBounds: { x: 110, y: 100, width: 30, height: 50, opaquePixels: 700 }, screenBounds: { x: 110, y: 220, width: 18, height: 32 } },
       entranceVisible: { textureKey: 'town_ruins_entrance_v1', alphaThreshold: 32, frameWidth: 1536, frameHeight: 1024, sourceBounds: { x: 395, y: 155, width: 819, height: 781, opaquePixels: 200000 }, screenBounds: { x: 250, y: 250, width: 80, height: 80 } }
     };
+    viewportGeometry.entrancePrompt = { text: 'E · Enter ruins', visible: true, active: true, alpha: 1, screenBounds: structuredClone(viewportGeometry.entranceLabel) };
     const game = { viewportGeometry, at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 1472, y: 536, hp: 140, kills: 0, townArt };
     const scene = { id: 1, queuedKeys: keys, decodedKeys: keys, missingKeys: [], createAt: 1, framesAfterCreate: 1, destroyed: false, loadErrors: [], loadComplete: true, gameplay: { ...game } };
     const scenes = [scene];
@@ -306,6 +308,18 @@ const plazaMutations = {
   'plaza foreground overly dims hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility.meanTransmission=.1,
   'plaza hero behind HUD': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroVisible.screenBounds.y=30,
   'plaza exploration camera does not follow': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroGround.x=80,
+  'plaza prompt observation missing': o=>o.state.checkpoints[1].scene.gameplay.viewportGeometry.entrancePrompt=null,
+  'plaza distant clipped prompt visible': o=>{const v=o.state.checkpoints[1].scene.gameplay.viewportGeometry;v.entrancePrompt.visible=true;v.entranceLabel=structuredClone(v.entrancePrompt.screenBounds);},
+  'plaza hidden prompt with stale visible bounds': o=>{const v=o.state.checkpoints[1].scene.gameplay.viewportGeometry;v.entranceLabel=structuredClone(v.entrancePrompt.screenBounds);},
+  'plaza destroyed prompt': o=>o.state.checkpoints[1].scene.gameplay.viewportGeometry.entrancePrompt.active=false,
+  'plaza empty prompt text': o=>o.state.checkpoints[1].scene.gameplay.viewportGeometry.entrancePrompt.text='',
+  'plaza transparent prompt': o=>o.state.checkpoints[1].scene.gameplay.viewportGeometry.entrancePrompt.alpha=0,
+  'plaza forged prompt bounds': o=>o.state.checkpoints[0].scene.gameplay.viewportGeometry.entrancePrompt.screenBounds.x+=1,
+  'plaza east prompt hidden on approach': o=>{const v=o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.viewportGeometry;v.entrancePrompt.visible=false;v.entranceLabel=null;},
+  'plaza south prompt hidden on approach': o=>{const v=o.state.checkpoints.find(p=>p.label==='gate-south-approach').scene.gameplay.viewportGeometry;v.entrancePrompt.visible=false;v.entranceLabel=null;},
+  'plaza gate arrived prompt hidden': o=>{const v=o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.viewportGeometry;v.entrancePrompt.visible=false;v.entranceLabel=null;},
+  'plaza returned prompt remains hidden': o=>{const v=o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.viewportGeometry;v.entrancePrompt.visible=false;v.entranceLabel=null;},
+  'plaza prompt behind control panel': o=>{const v=o.state.checkpoints[0].scene.gameplay.viewportGeometry;v.entrancePrompt.screenBounds.y=v.controls.y;v.entranceLabel=structuredClone(v.entrancePrompt.screenBounds);},
   'plaza east gate label clipped': o=>o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.viewportGeometry.entranceLabel.x=-20,
   'plaza south entrance under HUD': o=>o.state.checkpoints.find(p=>p.label==='gate-south-approach').scene.gameplay.viewportGeometry.entrance.y=30,
   'plaza missed actual gate approach': o=>o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.x=1472,

@@ -1,0 +1,390 @@
+{
+  "note": "Read-only geometry excerpts from the existing pre-fix hosted run. Replaying these inputs is offline mathematical/scene proof, not a new screenshot or browser run.",
+  "sourceCommit": "a9c9d0f5813444e3cd649127299e0427d59e8613",
+  "cases": [
+    {
+      "name": "desktop plaza-home",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 938,
+        "scrollY": 235,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 816.150008559227,
+        "y": 513.5018774930309,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "desktop rear-front-ready",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 838,
+        "scrollY": 137,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 951.1500109434128,
+        "y": 645.6367112872902,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": false
+    },
+    {
+      "name": "desktop gate-east-approach",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 1113,
+        "scrollY": 298,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 579.9000043869019,
+        "y": 428.5580557681499,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "desktop gate-south-approach",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 1113,
+        "scrollY": 451,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 579.9000043869019,
+        "y": 222.26591729343906,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "desktop gate-arrived",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 1113,
+        "scrollY": 366,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 579.9000043869019,
+        "y": 336.87266089050064,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "desktop plaza-returned-owned",
+      "sourceObservationSha256": "8711ece88a0795bb15441dc9a236a95c7b4f8fa0258a5843204fb56825a5b90f",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 1068,
+        "height": 600.75,
+        "zoom": 1.35,
+        "scrollX": 938,
+        "scrollY": 235,
+        "matrix": [
+          1.350000023841858,
+          0,
+          0,
+          1.350000023841858,
+          -186.90000915527344,
+          -105.50625610351562
+        ]
+      },
+      "canvas": {
+        "width": 1068,
+        "height": 600
+      },
+      "screenBounds": {
+        "x": 816.150008559227,
+        "y": 513.5018774930309,
+        "width": 126.90000224113464,
+        "height": 26.9662926110733
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "phone plaza-home",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1409,
+        "scrollY": 291,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 236.0510645303112,
+        "y": 357.62613581515285,
+        "width": 94.0000011140144,
+        "height": 19.973679499731702
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "phone rear-front-ready",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1253,
+        "scrollY": 192,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 349.565959492622,
+        "y": 429.56962948556964,
+        "width": 94.00000111401437,
+        "height": 19.973679499731702
+      },
+      "expectedVisible": false
+    },
+    {
+      "name": "phone gate-east-approach",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1687,
+        "scrollY": 348,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 33.76170043080867,
+        "y": 316.2041243079432,
+        "width": 94.00000111401437,
+        "height": 19.97367949973176
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "phone gate-south-approach",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1671,
+        "scrollY": 509,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 45.40425376027645,
+        "y": 199.20510934898257,
+        "width": 94.00000111401437,
+        "height": 19.97367949973176
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "phone gate-arrived",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1671,
+        "scrollY": 421,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 45.40425376027645,
+        "y": 263.15488150046417,
+        "width": 94.00000111401437,
+        "height": 19.973679499731702
+      },
+      "expectedVisible": true
+    },
+    {
+      "name": "phone plaza-returned-owned",
+      "sourceObservationSha256": "b999fe5dfa49e11e86260591ba999d018cb28643c8f4828fdcd970546fc4f6c7",
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "width": 374,
+        "height": 498.65625,
+        "zoom": 0.7276595744680852,
+        "scrollX": 1409,
+        "scrollY": 291,
+        "matrix": [
+          0.7276595830917358,
+          0,
+          0,
+          0.7276595830917358,
+          50.92765808105469,
+          67.5739974975586
+        ]
+      },
+      "canvas": {
+        "width": 374,
+        "height": 498
+      },
+      "screenBounds": {
+        "x": 236.0510645303112,
+        "y": 357.62613581515285,
+        "width": 94.0000011140144,
+        "height": 19.973679499731702
+      },
+      "expectedVisible": true
+    }
+  ]
+}

@@ -327,6 +327,7 @@ export class GameScene extends Phaser.Scene {
     this.createOverlays();
     this.setupUICamera();
     this.updateFixedUITransforms();
+    this.setupPortalPromptVisibility();
   }
 
   update(_time: number, delta: number) {
@@ -728,6 +729,49 @@ export class GameScene extends Phaser.Scene {
     const offset = townExplorationOffset(this.viewportLayout, this.playerSprite,
       this.isoToWorld(14, 9), this.isoToWorld(18, 9));
     this.cameras.main.setFollowOffset(offset.offsetX, offset.offsetY);
+  }
+
+  private setupPortalPromptVisibility() {
+    const camera = this.cameras.main;
+    const update = () => this.updatePortalPromptVisibility();
+    // FOLLOW_UPDATE runs after Phaser settles the follow scroll and matrix,
+    // before this camera draws. An update-loop check would lag by one frame.
+    camera.on(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, update);
+    const release = () => {
+      camera.off(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, update);
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, release);
+      this.events.off(Phaser.Scenes.Events.DESTROY, release);
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, release);
+    this.events.once(Phaser.Scenes.Events.DESTROY, release);
+  }
+
+  private updatePortalPromptVisibility() {
+    const prompt = this.portalText;
+    if (!prompt) return;
+    if (this.expedition.area !== 0) {
+      prompt.setVisible(true);
+      return;
+    }
+    // Cull the complete, currently scaled text, never leave a fragment at a
+    // viewport edge or behind fixed UI. This changes presentation only; the
+    // gate's world position, camera, input and interaction radius stay intact.
+    const camera = this.cameras.main as Phaser.Cameras.Scene2D.Camera & {
+      readonly matrix: Phaser.GameObjects.Components.TransformMatrix;
+    };
+    const bounds = prompt.getBounds();
+    const points = [[bounds.left, bounds.top], [bounds.right, bounds.top],
+      [bounds.left, bounds.bottom], [bounds.right, bounds.bottom]].map(([x, y]) =>
+      camera.matrix.transformPoint(x! - camera.scrollX, y! - camera.scrollY));
+    const left = Math.min(...points.map(p => p.x)), right = Math.max(...points.map(p => p.x));
+    const top = Math.min(...points.map(p => p.y)), bottom = Math.max(...points.map(p => p.y));
+    const padding = 2;
+    const contained = left >= camera.x + padding && right <= camera.x + camera.width - padding &&
+      top >= camera.y + padding && bottom <= camera.y + camera.height - padding;
+    const clearOfUI = this.viewportLayout && [this.viewportLayout.hud, this.viewportLayout.controls].every(panel =>
+      right <= panel.x - padding || left >= panel.x + panel.width + padding ||
+      bottom <= panel.y - padding || top >= panel.y + panel.height + padding);
+    prompt.setVisible(Boolean(prompt.text && contained && clearOfUI));
   }
 
   private setupUICamera() {

@@ -17,6 +17,7 @@ export type ViewportGeometry = {
   hudItems: Array<{ name: string; bounds: ScreenRect }>; controlItems: Array<{ name: string; bounds: ScreenRect }>;
   heroVisible: VisibleSpriteObservation | null; entranceVisible: VisibleSpriteObservation | null;
   heroGround: { x: number; y: number }; shop: ScreenRect | null; entrance: ScreenRect | null; entranceLabel: ScreenRect | null;
+  entrancePrompt: { text: string; visible: boolean; active: boolean; alpha: number; screenBounds: ScreenRect } | null;
 };
 export type TownGroundObservation = {
   legacyFloorCount: number; legacyWallCount: number; worldGraphicsCount: number;

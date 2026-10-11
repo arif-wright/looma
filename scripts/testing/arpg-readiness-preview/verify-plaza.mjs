@@ -47,6 +47,11 @@ export function verifyPlaza(state, cleanup, index) {
     assert.equal(g.viewportGeometry.camera.zoom,zoom,'Exploration never reduces hero zoom to fit buildings');
   }
   if(index===13)for(const label of ['plaza-home','plaza-returned-owned'])empty(phoneGeometryIssues(at(points,label).scene.gameplay.viewportGeometry),'Original home phone containment remains strict');
+  if(index===13)for(const label of ['rear-front-ready','rear-front-walk-blocked','rear-front-dash-blocked','rear-front-restored']){
+    const v=at(points,label).scene.gameplay.viewportGeometry;
+    assert.equal(v.entrancePrompt.visible,false,'Distant phone gate label is hidden as a whole, never a clipped fragment');
+    assert.equal(v.entranceLabel,null,'Hidden distant label has no visible bounds');
+  }
   for(const [ready,blocked] of [['rear-front-ready','rear-front-walk-blocked'],['endcap-front-ready','endcap-front-walk-blocked']]){
     const a=at(points,ready),b=at(points,blocked);
     assert(b.at-a.at>=600,'Walk input is held long enough to hit a solid');

@@ -28,7 +28,12 @@ export function fabricatePlazaSchema(state,scene,game,index){
     return g;
   };
   const checkpoint=(label,view,returned=false,area=0)=>{
-    time+=2;push(area,[0,1],[0,0]);const g=getGame(area,returned);g.plazaProbe={id:state.checkpoints.length+1,requestedAt:time-1,respondedAt:time};const p={label,at:time+1,starts:returned||area?1:0,scene:{...structuredClone(scene),gameplay:g}};state.checkpoints.push(p);
+    time+=2;push(area,[0,1],[0,0]);const g=getGame(area,returned);g.plazaProbe={id:state.checkpoints.length+1,requestedAt:time-1,respondedAt:time};
+    if(index===13&&['rear-front-ready','rear-front-walk-blocked','rear-front-dash-blocked','rear-front-restored'].includes(label)){
+      g.viewportGeometry.entrancePrompt={text:'E · Enter ruins',visible:false,active:true,alpha:1,screenBounds:{x:350,y:430,width:94,height:20}};
+      g.viewportGeometry.entranceLabel=null;
+    }
+    const p={label,at:time+1,starts:returned||area?1:0,scene:{...structuredClone(scene),gameplay:g}};state.checkpoints.push(p);
     if(view){const viewport=index===13?{width:390,height:844}:{width:1280,height:900};state.visuals.push({label:plazaScreenshot(index,view),at:time+2,starts:p.starts,viewport,documentWidth:viewport.width,canvas:{x:8,y:100,width:viewport.width-16,height:500,pixelWidth:viewport.width-16,pixelHeight:500},scene:structuredClone(p.scene)});}
     return p;
   };

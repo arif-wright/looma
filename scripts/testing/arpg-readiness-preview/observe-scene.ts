@@ -160,7 +160,11 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
     controlItems: texts([['status', state.controlStatus], ['primary', state.primaryControl], ['secondary', state.secondaryControl]]),
     heroVisible: visibleSprite(state.playerSprite), entranceVisible: entrance ? visibleSprite(entrance) : null,
     heroGround: point(main, ground.x, ground.y), shop: shop ? bounds(main, shop) : null, entrance: entrance ? bounds(main, entrance) : null,
-    entranceLabel: state.portalText?.visible && state.portalText.text ? bounds(main, state.portalText) : null
+    entranceLabel: state.portalText?.visible && state.portalText.text ? bounds(main, state.portalText) : null,
+    // Keep hidden bounds as independent evidence: null visible bounds alone
+    // cannot distinguish deliberate whole-label culling from a missing object.
+    entrancePrompt: state.portalText ? { text: state.portalText.text, visible: state.portalText.visible,
+      active: state.portalText.active, alpha: state.portalText.alpha, screenBounds: bounds(main, state.portalText) } : null
   };
 }
 function readGameplay(scene: GameScene, observedAt = performance.now()): GameplayObservation | null {
