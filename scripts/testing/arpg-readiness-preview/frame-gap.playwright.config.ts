@@ -1,0 +1,10 @@
+import {defineConfig} from '@playwright/test';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('.',import.meta.url)),repository=fileURLToPath(new URL('../../../',import.meta.url));
+const listingOnly=process.argv.includes('--list');
+if(process.env.ARPG_READINESS_BROWSER_EXECUTABLE||process.env.START_RECOVERY_BROWSER_EXECUTABLE)throw new Error('Use the locked Playwright-managed Chromium only.');
+export default defineConfig({testDir:'.',testMatch:'frame-gap.browser.spec.ts',forbidOnly:true,workers:1,retries:0,timeout:480_000,expect:{timeout:15_000},outputDir:`${root}.frame-gap-results/browser-artifacts`,
+  use:{baseURL:'http://127.0.0.1:4281',browserName:'chromium',viewport:{width:1280,height:900},serviceWorkers:'block',trace:{mode:'retain-on-failure',screenshots:false,snapshots:false,sources:true},screenshot:'only-on-failure'},
+  projects:[{name:'chromium-arpg-frame-gap-DIAGNOSTIC'}],
+  webServer:{command:`"${process.execPath}" node_modules/vite/bin/vite.js build --config scripts/testing/arpg-readiness-preview/frame-gap.vite.config.mjs && "${process.execPath}" node_modules/vite/bin/vite.js preview --config scripts/testing/arpg-readiness-preview/frame-gap.vite.config.mjs`,cwd:repository,url:'http://127.0.0.1:4281',reuseExistingServer:false,timeout:60_000},
+  reporter:[['list'],['json',{outputFile:`${root}.frame-gap-results/${listingOnly?'discovery-results':'diagnostic-results'}.json`}]]});
