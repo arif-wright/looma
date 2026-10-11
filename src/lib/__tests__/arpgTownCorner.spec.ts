@@ -10,7 +10,9 @@ const make = () => {
   const context = () => {
     const value = {
       save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
-      moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
+      moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(), fill: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) })),
+      createImageData: vi.fn((width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) })), putImageData: vi.fn(),
       translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
       createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })), fillStyle: null as any,
       globalAlpha: 0.7, globalCompositeOperation: 'multiply' as GlobalCompositeOperation,
@@ -26,8 +28,9 @@ const make = () => {
   };
   const keys = new Set<string>();
   const images: any[] = [];
+  const boundaries: any[] = [];
   const ground = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
-  const material = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
+  const material = { context: context(), setSize: vi.fn(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
   const scene: any = {
     textures: {
       exists: (key: string) => keys.has(key),
@@ -35,13 +38,17 @@ const make = () => {
       createCanvas: vi.fn((key: string) => { keys.add(key); return key === TOWN_MATERIAL_KEY ? material : ground; }),
       remove: vi.fn((key: string) => keys.delete(key))
     },
-    add: { image: vi.fn((x: number, y: number, key: string) => {
+    add: { graphics: vi.fn(() => {
+      const graphic: any = { destroy: vi.fn() };
+      for (const method of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[method] = vi.fn(() => graphic);
+      boundaries.push(graphic); return graphic;
+    }), image: vi.fn((x: number, y: number, key: string) => {
       const image: any = { x, y, key, destroy: vi.fn() };
       for (const method of ['setOrigin', 'setScale', 'setDepth', 'setName', 'setAlpha']) image[method] = vi.fn(() => image);
       images.push(image); return image;
     }) }
   };
-  return { scene, images, ground, material, context: ground.context, source, keys, add: vi.fn() };
+  return { scene, images, boundaries, ground, material, context: ground.context, source, keys, add: vi.fn() };
 };
 
 describe('town ground and retained original art contract (renderer mocked)', () => {
@@ -66,7 +73,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.clearRect).toHaveBeenCalledWith(0, 0, 1344, 672);
     expect(context.moveTo).toHaveBeenCalledWith(512, 0);
     expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
-    expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'repeat');
+    expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'no-repeat');
     expect(context.translate).toHaveBeenCalledWith(512, -16);
     expect(context.transform).toHaveBeenCalledWith(1, 0.5, -1, 0.5, 0, 0);
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 896, 576);
@@ -117,7 +124,8 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(TOWN_LIGHTING_PROOF.warmPools).toHaveLength(2);
     expect(TOWN_LIGHTING_PROOF.coolContacts).toHaveLength(3);
     expect(context.moveTo).toHaveBeenCalledWith(512, 0);
-    expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
+    expect(context.lineTo.mock.calls.slice(0, 3)).toEqual([[1344, 416], [832, 672], [0, 256]]);
+    expect(context.fill).toHaveBeenCalledTimes(12);
     expect(context.clip).toHaveBeenCalledOnce();
     expect(context.clip.mock.invocationCallOrder[0]).toBeLessThan(context.fillRect.mock.invocationCallOrder[0]!);
     expect(context.translate.mock.calls).toEqual([[762, 347], [810, 419.5], [721, 361], [720, 360], [787, 415]]);
@@ -167,7 +175,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(ground.setFilter.mock.calls).toEqual([[0]]); // LINEAR only for generated ground.
     expect(ground.refresh.mock.invocationCallOrder[0]).toBeLessThan(ground.setFilter.mock.invocationCallOrder[0]!);
     expect(material.setFilter).not.toHaveBeenCalled();
-    expect(add).toHaveBeenCalledTimes(8);
+    expect(add).toHaveBeenCalledTimes(9);
     expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key, ...TOWN_FACADES.flatMap(facade => Object.values(facade.layers).map(layer => layer.key))]);
     expect(images[0]).toMatchObject({ x: 128, y: -168 });
     expect(images[0].setOrigin).toHaveBeenCalledWith(0, 0);
@@ -185,6 +193,55 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(images[3].setScale).toHaveBeenCalledWith(110 / 780);
     expect(images[3].setDepth).toHaveBeenCalledWith(684);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY]]);
+  });
+
+  it('owns one bounded below-actor perimeter and releases it once without rebuilding on updates', () => {
+    const { scene, images, boundaries, material, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    expect(boundaries).toHaveLength(1);
+    expect(boundaries[0].setName).toHaveBeenCalledWith('town-perimeter-rim');
+    expect(boundaries[0].setDepth).toHaveBeenCalledWith(-160);
+    expect(boundaries[0].fillPoints.mock.calls.length).toBeLessThan(120);
+    expect(material.setSize).toHaveBeenCalledWith(896, 576);
+    expect(material.context.putImageData).toHaveBeenCalledOnce();
+    for (let i = 0; i < 20; i++) corner.updateActor({ x: 1472 + i, y: 536 });
+    expect(material.context.putImageData).toHaveBeenCalledOnce();
+    corner.destroy(); corner.destroy();
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
+    const next = createTownCorner(scene, add, iso, -161);
+    expect(boundaries).toHaveLength(2);expect(boundaries[1]).not.toBe(boundaries[0]);
+    next.destroy();expect(boundaries[1].destroy).toHaveBeenCalledOnce();
+  });
+
+  it.each(['getImageData', 'createImageData', 'putImageData'] as const)('rolls back derived textures when surface %s fails', (method) => {
+    const { scene, material, keys, add } = make();
+    material.context[method].mockImplementation(() => { throw new Error('surface allocation failed'); });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('surface allocation failed');
+    expect(keys.size).toBe(0);expect(add).not.toHaveBeenCalled();
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
+  });
+
+  it('destroys the partial perimeter when world registration fails', () => {
+    const { scene, boundaries, images, keys } = make();
+    expect(() => createTownCorner(scene, () => {
+      if (boundaries.length) throw new Error('boundary rejected');
+    }, iso, -161)).toThrow('boundary rejected');
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images[0].destroy).toHaveBeenCalledOnce();expect(keys.size).toBe(0);
+  });
+
+  it.each(['setName', 'setDepth', 'fillPoints'])('destroys the owned perimeter when %s fails', (method) => {
+    const { scene, boundaries, images, keys, add } = make();
+    const original = scene.add.graphics.getMockImplementation();
+    scene.add.graphics.mockImplementation(() => {
+      const graphic = original();
+      graphic[method].mockImplementation(() => { throw new Error('boundary draw failed'); });
+      return graphic;
+    });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('boundary draw failed');
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images[0].destroy).toHaveBeenCalledOnce();expect(keys.size).toBe(0);
   });
 
   it('keeps foundation opaque while the real owned upper layer cuts away and recovers', () => {
@@ -237,7 +294,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
   it('cleans every partial facade allocation if world registration fails, without removing source textures', () => {
     const { scene, images, keys } = make();
     let registrations = 0;
-    expect(() => createTownCorner(scene, () => { if (++registrations === 7) throw new Error('facade layer rejected'); }, iso, -161)).toThrow('facade layer rejected');
+    expect(() => createTownCorner(scene, () => { if (++registrations === 8) throw new Error('facade layer rejected'); }, iso, -161)).toThrow('facade layer rejected');
     expect(images).toHaveLength(7);
     expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);

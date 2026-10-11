@@ -1,7 +1,7 @@
 {
-  "status": "Original unfinished vector prototype; no raster inputs",
-  "authorScriptSha256": "29921d8d1d70c0895ba24f20db9a38dcd32a8d8a9ca6c8f7dc7c6c3746b1263f",
-  "geometryManifestSha256": "0dbb575fc6d0e190141e3419a7c618def6534ab2bd196e6d059ad85447b3259a",
+  "status": "Original material-treated prototype; two pinned diffuse inputs, unchanged geometric import contract",
+  "authorScriptSha256": "71026096a020e298cfc93f52233fd4c57c391a538e670375c7f80f5091e42f7a",
+  "geometryManifestSha256": "d40c1a1350947195faba3ccb9c51f1382626ec13882aacc82667f74159aa1b2f",
   "runtimeDataSha256": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
   "pixelsPerWorld": 2,
   "assets": [
@@ -20,7 +20,7 @@
         "y": 0.9852941176470589
       },
       "fullSvg": "town_plaza_rear_v1.svg",
-      "fullSvgSha256": "b8dffe28bff8e10cb587cbc288e75d6cf95cf3d4655a7032534dc94800226b0a",
+      "fullSvgSha256": "71d24e3d07cfd9aadf71d04e185e44a64c064ba3fb7ab38a6090936188143282",
       "layers": {
         "foundation": {
           "svg": "town_plaza_rear_foundation_v1.svg",
@@ -31,8 +31,8 @@
         "upper": {
           "svg": "town_plaza_rear_upper_v1.svg",
           "png": "town_plaza_rear_upper_v1.png",
-          "svgSha256": "766b05b1e284d2041c5ae14d1712bf4143cd4858eda10ffbf7ed02641c57f312",
-          "pngSha256": "41bc8c5ab99b57b8082543127daa73094f2442b9c2ecef6b9944381792e8a0e6"
+          "svgSha256": "819ec28a5f5e56b617169c89e1057673fa715daa2b82acd810ac92e11a539428",
+          "pngSha256": "e2b19dfc6f64f03fac8bd9c791d783935de1f91722b7e5c26b80880fcdbaa52b"
         }
       }
     },
@@ -51,7 +51,7 @@
         "y": 0.9833333333333333
       },
       "fullSvg": "town_plaza_endcap_v1.svg",
-      "fullSvgSha256": "b25269a75c95f2ed3d9c6754ac8c3bd84e5bd0bb49d7311091cbc64e8b01a76d",
+      "fullSvgSha256": "11080a5c512d2ab9928e5de1786b117d7ca2513a8f53b494ecc1c55751757ec6",
       "layers": {
         "foundation": {
           "svg": "town_plaza_endcap_foundation_v1.svg",
@@ -62,8 +62,8 @@
         "upper": {
           "svg": "town_plaza_endcap_upper_v1.svg",
           "png": "town_plaza_endcap_upper_v1.png",
-          "svgSha256": "b950e9cbd9df4379896dadb6ef965189272561e3cc1e7803afc9dc490aee3b54",
-          "pngSha256": "19c9c1c929c46c1b185361e755d14814dc8c3cf0680d485ed9323c02147c6c25"
+          "svgSha256": "e8fea51379a62832672806684ce9ddc837624b04ead9bcf9d529e225db151449",
+          "pngSha256": "89b8b9561117134ca01faf25e8358eba99245adcb2c0ea6c633a67f9ad7f38a8"
         }
       }
     }

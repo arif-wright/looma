@@ -92,11 +92,21 @@ and real post-create frames together.
 13–14. Desktop1280×900 and phone-sized390×844 native exploration: walk into the
 rear and endcap foundations, activate three real directional dashes whose full
 230px rays intersect a facade but whose endpoints clear it, walk around reachable
-sides to rear/side cutaways, restore their opacity in front, approach the gate from
+sides to rear/side cutaways, visit the original northern collision ring, restore their opacity in front, approach the gate from
 east and south, press E at the original gate, then use the real return control.
 Require a single bounded synthetic expedition and newly owned town images on
 return. The original twelve cases above remain, with only exact asset-count and
 approved source/asset allowlist updates.
+
+At each viewport, the added perimeter leg starts behind the rear facade at
+(1368,210), approaches(1368,-8), holds native W for700ms, and returns to the
+previous route. The independent original room/radius38 formula requires the
+settled center to stop at y=0.5*x−706 within one15fps movement step. Sustained
+post-render north intent must be observed. The case retains its180s budget,
+6.5s waypoint deadline,8px target, full swept checks and strict hero/UI visibility.
+One active owned Graphics rim must remain at depth−160, beneath the hero's foot
+shadow, with an unchanged transform, no legacy town wall sprites, and a new
+object identity after return. This drawing never supplies the collision oracle.
 
 The original twelve cases keep full per-render observations. The added cases request expensive full geometry/alpha probes only after native keys are released. Each checkpoint must carry a new request ID and request/response timestamps from a later real POST_RENDER frame; stale cached geometry cannot pass. Initial creation and area transitions still obtain actual full state. Every frame continues to supply a lightweight motion/dash/intent sample.
 
@@ -111,10 +121,10 @@ fixed camera zoom, measured hero size and actual UI/entrance/prompt bounds. A bo
 positions and expected polygons are independently transcribed constants; no
 production collision or camera helper is imported as the acceptance oracle.
 
-Twelve additional PNG captures show each viewport at the rear front, rear cutaway,
-endcap cutaway, eastern gate approach, the gate threshold and returned town. Captures are paired
+Fourteen additional PNG captures show each viewport at the rear front, rear cutaway,
+nearest legal perimeter contact, endcap cutaway, eastern gate approach, the gate threshold and returned town. Captures are paired
 atomically with their observed movement checkpoint. The original seven required
-PNG captures are preserved, giving nineteen required attachments. Appearance,
+PNG captures are preserved, giving twenty-one required attachments. Appearance,
 pixel occlusion, paving quality and navigation feel still require actual screenshot
 review; object alpha and geometry do not prove final composited pixels. Synthetic
 schema factories are imported only by verifier tests, never browser code.
@@ -207,9 +217,9 @@ advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
-checkpoints, cleanup and the nineteen expected PNG attachments. For the bounded flow
+checkpoints, cleanup and the twenty-one expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 206 unit
+submission fields and the exact zero-value presentation payload. Its 219 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -218,7 +228,7 @@ Discovery has zero attempts and cannot satisfy execution mode.
 The persistent local-browser denial remains in force: no local launch,
 escalation, alternate flags or alternate browser was attempted. Local preparation
 executes zero browser cases. PR17 e73cad94's twelve passing hosted cases are
-baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. The second head a446a031 again passed the original twelve but exhausted waypoint deadlines before either entrance-cutaway check. Desktop made slow progress through seven pulses; phone reached its target in the final released sample but rejected it after the deadline. This fixture-only correction keeps all nineteen captures and safety/readability gates. Entrance-cutaway acceptance still requires a new authorized hosted run against the exact candidate. Its architecture is an unfinished
+baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. The second head a446a031 again passed the original twelve but exhausted waypoint deadlines before either entrance-cutaway check. Desktop made slow progress through seven pulses; phone reached its target in the final released sample but rejected it after the deadline. The later4545e7ae run passed all14cases and19captures, including the arch cutaway. Those unchanged baseline results do not certify this surface candidate. The new candidate preserves those19captures and adds2perimeter views, with all21required for acceptance. A new authorized hosted run is required. Its architecture is an unfinished
 code-native projection prototype, not completed painterly town art. Peripheral
 architecture may intentionally leave the viewport as the hero explores.
 

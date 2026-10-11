@@ -470,10 +470,15 @@ export class GameScene extends Phaser.Scene {
           : this.expedition.area === 2 && ((tx === 10 && ty >= 11 && ty <= 14) || (tx === 20 && ty >= 5 && ty <= 7));
         if (isBorder || isPillar) {
           const texture = `wall_${Phaser.Math.Between(0, WALL_TEXTURES.length - 1)}`;
-          const wall = this.add.image(pos.x, pos.y - 42, texture);
-          wall.setScale(TILE_SCALE);
-          wall.setDepth(pos.y + 160);
-          this.addToWorld(wall);
+          // Town's continuous low coping covers the same blocked ring. Keep
+          // wallTiles, random selection and recorded camera bounds unchanged;
+          // dungeon walls and pillars retain their original rendering.
+          if (this.expedition.area !== 0) {
+            const wall = this.add.image(pos.x, pos.y - 42, texture);
+            wall.setScale(TILE_SCALE);
+            wall.setDepth(pos.y + 160);
+            this.addToWorld(wall);
+          }
           this.wallTiles.add(`${tx},${ty}`);
           recordBounds(pos, 70);
         } else {

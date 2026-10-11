@@ -38,8 +38,8 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/arpg-scene-readiness
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$(git rev-parse HEAD:src)" = 0c081ed35b76c5356b5b8853e7582516f7da05fd
-          test "$(git rev-parse HEAD:static)" = ab6b311824f0ca807dc2404d63fcf02c71c527dd
+          test "$(git rev-parse HEAD:src)" = 2ece1b2fc2ddf686f160778d240241a2ee899f3d
+          test "$(git rev-parse HEAD:static)" = 70e99504f5f886bc57452c8d7c2f79ac98b1aecd
           test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
           test -z "${ARPG_READINESS_BROWSER_EXECUTABLE:-}"
           test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"

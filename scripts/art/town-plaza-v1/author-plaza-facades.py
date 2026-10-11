@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Original code-native plaza facades, adapted from the frozen vector proof.
 
-No input raster is opened, sampled, stretched, or traced. All solid, decorative,
+Only two hash-pinned flat original materials are sampled in finite upper-plane clips; no building raster is read or transformed. All solid, decorative,
 collision, and cutaway vertices use P(u,v,z) = (64(u-v), 32(u+v)-z).
 The approved geometry is larger; human doors retain their original scale.
 Run with Python 3 and the offline Inkscape CLI. Outputs are deterministic.
@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import subprocess
 import xml.etree.ElementTree as ET
+from facade_surfaces import SurfacePainter, inputs as material_inputs, INVARIANTS_SHA256
 
 
 AUTHORING = Path(__file__).resolve().parent
@@ -72,21 +73,26 @@ def make_facade(cfg):
     polygons = []
     planes = []
     features = []
+    surfaces = SurfacePainter(cfg, groups['upper'])
 
     def xyz(t, d=0, z=0):
         return [t, d, z] if axis == 'u' else [d, t, z]
 
-    def poly(layer, name, verts, fill, outline=False, major=False):
+    def poly(layer, name, verts, fill, outline=False, major=False, clip=None):
         points = [project(v) for v in verts]
         attrs = dict(id=f'{ident}-{name}',
                      points=' '.join(f'{fmt(p["x"])},{fmt(p["y"])}' for p in points),
                      fill=fill)
         if outline:
             attrs.update(stroke='#493e33', stroke_width=fmt(STROKE), stroke_linejoin='round')
+        if clip:
+            attrs['clip_path'] = f'url(#{clip})'
         groups[layer].append(element('polygon', **attrs))
         polygons.append(dict(id=name, layer=layer, grid=verts, projected=points,
                              strokeWidth=STROKE if outline else 0,
                              majorPlane=major))
+        if clip:
+            polygons[-1]['surfaceClip'] = clip
         if major:
             planes.append(dict(id=name, layer=layer, grid=verts, projected=points))
         return points
@@ -119,26 +125,21 @@ def make_facade(cfg):
     long('upper', 'long-wall-plane', -length, 0, BASE_HEIGHT, height,
          '#b7a17b' if ident == 'rear' else '#b1a081', True, True)
 
-    # Modest bounded flat patches. These are deliberately unfinished surfaces,
-    # not a procedural realism filter or a recycled painted-architecture image.
-    for bay in range(5):
-        start = -length + bay * 0.8
-        for patch, (z, w, h, color) in enumerate([
-            (12, 0.48, 20, '#c5b18b'),
-            (height - 27, 0.59, 18, '#c7b48d'),
-            (35, 0.44, 15, '#a9906f'),
-        ]):
-            a = start + 0.10 + (0.035 if patch == 2 else 0)
-            poly('upper', f'plaster-bay-{bay}-{patch}',
-                 [xyz(a, 0, z), xyz(a + w, 0, z + 1.6),
-                  xyz(a + w - 0.045, 0, z + h), xyz(a + 0.025, 0, z + h - 1.4)], color)
+    # Material source coordinates are finite; the existing major planes and
+    # their 1.25-world-pixel inset clips alone decide rendered placement.
+    for name in ['short-wall-plane', 'long-wall-plane']:
+        surfaces.paint(name, next(p['grid'] for p in planes if p['id'] == name))
 
     # Repeated full-size bays, rather than a stretched compact facade.
     for i in range(6):
         a = -length + i * 0.8 + (0.02 if i == 0 else -0.025 if i == 5 else -0.0125)
-        long('upper', f'bay-post-{i}', a, min(0, a + 0.025), BASE_HEIGHT, height, '#5d4836')
+        long('upper', f'bay-post-{i}', a, min(0, a + 0.025), BASE_HEIGHT, height, '#493d31')
     for i, z in enumerate([9, height - 5] + ([52] if ident == 'rear' else [])):
-        long('upper', f'long-timber-beam-{i}', -length, 0, z, z + 3, '#624a35')
+        long('upper', f'long-timber-beam-{i}', -length, 0, z, z + 3, '#51402f')
+    long('upper', 'inboard-eave-shade', -length+.02, -.02, height-6, height-5, '#594a36')
+    for i in [1,3,5]:
+        a = -length + i*.8 + (-.025 if i == 5 else -.0125)
+        long('upper', f'post-inboard-wear-{i}', a+.004, a+.011, height-27, height-12, '#80694d')
     short('upper', 'short-upper-beam', -depth, 0, height - 5, height - 2, '#594936')
     short('upper', 'short-corner-post', -0.035, 0, BASE_HEIGHT, height, '#594936')
     short('upper', 'short-rear-post', -depth, -depth + 0.035, BASE_HEIGHT, height, '#594936')
@@ -153,7 +154,7 @@ def make_facade(cfg):
                          projected=[project(v) for v in full_door],
                          projectedHorizontalWidth=20, verticalHeight=door_height))
     for layer, z0, z1 in [('foundation', 0, BASE_HEIGHT), ('upper', BASE_HEIGHT, door_height)]:
-        long(layer, f'{layer}-closed-door', door0, door1, z0, z1, '#654b35')
+        long(layer, f'{layer}-closed-door', door0, door1, z0, z1, '#574230' if layer == 'upper' else '#654b35')
         for i in range(1, 4):
             a = door0 + (door1 - door0) * i / 4
             long(layer, f'{layer}-door-plank-{i}', a, a + 0.006, z0, z1, '#3f342a')
@@ -164,12 +165,23 @@ def make_facade(cfg):
         long('upper', f'door-brace-{i}', door0, door1, z, z + 1.5, '#473b2e')
     long('upper', 'door-latch', door1 - 0.058, door1 - 0.018, 21, 23, '#b6a16b')
 
+    # Sparse original wood-wear strokes stay within the existing door body.
+    for i in range(4):
+        a = door0 + .025 + i * .067
+        long('upper', f'door-wear-{i}', a, a+.007, 15+i*2, 34+i, '#80694d')
+
+    long('upper', 'door-jamb-inboard-wear', door0-.017, door0-.010, 16, 36, '#80694d')
+
     def window(name, middle, z0, window_height=19):
         a, b, z1 = middle - 0.19, middle + 0.19, z0 + window_height
-        long('upper', name + '-frame', a, b, z0, z1, '#4d4538')
-        long('upper', name + '-left', a + 0.023, middle - 0.01, z0 + 2, z1 - 2, '#66766d')
-        long('upper', name + '-right', middle + 0.01, b - 0.023, z0 + 2, z1 - 2, '#7d8878')
+        long('upper', name + '-frame', a, b, z0, z1, '#393b36')
+        warm = (ident == 'rear' and name == 'upper-window-4') or (ident == 'endcap' and name == 'lower-window-1')
+        long('upper', name + '-left', a + 0.023, middle - 0.01, z0 + 2, z1 - 2, '#44514c')
+        long('upper', name + '-right', middle + 0.01, b - 0.023, z0 + 2, z1 - 2, '#97693c' if warm else '#56645b')
+        long('upper', name + '-inset-top', a + .023, b - .023, z1 - 3, z1 - 2, '#303a33')
+        long('upper', name + '-inset-side', a + .023, a + .033, z0 + 2, z1 - 2, '#303a33')
         long('upper', name + '-sill', a - 0.015, b + 0.015, z0 - 2, z0, '#635541')
+        long('upper', name + '-sill-wear', a + .045, middle - .015, z0 - 1.2, z0 - .7, '#897157')
         for i, t in enumerate([a + 0.077, b - 0.083]):
             long('upper', name + f'-slat-{i}', t, t + 0.01, z0 + 3, z1 - 3, '#56695f')
 
@@ -190,6 +202,7 @@ def make_facade(cfg):
 
     poly('upper', 'near-gable-plane', [xyz(0, -depth, height), xyz(0, 0, height),
                                       xyz(0, -depth / 2, height + ridge)], '#897650', True, True)
+    surfaces.paint('near-gable-plane', next(p['grid'] for p in planes if p['id'] == 'near-gable-plane'))
     poly('upper', 'roof-far-plane', [xyz(-length, -depth, height), xyz(0, -depth, height),
                                     xyz(0, -depth / 2, height + ridge),
                                     xyz(-length, -depth / 2, height + ridge)], '#705342', True, True)
@@ -202,16 +215,41 @@ def make_facade(cfg):
             d0, d1 = da + (db - da) * row / 2 + 0.004, da + (db - da) * (row + 1) / 2 - 0.004
             for i in range(16):
                 a, b = -length + length * i / 16 + 0.006, -length + length * (i + 1) / 16 - 0.006
-                colors = ['#6e5547', '#785b48', '#826049'] if side == 'far' else ['#926546', '#a47750', '#ae8058']
+                colors = ['#684e3e'] if side == 'far' else ['#966243']
                 poly('upper', f'roof-{side}-tile-{row}-{i}',
                      [xyz(a, d0, roof_z(d0)), xyz(b, d0, roof_z(d0)),
-                      xyz(b, d1, roof_z(d1)), xyz(a, d1, roof_z(d1))], colors[(i + row) % 3])
+                      xyz(b, d1, roof_z(d1)), xyz(a, d1, roof_z(d1))], colors[0])
+
+    def roof_surface(side, da, db):
+        name = f'roof-{side}-plane'
+        clip = surfaces.paint(name, next(p['grid'] for p in planes if p['id'] == name))
+        # Four quieter clay courses, not the previous two-row checkerboard.
+        # Small seams are original projected geometry, never image-generated
+        # tile boundaries. Paint clips leave every silhouette pixel unchanged.
+        for row in range(4):
+            d0, d1 = da+(db-da)*row/4, da+(db-da)*(row+1)/4
+            if row < 3:
+                poly('upper', f'{side}-course-shadow-{row}',
+                     [xyz(-length,d1-.008,roof_z(d1-.008)),xyz(0,d1-.008,roof_z(d1-.008)),
+                      xyz(0,d1,roof_z(d1)),xyz(-length,d1,roof_z(d1))], '#604332', clip=clip)
+                poly('upper', f'{side}-course-wear-{row}',
+                     [xyz(-length,d1-.011,roof_z(d1-.011)),xyz(0,d1-.011,roof_z(d1-.011)),
+                      xyz(0,d1-.008,roof_z(d1-.008)),xyz(-length,d1-.008,roof_z(d1-.008))], '#aa7854', clip=clip)
+            for i in range(1,28):
+                t = -length+(i+(row%2)*.5)*length/28
+                jitter = (((i*7+row*3+(1 if ident=='rear' else 3))%5)-2)*.003
+                a,b=t+jitter,t+jitter+.007
+                poly('upper',f'{side}-tile-seam-{row}-{i}',
+                     [xyz(a,d0+.012,roof_z(d0+.012)),xyz(b,d0+.012,roof_z(d0+.012)),
+                      xyz(b+.004,d1-.014,roof_z(d1-.014)),xyz(a+.004,d1-.014,roof_z(d1-.014))], '#684836',clip=clip)
 
     tiles('far', -depth, -depth / 2)
+    roof_surface('far', -depth, -depth / 2)
     poly('upper', 'roof-near-plane', [xyz(-length, -depth / 2, height + ridge),
                                      xyz(0, -depth / 2, height + ridge),
                                      xyz(0, 0, height), xyz(-length, 0, height)], '#986b4c', True, True)
     tiles('near', -depth / 2, 0)
+    roof_surface('near', -depth / 2, 0)
 
     # Each shape contributes its own stroke radius. Integer-aligned padding is
     # deliberately chosen so 2 px/world needs no rounding or letterboxing.
@@ -239,6 +277,7 @@ def make_facade(cfg):
     root.append(desc)
     svg_full = STATIC / f'town_plaza_{ident}_v1.svg'
     full = deepcopy(root)
+    surfaces.decorate(full)
     for layer in ('foundation', 'upper'):
         full.append(deepcopy(groups[layer]))
     emit_svg(svg_full, full)
@@ -249,6 +288,8 @@ def make_facade(cfg):
         key = f'town_plaza_{ident}_{layer}_v1'
         svg, png = STATIC / f'{key}.svg', STATIC / f'{key}.png'
         split = deepcopy(root)
+        if layer == 'upper':
+            surfaces.decorate(split)
         split.append(deepcopy(groups[layer]))
         emit_svg(svg, split)
         env = dict(os.environ, INKSCAPE_PROFILE_DIR=str(AUTHORING / '.inkscape-profile'))
@@ -279,7 +320,7 @@ def make_facade(cfg):
                     contactInSvgWorld=[0, 0], contactPixels=contact_px, origin=origin,
                     fullSvg=svg_full.name, fullSvgSha256=hash_file(svg_full),
                     layers=export_records, features=features, majorPlanes=planes, polygons=polygons,
-                    runtime=descriptor)
+                    runtime=descriptor, surfaces=surfaces.records)
     return descriptor, contract
 
 
@@ -296,6 +337,7 @@ def main():
     TS = checkout / 'src/lib/games/arpg/assets/townFacadeData.ts'
     STATIC.mkdir(parents=True, exist_ok=True)
     TS.parent.mkdir(parents=True, exist_ok=True)
+    materials = material_inputs(checkout)
     records = [make_facade(cfg) for cfg in CONFIGS]
     descriptors, contracts = zip(*records)
     TS.write_text(
@@ -306,8 +348,9 @@ def main():
         'export const TOWN_FACADES = ' + json.dumps(descriptors, indent=2) + ' as const;\n',
         encoding='utf-8')
     manifest = dict(
-        schemaVersion=1, status='Original unfinished vector art for the authorized explorable prototype',
-        source='Code-native authoring; zero raster inputs; no image generation or frozen-proof edits',
+        schemaVersion=2, status='Original material-treated exact-grid prototype; finish and hosted review remain separate',
+        source='Code-native planes; two original pinned flat diffuse inputs; no building raster, repeat, or frozen-geometry edits',
+        materialInputs=materials, surfaceContractSha256=hash_file(Path(__file__).with_name('facade_surfaces.py')), invariantsSha256=INVARIANTS_SHA256,
         adaptedFrom=PROVENANCE,
         authorScriptSha256=hash_file(Path(__file__)),
         renderer=subprocess.check_output(['inkscape', '--version'], text=True,
@@ -316,7 +359,7 @@ def main():
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(json.dumps(manifest, indent=2) + '\n')
     concise = dict(
-        status='Original unfinished vector prototype; no raster inputs',
+        status='Original material-treated prototype; two pinned diffuse inputs, unchanged geometric import contract',
         authorScriptSha256=manifest['authorScriptSha256'],
         geometryManifestSha256=hash_file(args.manifest),
         runtimeDataSha256=manifest['generatedDataSha256'],

@@ -19,7 +19,9 @@ export type ViewportGeometry = {
   heroGround: { x: number; y: number }; shop: ScreenRect | null; entrance: ScreenRect | null; entranceLabel: ScreenRect | null;
 };
 export type TownGroundObservation = {
-  legacyFloorCount: number; largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
+  legacyFloorCount: number; legacyWallCount: number;
+  perimeter: Array<{ objectId: number; depth: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; active: boolean; visible: boolean }>;
+  largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
   samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
 export type PlazaObjectObservation = ArtObjectObservation & { name: string; alpha: number; active: boolean; visible: boolean; objectId: number };

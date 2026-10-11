@@ -2,7 +2,12 @@
   "status": "PASS",
   "deterministicRebuildChecked": true,
   "originalFrozenProofHashChecked": false,
-  "rasterInputsRead": 0,
+  "rasterInputsRead": 2,
+  "materialAddressing": "finite-no-wrap",
+  "materialSourceContract": "exact path/hash/dimensions/plane mapping allowlist",
+  "alphaMasksByteIdentical": true,
+  "foundationFilesByteIdentical": true,
+  "runtimeDescriptorByteIdentical": true,
   "browserProcessesLaunched": 0,
   "renderedWith": "Offline Inkscape CLI",
   "verified": [
@@ -15,7 +20,10 @@
     "finite actual-polygon bounds expanded by the actual stroke",
     "major upper cutaway planes exactly match rendered geometry",
     "closed 20 x 44 human-size decorative doors",
-    "no raster SVG inputs, filters, transformed decals, or clipping",
+    "only two exact original flat diffuse inputs, finite affine mapping inside five inset upper-plane clips",
+    "unexpected images, source hashes, paths, affine placements, clips, transforms and SVG elements rejected",
+    "no repeat or mirrored addressing, no building raster, filters or displacement",
+    "all upper/foundation alpha bytes, foundation SVG/PNG bytes and runtime descriptors match accepted baseline",
     "original proof provenance hash retained",
     "deterministic SVG, PNG, runtime data, and manifest bytes"
   ],
@@ -50,9 +58,9 @@
       },
       "scale": 0.5,
       "exactAxisEdgesChecked": {
-        "u": 358,
+        "u": 886,
         "v": 33,
-        "vertical": 258
+        "vertical": 330
       },
       "alphaBoundsPixels": {
         "foundation": [
@@ -68,7 +76,7 @@
           521
         ]
       },
-      "polygonCount": 211,
+      "polygonCount": 460,
       "majorUpperPlanes": 5,
       "closedDoorWorldSize": {
         "horizontal": 20,
@@ -106,8 +114,8 @@
       "scale": 0.5,
       "exactAxisEdgesChecked": {
         "u": 33,
-        "v": 306,
-        "vertical": 206
+        "v": 804,
+        "vertical": 248
       },
       "alphaBoundsPixels": {
         "foundation": [
@@ -123,7 +131,7 @@
           457
         ]
       },
-      "polygonCount": 185,
+      "polygonCount": 419,
       "majorUpperPlanes": 5,
       "closedDoorWorldSize": {
         "horizontal": 20,
@@ -132,18 +140,18 @@
     }
   ],
   "outputSha256": {
-    "scripts/art/town-plaza-v1/facade-manifest.json": "0dbb575fc6d0e190141e3419a7c618def6534ab2bd196e6d059ad85447b3259a",
-    "scripts/art/town-plaza-v1/facade-hashes.json": "d645253b4a429f2fc355cd7e5bc265595e04282a3607127761751af989455597",
+    "scripts/art/town-plaza-v1/facade-manifest.json": "d40c1a1350947195faba3ccb9c51f1382626ec13882aacc82667f74159aa1b2f",
+    "scripts/art/town-plaza-v1/facade-hashes.json": "0663ff67c8d1eaa1c4b350b608e400236b1d99f7b41def0219c4aced6ee597a8",
     "src/lib/games/arpg/assets/townFacadeData.ts": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_v1.svg": "b8dffe28bff8e10cb587cbc288e75d6cf95cf3d4655a7032534dc94800226b0a",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_v1.svg": "71d24e3d07cfd9aadf71d04e185e44a64c064ba3fb7ab38a6090936188143282",
     "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.svg": "08bf18892214fd374311117ff94b6339ff444a3dbd8f4a17074681e0cd80b063",
     "static/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.png": "1a83b07d2c3ea4985a7fa2ce8e3f79c4ab49151c264dbd8c9936092735351dd4",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg": "766b05b1e284d2041c5ae14d1712bf4143cd4858eda10ffbf7ed02641c57f312",
-    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png": "41bc8c5ab99b57b8082543127daa73094f2442b9c2ecef6b9944381792e8a0e6",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_v1.svg": "b25269a75c95f2ed3d9c6754ac8c3bd84e5bd0bb49d7311091cbc64e8b01a76d",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg": "819ec28a5f5e56b617169c89e1057673fa715daa2b82acd810ac92e11a539428",
+    "static/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png": "e2b19dfc6f64f03fac8bd9c791d783935de1f91722b7e5c26b80880fcdbaa52b",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_v1.svg": "11080a5c512d2ab9928e5de1786b117d7ca2513a8f53b494ecc1c55751757ec6",
     "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.svg": "f9d642320180e0cbc62f4f419d4403138055a09ca6b1d7581e191f75d263506e",
     "static/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.png": "a9c015b65e3887866d3de1d609763251a8b4830eac8d341aeb9dc71cbfcd9f17",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg": "b950e9cbd9df4379896dadb6ef965189272561e3cc1e7803afc9dc490aee3b54",
-    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png": "19c9c1c929c46c1b185361e755d14814dc8c3cf0680d485ed9323c02147c6c25"
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg": "e8fea51379a62832672806684ce9ddc837624b04ead9bcf9d529e225db151449",
+    "static/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png": "89b8b9561117134ca01faf25e8358eba99245adcb2c0ea6c633a67f9ad7f38a8"
   }
 }

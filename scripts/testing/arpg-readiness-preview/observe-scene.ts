@@ -42,6 +42,8 @@ function readTownGround(state: ObservedState, hero: { x: number; y: number }): T
     return { worldX, worldY, pixelX, pixelY, alpha: context && inBounds ? context.getImageData(pixelX, pixelY, 1, 1).data[3]! : null };
   });
   return { legacyFloorCount: images.filter(image => /^floor_\d+$/.test(image.texture.key)).length,
+    legacyWallCount: images.filter(image => /^wall_\d+$/.test(image.texture.key)).length,
+    perimeter: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Graphics => object instanceof Phaser.GameObjects.Graphics && object.name === 'town-perimeter-rim').map(object => ({ objectId: objectId(object), depth: object.depth, x: object.x, y: object.y, scaleX: object.scaleX, scaleY: object.scaleY, rotation: object.rotation, alpha: object.alpha, active: object.active, visible: object.visible })),
     largeMarkerCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Ellipse && object.width >= 120 && object.height >= 50).length,
     textureWidth: canvas?.width ?? 0, textureHeight: canvas?.height ?? 0, filterMode: plane?.frame.source.scaleMode ?? null, samples };
 }

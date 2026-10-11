@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Verify code-native facade geometry, pivots, split PNGs, and determinism.
 
-Reads only the generated assets, authoring manifest/script, and frozen Python
-source hash. It never opens architecture source rasters or launches a browser.
+Reads generated assets, authoring records, frozen invariants and exactly two
+hash-pinned flat diffuse materials. It never opens architecture source rasters
+or launches a browser.
 """
 import argparse
 import hashlib
@@ -14,6 +15,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 from PIL import Image
+from facade_surfaces import inputs as material_inputs, verify_svg, INVARIANTS_SHA256
 
 
 HERE = Path(__file__).resolve().parent
@@ -44,6 +46,13 @@ def verify(args):
     TS = checkout / 'src/lib/games/arpg/assets/townFacadeData.ts'
     MANIFEST = args.manifest.resolve()
     m = json.loads(MANIFEST.read_text())
+    assert m['schemaVersion'] == 2
+    invariants_path=args.author_script.with_name('facade-invariants-v1.json')
+    assert digest(invariants_path) == INVARIANTS_SHA256 == m['invariantsSha256']
+    invariants=json.loads(invariants_path.read_text())
+    assert m['materialInputs'] == material_inputs(checkout)
+    assert m['surfaceContractSha256'] == digest(args.author_script.with_name('facade_surfaces.py'))
+    assert digest(TS) == invariants['runtimeDataSha256']
     assert len(m['assets']) == 2
     assert [a['id'] for a in m['assets']] == ['rear', 'endcap']
     assert digest(args.author_script) == m['authorScriptSha256']
@@ -60,6 +69,12 @@ def verify(args):
     assert concise['authorScriptSha256'] == digest(args.author_script)
     generated_files = [MANIFEST, hashes, TS]
     for asset in m['assets']:
+        frozen=next(a for a in invariants['assets'] if a['id']==asset['id'])
+        for key,value in frozen.items():
+            if key not in ['layerAlphaSha256','foundationFiles']:
+                assert asset[key] == value, ('frozen geometry/import changed',asset['id'],key)
+        for name,sha in frozen['foundationFiles'].items():
+            assert digest(STATIC/name)==sha, ('foundation bytes changed',name)
         assert asset['axis'] == ('u' if asset['id'] == 'rear' else 'v')
         assert asset['length'] == 4 and asset['depth'] == 1
         assert asset['foundationHeight'] == 8
@@ -131,6 +146,7 @@ def verify(args):
         full_svg = STATIC / asset['fullSvg']
         assert digest(full_svg) == asset['fullSvgSha256']
         generated_files.append(full_svg)
+        verify_svg(ET.parse(full_svg).getroot(),asset,['foundation','upper'])
         alpha_bounds = {}
         for layer in ('foundation', 'upper'):
             record = asset['layers'][layer]
@@ -143,12 +159,11 @@ def verify(args):
             assert [float(v) for v in root.attrib['viewBox'].split()] == asset['viewBox']
             assert (int(root.attrib['width']), int(root.attrib['height'])) == (width, height)
             assert root.attrib['preserveAspectRatio'] == 'xMidYMid meet'
-            assert not root.findall('.//' + NS + 'image')
+            verify_svg(root,asset,[layer])
             assert not root.findall('.//' + NS + 'filter')
             assert not root.findall('.//' + NS + 'use')
-            assert all('transform' not in p.attrib for p in root.iter())
             expected_polygons = [p for p in asset['polygons'] if p['layer'] == layer]
-            actual_polygons = root.findall('.//' + NS + 'polygon')
+            actual_polygons = root.findall(f"{NS}g[@id='{asset['id']}-{layer}']/{NS}polygon")
             assert len(actual_polygons) == len(expected_polygons)
             for expected, actual in zip(expected_polygons, actual_polygons):
                 assert actual.attrib['id'] == f"{asset['id']}-{expected['id']}"
@@ -157,6 +172,17 @@ def verify(args):
                     near(a['x'], b['x'])
                     near(a['y'], b['y'])
                 assert 'opacity' not in actual.attrib and 'fill-opacity' not in actual.attrib
+                clip=expected.get('surfaceClip')
+                assert actual.attrib.get('clip-path') == (f'url(#{clip})' if clip else None)
+                if clip:
+                    side='far' if expected['id'].startswith('far-') else 'near'
+                    assert clip == f"{asset['id']}-surface-roof-{side}-plane-clip"
+                    for vertex in expected['grid']:
+                        d=vertex[1] if asset['axis']=='u' else vertex[0]
+                        slope=2*asset['ridge'] if side=='far' else -2*asset['ridge']
+                        intercept=asset['wall']+2*asset['ridge'] if side=='far' else asset['wall']
+                        near(vertex[2],intercept+slope*d)
+
             descriptor = asset['runtime']['layers'][layer]
             assert descriptor['width'] == width and descriptor['height'] == height
             assert descriptor['key'] == f"town_plaza_{asset['id']}_{layer}_v1"
@@ -170,6 +196,7 @@ def verify(args):
             with Image.open(png) as im:
                 assert im.size == (width, height) and im.mode == 'RGBA'
                 alpha = im.getchannel('A')
+                assert hashlib.sha256(alpha.tobytes()).hexdigest()==frozen['layerAlphaSha256'][layer], ('alpha mask changed',asset['id'],layer)
                 bbox = alpha.getbbox()
                 assert bbox is not None and bbox[0] > 0 and bbox[1] > 0 and bbox[2] < width and bbox[3] < height
                 assert alpha.getextrema() == (0, 255)
@@ -198,7 +225,7 @@ def verify(args):
         assert before == after, 'Regeneration changed exported bytes'
     report = dict(status='PASS', deterministicRebuildChecked=args.rebuild,
                   originalFrozenProofHashChecked=bool(args.original_proof_source),
-                  rasterInputsRead=0, browserProcessesLaunched=0,
+                  rasterInputsRead=2, materialAddressing='finite-no-wrap', materialSourceContract='exact path/hash/dimensions/plane mapping allowlist', alphaMasksByteIdentical=True, foundationFilesByteIdentical=True, runtimeDescriptorByteIdentical=True, browserProcessesLaunched=0,
                   renderedWith='Offline Inkscape CLI',
                   verified=['exact +/-0.5 ground axes and vertical z axis',
                             'all polygon vertices derive from the single projection basis',
@@ -209,7 +236,10 @@ def verify(args):
                             'finite actual-polygon bounds expanded by the actual stroke',
                             'major upper cutaway planes exactly match rendered geometry',
                             'closed 20 x 44 human-size decorative doors',
-                            'no raster SVG inputs, filters, transformed decals, or clipping',
+                            'only two exact original flat diffuse inputs, finite affine mapping inside five inset upper-plane clips',
+                            'unexpected images, source hashes, paths, affine placements, clips, transforms and SVG elements rejected',
+                            'no repeat or mirrored addressing, no building raster, filters or displacement',
+                            'all upper/foundation alpha bytes, foundation SVG/PNG bytes and runtime descriptors match accepted baseline',
                             'frozen original Python proof script unchanged' if args.original_proof_source else 'original proof provenance hash retained',
                             'deterministic SVG, PNG, runtime data, and manifest bytes' if args.rebuild else 'existing output hashes'],
                   assets=summary, outputSha256=before)

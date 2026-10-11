@@ -7,6 +7,7 @@ export function fabricatePlazaSchema(state,scene,game,index){
   state.profile='return-flow';state.rewardMutations=structuredClone(EXPECTED_REWARD_MUTATIONS);
   state.plazaMotion=[];state.plazaMotionOverflow=false;
   let ids=Object.fromEntries(['shop','rear-foundation','rear-upper','endcap-foundation','endcap-upper'].map(n=>[n,nextId++]));
+  let perimeterId=nextId++;
   const layers=()=>Object.entries(ids).map(([id,objectId])=>{
     const shop=id==='shop',rear=id.startsWith('rear'),foundation=id.endsWith('foundation');
     const alpha=(id.startsWith('rear-')&&pos[1]<300&&pos[0]>1250&&pos[0]<1500)||(id.startsWith('endcap-')&&pos[0]>=1660&&pos[1]<300)?.28:1;
@@ -20,6 +21,7 @@ export function fabricatePlazaSchema(state,scene,game,index){
   const getGame=(area=0,returned=false)=>{
     const g=structuredClone(game);Object.assign(g,{at:time,area,x:pos[0],y:pos[1],elapsed:returned?1100:0,returned,outcome:returned?'retreated':'preparing',expeditionActive:area===1,durationLimit:FLOW_CAP_MS,plazaVisibility:{samples:100,readable:100,meanTransmission:.72,occluders:[]},plaza:area?[]:layers(),intent:structuredClone(state.plazaMotion.at(-1).intent),dash:structuredClone(state.plazaMotion.at(-1).dash)});
     g.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1').alpha=(Math.hypot(g.x-1728,g.y-664)<12||(g.x===1800&&g.y===600))&&g.y<=664?.28:1;
+    g.townArt.ground.perimeter[0].objectId=perimeterId;
     g.townArt.hero.x=g.x;g.townArt.hero.y=g.y;g.townArt.hero.depth=g.y+20;
     g.viewportGeometry.heroGround.x=g.viewportGeometry.canvas.width/2;
     return g;
@@ -32,11 +34,12 @@ export function fabricatePlazaSchema(state,scene,game,index){
   const dash=dir=>{time+=16;cd=684;push(0,dir);time+=200;cd=484;push(0,dir);};
   push();checkpoint('plaza-home');route([[1368,536],[1368,430]]);checkpoint('rear-front-ready','rear-front');move([1368,411]);idle(700);checkpoint('rear-front-walk-blocked');dash([0,-1]);checkpoint('rear-front-dash-blocked');
   route([[1368,430],[1160,430],[1160,210],[1200,210],[1200,260]]);checkpoint('rear-side-ready');dash([1,0]);checkpoint('rear-side-dash-blocked');route([[1200,210],[1368,210]]);checkpoint('rear-back-cutaway','rear-back-cutaway');
+  move([1368,-8]);checkpoint('perimeter-ready');move([1368,-22]);idle(700);checkpoint('perimeter-wall-blocked','perimeter-edge-feet');move([1368,210]);
   route([[1200,210],[1160,210],[1160,430],[1368,430]]);checkpoint('rear-front-restored');
   route([[1160,430],[1160,210],[1368,210],[1610,210],[1610,400],[1660,400],[1680,420],[1700,420],[1700,432],[1856,432],[1856,380]]);checkpoint('endcap-front-ready');move([1856,355]);idle(700);checkpoint('endcap-front-walk-blocked');
   route([[1856,432],[1700,432],[1700,420],[1680,420],[1660,400],[1610,400],[1610,260],[1640,260]]);checkpoint('endcap-side-ready');dash([Math.SQRT1_2,Math.SQRT1_2]);checkpoint('endcap-side-dash-blocked');move([1680,260]);checkpoint('endcap-roof-cutaway','endcap-side-cutaway');
   route([[1640,260],[1610,260],[1610,400],[1660,400],[1680,420],[1700,420],[1700,432],[1856,432],[1856,380]]);checkpoint('endcap-front-restored');route([[1856,432],[2000,432],[2000,600],[1800,600]]);checkpoint('gate-east-approach','gate-east-approach');route([[1800,760],[1728,760]]);checkpoint('gate-south-approach');move([1728,664]);const arrived=checkpoint('gate-arrived','gate-arrived');
-  time+=100;push(1);const departed=checkpoint('plaza-departed',null,false,1);time+=1100;push(1);time+=100;pos=[1472,536];ids=Object.fromEntries(Object.keys(ids).map(n=>[n,nextId++]));push();const returned=checkpoint('plaza-returned-owned','returned-owned',true);
+  time+=100;push(1);const departed=checkpoint('plaza-departed',null,false,1);time+=1100;push(1);time+=100;pos=[1472,536];ids=Object.fromEntries(Object.keys(ids).map(n=>[n,nextId++]));perimeterId=nextId++;push();const returned=checkpoint('plaza-returned-owned','returned-owned',true);
   scene.gameplay=structuredClone(returned.scene.gameplay);state.pages[0].status='Result saved. Town is untimed; depart again whenever you’re ready.';
   state.api[0].at=arrived.at+10;state.api[0].responseAt=departed.at-10;
   const signed={sessionId:'fixture-arpg-1',slug:'arpg',nonce:'nonce-fixture-arpg-1',score:0,durationMs:1100,clientVersion:'1.0.0'};

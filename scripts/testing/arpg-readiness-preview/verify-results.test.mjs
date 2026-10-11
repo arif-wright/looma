@@ -24,7 +24,8 @@ function report(mode = 'execution') {
       { ...artObject('town_ground_plane_v1', -168, -161, 0, 0), x: 128, scaleX: 2, scaleY: 2, displayWidth: 2688, displayHeight: 1344 },
       artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620),
       { ...artObject('town_ruins_entrance_v1', 664, 684, 666 / 1536, 826 / 1024), x: 1728, scaleX: 110 / 780, scaleY: 110 / 780 }
-    ], ground: { legacyFloorCount: 0, largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672, filterMode: 0,
+    ], ground: { legacyFloorCount: 0, legacyWallCount: 0,
+      perimeter: [{ objectId: 100, depth: -160, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1, active: true, visible: true }], largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672, filterMode: 0,
       samples: Array.from({ length: 5 }, (_, index) => ({ worldX: 1472 + index * 64, worldY: 536 + index * 32, pixelX: 672 + index * 32, pixelY: 352 + index * 16, alpha: 255 })) } };
     const viewportGeometry = {
       canvas: { width: 358, height: 500 },
@@ -267,14 +268,14 @@ test('invalid alpha buffers fail closed', () => assert.throws(() => scanAlphaBou
 // Additive corruption gates for real-input exploration evidence. Each mutation
 // keeps cleanup copies coherent, rather than failing an unrelated snapshot check.
 const plazaMutations = {
-  'plaza settled checkpoint still holds movement key': o=>o.state.checkpoints[6].scene.gameplay.intent={x:1,y:0},
-  'plaza initial entrance opacity changed': o=>o.state.checkpoints[0].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
-  'plaza checkpoint reuses stale geometry': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe=structuredClone(o.state.checkpoints[5].scene.gameplay.plazaProbe),
-  'plaza probe precedes request': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe.requestedAt+=100,
-  'plaza missing explicit probe': o=>o.state.checkpoints[6].scene.gameplay.plazaProbe=null,
-  'plaza never exercises entrance cutaway on east approach': o=>o.state.checkpoints[14].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
-  'plaza opaque entrance at threshold': o=>o.state.checkpoints[16].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
-  'plaza entrance fails to restore on return': o=>o.state.checkpoints[18].scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
+  'plaza settled checkpoint still holds movement key': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.intent={x:1,y:0},
+  'plaza initial entrance opacity changed': o=>o.state.checkpoints.find(p=>p.label==='plaza-home').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
+  'plaza checkpoint reuses stale geometry': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe=structuredClone(o.state.checkpoints.find(p=>p.label==='rear-side-dash-blocked').scene.gameplay.plazaProbe),
+  'plaza probe precedes request': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe.requestedAt+=100,
+  'plaza missing explicit probe': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe=null,
+  'plaza never exercises entrance cutaway on east approach': o=>o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza opaque entrance at threshold': o=>o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza entrance fails to restore on return': o=>o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
   'plaza missing native checkpoint': o=>o.state.checkpoints.splice(6,1),
   'plaza missing movement trace': o=>o.state.plazaMotion=[],
   'plaza trace overflow': o=>o.state.plazaMotionOverflow=true,
@@ -282,33 +283,33 @@ const plazaMutations = {
   'plaza walk input never reaches real scene': o=>o.state.plazaMotion.forEach(t=>t.intent={x:0,y:0}),
   'plaza dash cooldown never activates': o=>o.state.plazaMotion.forEach(t=>t.dash.cd=0),
   'plaza dash wrong native direction': o=>o.state.plazaMotion.filter(t=>t.dash.cd>=600).forEach(t=>t.dash.lastDir={x:0,y:1}),
-  'plaza checkpoint without trace frame': o=>o.state.checkpoints[6].scene.gameplay.at+=.5,
-  'plaza premature expedition clock': o=>o.state.checkpoints[6].scene.gameplay.elapsed=1,
-  'plaza missing owned facade': o=>o.state.checkpoints[6].scene.gameplay.plaza.pop(),
-  'plaza duplicated owner id': o=>{const a=o.state.checkpoints[6].scene.gameplay.plaza;a[1].objectId=a[0].objectId;},
-  'plaza wrong facade pivot': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].originX=.5,
-  'plaza wrong facade contact': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].x+=1,
-  'plaza facade nonuniform scaling': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].scaleX=.49,
-  'plaza translucent solid foundation': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].alpha=.28,
-  'plaza opaque cutaway hides hero': o=>o.state.checkpoints[6].scene.gameplay.plaza[2].alpha=1,
-  'plaza cutaway not restored': o=>o.state.checkpoints[7].scene.gameplay.plaza[2].alpha=.28,
-  'plaza lifted above original depth': o=>o.state.checkpoints[6].scene.gameplay.plaza[2].depth=5000,
-  'plaza split foundation upper depths': o=>o.state.checkpoints[6].scene.gameplay.plaza[1].depth-=1,
-  'plaza hidden hero scale change': o=>o.state.checkpoints[6].scene.gameplay.townArt.hero.scaleX=.8,
-  'plaza zoom down to fit architecture': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.camera.zoom-=.01,
-  'plaza tiny hero alpha hull': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroVisible.screenBounds.height=5,
-  'plaza missing source-alpha visibility': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility=null,
-  'plaza foreground completely obscures hero': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility.readable=0,
-  'plaza foreground overly dims hero': o=>o.state.checkpoints[6].scene.gameplay.plazaVisibility.meanTransmission=.1,
-  'plaza hero behind HUD': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroVisible.screenBounds.y=30,
-  'plaza exploration camera does not follow': o=>o.state.checkpoints[6].scene.gameplay.viewportGeometry.heroGround.x=80,
-  'plaza east gate label clipped': o=>o.state.checkpoints[14].scene.gameplay.viewportGeometry.entranceLabel.x=-20,
-  'plaza south entrance under HUD': o=>o.state.checkpoints[15].scene.gameplay.viewportGeometry.entrance.y=30,
-  'plaza missed actual gate approach': o=>o.state.checkpoints[16].scene.gameplay.x=1472,
-  'plaza departed facade leaked': o=>o.state.checkpoints[17].scene.gameplay.plaza=[{}],
-  'plaza returned old image ownership': o=>{o.state.checkpoints[18].scene.gameplay.plaza[0].objectId=o.state.checkpoints[0].scene.gameplay.plaza[0].objectId;},
-  'plaza returned cutaway not reset': o=>o.state.checkpoints[18].scene.gameplay.plaza[2].alpha=.28,
-  'plaza unbounded expedition': o=>o.state.checkpoints[17].scene.gameplay.durationLimit=90000,
+  'plaza checkpoint without trace frame': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.at+=.5,
+  'plaza premature expedition clock': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.elapsed=1,
+  'plaza missing owned facade': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza.pop(),
+  'plaza duplicated owner id': o=>{const a=o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza;a[1].objectId=a[0].objectId;},
+  'plaza wrong facade pivot': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].originX=.5,
+  'plaza wrong facade contact': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].x+=1,
+  'plaza facade nonuniform scaling': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].scaleX=.49,
+  'plaza translucent solid foundation': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].alpha=.28,
+  'plaza opaque cutaway hides hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[2].alpha=1,
+  'plaza cutaway not restored': o=>o.state.checkpoints.find(p=>p.label==='rear-front-restored').scene.gameplay.plaza[2].alpha=.28,
+  'plaza lifted above original depth': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[2].depth=5000,
+  'plaza split foundation upper depths': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].depth-=1,
+  'plaza hidden hero scale change': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.townArt.hero.scaleX=.8,
+  'plaza zoom down to fit architecture': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.camera.zoom-=.01,
+  'plaza tiny hero alpha hull': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroVisible.screenBounds.height=5,
+  'plaza missing source-alpha visibility': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility=null,
+  'plaza foreground completely obscures hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility.readable=0,
+  'plaza foreground overly dims hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility.meanTransmission=.1,
+  'plaza hero behind HUD': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroVisible.screenBounds.y=30,
+  'plaza exploration camera does not follow': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroGround.x=80,
+  'plaza east gate label clipped': o=>o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.viewportGeometry.entranceLabel.x=-20,
+  'plaza south entrance under HUD': o=>o.state.checkpoints.find(p=>p.label==='gate-south-approach').scene.gameplay.viewportGeometry.entrance.y=30,
+  'plaza missed actual gate approach': o=>o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.x=1472,
+  'plaza departed facade leaked': o=>o.state.checkpoints.find(p=>p.label==='plaza-departed').scene.gameplay.plaza=[{}],
+  'plaza returned old image ownership': o=>{o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.plaza[0].objectId=o.state.checkpoints.find(p=>p.label==='plaza-home').scene.gameplay.plaza[0].objectId;},
+  'plaza returned cutaway not reset': o=>o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.plaza[2].alpha=.28,
+  'plaza unbounded expedition': o=>o.state.checkpoints.find(p=>p.label==='plaza-departed').scene.gameplay.durationLimit=90000,
   'plaza extra settlement request': o=>o.state.api.push(structuredClone(o.state.api[1])),
   'plaza missing exploration screenshot observation': o=>o.state.visuals.pop(),
   'plaza capture from another checkpoint': o=>o.state.visuals[0].scene.gameplay.x+=1,
@@ -450,4 +451,38 @@ test('reject missing gate-arrival screenshot independently of existing17 images'
  const r=report(),result=r.suites[0].specs[13].tests[0].results[0];
  result.attachments=result.attachments.filter(a=>a.name!=='phone-plaza-gate-arrived');
  assert.throws(()=>verify(r,'execution'));
+});
+
+const perimeterPoint=(o,label='perimeter-wall-blocked')=>o.state.checkpoints.find(p=>p.label===label);
+const perimeterMutations={
+ 'missing required perimeter approach':o=>o.state.checkpoints=o.state.checkpoints.filter(p=>p.label!=='perimeter-ready'),
+ 'missing owned continuous rim':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter=[],
+ 'duplicate continuous rim':o=>{const a=perimeterPoint(o).scene.gameplay.townArt.ground.perimeter;a.push(structuredClone(a[0]));},
+ 'rim painted over feet':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter[0].depth=100,
+ 'rim scaled off blocked ring':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter[0].scaleY=.9,
+ 'legacy isolated wall sprites remain':o=>perimeterPoint(o).scene.gameplay.townArt.ground.legacyWallCount=1,
+ 'returned rim reuses destroyed owner':o=>perimeterPoint(o,'plaza-returned-owned').scene.gameplay.townArt.ground.perimeter[0].objectId=perimeterPoint(o,'plaza-home').scene.gameplay.townArt.ground.perimeter[0].objectId,
+ 'perimeter key never reaches scene':o=>{const a=perimeterPoint(o,'perimeter-ready'),b=perimeterPoint(o);o.state.plazaMotion.filter(t=>t.at>a.at&&t.at<=b.at).forEach(t=>t.intent={x:0,y:0});},
+ 'perimeter feet hidden':o=>perimeterPoint(o).scene.gameplay.plazaVisibility.readable=0,
+};
+for(const[name,mutate]of Object.entries(perimeterMutations))test(`reject ${name}`,()=>{
+ const r=report();coherentObservation(r,o=>{mutate(o);o.afterCleanup.plazaMotion=structuredClone(o.state.plazaMotion);},13);
+ assert.throws(()=>verify(r,'execution'));
+});
+for(const index of[12,13])test(`reject old19-capture report missing ${index===12?'desktop':'phone'} perimeter image`,()=>{
+ const r=report(),result=r.suites[0].specs[index].tests[0].results[0];
+ result.attachments=result.attachments.filter(a=>!a.name.endsWith('-perimeter-edge-feet'));
+ assert.throws(()=>verify(r,'execution'));
+});
+test('perimeter target retains original radius38 stop independently of visual drawing',()=>{
+ for(const x of[1360,1368,1376]){
+  const y=.5*x-706;
+  assert(roomAllows([x,y]));assert(!roomAllows([x,y-.01]));
+ }
+});
+test('perimeter approach and return stay inside original wall for all8px endpoint errors',()=>{
+ for(const a of[[1368,210],[1368,-8]])for(const ax of[-8,8])for(const ay of[-8,8])for(const bx of[-8,8])for(const by of[-8,8]){
+  const b=a[1]===210?[1368,-8]:[1368,210];
+  for(let n=0;n<=100;n++){const t=n/100;assert(roomAllows([(a[0]+ax)*(1-t)+(b[0]+bx)*t,(a[1]+ay)*(1-t)+(b[1]+by)*t]));}
+ }
 });

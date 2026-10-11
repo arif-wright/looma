@@ -84,13 +84,18 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
       sprite: (x: number, y: number, key: string) => object('sprite', x, y, key),
       ellipse: vi.fn((x: number, y: number) => object('ellipse', x, y)),
       text: (x: number, y: number) => object('text', x, y),
-      group: vi.fn()
+      group: vi.fn(),
+      graphics: () => { const g = object('graphics', 0, 0); g.fillStyle = vi.fn(() => g); g.fillPoints = vi.fn(() => g); return g; }
     };
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
-    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
+    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
     Object.assign(context, { createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })) });
-    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
     const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');
@@ -99,6 +104,8 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(foreground.length).toBeGreaterThan(0);
     if (area === 0) {
       expect(floors).toHaveLength(0);
+      expect(objects.filter(value => value.texture?.startsWith('wall_'))).toHaveLength(0);
+      expect(objects.find(value => value.kind === 'graphics').depth).toBe(-160);
       expect(ground[0].depth).toBe(-161);
       expect(ground[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
       expect(s.add.ellipse).toHaveBeenCalledTimes(1); // Only the hero shadow, no fake service/entrance markers.
@@ -219,10 +226,18 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     s.world.setTransform(s.playerId, { ...from, rot: 0 });
     s.world.setVelocity(s.playerId, { vx: 0, vy: 0, speed: 220 });
     s.world.setDash(s.playerId, { cd: 0, cdMax: 700, timer: 0, duration: 140, power: 230, lastDir: { ...direction } });
-    const context: any = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
+    const context: any = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
     Object.assign(context, { createPattern: () => ({}), createRadialGradient: () => ({ addColorStop: vi.fn() }) });
-    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
-    s.add = { image: () => {
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    s.add = { graphics: () => {
+      const graphic: any = { destroy: vi.fn() };
+      for (const name of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[name] = () => graphic;
+      return graphic;
+    }, image: () => {
       const image: any = { destroy: vi.fn() };
       for (const name of ['setName', 'setOrigin', 'setScale', 'setDepth', 'setAlpha']) image[name] = () => image;
       return image;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { FOOTPRINTS, CHECKPOINT_TARGETS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
 import { PLAZA_VIEWS, plazaScreenshot } from './screenshots.mjs';
 import { phoneGeometryIssues } from './phone-geometry.mjs';
-import { townGroundIssues } from './town-ground.mjs';
+import { townGroundIssues, townBoundaryIssues } from './town-ground.mjs';
 import { FLOW_CAP_MS, validSign, validComplete } from './protocol.mjs';
 const xy=g=>[g.x,g.y];
 const empty=(v,m)=>assert.deepEqual(v,[],m);
@@ -40,6 +40,7 @@ export function verifyPlaza(state, cleanup, index) {
     if(target)assert(Math.abs(g.x-target[0])<=8&&Math.abs(g.y-target[1])<=8,'Settled checkpoint stays inside the unchanged8px native waypoint target');
     assert.equal(p.starts,p.label==='plaza-returned-owned'?1:0);
     if(p.starts===0)assert.equal(g.elapsed,0,'Town exploration never starts the clock');
+    empty(townBoundaryIssues(g),'Flat perimeter remains below hero feet');
     empty(plazaObjectsIssues(g),'Exact owned facade transforms, solidity and actor scale');
     empty(plazaGeometryIssues(g,p.label.startsWith('gate-')),'Actual hero and approach features stay readable without zooming out');
     assert.equal(g.viewportGeometry.camera.zoom,zoom,'Exploration never reduces hero zoom to fit buildings');
@@ -54,6 +55,15 @@ export function verifyPlaza(state, cleanup, index) {
     const held=motion.filter(t=>t.at>a.at&&t.at<=b.at&&t.intent?.x===0&&t.intent?.y===-1);
     assert(held.length>=3&&held.at(-1).at-held[0].at>=400,'Walk blocking includes sustained observed native movement intent');
   }
+  // Independent original28x18 room math. Near this edge, the cardinal
+  // y−38 probe reaches logical row0 at y=0.5*x−706. No production helper or
+  // visual rim dimensions are consulted to establish the collision stop.
+  const ready=at(points,'perimeter-ready'), blocked=at(points,'perimeter-wall-blocked');
+  const edge=blocked.scene.gameplay, limit=.5*edge.x-706;
+  assert(blocked.at-ready.at>=600,'Perimeter walk is held long enough to hit the original wall');
+  assert(Math.abs(edge.x-1368)<=8&&edge.y>=limit-.5&&edge.y<=limit+16,'Native walk stops at original radius38 room boundary within one15fps step');
+  const held=motion.filter(t=>t.at>ready.at&&t.at<=blocked.at&&t.intent?.x===0&&t.intent?.y===-1);
+  assert(held.length>=3&&held.at(-1).at-held[0].at>=400,'Original wall blocking includes sustained observed native north intent');
   for(const attempt of DASH_ATTEMPTS){
     const before=at(points,attempt.before),after=at(points,attempt.after);
     const events=motion.flatMap((p,i)=>i&&p.at>=before.scene.gameplay.at&&p.at<=after.at&&p.dash?.cd>=200&&motion[i-1].dash?.cd<=50?[{p,prev:motion[i-1]}]:[]);
@@ -88,6 +98,7 @@ export function verifyPlaza(state, cleanup, index) {
   assert.equal(departed.starts,1);assert.equal(departed.scene.gameplay.durationLimit,FLOW_CAP_MS);
   const g=returned.scene.gameplay;assert.equal(g.returned,true);assert.equal(g.outcome,'retreated');assert(g.elapsed>0&&g.elapsed<FLOW_CAP_MS);
   empty(townGroundIssues(g),'Returned town has one owned ground and entrance');
+  assert.notEqual(g.townArt.ground.perimeter[0].objectId,home.townArt.ground.perimeter[0].objectId,'Return rebuilds the owned perimeter drawing');
   assert(g.plaza.every(o=>!home.plaza.some(old=>old.objectId===o.objectId)),'Return rebuilds every town-owned image rather than reusing destroyed instances');
   assert(g.plaza.every(o=>o.alpha===1),'All returned town cutaways reset');
   assert.equal(g.townArt.objects.find(o=>o.key==='town_ruins_entrance_v1').alpha,1,'Returned entrance opacity restores');
@@ -103,7 +114,7 @@ export function verifyPlaza(state, cleanup, index) {
     assert.deepEqual(visual.viewport,index===13?{width:390,height:844}:{width:1280,height:900});
     assert(visual.documentWidth>0&&visual.documentWidth<=visual.viewport.width);
     assert(visual.canvas.width>0&&visual.canvas.height>0&&visual.canvas.pixelWidth>0&&visual.canvas.pixelHeight>0&&visual.canvas.x>=-1&&visual.canvas.x+visual.canvas.width<=visual.viewport.width+1);
-    const label=['rear-front-ready','rear-back-cutaway','endcap-roof-cutaway','gate-east-approach','gate-arrived','plaza-returned-owned'][i],checkpoint=at(points,label);
+    const label=['rear-front-ready','rear-back-cutaway','perimeter-wall-blocked','endcap-roof-cutaway','gate-east-approach','gate-arrived','plaza-returned-owned'][i],checkpoint=at(points,label);
     assert.deepEqual(visual.scene.gameplay,checkpoint.scene.gameplay,'Screenshot records its actual movement checkpoint');
     assert.equal(visual.starts,checkpoint.starts);
   }

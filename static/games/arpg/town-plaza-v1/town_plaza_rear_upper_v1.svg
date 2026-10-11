@@ -1,38 +1,52 @@
 <?xml version='1.0' encoding='utf-8'?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" role="img" viewBox="-260 -268 328 272" width="656" height="544" preserveAspectRatio="xMidYMid meet">
-  <title>Original town plaza rear: unfinished flat vector prototype</title>
-  <desc>Original geometric facade built from P(u,v,z)=(64(u-v),32(u+v)-z). Decorative closed door, no interaction. Modest flat surfaces are unfinished painterly art. No raster input, cast shadow, floor diamond, or overhang.</desc>
+  <title>Original town plaza rear: material-treated exact-grid prototype</title>
+  <desc>Two original flat diffuse materials are mapped once inside unchanged upper-plane clips. No raster building input, repeat, geometry change or interactive door. Intermediate finish; hosted review remains separate.</desc>
+  <defs>
+    <clipPath id="rear-surface-short-wall-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="62.75,-40.77254249 1.25,-10.02254249 1.25,-95.22745751 62.75,-125.97745751" />
+    </clipPath>
+    <clipPath id="rear-surface-long-wall-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="-254.75,-136.77254249 -1.25,-10.02254249 -1.25,-95.22745751 -254.75,-221.97745751" />
+    </clipPath>
+    <clipPath id="rear-surface-near-gable-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="60.41864934,-127.60686716 4.53135841,-99.66322169 32.47500388,-134.59277852" />
+    </clipPath>
+    <clipPath id="rear-surface-roof-far-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="-192.43628791,-254.82060147 53.25594802,-131.9744835 32.43628791,-137.17939853 -213.25594802,-260.0255165" />
+    </clipPath>
+    <clipPath id="rear-surface-roof-near-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="-223.65518066,-262.43004785 30.05798925,-135.57346289 -0.34481934,-97.56995215 -254.05798925,-224.42653711" />
+    </clipPath>
+  </defs>
   <g id="rear-upper">
     <polygon id="rear-short-wall-plane" points="64,-40 0,-8 0,-96 64,-128" fill="#8d8269" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
     <polygon id="rear-long-wall-plane" points="-256,-136 0,-8 0,-96 -256,-224" fill="#b7a17b" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="rear-plaster-bay-0-0" points="-249.6,-136.8 -218.88,-123.04 -221.76,-142.88 -248,-154.6" fill="#c5b18b" />
-    <polygon id="rear-plaster-bay-0-1" points="-249.6,-193.8 -211.84,-176.52 -214.72,-194.36 -248,-209.6" fill="#c7b48d" />
-    <polygon id="rear-plaster-bay-0-2" points="-247.36,-158.68 -219.2,-146.2 -222.08,-161.04 -245.76,-171.48" fill="#a9906f" />
-    <polygon id="rear-plaster-bay-1-0" points="-198.4,-111.2 -167.68,-97.44 -170.56,-117.28 -196.8,-129" fill="#c5b18b" />
-    <polygon id="rear-plaster-bay-1-1" points="-198.4,-168.2 -160.64,-150.92 -163.52,-168.76 -196.8,-184" fill="#c7b48d" />
-    <polygon id="rear-plaster-bay-1-2" points="-196.16,-133.08 -168,-120.6 -170.88,-135.44 -194.56,-145.88" fill="#a9906f" />
-    <polygon id="rear-plaster-bay-2-0" points="-147.2,-85.6 -116.48,-71.84 -119.36,-91.68 -145.6,-103.4" fill="#c5b18b" />
-    <polygon id="rear-plaster-bay-2-1" points="-147.2,-142.6 -109.44,-125.32 -112.32,-143.16 -145.6,-158.4" fill="#c7b48d" />
-    <polygon id="rear-plaster-bay-2-2" points="-144.96,-107.48 -116.8,-95 -119.68,-109.84 -143.36,-120.28" fill="#a9906f" />
-    <polygon id="rear-plaster-bay-3-0" points="-96,-60 -65.28,-46.24 -68.16,-66.08 -94.4,-77.8" fill="#c5b18b" />
-    <polygon id="rear-plaster-bay-3-1" points="-96,-117 -58.24,-99.72 -61.12,-117.56 -94.4,-132.8" fill="#c7b48d" />
-    <polygon id="rear-plaster-bay-3-2" points="-93.76,-81.88 -65.6,-69.4 -68.48,-84.24 -92.16,-94.68" fill="#a9906f" />
-    <polygon id="rear-plaster-bay-4-0" points="-44.8,-34.4 -14.08,-20.64 -16.96,-40.48 -43.2,-52.2" fill="#c5b18b" />
-    <polygon id="rear-plaster-bay-4-1" points="-44.8,-91.4 -7.04,-74.12 -9.92,-91.96 -43.2,-107.2" fill="#c7b48d" />
-    <polygon id="rear-plaster-bay-4-2" points="-42.56,-56.28 -14.4,-43.8 -17.28,-58.64 -40.96,-69.08" fill="#a9906f" />
-    <polygon id="rear-bay-post-0" points="-254.72,-135.36 -253.12,-134.56 -253.12,-222.56 -254.72,-223.36" fill="#5d4836" />
-    <polygon id="rear-bay-post-1" points="-205.6,-110.8 -204,-110 -204,-198 -205.6,-198.8" fill="#5d4836" />
-    <polygon id="rear-bay-post-2" points="-154.4,-85.2 -152.8,-84.4 -152.8,-172.4 -154.4,-173.2" fill="#5d4836" />
-    <polygon id="rear-bay-post-3" points="-103.2,-59.6 -101.6,-58.8 -101.6,-146.8 -103.2,-147.6" fill="#5d4836" />
-    <polygon id="rear-bay-post-4" points="-52,-34 -50.4,-33.2 -50.4,-121.2 -52,-122" fill="#5d4836" />
-    <polygon id="rear-bay-post-5" points="-1.6,-8.8 0,-8 0,-96 -1.6,-96.8" fill="#5d4836" />
-    <polygon id="rear-long-timber-beam-0" points="-256,-137 0,-9 0,-12 -256,-140" fill="#624a35" />
-    <polygon id="rear-long-timber-beam-1" points="-256,-219 0,-91 0,-94 -256,-222" fill="#624a35" />
-    <polygon id="rear-long-timber-beam-2" points="-256,-180 0,-52 0,-55 -256,-183" fill="#624a35" />
+    <g id="rear-surface-short-wall-plane" clip-path="url(#rear-surface-short-wall-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0 0.20414673 112 -192)" />
+      <polygon points="62.75,-40.77254249 1.25,-10.02254249 1.25,-95.22745751 62.75,-125.97745751" fill="#263139" fill-opacity="0.24" />
+    </g>
+    <g id="rear-surface-long-wall-plane" clip-path="url(#rear-surface-long-wall-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 0 0.20414673 -256 -264)" />
+      <polygon points="-254.75,-136.77254249 -1.25,-10.02254249 -1.25,-95.22745751 -254.75,-221.97745751" fill="#263139" fill-opacity="0.04" />
+    </g>
+    <polygon id="rear-bay-post-0" points="-254.72,-135.36 -253.12,-134.56 -253.12,-222.56 -254.72,-223.36" fill="#493d31" />
+    <polygon id="rear-bay-post-1" points="-205.6,-110.8 -204,-110 -204,-198 -205.6,-198.8" fill="#493d31" />
+    <polygon id="rear-bay-post-2" points="-154.4,-85.2 -152.8,-84.4 -152.8,-172.4 -154.4,-173.2" fill="#493d31" />
+    <polygon id="rear-bay-post-3" points="-103.2,-59.6 -101.6,-58.8 -101.6,-146.8 -103.2,-147.6" fill="#493d31" />
+    <polygon id="rear-bay-post-4" points="-52,-34 -50.4,-33.2 -50.4,-121.2 -52,-122" fill="#493d31" />
+    <polygon id="rear-bay-post-5" points="-1.6,-8.8 0,-8 0,-96 -1.6,-96.8" fill="#493d31" />
+    <polygon id="rear-long-timber-beam-0" points="-256,-137 0,-9 0,-12 -256,-140" fill="#51402f" />
+    <polygon id="rear-long-timber-beam-1" points="-256,-219 0,-91 0,-94 -256,-222" fill="#51402f" />
+    <polygon id="rear-long-timber-beam-2" points="-256,-180 0,-52 0,-55 -256,-183" fill="#51402f" />
+    <polygon id="rear-inboard-eave-shade" points="-254.72,-217.36 -1.28,-90.64 -1.28,-91.64 -254.72,-218.36" fill="#594a36" />
+    <polygon id="rear-post-inboard-wear-1" points="-205.344,-171.672 -204.896,-171.448 -204.896,-186.448 -205.344,-186.672" fill="#80694d" />
+    <polygon id="rear-post-inboard-wear-3" points="-102.944,-120.472 -102.496,-120.248 -102.496,-135.248 -102.944,-135.472" fill="#80694d" />
+    <polygon id="rear-post-inboard-wear-5" points="-1.344,-69.672 -0.896,-69.448 -0.896,-84.448 -1.344,-84.672" fill="#80694d" />
     <polygon id="rear-short-upper-beam" points="64,-123 0,-91 0,-94 64,-126" fill="#594936" />
     <polygon id="rear-short-corner-post" points="2.24,-9.12 0,-8 0,-96 2.24,-97.12" fill="#594936" />
     <polygon id="rear-short-rear-post" points="64,-40 61.76,-38.88 61.76,-126.88 64,-128" fill="#594936" />
-    <polygon id="rear-upper-closed-door" points="-35.6,-25.8 -15.6,-15.8 -15.6,-51.8 -35.6,-61.8" fill="#654b35" />
+    <polygon id="rear-upper-closed-door" points="-35.6,-25.8 -15.6,-15.8 -15.6,-51.8 -35.6,-61.8" fill="#574230" />
     <polygon id="rear-upper-door-plank-1" points="-30.6,-23.3 -30.216,-23.108 -30.216,-59.108 -30.6,-59.3" fill="#3f342a" />
     <polygon id="rear-upper-door-plank-2" points="-25.6,-20.8 -25.216,-20.608 -25.216,-56.608 -25.6,-56.8" fill="#3f342a" />
     <polygon id="rear-upper-door-plank-3" points="-20.6,-18.3 -20.216,-18.108 -20.216,-54.108 -20.6,-54.3" fill="#3f342a" />
@@ -42,129 +56,401 @@
     <polygon id="rear-door-brace-0" points="-35.6,-28.8 -15.6,-18.8 -15.6,-20.3 -35.6,-30.3" fill="#473b2e" />
     <polygon id="rear-door-brace-1" points="-35.6,-52.8 -15.6,-42.8 -15.6,-44.3 -35.6,-54.3" fill="#473b2e" />
     <polygon id="rear-door-latch" points="-19.312,-30.656 -16.752,-29.376 -16.752,-31.376 -19.312,-32.656" fill="#b6a16b" />
-    <polygon id="rear-lower-window-0-frame" points="-242.56,-145.28 -218.24,-133.12 -218.24,-152.12 -242.56,-164.28" fill="#4d4538" />
-    <polygon id="rear-lower-window-0-left" points="-241.088,-146.544 -231.04,-141.52 -231.04,-156.52 -241.088,-161.544" fill="#66766d" />
-    <polygon id="rear-lower-window-0-right" points="-229.76,-140.88 -219.712,-135.856 -219.712,-150.856 -229.76,-155.88" fill="#7d8878" />
+    <polygon id="rear-door-wear-0" points="-34,-32 -33.552,-31.776 -33.552,-50.776 -34,-51" fill="#80694d" />
+    <polygon id="rear-door-wear-1" points="-29.712,-31.856 -29.264,-31.632 -29.264,-49.632 -29.712,-49.856" fill="#80694d" />
+    <polygon id="rear-door-wear-2" points="-25.424,-31.712 -24.976,-31.488 -24.976,-48.488 -25.424,-48.712" fill="#80694d" />
+    <polygon id="rear-door-wear-3" points="-21.136,-31.568 -20.688,-31.344 -20.688,-47.344 -21.136,-47.568" fill="#80694d" />
+    <polygon id="rear-door-jamb-inboard-wear" points="-36.688,-34.344 -36.24,-34.12 -36.24,-54.12 -36.688,-54.344" fill="#80694d" />
+    <polygon id="rear-lower-window-0-frame" points="-242.56,-145.28 -218.24,-133.12 -218.24,-152.12 -242.56,-164.28" fill="#393b36" />
+    <polygon id="rear-lower-window-0-left" points="-241.088,-146.544 -231.04,-141.52 -231.04,-156.52 -241.088,-161.544" fill="#44514c" />
+    <polygon id="rear-lower-window-0-right" points="-229.76,-140.88 -219.712,-135.856 -219.712,-150.856 -229.76,-155.88" fill="#56645b" />
+    <polygon id="rear-lower-window-0-inset-top" points="-241.088,-160.544 -219.712,-149.856 -219.712,-150.856 -241.088,-161.544" fill="#303a33" />
+    <polygon id="rear-lower-window-0-inset-side" points="-241.088,-146.544 -240.448,-146.224 -240.448,-161.224 -241.088,-161.544" fill="#303a33" />
     <polygon id="rear-lower-window-0-sill" points="-243.52,-143.76 -217.28,-130.64 -217.28,-132.64 -243.52,-145.76" fill="#635541" />
+    <polygon id="rear-lower-window-0-sill-wear" points="-239.68,-142.64 -231.36,-138.48 -231.36,-138.98 -239.68,-143.14" fill="#897157" />
     <polygon id="rear-lower-window-0-slat-0" points="-237.632,-145.816 -236.992,-145.496 -236.992,-158.496 -237.632,-158.816" fill="#56695f" />
     <polygon id="rear-lower-window-0-slat-1" points="-223.552,-138.776 -222.912,-138.456 -222.912,-151.456 -223.552,-151.776" fill="#56695f" />
-    <polygon id="rear-upper-window-0-frame" points="-242.56,-186.28 -218.24,-174.12 -218.24,-195.12 -242.56,-207.28" fill="#4d4538" />
-    <polygon id="rear-upper-window-0-left" points="-241.088,-187.544 -231.04,-182.52 -231.04,-199.52 -241.088,-204.544" fill="#66766d" />
-    <polygon id="rear-upper-window-0-right" points="-229.76,-181.88 -219.712,-176.856 -219.712,-193.856 -229.76,-198.88" fill="#7d8878" />
+    <polygon id="rear-upper-window-0-frame" points="-242.56,-186.28 -218.24,-174.12 -218.24,-195.12 -242.56,-207.28" fill="#393b36" />
+    <polygon id="rear-upper-window-0-left" points="-241.088,-187.544 -231.04,-182.52 -231.04,-199.52 -241.088,-204.544" fill="#44514c" />
+    <polygon id="rear-upper-window-0-right" points="-229.76,-181.88 -219.712,-176.856 -219.712,-193.856 -229.76,-198.88" fill="#56645b" />
+    <polygon id="rear-upper-window-0-inset-top" points="-241.088,-203.544 -219.712,-192.856 -219.712,-193.856 -241.088,-204.544" fill="#303a33" />
+    <polygon id="rear-upper-window-0-inset-side" points="-241.088,-187.544 -240.448,-187.224 -240.448,-204.224 -241.088,-204.544" fill="#303a33" />
     <polygon id="rear-upper-window-0-sill" points="-243.52,-184.76 -217.28,-171.64 -217.28,-173.64 -243.52,-186.76" fill="#635541" />
+    <polygon id="rear-upper-window-0-sill-wear" points="-239.68,-183.64 -231.36,-179.48 -231.36,-179.98 -239.68,-184.14" fill="#897157" />
     <polygon id="rear-upper-window-0-slat-0" points="-237.632,-186.816 -236.992,-186.496 -236.992,-201.496 -237.632,-201.816" fill="#56695f" />
     <polygon id="rear-upper-window-0-slat-1" points="-223.552,-179.776 -222.912,-179.456 -222.912,-194.456 -223.552,-194.776" fill="#56695f" />
-    <polygon id="rear-lower-window-1-frame" points="-191.36,-119.68 -167.04,-107.52 -167.04,-126.52 -191.36,-138.68" fill="#4d4538" />
-    <polygon id="rear-lower-window-1-left" points="-189.888,-120.944 -179.84,-115.92 -179.84,-130.92 -189.888,-135.944" fill="#66766d" />
-    <polygon id="rear-lower-window-1-right" points="-178.56,-115.28 -168.512,-110.256 -168.512,-125.256 -178.56,-130.28" fill="#7d8878" />
+    <polygon id="rear-lower-window-1-frame" points="-191.36,-119.68 -167.04,-107.52 -167.04,-126.52 -191.36,-138.68" fill="#393b36" />
+    <polygon id="rear-lower-window-1-left" points="-189.888,-120.944 -179.84,-115.92 -179.84,-130.92 -189.888,-135.944" fill="#44514c" />
+    <polygon id="rear-lower-window-1-right" points="-178.56,-115.28 -168.512,-110.256 -168.512,-125.256 -178.56,-130.28" fill="#56645b" />
+    <polygon id="rear-lower-window-1-inset-top" points="-189.888,-134.944 -168.512,-124.256 -168.512,-125.256 -189.888,-135.944" fill="#303a33" />
+    <polygon id="rear-lower-window-1-inset-side" points="-189.888,-120.944 -189.248,-120.624 -189.248,-135.624 -189.888,-135.944" fill="#303a33" />
     <polygon id="rear-lower-window-1-sill" points="-192.32,-118.16 -166.08,-105.04 -166.08,-107.04 -192.32,-120.16" fill="#635541" />
+    <polygon id="rear-lower-window-1-sill-wear" points="-188.48,-117.04 -180.16,-112.88 -180.16,-113.38 -188.48,-117.54" fill="#897157" />
     <polygon id="rear-lower-window-1-slat-0" points="-186.432,-120.216 -185.792,-119.896 -185.792,-132.896 -186.432,-133.216" fill="#56695f" />
     <polygon id="rear-lower-window-1-slat-1" points="-172.352,-113.176 -171.712,-112.856 -171.712,-125.856 -172.352,-126.176" fill="#56695f" />
-    <polygon id="rear-upper-window-1-frame" points="-191.36,-160.68 -167.04,-148.52 -167.04,-169.52 -191.36,-181.68" fill="#4d4538" />
-    <polygon id="rear-upper-window-1-left" points="-189.888,-161.944 -179.84,-156.92 -179.84,-173.92 -189.888,-178.944" fill="#66766d" />
-    <polygon id="rear-upper-window-1-right" points="-178.56,-156.28 -168.512,-151.256 -168.512,-168.256 -178.56,-173.28" fill="#7d8878" />
+    <polygon id="rear-upper-window-1-frame" points="-191.36,-160.68 -167.04,-148.52 -167.04,-169.52 -191.36,-181.68" fill="#393b36" />
+    <polygon id="rear-upper-window-1-left" points="-189.888,-161.944 -179.84,-156.92 -179.84,-173.92 -189.888,-178.944" fill="#44514c" />
+    <polygon id="rear-upper-window-1-right" points="-178.56,-156.28 -168.512,-151.256 -168.512,-168.256 -178.56,-173.28" fill="#56645b" />
+    <polygon id="rear-upper-window-1-inset-top" points="-189.888,-177.944 -168.512,-167.256 -168.512,-168.256 -189.888,-178.944" fill="#303a33" />
+    <polygon id="rear-upper-window-1-inset-side" points="-189.888,-161.944 -189.248,-161.624 -189.248,-178.624 -189.888,-178.944" fill="#303a33" />
     <polygon id="rear-upper-window-1-sill" points="-192.32,-159.16 -166.08,-146.04 -166.08,-148.04 -192.32,-161.16" fill="#635541" />
+    <polygon id="rear-upper-window-1-sill-wear" points="-188.48,-158.04 -180.16,-153.88 -180.16,-154.38 -188.48,-158.54" fill="#897157" />
     <polygon id="rear-upper-window-1-slat-0" points="-186.432,-161.216 -185.792,-160.896 -185.792,-175.896 -186.432,-176.216" fill="#56695f" />
     <polygon id="rear-upper-window-1-slat-1" points="-172.352,-154.176 -171.712,-153.856 -171.712,-168.856 -172.352,-169.176" fill="#56695f" />
-    <polygon id="rear-lower-window-2-frame" points="-140.16,-94.08 -115.84,-81.92 -115.84,-100.92 -140.16,-113.08" fill="#4d4538" />
-    <polygon id="rear-lower-window-2-left" points="-138.688,-95.344 -128.64,-90.32 -128.64,-105.32 -138.688,-110.344" fill="#66766d" />
-    <polygon id="rear-lower-window-2-right" points="-127.36,-89.68 -117.312,-84.656 -117.312,-99.656 -127.36,-104.68" fill="#7d8878" />
+    <polygon id="rear-lower-window-2-frame" points="-140.16,-94.08 -115.84,-81.92 -115.84,-100.92 -140.16,-113.08" fill="#393b36" />
+    <polygon id="rear-lower-window-2-left" points="-138.688,-95.344 -128.64,-90.32 -128.64,-105.32 -138.688,-110.344" fill="#44514c" />
+    <polygon id="rear-lower-window-2-right" points="-127.36,-89.68 -117.312,-84.656 -117.312,-99.656 -127.36,-104.68" fill="#56645b" />
+    <polygon id="rear-lower-window-2-inset-top" points="-138.688,-109.344 -117.312,-98.656 -117.312,-99.656 -138.688,-110.344" fill="#303a33" />
+    <polygon id="rear-lower-window-2-inset-side" points="-138.688,-95.344 -138.048,-95.024 -138.048,-110.024 -138.688,-110.344" fill="#303a33" />
     <polygon id="rear-lower-window-2-sill" points="-141.12,-92.56 -114.88,-79.44 -114.88,-81.44 -141.12,-94.56" fill="#635541" />
+    <polygon id="rear-lower-window-2-sill-wear" points="-137.28,-91.44 -128.96,-87.28 -128.96,-87.78 -137.28,-91.94" fill="#897157" />
     <polygon id="rear-lower-window-2-slat-0" points="-135.232,-94.616 -134.592,-94.296 -134.592,-107.296 -135.232,-107.616" fill="#56695f" />
     <polygon id="rear-lower-window-2-slat-1" points="-121.152,-87.576 -120.512,-87.256 -120.512,-100.256 -121.152,-100.576" fill="#56695f" />
-    <polygon id="rear-upper-window-2-frame" points="-140.16,-135.08 -115.84,-122.92 -115.84,-143.92 -140.16,-156.08" fill="#4d4538" />
-    <polygon id="rear-upper-window-2-left" points="-138.688,-136.344 -128.64,-131.32 -128.64,-148.32 -138.688,-153.344" fill="#66766d" />
-    <polygon id="rear-upper-window-2-right" points="-127.36,-130.68 -117.312,-125.656 -117.312,-142.656 -127.36,-147.68" fill="#7d8878" />
+    <polygon id="rear-upper-window-2-frame" points="-140.16,-135.08 -115.84,-122.92 -115.84,-143.92 -140.16,-156.08" fill="#393b36" />
+    <polygon id="rear-upper-window-2-left" points="-138.688,-136.344 -128.64,-131.32 -128.64,-148.32 -138.688,-153.344" fill="#44514c" />
+    <polygon id="rear-upper-window-2-right" points="-127.36,-130.68 -117.312,-125.656 -117.312,-142.656 -127.36,-147.68" fill="#56645b" />
+    <polygon id="rear-upper-window-2-inset-top" points="-138.688,-152.344 -117.312,-141.656 -117.312,-142.656 -138.688,-153.344" fill="#303a33" />
+    <polygon id="rear-upper-window-2-inset-side" points="-138.688,-136.344 -138.048,-136.024 -138.048,-153.024 -138.688,-153.344" fill="#303a33" />
     <polygon id="rear-upper-window-2-sill" points="-141.12,-133.56 -114.88,-120.44 -114.88,-122.44 -141.12,-135.56" fill="#635541" />
+    <polygon id="rear-upper-window-2-sill-wear" points="-137.28,-132.44 -128.96,-128.28 -128.96,-128.78 -137.28,-132.94" fill="#897157" />
     <polygon id="rear-upper-window-2-slat-0" points="-135.232,-135.616 -134.592,-135.296 -134.592,-150.296 -135.232,-150.616" fill="#56695f" />
     <polygon id="rear-upper-window-2-slat-1" points="-121.152,-128.576 -120.512,-128.256 -120.512,-143.256 -121.152,-143.576" fill="#56695f" />
-    <polygon id="rear-lower-window-3-frame" points="-88.96,-68.48 -64.64,-56.32 -64.64,-75.32 -88.96,-87.48" fill="#4d4538" />
-    <polygon id="rear-lower-window-3-left" points="-87.488,-69.744 -77.44,-64.72 -77.44,-79.72 -87.488,-84.744" fill="#66766d" />
-    <polygon id="rear-lower-window-3-right" points="-76.16,-64.08 -66.112,-59.056 -66.112,-74.056 -76.16,-79.08" fill="#7d8878" />
+    <polygon id="rear-lower-window-3-frame" points="-88.96,-68.48 -64.64,-56.32 -64.64,-75.32 -88.96,-87.48" fill="#393b36" />
+    <polygon id="rear-lower-window-3-left" points="-87.488,-69.744 -77.44,-64.72 -77.44,-79.72 -87.488,-84.744" fill="#44514c" />
+    <polygon id="rear-lower-window-3-right" points="-76.16,-64.08 -66.112,-59.056 -66.112,-74.056 -76.16,-79.08" fill="#56645b" />
+    <polygon id="rear-lower-window-3-inset-top" points="-87.488,-83.744 -66.112,-73.056 -66.112,-74.056 -87.488,-84.744" fill="#303a33" />
+    <polygon id="rear-lower-window-3-inset-side" points="-87.488,-69.744 -86.848,-69.424 -86.848,-84.424 -87.488,-84.744" fill="#303a33" />
     <polygon id="rear-lower-window-3-sill" points="-89.92,-66.96 -63.68,-53.84 -63.68,-55.84 -89.92,-68.96" fill="#635541" />
+    <polygon id="rear-lower-window-3-sill-wear" points="-86.08,-65.84 -77.76,-61.68 -77.76,-62.18 -86.08,-66.34" fill="#897157" />
     <polygon id="rear-lower-window-3-slat-0" points="-84.032,-69.016 -83.392,-68.696 -83.392,-81.696 -84.032,-82.016" fill="#56695f" />
     <polygon id="rear-lower-window-3-slat-1" points="-69.952,-61.976 -69.312,-61.656 -69.312,-74.656 -69.952,-74.976" fill="#56695f" />
-    <polygon id="rear-upper-window-3-frame" points="-88.96,-109.48 -64.64,-97.32 -64.64,-118.32 -88.96,-130.48" fill="#4d4538" />
-    <polygon id="rear-upper-window-3-left" points="-87.488,-110.744 -77.44,-105.72 -77.44,-122.72 -87.488,-127.744" fill="#66766d" />
-    <polygon id="rear-upper-window-3-right" points="-76.16,-105.08 -66.112,-100.056 -66.112,-117.056 -76.16,-122.08" fill="#7d8878" />
+    <polygon id="rear-upper-window-3-frame" points="-88.96,-109.48 -64.64,-97.32 -64.64,-118.32 -88.96,-130.48" fill="#393b36" />
+    <polygon id="rear-upper-window-3-left" points="-87.488,-110.744 -77.44,-105.72 -77.44,-122.72 -87.488,-127.744" fill="#44514c" />
+    <polygon id="rear-upper-window-3-right" points="-76.16,-105.08 -66.112,-100.056 -66.112,-117.056 -76.16,-122.08" fill="#56645b" />
+    <polygon id="rear-upper-window-3-inset-top" points="-87.488,-126.744 -66.112,-116.056 -66.112,-117.056 -87.488,-127.744" fill="#303a33" />
+    <polygon id="rear-upper-window-3-inset-side" points="-87.488,-110.744 -86.848,-110.424 -86.848,-127.424 -87.488,-127.744" fill="#303a33" />
     <polygon id="rear-upper-window-3-sill" points="-89.92,-107.96 -63.68,-94.84 -63.68,-96.84 -89.92,-109.96" fill="#635541" />
+    <polygon id="rear-upper-window-3-sill-wear" points="-86.08,-106.84 -77.76,-102.68 -77.76,-103.18 -86.08,-107.34" fill="#897157" />
     <polygon id="rear-upper-window-3-slat-0" points="-84.032,-110.016 -83.392,-109.696 -83.392,-124.696 -84.032,-125.016" fill="#56695f" />
     <polygon id="rear-upper-window-3-slat-1" points="-69.952,-102.976 -69.312,-102.656 -69.312,-117.656 -69.952,-117.976" fill="#56695f" />
-    <polygon id="rear-upper-window-4-frame" points="-37.76,-83.88 -13.44,-71.72 -13.44,-92.72 -37.76,-104.88" fill="#4d4538" />
-    <polygon id="rear-upper-window-4-left" points="-36.288,-85.144 -26.24,-80.12 -26.24,-97.12 -36.288,-102.144" fill="#66766d" />
-    <polygon id="rear-upper-window-4-right" points="-24.96,-79.48 -14.912,-74.456 -14.912,-91.456 -24.96,-96.48" fill="#7d8878" />
+    <polygon id="rear-upper-window-4-frame" points="-37.76,-83.88 -13.44,-71.72 -13.44,-92.72 -37.76,-104.88" fill="#393b36" />
+    <polygon id="rear-upper-window-4-left" points="-36.288,-85.144 -26.24,-80.12 -26.24,-97.12 -36.288,-102.144" fill="#44514c" />
+    <polygon id="rear-upper-window-4-right" points="-24.96,-79.48 -14.912,-74.456 -14.912,-91.456 -24.96,-96.48" fill="#97693c" />
+    <polygon id="rear-upper-window-4-inset-top" points="-36.288,-101.144 -14.912,-90.456 -14.912,-91.456 -36.288,-102.144" fill="#303a33" />
+    <polygon id="rear-upper-window-4-inset-side" points="-36.288,-85.144 -35.648,-84.824 -35.648,-101.824 -36.288,-102.144" fill="#303a33" />
     <polygon id="rear-upper-window-4-sill" points="-38.72,-82.36 -12.48,-69.24 -12.48,-71.24 -38.72,-84.36" fill="#635541" />
+    <polygon id="rear-upper-window-4-sill-wear" points="-34.88,-81.24 -26.56,-77.08 -26.56,-77.58 -34.88,-81.74" fill="#897157" />
     <polygon id="rear-upper-window-4-slat-0" points="-32.832,-84.416 -32.192,-84.096 -32.192,-99.096 -32.832,-99.416" fill="#56695f" />
     <polygon id="rear-upper-window-4-slat-1" points="-18.752,-77.376 -18.112,-77.056 -18.112,-92.056 -18.752,-92.376" fill="#56695f" />
     <polygon id="rear-short-window-frame" points="46.72,-51.36 21.76,-38.88 21.76,-59.88 46.72,-72.36" fill="#514938" />
     <polygon id="rear-short-window-left" points="44.8,-52.4 35.2,-47.6 35.2,-64.6 44.8,-69.4" fill="#697468" />
     <polygon id="rear-short-window-right" points="33.92,-46.96 23.68,-41.84 23.68,-58.84 33.92,-63.96" fill="#7b8271" />
     <polygon id="rear-near-gable-plane" points="64,-128 0,-96 32,-136" fill="#897650" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
+    <g id="rear-surface-near-gable-plane" clip-path="url(#rear-surface-near-gable-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0 0.20414673 112 -192)" />
+      <polygon points="60.41864934,-127.60686716 4.53135841,-99.66322169 32.47500388,-134.59277852" fill="#263139" fill-opacity="0.24" />
+    </g>
     <polygon id="rear-roof-far-plane" points="-192,-256 64,-128 32,-136 -224,-264" fill="#705342" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="rear-roof-far-tile-0-0" points="-191.872,-255.872 -176.64,-248.256 -192.128,-252.128 -207.36,-259.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-0-1" points="-175.872,-247.872 -160.64,-240.256 -176.128,-244.128 -191.36,-251.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-0-2" points="-159.872,-239.872 -144.64,-232.256 -160.128,-236.128 -175.36,-243.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-0-3" points="-143.872,-231.872 -128.64,-224.256 -144.128,-228.128 -159.36,-235.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-0-4" points="-127.872,-223.872 -112.64,-216.256 -128.128,-220.128 -143.36,-227.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-0-5" points="-111.872,-215.872 -96.64,-208.256 -112.128,-212.128 -127.36,-219.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-0-6" points="-95.872,-207.872 -80.64,-200.256 -96.128,-204.128 -111.36,-211.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-0-7" points="-79.872,-199.872 -64.64,-192.256 -80.128,-196.128 -95.36,-203.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-0-8" points="-63.872,-191.872 -48.64,-184.256 -64.128,-188.128 -79.36,-195.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-0-9" points="-47.872,-183.872 -32.64,-176.256 -48.128,-180.128 -63.36,-187.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-0-10" points="-31.872,-175.872 -16.64,-168.256 -32.128,-172.128 -47.36,-179.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-0-11" points="-15.872,-167.872 -0.64,-160.256 -16.128,-164.128 -31.36,-171.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-0-12" points="0.128,-159.872 15.36,-152.256 -0.128,-156.128 -15.36,-163.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-0-13" points="16.128,-151.872 31.36,-144.256 15.872,-148.128 0.64,-155.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-0-14" points="32.128,-143.872 47.36,-136.256 31.872,-140.128 16.64,-147.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-0-15" points="48.128,-135.872 63.36,-128.256 47.872,-132.128 32.64,-139.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-0" points="-207.872,-259.872 -192.64,-252.256 -208.128,-256.128 -223.36,-263.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-1-1" points="-191.872,-251.872 -176.64,-244.256 -192.128,-248.128 -207.36,-255.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-1-2" points="-175.872,-243.872 -160.64,-236.256 -176.128,-240.128 -191.36,-247.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-3" points="-159.872,-235.872 -144.64,-228.256 -160.128,-232.128 -175.36,-239.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-1-4" points="-143.872,-227.872 -128.64,-220.256 -144.128,-224.128 -159.36,-231.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-1-5" points="-127.872,-219.872 -112.64,-212.256 -128.128,-216.128 -143.36,-223.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-6" points="-111.872,-211.872 -96.64,-204.256 -112.128,-208.128 -127.36,-215.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-1-7" points="-95.872,-203.872 -80.64,-196.256 -96.128,-200.128 -111.36,-207.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-1-8" points="-79.872,-195.872 -64.64,-188.256 -80.128,-192.128 -95.36,-199.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-9" points="-63.872,-187.872 -48.64,-180.256 -64.128,-184.128 -79.36,-191.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-1-10" points="-47.872,-179.872 -32.64,-172.256 -48.128,-176.128 -63.36,-183.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-1-11" points="-31.872,-171.872 -16.64,-164.256 -32.128,-168.128 -47.36,-175.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-12" points="-15.872,-163.872 -0.64,-156.256 -16.128,-160.128 -31.36,-167.744" fill="#785b48" />
-    <polygon id="rear-roof-far-tile-1-13" points="0.128,-155.872 15.36,-148.256 -0.128,-152.128 -15.36,-159.744" fill="#826049" />
-    <polygon id="rear-roof-far-tile-1-14" points="16.128,-147.872 31.36,-140.256 15.872,-144.128 0.64,-151.744" fill="#6e5547" />
-    <polygon id="rear-roof-far-tile-1-15" points="32.128,-139.872 47.36,-132.256 31.872,-136.128 16.64,-143.744" fill="#785b48" />
+    <polygon id="rear-roof-far-tile-0-0" points="-191.872,-255.872 -176.64,-248.256 -192.128,-252.128 -207.36,-259.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-1" points="-175.872,-247.872 -160.64,-240.256 -176.128,-244.128 -191.36,-251.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-2" points="-159.872,-239.872 -144.64,-232.256 -160.128,-236.128 -175.36,-243.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-3" points="-143.872,-231.872 -128.64,-224.256 -144.128,-228.128 -159.36,-235.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-4" points="-127.872,-223.872 -112.64,-216.256 -128.128,-220.128 -143.36,-227.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-5" points="-111.872,-215.872 -96.64,-208.256 -112.128,-212.128 -127.36,-219.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-6" points="-95.872,-207.872 -80.64,-200.256 -96.128,-204.128 -111.36,-211.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-7" points="-79.872,-199.872 -64.64,-192.256 -80.128,-196.128 -95.36,-203.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-8" points="-63.872,-191.872 -48.64,-184.256 -64.128,-188.128 -79.36,-195.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-9" points="-47.872,-183.872 -32.64,-176.256 -48.128,-180.128 -63.36,-187.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-10" points="-31.872,-175.872 -16.64,-168.256 -32.128,-172.128 -47.36,-179.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-11" points="-15.872,-167.872 -0.64,-160.256 -16.128,-164.128 -31.36,-171.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-12" points="0.128,-159.872 15.36,-152.256 -0.128,-156.128 -15.36,-163.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-13" points="16.128,-151.872 31.36,-144.256 15.872,-148.128 0.64,-155.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-14" points="32.128,-143.872 47.36,-136.256 31.872,-140.128 16.64,-147.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-0-15" points="48.128,-135.872 63.36,-128.256 47.872,-132.128 32.64,-139.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-0" points="-207.872,-259.872 -192.64,-252.256 -208.128,-256.128 -223.36,-263.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-1" points="-191.872,-251.872 -176.64,-244.256 -192.128,-248.128 -207.36,-255.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-2" points="-175.872,-243.872 -160.64,-236.256 -176.128,-240.128 -191.36,-247.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-3" points="-159.872,-235.872 -144.64,-228.256 -160.128,-232.128 -175.36,-239.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-4" points="-143.872,-227.872 -128.64,-220.256 -144.128,-224.128 -159.36,-231.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-5" points="-127.872,-219.872 -112.64,-212.256 -128.128,-216.128 -143.36,-223.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-6" points="-111.872,-211.872 -96.64,-204.256 -112.128,-208.128 -127.36,-215.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-7" points="-95.872,-203.872 -80.64,-196.256 -96.128,-200.128 -111.36,-207.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-8" points="-79.872,-195.872 -64.64,-188.256 -80.128,-192.128 -95.36,-199.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-9" points="-63.872,-187.872 -48.64,-180.256 -64.128,-184.128 -79.36,-191.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-10" points="-47.872,-179.872 -32.64,-172.256 -48.128,-176.128 -63.36,-183.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-11" points="-31.872,-171.872 -16.64,-164.256 -32.128,-168.128 -47.36,-175.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-12" points="-15.872,-163.872 -0.64,-156.256 -16.128,-160.128 -31.36,-167.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-13" points="0.128,-155.872 15.36,-148.256 -0.128,-152.128 -15.36,-159.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-14" points="16.128,-147.872 31.36,-140.256 15.872,-144.128 0.64,-151.744" fill="#684e3e" />
+    <polygon id="rear-roof-far-tile-1-15" points="32.128,-139.872 47.36,-132.256 31.872,-136.128 16.64,-143.744" fill="#684e3e" />
+    <g id="rear-surface-roof-far-plane" clip-path="url(#rear-surface-roof-far-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/roof-clay-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 -0.20414673 -0.05103668 -160 -248)" />
+      <polygon points="-192.43628791,-254.82060147 53.25594802,-131.9744835 32.43628791,-137.17939853 -213.25594802,-260.0255165" fill="#263139" fill-opacity="0.24" />
+    </g>
+    <polygon id="rear-far-course-shadow-0" points="-199.488,-257.872 56.512,-129.872 56,-130 -200,-258" fill="#604332" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-course-wear-0" points="-199.296,-257.824 56.704,-129.824 56.512,-129.872 -199.488,-257.872" fill="#aa7854" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-1" points="-183.43314286,-251.52457143 -182.98514286,-251.30057143 -189.06514286,-252.75657143 -189.51314286,-252.98057143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-2" points="-174.86628571,-247.24114286 -174.41828571,-247.01714286 -180.49828571,-248.47314286 -180.94628571,-248.69714286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-3" points="-165.33942857,-242.47771429 -164.89142857,-242.25371429 -170.97142857,-243.70971429 -171.41942857,-243.93371429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-4" points="-155.81257143,-237.71428571 -155.36457143,-237.49028571 -161.44457143,-238.94628571 -161.89257143,-239.17028571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-5" points="-147.24571429,-233.43085714 -146.79771429,-233.20685714 -152.87771429,-234.66285714 -153.32571429,-234.88685714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-6" points="-137.71885714,-228.66742857 -137.27085714,-228.44342857 -143.35085714,-229.89942857 -143.79885714,-230.12342857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-7" points="-129.152,-224.384 -128.704,-224.16 -134.784,-225.616 -135.232,-225.84" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-8" points="-119.62514286,-219.62057143 -119.17714286,-219.39657143 -125.25714286,-220.85257143 -125.70514286,-221.07657143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-9" points="-110.09828571,-214.85714286 -109.65028571,-214.63314286 -115.73028571,-216.08914286 -116.17828571,-216.31314286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-10" points="-101.53142857,-210.57371429 -101.08342857,-210.34971429 -107.16342857,-211.80571429 -107.61142857,-212.02971429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-11" points="-92.00457143,-205.81028571 -91.55657143,-205.58628571 -97.63657143,-207.04228571 -98.08457143,-207.26628571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-12" points="-83.43771429,-201.52685714 -82.98971429,-201.30285714 -89.06971429,-202.75885714 -89.51771429,-202.98285714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-13" points="-73.91085714,-196.76342857 -73.46285714,-196.53942857 -79.54285714,-197.99542857 -79.99085714,-198.21942857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-14" points="-64.384,-192 -63.936,-191.776 -70.016,-193.232 -70.464,-193.456" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-15" points="-55.81714286,-187.71657143 -55.36914286,-187.49257143 -61.44914286,-188.94857143 -61.89714286,-189.17257143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-16" points="-46.29028571,-182.95314286 -45.84228571,-182.72914286 -51.92228571,-184.18514286 -52.37028571,-184.40914286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-17" points="-37.72342857,-178.66971429 -37.27542857,-178.44571429 -43.35542857,-179.90171429 -43.80342857,-180.12571429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-18" points="-28.19657143,-173.90628571 -27.74857143,-173.68228571 -33.82857143,-175.13828571 -34.27657143,-175.36228571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-19" points="-18.66971429,-169.14285714 -18.22171429,-168.91885714 -24.30171429,-170.37485714 -24.74971429,-170.59885714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-20" points="-10.10285714,-164.85942857 -9.65485714,-164.63542857 -15.73485714,-166.09142857 -16.18285714,-166.31542857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-21" points="-0.576,-160.096 -0.128,-159.872 -6.208,-161.328 -6.656,-161.552" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-22" points="7.99085714,-155.81257143 8.43885714,-155.58857143 2.35885714,-157.04457143 1.91085714,-157.26857143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-23" points="17.51771429,-151.04914286 17.96571429,-150.82514286 11.88571429,-152.28114286 11.43771429,-152.50514286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-24" points="27.04457143,-146.28571429 27.49257143,-146.06171429 21.41257143,-147.51771429 20.96457143,-147.74171429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-25" points="35.61142857,-142.00228571 36.05942857,-141.77828571 29.97942857,-143.23428571 29.53142857,-143.45828571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-26" points="45.13828571,-137.23885714 45.58628571,-137.01485714 39.50628571,-138.47085714 39.05828571,-138.69485714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-0-27" points="53.70514286,-132.95542857 54.15314286,-132.73142857 48.07314286,-134.18742857 47.62514286,-134.41142857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-course-shadow-1" points="-207.488,-259.872 48.512,-131.872 48,-132 -208,-260" fill="#604332" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-course-wear-1" points="-207.296,-259.824 48.704,-131.824 48.512,-131.872 -207.488,-259.872" fill="#aa7854" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-1" points="-187.24571429,-251.43085714 -186.79771429,-251.20685714 -192.87771429,-252.66285714 -193.32571429,-252.88685714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-2" points="-177.71885714,-246.66742857 -177.27085714,-246.44342857 -183.35085714,-247.89942857 -183.79885714,-248.12342857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-3" points="-169.152,-242.384 -168.704,-242.16 -174.784,-243.616 -175.232,-243.84" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-4" points="-159.62514286,-237.62057143 -159.17714286,-237.39657143 -165.25714286,-238.85257143 -165.70514286,-239.07657143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-5" points="-150.09828571,-232.85714286 -149.65028571,-232.63314286 -155.73028571,-234.08914286 -156.17828571,-234.31314286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-6" points="-141.53142857,-228.57371429 -141.08342857,-228.34971429 -147.16342857,-229.80571429 -147.61142857,-230.02971429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-7" points="-132.00457143,-223.81028571 -131.55657143,-223.58628571 -137.63657143,-225.04228571 -138.08457143,-225.26628571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-8" points="-123.43771429,-219.52685714 -122.98971429,-219.30285714 -129.06971429,-220.75885714 -129.51771429,-220.98285714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-9" points="-113.91085714,-214.76342857 -113.46285714,-214.53942857 -119.54285714,-215.99542857 -119.99085714,-216.21942857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-10" points="-104.384,-210 -103.936,-209.776 -110.016,-211.232 -110.464,-211.456" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-11" points="-95.81714286,-205.71657143 -95.36914286,-205.49257143 -101.44914286,-206.94857143 -101.89714286,-207.17257143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-12" points="-86.29028571,-200.95314286 -85.84228571,-200.72914286 -91.92228571,-202.18514286 -92.37028571,-202.40914286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-13" points="-77.72342857,-196.66971429 -77.27542857,-196.44571429 -83.35542857,-197.90171429 -83.80342857,-198.12571429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-14" points="-68.19657143,-191.90628571 -67.74857143,-191.68228571 -73.82857143,-193.13828571 -74.27657143,-193.36228571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-15" points="-58.66971429,-187.14285714 -58.22171429,-186.91885714 -64.30171429,-188.37485714 -64.74971429,-188.59885714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-16" points="-50.10285714,-182.85942857 -49.65485714,-182.63542857 -55.73485714,-184.09142857 -56.18285714,-184.31542857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-17" points="-40.576,-178.096 -40.128,-177.872 -46.208,-179.328 -46.656,-179.552" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-18" points="-32.00914286,-173.81257143 -31.56114286,-173.58857143 -37.64114286,-175.04457143 -38.08914286,-175.26857143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-19" points="-22.48228571,-169.04914286 -22.03428571,-168.82514286 -28.11428571,-170.28114286 -28.56228571,-170.50514286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-20" points="-12.95542857,-164.28571429 -12.50742857,-164.06171429 -18.58742857,-165.51771429 -19.03542857,-165.74171429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-21" points="-4.38857143,-160.00228571 -3.94057143,-159.77828571 -10.02057143,-161.23428571 -10.46857143,-161.45828571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-22" points="5.13828571,-155.23885714 5.58628571,-155.01485714 -0.49371429,-156.47085714 -0.94171429,-156.69485714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-23" points="13.70514286,-150.95542857 14.15314286,-150.73142857 8.07314286,-152.18742857 7.62514286,-152.41142857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-24" points="23.232,-146.192 23.68,-145.968 17.6,-147.424 17.152,-147.648" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-25" points="32.75885714,-141.42857143 33.20685714,-141.20457143 27.12685714,-142.66057143 26.67885714,-142.88457143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-26" points="41.32571429,-137.14514286 41.77371429,-136.92114286 35.69371429,-138.37714286 35.24571429,-138.60114286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-1-27" points="50.85257143,-132.38171429 51.30057143,-132.15771429 45.22057143,-133.61371429 44.77257143,-133.83771429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-course-shadow-2" points="-215.488,-261.872 40.512,-133.872 40,-134 -216,-262" fill="#604332" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-course-wear-2" points="-215.296,-261.824 40.704,-133.824 40.512,-133.872 -215.488,-261.872" fill="#aa7854" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-1" points="-199.24114286,-255.42857143 -198.79314286,-255.20457143 -204.87314286,-256.66057143 -205.32114286,-256.88457143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-2" points="-190.67428571,-251.14514286 -190.22628571,-250.92114286 -196.30628571,-252.37714286 -196.75428571,-252.60114286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-3" points="-181.14742857,-246.38171429 -180.69942857,-246.15771429 -186.77942857,-247.61371429 -187.22742857,-247.83771429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-4" points="-172.58057143,-242.09828571 -172.13257143,-241.87428571 -178.21257143,-243.33028571 -178.66057143,-243.55428571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-5" points="-163.05371429,-237.33485714 -162.60571429,-237.11085714 -168.68571429,-238.56685714 -169.13371429,-238.79085714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-6" points="-153.52685714,-232.57142857 -153.07885714,-232.34742857 -159.15885714,-233.80342857 -159.60685714,-234.02742857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-7" points="-144.96,-228.288 -144.512,-228.064 -150.592,-229.52 -151.04,-229.744" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-8" points="-135.43314286,-223.52457143 -134.98514286,-223.30057143 -141.06514286,-224.75657143 -141.51314286,-224.98057143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-9" points="-126.86628571,-219.24114286 -126.41828571,-219.01714286 -132.49828571,-220.47314286 -132.94628571,-220.69714286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-10" points="-117.33942857,-214.47771429 -116.89142857,-214.25371429 -122.97142857,-215.70971429 -123.41942857,-215.93371429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-11" points="-107.81257143,-209.71428571 -107.36457143,-209.49028571 -113.44457143,-210.94628571 -113.89257143,-211.17028571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-12" points="-99.24571429,-205.43085714 -98.79771429,-205.20685714 -104.87771429,-206.66285714 -105.32571429,-206.88685714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-13" points="-89.71885714,-200.66742857 -89.27085714,-200.44342857 -95.35085714,-201.89942857 -95.79885714,-202.12342857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-14" points="-81.152,-196.384 -80.704,-196.16 -86.784,-197.616 -87.232,-197.84" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-15" points="-71.62514286,-191.62057143 -71.17714286,-191.39657143 -77.25714286,-192.85257143 -77.70514286,-193.07657143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-16" points="-62.09828571,-186.85714286 -61.65028571,-186.63314286 -67.73028571,-188.08914286 -68.17828571,-188.31314286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-17" points="-53.53142857,-182.57371429 -53.08342857,-182.34971429 -59.16342857,-183.80571429 -59.61142857,-184.02971429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-18" points="-44.00457143,-177.81028571 -43.55657143,-177.58628571 -49.63657143,-179.04228571 -50.08457143,-179.26628571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-19" points="-35.43771429,-173.52685714 -34.98971429,-173.30285714 -41.06971429,-174.75885714 -41.51771429,-174.98285714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-20" points="-25.91085714,-168.76342857 -25.46285714,-168.53942857 -31.54285714,-169.99542857 -31.99085714,-170.21942857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-21" points="-16.384,-164 -15.936,-163.776 -22.016,-165.232 -22.464,-165.456" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-22" points="-7.81714286,-159.71657143 -7.36914286,-159.49257143 -13.44914286,-160.94857143 -13.89714286,-161.17257143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-23" points="1.70971429,-154.95314286 2.15771429,-154.72914286 -3.92228571,-156.18514286 -4.37028571,-156.40914286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-24" points="10.27657143,-150.66971429 10.72457143,-150.44571429 4.64457143,-151.90171429 4.19657143,-152.12571429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-25" points="19.80342857,-145.90628571 20.25142857,-145.68228571 14.17142857,-147.13828571 13.72342857,-147.36228571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-26" points="29.33028571,-141.14285714 29.77828571,-140.91885714 23.69828571,-142.37485714 23.25028571,-142.59885714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-2-27" points="37.89714286,-136.85942857 38.34514286,-136.63542857 32.26514286,-138.09142857 31.81714286,-138.31542857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-1" points="-203.05371429,-255.33485714 -202.60571429,-255.11085714 -208.68571429,-256.56685714 -209.13371429,-256.79085714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-2" points="-193.52685714,-250.57142857 -193.07885714,-250.34742857 -199.15885714,-251.80342857 -199.60685714,-252.02742857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-3" points="-184.96,-246.288 -184.512,-246.064 -190.592,-247.52 -191.04,-247.744" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-4" points="-175.43314286,-241.52457143 -174.98514286,-241.30057143 -181.06514286,-242.75657143 -181.51314286,-242.98057143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-5" points="-166.86628571,-237.24114286 -166.41828571,-237.01714286 -172.49828571,-238.47314286 -172.94628571,-238.69714286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-6" points="-157.33942857,-232.47771429 -156.89142857,-232.25371429 -162.97142857,-233.70971429 -163.41942857,-233.93371429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-7" points="-147.81257143,-227.71428571 -147.36457143,-227.49028571 -153.44457143,-228.94628571 -153.89257143,-229.17028571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-8" points="-139.24571429,-223.43085714 -138.79771429,-223.20685714 -144.87771429,-224.66285714 -145.32571429,-224.88685714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-9" points="-129.71885714,-218.66742857 -129.27085714,-218.44342857 -135.35085714,-219.89942857 -135.79885714,-220.12342857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-10" points="-121.152,-214.384 -120.704,-214.16 -126.784,-215.616 -127.232,-215.84" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-11" points="-111.62514286,-209.62057143 -111.17714286,-209.39657143 -117.25714286,-210.85257143 -117.70514286,-211.07657143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-12" points="-102.09828571,-204.85714286 -101.65028571,-204.63314286 -107.73028571,-206.08914286 -108.17828571,-206.31314286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-13" points="-93.53142857,-200.57371429 -93.08342857,-200.34971429 -99.16342857,-201.80571429 -99.61142857,-202.02971429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-14" points="-84.00457143,-195.81028571 -83.55657143,-195.58628571 -89.63657143,-197.04228571 -90.08457143,-197.26628571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-15" points="-75.43771429,-191.52685714 -74.98971429,-191.30285714 -81.06971429,-192.75885714 -81.51771429,-192.98285714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-16" points="-65.91085714,-186.76342857 -65.46285714,-186.53942857 -71.54285714,-187.99542857 -71.99085714,-188.21942857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-17" points="-56.384,-182 -55.936,-181.776 -62.016,-183.232 -62.464,-183.456" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-18" points="-47.81714286,-177.71657143 -47.36914286,-177.49257143 -53.44914286,-178.94857143 -53.89714286,-179.17257143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-19" points="-38.29028571,-172.95314286 -37.84228571,-172.72914286 -43.92228571,-174.18514286 -44.37028571,-174.40914286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-20" points="-29.72342857,-168.66971429 -29.27542857,-168.44571429 -35.35542857,-169.90171429 -35.80342857,-170.12571429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-21" points="-20.19657143,-163.90628571 -19.74857143,-163.68228571 -25.82857143,-165.13828571 -26.27657143,-165.36228571" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-22" points="-10.66971429,-159.14285714 -10.22171429,-158.91885714 -16.30171429,-160.37485714 -16.74971429,-160.59885714" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-23" points="-2.10285714,-154.85942857 -1.65485714,-154.63542857 -7.73485714,-156.09142857 -8.18285714,-156.31542857" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-24" points="7.424,-150.096 7.872,-149.872 1.792,-151.328 1.344,-151.552" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-25" points="15.99085714,-145.81257143 16.43885714,-145.58857143 10.35885714,-147.04457143 9.91085714,-147.26857143" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-26" points="25.51771429,-141.04914286 25.96571429,-140.82514286 19.88571429,-142.28114286 19.43771429,-142.50514286" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
+    <polygon id="rear-far-tile-seam-3-27" points="35.04457143,-136.28571429 35.49257143,-136.06171429 29.41257143,-137.51771429 28.96457143,-137.74171429" fill="#684836" clip-path="url(#rear-surface-roof-far-plane-clip)" />
     <polygon id="rear-roof-near-plane" points="-224,-264 32,-136 0,-96 -256,-224" fill="#986b4c" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="rear-roof-near-tile-0-0" points="-223.872,-263.488 -208.64,-255.872 -224.128,-236.512 -239.36,-244.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-0-1" points="-207.872,-255.488 -192.64,-247.872 -208.128,-228.512 -223.36,-236.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-0-2" points="-191.872,-247.488 -176.64,-239.872 -192.128,-220.512 -207.36,-228.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-0-3" points="-175.872,-239.488 -160.64,-231.872 -176.128,-212.512 -191.36,-220.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-0-4" points="-159.872,-231.488 -144.64,-223.872 -160.128,-204.512 -175.36,-212.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-0-5" points="-143.872,-223.488 -128.64,-215.872 -144.128,-196.512 -159.36,-204.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-0-6" points="-127.872,-215.488 -112.64,-207.872 -128.128,-188.512 -143.36,-196.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-0-7" points="-111.872,-207.488 -96.64,-199.872 -112.128,-180.512 -127.36,-188.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-0-8" points="-95.872,-199.488 -80.64,-191.872 -96.128,-172.512 -111.36,-180.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-0-9" points="-79.872,-191.488 -64.64,-183.872 -80.128,-164.512 -95.36,-172.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-0-10" points="-63.872,-183.488 -48.64,-175.872 -64.128,-156.512 -79.36,-164.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-0-11" points="-47.872,-175.488 -32.64,-167.872 -48.128,-148.512 -63.36,-156.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-0-12" points="-31.872,-167.488 -16.64,-159.872 -32.128,-140.512 -47.36,-148.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-0-13" points="-15.872,-159.488 -0.64,-151.872 -16.128,-132.512 -31.36,-140.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-0-14" points="0.128,-151.488 15.36,-143.872 -0.128,-124.512 -15.36,-132.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-0-15" points="16.128,-143.488 31.36,-135.872 15.872,-116.512 0.64,-124.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-0" points="-239.872,-243.488 -224.64,-235.872 -240.128,-216.512 -255.36,-224.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-1-1" points="-223.872,-235.488 -208.64,-227.872 -224.128,-208.512 -239.36,-216.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-1-2" points="-207.872,-227.488 -192.64,-219.872 -208.128,-200.512 -223.36,-208.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-3" points="-191.872,-219.488 -176.64,-211.872 -192.128,-192.512 -207.36,-200.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-1-4" points="-175.872,-211.488 -160.64,-203.872 -176.128,-184.512 -191.36,-192.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-1-5" points="-159.872,-203.488 -144.64,-195.872 -160.128,-176.512 -175.36,-184.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-6" points="-143.872,-195.488 -128.64,-187.872 -144.128,-168.512 -159.36,-176.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-1-7" points="-127.872,-187.488 -112.64,-179.872 -128.128,-160.512 -143.36,-168.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-1-8" points="-111.872,-179.488 -96.64,-171.872 -112.128,-152.512 -127.36,-160.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-9" points="-95.872,-171.488 -80.64,-163.872 -96.128,-144.512 -111.36,-152.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-1-10" points="-79.872,-163.488 -64.64,-155.872 -80.128,-136.512 -95.36,-144.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-1-11" points="-63.872,-155.488 -48.64,-147.872 -64.128,-128.512 -79.36,-136.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-12" points="-47.872,-147.488 -32.64,-139.872 -48.128,-120.512 -63.36,-128.128" fill="#a47750" />
-    <polygon id="rear-roof-near-tile-1-13" points="-31.872,-139.488 -16.64,-131.872 -32.128,-112.512 -47.36,-120.128" fill="#ae8058" />
-    <polygon id="rear-roof-near-tile-1-14" points="-15.872,-131.488 -0.64,-123.872 -16.128,-104.512 -31.36,-112.128" fill="#926546" />
-    <polygon id="rear-roof-near-tile-1-15" points="0.128,-123.488 15.36,-115.872 -0.128,-96.512 -15.36,-104.128" fill="#a47750" />
+    <polygon id="rear-roof-near-tile-0-0" points="-223.872,-263.488 -208.64,-255.872 -224.128,-236.512 -239.36,-244.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-1" points="-207.872,-255.488 -192.64,-247.872 -208.128,-228.512 -223.36,-236.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-2" points="-191.872,-247.488 -176.64,-239.872 -192.128,-220.512 -207.36,-228.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-3" points="-175.872,-239.488 -160.64,-231.872 -176.128,-212.512 -191.36,-220.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-4" points="-159.872,-231.488 -144.64,-223.872 -160.128,-204.512 -175.36,-212.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-5" points="-143.872,-223.488 -128.64,-215.872 -144.128,-196.512 -159.36,-204.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-6" points="-127.872,-215.488 -112.64,-207.872 -128.128,-188.512 -143.36,-196.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-7" points="-111.872,-207.488 -96.64,-199.872 -112.128,-180.512 -127.36,-188.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-8" points="-95.872,-199.488 -80.64,-191.872 -96.128,-172.512 -111.36,-180.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-9" points="-79.872,-191.488 -64.64,-183.872 -80.128,-164.512 -95.36,-172.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-10" points="-63.872,-183.488 -48.64,-175.872 -64.128,-156.512 -79.36,-164.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-11" points="-47.872,-175.488 -32.64,-167.872 -48.128,-148.512 -63.36,-156.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-12" points="-31.872,-167.488 -16.64,-159.872 -32.128,-140.512 -47.36,-148.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-13" points="-15.872,-159.488 -0.64,-151.872 -16.128,-132.512 -31.36,-140.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-14" points="0.128,-151.488 15.36,-143.872 -0.128,-124.512 -15.36,-132.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-0-15" points="16.128,-143.488 31.36,-135.872 15.872,-116.512 0.64,-124.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-0" points="-239.872,-243.488 -224.64,-235.872 -240.128,-216.512 -255.36,-224.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-1" points="-223.872,-235.488 -208.64,-227.872 -224.128,-208.512 -239.36,-216.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-2" points="-207.872,-227.488 -192.64,-219.872 -208.128,-200.512 -223.36,-208.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-3" points="-191.872,-219.488 -176.64,-211.872 -192.128,-192.512 -207.36,-200.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-4" points="-175.872,-211.488 -160.64,-203.872 -176.128,-184.512 -191.36,-192.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-5" points="-159.872,-203.488 -144.64,-195.872 -160.128,-176.512 -175.36,-184.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-6" points="-143.872,-195.488 -128.64,-187.872 -144.128,-168.512 -159.36,-176.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-7" points="-127.872,-187.488 -112.64,-179.872 -128.128,-160.512 -143.36,-168.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-8" points="-111.872,-179.488 -96.64,-171.872 -112.128,-152.512 -127.36,-160.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-9" points="-95.872,-171.488 -80.64,-163.872 -96.128,-144.512 -111.36,-152.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-10" points="-79.872,-163.488 -64.64,-155.872 -80.128,-136.512 -95.36,-144.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-11" points="-63.872,-155.488 -48.64,-147.872 -64.128,-128.512 -79.36,-136.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-12" points="-47.872,-147.488 -32.64,-139.872 -48.128,-120.512 -63.36,-128.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-13" points="-31.872,-139.488 -16.64,-131.872 -32.128,-112.512 -47.36,-120.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-14" points="-15.872,-131.488 -0.64,-123.872 -16.128,-104.512 -31.36,-112.128" fill="#966243" />
+    <polygon id="rear-roof-near-tile-1-15" points="0.128,-123.488 15.36,-115.872 -0.128,-96.512 -15.36,-104.128" fill="#966243" />
+    <g id="rear-surface-roof-near-plane" clip-path="url(#rear-surface-roof-near-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/roof-clay-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 -0.20414673 0.25518341 -128 -384)" />
+      <polygon points="-223.65518066,-262.43004785 30.05798925,-135.57346289 -0.34481934,-97.56995215 -254.05798925,-224.42653711" fill="#493b30" fill-opacity="0.06" />
+    </g>
+    <polygon id="rear-near-course-shadow-0" points="-231.488,-254.64 24.512,-126.64 24,-126 -232,-254" fill="#604332" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-course-wear-0" points="-231.296,-254.88 24.704,-126.88 24.512,-126.64 -231.488,-254.64" fill="#aa7854" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-1" points="-215.43314286,-258.37257143 -214.98514286,-258.14857143 -221.06514286,-250.10057143 -221.51314286,-250.32457143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-2" points="-206.86628571,-254.08914286 -206.41828571,-253.86514286 -212.49828571,-245.81714286 -212.94628571,-246.04114286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-3" points="-197.33942857,-249.32571429 -196.89142857,-249.10171429 -202.97142857,-241.05371429 -203.41942857,-241.27771429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-4" points="-187.81257143,-244.56228571 -187.36457143,-244.33828571 -193.44457143,-236.29028571 -193.89257143,-236.51428571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-5" points="-179.24571429,-240.27885714 -178.79771429,-240.05485714 -184.87771429,-232.00685714 -185.32571429,-232.23085714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-6" points="-169.71885714,-235.51542857 -169.27085714,-235.29142857 -175.35085714,-227.24342857 -175.79885714,-227.46742857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-7" points="-161.152,-231.232 -160.704,-231.008 -166.784,-222.96 -167.232,-223.184" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-8" points="-151.62514286,-226.46857143 -151.17714286,-226.24457143 -157.25714286,-218.19657143 -157.70514286,-218.42057143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-9" points="-142.09828571,-221.70514286 -141.65028571,-221.48114286 -147.73028571,-213.43314286 -148.17828571,-213.65714286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-10" points="-133.53142857,-217.42171429 -133.08342857,-217.19771429 -139.16342857,-209.14971429 -139.61142857,-209.37371429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-11" points="-124.00457143,-212.65828571 -123.55657143,-212.43428571 -129.63657143,-204.38628571 -130.08457143,-204.61028571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-12" points="-115.43771429,-208.37485714 -114.98971429,-208.15085714 -121.06971429,-200.10285714 -121.51771429,-200.32685714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-13" points="-105.91085714,-203.61142857 -105.46285714,-203.38742857 -111.54285714,-195.33942857 -111.99085714,-195.56342857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-14" points="-96.384,-198.848 -95.936,-198.624 -102.016,-190.576 -102.464,-190.8" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-15" points="-87.81714286,-194.56457143 -87.36914286,-194.34057143 -93.44914286,-186.29257143 -93.89714286,-186.51657143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-16" points="-78.29028571,-189.80114286 -77.84228571,-189.57714286 -83.92228571,-181.52914286 -84.37028571,-181.75314286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-17" points="-69.72342857,-185.51771429 -69.27542857,-185.29371429 -75.35542857,-177.24571429 -75.80342857,-177.46971429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-18" points="-60.19657143,-180.75428571 -59.74857143,-180.53028571 -65.82857143,-172.48228571 -66.27657143,-172.70628571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-19" points="-50.66971429,-175.99085714 -50.22171429,-175.76685714 -56.30171429,-167.71885714 -56.74971429,-167.94285714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-20" points="-42.10285714,-171.70742857 -41.65485714,-171.48342857 -47.73485714,-163.43542857 -48.18285714,-163.65942857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-21" points="-32.576,-166.944 -32.128,-166.72 -38.208,-158.672 -38.656,-158.896" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-22" points="-24.00914286,-162.66057143 -23.56114286,-162.43657143 -29.64114286,-154.38857143 -30.08914286,-154.61257143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-23" points="-14.48228571,-157.89714286 -14.03428571,-157.67314286 -20.11428571,-149.62514286 -20.56228571,-149.84914286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-24" points="-4.95542857,-153.13371429 -4.50742857,-152.90971429 -10.58742857,-144.86171429 -11.03542857,-145.08571429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-25" points="3.61142857,-148.85028571 4.05942857,-148.62628571 -2.02057143,-140.57828571 -2.46857143,-140.80228571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-26" points="13.13828571,-144.08685714 13.58628571,-143.86285714 7.50628571,-135.81485714 7.05828571,-136.03885714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-0-27" points="21.70514286,-139.80342857 22.15314286,-139.57942857 16.07314286,-131.53142857 15.62514286,-131.75542857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-course-shadow-1" points="-239.488,-244.64 16.512,-116.64 16,-116 -240,-244" fill="#604332" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-course-wear-1" points="-239.296,-244.88 16.704,-116.88 16.512,-116.64 -239.488,-244.64" fill="#aa7854" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-1" points="-219.24571429,-246.27885714 -218.79771429,-246.05485714 -224.87771429,-238.00685714 -225.32571429,-238.23085714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-2" points="-209.71885714,-241.51542857 -209.27085714,-241.29142857 -215.35085714,-233.24342857 -215.79885714,-233.46742857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-3" points="-201.152,-237.232 -200.704,-237.008 -206.784,-228.96 -207.232,-229.184" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-4" points="-191.62514286,-232.46857143 -191.17714286,-232.24457143 -197.25714286,-224.19657143 -197.70514286,-224.42057143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-5" points="-182.09828571,-227.70514286 -181.65028571,-227.48114286 -187.73028571,-219.43314286 -188.17828571,-219.65714286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-6" points="-173.53142857,-223.42171429 -173.08342857,-223.19771429 -179.16342857,-215.14971429 -179.61142857,-215.37371429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-7" points="-164.00457143,-218.65828571 -163.55657143,-218.43428571 -169.63657143,-210.38628571 -170.08457143,-210.61028571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-8" points="-155.43771429,-214.37485714 -154.98971429,-214.15085714 -161.06971429,-206.10285714 -161.51771429,-206.32685714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-9" points="-145.91085714,-209.61142857 -145.46285714,-209.38742857 -151.54285714,-201.33942857 -151.99085714,-201.56342857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-10" points="-136.384,-204.848 -135.936,-204.624 -142.016,-196.576 -142.464,-196.8" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-11" points="-127.81714286,-200.56457143 -127.36914286,-200.34057143 -133.44914286,-192.29257143 -133.89714286,-192.51657143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-12" points="-118.29028571,-195.80114286 -117.84228571,-195.57714286 -123.92228571,-187.52914286 -124.37028571,-187.75314286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-13" points="-109.72342857,-191.51771429 -109.27542857,-191.29371429 -115.35542857,-183.24571429 -115.80342857,-183.46971429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-14" points="-100.19657143,-186.75428571 -99.74857143,-186.53028571 -105.82857143,-178.48228571 -106.27657143,-178.70628571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-15" points="-90.66971429,-181.99085714 -90.22171429,-181.76685714 -96.30171429,-173.71885714 -96.74971429,-173.94285714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-16" points="-82.10285714,-177.70742857 -81.65485714,-177.48342857 -87.73485714,-169.43542857 -88.18285714,-169.65942857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-17" points="-72.576,-172.944 -72.128,-172.72 -78.208,-164.672 -78.656,-164.896" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-18" points="-64.00914286,-168.66057143 -63.56114286,-168.43657143 -69.64114286,-160.38857143 -70.08914286,-160.61257143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-19" points="-54.48228571,-163.89714286 -54.03428571,-163.67314286 -60.11428571,-155.62514286 -60.56228571,-155.84914286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-20" points="-44.95542857,-159.13371429 -44.50742857,-158.90971429 -50.58742857,-150.86171429 -51.03542857,-151.08571429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-21" points="-36.38857143,-154.85028571 -35.94057143,-154.62628571 -42.02057143,-146.57828571 -42.46857143,-146.80228571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-22" points="-26.86171429,-150.08685714 -26.41371429,-149.86285714 -32.49371429,-141.81485714 -32.94171429,-142.03885714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-23" points="-18.29485714,-145.80342857 -17.84685714,-145.57942857 -23.92685714,-137.53142857 -24.37485714,-137.75542857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-24" points="-8.768,-141.04 -8.32,-140.816 -14.4,-132.768 -14.848,-132.992" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-25" points="0.75885714,-136.27657143 1.20685714,-136.05257143 -4.87314286,-128.00457143 -5.32114286,-128.22857143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-26" points="9.32571429,-131.99314286 9.77371429,-131.76914286 3.69371429,-123.72114286 3.24571429,-123.94514286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-1-27" points="18.85257143,-127.22971429 19.30057143,-127.00571429 13.22057143,-118.95771429 12.77257143,-119.18171429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-course-shadow-2" points="-247.488,-234.64 8.512,-106.64 8,-106 -248,-234" fill="#604332" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-course-wear-2" points="-247.296,-234.88 8.704,-106.88 8.512,-106.64 -247.488,-234.64" fill="#aa7854" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-1" points="-231.24114286,-238.27657143 -230.79314286,-238.05257143 -236.87314286,-230.00457143 -237.32114286,-230.22857143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-2" points="-222.67428571,-233.99314286 -222.22628571,-233.76914286 -228.30628571,-225.72114286 -228.75428571,-225.94514286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-3" points="-213.14742857,-229.22971429 -212.69942857,-229.00571429 -218.77942857,-220.95771429 -219.22742857,-221.18171429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-4" points="-204.58057143,-224.94628571 -204.13257143,-224.72228571 -210.21257143,-216.67428571 -210.66057143,-216.89828571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-5" points="-195.05371429,-220.18285714 -194.60571429,-219.95885714 -200.68571429,-211.91085714 -201.13371429,-212.13485714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-6" points="-185.52685714,-215.41942857 -185.07885714,-215.19542857 -191.15885714,-207.14742857 -191.60685714,-207.37142857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-7" points="-176.96,-211.136 -176.512,-210.912 -182.592,-202.864 -183.04,-203.088" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-8" points="-167.43314286,-206.37257143 -166.98514286,-206.14857143 -173.06514286,-198.10057143 -173.51314286,-198.32457143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-9" points="-158.86628571,-202.08914286 -158.41828571,-201.86514286 -164.49828571,-193.81714286 -164.94628571,-194.04114286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-10" points="-149.33942857,-197.32571429 -148.89142857,-197.10171429 -154.97142857,-189.05371429 -155.41942857,-189.27771429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-11" points="-139.81257143,-192.56228571 -139.36457143,-192.33828571 -145.44457143,-184.29028571 -145.89257143,-184.51428571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-12" points="-131.24571429,-188.27885714 -130.79771429,-188.05485714 -136.87771429,-180.00685714 -137.32571429,-180.23085714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-13" points="-121.71885714,-183.51542857 -121.27085714,-183.29142857 -127.35085714,-175.24342857 -127.79885714,-175.46742857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-14" points="-113.152,-179.232 -112.704,-179.008 -118.784,-170.96 -119.232,-171.184" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-15" points="-103.62514286,-174.46857143 -103.17714286,-174.24457143 -109.25714286,-166.19657143 -109.70514286,-166.42057143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-16" points="-94.09828571,-169.70514286 -93.65028571,-169.48114286 -99.73028571,-161.43314286 -100.17828571,-161.65714286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-17" points="-85.53142857,-165.42171429 -85.08342857,-165.19771429 -91.16342857,-157.14971429 -91.61142857,-157.37371429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-18" points="-76.00457143,-160.65828571 -75.55657143,-160.43428571 -81.63657143,-152.38628571 -82.08457143,-152.61028571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-19" points="-67.43771429,-156.37485714 -66.98971429,-156.15085714 -73.06971429,-148.10285714 -73.51771429,-148.32685714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-20" points="-57.91085714,-151.61142857 -57.46285714,-151.38742857 -63.54285714,-143.33942857 -63.99085714,-143.56342857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-21" points="-48.384,-146.848 -47.936,-146.624 -54.016,-138.576 -54.464,-138.8" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-22" points="-39.81714286,-142.56457143 -39.36914286,-142.34057143 -45.44914286,-134.29257143 -45.89714286,-134.51657143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-23" points="-30.29028571,-137.80114286 -29.84228571,-137.57714286 -35.92228571,-129.52914286 -36.37028571,-129.75314286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-24" points="-21.72342857,-133.51771429 -21.27542857,-133.29371429 -27.35542857,-125.24571429 -27.80342857,-125.46971429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-25" points="-12.19657143,-128.75428571 -11.74857143,-128.53028571 -17.82857143,-120.48228571 -18.27657143,-120.70628571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-26" points="-2.66971429,-123.99085714 -2.22171429,-123.76685714 -8.30171429,-115.71885714 -8.74971429,-115.94285714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-2-27" points="5.89714286,-119.70742857 6.34514286,-119.48342857 0.26514286,-111.43542857 -0.18285714,-111.65942857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-1" points="-235.05371429,-226.18285714 -234.60571429,-225.95885714 -240.68571429,-217.91085714 -241.13371429,-218.13485714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-2" points="-225.52685714,-221.41942857 -225.07885714,-221.19542857 -231.15885714,-213.14742857 -231.60685714,-213.37142857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-3" points="-216.96,-217.136 -216.512,-216.912 -222.592,-208.864 -223.04,-209.088" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-4" points="-207.43314286,-212.37257143 -206.98514286,-212.14857143 -213.06514286,-204.10057143 -213.51314286,-204.32457143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-5" points="-198.86628571,-208.08914286 -198.41828571,-207.86514286 -204.49828571,-199.81714286 -204.94628571,-200.04114286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-6" points="-189.33942857,-203.32571429 -188.89142857,-203.10171429 -194.97142857,-195.05371429 -195.41942857,-195.27771429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-7" points="-179.81257143,-198.56228571 -179.36457143,-198.33828571 -185.44457143,-190.29028571 -185.89257143,-190.51428571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-8" points="-171.24571429,-194.27885714 -170.79771429,-194.05485714 -176.87771429,-186.00685714 -177.32571429,-186.23085714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-9" points="-161.71885714,-189.51542857 -161.27085714,-189.29142857 -167.35085714,-181.24342857 -167.79885714,-181.46742857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-10" points="-153.152,-185.232 -152.704,-185.008 -158.784,-176.96 -159.232,-177.184" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-11" points="-143.62514286,-180.46857143 -143.17714286,-180.24457143 -149.25714286,-172.19657143 -149.70514286,-172.42057143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-12" points="-134.09828571,-175.70514286 -133.65028571,-175.48114286 -139.73028571,-167.43314286 -140.17828571,-167.65714286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-13" points="-125.53142857,-171.42171429 -125.08342857,-171.19771429 -131.16342857,-163.14971429 -131.61142857,-163.37371429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-14" points="-116.00457143,-166.65828571 -115.55657143,-166.43428571 -121.63657143,-158.38628571 -122.08457143,-158.61028571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-15" points="-107.43771429,-162.37485714 -106.98971429,-162.15085714 -113.06971429,-154.10285714 -113.51771429,-154.32685714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-16" points="-97.91085714,-157.61142857 -97.46285714,-157.38742857 -103.54285714,-149.33942857 -103.99085714,-149.56342857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-17" points="-88.384,-152.848 -87.936,-152.624 -94.016,-144.576 -94.464,-144.8" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-18" points="-79.81714286,-148.56457143 -79.36914286,-148.34057143 -85.44914286,-140.29257143 -85.89714286,-140.51657143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-19" points="-70.29028571,-143.80114286 -69.84228571,-143.57714286 -75.92228571,-135.52914286 -76.37028571,-135.75314286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-20" points="-61.72342857,-139.51771429 -61.27542857,-139.29371429 -67.35542857,-131.24571429 -67.80342857,-131.46971429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-21" points="-52.19657143,-134.75428571 -51.74857143,-134.53028571 -57.82857143,-126.48228571 -58.27657143,-126.70628571" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-22" points="-42.66971429,-129.99085714 -42.22171429,-129.76685714 -48.30171429,-121.71885714 -48.74971429,-121.94285714" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-23" points="-34.10285714,-125.70742857 -33.65485714,-125.48342857 -39.73485714,-117.43542857 -40.18285714,-117.65942857" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-24" points="-24.576,-120.944 -24.128,-120.72 -30.208,-112.672 -30.656,-112.896" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-25" points="-16.00914286,-116.66057143 -15.56114286,-116.43657143 -21.64114286,-108.38857143 -22.08914286,-108.61257143" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-26" points="-6.48228571,-111.89714286 -6.03428571,-111.67314286 -12.11428571,-103.62514286 -12.56228571,-103.84914286" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
+    <polygon id="rear-near-tile-seam-3-27" points="3.04457143,-107.13371429 3.49257143,-106.90971429 -2.58742857,-98.86171429 -3.03542857,-99.08571429" fill="#684836" clip-path="url(#rear-surface-roof-near-plane-clip)" />
   </g>
 </svg>

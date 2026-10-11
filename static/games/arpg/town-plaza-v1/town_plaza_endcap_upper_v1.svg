@@ -1,37 +1,51 @@
 <?xml version='1.0' encoding='utf-8'?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" role="img" viewBox="-68 -236 328 240" width="656" height="480" preserveAspectRatio="xMidYMid meet">
-  <title>Original town plaza endcap: unfinished flat vector prototype</title>
-  <desc>Original geometric facade built from P(u,v,z)=(64(u-v),32(u+v)-z). Decorative closed door, no interaction. Modest flat surfaces are unfinished painterly art. No raster input, cast shadow, floor diamond, or overhang.</desc>
+  <title>Original town plaza endcap: material-treated exact-grid prototype</title>
+  <desc>Two original flat diffuse materials are mapped once inside unchanged upper-plane clips. No raster building input, repeat, geometry change or interactive door. Intermediate finish; hosted review remains separate.</desc>
+  <defs>
+    <clipPath id="endcap-surface-short-wall-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="-62.75,-40.77254249 -1.25,-10.02254249 -1.25,-71.22745751 -62.75,-101.97745751" />
+    </clipPath>
+    <clipPath id="endcap-surface-long-wall-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="254.75,-136.77254249 1.25,-10.02254249 1.25,-71.22745751 254.75,-197.97745751" />
+    </clipPath>
+    <clipPath id="endcap-surface-near-gable-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="-58.70491503,-102.75 -6.33061888,-76.56285192 -32.51776695,-102.75" />
+    </clipPath>
+    <clipPath id="endcap-surface-roof-far-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="192.29508497,-230.75 -58.70491503,-105.25 -32.29508497,-105.25 218.70491503,-230.75" />
+    </clipPath>
+    <clipPath id="endcap-surface-roof-near-plane-clip" clipPathUnits="userSpaceOnUse">
+      <polygon points="223.75318369,-230.47904936 -29.88979371,-103.65756066 0.24681631,-73.52095064 253.88979371,-200.34243934" />
+    </clipPath>
+  </defs>
   <g id="endcap-upper">
     <polygon id="endcap-short-wall-plane" points="-64,-40 0,-8 0,-72 -64,-104" fill="#8d8269" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
     <polygon id="endcap-long-wall-plane" points="256,-136 0,-8 0,-72 256,-200" fill="#b1a081" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="endcap-plaster-bay-0-0" points="249.6,-136.8 218.88,-123.04 221.76,-142.88 248,-154.6" fill="#c5b18b" />
-    <polygon id="endcap-plaster-bay-0-1" points="249.6,-169.8 211.84,-152.52 214.72,-170.36 248,-185.6" fill="#c7b48d" />
-    <polygon id="endcap-plaster-bay-0-2" points="247.36,-158.68 219.2,-146.2 222.08,-161.04 245.76,-171.48" fill="#a9906f" />
-    <polygon id="endcap-plaster-bay-1-0" points="198.4,-111.2 167.68,-97.44 170.56,-117.28 196.8,-129" fill="#c5b18b" />
-    <polygon id="endcap-plaster-bay-1-1" points="198.4,-144.2 160.64,-126.92 163.52,-144.76 196.8,-160" fill="#c7b48d" />
-    <polygon id="endcap-plaster-bay-1-2" points="196.16,-133.08 168,-120.6 170.88,-135.44 194.56,-145.88" fill="#a9906f" />
-    <polygon id="endcap-plaster-bay-2-0" points="147.2,-85.6 116.48,-71.84 119.36,-91.68 145.6,-103.4" fill="#c5b18b" />
-    <polygon id="endcap-plaster-bay-2-1" points="147.2,-118.6 109.44,-101.32 112.32,-119.16 145.6,-134.4" fill="#c7b48d" />
-    <polygon id="endcap-plaster-bay-2-2" points="144.96,-107.48 116.8,-95 119.68,-109.84 143.36,-120.28" fill="#a9906f" />
-    <polygon id="endcap-plaster-bay-3-0" points="96,-60 65.28,-46.24 68.16,-66.08 94.4,-77.8" fill="#c5b18b" />
-    <polygon id="endcap-plaster-bay-3-1" points="96,-93 58.24,-75.72 61.12,-93.56 94.4,-108.8" fill="#c7b48d" />
-    <polygon id="endcap-plaster-bay-3-2" points="93.76,-81.88 65.6,-69.4 68.48,-84.24 92.16,-94.68" fill="#a9906f" />
-    <polygon id="endcap-plaster-bay-4-0" points="44.8,-34.4 14.08,-20.64 16.96,-40.48 43.2,-52.2" fill="#c5b18b" />
-    <polygon id="endcap-plaster-bay-4-1" points="44.8,-67.4 7.04,-50.12 9.92,-67.96 43.2,-83.2" fill="#c7b48d" />
-    <polygon id="endcap-plaster-bay-4-2" points="42.56,-56.28 14.4,-43.8 17.28,-58.64 40.96,-69.08" fill="#a9906f" />
-    <polygon id="endcap-bay-post-0" points="254.72,-135.36 253.12,-134.56 253.12,-198.56 254.72,-199.36" fill="#5d4836" />
-    <polygon id="endcap-bay-post-1" points="205.6,-110.8 204,-110 204,-174 205.6,-174.8" fill="#5d4836" />
-    <polygon id="endcap-bay-post-2" points="154.4,-85.2 152.8,-84.4 152.8,-148.4 154.4,-149.2" fill="#5d4836" />
-    <polygon id="endcap-bay-post-3" points="103.2,-59.6 101.6,-58.8 101.6,-122.8 103.2,-123.6" fill="#5d4836" />
-    <polygon id="endcap-bay-post-4" points="52,-34 50.4,-33.2 50.4,-97.2 52,-98" fill="#5d4836" />
-    <polygon id="endcap-bay-post-5" points="1.6,-8.8 0,-8 0,-72 1.6,-72.8" fill="#5d4836" />
-    <polygon id="endcap-long-timber-beam-0" points="256,-137 0,-9 0,-12 256,-140" fill="#624a35" />
-    <polygon id="endcap-long-timber-beam-1" points="256,-195 0,-67 0,-70 256,-198" fill="#624a35" />
+    <g id="endcap-surface-short-wall-plane" clip-path="url(#endcap-surface-short-wall-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 0 0.20414673 -179.2 -273.6)" />
+      <polygon points="-62.75,-40.77254249 -1.25,-10.02254249 -1.25,-71.22745751 -62.75,-101.97745751" fill="#263139" fill-opacity="0.24" />
+    </g>
+    <g id="endcap-surface-long-wall-plane" clip-path="url(#endcap-surface-long-wall-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0 0.20414673 256 -312)" />
+      <polygon points="254.75,-136.77254249 1.25,-10.02254249 1.25,-71.22745751 254.75,-197.97745751" fill="#263139" fill-opacity="0.04" />
+    </g>
+    <polygon id="endcap-bay-post-0" points="254.72,-135.36 253.12,-134.56 253.12,-198.56 254.72,-199.36" fill="#493d31" />
+    <polygon id="endcap-bay-post-1" points="205.6,-110.8 204,-110 204,-174 205.6,-174.8" fill="#493d31" />
+    <polygon id="endcap-bay-post-2" points="154.4,-85.2 152.8,-84.4 152.8,-148.4 154.4,-149.2" fill="#493d31" />
+    <polygon id="endcap-bay-post-3" points="103.2,-59.6 101.6,-58.8 101.6,-122.8 103.2,-123.6" fill="#493d31" />
+    <polygon id="endcap-bay-post-4" points="52,-34 50.4,-33.2 50.4,-97.2 52,-98" fill="#493d31" />
+    <polygon id="endcap-bay-post-5" points="1.6,-8.8 0,-8 0,-72 1.6,-72.8" fill="#493d31" />
+    <polygon id="endcap-long-timber-beam-0" points="256,-137 0,-9 0,-12 256,-140" fill="#51402f" />
+    <polygon id="endcap-long-timber-beam-1" points="256,-195 0,-67 0,-70 256,-198" fill="#51402f" />
+    <polygon id="endcap-inboard-eave-shade" points="254.72,-193.36 1.28,-66.64 1.28,-67.64 254.72,-194.36" fill="#594a36" />
+    <polygon id="endcap-post-inboard-wear-1" points="205.344,-147.672 204.896,-147.448 204.896,-162.448 205.344,-162.672" fill="#80694d" />
+    <polygon id="endcap-post-inboard-wear-3" points="102.944,-96.472 102.496,-96.248 102.496,-111.248 102.944,-111.472" fill="#80694d" />
+    <polygon id="endcap-post-inboard-wear-5" points="1.344,-45.672 0.896,-45.448 0.896,-60.448 1.344,-60.672" fill="#80694d" />
     <polygon id="endcap-short-upper-beam" points="-64,-99 0,-67 0,-70 -64,-102" fill="#594936" />
     <polygon id="endcap-short-corner-post" points="-2.24,-9.12 0,-8 0,-72 -2.24,-73.12" fill="#594936" />
     <polygon id="endcap-short-rear-post" points="-64,-40 -61.76,-38.88 -61.76,-102.88 -64,-104" fill="#594936" />
-    <polygon id="endcap-upper-closed-door" points="138,-77 118,-67 118,-103 138,-113" fill="#654b35" />
+    <polygon id="endcap-upper-closed-door" points="138,-77 118,-67 118,-103 138,-113" fill="#574230" />
     <polygon id="endcap-upper-door-plank-1" points="133,-74.5 132.616,-74.308 132.616,-110.308 133,-110.5" fill="#3f342a" />
     <polygon id="endcap-upper-door-plank-2" points="128,-72 127.616,-71.808 127.616,-107.808 128,-108" fill="#3f342a" />
     <polygon id="endcap-upper-door-plank-3" points="123,-69.5 122.616,-69.308 122.616,-105.308 123,-105.5" fill="#3f342a" />
@@ -41,32 +55,49 @@
     <polygon id="endcap-door-brace-0" points="138,-80 118,-70 118,-71.5 138,-81.5" fill="#473b2e" />
     <polygon id="endcap-door-brace-1" points="138,-104 118,-94 118,-95.5 138,-105.5" fill="#473b2e" />
     <polygon id="endcap-door-latch" points="121.712,-81.856 119.152,-80.576 119.152,-82.576 121.712,-83.856" fill="#b6a16b" />
-    <polygon id="endcap-lower-window-0-frame" points="242.56,-145.28 218.24,-133.12 218.24,-152.12 242.56,-164.28" fill="#4d4538" />
-    <polygon id="endcap-lower-window-0-left" points="241.088,-146.544 231.04,-141.52 231.04,-156.52 241.088,-161.544" fill="#66766d" />
-    <polygon id="endcap-lower-window-0-right" points="229.76,-140.88 219.712,-135.856 219.712,-150.856 229.76,-155.88" fill="#7d8878" />
+    <polygon id="endcap-door-wear-0" points="136.4,-83.2 135.952,-82.976 135.952,-101.976 136.4,-102.2" fill="#80694d" />
+    <polygon id="endcap-door-wear-1" points="132.112,-83.056 131.664,-82.832 131.664,-100.832 132.112,-101.056" fill="#80694d" />
+    <polygon id="endcap-door-wear-2" points="127.824,-82.912 127.376,-82.688 127.376,-99.688 127.824,-99.912" fill="#80694d" />
+    <polygon id="endcap-door-wear-3" points="123.536,-82.768 123.088,-82.544 123.088,-98.544 123.536,-98.768" fill="#80694d" />
+    <polygon id="endcap-door-jamb-inboard-wear" points="139.088,-85.544 138.64,-85.32 138.64,-105.32 139.088,-105.544" fill="#80694d" />
+    <polygon id="endcap-lower-window-0-frame" points="242.56,-145.28 218.24,-133.12 218.24,-152.12 242.56,-164.28" fill="#393b36" />
+    <polygon id="endcap-lower-window-0-left" points="241.088,-146.544 231.04,-141.52 231.04,-156.52 241.088,-161.544" fill="#44514c" />
+    <polygon id="endcap-lower-window-0-right" points="229.76,-140.88 219.712,-135.856 219.712,-150.856 229.76,-155.88" fill="#56645b" />
+    <polygon id="endcap-lower-window-0-inset-top" points="241.088,-160.544 219.712,-149.856 219.712,-150.856 241.088,-161.544" fill="#303a33" />
+    <polygon id="endcap-lower-window-0-inset-side" points="241.088,-146.544 240.448,-146.224 240.448,-161.224 241.088,-161.544" fill="#303a33" />
     <polygon id="endcap-lower-window-0-sill" points="243.52,-143.76 217.28,-130.64 217.28,-132.64 243.52,-145.76" fill="#635541" />
+    <polygon id="endcap-lower-window-0-sill-wear" points="239.68,-142.64 231.36,-138.48 231.36,-138.98 239.68,-143.14" fill="#897157" />
     <polygon id="endcap-lower-window-0-slat-0" points="237.632,-145.816 236.992,-145.496 236.992,-158.496 237.632,-158.816" fill="#56695f" />
     <polygon id="endcap-lower-window-0-slat-1" points="223.552,-138.776 222.912,-138.456 222.912,-151.456 223.552,-151.776" fill="#56695f" />
     <polygon id="endcap-upper-vent-0" points="233.92,-172.96 226.88,-169.44 226.88,-174.44 233.92,-177.96" fill="#716b56" />
-    <polygon id="endcap-lower-window-1-frame" points="191.36,-119.68 167.04,-107.52 167.04,-126.52 191.36,-138.68" fill="#4d4538" />
-    <polygon id="endcap-lower-window-1-left" points="189.888,-120.944 179.84,-115.92 179.84,-130.92 189.888,-135.944" fill="#66766d" />
-    <polygon id="endcap-lower-window-1-right" points="178.56,-115.28 168.512,-110.256 168.512,-125.256 178.56,-130.28" fill="#7d8878" />
+    <polygon id="endcap-lower-window-1-frame" points="191.36,-119.68 167.04,-107.52 167.04,-126.52 191.36,-138.68" fill="#393b36" />
+    <polygon id="endcap-lower-window-1-left" points="189.888,-120.944 179.84,-115.92 179.84,-130.92 189.888,-135.944" fill="#44514c" />
+    <polygon id="endcap-lower-window-1-right" points="178.56,-115.28 168.512,-110.256 168.512,-125.256 178.56,-130.28" fill="#97693c" />
+    <polygon id="endcap-lower-window-1-inset-top" points="189.888,-134.944 168.512,-124.256 168.512,-125.256 189.888,-135.944" fill="#303a33" />
+    <polygon id="endcap-lower-window-1-inset-side" points="189.888,-120.944 189.248,-120.624 189.248,-135.624 189.888,-135.944" fill="#303a33" />
     <polygon id="endcap-lower-window-1-sill" points="192.32,-118.16 166.08,-105.04 166.08,-107.04 192.32,-120.16" fill="#635541" />
+    <polygon id="endcap-lower-window-1-sill-wear" points="188.48,-117.04 180.16,-112.88 180.16,-113.38 188.48,-117.54" fill="#897157" />
     <polygon id="endcap-lower-window-1-slat-0" points="186.432,-120.216 185.792,-119.896 185.792,-132.896 186.432,-133.216" fill="#56695f" />
     <polygon id="endcap-lower-window-1-slat-1" points="172.352,-113.176 171.712,-112.856 171.712,-125.856 172.352,-126.176" fill="#56695f" />
     <polygon id="endcap-upper-vent-1" points="182.72,-147.36 175.68,-143.84 175.68,-148.84 182.72,-152.36" fill="#716b56" />
     <polygon id="endcap-upper-vent-2" points="131.52,-121.76 124.48,-118.24 124.48,-123.24 131.52,-126.76" fill="#716b56" />
-    <polygon id="endcap-lower-window-3-frame" points="88.96,-68.48 64.64,-56.32 64.64,-75.32 88.96,-87.48" fill="#4d4538" />
-    <polygon id="endcap-lower-window-3-left" points="87.488,-69.744 77.44,-64.72 77.44,-79.72 87.488,-84.744" fill="#66766d" />
-    <polygon id="endcap-lower-window-3-right" points="76.16,-64.08 66.112,-59.056 66.112,-74.056 76.16,-79.08" fill="#7d8878" />
+    <polygon id="endcap-lower-window-3-frame" points="88.96,-68.48 64.64,-56.32 64.64,-75.32 88.96,-87.48" fill="#393b36" />
+    <polygon id="endcap-lower-window-3-left" points="87.488,-69.744 77.44,-64.72 77.44,-79.72 87.488,-84.744" fill="#44514c" />
+    <polygon id="endcap-lower-window-3-right" points="76.16,-64.08 66.112,-59.056 66.112,-74.056 76.16,-79.08" fill="#56645b" />
+    <polygon id="endcap-lower-window-3-inset-top" points="87.488,-83.744 66.112,-73.056 66.112,-74.056 87.488,-84.744" fill="#303a33" />
+    <polygon id="endcap-lower-window-3-inset-side" points="87.488,-69.744 86.848,-69.424 86.848,-84.424 87.488,-84.744" fill="#303a33" />
     <polygon id="endcap-lower-window-3-sill" points="89.92,-66.96 63.68,-53.84 63.68,-55.84 89.92,-68.96" fill="#635541" />
+    <polygon id="endcap-lower-window-3-sill-wear" points="86.08,-65.84 77.76,-61.68 77.76,-62.18 86.08,-66.34" fill="#897157" />
     <polygon id="endcap-lower-window-3-slat-0" points="84.032,-69.016 83.392,-68.696 83.392,-81.696 84.032,-82.016" fill="#56695f" />
     <polygon id="endcap-lower-window-3-slat-1" points="69.952,-61.976 69.312,-61.656 69.312,-74.656 69.952,-74.976" fill="#56695f" />
     <polygon id="endcap-upper-vent-3" points="80.32,-96.16 73.28,-92.64 73.28,-97.64 80.32,-101.16" fill="#716b56" />
-    <polygon id="endcap-lower-window-4-frame" points="37.76,-42.88 13.44,-30.72 13.44,-49.72 37.76,-61.88" fill="#4d4538" />
-    <polygon id="endcap-lower-window-4-left" points="36.288,-44.144 26.24,-39.12 26.24,-54.12 36.288,-59.144" fill="#66766d" />
-    <polygon id="endcap-lower-window-4-right" points="24.96,-38.48 14.912,-33.456 14.912,-48.456 24.96,-53.48" fill="#7d8878" />
+    <polygon id="endcap-lower-window-4-frame" points="37.76,-42.88 13.44,-30.72 13.44,-49.72 37.76,-61.88" fill="#393b36" />
+    <polygon id="endcap-lower-window-4-left" points="36.288,-44.144 26.24,-39.12 26.24,-54.12 36.288,-59.144" fill="#44514c" />
+    <polygon id="endcap-lower-window-4-right" points="24.96,-38.48 14.912,-33.456 14.912,-48.456 24.96,-53.48" fill="#56645b" />
+    <polygon id="endcap-lower-window-4-inset-top" points="36.288,-58.144 14.912,-47.456 14.912,-48.456 36.288,-59.144" fill="#303a33" />
+    <polygon id="endcap-lower-window-4-inset-side" points="36.288,-44.144 35.648,-43.824 35.648,-58.824 36.288,-59.144" fill="#303a33" />
     <polygon id="endcap-lower-window-4-sill" points="38.72,-41.36 12.48,-28.24 12.48,-30.24 38.72,-43.36" fill="#635541" />
+    <polygon id="endcap-lower-window-4-sill-wear" points="34.88,-40.24 26.56,-36.08 26.56,-36.58 34.88,-40.74" fill="#897157" />
     <polygon id="endcap-lower-window-4-slat-0" points="32.832,-43.416 32.192,-43.096 32.192,-56.096 32.832,-56.416" fill="#56695f" />
     <polygon id="endcap-lower-window-4-slat-1" points="18.752,-36.376 18.112,-36.056 18.112,-49.056 18.752,-49.376" fill="#56695f" />
     <polygon id="endcap-upper-vent-4" points="29.12,-70.56 22.08,-67.04 22.08,-72.04 29.12,-75.56" fill="#716b56" />
@@ -74,71 +105,311 @@
     <polygon id="endcap-short-window-left" points="-44.8,-52.4 -35.2,-47.6 -35.2,-64.6 -44.8,-69.4" fill="#697468" />
     <polygon id="endcap-short-window-right" points="-33.92,-46.96 -23.68,-41.84 -23.68,-58.84 -33.92,-63.96" fill="#7b8271" />
     <polygon id="endcap-near-gable-plane" points="-64,-104 0,-72 -32,-104" fill="#897650" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
+    <g id="endcap-surface-near-gable-plane" clip-path="url(#endcap-surface-near-gable-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/plaster-limewash-diffuse-v1.png" transform="matrix(0.20414673 0.10207337 0 0.20414673 -179.2 -273.6)" />
+      <polygon points="-58.70491503,-102.75 -6.33061888,-76.56285192 -32.51776695,-102.75" fill="#263139" fill-opacity="0.24" />
+    </g>
     <polygon id="endcap-roof-far-plane" points="192,-232 -64,-104 -32,-104 224,-232" fill="#705342" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="endcap-roof-far-tile-0-0" points="191.872,-231.808 176.64,-224.192 192.128,-224.192 207.36,-231.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-0-1" points="175.872,-223.808 160.64,-216.192 176.128,-216.192 191.36,-223.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-0-2" points="159.872,-215.808 144.64,-208.192 160.128,-208.192 175.36,-215.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-0-3" points="143.872,-207.808 128.64,-200.192 144.128,-200.192 159.36,-207.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-0-4" points="127.872,-199.808 112.64,-192.192 128.128,-192.192 143.36,-199.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-0-5" points="111.872,-191.808 96.64,-184.192 112.128,-184.192 127.36,-191.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-0-6" points="95.872,-183.808 80.64,-176.192 96.128,-176.192 111.36,-183.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-0-7" points="79.872,-175.808 64.64,-168.192 80.128,-168.192 95.36,-175.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-0-8" points="63.872,-167.808 48.64,-160.192 64.128,-160.192 79.36,-167.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-0-9" points="47.872,-159.808 32.64,-152.192 48.128,-152.192 63.36,-159.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-0-10" points="31.872,-151.808 16.64,-144.192 32.128,-144.192 47.36,-151.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-0-11" points="15.872,-143.808 0.64,-136.192 16.128,-136.192 31.36,-143.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-0-12" points="-0.128,-135.808 -15.36,-128.192 0.128,-128.192 15.36,-135.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-0-13" points="-16.128,-127.808 -31.36,-120.192 -15.872,-120.192 -0.64,-127.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-0-14" points="-32.128,-119.808 -47.36,-112.192 -31.872,-112.192 -16.64,-119.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-0-15" points="-48.128,-111.808 -63.36,-104.192 -47.872,-104.192 -32.64,-111.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-0" points="207.872,-231.808 192.64,-224.192 208.128,-224.192 223.36,-231.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-1-1" points="191.872,-223.808 176.64,-216.192 192.128,-216.192 207.36,-223.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-1-2" points="175.872,-215.808 160.64,-208.192 176.128,-208.192 191.36,-215.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-3" points="159.872,-207.808 144.64,-200.192 160.128,-200.192 175.36,-207.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-1-4" points="143.872,-199.808 128.64,-192.192 144.128,-192.192 159.36,-199.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-1-5" points="127.872,-191.808 112.64,-184.192 128.128,-184.192 143.36,-191.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-6" points="111.872,-183.808 96.64,-176.192 112.128,-176.192 127.36,-183.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-1-7" points="95.872,-175.808 80.64,-168.192 96.128,-168.192 111.36,-175.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-1-8" points="79.872,-167.808 64.64,-160.192 80.128,-160.192 95.36,-167.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-9" points="63.872,-159.808 48.64,-152.192 64.128,-152.192 79.36,-159.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-1-10" points="47.872,-151.808 32.64,-144.192 48.128,-144.192 63.36,-151.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-1-11" points="31.872,-143.808 16.64,-136.192 32.128,-136.192 47.36,-143.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-12" points="15.872,-135.808 0.64,-128.192 16.128,-128.192 31.36,-135.808" fill="#785b48" />
-    <polygon id="endcap-roof-far-tile-1-13" points="-0.128,-127.808 -15.36,-120.192 0.128,-120.192 15.36,-127.808" fill="#826049" />
-    <polygon id="endcap-roof-far-tile-1-14" points="-16.128,-119.808 -31.36,-112.192 -15.872,-112.192 -0.64,-119.808" fill="#6e5547" />
-    <polygon id="endcap-roof-far-tile-1-15" points="-32.128,-111.808 -47.36,-104.192 -31.872,-104.192 -16.64,-111.808" fill="#785b48" />
+    <polygon id="endcap-roof-far-tile-0-0" points="191.872,-231.808 176.64,-224.192 192.128,-224.192 207.36,-231.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-1" points="175.872,-223.808 160.64,-216.192 176.128,-216.192 191.36,-223.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-2" points="159.872,-215.808 144.64,-208.192 160.128,-208.192 175.36,-215.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-3" points="143.872,-207.808 128.64,-200.192 144.128,-200.192 159.36,-207.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-4" points="127.872,-199.808 112.64,-192.192 128.128,-192.192 143.36,-199.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-5" points="111.872,-191.808 96.64,-184.192 112.128,-184.192 127.36,-191.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-6" points="95.872,-183.808 80.64,-176.192 96.128,-176.192 111.36,-183.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-7" points="79.872,-175.808 64.64,-168.192 80.128,-168.192 95.36,-175.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-8" points="63.872,-167.808 48.64,-160.192 64.128,-160.192 79.36,-167.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-9" points="47.872,-159.808 32.64,-152.192 48.128,-152.192 63.36,-159.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-10" points="31.872,-151.808 16.64,-144.192 32.128,-144.192 47.36,-151.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-11" points="15.872,-143.808 0.64,-136.192 16.128,-136.192 31.36,-143.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-12" points="-0.128,-135.808 -15.36,-128.192 0.128,-128.192 15.36,-135.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-13" points="-16.128,-127.808 -31.36,-120.192 -15.872,-120.192 -0.64,-127.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-14" points="-32.128,-119.808 -47.36,-112.192 -31.872,-112.192 -16.64,-119.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-0-15" points="-48.128,-111.808 -63.36,-104.192 -47.872,-104.192 -32.64,-111.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-0" points="207.872,-231.808 192.64,-224.192 208.128,-224.192 223.36,-231.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-1" points="191.872,-223.808 176.64,-216.192 192.128,-216.192 207.36,-223.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-2" points="175.872,-215.808 160.64,-208.192 176.128,-208.192 191.36,-215.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-3" points="159.872,-207.808 144.64,-200.192 160.128,-200.192 175.36,-207.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-4" points="143.872,-199.808 128.64,-192.192 144.128,-192.192 159.36,-199.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-5" points="127.872,-191.808 112.64,-184.192 128.128,-184.192 143.36,-191.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-6" points="111.872,-183.808 96.64,-176.192 112.128,-176.192 127.36,-183.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-7" points="95.872,-175.808 80.64,-168.192 96.128,-168.192 111.36,-175.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-8" points="79.872,-167.808 64.64,-160.192 80.128,-160.192 95.36,-167.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-9" points="63.872,-159.808 48.64,-152.192 64.128,-152.192 79.36,-159.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-10" points="47.872,-151.808 32.64,-144.192 48.128,-144.192 63.36,-151.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-11" points="31.872,-143.808 16.64,-136.192 32.128,-136.192 47.36,-143.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-12" points="15.872,-135.808 0.64,-128.192 16.128,-128.192 31.36,-135.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-13" points="-0.128,-127.808 -15.36,-120.192 0.128,-120.192 15.36,-127.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-14" points="-16.128,-119.808 -31.36,-112.192 -15.872,-112.192 -0.64,-119.808" fill="#684e3e" />
+    <polygon id="endcap-roof-far-tile-1-15" points="-32.128,-111.808 -47.36,-104.192 -31.872,-104.192 -16.64,-111.808" fill="#684e3e" />
+    <g id="endcap-surface-roof-far-plane" clip-path="url(#endcap-surface-roof-far-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/roof-clay-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0.20414673 0 112 -232)" />
+      <polygon points="192.29508497,-230.75 -58.70491503,-105.25 -32.29508497,-105.25 218.70491503,-230.75" fill="#263139" fill-opacity="0.24" />
+    </g>
+    <polygon id="endcap-far-course-shadow-0" points="199.488,-232 -56.512,-104 -56,-104 200,-232" fill="#604332" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-course-wear-0" points="199.296,-232 -56.704,-104 -56.512,-104 199.488,-232" fill="#aa7854" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-1" points="184.00914286,-227.62057143 183.56114286,-227.39657143 189.64114286,-227.26857143 190.08914286,-227.49257143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-2" points="174.48228571,-222.85714286 174.03428571,-222.63314286 180.11428571,-222.50514286 180.56228571,-222.72914286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-3" points="164.95542857,-218.09371429 164.50742857,-217.86971429 170.58742857,-217.74171429 171.03542857,-217.96571429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-4" points="156.38857143,-213.81028571 155.94057143,-213.58628571 162.02057143,-213.45828571 162.46857143,-213.68228571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-5" points="146.86171429,-209.04685714 146.41371429,-208.82285714 152.49371429,-208.69485714 152.94171429,-208.91885714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-6" points="138.29485714,-204.76342857 137.84685714,-204.53942857 143.92685714,-204.41142857 144.37485714,-204.63542857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-7" points="128.768,-200 128.32,-199.776 134.4,-199.648 134.848,-199.872" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-8" points="119.24114286,-195.23657143 118.79314286,-195.01257143 124.87314286,-194.88457143 125.32114286,-195.10857143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-9" points="110.67428571,-190.95314286 110.22628571,-190.72914286 116.30628571,-190.60114286 116.75428571,-190.82514286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-10" points="101.14742857,-186.18971429 100.69942857,-185.96571429 106.77942857,-185.83771429 107.22742857,-186.06171429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-11" points="92.58057143,-181.90628571 92.13257143,-181.68228571 98.21257143,-181.55428571 98.66057143,-181.77828571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-12" points="83.05371429,-177.14285714 82.60571429,-176.91885714 88.68571429,-176.79085714 89.13371429,-177.01485714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-13" points="73.52685714,-172.37942857 73.07885714,-172.15542857 79.15885714,-172.02742857 79.60685714,-172.25142857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-14" points="64.96,-168.096 64.512,-167.872 70.592,-167.744 71.04,-167.968" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-15" points="55.43314286,-163.33257143 54.98514286,-163.10857143 61.06514286,-162.98057143 61.51314286,-163.20457143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-16" points="46.86628571,-159.04914286 46.41828571,-158.82514286 52.49828571,-158.69714286 52.94628571,-158.92114286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-17" points="37.33942857,-154.28571429 36.89142857,-154.06171429 42.97142857,-153.93371429 43.41942857,-154.15771429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-18" points="27.81257143,-149.52228571 27.36457143,-149.29828571 33.44457143,-149.17028571 33.89257143,-149.39428571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-19" points="19.24571429,-145.23885714 18.79771429,-145.01485714 24.87771429,-144.88685714 25.32571429,-145.11085714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-20" points="9.71885714,-140.47542857 9.27085714,-140.25142857 15.35085714,-140.12342857 15.79885714,-140.34742857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-21" points="1.152,-136.192 0.704,-135.968 6.784,-135.84 7.232,-136.064" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-22" points="-8.37485714,-131.42857143 -8.82285714,-131.20457143 -2.74285714,-131.07657143 -2.29485714,-131.30057143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-23" points="-17.90171429,-126.66514286 -18.34971429,-126.44114286 -12.26971429,-126.31314286 -11.82171429,-126.53714286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-24" points="-26.46857143,-122.38171429 -26.91657143,-122.15771429 -20.83657143,-122.02971429 -20.38857143,-122.25371429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-25" points="-35.99542857,-117.61828571 -36.44342857,-117.39428571 -30.36342857,-117.26628571 -29.91542857,-117.49028571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-26" points="-44.56228571,-113.33485714 -45.01028571,-113.11085714 -38.93028571,-112.98285714 -38.48228571,-113.20685714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-0-27" points="-54.08914286,-108.57142857 -54.53714286,-108.34742857 -48.45714286,-108.21942857 -48.00914286,-108.44342857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-course-shadow-1" points="207.488,-232 -48.512,-104 -48,-104 208,-232" fill="#604332" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-course-wear-1" points="207.296,-232 -48.704,-104 -48.512,-104 207.488,-232" fill="#aa7854" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-1" points="186.86171429,-225.04685714 186.41371429,-224.82285714 192.49371429,-224.69485714 192.94171429,-224.91885714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-2" points="178.29485714,-220.76342857 177.84685714,-220.53942857 183.92685714,-220.41142857 184.37485714,-220.63542857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-3" points="168.768,-216 168.32,-215.776 174.4,-215.648 174.848,-215.872" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-4" points="159.24114286,-211.23657143 158.79314286,-211.01257143 164.87314286,-210.88457143 165.32114286,-211.10857143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-5" points="150.67428571,-206.95314286 150.22628571,-206.72914286 156.30628571,-206.60114286 156.75428571,-206.82514286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-6" points="141.14742857,-202.18971429 140.69942857,-201.96571429 146.77942857,-201.83771429 147.22742857,-202.06171429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-7" points="132.58057143,-197.90628571 132.13257143,-197.68228571 138.21257143,-197.55428571 138.66057143,-197.77828571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-8" points="123.05371429,-193.14285714 122.60571429,-192.91885714 128.68571429,-192.79085714 129.13371429,-193.01485714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-9" points="113.52685714,-188.37942857 113.07885714,-188.15542857 119.15885714,-188.02742857 119.60685714,-188.25142857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-10" points="104.96,-184.096 104.512,-183.872 110.592,-183.744 111.04,-183.968" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-11" points="95.43314286,-179.33257143 94.98514286,-179.10857143 101.06514286,-178.98057143 101.51314286,-179.20457143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-12" points="86.86628571,-175.04914286 86.41828571,-174.82514286 92.49828571,-174.69714286 92.94628571,-174.92114286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-13" points="77.33942857,-170.28571429 76.89142857,-170.06171429 82.97142857,-169.93371429 83.41942857,-170.15771429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-14" points="67.81257143,-165.52228571 67.36457143,-165.29828571 73.44457143,-165.17028571 73.89257143,-165.39428571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-15" points="59.24571429,-161.23885714 58.79771429,-161.01485714 64.87771429,-160.88685714 65.32571429,-161.11085714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-16" points="49.71885714,-156.47542857 49.27085714,-156.25142857 55.35085714,-156.12342857 55.79885714,-156.34742857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-17" points="41.152,-152.192 40.704,-151.968 46.784,-151.84 47.232,-152.064" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-18" points="31.62514286,-147.42857143 31.17714286,-147.20457143 37.25714286,-147.07657143 37.70514286,-147.30057143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-19" points="22.09828571,-142.66514286 21.65028571,-142.44114286 27.73028571,-142.31314286 28.17828571,-142.53714286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-20" points="13.53142857,-138.38171429 13.08342857,-138.15771429 19.16342857,-138.02971429 19.61142857,-138.25371429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-21" points="4.00457143,-133.61828571 3.55657143,-133.39428571 9.63657143,-133.26628571 10.08457143,-133.49028571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-22" points="-4.56228571,-129.33485714 -5.01028571,-129.11085714 1.06971429,-128.98285714 1.51771429,-129.20685714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-23" points="-14.08914286,-124.57142857 -14.53714286,-124.34742857 -8.45714286,-124.21942857 -8.00914286,-124.44342857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-24" points="-23.616,-119.808 -24.064,-119.584 -17.984,-119.456 -17.536,-119.68" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-25" points="-32.18285714,-115.52457143 -32.63085714,-115.30057143 -26.55085714,-115.17257143 -26.10285714,-115.39657143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-26" points="-41.70971429,-110.76114286 -42.15771429,-110.53714286 -36.07771429,-110.40914286 -35.62971429,-110.63314286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-1-27" points="-50.27657143,-106.47771429 -50.72457143,-106.25371429 -44.64457143,-106.12571429 -44.19657143,-106.34971429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-course-shadow-2" points="215.488,-232 -40.512,-104 -40,-104 216,-232" fill="#604332" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-course-wear-2" points="215.296,-232 -40.704,-104 -40.512,-104 215.488,-232" fill="#aa7854" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-1" points="199.81714286,-227.52457143 199.36914286,-227.30057143 205.44914286,-227.17257143 205.89714286,-227.39657143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-2" points="190.29028571,-222.76114286 189.84228571,-222.53714286 195.92228571,-222.40914286 196.37028571,-222.63314286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-3" points="181.72342857,-218.47771429 181.27542857,-218.25371429 187.35542857,-218.12571429 187.80342857,-218.34971429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-4" points="172.19657143,-213.71428571 171.74857143,-213.49028571 177.82857143,-213.36228571 178.27657143,-213.58628571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-5" points="162.66971429,-208.95085714 162.22171429,-208.72685714 168.30171429,-208.59885714 168.74971429,-208.82285714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-6" points="154.10285714,-204.66742857 153.65485714,-204.44342857 159.73485714,-204.31542857 160.18285714,-204.53942857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-7" points="144.576,-199.904 144.128,-199.68 150.208,-199.552 150.656,-199.776" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-8" points="136.00914286,-195.62057143 135.56114286,-195.39657143 141.64114286,-195.26857143 142.08914286,-195.49257143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-9" points="126.48228571,-190.85714286 126.03428571,-190.63314286 132.11428571,-190.50514286 132.56228571,-190.72914286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-10" points="116.95542857,-186.09371429 116.50742857,-185.86971429 122.58742857,-185.74171429 123.03542857,-185.96571429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-11" points="108.38857143,-181.81028571 107.94057143,-181.58628571 114.02057143,-181.45828571 114.46857143,-181.68228571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-12" points="98.86171429,-177.04685714 98.41371429,-176.82285714 104.49371429,-176.69485714 104.94171429,-176.91885714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-13" points="90.29485714,-172.76342857 89.84685714,-172.53942857 95.92685714,-172.41142857 96.37485714,-172.63542857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-14" points="80.768,-168 80.32,-167.776 86.4,-167.648 86.848,-167.872" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-15" points="71.24114286,-163.23657143 70.79314286,-163.01257143 76.87314286,-162.88457143 77.32114286,-163.10857143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-16" points="62.67428571,-158.95314286 62.22628571,-158.72914286 68.30628571,-158.60114286 68.75428571,-158.82514286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-17" points="53.14742857,-154.18971429 52.69942857,-153.96571429 58.77942857,-153.83771429 59.22742857,-154.06171429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-18" points="44.58057143,-149.90628571 44.13257143,-149.68228571 50.21257143,-149.55428571 50.66057143,-149.77828571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-19" points="35.05371429,-145.14285714 34.60571429,-144.91885714 40.68571429,-144.79085714 41.13371429,-145.01485714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-20" points="25.52685714,-140.37942857 25.07885714,-140.15542857 31.15885714,-140.02742857 31.60685714,-140.25142857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-21" points="16.96,-136.096 16.512,-135.872 22.592,-135.744 23.04,-135.968" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-22" points="7.43314286,-131.33257143 6.98514286,-131.10857143 13.06514286,-130.98057143 13.51314286,-131.20457143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-23" points="-1.13371429,-127.04914286 -1.58171429,-126.82514286 4.49828571,-126.69714286 4.94628571,-126.92114286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-24" points="-10.66057143,-122.28571429 -11.10857143,-122.06171429 -5.02857143,-121.93371429 -4.58057143,-122.15771429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-25" points="-20.18742857,-117.52228571 -20.63542857,-117.29828571 -14.55542857,-117.17028571 -14.10742857,-117.39428571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-26" points="-28.75428571,-113.23885714 -29.20228571,-113.01485714 -23.12228571,-112.88685714 -22.67428571,-113.11085714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-2-27" points="-38.28114286,-108.47542857 -38.72914286,-108.25142857 -32.64914286,-108.12342857 -32.20114286,-108.34742857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-1" points="202.66971429,-224.95085714 202.22171429,-224.72685714 208.30171429,-224.59885714 208.74971429,-224.82285714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-2" points="194.10285714,-220.66742857 193.65485714,-220.44342857 199.73485714,-220.31542857 200.18285714,-220.53942857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-3" points="184.576,-215.904 184.128,-215.68 190.208,-215.552 190.656,-215.776" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-4" points="176.00914286,-211.62057143 175.56114286,-211.39657143 181.64114286,-211.26857143 182.08914286,-211.49257143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-5" points="166.48228571,-206.85714286 166.03428571,-206.63314286 172.11428571,-206.50514286 172.56228571,-206.72914286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-6" points="156.95542857,-202.09371429 156.50742857,-201.86971429 162.58742857,-201.74171429 163.03542857,-201.96571429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-7" points="148.38857143,-197.81028571 147.94057143,-197.58628571 154.02057143,-197.45828571 154.46857143,-197.68228571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-8" points="138.86171429,-193.04685714 138.41371429,-192.82285714 144.49371429,-192.69485714 144.94171429,-192.91885714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-9" points="130.29485714,-188.76342857 129.84685714,-188.53942857 135.92685714,-188.41142857 136.37485714,-188.63542857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-10" points="120.768,-184 120.32,-183.776 126.4,-183.648 126.848,-183.872" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-11" points="111.24114286,-179.23657143 110.79314286,-179.01257143 116.87314286,-178.88457143 117.32114286,-179.10857143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-12" points="102.67428571,-174.95314286 102.22628571,-174.72914286 108.30628571,-174.60114286 108.75428571,-174.82514286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-13" points="93.14742857,-170.18971429 92.69942857,-169.96571429 98.77942857,-169.83771429 99.22742857,-170.06171429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-14" points="84.58057143,-165.90628571 84.13257143,-165.68228571 90.21257143,-165.55428571 90.66057143,-165.77828571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-15" points="75.05371429,-161.14285714 74.60571429,-160.91885714 80.68571429,-160.79085714 81.13371429,-161.01485714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-16" points="65.52685714,-156.37942857 65.07885714,-156.15542857 71.15885714,-156.02742857 71.60685714,-156.25142857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-17" points="56.96,-152.096 56.512,-151.872 62.592,-151.744 63.04,-151.968" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-18" points="47.43314286,-147.33257143 46.98514286,-147.10857143 53.06514286,-146.98057143 53.51314286,-147.20457143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-19" points="38.86628571,-143.04914286 38.41828571,-142.82514286 44.49828571,-142.69714286 44.94628571,-142.92114286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-20" points="29.33942857,-138.28571429 28.89142857,-138.06171429 34.97142857,-137.93371429 35.41942857,-138.15771429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-21" points="19.81257143,-133.52228571 19.36457143,-133.29828571 25.44457143,-133.17028571 25.89257143,-133.39428571" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-22" points="11.24571429,-129.23885714 10.79771429,-129.01485714 16.87771429,-128.88685714 17.32571429,-129.11085714" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-23" points="1.71885714,-124.47542857 1.27085714,-124.25142857 7.35085714,-124.12342857 7.79885714,-124.34742857" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-24" points="-6.848,-120.192 -7.296,-119.968 -1.216,-119.84 -0.768,-120.064" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-25" points="-16.37485714,-115.42857143 -16.82285714,-115.20457143 -10.74285714,-115.07657143 -10.29485714,-115.30057143" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-26" points="-25.90171429,-110.66514286 -26.34971429,-110.44114286 -20.26971429,-110.31314286 -19.82171429,-110.53714286" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
+    <polygon id="endcap-far-tile-seam-3-27" points="-34.46857143,-106.38171429 -34.91657143,-106.15771429 -28.83657143,-106.02971429 -28.38857143,-106.25371429" fill="#684836" clip-path="url(#endcap-surface-roof-far-plane-clip)" />
     <polygon id="endcap-roof-near-plane" points="224,-232 -32,-104 0,-72 256,-200" fill="#986b4c" stroke="#493e33" stroke-width="0.6" stroke-linejoin="round" />
-    <polygon id="endcap-roof-near-tile-0-0" points="223.872,-231.552 208.64,-223.936 224.128,-208.448 239.36,-216.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-0-1" points="207.872,-223.552 192.64,-215.936 208.128,-200.448 223.36,-208.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-0-2" points="191.872,-215.552 176.64,-207.936 192.128,-192.448 207.36,-200.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-0-3" points="175.872,-207.552 160.64,-199.936 176.128,-184.448 191.36,-192.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-0-4" points="159.872,-199.552 144.64,-191.936 160.128,-176.448 175.36,-184.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-0-5" points="143.872,-191.552 128.64,-183.936 144.128,-168.448 159.36,-176.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-0-6" points="127.872,-183.552 112.64,-175.936 128.128,-160.448 143.36,-168.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-0-7" points="111.872,-175.552 96.64,-167.936 112.128,-152.448 127.36,-160.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-0-8" points="95.872,-167.552 80.64,-159.936 96.128,-144.448 111.36,-152.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-0-9" points="79.872,-159.552 64.64,-151.936 80.128,-136.448 95.36,-144.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-0-10" points="63.872,-151.552 48.64,-143.936 64.128,-128.448 79.36,-136.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-0-11" points="47.872,-143.552 32.64,-135.936 48.128,-120.448 63.36,-128.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-0-12" points="31.872,-135.552 16.64,-127.936 32.128,-112.448 47.36,-120.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-0-13" points="15.872,-127.552 0.64,-119.936 16.128,-104.448 31.36,-112.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-0-14" points="-0.128,-119.552 -15.36,-111.936 0.128,-96.448 15.36,-104.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-0-15" points="-16.128,-111.552 -31.36,-103.936 -15.872,-88.448 -0.64,-96.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-0" points="239.872,-215.552 224.64,-207.936 240.128,-192.448 255.36,-200.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-1-1" points="223.872,-207.552 208.64,-199.936 224.128,-184.448 239.36,-192.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-1-2" points="207.872,-199.552 192.64,-191.936 208.128,-176.448 223.36,-184.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-3" points="191.872,-191.552 176.64,-183.936 192.128,-168.448 207.36,-176.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-1-4" points="175.872,-183.552 160.64,-175.936 176.128,-160.448 191.36,-168.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-1-5" points="159.872,-175.552 144.64,-167.936 160.128,-152.448 175.36,-160.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-6" points="143.872,-167.552 128.64,-159.936 144.128,-144.448 159.36,-152.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-1-7" points="127.872,-159.552 112.64,-151.936 128.128,-136.448 143.36,-144.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-1-8" points="111.872,-151.552 96.64,-143.936 112.128,-128.448 127.36,-136.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-9" points="95.872,-143.552 80.64,-135.936 96.128,-120.448 111.36,-128.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-1-10" points="79.872,-135.552 64.64,-127.936 80.128,-112.448 95.36,-120.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-1-11" points="63.872,-127.552 48.64,-119.936 64.128,-104.448 79.36,-112.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-12" points="47.872,-119.552 32.64,-111.936 48.128,-96.448 63.36,-104.064" fill="#a47750" />
-    <polygon id="endcap-roof-near-tile-1-13" points="31.872,-111.552 16.64,-103.936 32.128,-88.448 47.36,-96.064" fill="#ae8058" />
-    <polygon id="endcap-roof-near-tile-1-14" points="15.872,-103.552 0.64,-95.936 16.128,-80.448 31.36,-88.064" fill="#926546" />
-    <polygon id="endcap-roof-near-tile-1-15" points="-0.128,-95.552 -15.36,-87.936 0.128,-72.448 15.36,-80.064" fill="#a47750" />
+    <polygon id="endcap-roof-near-tile-0-0" points="223.872,-231.552 208.64,-223.936 224.128,-208.448 239.36,-216.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-1" points="207.872,-223.552 192.64,-215.936 208.128,-200.448 223.36,-208.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-2" points="191.872,-215.552 176.64,-207.936 192.128,-192.448 207.36,-200.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-3" points="175.872,-207.552 160.64,-199.936 176.128,-184.448 191.36,-192.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-4" points="159.872,-199.552 144.64,-191.936 160.128,-176.448 175.36,-184.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-5" points="143.872,-191.552 128.64,-183.936 144.128,-168.448 159.36,-176.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-6" points="127.872,-183.552 112.64,-175.936 128.128,-160.448 143.36,-168.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-7" points="111.872,-175.552 96.64,-167.936 112.128,-152.448 127.36,-160.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-8" points="95.872,-167.552 80.64,-159.936 96.128,-144.448 111.36,-152.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-9" points="79.872,-159.552 64.64,-151.936 80.128,-136.448 95.36,-144.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-10" points="63.872,-151.552 48.64,-143.936 64.128,-128.448 79.36,-136.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-11" points="47.872,-143.552 32.64,-135.936 48.128,-120.448 63.36,-128.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-12" points="31.872,-135.552 16.64,-127.936 32.128,-112.448 47.36,-120.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-13" points="15.872,-127.552 0.64,-119.936 16.128,-104.448 31.36,-112.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-14" points="-0.128,-119.552 -15.36,-111.936 0.128,-96.448 15.36,-104.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-0-15" points="-16.128,-111.552 -31.36,-103.936 -15.872,-88.448 -0.64,-96.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-0" points="239.872,-215.552 224.64,-207.936 240.128,-192.448 255.36,-200.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-1" points="223.872,-207.552 208.64,-199.936 224.128,-184.448 239.36,-192.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-2" points="207.872,-199.552 192.64,-191.936 208.128,-176.448 223.36,-184.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-3" points="191.872,-191.552 176.64,-183.936 192.128,-168.448 207.36,-176.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-4" points="175.872,-183.552 160.64,-175.936 176.128,-160.448 191.36,-168.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-5" points="159.872,-175.552 144.64,-167.936 160.128,-152.448 175.36,-160.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-6" points="143.872,-167.552 128.64,-159.936 144.128,-144.448 159.36,-152.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-7" points="127.872,-159.552 112.64,-151.936 128.128,-136.448 143.36,-144.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-8" points="111.872,-151.552 96.64,-143.936 112.128,-128.448 127.36,-136.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-9" points="95.872,-143.552 80.64,-135.936 96.128,-120.448 111.36,-128.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-10" points="79.872,-135.552 64.64,-127.936 80.128,-112.448 95.36,-120.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-11" points="63.872,-127.552 48.64,-119.936 64.128,-104.448 79.36,-112.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-12" points="47.872,-119.552 32.64,-111.936 48.128,-96.448 63.36,-104.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-13" points="31.872,-111.552 16.64,-103.936 32.128,-88.448 47.36,-96.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-14" points="15.872,-103.552 0.64,-95.936 16.128,-80.448 31.36,-88.064" fill="#966243" />
+    <polygon id="endcap-roof-near-tile-1-15" points="-0.128,-95.552 -15.36,-87.936 0.128,-72.448 15.36,-80.064" fill="#966243" />
+    <g id="endcap-surface-roof-near-plane" clip-path="url(#endcap-surface-roof-near-plane-clip)">
+      <image x="0" y="0" width="1254" height="1254" preserveAspectRatio="none" href="../../../../art-source/arpg/town-surface-v1/roof-clay-diffuse-v1.png" transform="matrix(-0.20414673 0.10207337 0.20414673 0.20414673 80 -376)" />
+      <polygon points="223.75318369,-230.47904936 -29.88979371,-103.65756066 0.24681631,-73.52095064 253.88979371,-200.34243934" fill="#493b30" fill-opacity="0.06" />
+    </g>
+    <polygon id="endcap-near-course-shadow-0" points="231.488,-224.512 -24.512,-96.512 -24,-96 232,-224" fill="#604332" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-course-wear-0" points="231.296,-224.704 -24.704,-96.704 -24.512,-96.512 231.488,-224.512" fill="#aa7854" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-1" points="216.00914286,-226.85257143 215.56114286,-226.62857143 221.64114286,-220.16457143 222.08914286,-220.38857143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-2" points="206.48228571,-222.08914286 206.03428571,-221.86514286 212.11428571,-215.40114286 212.56228571,-215.62514286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-3" points="196.95542857,-217.32571429 196.50742857,-217.10171429 202.58742857,-210.63771429 203.03542857,-210.86171429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-4" points="188.38857143,-213.04228571 187.94057143,-212.81828571 194.02057143,-206.35428571 194.46857143,-206.57828571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-5" points="178.86171429,-208.27885714 178.41371429,-208.05485714 184.49371429,-201.59085714 184.94171429,-201.81485714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-6" points="170.29485714,-203.99542857 169.84685714,-203.77142857 175.92685714,-197.30742857 176.37485714,-197.53142857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-7" points="160.768,-199.232 160.32,-199.008 166.4,-192.544 166.848,-192.768" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-8" points="151.24114286,-194.46857143 150.79314286,-194.24457143 156.87314286,-187.78057143 157.32114286,-188.00457143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-9" points="142.67428571,-190.18514286 142.22628571,-189.96114286 148.30628571,-183.49714286 148.75428571,-183.72114286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-10" points="133.14742857,-185.42171429 132.69942857,-185.19771429 138.77942857,-178.73371429 139.22742857,-178.95771429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-11" points="124.58057143,-181.13828571 124.13257143,-180.91428571 130.21257143,-174.45028571 130.66057143,-174.67428571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-12" points="115.05371429,-176.37485714 114.60571429,-176.15085714 120.68571429,-169.68685714 121.13371429,-169.91085714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-13" points="105.52685714,-171.61142857 105.07885714,-171.38742857 111.15885714,-164.92342857 111.60685714,-165.14742857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-14" points="96.96,-167.328 96.512,-167.104 102.592,-160.64 103.04,-160.864" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-15" points="87.43314286,-162.56457143 86.98514286,-162.34057143 93.06514286,-155.87657143 93.51314286,-156.10057143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-16" points="78.86628571,-158.28114286 78.41828571,-158.05714286 84.49828571,-151.59314286 84.94628571,-151.81714286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-17" points="69.33942857,-153.51771429 68.89142857,-153.29371429 74.97142857,-146.82971429 75.41942857,-147.05371429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-18" points="59.81257143,-148.75428571 59.36457143,-148.53028571 65.44457143,-142.06628571 65.89257143,-142.29028571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-19" points="51.24571429,-144.47085714 50.79771429,-144.24685714 56.87771429,-137.78285714 57.32571429,-138.00685714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-20" points="41.71885714,-139.70742857 41.27085714,-139.48342857 47.35085714,-133.01942857 47.79885714,-133.24342857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-21" points="33.152,-135.424 32.704,-135.2 38.784,-128.736 39.232,-128.96" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-22" points="23.62514286,-130.66057143 23.17714286,-130.43657143 29.25714286,-123.97257143 29.70514286,-124.19657143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-23" points="14.09828571,-125.89714286 13.65028571,-125.67314286 19.73028571,-119.20914286 20.17828571,-119.43314286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-24" points="5.53142857,-121.61371429 5.08342857,-121.38971429 11.16342857,-114.92571429 11.61142857,-115.14971429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-25" points="-3.99542857,-116.85028571 -4.44342857,-116.62628571 1.63657143,-110.16228571 2.08457143,-110.38628571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-26" points="-12.56228571,-112.56685714 -13.01028571,-112.34285714 -6.93028571,-105.87885714 -6.48228571,-106.10285714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-0-27" points="-22.08914286,-107.80342857 -22.53714286,-107.57942857 -16.45714286,-101.11542857 -16.00914286,-101.33942857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-course-shadow-1" points="239.488,-216.512 -16.512,-88.512 -16,-88 240,-216" fill="#604332" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-course-wear-1" points="239.296,-216.704 -16.704,-88.704 -16.512,-88.512 239.488,-216.512" fill="#aa7854" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-1" points="218.86171429,-216.27885714 218.41371429,-216.05485714 224.49371429,-209.59085714 224.94171429,-209.81485714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-2" points="210.29485714,-211.99542857 209.84685714,-211.77142857 215.92685714,-205.30742857 216.37485714,-205.53142857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-3" points="200.768,-207.232 200.32,-207.008 206.4,-200.544 206.848,-200.768" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-4" points="191.24114286,-202.46857143 190.79314286,-202.24457143 196.87314286,-195.78057143 197.32114286,-196.00457143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-5" points="182.67428571,-198.18514286 182.22628571,-197.96114286 188.30628571,-191.49714286 188.75428571,-191.72114286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-6" points="173.14742857,-193.42171429 172.69942857,-193.19771429 178.77942857,-186.73371429 179.22742857,-186.95771429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-7" points="164.58057143,-189.13828571 164.13257143,-188.91428571 170.21257143,-182.45028571 170.66057143,-182.67428571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-8" points="155.05371429,-184.37485714 154.60571429,-184.15085714 160.68571429,-177.68685714 161.13371429,-177.91085714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-9" points="145.52685714,-179.61142857 145.07885714,-179.38742857 151.15885714,-172.92342857 151.60685714,-173.14742857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-10" points="136.96,-175.328 136.512,-175.104 142.592,-168.64 143.04,-168.864" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-11" points="127.43314286,-170.56457143 126.98514286,-170.34057143 133.06514286,-163.87657143 133.51314286,-164.10057143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-12" points="118.86628571,-166.28114286 118.41828571,-166.05714286 124.49828571,-159.59314286 124.94628571,-159.81714286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-13" points="109.33942857,-161.51771429 108.89142857,-161.29371429 114.97142857,-154.82971429 115.41942857,-155.05371429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-14" points="99.81257143,-156.75428571 99.36457143,-156.53028571 105.44457143,-150.06628571 105.89257143,-150.29028571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-15" points="91.24571429,-152.47085714 90.79771429,-152.24685714 96.87771429,-145.78285714 97.32571429,-146.00685714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-16" points="81.71885714,-147.70742857 81.27085714,-147.48342857 87.35085714,-141.01942857 87.79885714,-141.24342857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-17" points="73.152,-143.424 72.704,-143.2 78.784,-136.736 79.232,-136.96" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-18" points="63.62514286,-138.66057143 63.17714286,-138.43657143 69.25714286,-131.97257143 69.70514286,-132.19657143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-19" points="54.09828571,-133.89714286 53.65028571,-133.67314286 59.73028571,-127.20914286 60.17828571,-127.43314286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-20" points="45.53142857,-129.61371429 45.08342857,-129.38971429 51.16342857,-122.92571429 51.61142857,-123.14971429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-21" points="36.00457143,-124.85028571 35.55657143,-124.62628571 41.63657143,-118.16228571 42.08457143,-118.38628571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-22" points="27.43771429,-120.56685714 26.98971429,-120.34285714 33.06971429,-113.87885714 33.51771429,-114.10285714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-23" points="17.91085714,-115.80342857 17.46285714,-115.57942857 23.54285714,-109.11542857 23.99085714,-109.33942857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-24" points="8.384,-111.04 7.936,-110.816 14.016,-104.352 14.464,-104.576" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-25" points="-0.18285714,-106.75657143 -0.63085714,-106.53257143 5.44914286,-100.06857143 5.89714286,-100.29257143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-26" points="-9.70971429,-101.99314286 -10.15771429,-101.76914286 -4.07771429,-95.30514286 -3.62971429,-95.52914286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-1-27" points="-18.27657143,-97.70971429 -18.72457143,-97.48571429 -12.64457143,-91.02171429 -12.19657143,-91.24571429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-course-shadow-2" points="247.488,-208.512 -8.512,-80.512 -8,-80 248,-208" fill="#604332" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-course-wear-2" points="247.296,-208.704 -8.704,-80.704 -8.512,-80.512 247.488,-208.512" fill="#aa7854" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-1" points="231.81714286,-210.75657143 231.36914286,-210.53257143 237.44914286,-204.06857143 237.89714286,-204.29257143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-2" points="222.29028571,-205.99314286 221.84228571,-205.76914286 227.92228571,-199.30514286 228.37028571,-199.52914286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-3" points="213.72342857,-201.70971429 213.27542857,-201.48571429 219.35542857,-195.02171429 219.80342857,-195.24571429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-4" points="204.19657143,-196.94628571 203.74857143,-196.72228571 209.82857143,-190.25828571 210.27657143,-190.48228571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-5" points="194.66971429,-192.18285714 194.22171429,-191.95885714 200.30171429,-185.49485714 200.74971429,-185.71885714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-6" points="186.10285714,-187.89942857 185.65485714,-187.67542857 191.73485714,-181.21142857 192.18285714,-181.43542857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-7" points="176.576,-183.136 176.128,-182.912 182.208,-176.448 182.656,-176.672" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-8" points="168.00914286,-178.85257143 167.56114286,-178.62857143 173.64114286,-172.16457143 174.08914286,-172.38857143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-9" points="158.48228571,-174.08914286 158.03428571,-173.86514286 164.11428571,-167.40114286 164.56228571,-167.62514286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-10" points="148.95542857,-169.32571429 148.50742857,-169.10171429 154.58742857,-162.63771429 155.03542857,-162.86171429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-11" points="140.38857143,-165.04228571 139.94057143,-164.81828571 146.02057143,-158.35428571 146.46857143,-158.57828571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-12" points="130.86171429,-160.27885714 130.41371429,-160.05485714 136.49371429,-153.59085714 136.94171429,-153.81485714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-13" points="122.29485714,-155.99542857 121.84685714,-155.77142857 127.92685714,-149.30742857 128.37485714,-149.53142857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-14" points="112.768,-151.232 112.32,-151.008 118.4,-144.544 118.848,-144.768" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-15" points="103.24114286,-146.46857143 102.79314286,-146.24457143 108.87314286,-139.78057143 109.32114286,-140.00457143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-16" points="94.67428571,-142.18514286 94.22628571,-141.96114286 100.30628571,-135.49714286 100.75428571,-135.72114286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-17" points="85.14742857,-137.42171429 84.69942857,-137.19771429 90.77942857,-130.73371429 91.22742857,-130.95771429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-18" points="76.58057143,-133.13828571 76.13257143,-132.91428571 82.21257143,-126.45028571 82.66057143,-126.67428571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-19" points="67.05371429,-128.37485714 66.60571429,-128.15085714 72.68571429,-121.68685714 73.13371429,-121.91085714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-20" points="57.52685714,-123.61142857 57.07885714,-123.38742857 63.15885714,-116.92342857 63.60685714,-117.14742857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-21" points="48.96,-119.328 48.512,-119.104 54.592,-112.64 55.04,-112.864" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-22" points="39.43314286,-114.56457143 38.98514286,-114.34057143 45.06514286,-107.87657143 45.51314286,-108.10057143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-23" points="30.86628571,-110.28114286 30.41828571,-110.05714286 36.49828571,-103.59314286 36.94628571,-103.81714286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-24" points="21.33942857,-105.51771429 20.89142857,-105.29371429 26.97142857,-98.82971429 27.41942857,-99.05371429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-25" points="11.81257143,-100.75428571 11.36457143,-100.53028571 17.44457143,-94.06628571 17.89257143,-94.29028571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-26" points="3.24571429,-96.47085714 2.79771429,-96.24685714 8.87771429,-89.78285714 9.32571429,-90.00685714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-2-27" points="-6.28114286,-91.70742857 -6.72914286,-91.48342857 -0.64914286,-85.01942857 -0.20114286,-85.24342857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-1" points="234.66971429,-200.18285714 234.22171429,-199.95885714 240.30171429,-193.49485714 240.74971429,-193.71885714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-2" points="226.10285714,-195.89942857 225.65485714,-195.67542857 231.73485714,-189.21142857 232.18285714,-189.43542857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-3" points="216.576,-191.136 216.128,-190.912 222.208,-184.448 222.656,-184.672" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-4" points="208.00914286,-186.85257143 207.56114286,-186.62857143 213.64114286,-180.16457143 214.08914286,-180.38857143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-5" points="198.48228571,-182.08914286 198.03428571,-181.86514286 204.11428571,-175.40114286 204.56228571,-175.62514286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-6" points="188.95542857,-177.32571429 188.50742857,-177.10171429 194.58742857,-170.63771429 195.03542857,-170.86171429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-7" points="180.38857143,-173.04228571 179.94057143,-172.81828571 186.02057143,-166.35428571 186.46857143,-166.57828571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-8" points="170.86171429,-168.27885714 170.41371429,-168.05485714 176.49371429,-161.59085714 176.94171429,-161.81485714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-9" points="162.29485714,-163.99542857 161.84685714,-163.77142857 167.92685714,-157.30742857 168.37485714,-157.53142857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-10" points="152.768,-159.232 152.32,-159.008 158.4,-152.544 158.848,-152.768" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-11" points="143.24114286,-154.46857143 142.79314286,-154.24457143 148.87314286,-147.78057143 149.32114286,-148.00457143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-12" points="134.67428571,-150.18514286 134.22628571,-149.96114286 140.30628571,-143.49714286 140.75428571,-143.72114286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-13" points="125.14742857,-145.42171429 124.69942857,-145.19771429 130.77942857,-138.73371429 131.22742857,-138.95771429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-14" points="116.58057143,-141.13828571 116.13257143,-140.91428571 122.21257143,-134.45028571 122.66057143,-134.67428571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-15" points="107.05371429,-136.37485714 106.60571429,-136.15085714 112.68571429,-129.68685714 113.13371429,-129.91085714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-16" points="97.52685714,-131.61142857 97.07885714,-131.38742857 103.15885714,-124.92342857 103.60685714,-125.14742857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-17" points="88.96,-127.328 88.512,-127.104 94.592,-120.64 95.04,-120.864" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-18" points="79.43314286,-122.56457143 78.98514286,-122.34057143 85.06514286,-115.87657143 85.51314286,-116.10057143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-19" points="70.86628571,-118.28114286 70.41828571,-118.05714286 76.49828571,-111.59314286 76.94628571,-111.81714286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-20" points="61.33942857,-113.51771429 60.89142857,-113.29371429 66.97142857,-106.82971429 67.41942857,-107.05371429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-21" points="51.81257143,-108.75428571 51.36457143,-108.53028571 57.44457143,-102.06628571 57.89257143,-102.29028571" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-22" points="43.24571429,-104.47085714 42.79771429,-104.24685714 48.87771429,-97.78285714 49.32571429,-98.00685714" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-23" points="33.71885714,-99.70742857 33.27085714,-99.48342857 39.35085714,-93.01942857 39.79885714,-93.24342857" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-24" points="25.152,-95.424 24.704,-95.2 30.784,-88.736 31.232,-88.96" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-25" points="15.62514286,-90.66057143 15.17714286,-90.43657143 21.25714286,-83.97257143 21.70514286,-84.19657143" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-26" points="6.09828571,-85.89714286 5.65028571,-85.67314286 11.73028571,-79.20914286 12.17828571,-79.43314286" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
+    <polygon id="endcap-near-tile-seam-3-27" points="-2.46857143,-81.61371429 -2.91657143,-81.38971429 3.16342857,-74.92571429 3.61142857,-75.14971429" fill="#684836" clip-path="url(#endcap-surface-roof-near-plane-clip)" />
   </g>
 </svg>

@@ -218,7 +218,7 @@ async function main() {
   // It inherits PR17 e73cad94f07309c1a126e5f2aa76bca5ab126db2 without merging.
   // Only this source-pin metadata changed here; no server/SQL logic changed.
   // Keep Supabase pinned independently; this is not a hosted-schema claim.
-  for (const [directory, expected] of Object.entries({src:'0c081ed35b76c5356b5b8853e7582516f7da05fd',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
+  for (const [directory, expected] of Object.entries({src:'2ece1b2fc2ddf686f160778d240241a2ee899f3d',supabase:'0a420e027ca5ff8038408d43072ece95c6333c8c'})) {
     assert.equal(execFileSync('git',['rev-parse',`HEAD:${directory}`],{cwd:root,encoding:'utf8'}).trim(),expected,`Reviewed ${directory} product tree required; update this bounded gate after independent review`);
   }
   const report = { status: 'RUNNING', database: DATABASE, manifest: [], sourceTree, startedAt: new Date().toISOString() };
