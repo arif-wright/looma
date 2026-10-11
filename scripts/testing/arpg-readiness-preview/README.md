@@ -219,7 +219,7 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the twenty-one expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 219 unit
+submission fields and the exact zero-value presentation payload. Its 220 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -237,3 +237,37 @@ correct or fully playable pixels. The added flow is deliberately small; it does
 not certify attacks, kill/loot balance, floor transitions, a full-length timeout,
 real-phone rendering/performance, touch interaction, hosted Auth, real session persistence, server reward settlement,
 post-ready account changes or deployment.
+
+
+## Bounded trace-observability experiment after d873f298
+
+The surface candidate's first hosted run (38102814074, attempt 1) passed 13 of
+14 cases. The desktop exploration failed at the existing (1200,260) waypoint,
+before the new perimeter leg. Phone exploration passed all its checkpoints.
+Only 15 of the required 21 captures exist, so the complete report remains rejected.
+
+The desktop trace measured a median 102.4 ms between native POST_RENDER samples.
+Each final requested 16 ms fine keypress consumed one actual 22.0–22.73 px
+movement frame. The released position oscillated around y=247.45 and y=269.82,
+skipping the unchanged y=252..268 target band. Neutral feedback was correct;
+keys were consumed and no collision caused this stall. A longer deadline alone
+would not reliably resolve that quantization.
+
+That 48.5-second desktop case also recorded 475 automatic screencast frames,
+474 JPEG resources totaling 38,666,615 bytes, and 234 DOM snapshots. The next
+bounded experiment disables only automatic trace screenshots and snapshots,
+while retaining failure action/event/source tracing. This may reduce diagnostic
+capture overhead; causality and improved native cadence remain unproven until
+another hosted run. In Playwright 1.57.0, snapshots:false also disables the trace's
+HAR/network-resource collection. That diagnostic detail is lost. The fixture's
+own complete blocked/request/API observations, exact network/asset allowlists,
+loader/decode observations and source/asset hashes remain enforced independently;
+no acceptance verifier reads HAR or trace network resources. Native action/event
+and source records remain, along with the explicit JSON evidence and PNGs.
+No runtime rendering or game setting is changed.
+
+The ordinary failure screenshot and all 21 explicitly attached required PNGs
+remain enabled, as do every fresh probe, lightweight motion sample, overflow
+guard, continuous collision/dash check, hero visibility/UI bound and synthetic
+protocol assertion. Native steering, the 6.5-second waypoint deadline, 8 px
+per-axis target, 180-second case budget and no-retry policy are unchanged.

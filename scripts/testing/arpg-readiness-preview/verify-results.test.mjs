@@ -486,3 +486,14 @@ test('perimeter approach and return stay inside original wall for all8px endpoin
   for(let n=0;n<=100;n++){const t=n/100;assert(roomAllows([(a[0]+ax)*(1-t)+(b[0]+bx)*t,(a[1]+ay)*(1-t)+(b[1]+by)*t]));}
  }
 });
+
+
+test('bounded trace experiment preserves explicit images and failure diagnostics',()=>{
+ const config=readFileSync(new URL('./playwright.config.ts',import.meta.url),'utf8');
+ assert.equal((config.match(/\btrace:/g)||[]).length,1);
+ assert.match(config,/trace:\s*\{\s*mode:\s*'retain-on-failure',\s*screenshots:\s*false,\s*snapshots:\s*false,\s*sources:\s*true\s*\}/);
+ assert.match(config,/\bscreenshot:\s*'only-on-failure'/);
+ assert.equal(TITLES.flatMap((_title,index)=>requiredScreenshots(index)).length,21);
+ assert(requiredScreenshots(12).includes('desktop-plaza-perimeter-edge-feet'));
+ assert(requiredScreenshots(13).includes('phone-plaza-perimeter-edge-feet'));
+});
