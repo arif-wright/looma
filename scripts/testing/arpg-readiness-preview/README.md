@@ -219,7 +219,7 @@ The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
 checkpoints, cleanup and the twenty-one expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 220 unit
+submission fields and the exact zero-value presentation payload. Its 254 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
@@ -271,3 +271,48 @@ remain enabled, as do every fresh probe, lightweight motion sample, overflow
 guard, continuous collision/dash check, hero visibility/UI bound and synthetic
 protocol assertion. Native steering, the 6.5-second waypoint deadline, 8 px
 per-axis target, 180-second case budget and no-retry policy are unchanged.
+
+
+## Bounded native chord correction after ca701a53
+
+The trace-only experiment still failed the desktop route at(1200,260), ending
+(1201.037,250.382). It improved this single run's median frame interval from
+102.4 to94.8ms and phone case time from98.558 to55.655s, but the frame quantum
+remained20.53–20.90px. That still skips the16px-wide target band. Runner load
+was not controlled, so the comparison does not establish a causal performance
+improvement. Both failed whole reports remain rejected.
+
+The fixture now recognizes two opposite, released16ms fine pulses that both
+skip the unchanged8px target on one axis. The other axis must already be within
+8px. At the farther bracket endpoint, a single native Playwright chord changes
+the movement lattice. Installed1.57 keyboard.press delivers lateral-down,
+primary-down, primary-up, lateral-up sequentially. The controller makes no
+claim of simultaneous delivery or exact16ms consumption. It keeps the normal
+fresh neutral POST_RENDER feedback, and all actual movement samples and sweeps.
+
+Before that chord, a convex envelope is built for0–2 rendered frames in each
+leading-cardinal, diagonal, and trailing-cardinal phase. Its per-frame bound is
+max(24,1.25×observed fine displacement); supported observed quanta are greater
+than16 and at most24px, yielding bounds24–30px. Both lateral directions are
+checked against the independently transcribed radius38 solids and original
+room. The entire hull must be clear, including either-direction containment.
+If neither direction fits, the case fails before issuing an unsafe nudge.
+Actual neutral chord feedback must also lie within its selected envelope before
+another command can be sent. Remaining lateral error uses ordinary feedback
+steering. No production collision helper, position setter, timer change or
+alternative movement input is used.
+
+The new replay retains exact cardinal traces from runs38102814074 and38103713681
+and explicitly models sequential prefix/diagonal/suffix frames, including
+missed chords and alternating measured step sizes. Four native event acknowledgments
+are charged at a conservative100ms each even if a phase consumes no update,
+followed by the existing neutral-frame read. Both observed wide-clearance failures converge in the stated
+single-diagonal-frame models before the unchanged6.5s deadline. Extra diagonal
+frames may instead fail that deadline. The alternating d873 step-jitter model
+also exhausts6.5s; the corresponding ca701 jitter model converges. This is deliberately bounded support:
+constant20.9px full-route stress can still exhaust the deadline at the perimeter;
+constant22.36px stress reaches a shop/endcap passage where no safe envelope
+fits and is rejected. Those model limits are tests, not claimed browser passes.
+All actual routes, named checkpoints,21 PNG requirements,14 cases, collision,
+visibility, network and lifecycle gates stay intact. Full hosted execution is
+still required to accept this candidate.

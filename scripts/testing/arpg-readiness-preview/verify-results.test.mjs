@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep } from './plaza-navigation.mjs';
+import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep, waypointCorrection, chordEnvelope, safeChordEnvelope, chordEndpointAllowed } from './plaza-navigation.mjs';
 import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
 import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 // Verifier schema tests; these never launch or impersonate executed browsers.
@@ -496,4 +496,153 @@ test('bounded trace experiment preserves explicit images and failure diagnostics
  assert.equal(TITLES.flatMap((_title,index)=>requiredScreenshots(index)).length,21);
  assert(requiredScreenshots(12).includes('desktop-plaza-perimeter-edge-feet'));
  assert(requiredScreenshots(13).includes('phone-plaza-perimeter-edge-feet'));
+});
+
+// This phase-count model explicitly stages native key delivery in the installed
+// server order. Each held phase may consume0,1,2 real updates; a native chord
+// is never treated as instantaneous. It is a scheduling hypothesis, not a
+// claim that a chord has yet been observed in hosted Chromium.
+const coarseFailures=hostedReplay.coarse_quantization_failures;
+const navRecord=p=>({key:p.key,delay:p.requestedDelay,before:{x:p.before.x,y:p.before.y},after:{x:p.after.x,y:p.after.y}});
+function firstCorrection(c){
+ const history=[];
+ for(const p of c.presses){history.push(navRecord(p));const pulse=waypointCorrection(p.after,...c.target,history);
+  if(pulse)return{p:{x:p.after.x,y:p.after.y},history:history.slice(-2),pulse,elapsed:p.responseEnd-c.presses[0].commandStart};}
+ throw new Error('Recorded skipped band must trigger a bounded correction');
+}
+const keyDirection=k=>[Number(k==='d')-Number(k==='a'),Number(k==='s')-Number(k==='w')];
+function replaySequentialChord(c,leading,diagonal,trailing,missFirst=false,jitter=false){
+ const seed=firstCorrection(c),p={...seed.p},history=[...seed.history];
+ const q=Math.max(...history.map(h=>Math.hypot(h.after.x-h.before.x,h.after.y-h.before.y)));
+ const dt=c.median_frame_ms;let elapsed=seed.elapsed,corrections=0,commands=0,frame=0;const events=[];
+ const fine=c.presses.filter(p=>p.requestedDelay===16).map(p=>p.distance),vary=[Math.min(...fine),Math.max(...fine)];
+ const update=(keys,count)=>{
+  const vector=keys.map(keyDirection).reduce((a,b)=>[a[0]+b[0],a[1]+b[1]],[0,0]),length=Math.hypot(...vector);
+  for(let i=0;i<count;i++){
+   const distance=jitter?vary[frame++%2]:q;
+   const before=[p.x,p.y];p.x+=vector[0]/length*distance;p.y+=vector[1]/length*distance;elapsed+=dt;
+   assert(Object.values(FOOTPRINTS).every(poly=>sweptDistance(before,[p.x,p.y],poly)>38));assert(roomAllows([p.x,p.y]));
+  }
+ };
+ for(;;){
+  const pulse=waypointStep(p,...c.target,elapsed,0,history);if(!pulse)return{elapsed,corrections,commands,p,events};
+  assert(++commands<40);const before={...p},commandStarted=elapsed;elapsed+=dt; // neutral command dispatch
+  if(pulse.key.includes('+')){
+   corrections++;const [lateral,primary]=pulse.key.split('+'),miss=missFirst&&corrections===1;
+   events.push({type:'down',key:lateral,at:elapsed});update([lateral],miss?0:leading);
+   events.push({type:'down',key:primary,at:elapsed});elapsed+=pulse.delay;update([lateral,primary],miss?0:diagonal);
+   events.push({type:'up',key:primary,at:elapsed});update([lateral],miss?0:trailing);
+   events.push({type:'up',key:lateral,at:elapsed});
+   // Even a phase consuming zero updates still awaits its native event ack.
+   // Four sequential acks at a conservative100ms each, then a fresh neutral
+   // read below, are charged independently from consumed movement frames.
+   elapsed=Math.max(elapsed,commandStarted+4*100+pulse.delay);
+  }else{
+   // Real measured fine presses consumed one update despite16ms requested delay.
+   // Coarse pulses consume bounded whole updates; feedback is always neutral.
+   update([pulse.key],Math.max(1,Math.round(pulse.delay/dt)));
+  }
+  assert(chordEndpointAllowed(p,pulse));
+  elapsed+=dt;history.push({key:pulse.key,delay:pulse.delay,before,after:{...p}});if(history.length>2)history.shift();
+ }
+}
+for(const c of coarseFailures){
+ const run=c.provenance.run_id;
+ test(`hosted${run} preserves actual skipped-band diagnosis`,()=>{
+  assert([38102814074,38103713681].includes(run));assert.equal(c.provenance.case_index,12);
+  const fine=c.presses.filter(p=>p.requestedDelay===16);assert(fine.length>=8);
+  assert(fine.every(p=>p.heldFrames===1&&p.distance>20&&p.distance<24));
+  assert(fine.every(p=>Math.abs(p.after.y-260)>8));
+  const seed=firstCorrection(c);assert.equal(seed.pulse.key.split('+')[0],'a','Lateral prefix must point away from rear solid');
+  assert(safeChordEnvelope(seed.pulse.correction.envelope));assert(seed.elapsed<2500);
+  assert.throws(()=>waypointStep(seed.p,1200,260,6500,0,seed.history),/Native route stalled/);
+ });
+ for(const leading of[0,1,2])for(const trailing of[0,1,2])test(`hosted${run} sequential chord${leading}/1/${trailing} keeps8px and6500ms`,()=>{
+  const result=replaySequentialChord(c,leading,1,trailing);
+  assert(result.corrections>=1);assert(result.elapsed<6500);assert(Math.abs(result.p.x-1200)<=8&&Math.abs(result.p.y-260)<=8);
+  const e=result.events.slice(0,4);assert.deepEqual(e.map(x=>x.type),['down','down','up','up']);assert.equal(e[0].key,e[3].key);assert.equal(e[1].key,e[2].key);
+ });
+ test(`hosted${run} a fully missed first chord cannot fabricate success`,()=>{
+  const result=replaySequentialChord(c,1,1,1,true);assert(result.corrections>=2);assert(result.elapsed<6500);
+ });
+ test(`hosted${run} alternating measured step jitter retains native chord safety`,()=>{
+  if(run===38102814074){
+   assert.throws(()=>replaySequentialChord(c,1,1,1,false,true),/Native route stalled before 1200,260/);
+   return; // Slower historical jitter exceeds the same deadline; never a pass.
+  }
+  const result=replaySequentialChord(c,1,1,1,false,true);
+  assert(result.elapsed<6500);assert(Math.abs(result.p.x-1200)<=8&&Math.abs(result.p.y-260)<=8);
+ });
+ test(`hosted${run} two diagonal frames remain bounded or fail the unchanged deadline`,()=>{
+  for(const lead of[0,1,2])for(const tail of[0,1,2]){
+   try{const r=replaySequentialChord(c,lead,2,tail);assert(r.elapsed<6500);}
+   catch(e){assert.match(e.message,/Native route stalled|No independently safe native chord envelope/);}
+  }
+ });
+}
+test('safe chord guard rejects both containment directions and radius proximity',()=>{
+ assert.equal(safeChordEnvelope([[1200,230],[1600,230],[1600,475],[1200,475]]),false,'Whole rear solid is enclosed');
+ assert.equal(safeChordEnvelope([[1350,335],[1355,335],[1355,340],[1350,340]]),false,'Envelope is inside solid');
+ assert.equal(safeChordEnvelope([[1170,278],[1210,278],[1210,295],[1170,295]]),false,'Envelope approaches the radius boundary');
+ assert.equal(safeChordEnvelope([[1000,150],[1100,150],[1100,220],[1000,220]]),true);
+});
+test('coarse chord envelope explicitly contains0..2 frames in each held phase',()=>{
+ const p={x:1200,y:270},bound=28,e=chordEnvelope(p,'a','w',bound);
+ assert(safeChordEnvelope(e));
+ for(const lead of[0,1,2])for(const diagonal of[0,1,2])for(const trail of[0,1,2]){
+  const point=[p.x-bound*(lead+trail+diagonal*Math.SQRT1_2),p.y-bound*diagonal*Math.SQRT1_2];
+  assert(sweptDistance(point,point,e)<1e-7);
+ }
+});
+test('unsafe narrow-passage oscillation rejects rather than widening target or nudging through solids',()=>{
+ const a={key:'a',delay:16,before:{x:1708.1,y:425},after:{x:1687.2,y:425}},b={key:'d',delay:16,before:{x:1687.2,y:425},after:{x:1708.1,y:425}};
+ // The farther endpoint is1687.2; both candidate sequential envelopes are unsafe.
+ const history=[b,{...a,before:b.after}];
+ assert.throws(()=>waypointCorrection(a.after,1700,420,history),/No independently safe native chord envelope/);
+});
+test('fine correction requires genuine opposite skipped-band pulses and observed neutral endpoints',()=>{
+ const c=coarseFailures[0],s=firstCorrection(c);
+ assert.equal(waypointCorrection(s.p,1200,260,[]),null);
+ assert.equal(waypointCorrection(s.p,1200,260,[{...s.history[0],delay:240},s.history[1]]),null);
+ assert.equal(waypointCorrection({...s.p,x:s.p.x+1},1200,260,s.history),null);
+ assert.equal(waypointCorrection({...s.p,y:260},1200,260,s.history),null);
+ assert.equal(waypointStep({x:1200,y:260},1200,260,7000,0,s.history),null);
+});
+test('actual chord feedback beyond the envelope fails rather than continuing',()=>{
+ const s=firstCorrection(coarseFailures[1]);
+ assert(chordEndpointAllowed(s.p,s.pulse));
+ assert.equal(chordEndpointAllowed({x:s.p.x+1,y:s.p.y},s.pulse),false,'Opposite-side drift is outside the native chord');
+ assert.equal(chordEndpointAllowed({x:s.p.x-200,y:s.p.y-20},s.pulse),false,'Unexpectedly prolonged native hold cannot pass');
+ assert.equal(chordEndpointAllowed({x:NaN,y:s.p.y},s.pulse),false);
+});
+test('native correction rejects an unsupported quantum above24px',()=>{
+ const a={key:'s',delay:16,before:{x:1200,y:247},after:{x:1200,y:272}},b={key:'w',delay:16,before:{x:1200,y:272},after:{x:1200,y:247}};
+ assert.throws(()=>waypointCorrection(b.after,1200,260,[a,b]),/Unmodeled native fine-step quantum/);
+});
+for(const q of[20.9,22.36])test(`constant${q}px whole-route stress fails closed where safe convergence is unproved`,()=>{
+ // Deliberately adversarial constant steps; actual Phaser deltas vary. This
+ // documents unsupported perimeter/pinch phases instead of weakening the gate.
+ const dt=q/.22,p={x:1472,y:536};let frames=0,minimum=Infinity,corrections=0;
+ assert.throws(()=>{
+  for(const[x,y]of Object.values(NAVIGATION_PHASES).flat()){
+   let elapsed=0;const history=[];
+   for(;;){
+    const pulse=waypointStep(p,x,y,elapsed,0,history);if(!pulse)break;
+    const before={...p},commandStarted=elapsed;elapsed+=dt;
+    const move=(keys,n)=>{
+     const vector=keys.map(keyDirection).reduce((a,b)=>[a[0]+b[0],a[1]+b[1]],[0,0]),length=Math.hypot(...vector);
+     for(let i=0;i<n;i++){
+      const a=[p.x,p.y];p.x+=vector[0]/length*q;p.y+=vector[1]/length*q;elapsed+=dt;frames++;
+      minimum=Math.min(minimum,...Object.values(FOOTPRINTS).map(poly=>sweptDistance(a,[p.x,p.y],poly)));
+      assert(minimum>38&&roomAllows([p.x,p.y]));
+     }
+    };
+    if(pulse.key.includes('+')){const[a,b]=pulse.key.split('+');move([a],1);move([a,b],1);move([a],1);corrections++;elapsed=Math.max(elapsed,commandStarted+4*100+pulse.delay);}
+    else move([pulse.key],Math.max(1,Math.round(pulse.delay/dt)));
+    assert(chordEndpointAllowed(p,pulse));elapsed+=dt;
+    history.push({key:pulse.key,delay:pulse.delay,before,after:{...p}});if(history.length>2)history.shift();
+   }
+  }
+ },q===20.9?/Native route stalled before 1368,-8/:/No independently safe native chord envelope near 1660,400/);
+ assert(frames>100&&corrections>0&&minimum>38);
 });
