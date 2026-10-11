@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
+import { TOWN_FACADES } from '../games/arpg/assets/townFacadeData';
+import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, paintTownLighting, TOWN_LIGHTING_PROOF, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
 const make = () => {
@@ -9,23 +10,27 @@ const make = () => {
   const context = () => {
     const value = {
       save: vi.fn(), restore: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
-      moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(),
+      moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), clip: vi.fn(), drawImage: vi.fn(), fill: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) })),
+      createImageData: vi.fn((width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) })), putImageData: vi.fn(),
       translate: vi.fn(), scale: vi.fn(), transform: vi.fn(), fillRect: vi.fn(),
-      createPattern: vi.fn(() => ({})), fillStyle: null as any,
+      createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })), fillStyle: null as any,
+      globalAlpha: 0.7, globalCompositeOperation: 'multiply' as GlobalCompositeOperation,
       imageSmoothingEnabled: false, imageSmoothingQuality: 'low' as ImageSmoothingQuality
     };
-    const stack: Array<[boolean, ImageSmoothingQuality]> = [];
-    value.save.mockImplementation(() => { stack.push([value.imageSmoothingEnabled, value.imageSmoothingQuality]); });
+    const stack: Array<[boolean, ImageSmoothingQuality, number, GlobalCompositeOperation, any]> = [];
+    value.save.mockImplementation(() => { stack.push([value.imageSmoothingEnabled, value.imageSmoothingQuality, value.globalAlpha, value.globalCompositeOperation, value.fillStyle]); });
     value.restore.mockImplementation(() => {
       const previous = stack.pop();
-      if (previous) [value.imageSmoothingEnabled, value.imageSmoothingQuality] = previous;
+      if (previous) [value.imageSmoothingEnabled, value.imageSmoothingQuality, value.globalAlpha, value.globalCompositeOperation, value.fillStyle] = previous;
     });
     return value;
   };
   const keys = new Set<string>();
   const images: any[] = [];
+  const boundaries: any[] = [];
   const ground = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
-  const material = { context: context(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
+  const material = { context: context(), setSize: vi.fn(), refresh: vi.fn(), setFilter: vi.fn(), canvas: {} };
   const scene: any = {
     textures: {
       exists: (key: string) => keys.has(key),
@@ -33,13 +38,17 @@ const make = () => {
       createCanvas: vi.fn((key: string) => { keys.add(key); return key === TOWN_MATERIAL_KEY ? material : ground; }),
       remove: vi.fn((key: string) => keys.delete(key))
     },
-    add: { image: vi.fn((x: number, y: number, key: string) => {
+    add: { graphics: vi.fn(() => {
+      const graphic: any = { destroy: vi.fn() };
+      for (const method of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[method] = vi.fn(() => graphic);
+      boundaries.push(graphic); return graphic;
+    }), image: vi.fn((x: number, y: number, key: string) => {
       const image: any = { x, y, key, destroy: vi.fn() };
-      for (const method of ['setOrigin', 'setScale', 'setDepth']) image[method] = vi.fn(() => image);
+      for (const method of ['setOrigin', 'setScale', 'setDepth', 'setName', 'setAlpha']) image[method] = vi.fn(() => image);
       images.push(image); return image;
     }) }
   };
-  return { scene, images, ground, material, context: ground.context, source, keys, add: vi.fn() };
+  return { scene, images, boundaries, ground, material, context: ground.context, source, keys, add: vi.fn() };
 };
 
 describe('town ground and retained original art contract (renderer mocked)', () => {
@@ -64,7 +73,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.clearRect).toHaveBeenCalledWith(0, 0, 1344, 672);
     expect(context.moveTo).toHaveBeenCalledWith(512, 0);
     expect(context.lineTo.mock.calls).toEqual([[1344, 416], [832, 672], [0, 256]]);
-    expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'repeat');
+    expect(context.createPattern).toHaveBeenCalledWith(material.canvas, 'no-repeat');
     expect(context.translate).toHaveBeenCalledWith(512, -16);
     expect(context.transform).toHaveBeenCalledWith(1, 0.5, -1, 0.5, 0, 0);
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 896, 576);
@@ -108,7 +117,57 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(context.save.mock.calls.length).toBe(context.restore.mock.calls.length);
   });
 
-  it('adds four area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {
+  it('bakes exactly two amber pools and three cool contacts inside the existing floor clip', () => {
+    const { context } = make();
+    const layout = townGroundLayout(iso);
+    paintTownLighting(context as any, layout, iso);
+    expect(TOWN_LIGHTING_PROOF.warmPools).toHaveLength(2);
+    expect(TOWN_LIGHTING_PROOF.coolContacts).toHaveLength(3);
+    expect(context.moveTo).toHaveBeenCalledWith(512, 0);
+    expect(context.lineTo.mock.calls.slice(0, 3)).toEqual([[1344, 416], [832, 672], [0, 256]]);
+    expect(context.fill).toHaveBeenCalledTimes(12);
+    expect(context.clip).toHaveBeenCalledOnce();
+    expect(context.clip.mock.invocationCallOrder[0]).toBeLessThan(context.fillRect.mock.invocationCallOrder[0]!);
+    expect(context.translate.mock.calls).toEqual([[762, 347], [810, 419.5], [721, 361], [720, 360], [787, 415]]);
+    expect(context.scale.mock.calls).toEqual([[78, 37.5], [47.5, 18.5], [11.5, 5], [52, 28], [37, 20]]);
+    expect(context.fillRect.mock.calls).toEqual(Array.from({ length: 5 }, () => [-1, -1, 2, 2]));
+    expect(context.clearRect).not.toHaveBeenCalled(); // Existing paving outside pools is untouched.
+    expect(context.createRadialGradient.mock.calls).toEqual(Array.from({ length: 5 }, () => [0, 0, 0, 0, 0, 1]));
+    for (const [index, result] of context.createRadialGradient.mock.results.entries()) {
+      expect(result.value.addColorStop.mock.calls).toEqual(index < 3
+        ? [[0, 'rgba(18,30,47,0.30)'], [0.55, 'rgba(18,30,47,0.12)'], [1, 'rgba(18,30,47,0)']]
+        : [[0, 'rgba(242,177,83,0.18)'], [0.55, 'rgba(242,177,83,0.07)'], [1, 'rgba(242,177,83,0)']]);
+    }
+    expect(context.save).toHaveBeenCalledTimes(6);
+    expect(context.restore).toHaveBeenCalledTimes(6);
+    expect([context.globalAlpha, context.globalCompositeOperation, context.fillStyle]).toEqual([0.7, 'multiply', null]);
+  });
+
+  it.each(['gradient', 'fill'] as const)('restores every canvas state when lighting %s fails', (failure) => {
+    const { context } = make();
+    const reject = () => {
+      expect(context.globalAlpha).toBe(1);
+      expect(context.globalCompositeOperation).toBe('source-over');
+      throw new Error('lighting failed');
+    };
+    if (failure === 'gradient') context.createRadialGradient.mockImplementation(reject);
+    else context.fillRect.mockImplementation(reject);
+    expect(() => paintTownLighting(context as any, townGroundLayout(iso), iso)).toThrow('lighting failed');
+    expect(context.save).toHaveBeenCalledTimes(2); expect(context.restore).toHaveBeenCalledTimes(2);
+    expect([context.globalAlpha, context.globalCompositeOperation, context.fillStyle]).toEqual([0.7, 'multiply', null]);
+    expect([context.imageSmoothingEnabled, context.imageSmoothingQuality]).toEqual([false, 'low']);
+  });
+
+  it('rolls back both derived canvases when lighting fails before world insertion', () => {
+    const { scene, context, add, keys, ground } = make();
+    context.createRadialGradient.mockImplementation(() => { throw new Error('lighting unavailable'); });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('lighting unavailable');
+    expect(keys.size).toBe(0);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
+    expect(add).not.toHaveBeenCalled(); expect(ground.refresh).not.toHaveBeenCalled();
+  });
+
+  it('adds eight area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {
     const { scene, images, ground, material, add } = make();
     createTownCorner(scene, add, iso, -161);
     expect(scene.textures.createCanvas.mock.calls).toEqual([[TOWN_GROUND_KEY, 1344, 672], [TOWN_MATERIAL_KEY, 256, 256]]);
@@ -116,8 +175,8 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(ground.setFilter.mock.calls).toEqual([[0]]); // LINEAR only for generated ground.
     expect(ground.refresh.mock.invocationCallOrder[0]).toBeLessThan(ground.setFilter.mock.invocationCallOrder[0]!);
     expect(material.setFilter).not.toHaveBeenCalled();
-    expect(add).toHaveBeenCalledTimes(4);
-    expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key]);
+    expect(add).toHaveBeenCalledTimes(9);
+    expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key, ...TOWN_FACADES.flatMap(facade => Object.values(facade.layers).map(layer => layer.key))]);
     expect(images[0]).toMatchObject({ x: 128, y: -168 });
     expect(images[0].setOrigin).toHaveBeenCalledWith(0, 0);
     expect(images[0].setScale).toHaveBeenCalledWith(2);
@@ -134,6 +193,112 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(images[3].setScale).toHaveBeenCalledWith(110 / 780);
     expect(images[3].setDepth).toHaveBeenCalledWith(684);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY]]);
+  });
+
+  it('owns one bounded below-actor perimeter and releases it once without rebuilding on updates', () => {
+    const { scene, images, boundaries, material, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    expect(boundaries).toHaveLength(1);
+    expect(boundaries[0].setName).toHaveBeenCalledWith('town-perimeter-rim');
+    expect(boundaries[0].setDepth).toHaveBeenCalledWith(-160);
+    expect(boundaries[0].fillPoints.mock.calls.length).toBeLessThan(120);
+    expect(material.setSize).toHaveBeenCalledWith(896, 576);
+    expect(material.context.putImageData).toHaveBeenCalledOnce();
+    for (let i = 0; i < 20; i++) corner.updateActor({ x: 1472 + i, y: 536 });
+    expect(material.context.putImageData).toHaveBeenCalledOnce();
+    corner.destroy(); corner.destroy();
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
+    const next = createTownCorner(scene, add, iso, -161);
+    expect(boundaries).toHaveLength(2);expect(boundaries[1]).not.toBe(boundaries[0]);
+    next.destroy();expect(boundaries[1].destroy).toHaveBeenCalledOnce();
+  });
+
+  it.each(['getImageData', 'createImageData', 'putImageData'] as const)('rolls back derived textures when surface %s fails', (method) => {
+    const { scene, material, keys, add } = make();
+    material.context[method].mockImplementation(() => { throw new Error('surface allocation failed'); });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('surface allocation failed');
+    expect(keys.size).toBe(0);expect(add).not.toHaveBeenCalled();
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_GROUND_KEY], [TOWN_MATERIAL_KEY]]);
+  });
+
+  it('destroys the partial perimeter when world registration fails', () => {
+    const { scene, boundaries, images, keys } = make();
+    expect(() => createTownCorner(scene, () => {
+      if (boundaries.length) throw new Error('boundary rejected');
+    }, iso, -161)).toThrow('boundary rejected');
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images[0].destroy).toHaveBeenCalledOnce();expect(keys.size).toBe(0);
+  });
+
+  it.each(['setName', 'setDepth', 'fillPoints'])('destroys the owned perimeter when %s fails', (method) => {
+    const { scene, boundaries, images, keys, add } = make();
+    const original = scene.add.graphics.getMockImplementation();
+    scene.add.graphics.mockImplementation(() => {
+      const graphic = original();
+      graphic[method].mockImplementation(() => { throw new Error('boundary draw failed'); });
+      return graphic;
+    });
+    expect(() => createTownCorner(scene, add, iso, -161)).toThrow('boundary draw failed');
+    expect(boundaries[0].destroy).toHaveBeenCalledOnce();
+    expect(images[0].destroy).toHaveBeenCalledOnce();expect(keys.size).toBe(0);
+  });
+
+  it('keeps foundation opaque while the real owned upper layer cuts away and recovers', () => {
+    const { scene, images, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    corner.updateActor({ x: 1368, y: 210 });
+    expect(images[4].setAlpha).toHaveBeenLastCalledWith(1);
+    expect(images[5].setAlpha).toHaveBeenLastCalledWith(0.28);
+    expect(images[4].setName).toHaveBeenCalledWith('town-plaza-rear-foundation');
+    expect(images[5].setName).toHaveBeenCalledWith('town-plaza-rear-upper');
+    corner.updateActor({ x: 1680, y: 260 });
+    expect(images[5].setAlpha).toHaveBeenLastCalledWith(1);
+    expect(images[6].setAlpha).toHaveBeenLastCalledWith(1);
+    expect(images[7].setAlpha).toHaveBeenLastCalledWith(0.28);
+    corner.updateActor(iso(14, 9));
+    expect(images[1].setDepth).toHaveBeenLastCalledWith(588);
+    for (const image of images.slice(4)) expect(image.setAlpha).toHaveBeenLastCalledWith(1);
+    corner.destroy();
+    for (const image of images) image.setAlpha.mockClear();
+    corner.updateActor({ x: 1368, y: 210 });
+    expect(images.every(image => image.setAlpha.mock.calls.length === 0)).toBe(true);
+  });
+
+  it('fades the actual entrance at the hosted hidden-hero position, restores it, and never blocks passage', () => {
+    const { scene, images, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    const gate = images[3];
+    for (const actor of [{ x: 1728.2249516406953, y: 662.9645570713918 }, iso(18, 9)]) {
+      corner.updateActor(actor);
+      expect(gate.setAlpha).toHaveBeenLastCalledWith(0.28);
+      expect(gate.setDepth.mock.calls).toEqual([[684]]);
+      expect(corner.blocksMovement(actor, actor, 38)).toBe(false);
+    }
+    expect(corner.blocksMovement({ x: 1728, y: 620 }, { x: 1728, y: 720 }, 38)).toBe(false);
+    corner.updateActor({ x: 1728, y: 665 });
+    expect(gate.setAlpha).toHaveBeenLastCalledWith(1);
+    corner.updateActor(iso(14, 9));
+    expect(gate.setAlpha).toHaveBeenLastCalledWith(1);
+    corner.destroy(); gate.setAlpha.mockClear();
+    corner.updateActor(iso(18, 9));
+    expect(gate.setAlpha).not.toHaveBeenCalled();
+    const returned = createTownCorner(scene, add, iso, -161);
+    returned.updateActor(iso(14, 9));
+    expect(images[11]).not.toBe(gate);
+    expect(images[11].setAlpha).toHaveBeenLastCalledWith(1);
+    expect(images[11].setDepth.mock.calls).toEqual([[684]]);
+    returned.destroy();
+  });
+
+  it('cleans every partial facade allocation if world registration fails, without removing source textures', () => {
+    const { scene, images, keys } = make();
+    let registrations = 0;
+    expect(() => createTownCorner(scene, () => { if (++registrations === 8) throw new Error('facade layer rejected'); }, iso, -161)).toThrow('facade layer rejected');
+    expect(images).toHaveLength(7);
+    expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
+    expect(keys.size).toBe(0);
   });
 
   it('destroys objects before their ground texture once and recreates only on reentry', () => {
@@ -219,7 +384,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
   });
 
   it.each([
-    ['ground', 1254, 1254, '526eb5f6e3424f29bef03a6714d7482d8401d940638884eb0c885ea194bfe436'],
+    ['ground', 1254, 1254, 'a6406fe5761ae2e01ccc5296e3c7622c0e0eeda9e2fc8a6e03ab66af0e886091'],
     ['entrance', 1536, 1024, '98ccc4b0ff921b241be233b07f9bcd09bc35d005ea8913483b4210ed302ed15d']
   ] as const)('uses original %s source bytes and dimensions unchanged', (name, width, height, sha256) => {
     const bytes = readFileSync(`static${TOWN_RUNTIME_ASSETS[name].url}`);

@@ -9,6 +9,8 @@ vi.mock('phaser', () => ({ default: {
   Animations: { Events: { ANIMATION_COMPLETE: 'animationcomplete' } }
 } }));
 import { GameScene } from '../games/arpg/scenes/GameScene';
+import { createTownCorner } from '../games/arpg/assets/townCorner';
+import { movementSystem } from '../games/arpg/ecs/systems';
 import { World } from '../games/arpg/ecs/components';
 import { createTownSession } from '../games/arpg/townSession';
 import { createExpedition, enterRuins, recordKill, AREAS } from '../games/arpg/expedition';
@@ -70,7 +72,7 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     const objects: any[] = [];
     const object = (kind: string, x: number, y: number, texture?: string) => {
       const value: any = { kind, x, y, texture, depth: 0, scaleX: 1 };
-      for (const method of ['setScale', 'setTint', 'setAlpha', 'setOrigin', 'setBlendMode', 'play']) {
+      for (const method of ['setScale', 'setTint', 'setAlpha', 'setOrigin', 'setBlendMode', 'setName', 'play']) {
         value[method] = vi.fn(() => value);
       }
       value.setDepth = vi.fn((depth: number) => { value.depth = depth; return value; });
@@ -82,13 +84,18 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
       sprite: (x: number, y: number, key: string) => object('sprite', x, y, key),
       ellipse: vi.fn((x: number, y: number) => object('ellipse', x, y)),
       text: (x: number, y: number) => object('text', x, y),
-      group: vi.fn()
+      group: vi.fn(),
+      graphics: () => { const g = object('graphics', 0, 0); g.fillStyle = vi.fn(() => g); g.fillPoints = vi.fn(() => g); return g; }
     };
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
-    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
-    Object.assign(context, { createPattern: vi.fn(() => ({})) });
-    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
+    Object.assign(context, { createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })) });
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
     const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');
@@ -97,6 +104,8 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(foreground.length).toBeGreaterThan(0);
     if (area === 0) {
       expect(floors).toHaveLength(0);
+      expect(objects.filter(value => value.texture?.startsWith('wall_'))).toHaveLength(0);
+      expect(objects.find(value => value.kind === 'graphics').depth).toBe(-160);
       expect(ground[0].depth).toBe(-161);
       expect(ground[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
       expect(s.add.ellipse).toHaveBeenCalledTimes(1); // Only the hero shadow, no fake service/entrance markers.
@@ -207,6 +216,46 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(s.townCorner.blocksMovement).toHaveBeenCalledWith(previous, expect.any(Object), 38);
     expect(s.world.getTransform(s.playerId)).toMatchObject(previous);
     expect(s.world.getVelocity(s.playerId)).toMatchObject({ vx: 0, vy: 0 });
+  });
+
+  it.each([
+    ['rear', { x: 1368, y: 430 }, { x: 0, y: -1 }],
+    ['endcap', { x: 1640, y: 260 }, { x: 1, y: 1 }]
+  ] as const)('rolls actual ECS dash back against the generated %s foundation despite a legal endpoint', (_id, from, direction) => {
+    const s = make(); s.world = new World(); s.playerId = s.world.createEntity();
+    s.world.setTransform(s.playerId, { ...from, rot: 0 });
+    s.world.setVelocity(s.playerId, { vx: 0, vy: 0, speed: 220 });
+    s.world.setDash(s.playerId, { cd: 0, cdMax: 700, timer: 0, duration: 140, power: 230, lastDir: { ...direction } });
+    const context: any = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
+    Object.assign(context, { createPattern: () => ({}), createRadialGradient: () => ({ addColorStop: vi.fn() }) });
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    s.add = { graphics: () => {
+      const graphic: any = { destroy: vi.fn() };
+      for (const name of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[name] = () => graphic;
+      return graphic;
+    }, image: () => {
+      const image: any = { destroy: vi.fn() };
+      for (const name of ['setName', 'setOrigin', 'setScale', 'setDepth', 'setAlpha']) image[name] = () => image;
+      return image;
+    } };
+    s.townCorner = createTownCorner(s, () => {}, (x, y) => s.isoToWorld(x, y), -161);
+    s.lastMoveDir = { ...direction, lengthSq: () => direction.x ** 2 + direction.y ** 2 };
+    s.pendingDash = true;
+    const snapshots = s.captureTransforms();
+    expect(s.handleDash(16)?.activated).toBe(true);
+    movementSystem(s.world, 16);
+    const destination = { ...s.world.getTransform(s.playerId) };
+    expect(s.isBlocked(destination.x, destination.y, 38)).toBe(false);
+    expect(s.townCorner.blocksMovement(from, destination, 38)).toBe(true);
+    s.resolveCollisions(snapshots);
+    expect(s.world.getTransform(s.playerId)).toEqual({ ...from, rot: 0 });
+    expect(s.world.getVelocity(s.playerId)).toMatchObject({ vx: 0, vy: 0 });
+    expect(s.world.getDash(s.playerId).cd).toBe(700); // A blocked dash still consumes the real cooldown.
+    s.townCorner.destroy();
   });
 
   it.each(['shutdown', 'destroy'])('clears town scenery on scene %s and can clear it again safely', (event) => {

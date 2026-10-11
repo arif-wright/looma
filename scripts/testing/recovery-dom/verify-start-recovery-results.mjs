@@ -10,11 +10,13 @@ export const UNIT_FILES = {
   'gameIntegrationStartRecovery.spec.ts': 9,
   'arpgBootStartRecovery.spec.ts': 5,
   'arpgBootSceneReadiness.spec.ts': 13,
-  'arpgGameSceneReadiness.spec.ts': 16,
+  'arpgGameSceneReadiness.spec.ts': 20,
   'arpgExpedition.spec.ts': 8,
-  'arpgExpeditionScene.spec.ts': 31,
-  'arpgTownCorner.spec.ts': 24,
-  'arpgViewportLayout.spec.ts': 23,
+  'arpgExpeditionScene.spec.ts': 33,
+  'arpgTownCorner.spec.ts': 39,
+  'arpgTownSurface.spec.ts': 17,
+  'arpgTownPlaza.spec.ts': 34,
+  'arpgViewportLayout.spec.ts': 25,
   'arpgTownSession.spec.ts': 30,
   'gameFullscreenStartRecovery.spec.ts': 18
 };

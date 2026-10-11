@@ -1,7 +1,7 @@
 // Bounded ground/gate observations, independent of the production art helper.
 // Pixel alpha proves coverage at five route points, not seamless visual quality.
 export function townGroundIssues(gameplay) {
-  const issues = [], art = gameplay?.townArt, ground = art?.ground;
+  const issues = townBoundaryIssues(gameplay), art = gameplay?.townArt, ground = art?.ground;
   if (!art || !ground) return ['Missing actual town ground observations'];
   const plane = art.objects.filter(object => object.key === 'town_ground_plane_v1');
   const entrance = art.objects.filter(object => object.key === 'town_ruins_entrance_v1');
@@ -20,5 +20,19 @@ export function townGroundIssues(gameplay) {
     if (sample.worldX !== x || sample.worldY !== y || sample.pixelX !== Math.floor((x - floor.x) / 2) || sample.pixelY !== Math.floor((y - floor.y) / 2)) issues.push('Ground sampling position does not match the actual hero-to-gate path');
     if (!Number.isInteger(sample.alpha) || sample.alpha < 250 || sample.alpha > 255) issues.push('Town ground is missing beneath the hero-to-gate path');
   });
+  return issues;
+}
+
+// The flat visual rim is observed independently from all collision geometry.
+// It must sort below both the hero and its foot-contact shadow everywhere.
+export function townBoundaryIssues(gameplay) {
+  const ground=gameplay?.townArt?.ground, issues=[];
+  if(!ground)return ['Missing actual perimeter observations'];
+  if(ground.legacyWallCount!==0)issues.push('Legacy town wall sprites remain');
+  if(!Array.isArray(ground.perimeter)||ground.perimeter.length!==1)return [...issues,'Exactly one owned perimeter drawing required'];
+  const rim=ground.perimeter[0];
+  if(!Number.isSafeInteger(rim.objectId)||rim.objectId<1||!rim.active||!rim.visible||rim.alpha!==1)issues.push('Invalid perimeter ownership or visibility');
+  if(rim.depth!==-160||rim.x!==0||rim.y!==0||rim.scaleX!==1||rim.scaleY!==1||rim.rotation!==0)issues.push('Perimeter drawing transform changed');
+  if(!(rim.depth<gameplay.townArt.hero.depth-25))issues.push('Perimeter drawing can cover hero feet');
   return issues;
 }

@@ -1,0 +1,2801 @@
+{
+  "provenance": {
+    "commit": "a728b7f710cfdef3bd31be2c3f87c16e91682455",
+    "run_id": 38092384077,
+    "artifact_id": 11684662818,
+    "artifact_sha256": "55e1640788225a9046e34259c0df96884e43d4a511054e6a78255c9ab1cba438",
+    "case_index": 12,
+    "note": "Observed rendered cadence and input-intent persistence. The in-tolerance-to-neutral interval is not a raw CDP transport latency measurement."
+  },
+  "target": [
+    1368,
+    536
+  ],
+  "first_leg_excerpt": [
+    {
+      "at": 4020.3,
+      "x": 1380.3333333333314,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4069.1,
+      "x": 1376.6666666666647,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4116.3,
+      "x": 1372.999999999998,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4161.8,
+      "x": 1369.3333333333312,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4207.3,
+      "x": 1365.6666666666645,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4252.6,
+      "x": 1361.9999999999977,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4296.5,
+      "x": 1358.333333333331,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4340.9,
+      "x": 1354.6666666666642,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4386,
+      "x": 1350.9999999999975,
+      "y": 536,
+      "intent": {
+        "x": -1,
+        "y": 0
+      }
+    },
+    {
+      "at": 4431,
+      "x": 1350.9999999999975,
+      "y": 536,
+      "intent": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "moving_frame_steps": [
+    {
+      "dt": 47.7,
+      "distance": 3.6666666666666856
+    },
+    {
+      "dt": 48.7,
+      "distance": 3.6666666666666856
+    },
+    {
+      "dt": 45.5,
+      "distance": 3.6666666666666856
+    },
+    {
+      "dt": 46.4,
+      "distance": 3.6666666666666856
+    },
+    {
+      "dt": 46.6,
+      "distance": 3.6666666666666856
+    },
+    {
+      "dt": 46.8,
+      "distance": 4.399999999999977
+    },
+    {
+      "dt": 48.8,
+      "distance": 5.133333333333326
+    },
+    {
+      "dt": 52.9,
+      "distance": 5.866666666666674
+    },
+    {
+      "dt": 47.1,
+      "distance": 10.26740000000001
+    },
+    {
+      "dt": 48.3,
+      "distance": 10.26740000000001
+    },
+    {
+      "dt": 47.4,
+      "distance": 10.265199999999993
+    }
+  ],
+  "bounded_pulse_failure": {
+    "provenance": {
+      "commit": "a446a031129b9004bb677f2c88520dabd9b57532",
+      "run_id": 38093516123,
+      "artifact_id": 11685620193,
+      "artifact_sha256": "8fcdb3b8883de6dbbd47954162d94bcd369661ac833efc72397db4078cbf19aa",
+      "trace_artifact_id": 11685550262,
+      "trace_sha256": "7d882e0daedcd21c941bae9119b7c48213b8d4d544394c01531887642d113ee3",
+      "note": "Command-level before/after reads establish every observed navigation press moved. The model also tests hypothetical phase-missed pulses; those were not observed in this run."
+    },
+    "cases": {
+      "desktop": {
+        "target": [
+          1368,
+          536
+        ],
+        "final_neutral": {
+          "at": 10527.5,
+          "area": 0,
+          "x": 1387.2963333333328,
+          "y": 536,
+          "intent": {
+            "x": 0,
+            "y": 0
+          },
+          "dash": {
+            "cd": 0,
+            "cdMax": 700,
+            "power": 230,
+            "duration": 140,
+            "timer": 0,
+            "lastDir": {
+              "x": 1,
+              "y": 0
+            }
+          }
+        },
+        "pulse_count": 7,
+        "zero_movement_pulses": 0,
+        "median_frame_ms": 63.75,
+        "median_cycle_ms": 893.9670000000042,
+        "moving_frame_steps": [
+          {
+            "dt": 65.0,
+            "distance": 3.666667
+          },
+          {
+            "dt": 62.8,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.9,
+            "distance": 3.666667
+          },
+          {
+            "dt": 64.0,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.7,
+            "distance": 3.666667
+          },
+          {
+            "dt": 65.7,
+            "distance": 3.666667
+          },
+          {
+            "dt": 63.8,
+            "distance": 9.901467
+          },
+          {
+            "dt": 61.6,
+            "distance": 11.0
+          },
+          {
+            "dt": 63.9,
+            "distance": 13.9348
+          },
+          {
+            "dt": 63.8,
+            "distance": 13.9348
+          },
+          {
+            "dt": 63.7,
+            "distance": 13.9326
+          }
+        ],
+        "presses": [
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 253.20799999998417,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 251.6689999999944,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 256.92799999998533,
+            "distance": 7.333333333333485
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 252.11100000000442,
+            "distance": 20.901466666666693
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 189.19000000000233,
+            "distance": 13.934799999999996
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 189.28099999998813,
+            "distance": 13.934799999999996
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 187.06399999998393,
+            "distance": 13.932600000000093
+          }
+        ]
+      },
+      "phone": {
+        "target": [
+          1160,
+          430
+        ],
+        "final_neutral": {
+          "at": 24624.20000000001,
+          "area": 0,
+          "x": 1165.8905333333325,
+          "y": 424.9022,
+          "intent": {
+            "x": 0,
+            "y": 0
+          },
+          "dash": {
+            "cd": 0,
+            "cdMax": 700,
+            "power": 230,
+            "duration": 140,
+            "timer": 0,
+            "lastDir": {
+              "x": 0,
+              "y": -1
+            }
+          }
+        },
+        "pulse_count": 57,
+        "zero_movement_pulses": 0,
+        "median_frame_ms": 21.899999999965075,
+        "median_cycle_ms": 293.9774999999936,
+        "moving_frame_steps": [
+          {
+            "dt": 22.2,
+            "distance": 3.662267
+          },
+          {
+            "dt": 22.8,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.8,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.5,
+            "distance": 3.663733
+          },
+          {
+            "dt": 22.9,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.6,
+            "distance": 3.662267
+          },
+          {
+            "dt": 23.0,
+            "distance": 3.662267
+          },
+          {
+            "dt": 21.9,
+            "distance": 3.663733
+          },
+          {
+            "dt": 25.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 25.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.6,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.7,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.6,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.7,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.2,
+            "distance": 5.1348
+          },
+          {
+            "dt": 22.5,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.9,
+            "distance": 5.1348
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.8,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.8,
+            "distance": 5.1348
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 21.5,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.6,
+            "distance": 5.1304
+          },
+          {
+            "dt": 22.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 22.5,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.2,
+            "distance": 5.1326
+          },
+          {
+            "dt": 23.6,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.3,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.1326
+          },
+          {
+            "dt": 22.1,
+            "distance": 5.5
+          },
+          {
+            "dt": 21.3,
+            "distance": 5.1348
+          },
+          {
+            "dt": 23.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.1,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.4,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.8,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 21.0,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.9,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 21.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.6,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.3978
+          },
+          {
+            "dt": 21.1,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.6,
+            "distance": 4.7674
+          },
+          {
+            "dt": 22.4,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.7674
+          },
+          {
+            "dt": 19.7,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4022
+          },
+          {
+            "dt": 20.3,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7652
+          },
+          {
+            "dt": 20.4,
+            "distance": 4.7674
+          },
+          {
+            "dt": 21.7,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.7,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.3978
+          },
+          {
+            "dt": 19.9,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.5,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.2,
+            "distance": 4.4
+          },
+          {
+            "dt": 20.1,
+            "distance": 4.4
+          },
+          {
+            "dt": 19.6,
+            "distance": 4.4
+          },
+          {
+            "dt": 20,
+            "distance": 4.3978
+          },
+          {
+            "dt": 20.0,
+            "distance": 4.3978
+          },
+          {
+            "dt": 19.8,
+            "distance": 4.4
+          }
+        ],
+        "presses": [
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 131.06599999999162,
+            "distance": 14.650533333333442
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 109.09599999999045,
+            "distance": 10.98680000000013
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.8289999999979,
+            "distance": 3.6637333333333117
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.78699999998207,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 62.92899999997462,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.96199999999953,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.5800000000163,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.97500000000582,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.8859999999986,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 66.24800000002142,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 70.22200000000885,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 64.07500000001164,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 66.92199999999139,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.65600000001723,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 65.45000000001164,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 68.39900000000489,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.9890000000014,
+            "distance": 5.132599999999911
+          },
+          {
+            "key": "w",
+            "delay": 64,
+            "duration_ms": 110.92800000001444,
+            "distance": 15.402200000000107
+          },
+          {
+            "key": "w",
+            "delay": 64,
+            "duration_ms": 111.42900000000373,
+            "distance": 15.037000000000035
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.89400000000023,
+            "distance": 5.132600000000025
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.27100000000792,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.5340000000142,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 62.453999999997905,
+            "distance": 5.134799999999984
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.97600000002421,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 63.74100000000908,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 63.779999999998836,
+            "distance": 5.130400000000009
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.07300000000396,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.26900000000023,
+            "distance": 5.132600000000025
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 64.41800000000512,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.32699999999022,
+            "distance": 5.132599999999968
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 66.57300000000396,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 62.75800000000163,
+            "distance": 4.767400000000009
+          },
+          {
+            "key": "w",
+            "delay": 16,
+            "duration_ms": 65.11699999999837,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "s",
+            "delay": 16,
+            "duration_ms": 45.60800000000745,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "s",
+            "delay": 16,
+            "duration_ms": 63.037000000011176,
+            "distance": 4.765199999999993
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 128.41799999997602,
+            "distance": 19.067399999999907
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 105.67900000000373,
+            "distance": 14.297800000000052
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 125.03900000001886,
+            "distance": 18.697800000000143
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 121.99199999999837,
+            "distance": 18.700000000000045
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 122.9429999999993,
+            "distance": 18.69560000000024
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 124.81400000001304,
+            "distance": 18.330400000000054
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 121.34999999997672,
+            "distance": 18.334800000000087
+          },
+          {
+            "key": "a",
+            "delay": 64,
+            "duration_ms": 119.86600000000908,
+            "distance": 17.967400000000225
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.506999999983236,
+            "distance": 4.76520000000005
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 57.880999999993946,
+            "distance": 4.767399999999952
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.703999999997905,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 52.87099999998463,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.93900000001304,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.470000000001164,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.39700000002631,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 57.663999999989755,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.53499999997439,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 62.28100000001723,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 58.68499999999767,
+            "distance": 4.400000000000091
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 60.75899999999092,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.718000000022585,
+            "distance": 4.397799999999961
+          },
+          {
+            "key": "a",
+            "delay": 16,
+            "duration_ms": 59.68299999998999,
+            "distance": 4.400000000000091
+          }
+        ]
+      }
+    }
+  },
+  "coarse_quantization_failures": [
+    {
+      "provenance": {
+        "head": "d873f298219c67899c65b5bc8126cc73171e0f92",
+        "run_id": 38102814074,
+        "artifact_id": 11688188429,
+        "artifact_sha256": "f1cabf84e6e870ea59e26dc81d770da4f4e1661119c2aa792b7b4bf12e106769",
+        "case_index": 12
+      },
+      "target": [
+        1200,
+        260
+      ],
+      "median_frame_ms": 102.39999999996508,
+      "max_frame_ms": 224.20000000001164,
+      "presses": [
+        {
+          "call": "call@8291",
+          "key": "s",
+          "requestedDelay": 189,
+          "commandStart": 201794.451,
+          "commandEnd": 202199.309,
+          "responseEnd": 202504.665,
+          "before": {
+            "at": 34986.79999999999,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 202.35019999999997,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 35800.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.448,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 45.097800000000035,
+          "heldFrames": 2,
+          "heldFirstAt": 35293.29999999999,
+          "heldLastAt": 35395.70000000001
+        },
+        {
+          "call": "call@8295",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 202605.431,
+          "commandEnd": 202905.265,
+          "responseEnd": 203215.975,
+          "before": {
+            "at": 35800.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.448,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 36511.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.81539999999995,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.367399999999947,
+          "heldFrames": 1,
+          "heldFirstAt": 36101.600000000035,
+          "heldLastAt": 36101.600000000035
+        },
+        {
+          "call": "call@8299",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 203318.047,
+          "commandEnd": 203621.006,
+          "responseEnd": 203940.329,
+          "before": {
+            "at": 36511.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.81539999999995,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 37236.29999999999,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.4502,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.36519999999996,
+          "heldFrames": 1,
+          "heldFirstAt": 36815.70000000001,
+          "heldLastAt": 36815.70000000001
+        },
+        {
+          "call": "call@8303",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 204045.246,
+          "commandEnd": 204354.185,
+          "responseEnd": 204667.23,
+          "before": {
+            "at": 37236.29999999999,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.4502,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 37963.100000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 270.18280000000004,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.732600000000048,
+          "heldFrames": 1,
+          "heldFirstAt": 37546.79999999999,
+          "heldLastAt": 37546.79999999999
+        },
+        {
+          "call": "call@8307",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 204767.333,
+          "commandEnd": 205075.033,
+          "responseEnd": 205379.225,
+          "before": {
+            "at": 37963.100000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 270.18280000000004,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 38675.100000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.45020000000014,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.732599999999906,
+          "heldFrames": 1,
+          "heldFirstAt": 38270.600000000035,
+          "heldLastAt": 38270.600000000035
+        },
+        {
+          "call": "call@8311",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 205485.716,
+          "commandEnd": 205786.398,
+          "responseEnd": 206085.825,
+          "before": {
+            "at": 38675.100000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.45020000000014,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 39381.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.8154000000001,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.365199999999987,
+          "heldFrames": 1,
+          "heldFirstAt": 38981.40000000002,
+          "heldLastAt": 38981.40000000002
+        },
+        {
+          "call": "call@8315",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 206188.754,
+          "commandEnd": 206483.069,
+          "responseEnd": 206781.685,
+          "before": {
+            "at": 39381.70000000001,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.8154000000001,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 40077.600000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.45020000000017,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.36519999999996,
+          "heldFrames": 1,
+          "heldFirstAt": 39680.20000000001,
+          "heldLastAt": 39680.20000000001
+        },
+        {
+          "call": "call@8319",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 206882.029,
+          "commandEnd": 207185.067,
+          "responseEnd": 207494.847,
+          "before": {
+            "at": 40077.600000000035,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.45020000000017,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 40790.79999999999,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.45020000000017,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.0,
+          "heldFrames": 1,
+          "heldFirstAt": 40378.600000000035,
+          "heldLastAt": 40378.600000000035
+        },
+        {
+          "call": "call@8323",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 207597.694,
+          "commandEnd": 207905.163,
+          "responseEnd": 208209.047,
+          "before": {
+            "at": 40790.79999999999,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 269.45020000000017,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 41504.90000000002,
+            "area": 0,
+            "x": 1201.4043999999988,
+            "y": 247.08500000000004,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 22.36520000000013,
+          "heldFrames": 1,
+          "heldFirstAt": 41098,
+          "heldLastAt": 41098
+        }
+      ],
+      "note": "Actual native command and POST_RENDER records. Command durations include dispatch/acknowledgement and are not exact held-input duration. Chord timing is a separate explicitly hypothetical replay; these runs used cardinal pulses only."
+    },
+    {
+      "provenance": {
+        "head": "ca701a535d8ab9a8d44591b5200889d39b560bbd",
+        "run_id": 38103713681,
+        "artifact_id": 11688457696,
+        "artifact_sha256": "93c0acb93c4cbc5122eb0521389bda7d9fc6c7b53be98f54f603577f26fc7144",
+        "case_index": 12
+      },
+      "target": [
+        1200,
+        260
+      ],
+      "median_frame_ms": 94.80000000000291,
+      "max_frame_ms": 233.69999999998254,
+      "presses": [
+        {
+          "call": "call@7799",
+          "key": "s",
+          "requestedDelay": 159,
+          "commandStart": 154453.55,
+          "commandEnd": 154735.179,
+          "responseEnd": 154829.613,
+          "before": {
+            "at": 19817.800000000017,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 208.95166666666697,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 20195.50000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.382066666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 41.43040000000002,
+          "heldFrames": 2,
+          "heldFirstAt": 19913.899999999994,
+          "heldLastAt": 20007.800000000017
+        },
+        {
+          "call": "call@7803",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 154831.249,
+          "commandEnd": 155019.52,
+          "responseEnd": 155114.525,
+          "before": {
+            "at": 20195.50000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.382066666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 20480.50000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.282066666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 20290.300000000017,
+          "heldLastAt": 20290.300000000017
+        },
+        {
+          "call": "call@7807",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 155116.23,
+          "commandEnd": 155301.242,
+          "responseEnd": 155395.994,
+          "before": {
+            "at": 20480.50000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.282066666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 20762.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38426666666695,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897800000000046,
+          "heldFrames": 1,
+          "heldFirstAt": 20575.199999999983,
+          "heldLastAt": 20575.199999999983
+        },
+        {
+          "call": "call@7811",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 155397.602,
+          "commandEnd": 155582.075,
+          "responseEnd": 155676.86,
+          "before": {
+            "at": 20762.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38426666666695,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 21042.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.902199999999965,
+          "heldFrames": 1,
+          "heldFirstAt": 20856.199999999983,
+          "heldLastAt": 20856.199999999983
+        },
+        {
+          "call": "call@7815",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 155678.527,
+          "commandEnd": 155865.88,
+          "responseEnd": 155961.109,
+          "before": {
+            "at": 21042.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 21327.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 21139.100000000006,
+          "heldLastAt": 21139.100000000006
+        },
+        {
+          "call": "call@7819",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 155965.676,
+          "commandEnd": 156147.93,
+          "responseEnd": 156243.02,
+          "before": {
+            "at": 21327.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 21608.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 21421.199999999983,
+          "heldLastAt": 21421.199999999983
+        },
+        {
+          "call": "call@7823",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 156244.739,
+          "commandEnd": 156430.218,
+          "responseEnd": 156525.309,
+          "before": {
+            "at": 21608.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2864666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 21891.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38866666666686,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897800000000046,
+          "heldFrames": 1,
+          "heldFirstAt": 21703.50000000003,
+          "heldLastAt": 21703.50000000003
+        },
+        {
+          "call": "call@7827",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 156527.709,
+          "commandEnd": 156715.038,
+          "responseEnd": 156810.654,
+          "before": {
+            "at": 21891.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38866666666686,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 22176.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.28866666666687,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 21986.699999999983,
+          "heldLastAt": 21986.699999999983
+        },
+        {
+          "call": "call@7831",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 156814.667,
+          "commandEnd": 156998.366,
+          "responseEnd": 157098.144,
+          "before": {
+            "at": 22176.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.28866666666687,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 22464.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3908666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.89779999999996,
+          "heldFrames": 1,
+          "heldFirstAt": 22272.300000000017,
+          "heldLastAt": 22272.300000000017
+        },
+        {
+          "call": "call@7835",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 157103.337,
+          "commandEnd": 157287.083,
+          "responseEnd": 157382.649,
+          "before": {
+            "at": 22464.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3908666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 22748.399999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2886666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897800000000018,
+          "heldFrames": 1,
+          "heldFirstAt": 22559.100000000006,
+          "heldLastAt": 22559.100000000006
+        },
+        {
+          "call": "call@7839",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 157384.338,
+          "commandEnd": 157571.208,
+          "responseEnd": 157669.944,
+          "before": {
+            "at": 22748.399999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2886666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 23035.300000000017,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38866666666692,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 22842.699999999983,
+          "heldLastAt": 22842.699999999983
+        },
+        {
+          "call": "call@7843",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 157671.663,
+          "commandEnd": 157858.017,
+          "responseEnd": 157953.346,
+          "before": {
+            "at": 23035.300000000017,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38866666666692,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 23319.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.28646666666685,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897799999999933,
+          "heldFrames": 1,
+          "heldFirstAt": 23130.699999999983,
+          "heldLastAt": 23130.699999999983
+        },
+        {
+          "call": "call@7847",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 157955.208,
+          "commandEnd": 158140.28,
+          "responseEnd": 158234.691,
+          "before": {
+            "at": 23319.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.28646666666685,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 23600.699999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38646666666685,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 23414.399999999994,
+          "heldLastAt": 23414.399999999994
+        },
+        {
+          "call": "call@7851",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 158236.243,
+          "commandEnd": 158421.093,
+          "responseEnd": 158517.632,
+          "before": {
+            "at": 23600.699999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38646666666685,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 23883.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2842666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897800000000046,
+          "heldFrames": 1,
+          "heldFirstAt": 23695.199999999983,
+          "heldLastAt": 23695.199999999983
+        },
+        {
+          "call": "call@7855",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 158519.54,
+          "commandEnd": 158706.195,
+          "responseEnd": 158801.126,
+          "before": {
+            "at": 23883.600000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 271.2842666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 24167.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3842666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 23978.600000000006,
+          "heldLastAt": 23978.600000000006
+        },
+        {
+          "call": "call@7859",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 158802.302,
+          "commandEnd": 158990.304,
+          "responseEnd": 159086.117,
+          "before": {
+            "at": 24167.00000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.3842666666669,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 24452.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.916866666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.532600000000087,
+          "heldFrames": 1,
+          "heldFirstAt": 24263.50000000003,
+          "heldLastAt": 24263.50000000003
+        },
+        {
+          "call": "call@7863",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 159087.926,
+          "commandEnd": 159279.187,
+          "responseEnd": 159374.869,
+          "before": {
+            "at": 24452.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.916866666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 24740.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.01686666666697,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.900000000000006,
+          "heldFrames": 1,
+          "heldFirstAt": 24549.50000000003,
+          "heldLastAt": 24549.50000000003
+        },
+        {
+          "call": "call@7867",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 159379.779,
+          "commandEnd": 159562.816,
+          "responseEnd": 159657.943,
+          "before": {
+            "at": 24740.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.01686666666697,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 25023.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.914666666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.897800000000046,
+          "heldFrames": 1,
+          "heldFirstAt": 24835.899999999994,
+          "heldLastAt": 24835.899999999994
+        },
+        {
+          "call": "call@7871",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 159659.698,
+          "commandEnd": 159843.966,
+          "responseEnd": 159938.335,
+          "before": {
+            "at": 25023.899999999994,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.914666666667,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 25304.300000000017,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.01686666666706,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.89779999999996,
+          "heldFrames": 1,
+          "heldFirstAt": 25118.199999999983,
+          "heldLastAt": 25118.199999999983
+        },
+        {
+          "call": "call@7875",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 159939.932,
+          "commandEnd": 160125.945,
+          "responseEnd": 160221.274,
+          "before": {
+            "at": 25304.300000000017,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.01686666666706,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 25587.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.91246666666706,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.8956,
+          "heldFrames": 1,
+          "heldFirstAt": 25398.600000000006,
+          "heldLastAt": 25398.600000000006
+        },
+        {
+          "call": "call@7879",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 160226.02,
+          "commandEnd": 160408.233,
+          "responseEnd": 160504.184,
+          "before": {
+            "at": 25587.100000000006,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.91246666666706,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 25870.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.37986666666708,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.532599999999974,
+          "heldFrames": 1,
+          "heldFirstAt": 25681.600000000006,
+          "heldLastAt": 25681.600000000006
+        },
+        {
+          "call": "call@7883",
+          "key": "s",
+          "requestedDelay": 16,
+          "commandStart": 160505.974,
+          "commandEnd": 160692.348,
+          "responseEnd": 160788.11,
+          "before": {
+            "at": 25870.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.37986666666708,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 26154.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.91466666666713,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.534800000000047,
+          "heldFrames": 1,
+          "heldFirstAt": 25964.600000000006,
+          "heldLastAt": 25964.600000000006
+        },
+        {
+          "call": "call@7887",
+          "key": "w",
+          "requestedDelay": 16,
+          "commandStart": 160789.748,
+          "commandEnd": 160975.927,
+          "responseEnd": 161070.533,
+          "before": {
+            "at": 26154.199999999983,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 270.91466666666713,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "after": {
+            "at": 26436.50000000003,
+            "area": 0,
+            "x": 1201.036999999998,
+            "y": 250.38206666666716,
+            "intent": {
+              "x": 0,
+              "y": 0
+            },
+            "dash": {
+              "cd": 0,
+              "cdMax": 700,
+              "power": 230,
+              "duration": 140,
+              "timer": 0,
+              "lastDir": {
+                "x": 0,
+                "y": -1
+              }
+            }
+          },
+          "distance": 20.532599999999974,
+          "heldFrames": 1,
+          "heldFirstAt": 26249.399999999994,
+          "heldLastAt": 26249.399999999994
+        }
+      ],
+      "note": "Actual native command and POST_RENDER records. Command durations include dispatch/acknowledgement and are not exact held-input duration. Chord timing is a separate explicitly hypothetical replay; these runs used cardinal pulses only."
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 import type Phaser from 'phaser';
 import type { Vec2 } from '../ecs/components';
+import { crossesTownFootprint, townFacadePresentation, townPassageAlpha } from '../townPlaza';
+import { TOWN_FACADES } from './townFacadeData';
+import { sampleTownSurface } from './townGroundSurface';
+import { townBoundaryGeometry, townBoundaryShadow } from './townBoundary';
 
 // Original, untrimmed source PNGs. Contacts are measured source pixels, not a
 // generic bottom pivot. Historical sources are retained byte-for-byte.
@@ -13,7 +17,8 @@ export const TOWN_CORNER_ASSETS = {
 export const TOWN_RUNTIME_ASSETS = {
   shop: TOWN_CORNER_ASSETS.shop,
   lantern: TOWN_CORNER_ASSETS.lantern,
-  ground: { key: 'town_cobble_material_v1', url: '/games/arpg/town-ground-v1/town-cobble-material-v1.png' },
+  ground: { key: 'town_cobble_material_v1', url: '/games/arpg/town-plaza-v1/town-worn-paving-material-v2.png' },
+  ...Object.fromEntries(TOWN_FACADES.flatMap(facade => Object.entries(facade.layers).map(([layer, asset]) => [`${facade.id}-${layer}`, asset]))),
   entrance: { key: 'town_ruins_entrance_v1', url: '/games/arpg/town-ground-v1/town-ruins-entrance-v1.png' }
 } as const;
 export const TOWN_COBBLE_PATCH_KEY = 'town_corner_cobble_patch_v1';
@@ -21,7 +26,7 @@ export const TOWN_GROUND_KEY = 'town_ground_plane_v1';
 export const TOWN_MATERIAL_KEY = 'town_ground_mirrored_material_v1';
 export const TOWN_GROUND_RESOLUTION = 0.5;
 // 128px source quadrants span four logical cells. The doubled cobble scale
-// avoids dense speckle while keeping the temporary material size unchanged.
+// avoids dense speckle. The mirror sampler remains256² before field expansion.
 export const TOWN_MATERIAL_CELL_PIXELS = 32;
 export const TOWN_MATERIAL_SIZE = 256;
 export const TOWN_CORNER_LAYOUT = {
@@ -106,7 +111,7 @@ export function paintTownMaterial(context: CanvasRenderingContext2D, source: Can
 /** One pattern fill avoids separately antialiasing every tilted tile boundary. */
 export function paintTownGround(context: CanvasRenderingContext2D, material: CanvasImageSource,
   layout: ReturnType<typeof townGroundLayout>) {
-  const pattern = context.createPattern(material, 'repeat');
+  const pattern = context.createPattern(material, 'no-repeat');
   if (!pattern) throw new Error('Town material pattern could not be created.');
   const resolution = TOWN_GROUND_RESOLUTION;
   context.save();
@@ -132,51 +137,83 @@ export function paintTownGround(context: CanvasRenderingContext2D, material: Can
   }
 }
 
-function pointSegmentDistanceSquared(point: Vec2, a: Vec2, b: Vec2) {
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const length = dx * dx + dy * dy;
-  const t = length ? Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / length)) : 0;
-  return (point.x - a.x - t * dx) ** 2 + (point.y - a.y - t * dy) ** 2;
-}
-const cross = (a: Vec2, b: Vec2, p: Vec2) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-function segmentsIntersect(a: Vec2, b: Vec2, c: Vec2, d: Vec2) {
-  // Inclusive bounds also distinguish disjoint collinear segments.
-  if (Math.max(a.x, b.x) < Math.min(c.x, d.x) || Math.max(c.x, d.x) < Math.min(a.x, b.x) ||
-      Math.max(a.y, b.y) < Math.min(c.y, d.y) || Math.max(c.y, d.y) < Math.min(a.y, b.y)) return false;
-  return cross(a, b, c) * cross(a, b, d) <= 0 && cross(c, d, a) * cross(c, d, b) <= 0;
-}
-function insideConvex(point: Vec2, polygon: readonly Vec2[]) {
-  const sides = polygon.map((a, i) => cross(a, polygon[(i + 1) % polygon.length]!, point));
-  return sides.every(value => value >= 0) || sides.every(value => value <= 0);
+// Local composition proof only: floor shading anchored to existing physical
+// contacts. No new architecture, sprites, collider or texture allocation.
+export const TOWN_LIGHTING_PROOF = {
+  warmPools: [
+    { tile: { x: 15, y: 8.5 }, offset: { x: 0, y: 0 }, radius: { x: 104, y: 56 } },
+    { tile: { x: 18, y: 9 }, offset: { x: -26, y: -2 }, radius: { x: 74, y: 40 } }
+  ],
+  coolContacts: [
+    { tile: { x: 16, y: 8 }, offset: { x: -12, y: -42 }, radius: { x: 156, y: 75 } },
+    { tile: { x: 18, y: 9 }, offset: { x: 20, y: 7 }, radius: { x: 95, y: 37 } },
+    { tile: { x: 15, y: 8.5 }, offset: { x: 2, y: 2 }, radius: { x: 23, y: 10 } }
+  ]
+} as const;
+
+/** Bounded local light pools; unshaded paving retains its source midtones. */
+export function paintTownLighting(context: CanvasRenderingContext2D,
+  layout: ReturnType<typeof townGroundLayout>, isoToWorld: (tx: number, ty: number) => Vec2) {
+  const resolution = TOWN_GROUND_RESOLUTION;
+  context.save();
+  try {
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = 'source-over';
+    context.beginPath();
+    layout.corners.forEach((point, index) => {
+      const x = (point.x - layout.x) * resolution, y = (point.y - layout.y) * resolution;
+      if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+    });
+    context.closePath(); context.clip();
+    for (const shadow of townBoundaryShadow(isoToWorld, layout.columns, layout.rows)) {
+      context.beginPath();
+      shadow.points.forEach((point, index) => {
+        const x = (point.x - layout.x) * resolution, y = (point.y - layout.y) * resolution;
+        if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+      });
+      context.closePath();
+      context.fillStyle = `rgba(18,30,47,${shadow.alpha})`;
+      context.fill();
+    }
+    const pool = (entry: typeof TOWN_LIGHTING_PROOF.warmPools[number] | typeof TOWN_LIGHTING_PROOF.coolContacts[number], warm: boolean) => {
+      const point = isoToWorld(entry.tile.x, entry.tile.y);
+      context.save();
+      try {
+        context.translate((point.x + entry.offset.x - layout.x) * resolution, (point.y + entry.offset.y - layout.y) * resolution);
+        context.scale(entry.radius.x * resolution, entry.radius.y * resolution);
+        const gradient = context.createRadialGradient(0, 0, 0, 0, 0, 1);
+        gradient.addColorStop(0, warm ? 'rgba(242,177,83,0.18)' : 'rgba(18,30,47,0.30)');
+        gradient.addColorStop(0.55, warm ? 'rgba(242,177,83,0.07)' : 'rgba(18,30,47,0.12)');
+        gradient.addColorStop(1, warm ? 'rgba(242,177,83,0)' : 'rgba(18,30,47,0)');
+        context.fillStyle = gradient;
+        context.fillRect(-1, -1, 2, 2);
+      } finally { context.restore(); }
+    };
+    for (const contact of TOWN_LIGHTING_PROOF.coolContacts) pool(contact, false);
+    for (const light of TOWN_LIGHTING_PROOF.warmPools) pool(light, true);
+  } finally { context.restore(); }
 }
 
-/** Swept actor circle, so both ordinary movement and a 230px dash are blocked. */
+/** The original shop and new exact-grid façades share the swept-circle test. */
 export function crossesTownShop(from: Vec2, to: Vec2, radius: number, shopContact: Vec2) {
-  const polygon = TOWN_CORNER_LAYOUT.shopFootprint.map(point => ({ x: point.x + shopContact.x, y: point.y + shopContact.y }));
-  if (insideConvex(from, polygon) || insideConvex(to, polygon)) return true;
-  const radiusSquared = Math.max(0, radius) ** 2;
-  return polygon.some((a, i) => {
-    const b = polygon[(i + 1) % polygon.length]!;
-    return segmentsIntersect(from, to, a, b) || Math.min(
-      pointSegmentDistanceSquared(from, a, b), pointSegmentDistanceSquared(to, a, b),
-      pointSegmentDistanceSquared(a, from, to), pointSegmentDistanceSquared(b, from, to)
-    ) <= radiusSquared;
-  });
+  return crossesTownFootprint(from, to, radius, TOWN_CORNER_LAYOUT.shopFootprint.map(point => ({ x: point.x + shopContact.x, y: point.y + shopContact.y })));
 }
 
 export type TownCorner = {
   blocksMovement(from: Vec2, to: Vec2, radius: number): boolean;
+  updateActor(actor: Vec2): void;
   destroy(): void;
 };
 
 /** Area-owned objects and derived ground; source textures remain game-owned. */
 export function createTownCorner(
   scene: Phaser.Scene,
-  addToWorld: (image: Phaser.GameObjects.Image) => void,
+  addToWorld: (image: Phaser.GameObjects.GameObject) => void,
   isoToWorld: (tx: number, ty: number) => Vec2,
   floorDepth: number
 ): TownCorner {
   const images: Phaser.GameObjects.Image[] = [];
+  let boundary: Phaser.GameObjects.Graphics | null = null;
   const shop = isoToWorld(TOWN_CORNER_LAYOUT.shopTile.x, TOWN_CORNER_LAYOUT.shopTile.y);
   const ownedTextures = new Set<string>();
   let destroyed = false;
@@ -189,6 +226,7 @@ export function createTownCorner(
     destroyed = true;
     for (const image of images) image.destroy();
     images.length = 0;
+    boundary?.destroy(); boundary = null;
     for (const key of ownedTextures) releaseTexture(key);
   };
   try {
@@ -201,11 +239,19 @@ export function createTownCorner(
     };
     const layout = townGroundLayout(isoToWorld);
     const ground = canvas(TOWN_GROUND_KEY, layout.pixelWidth, layout.pixelHeight);
-    // The temporary mirror material is only 256². It is released after the
-    // single ground rasterization; no full-resolution mirrored atlas is kept.
+    // A256² mirror sampler is expanded once into a bounded, varied UV
+    // field. Both are temporary: only the same1344x672 ground survives creation.
     const material = canvas(TOWN_MATERIAL_KEY, TOWN_MATERIAL_SIZE, TOWN_MATERIAL_SIZE);
     paintTownMaterial(material.context, scene.textures.get(TOWN_RUNTIME_ASSETS.ground.key).getSourceImage() as CanvasImageSource);
+    const mirrored = material.context.getImageData(0, 0, TOWN_MATERIAL_SIZE, TOWN_MATERIAL_SIZE);
+    const fieldWidth = layout.columns * TOWN_MATERIAL_CELL_PIXELS;
+    const fieldHeight = layout.rows * TOWN_MATERIAL_CELL_PIXELS;
+    const pixels = material.context.createImageData(fieldWidth, fieldHeight);
+    sampleTownSurface(mirrored.data, TOWN_MATERIAL_SIZE, fieldWidth, fieldHeight, pixels.data);
+    material.setSize(fieldWidth, fieldHeight);
+    material.context.putImageData(pixels, 0, 0);
     paintTownGround(ground.context, material.canvas, layout);
+    paintTownLighting(ground.context, layout, isoToWorld);
     releaseTexture(TOWN_MATERIAL_KEY);
     ground.refresh();
     // Phaser.Textures.FilterMode.LINEAR = 0. Keep global pixelArt and every
@@ -219,7 +265,13 @@ export function createTownCorner(
     };
     // Top of the original negative floor band, below every actor and wall.
     add(layout, TOWN_GROUND_KEY).setOrigin(0, 0).setScale(1 / TOWN_GROUND_RESOLUTION).setDepth(floorDepth);
-    add(shop, TOWN_CORNER_ASSETS.shop.key)
+    boundary = scene.add.graphics();
+    boundary.setName('town-perimeter-rim').setDepth(floorDepth + 1);
+    for (const face of townBoundaryGeometry(isoToWorld, layout.columns, layout.rows)) {
+      boundary.fillStyle(face.color, 1).fillPoints(face.points, true);
+    }
+    addToWorld(boundary);
+    const shopImage = add(shop, TOWN_CORNER_ASSETS.shop.key).setName('town-plaza-shop')
       .setOrigin(TOWN_CORNER_LAYOUT.shopOrigin.x, TOWN_CORNER_LAYOUT.shopOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.shopScale).setDepth(shop.y + 20);
     const lantern = isoToWorld(TOWN_CORNER_LAYOUT.lanternTile.x, TOWN_CORNER_LAYOUT.lanternTile.y);
@@ -227,10 +279,38 @@ export function createTownCorner(
       .setOrigin(TOWN_CORNER_LAYOUT.lanternOrigin.x, TOWN_CORNER_LAYOUT.lanternOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.lanternScale).setDepth(lantern.y + 20);
     const entrance = isoToWorld(TOWN_CORNER_LAYOUT.entranceTile.x, TOWN_CORNER_LAYOUT.entranceTile.y);
-    add(entrance, TOWN_RUNTIME_ASSETS.entrance.key)
+    const entranceImage = add(entrance, TOWN_RUNTIME_ASSETS.entrance.key)
       .setOrigin(TOWN_CORNER_LAYOUT.entranceOrigin.x, TOWN_CORNER_LAYOUT.entranceOrigin.y)
       .setScale(TOWN_CORNER_LAYOUT.entranceScale).setDepth(entrance.y + 20);
-    return { blocksMovement: (from, to, radius) => !destroyed && crossesTownShop(from, to, radius, shop), destroy };
+    const facades = TOWN_FACADES.map(facade => {
+      const layers = Object.entries(facade.layers).map(([layer, asset]) => ({ layer,
+        image: add(facade.contact, asset.key).setName(`town-plaza-${facade.id}-${layer}`)
+          .setOrigin(asset.originX, asset.originY).setScale(asset.scale).setDepth(facade.contact.y + 20)
+      }));
+      const polygon = facade.footprint.map(point => ({ x: point.x + facade.contact.x, y: point.y + facade.contact.y }));
+      return { facade, layers, polygon };
+    });
+    // Existing raster stays byte-identical. Its full source rectangle is a
+    // conservative cutaway trigger; it is never substituted for its collider.
+    const shopLeft = -618 * TOWN_CORNER_LAYOUT.shopScale;
+    const shopTop = -1175 * TOWN_CORNER_LAYOUT.shopScale;
+    const shopArt = [[{ x: shopLeft, y: shopTop }, { x: shopLeft + 256, y: shopTop },
+      { x: shopLeft + 256, y: shopTop + 256 }, { x: shopLeft, y: shopTop + 256 }]];
+    return {
+      blocksMovement: (from, to, radius) => !destroyed && (crossesTownShop(from, to, radius, shop) ||
+        facades.some(({ polygon }) => crossesTownFootprint(from, to, radius, polygon))),
+      updateActor: actor => {
+        if (destroyed) return;
+        const shopState = townFacadePresentation(actor, shop, TOWN_CORNER_LAYOUT.shopFootprint, shopArt);
+        shopImage.setDepth(shopState.depth).setAlpha(shopState.alpha);
+        entranceImage.setAlpha(townPassageAlpha(actor, entrance));
+        for (const { facade, layers } of facades) {
+          const state = townFacadePresentation(actor, facade.contact, facade.footprint, facade.upperPolygons);
+          for (const { image, layer } of layers) image.setDepth(state.depth).setAlpha(layer === 'upper' ? state.alpha : 1);
+        }
+      },
+      destroy
+    };
   } catch (error) {
     destroy();
     throw error;

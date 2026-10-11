@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { WAYPOINT_TOLERANCE, WAYPOINT_DEADLINE_MS, NAVIGATION_PHASES, waypointKeys, waypointPulse, waypointStep, waypointCorrection, chordEnvelope, safeChordEnvelope, chordEndpointAllowed } from './plaza-navigation.mjs';
+import { fabricatePlazaSchema } from './schema-plaza-data.mjs';
+import { FOOTPRINTS, sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 // Verifier schema tests; these never launch or impersonate executed browsers.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -14,13 +18,14 @@ const image = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc
 function report(mode = 'execution') {
   const execution = mode === 'execution';
   const specs = TITLES.map((title, index) => {
-    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1'];
+    const keys = [...Array.from({ length: 249 }, (_, i) => `key-${i}`), 'town_cobble_material_v1', 'town_corner_shop_v1', 'town_corner_lantern_v1', 'town_ruins_entrance_v1', ...PLAZA_KEYS];
     const artObject = (key, y, depth, originX = 0.5, originY = 0.5) => ({ key, x: 100, y, depth, originX, originY, scaleX: 1, scaleY: 1, displayWidth: 100, displayHeight: 100 });
     const townArt = { hero: { ...artObject('hero-idle', 536, 556), x: 1472 }, objects: [
       { ...artObject('town_ground_plane_v1', -168, -161, 0, 0), x: 128, scaleX: 2, scaleY: 2, displayWidth: 2688, displayHeight: 1344 },
       artObject('town_corner_shop_v1', 700, 720, 618 / 1254, 1175 / 1254), artObject('town_corner_lantern_v1', 600, 620),
       { ...artObject('town_ruins_entrance_v1', 664, 684, 666 / 1536, 826 / 1024), x: 1728, scaleX: 110 / 780, scaleY: 110 / 780 }
-    ], ground: { legacyFloorCount: 0, largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672, filterMode: 0,
+    ], ground: { legacyFloorCount: 0, legacyWallCount: 0,
+      perimeter: [{ objectId: 100, depth: -160, x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1, active: true, visible: true }], largeMarkerCount: 0, textureWidth: 1344, textureHeight: 672, filterMode: 0,
       samples: Array.from({ length: 5 }, (_, index) => ({ worldX: 1472 + index * 64, worldY: 536 + index * 32, pixelX: 672 + index * 32, pixelY: 352 + index * 16, alpha: 255 })) } };
     const viewportGeometry = {
       canvas: { width: 358, height: 500 },
@@ -70,6 +75,7 @@ function report(mode = 'execution') {
         documentWidth: viewport.width, canvas: { x: 16, y: 160, width: viewport.width - 32, height: index === 11 ? 500 : 200, pixelWidth: viewport.width - 32, pixelHeight: index === 11 ? 500 : 200 },
         scene: { ...structuredClone(scene), gameplay: structuredClone(game) } }];
     }
+    if (index >= 12) fabricatePlazaSchema(state, scene, game, index);
     const observation = { browserVersion: '143.0.7499.4', blocked: [], errors: [], unexpectedConsoleErrors: [], cleanupErrors: [], consoleErrors: [], state,
       afterCleanup: { ...structuredClone(state), scenes: state.scenes.map(scene => ({ ...scene, destroyed: true })), canvasCount: 0, authCallbacks: 0, mountedPages: [] } };
     return { title, id: `case-${index}`, file: FILE, ok: true, tests: [{ projectId: PROJECT, projectName: PROJECT, expectedStatus: 'passed', annotations: [], status: execution ? 'expected' : 'skipped', results: execution ? [{ status: 'passed', retry: 0, errors: [], annotations: [], workerIndex: 0, startTime: '2026-10-09T00:00:00Z', duration: index === 10 ? 2 * FLOW_CAP_MS + 10000 : 30000,
@@ -92,7 +98,7 @@ const coherentObservation = (r, mutate, index = 0) => observation(r, value => {
   value.afterCleanup.rewardMutations = structuredClone(value.state.rewardMutations);
   value.afterCleanup.visuals = structuredClone(value.state.visuals);
 }, index);
-test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/12 executed/));
+test('accept exact synthetic execution shape',()=>assert.match(verify(report(),'execution'),/14 executed/));
 test('discovery explicitly means zero execution',()=>assert.match(verify(report('discovery'),'discovery'),/ZERO executed/));
 test('discovery cannot satisfy execution',()=>assert.throws(()=>verify(report('discovery'),'execution')));
 test('execution cannot be relabeled discovery',()=>assert.throws(()=>verify(report(),'discovery')));
@@ -258,3 +264,385 @@ test('alpha bounds use the documented alpha32 threshold', () => {
 });
 test('transparent decoded frame cannot supply visible bounds', () => assert.equal(scanAlphaBounds(new Uint8ClampedArray(16), 2, 2), null));
 test('invalid alpha buffers fail closed', () => assert.throws(() => scanAlphaBounds(new Uint8ClampedArray(15), 2, 2)));
+
+// Additive corruption gates for real-input exploration evidence. Each mutation
+// keeps cleanup copies coherent, rather than failing an unrelated snapshot check.
+const plazaMutations = {
+  'plaza settled checkpoint still holds movement key': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.intent={x:1,y:0},
+  'plaza initial entrance opacity changed': o=>o.state.checkpoints.find(p=>p.label==='plaza-home').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
+  'plaza checkpoint reuses stale geometry': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe=structuredClone(o.state.checkpoints.find(p=>p.label==='rear-side-dash-blocked').scene.gameplay.plazaProbe),
+  'plaza probe precedes request': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe.requestedAt+=100,
+  'plaza missing explicit probe': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaProbe=null,
+  'plaza never exercises entrance cutaway on east approach': o=>o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza opaque entrance at threshold': o=>o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=1,
+  'plaza entrance fails to restore on return': o=>o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.townArt.objects.find(a=>a.key==='town_ruins_entrance_v1').alpha=.28,
+  'plaza missing native checkpoint': o=>o.state.checkpoints.splice(6,1),
+  'plaza missing movement trace': o=>o.state.plazaMotion=[],
+  'plaza trace overflow': o=>o.state.plazaMotionOverflow=true,
+  'plaza trace through rear foundation': o=>{const t=o.state.plazaMotion.find(t=>t.x===1368&&t.y===411);t.y=320;},
+  'plaza walk input never reaches real scene': o=>o.state.plazaMotion.forEach(t=>t.intent={x:0,y:0}),
+  'plaza dash cooldown never activates': o=>o.state.plazaMotion.forEach(t=>t.dash.cd=0),
+  'plaza dash wrong native direction': o=>o.state.plazaMotion.filter(t=>t.dash.cd>=600).forEach(t=>t.dash.lastDir={x:0,y:1}),
+  'plaza checkpoint without trace frame': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.at+=.5,
+  'plaza premature expedition clock': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.elapsed=1,
+  'plaza missing owned facade': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza.pop(),
+  'plaza duplicated owner id': o=>{const a=o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza;a[1].objectId=a[0].objectId;},
+  'plaza wrong facade pivot': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].originX=.5,
+  'plaza wrong facade contact': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].x+=1,
+  'plaza facade nonuniform scaling': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].scaleX=.49,
+  'plaza translucent solid foundation': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].alpha=.28,
+  'plaza opaque cutaway hides hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[2].alpha=1,
+  'plaza cutaway not restored': o=>o.state.checkpoints.find(p=>p.label==='rear-front-restored').scene.gameplay.plaza[2].alpha=.28,
+  'plaza lifted above original depth': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[2].depth=5000,
+  'plaza split foundation upper depths': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plaza[1].depth-=1,
+  'plaza hidden hero scale change': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.townArt.hero.scaleX=.8,
+  'plaza zoom down to fit architecture': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.camera.zoom-=.01,
+  'plaza tiny hero alpha hull': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroVisible.screenBounds.height=5,
+  'plaza missing source-alpha visibility': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility=null,
+  'plaza foreground completely obscures hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility.readable=0,
+  'plaza foreground overly dims hero': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.plazaVisibility.meanTransmission=.1,
+  'plaza hero behind HUD': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroVisible.screenBounds.y=30,
+  'plaza exploration camera does not follow': o=>o.state.checkpoints.find(p=>p.label==='rear-back-cutaway').scene.gameplay.viewportGeometry.heroGround.x=80,
+  'plaza east gate label clipped': o=>o.state.checkpoints.find(p=>p.label==='gate-east-approach').scene.gameplay.viewportGeometry.entranceLabel.x=-20,
+  'plaza south entrance under HUD': o=>o.state.checkpoints.find(p=>p.label==='gate-south-approach').scene.gameplay.viewportGeometry.entrance.y=30,
+  'plaza missed actual gate approach': o=>o.state.checkpoints.find(p=>p.label==='gate-arrived').scene.gameplay.x=1472,
+  'plaza departed facade leaked': o=>o.state.checkpoints.find(p=>p.label==='plaza-departed').scene.gameplay.plaza=[{}],
+  'plaza returned old image ownership': o=>{o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.plaza[0].objectId=o.state.checkpoints.find(p=>p.label==='plaza-home').scene.gameplay.plaza[0].objectId;},
+  'plaza returned cutaway not reset': o=>o.state.checkpoints.find(p=>p.label==='plaza-returned-owned').scene.gameplay.plaza[2].alpha=.28,
+  'plaza unbounded expedition': o=>o.state.checkpoints.find(p=>p.label==='plaza-departed').scene.gameplay.durationLimit=90000,
+  'plaza extra settlement request': o=>o.state.api.push(structuredClone(o.state.api[1])),
+  'plaza missing exploration screenshot observation': o=>o.state.visuals.pop(),
+  'plaza capture from another checkpoint': o=>o.state.visuals[0].scene.gameplay.x+=1,
+  'plaza wrong phone viewport': o=>o.state.visuals[0].viewport.width=1280,
+};
+for(const [name,mutate] of Object.entries(plazaMutations))test(`reject ${name}`,()=>{
+  const r=report();coherentObservation(r,o=>{mutate(o);o.afterCleanup.plazaMotion=structuredClone(o.state.plazaMotion);o.afterCleanup.plazaMotionOverflow=o.state.plazaMotionOverflow;},13);
+  assert.throws(()=>verify(r,'execution'));
+});
+test('independent sweep rejects tunneling with both endpoints clear',()=>{
+  for(const [a,b,id]of [[[1368,411],[1368,181],'rear'],[[1200,260],[1430,260],'rear'],[[1640,260],[1640+230*Math.SQRT1_2,260+230*Math.SQRT1_2],'endcap']]){
+    assert(sweptDistance(a,a,FOOTPRINTS[id])>38);assert(sweptDistance(b,b,FOOTPRINTS[id])>38);
+    assert(sweptDistance(a,b,FOOTPRINTS[id])<38);assert(roomAllows(a)&&roomAllows(b));
+  }
+});
+test('independent sweep distinguishes tangent radius from centerline crossing',()=>{
+  assert.equal(sweptDistance([1200,260],[1430,260],FOOTPRINTS.rear),12);
+  assert.equal(sweptDistance([1368,411],[1368,181],FOOTPRINTS.rear),0);
+});
+test('independent footprint route preserves spawn to original gate',()=>assert(Object.values(FOOTPRINTS).every(p=>sweptDistance([1472,536],[1728,664],p)>38)));
+
+for(const fps of [15,30,60])test(`native steering converges at${fps}fps without physics or clock changes`,()=>{
+  const position={x:1472,y:536};
+  for(const [x,y] of Object.values(NAVIGATION_PHASES).flat()){
+    let steps=0;
+    for(;steps<fps*6;steps++){
+      const keys=waypointKeys(position,x,y);if(!keys.length)break;
+      const dx=Number(keys.includes('d'))-Number(keys.includes('a')),dy=Number(keys.includes('s'))-Number(keys.includes('w')),length=Math.hypot(dx,dy);
+      const before=[position.x,position.y];position.x+=dx/length*220/fps;position.y+=dy/length*220/fps;
+      assert(Object.values(FOOTPRINTS).every(p=>sweptDistance(before,[position.x,position.y],p)>38));
+    }
+    assert(steps<fps*6,'Steering cannot oscillate forever around a waypoint');
+    assert(Math.abs(position.x-x)<=WAYPOINT_TOLERANCE&&Math.abs(position.y-y)<=WAYPOINT_TOLERANCE);
+  }
+});
+test('all route segments preserve radius38 with independent8px endpoint errors',()=>{
+  let before=[1472,536],minimum=Infinity;
+  for(const after of Object.values(NAVIGATION_PHASES).flat()){
+    for(const ax of[-8,8])for(const ay of[-8,8])for(const bx of[-8,8])for(const by of[-8,8]){
+      minimum=Math.min(minimum,...Object.values(FOOTPRINTS).map(poly=>sweptDistance([before[0]+ax,before[1]+ay],[after[0]+bx,after[1]+by],poly)));
+    }
+    before=after;
+  }
+  assert(minimum>41);
+});
+
+const hostedReplay=JSON.parse(readFileSync(new URL('./plaza-feedback-replay.json',import.meta.url),'utf8'));
+test('hosted trace records held input after first in-tolerance frame',()=>{
+ const excerpt=hostedReplay.first_leg_excerpt,first=excerpt.find(p=>Math.abs(p.x-1368)<=8),released=excerpt.find(p=>p.intent.x===0);
+ assert(first&&released);assert(released.at-first.at>300);assert(Math.abs(released.x-1368)>8);
+ assert.equal(hostedReplay.provenance.run_id,38092384077);
+});
+// Discrete update replay. Only update boundaries inside a native key interval
+// move the actor; a pulse wholly between boundaries causes zero movement.
+// This is a hypothetical scheduling model, not browser execution or a claim
+// that the second hosted run missed input (its command-level trace did not).
+function replayPulses(steps,phase,readLag,cooldownFrames=0){
+ const p={x:1472,y:536};let clock=0,next=phase,frame=0,misses=0,zero=0,maxLeg=0;
+ const advance=(until,key)=>{
+  let moved=0;
+  while(next<=until){
+   const step=steps[Math.min(frame,steps.length-1)];
+   const distance=frame<cooldownFrames?220/60:step.distance;
+   if(key){
+    const before=[p.x,p.y];
+    p.x+=(key==='d'?1:key==='a'?-1:0)*distance;
+    p.y+=(key==='s'?1:key==='w'?-1:0)*distance;
+    assert(Object.values(FOOTPRINTS).every(poly=>sweptDistance(before,[p.x,p.y],poly)>38));
+    assert(roomAllows([p.x,p.y]));moved++;
+   }
+   next+=step.dt;frame++;
+  }
+  clock=until;return moved;
+ };
+ for(const[x,y]of Object.values(NAVIGATION_PHASES).flat()){
+  const started=clock;let pulses=0;misses=0;advance(clock+readLag,null);
+  while(waypointPulse(p,x,y)){
+   assert(++pulses<500,'Native steering must converge without growing its target');
+   const pulse=waypointPulse(p,x,y,misses);
+   advance(clock+readLag,null); // command overhead, no held movement
+   if(advance(clock+pulse.delay,pulse.key))misses=0;else{misses++;zero++;}
+   const released={...p};advance(clock+readLag,null);assert.deepEqual(p,released);
+  }
+  assert(Math.abs(p.x-x)<=8&&Math.abs(p.y-y)<=8);
+  maxLeg=Math.max(maxLeg,clock-started);
+ }
+ return {zero,maxLeg,clock};
+}
+for(const feedbackLag of[0,160,315,500])test(`release-before-feedback pulses tolerate${feedbackLag}ms neutral read lag on hosted47ms cadence`,()=>{
+ for(const phase of[0,1,16,31,47])replayPulses(hostedReplay.moving_frame_steps,phase,feedbackLag);
+ // This checks finite convergence only. Arbitrarily slow calls may still fail
+ // the unchanged real deadline; the model never changes the browser clock.
+});
+const boundedReplay=hostedReplay.bounded_pulse_failure;
+test('second hosted trace establishes overhead without claiming missed input',()=>{
+ assert.equal(boundedReplay.provenance.run_id,38093516123);
+ assert.equal(boundedReplay.cases.desktop.pulse_count,7);
+ assert.equal(boundedReplay.cases.phone.pulse_count,57);
+ for(const c of Object.values(boundedReplay.cases))assert.equal(c.zero_movement_pulses,0);
+ assert(boundedReplay.cases.desktop.median_cycle_ms>890);
+ assert(boundedReplay.cases.phone.median_cycle_ms>290);
+ assert(boundedReplay.cases.desktop.presses.slice(0,3).every(p=>p.delay===64&&Math.abs(p.distance-22/3)<1e-6));
+});
+test('a final released in-target position succeeds before checking elapsed deadline',()=>{
+ const c=boundedReplay.cases.phone;
+ assert.equal(waypointStep(c.final_neutral,...c.target,WAYPOINT_DEADLINE_MS+1),null);
+ const d=boundedReplay.cases.desktop;
+ assert.throws(()=>waypointStep(d.final_neutral,...d.target,WAYPOINT_DEADLINE_MS),/Native route stalled/);
+});
+test('bounded pulses retain target and limit only after actually missed updates',()=>{
+ assert.equal(waypointPulse({x:0,y:0},8,8),null);
+ assert.equal(waypointPulse({x:0,y:0},1000,0).delay,240);
+ assert.equal(waypointPulse({x:0,y:0},30,0).delay,16);
+ assert.equal(waypointPulse({x:0,y:0},30,0,1).delay,32);
+ assert.equal(waypointPulse({x:0,y:0},30,0,99).delay,48);
+ assert.equal(waypointPulse({x:0,y:0},9,0,99).delay,16);
+});
+for(const name of['desktop','phone'])for(const lag of(name==='desktop'?[63,126,190]:[21,42,70]))test(`phase-aware${name} replay with${lag}ms call overhead preserves deadline and solid sweeps`,()=>{
+ const c=boundedReplay.cases[name];
+ for(const cooldown of(name==='desktop'?[40,46,60]:[0]))for(const phase of[0,1,16,31,47,63]){
+  // Desktop's last confirmed target-clamped move and first smoothed move
+  // bracket the remaining startup cooldown.40 frames fits the observed interval;46 brackets it conservatively,
+  // and60 covers navigation beginning earlier after fewer reads. This is
+  // an explicit model assumption, not a measured raw engine delta history.
+  const result=replayPulses(c.moving_frame_steps,phase,lag,cooldown);
+  assert(result.zero>0,'Replay must exercise pulses missed between frames');
+  assert(result.maxLeg<WAYPOINT_DEADLINE_MS);
+  assert(result.clock<140_000,'Leave room within180s for checkpoints/return');
+ }
+});
+test('a pulse wholly between two real update boundaries produces no displacement',()=>{
+ const period=boundedReplay.cases.desktop.median_frame_ms;
+ assert(period>63);assert(16<period);
+ const frames=[0,period,period*2],start=20,end=36;
+ assert.equal(frames.filter(at=>at>=start&&at<end).length,0);
+});
+
+test('reject missing gate-arrival screenshot independently of existing17 images',()=>{
+ const r=report(),result=r.suites[0].specs[13].tests[0].results[0];
+ result.attachments=result.attachments.filter(a=>a.name!=='phone-plaza-gate-arrived');
+ assert.throws(()=>verify(r,'execution'));
+});
+
+const perimeterPoint=(o,label='perimeter-wall-blocked')=>o.state.checkpoints.find(p=>p.label===label);
+const perimeterMutations={
+ 'missing required perimeter approach':o=>o.state.checkpoints=o.state.checkpoints.filter(p=>p.label!=='perimeter-ready'),
+ 'missing owned continuous rim':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter=[],
+ 'duplicate continuous rim':o=>{const a=perimeterPoint(o).scene.gameplay.townArt.ground.perimeter;a.push(structuredClone(a[0]));},
+ 'rim painted over feet':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter[0].depth=100,
+ 'rim scaled off blocked ring':o=>perimeterPoint(o).scene.gameplay.townArt.ground.perimeter[0].scaleY=.9,
+ 'legacy isolated wall sprites remain':o=>perimeterPoint(o).scene.gameplay.townArt.ground.legacyWallCount=1,
+ 'returned rim reuses destroyed owner':o=>perimeterPoint(o,'plaza-returned-owned').scene.gameplay.townArt.ground.perimeter[0].objectId=perimeterPoint(o,'plaza-home').scene.gameplay.townArt.ground.perimeter[0].objectId,
+ 'perimeter key never reaches scene':o=>{const a=perimeterPoint(o,'perimeter-ready'),b=perimeterPoint(o);o.state.plazaMotion.filter(t=>t.at>a.at&&t.at<=b.at).forEach(t=>t.intent={x:0,y:0});},
+ 'perimeter feet hidden':o=>perimeterPoint(o).scene.gameplay.plazaVisibility.readable=0,
+};
+for(const[name,mutate]of Object.entries(perimeterMutations))test(`reject ${name}`,()=>{
+ const r=report();coherentObservation(r,o=>{mutate(o);o.afterCleanup.plazaMotion=structuredClone(o.state.plazaMotion);},13);
+ assert.throws(()=>verify(r,'execution'));
+});
+for(const index of[12,13])test(`reject old19-capture report missing ${index===12?'desktop':'phone'} perimeter image`,()=>{
+ const r=report(),result=r.suites[0].specs[index].tests[0].results[0];
+ result.attachments=result.attachments.filter(a=>!a.name.endsWith('-perimeter-edge-feet'));
+ assert.throws(()=>verify(r,'execution'));
+});
+test('perimeter target retains original radius38 stop independently of visual drawing',()=>{
+ for(const x of[1360,1368,1376]){
+  const y=.5*x-706;
+  assert(roomAllows([x,y]));assert(!roomAllows([x,y-.01]));
+ }
+});
+test('perimeter approach and return stay inside original wall for all8px endpoint errors',()=>{
+ for(const a of[[1368,210],[1368,-8]])for(const ax of[-8,8])for(const ay of[-8,8])for(const bx of[-8,8])for(const by of[-8,8]){
+  const b=a[1]===210?[1368,-8]:[1368,210];
+  for(let n=0;n<=100;n++){const t=n/100;assert(roomAllows([(a[0]+ax)*(1-t)+(b[0]+bx)*t,(a[1]+ay)*(1-t)+(b[1]+by)*t]));}
+ }
+});
+
+
+test('bounded trace experiment preserves explicit images and failure diagnostics',()=>{
+ const config=readFileSync(new URL('./playwright.config.ts',import.meta.url),'utf8');
+ assert.equal((config.match(/\btrace:/g)||[]).length,1);
+ assert.match(config,/trace:\s*\{\s*mode:\s*'retain-on-failure',\s*screenshots:\s*false,\s*snapshots:\s*false,\s*sources:\s*true\s*\}/);
+ assert.match(config,/\bscreenshot:\s*'only-on-failure'/);
+ assert.equal(TITLES.flatMap((_title,index)=>requiredScreenshots(index)).length,21);
+ assert(requiredScreenshots(12).includes('desktop-plaza-perimeter-edge-feet'));
+ assert(requiredScreenshots(13).includes('phone-plaza-perimeter-edge-feet'));
+});
+
+// This phase-count model explicitly stages native key delivery in the installed
+// server order. Each held phase may consume0,1,2 real updates; a native chord
+// is never treated as instantaneous. It is a scheduling hypothesis, not a
+// claim that a chord has yet been observed in hosted Chromium.
+const coarseFailures=hostedReplay.coarse_quantization_failures;
+const navRecord=p=>({key:p.key,delay:p.requestedDelay,before:{x:p.before.x,y:p.before.y},after:{x:p.after.x,y:p.after.y}});
+function firstCorrection(c){
+ const history=[];
+ for(const p of c.presses){history.push(navRecord(p));const pulse=waypointCorrection(p.after,...c.target,history);
+  if(pulse)return{p:{x:p.after.x,y:p.after.y},history:history.slice(-2),pulse,elapsed:p.responseEnd-c.presses[0].commandStart};}
+ throw new Error('Recorded skipped band must trigger a bounded correction');
+}
+const keyDirection=k=>[Number(k==='d')-Number(k==='a'),Number(k==='s')-Number(k==='w')];
+function replaySequentialChord(c,leading,diagonal,trailing,missFirst=false,jitter=false){
+ const seed=firstCorrection(c),p={...seed.p},history=[...seed.history];
+ const q=Math.max(...history.map(h=>Math.hypot(h.after.x-h.before.x,h.after.y-h.before.y)));
+ const dt=c.median_frame_ms;let elapsed=seed.elapsed,corrections=0,commands=0,frame=0;const events=[];
+ const fine=c.presses.filter(p=>p.requestedDelay===16).map(p=>p.distance),vary=[Math.min(...fine),Math.max(...fine)];
+ const update=(keys,count)=>{
+  const vector=keys.map(keyDirection).reduce((a,b)=>[a[0]+b[0],a[1]+b[1]],[0,0]),length=Math.hypot(...vector);
+  for(let i=0;i<count;i++){
+   const distance=jitter?vary[frame++%2]:q;
+   const before=[p.x,p.y];p.x+=vector[0]/length*distance;p.y+=vector[1]/length*distance;elapsed+=dt;
+   assert(Object.values(FOOTPRINTS).every(poly=>sweptDistance(before,[p.x,p.y],poly)>38));assert(roomAllows([p.x,p.y]));
+  }
+ };
+ for(;;){
+  const pulse=waypointStep(p,...c.target,elapsed,0,history);if(!pulse)return{elapsed,corrections,commands,p,events};
+  assert(++commands<40);const before={...p},commandStarted=elapsed;elapsed+=dt; // neutral command dispatch
+  if(pulse.key.includes('+')){
+   corrections++;const [lateral,primary]=pulse.key.split('+'),miss=missFirst&&corrections===1;
+   events.push({type:'down',key:lateral,at:elapsed});update([lateral],miss?0:leading);
+   events.push({type:'down',key:primary,at:elapsed});elapsed+=pulse.delay;update([lateral,primary],miss?0:diagonal);
+   events.push({type:'up',key:primary,at:elapsed});update([lateral],miss?0:trailing);
+   events.push({type:'up',key:lateral,at:elapsed});
+   // Even a phase consuming zero updates still awaits its native event ack.
+   // Four sequential acks at a conservative100ms each, then a fresh neutral
+   // read below, are charged independently from consumed movement frames.
+   elapsed=Math.max(elapsed,commandStarted+4*100+pulse.delay);
+  }else{
+   // Real measured fine presses consumed one update despite16ms requested delay.
+   // Coarse pulses consume bounded whole updates; feedback is always neutral.
+   update([pulse.key],Math.max(1,Math.round(pulse.delay/dt)));
+  }
+  assert(chordEndpointAllowed(p,pulse));
+  elapsed+=dt;history.push({key:pulse.key,delay:pulse.delay,before,after:{...p}});if(history.length>2)history.shift();
+ }
+}
+for(const c of coarseFailures){
+ const run=c.provenance.run_id;
+ test(`hosted${run} preserves actual skipped-band diagnosis`,()=>{
+  assert([38102814074,38103713681].includes(run));assert.equal(c.provenance.case_index,12);
+  const fine=c.presses.filter(p=>p.requestedDelay===16);assert(fine.length>=8);
+  assert(fine.every(p=>p.heldFrames===1&&p.distance>20&&p.distance<24));
+  assert(fine.every(p=>Math.abs(p.after.y-260)>8));
+  const seed=firstCorrection(c);assert.equal(seed.pulse.key.split('+')[0],'a','Lateral prefix must point away from rear solid');
+  assert(safeChordEnvelope(seed.pulse.correction.envelope));assert(seed.elapsed<2500);
+  assert.throws(()=>waypointStep(seed.p,1200,260,6500,0,seed.history),/Native route stalled/);
+ });
+ for(const leading of[0,1,2])for(const trailing of[0,1,2])test(`hosted${run} sequential chord${leading}/1/${trailing} keeps8px and6500ms`,()=>{
+  const result=replaySequentialChord(c,leading,1,trailing);
+  assert(result.corrections>=1);assert(result.elapsed<6500);assert(Math.abs(result.p.x-1200)<=8&&Math.abs(result.p.y-260)<=8);
+  const e=result.events.slice(0,4);assert.deepEqual(e.map(x=>x.type),['down','down','up','up']);assert.equal(e[0].key,e[3].key);assert.equal(e[1].key,e[2].key);
+ });
+ test(`hosted${run} a fully missed first chord cannot fabricate success`,()=>{
+  const result=replaySequentialChord(c,1,1,1,true);assert(result.corrections>=2);assert(result.elapsed<6500);
+ });
+ test(`hosted${run} alternating measured step jitter retains native chord safety`,()=>{
+  if(run===38102814074){
+   assert.throws(()=>replaySequentialChord(c,1,1,1,false,true),/Native route stalled before 1200,260/);
+   return; // Slower historical jitter exceeds the same deadline; never a pass.
+  }
+  const result=replaySequentialChord(c,1,1,1,false,true);
+  assert(result.elapsed<6500);assert(Math.abs(result.p.x-1200)<=8&&Math.abs(result.p.y-260)<=8);
+ });
+ test(`hosted${run} two diagonal frames remain bounded or fail the unchanged deadline`,()=>{
+  for(const lead of[0,1,2])for(const tail of[0,1,2]){
+   try{const r=replaySequentialChord(c,lead,2,tail);assert(r.elapsed<6500);}
+   catch(e){assert.match(e.message,/Native route stalled|No independently safe native chord envelope/);}
+  }
+ });
+}
+test('safe chord guard rejects both containment directions and radius proximity',()=>{
+ assert.equal(safeChordEnvelope([[1200,230],[1600,230],[1600,475],[1200,475]]),false,'Whole rear solid is enclosed');
+ assert.equal(safeChordEnvelope([[1350,335],[1355,335],[1355,340],[1350,340]]),false,'Envelope is inside solid');
+ assert.equal(safeChordEnvelope([[1170,278],[1210,278],[1210,295],[1170,295]]),false,'Envelope approaches the radius boundary');
+ assert.equal(safeChordEnvelope([[1000,150],[1100,150],[1100,220],[1000,220]]),true);
+});
+test('coarse chord envelope explicitly contains0..2 frames in each held phase',()=>{
+ const p={x:1200,y:270},bound=28,e=chordEnvelope(p,'a','w',bound);
+ assert(safeChordEnvelope(e));
+ for(const lead of[0,1,2])for(const diagonal of[0,1,2])for(const trail of[0,1,2]){
+  const point=[p.x-bound*(lead+trail+diagonal*Math.SQRT1_2),p.y-bound*diagonal*Math.SQRT1_2];
+  assert(sweptDistance(point,point,e)<1e-7);
+ }
+});
+test('unsafe narrow-passage oscillation rejects rather than widening target or nudging through solids',()=>{
+ const a={key:'a',delay:16,before:{x:1708.1,y:425},after:{x:1687.2,y:425}},b={key:'d',delay:16,before:{x:1687.2,y:425},after:{x:1708.1,y:425}};
+ // The farther endpoint is1687.2; both candidate sequential envelopes are unsafe.
+ const history=[b,{...a,before:b.after}];
+ assert.throws(()=>waypointCorrection(a.after,1700,420,history),/No independently safe native chord envelope/);
+});
+test('fine correction requires genuine opposite skipped-band pulses and observed neutral endpoints',()=>{
+ const c=coarseFailures[0],s=firstCorrection(c);
+ assert.equal(waypointCorrection(s.p,1200,260,[]),null);
+ assert.equal(waypointCorrection(s.p,1200,260,[{...s.history[0],delay:240},s.history[1]]),null);
+ assert.equal(waypointCorrection({...s.p,x:s.p.x+1},1200,260,s.history),null);
+ assert.equal(waypointCorrection({...s.p,y:260},1200,260,s.history),null);
+ assert.equal(waypointStep({x:1200,y:260},1200,260,7000,0,s.history),null);
+});
+test('actual chord feedback beyond the envelope fails rather than continuing',()=>{
+ const s=firstCorrection(coarseFailures[1]);
+ assert(chordEndpointAllowed(s.p,s.pulse));
+ assert.equal(chordEndpointAllowed({x:s.p.x+1,y:s.p.y},s.pulse),false,'Opposite-side drift is outside the native chord');
+ assert.equal(chordEndpointAllowed({x:s.p.x-200,y:s.p.y-20},s.pulse),false,'Unexpectedly prolonged native hold cannot pass');
+ assert.equal(chordEndpointAllowed({x:NaN,y:s.p.y},s.pulse),false);
+});
+test('native correction rejects an unsupported quantum above24px',()=>{
+ const a={key:'s',delay:16,before:{x:1200,y:247},after:{x:1200,y:272}},b={key:'w',delay:16,before:{x:1200,y:272},after:{x:1200,y:247}};
+ assert.throws(()=>waypointCorrection(b.after,1200,260,[a,b]),/Unmodeled native fine-step quantum/);
+});
+for(const q of[20.9,22.36])test(`constant${q}px whole-route stress fails closed where safe convergence is unproved`,()=>{
+ // Deliberately adversarial constant steps; actual Phaser deltas vary. This
+ // documents unsupported perimeter/pinch phases instead of weakening the gate.
+ const dt=q/.22,p={x:1472,y:536};let frames=0,minimum=Infinity,corrections=0;
+ assert.throws(()=>{
+  for(const[x,y]of Object.values(NAVIGATION_PHASES).flat()){
+   let elapsed=0;const history=[];
+   for(;;){
+    const pulse=waypointStep(p,x,y,elapsed,0,history);if(!pulse)break;
+    const before={...p},commandStarted=elapsed;elapsed+=dt;
+    const move=(keys,n)=>{
+     const vector=keys.map(keyDirection).reduce((a,b)=>[a[0]+b[0],a[1]+b[1]],[0,0]),length=Math.hypot(...vector);
+     for(let i=0;i<n;i++){
+      const a=[p.x,p.y];p.x+=vector[0]/length*q;p.y+=vector[1]/length*q;elapsed+=dt;frames++;
+      minimum=Math.min(minimum,...Object.values(FOOTPRINTS).map(poly=>sweptDistance(a,[p.x,p.y],poly)));
+      assert(minimum>38&&roomAllows([p.x,p.y]));
+     }
+    };
+    if(pulse.key.includes('+')){const[a,b]=pulse.key.split('+');move([a],1);move([a,b],1);move([a],1);corrections++;elapsed=Math.max(elapsed,commandStarted+4*100+pulse.delay);}
+    else move([pulse.key],Math.max(1,Math.round(pulse.delay/dt)));
+    assert(chordEndpointAllowed(p,pulse));elapsed+=dt;
+    history.push({key:pulse.key,delay:pulse.delay,before,after:{...p}});if(history.length>2)history.shift();
+   }
+  }
+ },q===20.9?/Native route stalled before 1368,-8/:/No independently safe native chord envelope near 1660,400/);
+ assert(frames>100&&corrections>0&&minimum>38);
+});

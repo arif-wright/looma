@@ -2,7 +2,7 @@ import { FLOW_CAP_MS, SIGNATURE, PLAYER_STATE, RECEIPT, expectedStart, sameJson,
 export type AuthSession = { user: { id: string } } | null;
 export type AuthCallback = (event: string, session: AuthSession) => void;
 export type ArtObjectObservation = {
-  key: string; x: number; y: number; depth: number; originX: number; originY: number;
+  alpha: number; key: string; x: number; y: number; depth: number; originX: number; originY: number;
   scaleX: number; scaleY: number; displayWidth: number; displayHeight: number;
 };
 export type ScreenRect = { x: number; y: number; width: number; height: number };
@@ -19,12 +19,19 @@ export type ViewportGeometry = {
   heroGround: { x: number; y: number }; shop: ScreenRect | null; entrance: ScreenRect | null; entranceLabel: ScreenRect | null;
 };
 export type TownGroundObservation = {
-  legacyFloorCount: number; largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
+  legacyFloorCount: number; legacyWallCount: number;
+  perimeter: Array<{ objectId: number; depth: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; active: boolean; visible: boolean }>;
+  largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
   samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
+export type PlazaObjectObservation = ArtObjectObservation & { name: string; alpha: number; active: boolean; visible: boolean; objectId: number };
+export type PlazaMotion = { intent: { x: number; y: number }; at: number; area: number; x: number; y: number; dash: { cd: number; timer: number; lastDir: { x: number; y: number } } | null };
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
+  plazaProbe: { id: number; requestedAt: number; respondedAt: number } | null;
+  plazaVisibility: { samples: number; readable: number; meanTransmission: number; occluders: string[] } | null;
+  intent: PlazaMotion['intent']; dash: PlazaMotion['dash']; plaza: PlazaObjectObservation[];
   viewportGeometry: ViewportGeometry | null;
   townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[]; ground: TownGroundObservation } | null;
   primary: { label: string; x: number; y: number }; secondary: { label: string; x: number; y: number };
@@ -50,6 +57,14 @@ export const fixture = {
   owner: 'owner-a' as string | null,
   callbacks: new Set<AuthCallback>(),
   api: [] as ApiCall[], blocked: [] as string[], rewardMutations: [] as unknown[],
+  plazaMotion: [] as PlazaMotion[], plazaMotionOverflow: false,
+  plazaLatestMotion: null as PlazaMotion | null,
+  plazaProbeRequest: null as { id: number; requestedAt: number } | null,
+  requestPlazaProbe() {
+    if (window.__arpgPlazaFlow !== true) throw new Error('Full plaza probe is limited to the two exploration cases');
+    fixture.plazaProbeRequest = { id: (fixture.plazaProbeRequest?.id ?? 0) + 1, requestedAt: performance.now() };
+    return fixture.plazaProbeRequest;
+  },
   navigations: [] as string[], scenes: [] as SceneObservation[], checkpoints: [] as Checkpoint[], visuals: [] as VisualObservation[],
   mountAnother: async (): Promise<number> => { throw new Error('Not mounted'); },
   unmountPage: async (_id: number): Promise<void> => { throw new Error('Not mounted'); },
@@ -82,14 +97,14 @@ export const fixture = {
     for (const callback of [...fixture.callbacks]) callback(event, owner ? { user: { id: owner } } : null);
   },
   snapshot() {
-    return { ready: fixture.ready, profile: fixture.profile, authCallbacks: fixture.callbacks.size, owner: fixture.owner, api: fixture.api, blocked: fixture.blocked,
+    return { plazaMotion: fixture.plazaMotion, plazaMotionOverflow: fixture.plazaMotionOverflow, ready: fixture.ready, profile: fixture.profile, authCallbacks: fixture.callbacks.size, owner: fixture.owner, api: fixture.api, blocked: fixture.blocked,
       rewardMutations: fixture.rewardMutations, navigations: fixture.navigations, checkpoints: fixture.checkpoints, visuals: fixture.visuals,
       scenes: fixture.scenes, canvasCount: document.querySelectorAll('canvas').length, pages: [...document.querySelectorAll<HTMLElement>('[data-fixture-page]')].map(el => ({ id: Number(el.dataset.fixturePage), status: el.querySelector('.game-status')?.textContent ?? null, canvases: el.querySelectorAll('canvas').length })), mountedPages: [...document.querySelectorAll('[data-fixture-page]')].map(el => Number((el as HTMLElement).dataset.fixturePage)) };
   }
 };
 
 // Real SDK and route; transport only is synthetic. Every request/body is checked;
-// only the one return-flow case may sign/complete and receive a zero-value receipt.
+// only the three explicit return-flow cases may sign/complete and receive a zero-value receipt.
 export function installSyntheticTransport() {
   fixture.profile = window.__arpgReturnFlow === true ? 'return-flow' : 'readiness';
   let signed: unknown = null, completed = false, playerRead = false;
@@ -136,5 +151,5 @@ export function installSyntheticTransport() {
     return deny();
   };
 }
-declare global { interface Window { __arpgFixture: typeof fixture; __arpgReturnFlow?: boolean; } }
+declare global { interface Window { __arpgFixture: typeof fixture; __arpgReturnFlow?: boolean; __arpgPlazaFlow?: boolean; } }
 window.__arpgFixture = fixture;

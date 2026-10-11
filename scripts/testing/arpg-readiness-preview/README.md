@@ -1,6 +1,6 @@
-# ARPG town readiness, bounded return and painterly viewport previews
+# ARPG readiness, native plaza exploration and viewport evidence
 
-Credential-free desktop Chromium fixture, including one phone-sized viewport,
+Credential-free desktop Chromium fixture, including phone-sized viewport cases,
 for the actual ARPG route, SDK,
 `bootGame`, `GameScene`, Phaser 3.90 and checked-in PNGs. It prepares a draft PR
 validation gate; discovery/build alone are not browser execution.
@@ -23,21 +23,19 @@ destinations and navigation plumbing are synthetic. The fetch shim has no
 native fallback. Start requests must match the exact SDK body. The first ten
 cases and the phone-sized preview forbid signing, completion, player-state refresh
 and reward mutations.
-Only case eleven enables exact-shape synthetic signing/completion/player-state
+Only cases eleven, thirteen and fourteen enable exact-shape synthetic signing/completion/player-state
 responses for `fixture-arpg-1`, with a deliberately non-cryptographic signature
 and a zero-value receipt. Changed or extra body fields, mismatched submission
 values, extra signing/completion calls and all other fetches fail closed.
 The receipt reaches in-memory presentation spies only. It proves client flow,
 not server validation, real signing, account rewards or persistence.
 
-Native browser traffic is restricted to local fixture JS/CSS and 254 declared
-real images (253 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
+Native browser traffic is restricted to local fixture JS/CSS and 258 declared
+real images (257 loader PNGs plus the CSS cursor). APIs, off-origin URLs,
 undeclared paths and WebSockets are rejected; service workers are blocked.
 No credentials or hosted backend are used. The Vite build rejects unexpected
 application or live-service imports, while explicitly including the real
-`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The two new
-ground/entrance PNGs are explicitly allowlisted alongside the existing shop and
-lantern. The superseded small cobble patch is no longer queued or allowlisted.
+`expedition.ts`, `townSession.ts` and `assets/townCorner.ts` modules. The worn-paving source replaces the prior material URL under the same loader key; four exact foundation/upper facade PNG URLs are added. Source modules townPlaza.ts and assets/townFacadeData.ts are explicitly allowed. Existing shop, lantern and entrance remain allowlisted. The superseded small cobble patch is no longer queued or allowlisted.
 The real scene derives its continuous ground plane from the approved material
 PNG without fixture-generated substitute art.
 
@@ -50,7 +48,7 @@ means module-import latency is outside this fixture. Raw Phaser CREATE can
 follow a caught create failure, so success requires route state, decoded textures
 and real post-create frames together.
 
-## Twelve cases
+## Fourteen cases
 
 1. Hold the first floor image. Town stays loading with zero sessions, even after
    a forced disabled-button click. Release to real town readiness, still with
@@ -79,7 +77,7 @@ and real post-create frames together.
     not a 90-second endurance run, a two-floor combat clear or production settlement.
     Capture a desktop canvas close-up of the new town art before departure.
 12. Load the real scene at a 390×844 viewport with zero session starts. Require
-    all 253 source textures, the instantiated ground/shop/lantern/entrance objects, a
+    all 257 source textures, the instantiated ground/shop/lantern/entrance objects, a
     nonempty canvas within the viewport width, and no horizontal document overflow.
     After actual render, require HUD/control panels and visible text within the
     canvas, the hero ground point clear of both panels, and the full shop bounds
@@ -90,6 +88,46 @@ and real post-create frames together.
     modest display-size floors do not certify playability or aesthetics.
     Capture the full phone-sized viewport. This runs desktop Chromium without
     mobile-device or touch emulation; it does not establish phone playability.
+
+13–14. Desktop1280×900 and phone-sized390×844 native exploration: walk into the
+rear and endcap foundations, activate three real directional dashes whose full
+230px rays intersect a facade but whose endpoints clear it, walk around reachable
+sides to rear/side cutaways, visit the original northern collision ring, restore their opacity in front, approach the gate from
+east and south, press E at the original gate, then use the real return control.
+Require a single bounded synthetic expedition and newly owned town images on
+return. The original twelve cases above remain, with only exact asset-count and
+approved source/asset allowlist updates.
+
+At each viewport, the added perimeter leg starts behind the rear facade at
+(1368,210), approaches(1368,-8), holds native W for700ms, and returns to the
+previous route. The independent original room/radius38 formula requires the
+settled center to stop at y=0.5*x−706 within one15fps movement step. Sustained
+post-render north intent must be observed. The case retains its180s budget,
+6.5s waypoint deadline,8px target, full swept checks and strict hero/UI visibility.
+One active owned Graphics rim must remain at depth−160, beneath the hero's foot
+shadow, with an unchanged transform, no legacy town wall sprites, and a new
+object identity after return. This drawing never supplies the collision oracle.
+
+The original twelve cases keep full per-render observations. The added cases request expensive full geometry/alpha probes only after native keys are released. Each checkpoint must carry a new request ID and request/response timestamps from a later real POST_RENDER frame; stale cached geometry cannot pass. Initial creation and area transitions still obtain actual full state. Every frame continues to supply a lightweight motion/dash/intent sample.
+
+The added observer records a bounded (maximum12,000 entries, overflow fails)
+post-render movement trace, real ECS dash cooldown/direction, and stable WeakMap
+identities for the five named town images. Every consecutive town movement segment
+must clear all three independent radius38 footprints. Dash evidence requires an
+observed cooldown activation and an isolated crossing ray, so an endpoint-only
+collision implementation cannot pass. Checkpoints retain source pivots, scale,
+front/behind depth, opaque foundations, translucent upper layers, alpha restoration,
+fixed camera zoom, measured hero size and actual UI/entrance/prompt bounds. A bounded read-only alpha diagnostic samples every third opaque hero source pixel against higher-depth images at their actual transforms: at least half must retain50% transmission, and mean transmission must remain at least40%. This catches an additional opaque layer hiding the hero while the target roof correctly reports0.28alpha. It is an analytical source/depth check, not framebuffer pixel proof. World
+positions and expected polygons are independently transcribed constants; no
+production collision or camera helper is imported as the acceptance oracle.
+
+Fourteen additional PNG captures show each viewport at the rear front, rear cutaway,
+nearest legal perimeter contact, endcap cutaway, eastern gate approach, the gate threshold and returned town. Captures are paired
+atomically with their observed movement checkpoint. The original seven required
+PNG captures are preserved, giving twenty-one required attachments. Appearance,
+pixel occlusion, paving quality and navigation feel still require actual screenshot
+review; object alpha and geometry do not prove final composited pixels. Synthetic
+schema factories are imported only by verifier tests, never browser code.
 
 The observation artifact retains the actual browser.version(), loader/scene
 observations, route state, strict API bodies, named lifecycle/gameplay checkpoints,
@@ -155,30 +193,126 @@ There is no executable override, custom security flag or alternate launch. The
 locked managed Chromium is required. The bounded movement/return case has a
 120-second test budget so both native town-idle intervals exceed the synthetic
 twenty-second cap, with headroom for software-rendered frames and browser input.
-All other test budgets are unchanged. Native clocks are used; this fixture never
-patches requestAnimationFrame or advances Playwright's clock.
+The two additive exploration cases each allow 180 seconds for native movement
+and one bounded return. Other original test budgets are unchanged. Native waypoint
+steering sends single-key pulses capped at240ms, reserves16worldpx on longer
+moves, then obtains a fresh neutral POST_RENDER position in one read-only browser
+request. Fine pulses start at16ms; an observed zero-displacement pulse alone ramps
+the next hold up to48ms, bounded by remaining distance. Input is released before
+feedback is read. Successful released moves do not send five redundant key-ups;
+error and outer-case paths retain exhaustive cleanup.
+
+The8world-pixel per-axis target and6.5second per-waypoint deadline are unchanged.
+A final released position is checked before deadline rejection, fixing the second
+hosted phone failure that had already reached its target. Every lightweight
+motion/dash sample, hard overflow failure and fresh checkpoint request/response
+remain intact. Offline15/30/60fps checks and provenance-pinned47/64/22ms cadence
+replays cover delayed neutral feedback, startup delta clamping, event/frame phase
+and hypothetical missed pulses. The second hosted trace actually showed movement
+for every navigation press; its failure was dominated by redundant traced reads.
+The replay keeps native scheduling assumptions explicit and cannot prove browser
+success. Independent8px endpoint errors still leave41.14px minimum clearance
+against radius38 solids. The fixture never patches requestAnimationFrame or
+advances Playwright's clock.
 
 The strict verifier requires every declared case, one successful attempt each,
 no retries/skips/flakes/errors, isolation, exact session counts, genuine lifecycle
-checkpoints, cleanup and the seven expected PNG attachments. For the bounded flow
+checkpoints, cleanup and the twenty-one expected PNG attachments. For the bounded flow
 it also requires observed movement, explicit return, frozen town time, matching
-submission fields and the exact zero-value presentation payload. Its 137 unit
+submission fields and the exact zero-value presentation payload. Its 254 unit
 tests are synthetic report/protocol schema tests, never browser evidence.
 Discovery has zero attempts and cannot satisfy execution mode.
 
 ## Limits
 
-The local browser denial was not retried. Local preparation executes zero browser
-cases. The frozen 8607613 hosted run passed all twelve cases, but its reviewed
-screenshots showed noisy ground and a tiny phone-sized hero. This visual followup
-adds taller portrait framing, minimum visible-silhouette checks and actual ground
-filter evidence. It has not been rendered in a permitted browser yet. The frozen
-8607613 fixture and hosted screenshots remain unchanged; their pass does not
-establish that this followup renders correctly. New execution and visual review
-must apply to the exact followup commit.
+The persistent local-browser denial remains in force: no local launch,
+escalation, alternate flags or alternate browser was attempted. Local preparation
+executes zero browser cases. PR17 e73cad94's twelve passing hosted cases are
+baseline evidence only. The first larger-plaza hosted run at a728b7f7 passed the original twelve cases but failed both new cases: desktop steering overshot while waiting for feedback, and the entrance hid the phone hero at the threshold. The second head a446a031 again passed the original twelve but exhausted waypoint deadlines before either entrance-cutaway check. Desktop made slow progress through seven pulses; phone reached its target in the final released sample but rejected it after the deadline. The later4545e7ae run passed all14cases and19captures, including the arch cutaway. Those unchanged baseline results do not certify this surface candidate. The new candidate preserves those19captures and adds2perimeter views, with all21required for acceptance. A new authorized hosted run is required. Its architecture is an unfinished
+code-native projection prototype, not completed painterly town art. Peripheral
+architecture may intentionally leave the viewport as the hero explores.
 
 A scene CREATE and render event establish lifecycle progress, not visually
 correct or fully playable pixels. The added flow is deliberately small; it does
 not certify attacks, kill/loot balance, floor transitions, a full-length timeout,
 real-phone rendering/performance, touch interaction, hosted Auth, real session persistence, server reward settlement,
 post-ready account changes or deployment.
+
+
+## Bounded trace-observability experiment after d873f298
+
+The surface candidate's first hosted run (38102814074, attempt 1) passed 13 of
+14 cases. The desktop exploration failed at the existing (1200,260) waypoint,
+before the new perimeter leg. Phone exploration passed all its checkpoints.
+Only 15 of the required 21 captures exist, so the complete report remains rejected.
+
+The desktop trace measured a median 102.4 ms between native POST_RENDER samples.
+Each final requested 16 ms fine keypress consumed one actual 22.0–22.73 px
+movement frame. The released position oscillated around y=247.45 and y=269.82,
+skipping the unchanged y=252..268 target band. Neutral feedback was correct;
+keys were consumed and no collision caused this stall. A longer deadline alone
+would not reliably resolve that quantization.
+
+That 48.5-second desktop case also recorded 475 automatic screencast frames,
+474 JPEG resources totaling 38,666,615 bytes, and 234 DOM snapshots. The next
+bounded experiment disables only automatic trace screenshots and snapshots,
+while retaining failure action/event/source tracing. This may reduce diagnostic
+capture overhead; causality and improved native cadence remain unproven until
+another hosted run. In Playwright 1.57.0, snapshots:false also disables the trace's
+HAR/network-resource collection. That diagnostic detail is lost. The fixture's
+own complete blocked/request/API observations, exact network/asset allowlists,
+loader/decode observations and source/asset hashes remain enforced independently;
+no acceptance verifier reads HAR or trace network resources. Native action/event
+and source records remain, along with the explicit JSON evidence and PNGs.
+No runtime rendering or game setting is changed.
+
+The ordinary failure screenshot and all 21 explicitly attached required PNGs
+remain enabled, as do every fresh probe, lightweight motion sample, overflow
+guard, continuous collision/dash check, hero visibility/UI bound and synthetic
+protocol assertion. Native steering, the 6.5-second waypoint deadline, 8 px
+per-axis target, 180-second case budget and no-retry policy are unchanged.
+
+
+## Bounded native chord correction after ca701a53
+
+The trace-only experiment still failed the desktop route at(1200,260), ending
+(1201.037,250.382). It improved this single run's median frame interval from
+102.4 to94.8ms and phone case time from98.558 to55.655s, but the frame quantum
+remained20.53–20.90px. That still skips the16px-wide target band. Runner load
+was not controlled, so the comparison does not establish a causal performance
+improvement. Both failed whole reports remain rejected.
+
+The fixture now recognizes two opposite, released16ms fine pulses that both
+skip the unchanged8px target on one axis. The other axis must already be within
+8px. At the farther bracket endpoint, a single native Playwright chord changes
+the movement lattice. Installed1.57 keyboard.press delivers lateral-down,
+primary-down, primary-up, lateral-up sequentially. The controller makes no
+claim of simultaneous delivery or exact16ms consumption. It keeps the normal
+fresh neutral POST_RENDER feedback, and all actual movement samples and sweeps.
+
+Before that chord, a convex envelope is built for0–2 rendered frames in each
+leading-cardinal, diagonal, and trailing-cardinal phase. Its per-frame bound is
+max(24,1.25×observed fine displacement); supported observed quanta are greater
+than16 and at most24px, yielding bounds24–30px. Both lateral directions are
+checked against the independently transcribed radius38 solids and original
+room. The entire hull must be clear, including either-direction containment.
+If neither direction fits, the case fails before issuing an unsafe nudge.
+Actual neutral chord feedback must also lie within its selected envelope before
+another command can be sent. Remaining lateral error uses ordinary feedback
+steering. No production collision helper, position setter, timer change or
+alternative movement input is used.
+
+The new replay retains exact cardinal traces from runs38102814074 and38103713681
+and explicitly models sequential prefix/diagonal/suffix frames, including
+missed chords and alternating measured step sizes. Four native event acknowledgments
+are charged at a conservative100ms each even if a phase consumes no update,
+followed by the existing neutral-frame read. Both observed wide-clearance failures converge in the stated
+single-diagonal-frame models before the unchanged6.5s deadline. Extra diagonal
+frames may instead fail that deadline. The alternating d873 step-jitter model
+also exhausts6.5s; the corresponding ca701 jitter model converges. This is deliberately bounded support:
+constant20.9px full-route stress can still exhaust the deadline at the perimeter;
+constant22.36px stress reaches a shop/endcap passage where no safe envelope
+fits and is rejected. Those model limits are tests, not claimed browser passes.
+All actual routes, named checkpoints,21 PNG requirements,14 cases, collision,
+visibility, network and lifecycle gates stay intact. Full hosted execution is
+still required to accept this candidate.

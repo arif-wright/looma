@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
+import { townExplorationOffset } from '../townPlaza';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
 import { createTownCorner, TOWN_RUNTIME_ASSETS, TOWN_CORNER_LAYOUT, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
@@ -232,6 +233,7 @@ export class GameScene extends Phaser.Scene {
   private controlPanel!: Phaser.GameObjects.Rectangle;
   private compactHUD = false;
   private viewportLayoutKey = '';
+  private viewportLayout: ReturnType<typeof arpgViewportLayout> | null = null;
   private hpBarSize = { width: 240, height: 16 };
   private controlContainer!: Phaser.GameObjects.Container;
   private primaryControl!: Phaser.GameObjects.Text;
@@ -369,10 +371,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateUIState();
     this.updateFixedUITransforms();
+    this.updateTownCamera();
   }
 
   private resetState() {
     this.viewportLayoutKey = '';
+    this.viewportLayout = null;
     this.compactHUD = false;
     this.hpBarSize = { width: 240, height: 16 };
     this.previousPositions.clear();
@@ -466,10 +470,15 @@ export class GameScene extends Phaser.Scene {
           : this.expedition.area === 2 && ((tx === 10 && ty >= 11 && ty <= 14) || (tx === 20 && ty >= 5 && ty <= 7));
         if (isBorder || isPillar) {
           const texture = `wall_${Phaser.Math.Between(0, WALL_TEXTURES.length - 1)}`;
-          const wall = this.add.image(pos.x, pos.y - 42, texture);
-          wall.setScale(TILE_SCALE);
-          wall.setDepth(pos.y + 160);
-          this.addToWorld(wall);
+          // Town's continuous low coping covers the same blocked ring. Keep
+          // wallTiles, random selection and recorded camera bounds unchanged;
+          // dungeon walls and pillars retain their original rendering.
+          if (this.expedition.area !== 0) {
+            const wall = this.add.image(pos.x, pos.y - 42, texture);
+            wall.setScale(TILE_SCALE);
+            wall.setDepth(pos.y + 160);
+            this.addToWorld(wall);
+          }
           this.wallTiles.add(`${tx},${ty}`);
           recordBounds(pos, 70);
         } else {
@@ -543,7 +552,8 @@ export class GameScene extends Phaser.Scene {
     this.heroRing.setDepth(spawn.y - 4);
     this.addToWorld(this.heroRing);
 
-    this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
+    const followLerp = this.expedition.area === 0 ? 1 : 0.12;
+    this.cameras.main.startFollow(this.playerSprite, true, followLerp, followLerp);
 
     this.dashAfterimages = this.add.group();
   }
@@ -671,20 +681,24 @@ export class GameScene extends Phaser.Scene {
     if (key === this.viewportLayoutKey) return;
     this.viewportLayoutKey = key;
     const layout = arpgViewportLayout(this.scale.width, this.scale.height, this.expedition.area === 0);
+    this.viewportLayout = layout;
+    const townOverview = !layout.compact && this.expedition.area === 0;
     this.compactHUD = layout.compact;
     this.uiContainer.setScale(1).setPosition(layout.hud.x, layout.hud.y);
     this.controlContainer.setScale(1).setPosition(layout.controls.x, layout.controls.y);
     this.hudPanel.setSize(layout.hud.width, layout.hud.height);
     this.controlPanel.setSize(layout.controls.width, layout.controls.height);
-    this.instructionsText.setVisible(!layout.compact);
-    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 58)
-      .setFontSize(layout.compact ? 12 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
-    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 98).setFontSize(layout.compact ? 11 : 16);
-    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : { width: 240, height: 16 };
-    this.hpBarBg.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.hpBarFill.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.areaText.setPosition(layout.compact ? 140 : 16, layout.compact ? 25 : 145)
-      .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.instructionsText.setVisible(!layout.compact)
+      .setText(townOverview ? 'WASD move · Space dash · Click attack · E at gate' : 'WASD move · Space dash · Click attack\nE at the gate · Gold and levels last this run')
+      .setPosition(16, townOverview ? 10 : 12).setFontSize(townOverview ? 13 : 16);
+    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : townOverview ? 34 : 58)
+      .setFontSize(layout.compact ? 12 : townOverview ? 17 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : townOverview ? 64 : 98).setFontSize(layout.compact ? 11 : townOverview ? 14 : 16);
+    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : townOverview ? { width: 96, height: 10 } : { width: 240, height: 16 };
+    this.hpBarBg.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.hpBarFill.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.areaText.setPosition(layout.compact ? 140 : townOverview ? 216 : 16, layout.compact ? 25 : townOverview ? 65 : 145)
+      .setFontSize(layout.compact ? 11 : townOverview ? 13 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
     this.controlStatus.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 10)
       .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? layout.controls.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
     this.primaryControl.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 34);
@@ -699,12 +713,21 @@ export class GameScene extends Phaser.Scene {
     // Keep the compact entrance prompt readable while its art remains at world
     // scale. Only resize on layout changes, never rerasterize it every frame.
     if (this.portalText) this.portalText.setScale(this.expedition.area === 0 && layout.compact ? 1 / layout.camera.zoom : 1);
-    camera.setFollowOffset(layout.camera.offsetX, layout.camera.offsetY);
+    const offset = this.expedition.area === 0 && this.playerSprite
+      ? townExplorationOffset(layout, this.playerSprite, this.isoToWorld(14, 9), this.isoToWorld(18, 9)) : layout.camera;
+    camera.setFollowOffset(offset.offsetX, offset.offsetY);
     if (this.playerSprite) {
-      camera.centerOn(this.playerSprite.x - layout.camera.offsetX, this.playerSprite.y - layout.camera.offsetY);
+      camera.centerOn(this.playerSprite.x - offset.offsetX, this.playerSprite.y - offset.offsetY);
     }
     this.resizeVignette();
     this.updateUIState();
+  }
+
+  private updateTownCamera() {
+    if (this.expedition.area !== 0 || !this.playerSprite || !this.viewportLayout) return;
+    const offset = townExplorationOffset(this.viewportLayout, this.playerSprite,
+      this.isoToWorld(14, 9), this.isoToWorld(18, 9));
+    this.cameras.main.setFollowOffset(offset.offsetX, offset.offsetY);
   }
 
   private setupUICamera() {
@@ -812,7 +835,7 @@ export class GameScene extends Phaser.Scene {
         this, image => this.addToWorld(image), (tx, ty) => this.isoToWorld(tx, ty),
         FLOOR_DEPTH_OFFSET + this.roomBounds.maxY + 1
       );
-
+      this.townCorner.updateActor(this.playerSprite);
     }
     const gate = this.isoToWorld(18, 9);
     if (this.expedition.area !== 0) this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
@@ -1129,6 +1152,7 @@ export class GameScene extends Phaser.Scene {
     if (transform && velocity) {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
+      this.townCorner?.updateActor(transform);
       this.playerShadow.setPosition(transform.x, transform.y);
       this.playerShadow.setDepth(transform.y - 5);
       this.heroRing.setPosition(transform.x, transform.y);
@@ -1362,10 +1386,11 @@ export class GameScene extends Phaser.Scene {
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
-    this.scoreText.setText(`${this.compactHUD ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
+    const conciseStatus = this.compactHUD || this.expedition.area === 0;
+    this.scoreText.setText(`${conciseStatus ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
     const area = AREAS[this.expedition.area];
     const compactArea = ['Lantern Sq.', 'Mossgate', 'Ember Vault'][this.expedition.area];
-    this.areaText.setText(this.compactHUD
+    this.areaText.setText(conciseStatus
       ? `${compactArea} · G${this.expedition.carriedGold}/${this.expedition.bankedGold}`
       : `${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
     if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? (this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : this.townStatus === 'blocked' ? 'Unavailable' : 'Please wait…') : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);

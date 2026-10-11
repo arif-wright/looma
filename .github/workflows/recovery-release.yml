@@ -310,19 +310,19 @@ jobs:
             git -C "$fixture" rev-parse HEAD HEAD^{tree}
             node --version
           } > artifacts/moonberry-gather/comparison-source.txt
-          expected_src=3b267bb0b00f14a48b057300da5462bf503517ab
+          expected_src=2ece1b2fc2ddf686f160778d240241a2ee899f3d
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
           test "$(git rev-parse HEAD:src)" = "$expected_src"
           node "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" "$COMPARISON_SOURCE" before "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-before-overlay.json
           cp "$fixture/package.json" "$fixture/package-lock.json" "$fixture/pnpm-lock.yaml" .
-          # Preserve all 9,102 historical static entries and the three original
-          # town-corner PNGs; only the two approved ground/entrance PNGs are new.
-          expected_static=3ea277ea86a6444b9662ea24a0f0c4c4bf07da84
+          # Preserve all 9,102 historical static entries and the five prior town
+          # PNGs. Add only the eleven enumerated plaza PNG/SVG source files.
+          expected_static=70e99504f5f886bc57452c8d7c2f79ac98b1aecd
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_static=93f203a8e01263a0066e1632cf2a6d9bd062de5b; fi
           test "$(git rev-parse HEAD:static)" = "$expected_static"
-          test "$(git -C "$fixture" rev-parse HEAD:static)" = 3ea277ea86a6444b9662ea24a0f0c4c4bf07da84
+          test "$(git -C "$fixture" rev-parse HEAD:static)" = 70e99504f5f886bc57452c8d7c2f79ac98b1aecd
           git -C "$fixture" ls-tree -r HEAD:static > artifacts/moonberry-gather/candidate-static-tree.txt
-          test "$(wc -l < artifacts/moonberry-gather/candidate-static-tree.txt)" -eq 9107
+          test "$(wc -l < artifacts/moonberry-gather/candidate-static-tree.txt)" -eq 9118
           # Exact mode/blob/path lines, never a directory-wide exclusion.
           printf '%s\n' \
             $'100644 blob 185d3071a40e0ebb4ef44b216c37f07ee1524c40\tgames/arpg/town-corner-v1/town-cobble-floor.png' \
@@ -330,6 +330,17 @@ jobs:
             $'100644 blob 4da53c5c0bf91f30fb29bf952cda1fc736d6c78f\tgames/arpg/town-corner-v1/town-lantern-plinth.png' \
             $'100644 blob f592a718aec1e3209e95268ee144892d775b0c70\tgames/arpg/town-ground-v1/town-cobble-material-v1.png' \
             $'100644 blob d770575f26153c22a678fb9f8fe11aee5daea9b8\tgames/arpg/town-ground-v1/town-ruins-entrance-v1.png' \
+            $'100644 blob 4bccb40377d4011f98c2e6921ecb77e20f0ac40f\tgames/arpg/town-plaza-v1/town-worn-paving-material-v2.png' \
+            $'100644 blob ae123cb747a2732f063ec0ffa8c0daafd96a69d4\tgames/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.png' \
+            $'100644 blob fd2dff7e83ecdfca64834b75125d3c3e2b63ea7e\tgames/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.svg' \
+            $'100644 blob 8d793df2301a2a13a0de5a60b7b372ab412184e8\tgames/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png' \
+            $'100644 blob 7ffe372407ef86507ecd1001933f2086f1a598e7\tgames/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.svg' \
+            $'100644 blob dd56e1772a29ed43e0e57b20c2b6bf17c7236890\tgames/arpg/town-plaza-v1/town_plaza_endcap_v1.svg' \
+            $'100644 blob 3c7f37ef4fe74a7958efaffb0246952bfbaf35f5\tgames/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.png' \
+            $'100644 blob 511159e23d0c4290f6aa36da9c294776f760c6ce\tgames/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.svg' \
+            $'100644 blob abb6e81a9401910578008d28a348ae1d9b75519e\tgames/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png' \
+            $'100644 blob 30f7a9bab0c58f49ade41e3ad21b162678fc586b\tgames/arpg/town-plaza-v1/town_plaza_rear_upper_v1.svg' \
+            $'100644 blob 40c173197d4073b4799d5a182b520faa2d89b8bf\tgames/arpg/town-plaza-v1/town_plaza_rear_v1.svg' \
             > artifacts/moonberry-gather/approved-art-static-tree.txt
           grep -F -x -f artifacts/moonberry-gather/approved-art-static-tree.txt artifacts/moonberry-gather/candidate-static-tree.txt > artifacts/moonberry-gather/candidate-art-static-tree.txt
           cmp artifacts/moonberry-gather/approved-art-static-tree.txt artifacts/moonberry-gather/candidate-art-static-tree.txt
