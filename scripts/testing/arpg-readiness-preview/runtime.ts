@@ -108,7 +108,7 @@ export const fixture = {
     for (const callback of [...fixture.callbacks]) callback(event, owner ? { user: { id: owner } } : null);
   },
   snapshot() {
-    return { courtyardEvidence: window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true ? {
+    return { ...(window.__arpgWalkFrameFlow === true ? { walkFrameEvidence: window.__arpgWalkFrame?.snapshot() ?? null } : {}), courtyardEvidence: window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true ? {
       evidenceMode: window.__arpgCourtyardVisualFlow === true ? 'controlled-scene-visual' : 'native-courtyard',
       nativeMovementEvidence: window.__arpgCourtyardFlow === true && window.__arpgCourtyardVisualFlow !== true,
       visualEnabled: window.__arpgCourtyardVisualFlow === true, visual: window.__arpgCourtyardVisual?.snapshot() ?? null } : null,

@@ -67,7 +67,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/main.ts",
-      "sha256": "fab9597cc4abea2ac4a81894bdfa17e44baa75f9d0380a2f81daba4944feb35e"
+      "sha256": "de652691cb02fcdedadf58feddc65713ac2a70e2416c5c667b4dbb7305642f21"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/navigation.ts",
@@ -75,7 +75,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/observe-scene.ts",
-      "sha256": "46360dbbd6230884c651770576aca1760162fef9962fcdb37487a4ebadcbc30a"
+      "sha256": "2961adc70bc3df7e9e7c676ef5196bbaa4a5743d3e0b898a348e4eb6243f5e5d"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/phone-geometry.mjs",
@@ -111,7 +111,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/runtime.ts",
-      "sha256": "9e89294cd6811b2a44da1adba23000b85065cf41a00475c0c853508a43c8493d"
+      "sha256": "6287efb9812574b9dcc9fb41ae442e690624e3efbf9340d469d7c3ae28c6eaaf"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/schema-plaza-data.mjs",

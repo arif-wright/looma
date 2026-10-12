@@ -2,6 +2,7 @@ import { mount, unmount, tick } from 'svelte';
 import { fixture, installSyntheticTransport } from './runtime';
 import './observe-scene';
 import './visual-observer';
+import './walk-frame-observer';
 import Arpg from '../../../src/routes/app/(game)/games/arpg/+page.svelte';
 
 installSyntheticTransport();

@@ -44,9 +44,11 @@ test('original native controller is literal-preserved with shared exports only',
  s=s.replace('\n// Shared native primitives; the original exploration calls keep their defaults.\nexport { release, position, releasedFrame, freshGameplay, move, walkInto, dashInto };\n','');
  assert.equal(hash(s),"35567c3633c5cf94ebd62915b466e5dc308626289a3f9dfd1625593a94dcbe04");
 });
-test('actual route entry adds only explicit visual observer import after original observer',()=>{
- const s=read('scripts/testing/arpg-readiness-preview/main.ts');assert(s.includes("import './observe-scene';\nimport './visual-observer';"));
- assert.equal(hash(s.replace("import './visual-observer';\n",'')),"4d6989a12254bc38399d61ebc8f76fac4a5b76eb23d598d1049351a749bd6b6d");
+test('actual route entry adds only explicit visual observer imports after original observer',()=>{
+ const s=read('scripts/testing/arpg-readiness-preview/main.ts'), added="import './walk-frame-observer';\n";
+  assert.equal(s.split(added).length-1,1,'Exactly one explicit walking-frame observer import required');
+  const original=s.replace(added,'');assert(original.includes("import './observe-scene';\nimport './visual-observer';"));
+ assert.equal(hash(original.replace("import './visual-observer';\n",'')),"4d6989a12254bc38399d61ebc8f76fac4a5b76eb23d598d1049351a749bd6b6d");
 });
 const newModules=[
   "courtyard-navigation.ts",

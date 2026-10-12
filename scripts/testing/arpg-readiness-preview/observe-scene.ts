@@ -285,3 +285,6 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
   game.events.once(Phaser.Core.Events.DESTROY, () => { observation.destroyed = true; });
   return originalPreload.apply(this, args);
 };
+
+// Read-only reuse by the explicitly enabled controlled walking-frame fixture.
+export { decodedPixels, readCourtyardFrame };
