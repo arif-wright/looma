@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { decodeCourtyardPNG } from './courtyard-png.mjs';
 import { readCourtyardFills, COURTYARD_VISIBILITY_LIMITS } from './courtyard-visibility.mjs';
+// Phaser applyITRS preserves signed zero (c = -sin(0)). Accept only that
+// numeric equivalence; deep equality still checks all six components and shape.
+export function assertExactAffineMatrix(actual,expected){
+  assert(Array.isArray(expected)&&expected.length===6&&Array.from(expected).every(Number.isFinite));
+  assert.deepEqual(actual,expected.map((value,i)=>value===0&&actual?.[i]===0?actual[i]:value));
+}
 export const ELBOW_WITNESSES=[[1725,858],[1731,858],[1725,873],[1731,873]];
 export function verifyCapturedPNG(metadata,base64,{label,gameplay,index,mode='native-courtyard',poseId=null}){
   const m=metadata;assert.equal(m.label,label);assert.equal(m.evidenceMode,mode);assert.equal(m.nativeMovementEvidence,mode==='native-courtyard');
@@ -46,7 +52,7 @@ export function verifyVisibilityObservation(g){
   for(const o of[v.hero,...v.walls]){const observed=v.painterOrder.find(p=>p.objectId===o.objectId);assert(observed&&observed.depth===o.depth&&observed.worldIndex===o.worldIndex&&observed.painterIndex===o.painterIndex);}
   for(const[i,w]of v.walls.entries()){
     const actual=g.townArt.ground.courtyard[i];for(const k of['name','objectId','depth','alpha','active','visible','scrollFactorX','scrollFactorY'])assert.equal(w[k],actual[k]);
-    assert.deepEqual(w.commands,actual.commands);assert.deepEqual(w.worldMatrix,[1,0,0,1,0,0]);assert.equal(w.aboveHero,w.painterIndex>v.hero.painterIndex);
+    assert.deepEqual(w.commands,actual.commands);assertExactAffineMatrix(w.worldMatrix,[1,0,0,1,0,0]);assert.equal(w.aboveHero,w.painterIndex>v.hero.painterIndex);
     const decoded=readCourtyardFills(w.commands,w.name);assert.equal(w.fills.length,decoded.length);
     for(const key of['intersectedSamples','contributingSamples'])assert(Number.isSafeInteger(w[key])&&w[key]>=0&&w[key]<=v.samples);
     assert(w.contributingSamples<=w.intersectedSamples);if(!w.aboveHero)assert.equal(w.intersectedSamples,0);

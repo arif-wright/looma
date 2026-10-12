@@ -30,7 +30,7 @@ type Capture={evidenceMode:typeof WALK_MODE;nativeMovementEvidence:false;control
 // Only this explicitly enabled fixture may assign the exact pose and select a
 // paused real animation frame. It does not claim a walk, input or timing result.
 export function createWalkFrameController(){
-  let binding:{scene:GameScene;observation:SceneObservation;playerId:EntityId|null}|null=null,closed=false;
+  let binding:{scene:GameScene;observation:SceneObservation;playerId:EntityId|null;game:Phaser.Game;gameEvents:Phaser.Events.EventEmitter;sceneEvents:Phaser.Events.EventEmitter}|null=null,closed=false;
   let receipt:Receipt|null=null,pending=false,lastRenderedNativeFrame:number|null=null,selectedFrames=0,suppressedSelections=0;
   let originalDescriptor:PropertyDescriptor|undefined,originalMethod:State['updateHeroAnimation']|null=null,wrapper:State['updateHeroAnimation']|null=null,methodRestored=false;
   let boundWorld:World|null=null,boundPlayer:unknown=null,boundSprite:Phaser.GameObjects.Sprite|null=null,boundCamera:Phaser.Cameras.Scene2D.Camera|null=null;
@@ -42,8 +42,11 @@ export function createWalkFrameController(){
     if(window.__arpgWalkFrameFlow!==true||window.__arpgPlazaFlow!==true||window.__arpgCourtyardFlow===true||window.__arpgCourtyardVisualFlow===true||window.__arpgReturnFlow===true||window.__arpgCourtyardVisual!==undefined)fail('Walking-frame visual mode must be exclusive');
     if(errors.length)throw Error(errors[0]);
   };
+  const checkLiveBinding=()=>{
+    if(binding&&!closed&&(binding.scene.sys?.game!==binding.game||binding.game.events!==binding.gameEvents||binding.scene.events!==binding.sceneEvents))fail('Active scene/game event ownership changed');
+  };
   const state=()=>{
-    mode();if(!binding||closed)fail('Walking-frame scene unavailable or closed');
+    mode();checkLiveBinding();if(!binding||closed)fail('Walking-frame scene unavailable or closed');
     const {scene,observation}=binding!,s=scene as unknown as State,live=fixture.scenes.filter(v=>!v.destroyed);
     if(live.length!==1||live[0]!==observation||observation.pageId!==1||observation.createAt===null||observation.framesAfterCreate<1||!observation.loadComplete||observation.totalFailed!==0||observation.loadErrors.length||observation.missingKeys.length||!s.initialized||s.ended||s.runState!=='running'||s.townStatus!=='ready'||!s.handlers.isCurrent()||s.expedition.area!==0||s.expeditionActive||s.expedition.returned||s.expedition.outcome!=='preparing')fail('One current ready initial town scene required');
     if(s.playerId===null||!s.world.getPlayer(s.playerId)||s.world.getPlayers().length!==1||(binding!.playerId!==null&&s.playerId!==binding!.playerId))fail('Walking-frame player identity changed');
@@ -117,13 +120,13 @@ export function createWalkFrameController(){
   };
   const release=()=>{
     if(!binding||closed)return;closed=true;
-    const {scene}=binding,s=scene as unknown as State;
-    scene.sys.game.events.off(Phaser.Core.Events.PRE_RENDER,beforeRender);scene.sys.game.events.off(Phaser.Core.Events.POST_RENDER,onRender);scene.events.off(Phaser.Scenes.Events.SHUTDOWN,release);scene.events.off(Phaser.Scenes.Events.DESTROY,release);scene.sys.game.events.off(Phaser.Core.Events.DESTROY,release);
+    const {scene,gameEvents,sceneEvents}=binding,s=scene as unknown as State;
+    gameEvents.off(Phaser.Core.Events.PRE_RENDER,beforeRender);gameEvents.off(Phaser.Core.Events.POST_RENDER,onRender);sceneEvents.off(Phaser.Scenes.Events.SHUTDOWN,release);sceneEvents.off(Phaser.Scenes.Events.DESTROY,release);gameEvents.off(Phaser.Core.Events.DESTROY,release);
     if(wrapper){if(s.updateHeroAnimation!==wrapper)errors.push('Cannot restore animation method owned by another writer');else{if(originalDescriptor)Object.defineProperty(s,'updateHeroAnimation',originalDescriptor);else delete (s as Partial<State>).updateHeroAnimation;methodRestored=s.updateHeroAnimation===originalMethod;}}
     if(pending||requested||captured)errors.push('Scene closed with pending observation or unconsumed capture');pending=false;requested=null;captured=null;
   };
   return{
-    bind(scene:GameScene,observation:SceneObservation){mode();if(binding||closed||!fixture.scenes.includes(observation))fail('Exactly one observed scene binding permitted');binding={scene,observation,playerId:null};scene.sys.game.events.on(Phaser.Core.Events.PRE_RENDER,beforeRender);scene.sys.game.events.on(Phaser.Core.Events.POST_RENDER,onRender);scene.events.once(Phaser.Scenes.Events.SHUTDOWN,release);scene.events.once(Phaser.Scenes.Events.DESTROY,release);scene.sys.game.events.once(Phaser.Core.Events.DESTROY,release);},
+    bind(scene:GameScene,observation:SceneObservation){mode();if(binding||closed||!fixture.scenes.includes(observation))fail('Exactly one observed scene binding permitted');const game=scene.sys.game,gameEvents=game.events,sceneEvents=scene.events;binding={scene,observation,playerId:null,game,gameEvents,sceneEvents};gameEvents.on(Phaser.Core.Events.PRE_RENDER,beforeRender);gameEvents.on(Phaser.Core.Events.POST_RENDER,onRender);sceneEvents.once(Phaser.Scenes.Events.SHUTDOWN,release);sceneEvents.once(Phaser.Scenes.Events.DESTROY,release);gameEvents.once(Phaser.Core.Events.DESTROY,release);},
     assign(id:string){const {scene,s,position,observation}=state();
       if(receipt||id!==WALK_POSE.id||lastRenderedNativeFrame===null)fail('Only one enumerated pose/frame assignment permitted after a real render');
       if(position.x!==1472||position.y!==536||position.rot!==0)fail('Original town spawn required before controlled discontinuity');
@@ -143,7 +146,7 @@ export function createWalkFrameController(){
     currentReceipt,
     request(label:string){currentReceipt();if(requested||captured||history.length||++requests>WALK_LIMITS.requests||![0,1].some(i=>label===walkScreenshot(i)))fail('One bounded capture request permitted');const request=fixture.requestPlazaProbe();requested={id:request.id,label,requestedAt:request.requestedAt,nativeFrame:lastRenderedNativeFrame!};return request;},
     take(id:number){mode();if(!captured||captured.metadata.probeId!==id)fail('Matching same-frame capture missing');captured!.metadata.consumedAt=performance.now();const result=structuredClone(captured!);captured=null;return result;},
-    snapshot(){return structuredClone({evidenceMode:WALK_MODE,nativeMovementEvidence:false,controlledFrameAssignment:true,animationSelection:'instance-only-production-selection-suppressed',enabled:window.__arpgWalkFrameFlow===true,bound:binding!==null,closed,pending,lastRenderedNativeFrame,selectedFrames,suppressedSelections,methodRestored,methodOwned:!!wrapper&&!!binding&&(binding.scene as unknown as State).updateHeroAnimation===wrapper,preRenderAttached:!!binding&&binding.scene.sys.game.events.listeners(Phaser.Core.Events.PRE_RENDER).includes(beforeRender),postRenderAttached:!!binding&&binding.scene.sys.game.events.listeners(Phaser.Core.Events.POST_RENDER).includes(onRender),complete:receipt!==null&&!pending&&history.length===1&&!requested&&!captured&&!errors.length,receipt,requests,captureCount:history.length,requested:requested!==null,captured:captured!==null,history,errors,ownedWalls:owned.map(w=>({name:w.name,destroyed:w.scene===undefined&&w.active===false,inWorld:binding?(binding.scene as unknown as State).worldLayer?.list?.includes(w)===true:false}))});}
+    snapshot(){checkLiveBinding();return structuredClone({evidenceMode:WALK_MODE,nativeMovementEvidence:false,controlledFrameAssignment:true,animationSelection:'instance-only-production-selection-suppressed',enabled:window.__arpgWalkFrameFlow===true,bound:binding!==null,closed,pending,lastRenderedNativeFrame,selectedFrames,suppressedSelections,methodRestored,methodOwned:!!wrapper&&!!binding&&(binding.scene as unknown as State).updateHeroAnimation===wrapper,preRenderAttached:!!binding&&binding.gameEvents.listeners(Phaser.Core.Events.PRE_RENDER).includes(beforeRender),postRenderAttached:!!binding&&binding.gameEvents.listeners(Phaser.Core.Events.POST_RENDER).includes(onRender),complete:receipt!==null&&!pending&&history.length===1&&!requested&&!captured&&!errors.length,receipt,requests,captureCount:history.length,requested:requested!==null,captured:captured!==null,history,errors,ownedWalls:owned.map(w=>({name:w.name,destroyed:w.scene===undefined&&w.active===false,inWorld:binding?(binding.scene as unknown as State).worldLayer?.list?.includes(w)===true:false}))});}
   };
 }
 export type WalkFrameController=ReturnType<typeof createWalkFrameController>;

@@ -11,7 +11,8 @@ import {deflateSync} from 'node:zlib';
 import * as contract from './walk-frame-contract.mjs';
 import * as visual from './visual-contract.mjs';
 import {verifyWalkReceipt,verifyWalkFrame} from './walk-frame-verifier.mjs';
-import {verifyWalkCapturedPNG,validateWalkGameplay} from './walk-frame-capture-contract.mjs';
+import {verifyWalkCapturedPNG,validateWalkGameplay,verifyWalkVignetteAsset} from './walk-frame-capture-contract.mjs';
+import {assertExactAffineMatrix,verifyVisibilityObservation} from './courtyard-capture-contract.mjs';
 import {fabricateCourtyardSchema} from './courtyard-schema-data.mjs';
 import {readCourtyardFills} from './courtyard-visibility.mjs';
 import {COURTYARD_NAMES} from './courtyard-graphics.mjs';
@@ -115,12 +116,13 @@ function game(receipt, viewport) {
     intent: { x: 0, y: 0 }, dash: { timer: 0 }, plaza, viewportGeometry: geometry, townArt: { hero, ground },
     plazaVisibility: { samples: 100, readable: 100, meanTransmission: .72, occluders: [] },
     plazaProbe: { id: receipt.sequence, requestedAt: receipt.settledAt + 1, respondedAt: receipt.settledAt + 2 } };
-  const cam=geometry.camera,project=(dx,dy)=>({x:((x+dx-cam.scrollX)*cam.zoom)*viewport.css.width/viewport.logical.width,y:((y+dy-cam.scrollY)*cam.zoom)*viewport.css.height/viewport.logical.height}),tl=project(-11,-32),br=project(40,12);
+  const cam=geometry.camera,project=(dx,dy)=>({x:((x+dx-cam.scrollX)*cam.matrix[0]+cam.matrix[4])*viewport.css.width/viewport.logical.width,y:((y+dy-cam.scrollY)*cam.matrix[3]+cam.matrix[5])*viewport.css.height/viewport.logical.height}),tl=project(-11,-32),br=project(40,12);
   geometry.heroVisible={textureKey:contract.WALK_FRAME.textureKey,alphaThreshold:32,frameWidth:256,frameHeight:256,sourceBounds:{x:117,y:96,width:51,height:44,opaquePixels:936},screenBounds:{...tl,width:br.x-tl.x,height:br.y-tl.y}};
   fabricateCourtyardSchema(g);
-  const observedHero = {objectId:9000,name:contract.WALK_FRAME.textureKey,depth:hero.depth,alpha:1,scaleX:1,scaleY:1,rotation:0,worldMatrix:[1,0,0,1,x,y],frame:{x:0,y:0,width:256,height:256,displayOriginX:128,displayOriginY:128,flipX:false,flipY:false,sourceBounds:{x:117,y:96,width:51,height:44}}};
+  const observedHero = {objectId:9000,name:contract.WALK_FRAME.textureKey,depth:hero.depth,alpha:1,scaleX:1,scaleY:1,rotation:0,scrollFactorX:1,scrollFactorY:1,worldMatrix:[1,0,0,1,x,y],frame:{x:0,y:0,width:256,height:256,displayOriginX:128,displayOriginY:128,flipX:false,flipY:false,sourceBounds:{x:117,y:96,width:51,height:44}}};
   const observedWalls = structuredClone(ground.courtyard);
-  const painterOrder = [observedHero, ...observedWalls].sort((a, b) => a.depth - b.depth);
+  const scale=Math.max(viewport.logical.width/1920,viewport.logical.height/1080)*1.3*Math.max(1,1.35/cam.zoom),vignette={objectId:9500,name:'vignette',textureKey:'vignette',type:'Image',depth:2500,alpha:.25,active:true,visible:true,x:viewport.logical.width/2,y:viewport.logical.height/2,scaleX:scale,scaleY:scale,rotation:0,scrollFactorX:0,scrollFactorY:0,worldMatrix:[Math.fround(scale),0,0,Math.fround(scale),Math.fround(viewport.logical.width/2),Math.fround(viewport.logical.height/2)],frame:{x:0,y:0,width:1920,height:1080,displayOriginX:960,displayOriginY:540,flipX:false,flipY:false}};
+  const painterOrder = [observedHero, ...observedWalls,vignette].sort((a, b) => a.depth - b.depth);
   painterOrder.forEach((object, index) => Object.assign(object, { worldIndex: index, painterIndex: index }));
   for (const wall of observedWalls) {
     const aboveHero = wall.painterIndex > observedHero.painterIndex, samples = wall.name==='town-courtyard-east-upper'?1:0;
@@ -128,12 +130,12 @@ function game(receipt, viewport) {
       fills: readCourtyardFills(wall.commands, wall.name).map(fill => ({ ...fill, intersectedSamples:samples&&fill.fillIndex===56?1:0,contributingSamples:samples&&fill.fillIndex===56?1:0 })) });
   }
   g.courtyardVisibility = { method: 'analytic-source-transmission', nativePixels: false, valid: true, issues: [], alphaThreshold: 128, sampleStep: 3,
-    samples:61,readable:61,meanTransmission:(61-.28)/61,viewport: structuredClone(viewport), camera: { ...receipt.frames.at(-1).camera, alpha: 1 }, hero: observedHero, walls: observedWalls, painterOrder };
+    samples:61,readable:61,meanTransmission:(61-.28)/61*(1-.25*2/255),images:[vignette],occluders:['town-courtyard-east-upper','vignette'],viewport: structuredClone(viewport), camera: { ...receipt.frames.at(-1).camera, alpha: 1 }, hero: observedHero, walls: observedWalls, painterOrder };
   return g;
 }
 
 const shape=index=>index?{css:{x:8,y:199.875,width:374,height:498.65625},backing:{width:374,height:498},logical:{width:374,height:498.65625}}:{css:{x:106,y:188.875,width:1068,height:600.75},backing:{width:1068,height:600},logical:{width:1068,height:600.75}};
-function receipt(index=0){const v=shape(index),zoom=index?.7276595744680852:1.35,camera={x:0,y:0,width:v.logical.width,height:v.logical.height,zoom,scrollX:2007.5-v.logical.width/(2*zoom),scrollY:698.5-v.logical.height/(2*zoom),matrix:[zoom,0,0,zoom,0,0]},assigned={x:2007.5,y:698.5,rot:0};
+function receipt(index=0){const v=shape(index),zoom=index?.7276595744680852:1.35,camera={x:0,y:0,width:v.logical.width,height:v.logical.height,zoom,scrollX:index?1820:1473,scrollY:index?454:398,matrix:index?[0.7276595830917358,0,0,0.7276595830917358,50.92765808105469,67.5739974975586]:[1.350000023841858,0,0,1.350000023841858,-186.90000915527344,-105.50625610351562]},assigned={x:2007.5,y:698.5,rot:0};
  const frames=Array.from({length:4},(_,i)=>({nativeFrame:11+i,publicationFrame:11+i,at:101+i+.1,observerAt:101+i,transform:{...assigned},intent:{x:0,y:0},velocity:{vx:0,vy:0},dashTimer:0,sprite:{x:2007.5,y:698.5,depth:718.5,texture:contract.WALK_FRAME.textureKey,frame:'__BASE',animation:contract.WALK_FRAME.animation,playing:false,paused:true,animationFrameIndex:5,scaleX:1,scaleY:1,originX:.5,originY:.5,rotation:0,flipX:false,flipY:false},camera:structuredClone(camera)}));
  return{evidenceMode:contract.WALK_MODE,nativeMovementEvidence:false,controlledFrameAssignment:true,assignment:'actual-ecs-transform-and-paused-animation-frame',animationSelection:'instance-only-production-selection-suppressed',sequence:1,poseId:contract.WALK_POSE.id,sceneId:1,playerId:1,prior:{x:1472,y:536,rot:0},assigned,assignedAt:100,assignedNativeFrame:10,assignedFrameCounter:11,clearance:visual.visualClearance(contract.WALK_POSE),frames,stableComparisons:3,cameraTolerance:.01,settled:{...assigned},settledNativeFrame:14,settledAt:104.1};
 }
@@ -173,7 +175,7 @@ const cases={
 };
 for(const[name,mutate]of Object.entries(cases))test(`complete report rejects ${name}`,()=>{const r=report();mutate(r);assert.throws(()=>verifyWalkFrame(r,'execution'));});
 for(const[name,mutate]of Object.entries({
- 'source texture':s=>s.capture.metadata.source.textureKey='idle','source pixel':s=>s.capture.metadata.source.pixel[0]--,'source origin':s=>s.capture.metadata.source.displayOriginY--,'hero world matrix':s=>s.capture.metadata.gameplay.courtyardVisibility.hero.worldMatrix[5]++,'hero opacity':s=>s.capture.metadata.gameplay.courtyardVisibility.hero.alpha=.5,'silhouette source':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.textureKey='idle','silhouette alpha count':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.sourceBounds.opaquePixels--,'silhouette projection':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.screenBounds.x++,'zero wall contribution':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].contributingSamples=0,'different fill contribution':s=>{const f=s.capture.metadata.gameplay.courtyardVisibility.walls[3].fills;f[56].contributingSamples=0;f[55].contributingSamples=1;},'changed fill color':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].fills[56].color++,'changed fade':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].alpha=1,'source sample count':s=>s.capture.metadata.gameplay.courtyardVisibility.samples=62,'claimed full alpha':s=>s.capture.metadata.source.rgba[3]=255,'PNG dimensions':s=>s.capture.metadata.backing.width++,'logical transform mismatch':s=>s.capture.metadata.logical.width++,'wrong viewport':s=>s.capture.metadata.viewport.width=390,'recorded canvas too wide':s=>s.capture.metadata.css.width=2049,'unconsumed capture':s=>s.capture.metadata.consumedAt=null
+ 'source texture':s=>s.capture.metadata.source.textureKey='idle','source pixel':s=>s.capture.metadata.source.pixel[0]--,'source origin':s=>s.capture.metadata.source.displayOriginY--,'hero world matrix':s=>s.capture.metadata.gameplay.courtyardVisibility.hero.worldMatrix[5]++,'hero scroll factor':s=>s.capture.metadata.gameplay.courtyardVisibility.hero.scrollFactorX=0,'hero opacity':s=>s.capture.metadata.gameplay.courtyardVisibility.hero.alpha=.5,'silhouette source':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.textureKey='idle','silhouette alpha count':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.sourceBounds.opaquePixels--,'silhouette projection':s=>s.capture.metadata.gameplay.viewportGeometry.heroVisible.screenBounds.x++,'zero wall contribution':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].contributingSamples=0,'different fill contribution':s=>{const f=s.capture.metadata.gameplay.courtyardVisibility.walls[3].fills;f[56].contributingSamples=0;f[55].contributingSamples=1;},'changed fill color':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].fills[56].color++,'changed fade':s=>s.capture.metadata.gameplay.courtyardVisibility.walls[3].alpha=1,'source sample count':s=>s.capture.metadata.gameplay.courtyardVisibility.samples=62,'claimed full alpha':s=>s.capture.metadata.source.rgba[3]=255,'PNG dimensions':s=>s.capture.metadata.backing.width++,'logical transform mismatch':s=>s.capture.metadata.logical.width++,'wrong viewport':s=>s.capture.metadata.viewport.width=390,'recorded canvas too wide':s=>s.capture.metadata.css.width=2049,'unconsumed capture':s=>s.capture.metadata.consumedAt=null
 }))test(`same-frame capture rejects ${name}`,()=>{const s=specimen();mutate(s);assert.throws(()=>verifyWalkCapturedPNG(s.capture.metadata,s.body,0));});
 
 test('real checked-in S4 PNG drives the unchanged fill observer to exactly one colored grid contribution',async()=>{
@@ -191,7 +193,10 @@ test('real checked-in S4 PNG drives the unchanged fill observer to exactly one c
  const camera={scrollX:0,scrollY:0,alpha:1,matrix:{a:1,b:0,c:0,d:1,e:0,f:0},renderList:[...worldLayer.list],fadeEffect:{isRunning:false,isComplete:false,alpha:0},flashEffect:{isRunning:false,alpha:1},mask:null,hasPostPipeline:false,postPipelines:[],preFX:null,postFX:{isPost:true,enabled:false,list:[]}},ids=new Map(),objectId=o=>{if(!ids.has(o))ids.set(o,ids.size+1);return ids.get(o);};
  const v=observeCourtyardVisibility({worldLayer,owned:{perimeter,backdrop,courtyard:court.objects},hero,camera,portalText:null,viewport:shape(0),Graphics,Image,Sprite,Text,objectId,decodedPixels:()=>({width:256,height:256,data}),decodedAlphaBounds:()=>bounds});
  assert.equal(v.valid,true,v.issues.join(';'));assert.equal(v.samples,61);assert.equal(v.readable,61);assert.equal(v.walls[3].fills[56].contributingSamples,1);assert.deepEqual(v.walls.map(w=>w.contributingSamples),[0,0,0,1]);assert.deepEqual(v.walls[3].fills.filter(f=>f.contributingSamples).map(f=>f.fillIndex),[56]);assert(Math.abs(v.meanTransmission-(61-.28)/61)<1e-12);
- const g=game(receipt(),shape(0));v.camera={...g.courtyardVisibility.camera};g.courtyardVisibility=v;for(let i=0;i<4;i++)g.townArt.ground.courtyard[i].objectId=v.walls[i].objectId;validateWalkGameplay(g,specimen().capture.metadata.source);
+ const g=game(receipt(),shape(0)),spec=g.courtyardVisibility.images[0],vignette=new Image('Image');Object.assign(vignette,spec,{displayOriginX:960,displayOriginY:540,flipX:false,flipY:false,texture:{key:'vignette'},frame:{x:0,y:0,cutWidth:1920,cutHeight:1080,rotated:false}});vignette.getWorldTransformMatrix=()=>Object.fromEntries(['a','b','c','d','e','f'].map((k,i)=>[k,spec.worldMatrix[i]]));worldLayer.list.push(vignette);camera.renderList.push(vignette);Object.assign(camera,g.courtyardVisibility.camera);camera.matrix=Object.fromEntries(['a','b','c','d','e','f'].map((k,i)=>[k,g.viewportGeometry.camera.matrix[i]]));
+ const vb=readFileSync(resolve(here,'../../../static/games/arpg/ui/filter/filter_vignette.png'));verifyWalkVignetteAsset(vb);const vp=decodeCourtyardPNG(vb),vd=new Uint8ClampedArray(1920*1080*4);for(let y=0;y<1080;y++)for(let x=0;x<1920;x++)vd.set(vp.pixel(x,y),(y*1920+x)*4);
+ const composed=observeCourtyardVisibility({worldLayer,owned:{perimeter,backdrop,courtyard:court.objects},hero,camera,portalText:null,viewport:shape(0),Graphics,Image,Sprite,Text,objectId,decodedPixels:frame=>frame===vignette.frame?{width:1920,height:1080,data:vd}:{width:256,height:256,data},decodedAlphaBounds:()=>bounds});
+ assert.equal(composed.valid,true,composed.issues.join(';'));assert.deepEqual(composed.occluders,['town-courtyard-east-upper','vignette']);assert(Math.abs(composed.meanTransmission-.9934580520732896)<1e-12);g.courtyardVisibility=composed;for(let i=0;i<4;i++)g.townArt.ground.courtyard[i].objectId=composed.walls[i].objectId;validateWalkGameplay(g,specimen().capture.metadata.source);
 });
 
 const preserved={
@@ -200,7 +205,7 @@ const preserved={
   "plaza-navigation.mjs": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322",
   "courtyard-browser.ts": "11e859670c44e0c1388afcf63f737ae68b611e85d5fb2afd52a0d8ddd87e3c25",
   "courtyard-visibility.mjs": "28eee9916e3ff9ecbc0a19da3973f480691da5ff0ba42d1a0f165f61ec6abbc6",
-  "courtyard-capture-contract.mjs": "0212287b5ffdb557deea659cec78b765fdb64abb14c3aaf0a0d32e2580344c05",
+  "courtyard-capture-contract.mjs": "2cfedf4e8788969f9bccfd12bcb8e8867a77964830f9c06f40e791d393498a11",
   "visual-observer.ts": "c25f34756c9fab3d384a9245514eb56842857e6d5d3911ca4af5a25d93e1ae25",
   "visual.test.mjs": "1add569dcd8c6daaef9068cd747e5bdfce5293ce5de0cb7fb765531611bc701e",
   "visual.spec.ts": "0101030142958f614cf9cc5fc200b23b67ce6dcb3f7de1db11802c5aaaa6d3eb",
@@ -224,3 +229,121 @@ test('the real additive-import guard rejects absent, duplicate, altered and unre
  const check=source=>new Function('read','hash','assert',`return (${call.arguments[1].getText(ast)})();`)(()=>source,s=>createHash('sha256').update(s).digest('hex'),assert),main=readFileSync(resolve(here,'main.ts'),'utf8'),line="import './walk-frame-observer';\n";
  check(main);for(const changed of[main.replace(line,''),line+main,main.replace(line,"import './walk-frame-observer-changed';\n"),main.replace("import './observe-scene';","import './observe-scene-changed';"),main+'\nconsole.log("unrelated");\n'])assert.throws(()=>check(changed));
 });
+
+// Exact method bodies copied from locked Phaser v3.90.0, independently hash/
+// excerpt checked in the correction evidence. Dependencies are minimal doubles;
+// these execute real transform math and the real destruction ordering offline.
+// TransformMatrix.js blob437ffc08c7da1cd1f50ea66bc2f4b20961a0ca35
+// Systems.js blobc886c7946dc90928c1cf72bacc877b8cf07a7424
+// Game.js blob397fbcdbb203e6bd0f70179d835d842665ae45e9
+const Events={DESTROY:'destroy'},CONST={DESTROYED:9};
+function applyITRS (x, y, rotation, scaleX, scaleY)
+    {
+        var matrix = this.matrix;
+
+        var radianSin = Math.sin(rotation);
+        var radianCos = Math.cos(rotation);
+
+        // Translate
+        matrix[4] = x;
+        matrix[5] = y;
+
+        // Rotate and Scale
+        matrix[0] = radianCos * scaleX;
+        matrix[1] = radianSin * scaleX;
+        matrix[2] = -radianSin * scaleY;
+        matrix[3] = radianCos * scaleY;
+
+        return this;
+    }
+function destroySystems ()
+    {
+        var events = this.events;
+        var settings = this.settings;
+
+        settings.status = CONST.DESTROYED;
+
+        settings.active = false;
+        settings.visible = false;
+
+        events.emit(Events.DESTROY, this);
+
+        events.removeAllListeners();
+
+        var props = [ 'scene', 'game', 'anims', 'cache', 'plugins', 'registry', 'sound', 'textures', 'add', 'camera', 'displayList', 'events', 'make', 'scenePlugin', 'updateList' ];
+
+        for (var i = 0; i < props.length; i++)
+        {
+            this[props[i]] = null;
+        }
+    }
+function runDestroy ()
+    {
+        this.scene.destroy();
+
+        this.events.emit(Events.DESTROY);
+
+        this.events.removeAllListeners();
+
+        if (this.renderer)
+        {
+            this.renderer.destroy();
+        }
+
+        if (this.removeCanvas && this.canvas)
+        {
+            CanvasPool.remove(this.canvas);
+
+            if (this.canvas.parentNode)
+            {
+                this.canvas.parentNode.removeChild(this.canvas);
+            }
+        }
+
+        if (this.domContainer && this.domContainer.parentNode)
+        {
+            this.domContainer.parentNode.removeChild(this.domContainer);
+        }
+
+        this.loop.destroy();
+
+        this.pendingDestroy = false;
+    }
+
+test('real Phaser applyITRS produces in-memory signed zero, lost through JSON',()=>{
+ const object={matrix:new Float32Array(9)};applyITRS.call(object,0,0,0,1,1);const m=Array.from(object.matrix.slice(0,6));
+ assert(Object.is(m[2],-0));assert.throws(()=>assert.deepEqual(m,[1,0,0,1,0,0]));assert.deepEqual(JSON.parse(JSON.stringify(m)),[1,0,0,1,0,0]);
+ assertExactAffineMatrix(m,[1,0,0,1,0,0]);assert(Object.is(m[2],-0),'comparison must not mutate evidence');
+ applyITRS.call(object,2007.5,698.5,0,1,1);assertExactAffineMatrix(Array.from(object.matrix.slice(0,6)),[1,0,0,1,2007.5,698.5]);
+});
+for(let mask=0;mask<16;mask++)test(`all exact identity zero signs accepted ${mask}`,()=>{const m=[1,0,0,1,0,0];[1,2,4,5].forEach((i,n)=>{if(mask&(1<<n))m[i]=-0;});assertExactAffineMatrix(m,[1,0,0,1,0,0]);});
+for(const [name,mutate] of Object.entries({
+ tinySkew:m=>m[2]=Number.MIN_VALUE,negativeSkew:m=>m[1]=-Number.MIN_VALUE,translation:m=>m[4]=Number.MIN_VALUE,scale:m=>m[0]=1+Number.EPSILON,
+ nan:m=>m[2]=NaN,infinite:m=>m[4]=Infinity,stringZero:m=>m[2]='0',missing:m=>delete m[2],short:m=>m.pop(),extra:m=>m.push(0),extraProperty:m=>m.unexpected=0,
+ wrongHeroX:m=>m[4]=2007.5,wrongHeroY:m=>m[5]=698.5
+}))test(`exact affine guard rejects ${name}`,()=>{const m=[1,0,0,1,0,0];mutate(m);assert.throws(()=>assertExactAffineMatrix(m,[1,0,0,1,0,0]));});
+function realDestruction(h,{shutdown=false,game=false}={}){
+ const owner=h.scene.sys.game,sceneEvents=h.scene.events;Object.assign(h.scene.sys,{events:sceneEvents,settings:{status:5,active:true,visible:true}});
+ if(shutdown)sceneEvents.emit('shutdown');
+ const drop=()=>{destroySystems.call(h.scene.sys);for(const wall of h.walls){wall.scene=undefined;wall.active=false;}h.scene.worldLayer.list=[];h.observation.destroyed=true;};
+ if(game){owner.scene={destroy:drop};owner.loop.destroy=()=>{};runDestroy.call(owner);}else drop();
+ return {owner,sceneEvents};
+}
+for(const shutdown of [false,true])for(const game of [false,true])test(`real Phaser destruction permits closed snapshot shutdown=${shutdown} game=${game}`,()=>{
+ const h=harness({own:true});h.controller.assign(contract.WALK_POSE.id);h.settle();const request=h.controller.request(contract.walkScreenshot(0));h.tick();h.controller.take(request.id);
+ const {owner,sceneEvents}=realDestruction(h,{shutdown,game});assert.equal(h.scene.sys.game,null);assert.equal(h.scene.sys.events,null);
+ const snap=h.controller.snapshot();assert.equal(snap.closed,true);assert.equal(snap.preRenderAttached,false);assert.equal(snap.postRenderAttached,false);assert.equal(snap.methodRestored,true);assert.deepEqual(snap.errors,[]);assert.deepEqual(Object.getOwnPropertyDescriptor(h.scene,'updateHeroAnimation'),h.descriptor);
+ assert.equal(owner.events.listenerCount('prerender'),0);assert.equal(owner.events.listenerCount('postrender'),0);assert.equal(sceneEvents.listenerCount('destroy'),0);
+ h.scene.sys=null;assert.deepEqual(h.controller.snapshot(),snap);sceneEvents.emit('destroy');owner.events.emit('destroy');assert.deepEqual(h.controller.snapshot(),snap);assert.throws(()=>h.controller.assign(contract.WALK_POSE.id));
+});
+for(const [name,change]of Object.entries({detachedGame:h=>h.scene.sys.game=null,replacedGame:h=>h.scene.sys.game={...h.scene.sys.game},gameEvents:h=>h.scene.sys.game.events=new EventEmitter(),sceneEvents:h=>h.scene.events=new EventEmitter(),nullSystems:h=>h.scene.sys=null}))test(`active lifecycle ${name} fails closed while retained emitter cleanup survives`,()=>{
+ const h=harness(),oldGame=h.scene.sys.game,oldEvents=oldGame.events,sceneEvents=h.scene.events;h.controller.assign(contract.WALK_POSE.id);change(h);
+ assert.throws(()=>h.controller.snapshot(),/Active scene\/game event ownership changed/);sceneEvents.emit('destroy');assert.equal(oldEvents.listenerCount('prerender'),0);assert.equal(oldEvents.listenerCount('postrender'),0);assert(h.controller.snapshot().errors.length);assert.equal(h.controller.snapshot().methodRestored,true);
+});
+test('destroyed cleanup preserves another animation owner and reports the conflict',()=>{const h=harness();h.controller.assign(contract.WALK_POSE.id);const replacement=()=>{};h.scene.updateHeroAnimation=replacement;realDestruction(h);assert.equal(h.scene.updateHeroAnimation,replacement);assert.equal(h.controller.snapshot().methodRestored,false);assert.match(h.controller.snapshot().errors.join(),/another writer/);});
+test('closed snapshot still detects a hook removal failure on the retained emitter',()=>{const h=harness(),events=h.scene.sys.game.events;events.off=()=>events;realDestruction(h);assert.equal(h.controller.snapshot().preRenderAttached,true);assert.equal(h.controller.snapshot().postRenderAttached,true);});
+
+test('corrupted vignette bytes fail the exact source proof',()=>{const bytes=readFileSync(resolve(here,'../../../static/games/arpg/ui/filter/filter_vignette.png'));verifyWalkVignetteAsset(bytes);const changed=Buffer.from(bytes);changed[changed.length-20]^=1;assert.throws(()=>verifyWalkVignetteAsset(changed));});
+for(const [name,change]of Object.entries({missing:v=>v.images=[],extra:v=>v.images.push({...v.images[0],objectId:9999}),identity:v=>v.images[0].textureKey='other',opacity:v=>v.images[0].alpha=.2,frame:v=>v.images[0].frame.width=1919,flip:v=>v.images[0].frame.flipX=true,skew:v=>v.images[0].worldMatrix[2]=Number.MIN_VALUE,scale:v=>v.images[0].scaleX+=.01,position:v=>v.images[0].x++,unknownOccluder:v=>v.occluders.push('other'),wallOnlyMean:v=>v.meanTransmission=(61-.28)/61,outsideRegion:v=>{v.camera.scrollX+=100;}}))test(`vignette composition rejects ${name}`,()=>{const s=specimen();change(s.capture.metadata.gameplay.courtyardVisibility);if(name==='outsideRegion'){const g=s.capture.metadata.gameplay;g.viewportGeometry.camera.scrollX+=100;g.viewportGeometry.heroVisible.screenBounds.x-=100*g.courtyardVisibility.camera.matrix[0]*s.capture.metadata.css.width/s.capture.metadata.logical.width;}assert.throws(()=>verifyWalkCapturedPNG(s.capture.metadata,s.body,0),name==='outsideRegion'?/source-verified alpha2 region/:undefined);});
+
+test('full in-memory S4 capture accepts real Phaser signed-zero wall and hero matrices',()=>{const s=specimen(),v=s.capture.metadata.gameplay.courtyardVisibility;for(const object of [...v.walls,v.hero]){const raw={matrix:new Float32Array(9)};applyITRS.call(raw,object===v.hero?2007.5:0,object===v.hero?698.5:0,0,1,1);object.worldMatrix=Array.from(raw.matrix.slice(0,6));assert(Object.is(object.worldMatrix[2],-0));}assert.equal(verifyWalkCapturedPNG(s.capture.metadata,s.body,0).point.coloredBodyGridContributions,1);v.hero.worldMatrix[2]=Number.MIN_VALUE;assert.throws(()=>verifyWalkCapturedPNG(s.capture.metadata,s.body,0));});
