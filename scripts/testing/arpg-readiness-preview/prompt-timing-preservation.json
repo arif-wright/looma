@@ -1,13 +1,13 @@
 {
   "baseCommit": "ea8836649a065b99cabe99d08d680c08058a16e8",
-  "srcTree": "2b16e26080ff42adc4cad57502873622a3f9e809",
+  "srcTree": "621fc8a0e07f9b33da3f9c12848f40bbc28d9a19",
   "staticTree": "4e73595fef84bde3a91c0d9d129eaa2969c7fe68",
   "supabaseTree": "0a420e027ca5ff8038408d43072ece95c6333c8c",
   "source": "Exact-head hosted artifact source.txt; acceptance fixture and toolchain files remain byte-for-byte unchanged.",
   "preservedFiles": [
     {
       "path": ".github/workflows/arpg-scene-readiness.yml",
-      "sha256": "0021d252f600b51a52dacf1b51d9ec5482df9a1b68f926fc2f99772879d5f80a"
+      "sha256": "f88dfda6c1fc99634540e44f339c018f9069b57d9d56a5ae49f05565a24d9fe8"
     },
     {
       "path": "package-lock.json",

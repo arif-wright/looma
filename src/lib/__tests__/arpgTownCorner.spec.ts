@@ -42,7 +42,7 @@ const expectOwnedGraphics = (corner: ReturnType<typeof createTownCorner>, graphi
   }
   for (const [index, graphic] of graphics.slice(2).entries()) {
     expect(corner.graphics.courtyard[index]).toBe(graphic);
-    expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]);
+    expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]!);
     expect(graphic.fillStyle.mock.calls.map(([, alpha]) => alpha)).toEqual(Array(COURTYARD_FILL_COUNTS[index]).fill(1));
   }
 };
@@ -263,7 +263,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(boundaries[1].fillPoints).toHaveBeenCalledTimes(4);
     expect(scene.add.graphics).toHaveBeenCalledTimes(6);
     expect(boundaries.slice(0, 2).map(graphic => [graphic.depth, graphic.alpha])).toEqual([[-160, 1], [-162, 1]]);
-    for (const [index, graphic] of boundaries.slice(2).entries()) expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]);
+    for (const [index, graphic] of boundaries.slice(2).entries()) expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]!);
     corner.destroy(); corner.destroy();
     expect(boundaries[0].destroy).toHaveBeenCalledOnce();
     expect(boundaries[1].destroy).toHaveBeenCalledOnce();
@@ -372,7 +372,7 @@ describe('town ground and retained original art contract (renderer mocked)', () 
       expect(corner.graphics.courtyard).toEqual(owned);
     }
     expect(scene.add.graphics).toHaveBeenCalledTimes(6);
-    for (const [index, graphic] of owned.entries()) expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]);
+    for (const [index, graphic] of owned.entries()) expect(graphic.fillPoints).toHaveBeenCalledTimes(COURTYARD_FILL_COUNTS[index]!);
     for (const foundation of owned.slice(0, 2)) expect(foundation.setAlpha).not.toHaveBeenCalled();
     corner.destroy(); corner.destroy();
     for (const graphic of owned) {
