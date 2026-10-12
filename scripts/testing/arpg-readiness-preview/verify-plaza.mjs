@@ -1,3 +1,4 @@
+import { courtyardOwnershipIssues } from './courtyard-graphics.mjs';
 import assert from 'node:assert/strict';
 import { FOOTPRINTS, CHECKPOINT_TARGETS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
 import { PLAZA_VIEWS, plazaScreenshot } from './screenshots.mjs';
@@ -35,6 +36,7 @@ export function verifyPlaza(state, cleanup, index) {
     assert(motion.some(t=>t.at===g.at&&t.x===g.x&&t.y===g.y&&t.area===g.area),'Checkpoint comes from the native movement trace');
     if(p.label==='plaza-departed') { assert.equal(g.area,1);assert.equal(g.expeditionActive,true);assert.deepEqual(g.plaza,[]);continue; }
     assert.equal(g.area,0);assert.equal(g.expeditionActive,false);
+    empty(courtyardOwnershipIssues(home,g,p.label==='plaza-returned-owned'),'Exact wall ownership is stable until return');
     assert.deepEqual(g.intent,{x:0,y:0},'Every full town probe observes confirmed released keys');
     const target=CHECKPOINT_TARGETS[p.label];
     if(target)assert(Math.abs(g.x-target[0])<=8&&Math.abs(g.y-target[1])<=8,'Settled checkpoint stays inside the unchanged8px native waypoint target');

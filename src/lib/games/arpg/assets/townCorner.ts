@@ -4,6 +4,7 @@ import { crossesTownFootprint, townFacadePresentation, townPassageAlpha } from '
 import { TOWN_FACADES } from './townFacadeData';
 import { sampleTownSurface } from './townGroundSurface';
 import { townBackdropGeometry, townBoundaryGeometry, townBoundaryShadow } from './townBoundary';
+import { createTownCourtyard } from './townCourtyard';
 
 // Original, untrimmed source PNGs. Contacts are measured source pixels, not a
 // generic bottom pivot. Historical sources are retained byte-for-byte.
@@ -200,6 +201,8 @@ export function crossesTownShop(from: Vec2, to: Vec2, radius: number, shopContac
 }
 
 export type TownCorner = {
+  readonly graphics: Readonly<{ perimeter: Phaser.GameObjects.Graphics; backdrop: Phaser.GameObjects.Graphics;
+    courtyard: readonly Phaser.GameObjects.Graphics[] }>;
   blocksMovement(from: Vec2, to: Vec2, radius: number): boolean;
   updateActor(actor: Vec2): void;
   destroy(): void;
@@ -215,6 +218,7 @@ export function createTownCorner(
   const images: Phaser.GameObjects.Image[] = [];
   let boundary: Phaser.GameObjects.Graphics | null = null;
   let backdrop: Phaser.GameObjects.Graphics | null = null;
+  let courtyard: ReturnType<typeof createTownCourtyard> | null = null;
   const shop = isoToWorld(TOWN_CORNER_LAYOUT.shopTile.x, TOWN_CORNER_LAYOUT.shopTile.y);
   const ownedTextures = new Set<string>();
   let destroyed = false;
@@ -229,6 +233,7 @@ export function createTownCorner(
     images.length = 0;
     boundary?.destroy(); boundary = null;
     backdrop?.destroy(); backdrop = null;
+    courtyard?.destroy(); courtyard = null;
     for (const key of ownedTextures) releaseTexture(key);
   };
   try {
@@ -304,11 +309,15 @@ export function createTownCorner(
     const shopTop = -1175 * TOWN_CORNER_LAYOUT.shopScale;
     const shopArt = [[{ x: shopLeft, y: shopTop }, { x: shopLeft + 256, y: shopTop },
       { x: shopLeft + 256, y: shopTop + 256 }, { x: shopLeft, y: shopTop + 256 }]];
+    courtyard = createTownCourtyard(scene, addToWorld);
     return {
+      graphics: Object.freeze({ perimeter: boundary, backdrop, courtyard: courtyard.objects }),
       blocksMovement: (from, to, radius) => !destroyed && (crossesTownShop(from, to, radius, shop) ||
-        facades.some(({ polygon }) => crossesTownFootprint(from, to, radius, polygon))),
+        facades.some(({ polygon }) => crossesTownFootprint(from, to, radius, polygon)) ||
+        !!courtyard?.blocksMovement(from, to, radius)),
       updateActor: actor => {
         if (destroyed) return;
+        courtyard?.updateActor(actor);
         const shopState = townFacadePresentation(actor, shop, TOWN_CORNER_LAYOUT.shopFootprint, shopArt);
         shopImage.setDepth(shopState.depth).setAlpha(shopState.alpha);
         entranceImage.setAlpha(townPassageAlpha(actor, entrance));

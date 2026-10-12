@@ -1,3 +1,4 @@
+import { fabricateCourtyardSchema } from './courtyard-schema-data.mjs';
 import { readFileSync } from 'node:fs';
 import './gate-prompt-scene.test.mjs';
 import { BACKDROP_FIELDS, expectedBackdropCommands, townBackdropIssues } from './town-ground.mjs';
@@ -42,6 +43,7 @@ function report(mode = 'execution') {
     };
     viewportGeometry.entrancePrompt = { text: 'E · Enter ruins', visible: true, active: true, alpha: 1, screenBounds: structuredClone(viewportGeometry.entranceLabel) };
     const game = { viewportGeometry, at: 1, area: 0, elapsed: 0, durationLimit: 90000, expeditionActive: false, outcome: 'preparing', returned: false, x: 1472, y: 536, hp: 140, kills: 0, townArt };
+    fabricateCourtyardSchema(game);
     const scene = { id: 1, queuedKeys: keys, decodedKeys: keys, missingKeys: [], createAt: 1, framesAfterCreate: 1, destroyed: false, loadErrors: [], loadComplete: true, gameplay: { ...game } };
     const scenes = [scene];
     if ([1, 2, 3, 9].includes(index)) {
@@ -65,6 +67,7 @@ function report(mode = 'execution') {
       const active = { ...game, area: 1, expeditionActive: true, durationLimit: FLOW_CAP_MS };
       const returned = { ...structuredClone(game), elapsed: 500, returned: true, outcome: 'retreated', durationLimit: FLOW_CAP_MS };
       returned.townArt.ground.backdrop[0].objectId=201;
+      fabricateCourtyardSchema(returned,2000);
       state.checkpoints = [point('town-before-idle', beforeAt, 0), point('town-after-idle', idleAt, 0), point('expedition-started', beganAt, 1, active), point('hero-moved', beganAt + 300, 1, { ...active, x: 1502 }), point('returned-and-saved', returnedAt, 1, returned), point('returned-town-after-idle', restedAt, 1, returned)];
       scene.gameplay = returned;
       state.pages[0].status = 'Result saved. Town is untimed; depart again whenever you’re ready.';
@@ -709,4 +712,33 @@ test('independent exterior contract has only four whole polygons beyond the full
    const points=face.points.map(([x,y])=>[((x-1152)/64+(y+200)/32)/2,((y+200)/32-(x-1152)/64)/2]);
    assert([points.every(p=>p[0]<=-.5),points.every(p=>p[0]>=27.5),points.every(p=>p[1]<=-.5),points.every(p=>p[1]>=17.5)].some(Boolean));
  }
+});
+
+// New exact wall partition is additional evidence, never a replacement for the
+// unchanged image/rim/backdrop assertions or original 14 cases / 21 captures.
+const courtyardMutations={
+ 'missing courtyard partition':g=>delete g.courtyard,
+ 'forged base Graphics count':g=>g.baseGraphicsCount=3,
+ 'extra seventh Graphics':g=>g.worldGraphicsCount=7,
+ 'unknown Graphics ownership':g=>g.unknownGraphicsIds=[9999],
+ 'unverified Graphics ownership':g=>g.graphicsOwnershipValid=false,
+ 'original owner alias':g=>g.originalGraphicsIds[0]=g.originalGraphicsIds[1],
+ 'wall shares original owner':g=>g.courtyard[0].objectId=g.originalGraphicsIds[0],
+ 'swapped wall observations':g=>[g.courtyard[0],g.courtyard[1]]=[g.courtyard[1],g.courtyard[0]],
+ 'missing wall command data':g=>g.courtyard[0].commands=null,
+ 'nonfinite wall command data':g=>g.courtyard[0].commands[12]=null,
+ 'wall foundation faded':g=>g.courtyard[0].alpha=.28,
+ 'wall frame depth stale':g=>g.courtyard[0].depth=1
+};
+for(const[name,mutate]of Object.entries(courtyardMutations))test(`reject ${name}`,()=>{
+ const r=report();coherentObservation(r,o=>mutate(backdropPoint(o)),13);assert.throws(()=>verify(r,'execution'));
+});
+test('reject reused courtyard wall after plaza return',()=>{
+ const r=report();coherentObservation(r,o=>{const before=perimeterPoint(o,'plaza-home').scene.gameplay.townArt.ground.courtyard;perimeterPoint(o,'plaza-returned-owned').scene.gameplay.townArt.ground.courtyard.forEach((w,i)=>w.objectId=before[i].objectId);},12);assert.throws(()=>verify(r,'execution'));
+});
+test('reject reused courtyard wall after original return-flow',()=>{
+ const r=report();coherentObservation(r,o=>{const before=o.state.checkpoints[0].scene.gameplay.townArt.ground.courtyard;o.state.checkpoints[4].scene.gameplay.townArt.ground.courtyard.forEach((w,i)=>w.objectId=before[i].objectId);},10);assert.throws(()=>verify(r,'execution'));
+});
+test('reject courtyard rebuilt during original untimed idle',()=>{
+ const r=report();coherentObservation(r,o=>{o.state.checkpoints[5].scene.gameplay.townArt.ground.courtyard[0].objectId=9999;},10);assert.throws(()=>verify(r,'execution'));
 });

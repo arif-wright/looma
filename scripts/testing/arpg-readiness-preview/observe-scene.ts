@@ -1,4 +1,8 @@
 import Phaser from 'phaser';
+import { courtyardCapture, readCourtyardLifecycle } from './courtyard-capture';
+import { readTownGraphics } from './courtyard-graphics.mjs';
+import { observeCourtyardVisibility } from './courtyard-visibility.mjs';
+import type { TownCorner } from '../../../src/lib/games/arpg/assets/townCorner';
 import { scanAlphaBounds, VISIBLE_ALPHA_THRESHOLD } from './alpha-bounds.mjs';
 import { GameScene } from '../../../src/lib/games/arpg/scenes/GameScene';
 import { fixture, type SceneObservation, type GameplayObservation, type ArtObjectObservation, type ScreenRect, type ViewportGeometry, type TownGroundObservation, type VisibleSpriteObservation } from './runtime';
@@ -10,6 +14,7 @@ import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 type ObservedState = {
   movementInput: { x: number; y: number }; initialized: boolean; expedition: Expedition; expeditionActive: boolean;
   durationLimit: number; elapsed: number; world: World; playerId: EntityId | null;
+  townCorner: TownCorner | null;
   worldLayer: Phaser.GameObjects.Layer; playerSprite: Phaser.GameObjects.Sprite;
   uiCamera?: Phaser.Cameras.Scene2D.Camera;
   hudPanel: Phaser.GameObjects.Rectangle; controlPanel: Phaser.GameObjects.Rectangle;
@@ -44,7 +49,7 @@ function readTownGround(state: ObservedState, hero: { x: number; y: number }): T
   return { legacyFloorCount: images.filter(image => /^floor_\d+$/.test(image.texture.key)).length,
     legacyWallCount: images.filter(image => /^wall_\d+$/.test(image.texture.key)).length,
     perimeter: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Graphics => object instanceof Phaser.GameObjects.Graphics && object.name === 'town-perimeter-rim').map(object => ({ objectId: objectId(object), depth: object.depth, x: object.x, y: object.y, scaleX: object.scaleX, scaleY: object.scaleY, rotation: object.rotation, alpha: object.alpha, active: object.active, visible: object.visible })),
-    worldGraphicsCount: state.worldLayer.list.filter(object => object instanceof Phaser.GameObjects.Graphics).length,
+    ...readTownGraphics(state.worldLayer.list, state.townCorner?.graphics, Phaser.GameObjects.Graphics, objectId),
     // Read the real engine command buffer, never execute or replace it. A hard
     // length cap reports overflow as null and fails verification, not truncation.
     backdrop: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Graphics => object instanceof Phaser.GameObjects.Graphics && object.name === 'town-exterior-backdrop').map(object => ({
@@ -167,7 +172,24 @@ function readViewportGeometry(scene: GameScene, state: ObservedState, css: DOMRe
       active: state.portalText.active, alpha: state.portalText.alpha, screenBounds: bounds(main, state.portalText) } : null
   };
 }
-function readGameplay(scene: GameScene, observedAt = performance.now()): GameplayObservation | null {
+// Separate read-only adapter; no vector inspection runs on the motion hot path.
+export function readCourtyardVisibility(scene: GameScene, state: ObservedState) {
+  const canvas = scene.sys.game.canvas, css = canvas.getBoundingClientRect();
+  return observeCourtyardVisibility({ worldLayer: state.worldLayer, owned: state.townCorner?.graphics,
+    hero: state.playerSprite, camera: scene.cameras.main, portalText: state.portalText,
+    viewport: { css: { x: css.x, y: css.y, width: css.width, height: css.height },
+      backing: { width: canvas.width, height: canvas.height }, logical: { width: scene.scale.width, height: scene.scale.height } },
+    Graphics: Phaser.GameObjects.Graphics, Image: Phaser.GameObjects.Image,
+    Sprite: Phaser.GameObjects.Sprite, Text: Phaser.GameObjects.Text,
+    objectId, decodedPixels, decodedAlphaBounds });
+}
+function readCourtyardFrame(scene: GameScene, state: ObservedState) {
+  const loop=scene.sys.game.loop,hero=state.playerSprite;
+  return {frame:Number.isSafeInteger(loop.frame)&&loop.frame>=0?loop.frame:null,
+    delta:Number.isFinite(loop.delta)&&loop.delta>=0?loop.delta:null,
+    hero:{textureKey:hero.texture.key,frameName:hero.frame.name,animation:hero.anims?.currentAnim?.key??null,playing:hero.anims?.isPlaying??false}};
+}
+function readGameplay(scene: GameScene, observedAt = performance.now(), explicitFullProbe = false): GameplayObservation | null {
   const state = scene as unknown as ObservedState;
   if (!state.initialized || state.playerId === null) return null;
   const position = state.world.getTransform(state.playerId), health = state.world.getHealth(state.playerId);
@@ -182,7 +204,11 @@ function readGameplay(scene: GameScene, observedAt = performance.now()): Gamepla
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
     plazaProbe: null,
+    ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state),courtyardLifecycle: readCourtyardLifecycle(scene, state.townCorner?.graphics.courtyard ?? [], state.worldLayer.list, objectId, state.townCorner !== null) } : {}),
     plazaVisibility: window.__arpgPlazaFlow === true && state.expedition.area === 0 ? readHeroVisibility(scene, state) : null,
+    ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) && window.__arpgPlazaFlow === true && state.expedition.area === 0 && explicitFullProbe &&
+      state.movementInput.x === 0 && state.movementInput.y === 0 && (state.world.getDash(state.playerId)?.timer ?? 0) <= 0
+      ? { courtyardVisibility: readCourtyardVisibility(scene, state) } : {}),
     intent: { x: state.movementInput.x, y: state.movementInput.y },
     dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null,
     plaza: state.worldLayer.list.filter((object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image && /^town-plaza-(rear|endcap|shop)(-|$)/.test(object.name)).map(object => ({ ...readArtObject(object), name: object.name, alpha: object.alpha, active: object.active, visible: object.visible, objectId: objectId(object) })),
@@ -237,6 +263,9 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
     // are expensive and are only requested while keys are released, never on
     // the control loop's hot path. No game clock or update is changed.
     const motion = { at, area, x: position.x, y: position.y,
+      // Phaser 3.90 TimeStep passes this same smoothed delta into Game.step;
+      // SceneManager/Systems forward it unchanged to GameScene.update.
+      ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
       intent: { x: state.movementInput.x, y: state.movementInput.y },
       dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null };
     fixture.plazaLatestMotion = motion;
@@ -245,10 +274,11 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
     const request = fixture.plazaProbeRequest;
     const requested = request !== null && request.id > fulfilledProbeId && at >= request.requestedAt;
     if (requested || observation.gameplay === null || observation.gameplay.area !== area) {
-      observation.gameplay = readGameplay(scene, at);
+      observation.gameplay = readGameplay(scene, at, requested);
       if (requested && observation.gameplay) {
         observation.gameplay.plazaProbe = { ...request, respondedAt: at };
         fulfilledProbeId = request.id;
+        courtyardCapture.fulfill({canvas:game.canvas,scale:scene.scale},observation.gameplay);
       }
     }
   });

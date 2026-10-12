@@ -1,6 +1,7 @@
 import { test as base, expect, type Page, type Route } from '@playwright/test';
 import { isExpectedConsoleError, TITLES } from './cases.mjs';
 import { EXPECTED_REWARD_MUTATIONS } from './protocol.mjs';
+import { COURTYARD_TITLES } from './courtyard-contract.mjs';
 import { readFileSync } from 'node:fs';
 const assets = JSON.parse(readFileSync(new URL('./asset-paths.json', import.meta.url), 'utf8')) as string[];
 const ORIGIN = 'http://127.0.0.1:4281';
@@ -40,7 +41,7 @@ export const test = base.extend<{ isolation: void }>({
     expect(unexpectedConsoleErrors, 'Only the case-specific injected image errors are expected').toEqual([]);
     expect(state, 'Runtime snapshot required').not.toBeNull();
     expect(state?.blocked, 'No forbidden in-memory API/reward call').toEqual([]);
-    if (![10, 12, 13].some(index => info.title === TITLES[index])) expect(state?.rewardMutations, 'No XP, reward or ritual mutation').toEqual([]);
+    if (![10, 12, 13].some(index => info.title === TITLES[index]) && !COURTYARD_TITLES.includes(info.title)) expect(state?.rewardMutations, 'No XP, reward or ritual mutation').toEqual([]);
     else {
       expect(state?.profile).toBe('return-flow');
       expect(state?.rewardMutations).toEqual(EXPECTED_REWARD_MUTATIONS);

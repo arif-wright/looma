@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/startup-recovery
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$(git rev-parse HEAD:src)" = f7eb5381e726e2fbe12a5bf4af642ae4cdeb76ef
+          test "$(git rev-parse HEAD:src)" = 5b0543c52a425d2a58d760f15afd32a94dc54e30
           test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
           test -z "${START_RECOVERY_BROWSER_EXECUTABLE:-}"
           {

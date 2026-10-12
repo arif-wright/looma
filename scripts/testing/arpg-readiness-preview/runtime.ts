@@ -1,3 +1,4 @@
+import type { observeCourtyardVisibility } from './courtyard-visibility.mjs';
 import { FLOW_CAP_MS, SIGNATURE, PLAYER_STATE, RECEIPT, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
 export type AuthSession = { user: { id: string } } | null;
 export type AuthCallback = (event: string, session: AuthSession) => void;
@@ -21,18 +22,26 @@ export type ViewportGeometry = {
 };
 export type TownGroundObservation = {
   legacyFloorCount: number; legacyWallCount: number; worldGraphicsCount: number;
+  baseGraphicsCount: number; graphicsOwnershipValid: boolean; originalGraphicsIds: Array<number | null>; unknownGraphicsIds: number[];
+  courtyard: Array<{ name: string | null; objectId: number | null; isGraphics: boolean; inWorld: number;
+    depth: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; active: boolean; visible: boolean;
+    scrollFactorX: number; scrollFactorY: number; commandCount: number; commands: number[] | null }>;
   backdrop: Array<{ objectId: number; depth: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; active: boolean; visible: boolean; scrollFactorX: number; scrollFactorY: number; commandCount: number; commands: number[] | null }>;
   perimeter: Array<{ objectId: number; depth: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; active: boolean; visible: boolean }>;
   largeMarkerCount: number; textureWidth: number; textureHeight: number; filterMode: number | null;
   samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
 export type PlazaObjectObservation = ArtObjectObservation & { name: string; alpha: number; active: boolean; visible: boolean; objectId: number };
-export type PlazaMotion = { intent: { x: number; y: number }; at: number; area: number; x: number; y: number; dash: { cd: number; timer: number; lastDir: { x: number; y: number } } | null };
+export type CourtyardFrame = {frame:number|null;delta:number|null;hero:{textureKey:string;frameName:string|number;animation:string|null;playing:boolean}};
+export type PlazaMotion = { courtyardFrame?: CourtyardFrame; intent: { x: number; y: number }; at: number; area: number; x: number; y: number; dash: { cd: number; timer: number; lastDir: { x: number; y: number } } | null };
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;
   outcome: string; returned: boolean; x: number; y: number; hp: number; kills: number;
   plazaProbe: { id: number; requestedAt: number; respondedAt: number } | null;
   plazaVisibility: { samples: number; readable: number; meanTransmission: number; occluders: string[] } | null;
+  courtyardFrame?: CourtyardFrame;
+  courtyardVisibility?: ReturnType<typeof observeCourtyardVisibility>;
+  courtyardLifecycle?: { ownerPresent:boolean; current:Array<{objectId:number;destroyed:boolean;inWorld:boolean}>; initial:Array<{objectId:number;destroyed:boolean;inWorld:boolean}> };
   intent: PlazaMotion['intent']; dash: PlazaMotion['dash']; plaza: PlazaObjectObservation[];
   viewportGeometry: ViewportGeometry | null;
   townArt: { hero: ArtObjectObservation; objects: ArtObjectObservation[]; ground: TownGroundObservation } | null;
@@ -99,7 +108,11 @@ export const fixture = {
     for (const callback of [...fixture.callbacks]) callback(event, owner ? { user: { id: owner } } : null);
   },
   snapshot() {
-    return { plazaMotion: fixture.plazaMotion, plazaMotionOverflow: fixture.plazaMotionOverflow, ready: fixture.ready, profile: fixture.profile, authCallbacks: fixture.callbacks.size, owner: fixture.owner, api: fixture.api, blocked: fixture.blocked,
+    return { courtyardEvidence: window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true ? {
+      evidenceMode: window.__arpgCourtyardVisualFlow === true ? 'controlled-scene-visual' : 'native-courtyard',
+      nativeMovementEvidence: window.__arpgCourtyardFlow === true && window.__arpgCourtyardVisualFlow !== true,
+      visualEnabled: window.__arpgCourtyardVisualFlow === true, visual: window.__arpgCourtyardVisual?.snapshot() ?? null } : null,
+      plazaMotion: fixture.plazaMotion, plazaMotionOverflow: fixture.plazaMotionOverflow, ready: fixture.ready, profile: fixture.profile, authCallbacks: fixture.callbacks.size, owner: fixture.owner, api: fixture.api, blocked: fixture.blocked,
       rewardMutations: fixture.rewardMutations, navigations: fixture.navigations, checkpoints: fixture.checkpoints, visuals: fixture.visuals,
       scenes: fixture.scenes, canvasCount: document.querySelectorAll('canvas').length, pages: [...document.querySelectorAll<HTMLElement>('[data-fixture-page]')].map(el => ({ id: Number(el.dataset.fixturePage), status: el.querySelector('.game-status')?.textContent ?? null, canvases: el.querySelectorAll('canvas').length })), mountedPages: [...document.querySelectorAll('[data-fixture-page]')].map(el => Number((el as HTMLElement).dataset.fixturePage)) };
   }
@@ -153,5 +166,5 @@ export function installSyntheticTransport() {
     return deny();
   };
 }
-declare global { interface Window { __arpgFixture: typeof fixture; __arpgReturnFlow?: boolean; __arpgPlazaFlow?: boolean; } }
+declare global { interface Window { __arpgFixture: typeof fixture; __arpgReturnFlow?: boolean; __arpgPlazaFlow?: boolean; __arpgCourtyardFlow?: boolean; __arpgCourtyardVisualFlow?: boolean; } }
 window.__arpgFixture = fixture;

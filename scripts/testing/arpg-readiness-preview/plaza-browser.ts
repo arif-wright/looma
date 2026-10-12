@@ -118,3 +118,6 @@ export async function runPlazaExploration(page: Page, info: TestInfo, index: num
     await save('plaza-returned-owned','returned-owned');
   } finally { await release(page); }
 }
+
+// Shared native primitives; the original exploration calls keep their defaults.
+export { release, position, releasedFrame, freshGameplay, move, walkInto, dashInto };

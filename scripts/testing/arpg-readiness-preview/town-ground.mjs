@@ -1,3 +1,4 @@
+import { courtyardGraphicsIssues } from './courtyard-graphics.mjs';
 // Bounded ground/gate observations, independent of the production art helper.
 // Pixel alpha proves coverage at five route points, not seamless visual quality.
 export function townGroundIssues(gameplay) {
@@ -60,7 +61,8 @@ export function expectedBackdropCommands() {
 export function townBackdropIssues(gameplay) {
   const ground=gameplay?.townArt?.ground, issues=[];
   if(!ground||!Array.isArray(ground.backdrop)||ground.backdrop.length!==1)return ['Exactly one owned exterior field required'];
-  if(ground.worldGraphicsCount!==2)issues.push('Town permits only the original rim and one exterior Graphics, without roof scenery');
+  if(ground.baseGraphicsCount!==2)issues.push('Town requires exactly the original rim and one exterior Graphics, without roof scenery');
+  issues.push(...courtyardGraphicsIssues(gameplay));
   const field=ground.backdrop[0], expected=expectedBackdropCommands();
   if(!Number.isSafeInteger(field.objectId)||field.objectId<1||field.objectId===ground.perimeter?.[0]?.objectId||!field.active||!field.visible||field.alpha!==1)issues.push('Invalid exterior field ownership or visibility');
   if(field.depth!==-162||field.x!==0||field.y!==0||field.scaleX!==1||field.scaleY!==1||field.rotation!==0||field.scrollFactorX!==1||field.scrollFactorY!==1)issues.push('Exterior field transform/depth changed');
