@@ -24,7 +24,7 @@ const preserved={
   "src/lib/games/arpg/expedition.ts": "0af301e88413268ebb658db41e1d454332773d647157b7517cc55a882bb11ccc",
   "src/lib/games/arpg/viewportLayout.ts": "3f8e688160d71fa485fcbd5ce6e8801b3648e8681e10cffa9cc08d840e6a8748",
   "src/lib/games/arpg/townPlaza.ts": "21a6a4d5139a0a652f8dd3ed031d2f32e5781ec87e2f37db6c7ffa03afc7328b",
-  "src/lib/games/arpg/scenes/GameScene.ts": "5a969629cb13e9643300f1b2b025ba2e7b7e6f861bf2b5951dd1328d5b371430",
+  "src/lib/games/arpg/scenes/GameScene.ts": "cefc928702d6471357f9b0636a5c42a6cb8baa78310d2bc2a26f6eae497d5336",
   "src/lib/games/arpg/ecs/components.ts": "034130bc0bace2542f50854492dceb30b610b459dd05bbd68806bbf29651897a",
   "src/lib/games/arpg/ecs/systems.ts": "23e3a0266e2fc0128d2ff77f9b8b11bc2e42206bef6c2a1635b3757f26afcbb4",
   "src/lib/games/arpg/assets/townCorner.ts": "fc6d2c5da008412135fbcfa204be71d2ae92f326e759057048e3bcadf9c49e18",

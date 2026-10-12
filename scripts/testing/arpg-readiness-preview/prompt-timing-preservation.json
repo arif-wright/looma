@@ -1,13 +1,13 @@
 {
   "baseCommit": "ea8836649a065b99cabe99d08d680c08058a16e8",
-  "srcTree": "2f5dfdf6c61a6b50cfa0c75f677b98107c4b0477",
+  "srcTree": "c74591c3e39ad4090a6a586ee7f76b3521c57f25",
   "staticTree": "4e73595fef84bde3a91c0d9d129eaa2969c7fe68",
   "supabaseTree": "0a420e027ca5ff8038408d43072ece95c6333c8c",
   "source": "Exact-head hosted artifact source.txt; acceptance fixture and toolchain files remain byte-for-byte unchanged.",
   "preservedFiles": [
     {
       "path": ".github/workflows/arpg-scene-readiness.yml",
-      "sha256": "1ed185e4280f9bad4fb6e5b27295252e0ca720c0f1bc1ebaa7aca27c1a1f3f0b"
+      "sha256": "dc439c57974456f87ac63f5a0f8276e5d6d461c88646ae2be90d0c31b110bcb6"
     },
     {
       "path": "package-lock.json",
@@ -55,7 +55,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/gate-prompt-scene.test.mjs",
-      "sha256": "bdb6a92f5f752919ca537a0f454bf1d394bb6fcc975c350d97f0461862d71354"
+      "sha256": "a9ae6c4eed748150dab3040a16fd3144cd8f84c19990dfdcdf28079af61cf0a9"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/guard.ts",

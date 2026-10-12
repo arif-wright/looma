@@ -749,12 +749,8 @@ export class GameScene extends Phaser.Scene {
   private updatePortalPromptVisibility() {
     const prompt = this.portalText;
     if (!prompt) return;
-    if (this.expedition.area !== 0) {
-      prompt.setVisible(true);
-      return;
-    }
     // Cull the complete, currently scaled text, never leave a fragment at a
-    // viewport edge or behind fixed UI. This changes presentation only; the
+    // viewport edge, or in town behind fixed UI. This changes presentation only; the
     // gate's world position, camera, input and interaction radius stay intact.
     const camera = this.cameras.main as Phaser.Cameras.Scene2D.Camera & {
       readonly matrix: Phaser.GameObjects.Components.TransformMatrix;
@@ -768,7 +764,8 @@ export class GameScene extends Phaser.Scene {
     const padding = 2;
     const contained = left >= camera.x + padding && right <= camera.x + camera.width - padding &&
       top >= camera.y + padding && bottom <= camera.y + camera.height - padding;
-    const clearOfUI = this.viewportLayout && [this.viewportLayout.hud, this.viewportLayout.controls].every(panel =>
+    // Keep the existing field HUD overlap behavior; only town excludes fixed UI.
+    const clearOfUI = this.expedition.area !== 0 || this.viewportLayout && [this.viewportLayout.hud, this.viewportLayout.controls].every(panel =>
       right <= panel.x - padding || left >= panel.x + panel.width + padding ||
       bottom <= panel.y - padding || top >= panel.y + panel.height + padding);
     prompt.setVisible(Boolean(prompt.text && contained && clearOfUI));
