@@ -68,9 +68,18 @@ are retained for review. Antialiasing/edge mixing remains explicit; no arbitrary
 RGB equality, geometry enlargement or opacity-only hero claim is used. Native
 PNG review is still required, even if numeric source transmission is readable.
 
-Source observation limits: 256 world objects, 512 renderer entries, 256 command
-values/wall (67 supported), 4,194,304 pixels/source frame, 33,554,432 decoded source
-pixels/probe and 16,384 candidate hero samples. Overflow rejects the evidence.
+Source observation limits: 256 world objects, 512 renderer entries and exact
+per-object command counts: west foundation 507 (25 fills), east foundation 347
+(17 fills), west upper 1,827 (91 fills), east upper 1,187 (59 fills). These are
+192 opaque stone/mortar partition quads in total, with no support underlay.
+Unknown names, missing/excess commands and unsupported grammar reject the evidence;
+the independent graphics contract also checks every color, alpha and coordinate.
+Other bounds remain 4,194,304 pixels/source frame, 33,554,432 decoded source
+pixels/probe and 16,384 candidate hero samples. Every observed fill contributes
+separately to source transmission. Shared partition edges are conservatively
+inclusive, so exact seam samples can count adjacent cells more than once. This
+diagnostic does not establish raster-edge equivalence; native PNG review remains
+required. The original overlap between physical faces/caps still compounds.
 
 ## Commands and status
 

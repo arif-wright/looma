@@ -3,10 +3,10 @@
 // applies object/camera alpha separately to EACH FILL_PATH; overlapping fills
 // therefore compound even when they belong to the same Graphics object.
 // https://github.com/phaserjs/phaser/blob/v3.90.0/src/gameobjects/graphics/GraphicsWebGLRenderer.js
-import { COURTYARD_NAMES } from './courtyard-graphics.mjs';
+import { COURTYARD_NAMES, COURTYARD_FILL_COUNTS, COURTYARD_COMMAND_COUNTS } from './courtyard-graphics.mjs';
 
 export const COURTYARD_VISIBILITY_LIMITS = Object.freeze({
-  worldObjects: 256, renderedObjects: 512, commandsPerWall: 256,
+  worldObjects: 256, renderedObjects: 512, commandsPerWall: 1827,
   framePixels: 4194304, totalFramePixels: 33554432, sampleCandidates: 16384
 });
 const METHOD = 'analytic-source-transmission';
@@ -21,17 +21,23 @@ const inside = (x, y, polygon) => {
   return sides.every(v => v >= -1e-9) || sides.every(v => v <= 1e-9);
 };
 
-/** Strictly accept the actual bounded command grammar emitted by the approved
- * wall: one default style prefix, three closed convex quadrilateral fills.
+/** Strictly accept the actual bounded command grammar emitted by each approved
+ * wall: one default style prefix and its exact number of closed convex quads.
  * Coordinates/colors/alphas are READ, never regenerated from approved geometry.
- * The independent exact-geometry verifier remains responsible for art approval. */
-export function readCourtyardFills(commands) {
-  requireThat(Array.isArray(commands) && commands.length <= COURTYARD_VISIBILITY_LIMITS.commandsPerWall, 'Missing or excessive Graphics command buffer');
-  requireThat(commands.length === 67 && [6, 1, 0, 0, 7, 0, 0].every((v, i) => commands[i] === v), 'Unsupported Graphics command grammar/prefix');
+ * The independent exact-geometry verifier remains responsible for art approval.
+ * Explicit numeric counts support tiny offline parser fixtures only; live wall
+ * observation always supplies the approved object name, never an inferred count. */
+export function readCourtyardFills(commands, nameOrCount) {
+  const named=typeof nameOrCount==='string';
+  const count=named?COURTYARD_FILL_COUNTS[nameOrCount]:nameOrCount;
+  requireThat(Number.isSafeInteger(count)&&count>0&&count<=91, 'Unknown courtyard object or unsupported explicit fill count');
+  const expected=named?COURTYARD_COMMAND_COUNTS[nameOrCount]:7+20*count;
+  requireThat(Array.isArray(commands) && commands.length <= expected, 'Missing or excessive Graphics command buffer');
+  requireThat(commands.length === expected && [6, 1, 0, 0, 7, 0, 0].every((v, i) => commands[i] === v), 'Unsupported Graphics command grammar/prefix');
   const fills = [];
   let cursor = 7;
   const take = () => commands[cursor++];
-  for (let fillIndex = 0; fillIndex < 3; fillIndex++) {
+  for (let fillIndex = 0; fillIndex < count; fillIndex++) {
     requireThat(take() === 7, 'Expected FILL_STYLE');
     const fillColor = take(), alpha = take();
     requireThat(color(fillColor) && unit(alpha), 'Invalid fill color/alpha');
@@ -141,7 +147,7 @@ export function observeCourtyardVisibility({ worldLayer, owned, hero, camera, po
     for (const wall of refs.slice(2)) {
       const record = descriptor(wall, objectId, indices.get(wall), paint.get(wall));
       requireThat(record.active && record.visible && record.alpha > 0, 'Inactive, invisible or transparent owned wall');
-      record.fills = readCourtyardFills(wall.commandBuffer).map(fill => ({ ...fill, intersectedSamples: 0, contributingSamples: 0 }));
+      record.fills = readCourtyardFills(wall.commandBuffer, wall.name).map(fill => ({ ...fill, intersectedSamples: 0, contributingSamples: 0 }));
       record.intersectedSamples = 0; record.contributingSamples = 0;
       record.commands = [...wall.commandBuffer]; record.aboveHero = record.painterIndex > heroPaint;
       result.walls.push(record); wallData.set(wall, record);

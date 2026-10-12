@@ -112,7 +112,63 @@ const assertInvalid = (result, pattern) => { assert.equal(result.valid, false); 
 function threeSquares(object, square = [[0, 0], [6, 0], [6, 6], [0, 6]], fillAlpha = 1) {
   object.commandBuffer = [6, 1, 0, 0, 7, 0, 0];
   for (let i = 0; i < 3; i++) object.fillStyle(0x123456, fillAlpha).fillPoints(square.map(([x, y]) => ({ x, y })), true);
+  // Live observation still requires the exact named count. These extra parsed
+  // primitives are outside all synthetic hero samples, never silently skipped.
+  const remote=[{x:10000,y:10000},{x:10006,y:10000},{x:10006,y:10006},{x:10000,y:10006}];
+  for(let i=3;i<graphics.COURTYARD_FILL_COUNTS[object.name];i++)object.fillStyle(0x123456,fillAlpha).fillPoints(remote,true);
 }
+
+test('independent material oracle has exact approved bounded per-object budgets',()=>{
+  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_FILL_COUNTS[name]),[25,17,91,59]);
+  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_COMMAND_COUNTS[name]),[507,347,1827,1187]);
+  let total=0,stones=0;
+  for(const name of graphics.COURTYARD_NAMES){
+    const commands=graphics.expectedCourtyardCommands(name),fills=visibility.readCourtyardFills(commands,name);
+    assert.equal(fills.length,graphics.COURTYARD_FILL_COUNTS[name]);
+    assert.equal(commands.length,graphics.COURTYARD_COMMAND_COUNTS[name]);
+    assert(fills.every(f=>f.alpha===1&&f.points.length===4));
+    total+=fills.length;stones+=fills.filter(f=>![0x746c5c,0x605c50,0x8b806b,0x706856].includes(f.color)).length;
+  }
+  assert.equal(total,192);assert.equal(total*4,768);assert.equal(stones,76);
+});
+test('tiny parser fixtures need an explicit count; live names never infer or widen their grammar',()=>{
+  const wall=new Graphics();threeSquares(wall);
+  assert.equal(visibility.readCourtyardFills(wall.commandBuffer,3).length,3);
+  for(const name of graphics.COURTYARD_NAMES)assert.throws(()=>visibility.readCourtyardFills(wall.commandBuffer,name),/grammar/);
+  for(const count of [undefined,0,-1,1.5,92,'unknown'])assert.throws(()=>visibility.readCourtyardFills(wall.commandBuffer,count),/Unknown courtyard/);
+});
+function approvedSnapshot(){
+  const m=make();m.courtyard.updateActor(m.hero);
+  const ids=new Map(),id=object=>{if(!ids.has(object))ids.set(object,ids.size+1);return ids.get(object);};
+  const ground=graphics.readTownGraphics(m.worldLayer.list,m.scene.townCorner.graphics,Graphics,id);
+  ground.perimeter=[{objectId:id(m.perimeter)}];ground.backdrop=[{objectId:id(m.backdrop)}];
+  return {m,id,gameplay:{x:m.hero.x,y:m.hero.y,townArt:{ground}}};
+}
+test('actual production graphics observation retains every exact named material command',()=>{
+  const {gameplay}=approvedSnapshot();assert.deepEqual(graphics.courtyardGraphicsIssues(gameplay),[]);
+  assert.deepEqual(gameplay.townArt.ground.courtyard.map(w=>w.commandCount),[507,347,1827,1187]);
+  for(const w of gameplay.townArt.ground.courtyard)assert.deepEqual(w.commands,graphics.expectedCourtyardCommands(w.name));
+});
+for(const[label,mutate]of[
+  ['altered palette',w=>w.commands[8]^=1],
+  ['altered point',w=>w.commands[12]+=.01],
+  ['altered fill alpha',w=>w.commands[9]=.5],
+  ['altered recorded count',w=>w.commandCount++],
+  ['omitted complete primitive',w=>{w.commands.splice(7,20);w.commandCount=w.commands.length;}],
+  ['excess complete primitive',w=>{w.commands.push(...w.commands.slice(7,27));w.commandCount=w.commands.length;}],
+  ['unsupported command',w=>w.commands[10]=22]
+])test(`exact material approval rejects ${label}`,()=>{
+  const {gameplay}=approvedSnapshot();mutate(gameplay.townArt.ground.courtyard[0]);
+  assert(graphics.courtyardGraphicsIssues(gameplay).some(issue=>/exact approved stone\/mortar/.test(issue)));
+});
+for(const[name,count]of Object.entries(graphics.COURTYARD_COMMAND_COUNTS))test(`Graphics reader rejects short/excess buffers for ${name}`,()=>{
+  for(const delta of [-20,1,20]){
+    const {m,id}=approvedSnapshot(),wall=m.walls.find(w=>w.name===name);
+    wall.commandBuffer=Array(count+delta).fill(0);
+    const read=graphics.readTownGraphics(m.worldLayer.list,m.scene.townCorner.graphics,Graphics,id).courtyard.find(w=>w.name===name);
+    assert.equal(read.commands,null);assert.equal(read.commandCount,count+delta);
+  }
+});
 
 test('actual read-only adapter consumes real production wall buffers and exposes actual camera/viewport/order', () => {
   const m = make(); m.walls[2].alpha = .28;
@@ -120,6 +176,7 @@ test('actual read-only adapter consumes real production wall buffers and exposes
   const r = m.read(); assert.equal(r.valid, true, r.issues.join()); assert.equal(r.nativePixels, false); assert.equal(r.method, 'analytic-source-transmission');
   assert.equal(r.samples, 4); assert.equal(r.alphaThreshold, 128); assert.equal(r.sampleStep, 3);
   assert.equal(r.walls.length, 4); assert.deepEqual(r.walls.map(w => w.name), graphics.COURTYARD_NAMES);
+  assert.deepEqual(r.walls.map(w=>w.fills.length),[25,17,91,59]);
   for (let i = 0; i < 4; i++) assert.deepEqual(r.walls[i].commands, graphics.expectedCourtyardCommands(graphics.COURTYARD_NAMES[i]));
   assert.deepEqual(r.viewport, { css: { x: 7, y: 9, width: 800, height: 450 }, backing: { width: 1600, height: 900 }, logical: { width: 800, height: 450 } });
   assert.deepEqual(r.hero.worldMatrix, [1, 0, -0, 1, 1500, 752]);
@@ -129,6 +186,27 @@ test('actual read-only adapter consumes real production wall buffers and exposes
 test('three overlapping fills compound per fill, not as one precomposited Graphics bitmap', () => {
   const m = make(), wall = m.walls[2]; threeSquares(wall); Object.assign(wall, { x: 1500, y: 752, alpha: .28 });
   const r = m.read(); assert.equal(r.valid, true, r.issues.join()); approx(r.meanTransmission, .72 ** 3);
+});
+test('all 91 observed upper-wall paint primitives compound when they overlap',()=>{
+  const m=make(),wall=m.walls[2];wall.commandBuffer=[6,1,0,0,7,0,0];
+  for(let i=0;i<91;i++)wall.fillStyle(0x123456,1).fillPoints([{x:0,y:0},{x:6,y:0},{x:6,y:6},{x:0,y:6}],true);
+  Object.assign(wall,{x:1500,y:752,alpha:.28});
+  const r=m.read();assert.equal(r.valid,true,r.issues.join());
+  assert.equal(r.walls[2].fills.length,91);assert(r.walls[2].fills.every(f=>f.contributingSamples===4));
+  assert(Math.abs(r.meanTransmission/.72**91-1)<1e-12);assert.equal(r.readable,0);
+});
+test('conservative source sampling counts both cells on an exact partition seam',()=>{
+  const m=make(),wall=m.walls[2];wall.commandBuffer=[6,1,0,0,7,0,0];
+  for(const [left,right]of [[0,3],[3,6]])wall.fillStyle(0x123456,1).fillPoints([
+    {x:left,y:0},{x:right,y:0},{x:right,y:6},{x:left,y:6}],true);
+  for(let i=2;i<91;i++)wall.fillStyle(0x123456,1).fillPoints([
+    {x:10000,y:10000},{x:10006,y:10000},{x:10006,y:10006},{x:10000,y:10006}],true);
+  Object.assign(wall,{x:1500,y:752,alpha:.28});
+  m.hero.frame=frame(pixels(1,1));Object.assign(m.hero,{x:1502,y:754.5});
+  const interior=m.read();assert.equal(interior.valid,true,interior.issues.join());approx(interior.meanTransmission,.72);
+  m.hero.x=1502.5;
+  const seam=m.read();assert.equal(seam.valid,true,seam.issues.join());approx(seam.meanTransmission,.72**2);
+  assert.deepEqual(seam.walls[2].fills.slice(0,2).map(f=>f.contributingSamples),[1,1]);
 });
 test('per-fill and wall object alpha compose independently with opaque camera', () => {
   const m = make(), wall = m.walls[2]; threeSquares(wall, undefined, .5); Object.assign(wall, { x: 1500, y: 752, alpha: .4 });
@@ -186,7 +264,10 @@ test('original owned prompt is explicitly excluded only when disjoint from hero 
 });
 const adversaries = [
   ['unknown command', m => m.walls[0].commandBuffer[10] = 22, /BEGIN_PATH/],
-  ['excess commands', m => m.walls[0].commandBuffer = Array(257).fill(0), /excessive Graphics/],
+  ['excess commands', m => m.walls[0].commandBuffer = Array(508).fill(0), /excessive Graphics/],
+  ['omitted complete fill', m => m.walls[0].commandBuffer.splice(7,20), /grammar/],
+  ['excess complete fill', m => m.walls[0].commandBuffer.push(...m.walls[0].commandBuffer.slice(7,27)), /excessive Graphics/],
+  ['wrong object fill count', m => m.walls[0].commandBuffer = [...m.walls[1].commandBuffer], /grammar/],
   ['missing command', m => m.walls[0].commandBuffer.pop(), /grammar/],
   ['non-array commands', m => m.walls[0].commandBuffer = new Float64Array(67), /command buffer/],
   ['unclosed polygon', m => m.walls[0].commandBuffer[24] += 1, /Unclosed/],
@@ -288,8 +369,9 @@ test('above-hero per-wall/per-fill intersections distinguish geometric overlap a
   wall.commandBuffer[9] = 0;
   const r = m.read(); assert.equal(r.valid, true, r.issues.join());
   assert.equal(r.walls[2].intersectedSamples, 4); assert.equal(r.walls[2].contributingSamples, 4);
-  assert.deepEqual(r.walls[2].fills.map(f => f.intersectedSamples), [4, 4, 4]);
-  assert.deepEqual(r.walls[2].fills.map(f => f.contributingSamples), [0, 4, 4]);
+  assert.deepEqual(r.walls[2].fills.slice(0,3).map(f => f.intersectedSamples), [4, 4, 4]);
+  assert.deepEqual(r.walls[2].fills.slice(0,3).map(f => f.contributingSamples), [0, 4, 4]);
+  assert(r.walls[2].fills.slice(3).every(f=>f.intersectedSamples===0&&f.contributingSamples===0));
   assert.equal(r.walls[3].contributingSamples, 0); approx(r.meanTransmission, .72 ** 2);
 });
 test('courtyard motion reads native game.loop.delta only when flag is true', () => {

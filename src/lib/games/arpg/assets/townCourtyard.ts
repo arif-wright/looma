@@ -50,6 +50,58 @@ export function townCourtyardGeometry() {
   });
 }
 
+/** The reviewed coarse stone recipe, partitioned rather than overpainted.
+ * Each physical face is tiled by disjoint stone/mortar interiors: no support
+ * fill sits under a stone and compounds the upper object's cutaway alpha.
+ * Shared raster edges still require native pixel review. Geometry/occlusion
+ * continues to use the original twelve faces, never these paint tiles.
+ * Fixed recipe: 192 quads / 768 points across the four create-once Graphics. */
+export function townCourtyardSurface(face: Face, layer: string, faceIndex: number, wallIndex: number): Face[] {
+  const foundation = layer === 'foundation', cap = faceIndex === 2, end = faceIndex === 1;
+  const base = foundation ? (cap ? 0x746c5c : 0x605c50) : (cap ? 0x8b806b : 0x706856);
+  if (foundation && cap) return [{ points: face.points, color: base }];
+  const palette = foundation ? [0x6e6655, 0x746b59, 0x696353, 0x776e5b]
+    : end ? [0x776d5b, 0x7a705d]
+    : cap ? [0x978b72, 0xa09277, 0x92866f, 0x9c8f75, 0x988d77]
+    : [0x7c715e, 0x877a65, 0x786e5c, 0x817461, 0x897b65, 0x7d7461];
+  const [a, b, c, d] = face.points as [Vec2, Vec2, Vec2, Vec2];
+  const length = Math.hypot(b.x - a.x, b.y - a.y), extent = Math.hypot(d.x - a.x, d.y - a.y);
+  const point = (u: number, v: number): Vec2 => {
+    // Keep the four original support vertices exact, including the butt notch.
+    if ((u === 0 || u === 1) && (v === 0 || v === 1)) return { ...(v === 0 ? (u === 0 ? a : b) : (u === 0 ? d : c)) };
+    return { x: a.x + (b.x - a.x) * u + (d.x - a.x) * v,
+      y: a.y + (b.y - a.y) * u + (d.y - a.y) * v };
+  };
+  const tiles: Face[] = [];
+  const tile = (u0: number, u1: number, v0: number, v1: number, color: number) => {
+    if (u1 > u0 && v1 > v0) tiles.push({ color, points: [point(u0, v0), point(u1, v0), point(u1, v1), point(u0, v1)] });
+  };
+  const rows = cap || foundation ? 1 : 2;
+  const widths = foundation ? [70, 88, 76, 94, 82] : [44, 56, 48, 52, 60, 46, 54];
+  const seed = wallIndex * 2 + (cap ? 1 : 0);
+  let previousV = 0;
+  for (let row = 0; row < rows; row++) {
+    const v0 = row / rows + .32 / extent, v1 = (row + 1) / rows - .32 / extent;
+    tile(0, 1, previousV, v0, base);
+    let previousU = 0, start = row ? -25 : 0, index = 0;
+    while (start < length) {
+      const stop = end ? length : start + widths[(index + seed + row * 2) % widths.length]!;
+      const u0 = (Math.max(0, end ? 0 : start) + .32) / length;
+      const u1 = (Math.min(length, stop) - .32) / length;
+      if (u1 > u0) {
+        tile(previousU, u0, v0, v1, base);
+        tile(u0, u1, v0, v1, palette[(index + row * 3 + wallIndex) % palette.length]!);
+        previousU = u1;
+      }
+      start = stop; index++;
+    }
+    tile(previousU, 1, v0, v1, base);
+    previousV = v1;
+  }
+  tile(0, 1, previousV, 1, base);
+  return tiles;
+}
+
 /** Area-owned, create-once vector art. The solid plinth stays readable when
  * the upper wall cuts away. No added texture, clock, camera or input state. */
 export function createTownCourtyard(scene: Phaser.Scene, addToWorld: (object: Phaser.GameObjects.GameObject) => void) {
@@ -67,7 +119,11 @@ export function createTownCourtyard(scene: Phaser.Scene, addToWorld: (object: Ph
       const graphic = scene.add.graphics();
       graphics.push(graphic);
       graphic.setName(`town-courtyard-${wall.id}-${layer}`).setDepth(wall.contact.y + (layer === 'foundation' ? 19 : 20));
-      for (const face of faces) graphic.fillStyle(face.color, 1).fillPoints(face.points, true);
+      for (const [faceIndex, face] of faces.entries()) {
+        for (const paint of townCourtyardSurface(face, layer, faceIndex, wall.id === 'west' ? 0 : 1)) {
+          graphic.fillStyle(paint.color, 1).fillPoints(paint.points, true);
+        }
+      }
       addToWorld(graphic);
       return graphic;
     };

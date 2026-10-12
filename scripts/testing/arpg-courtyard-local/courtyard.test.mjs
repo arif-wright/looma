@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const require = createRequire(import.meta.url), ts = require('typescript');
@@ -28,7 +29,7 @@ function load(path){
     assert(specifier.startsWith('.'));const file=resolve(dirname(path),specifier)+'.ts';assert(existsSync(file),file);return load(file);
   },module,module.exports);return module.exports;
 }
-const {townCourtyardGeometry,createTownCourtyard,TOWN_COURTYARD}=load(resolve(base,'assets/townCourtyard.ts'));
+const {townCourtyardGeometry,townCourtyardSurface,createTownCourtyard,TOWN_COURTYARD}=load(resolve(base,'assets/townCourtyard.ts'));
 const {createTownCorner,crossesTownShop}=load(resolve(base,'assets/townCorner.ts'));
 const {TOWN_FACADES}=load(resolve(base,'assets/townFacadeData.ts'));
 const baselineCrosses=(a,b,r)=>crossesTownShop(a,b,r,{x:1664,y:568})||TOWN_FACADES.some(f=>crossesTownFootprint(a,b,r,f.footprint.map(p=>({x:p.x+f.contact.x,y:p.y+f.contact.y}))));
@@ -111,9 +112,9 @@ test('shared elbow lies in both exact solids and both caps; inner/outer local co
 test('four area-owned graphics, foundations before uppers, fixed draw commands and idempotent teardown',()=>{
   const m=mock(),added=[],w=createTownCourtyard(m.scene,o=>added.push(o));
   assert.deepEqual(added.map(o=>o.name),['town-courtyard-west-foundation','town-courtyard-east-foundation','town-courtyard-west-upper','town-courtyard-east-upper']);
-  assert.equal(m.fills(),12);assert(added.every(o=>o.depth===(o.name.endsWith('-foundation')?907:908)&&o.alpha===1));
+  assert.equal(m.fills(),192);assert(added.every(o=>o.depth===(o.name.endsWith('-foundation')?907:908)&&o.alpha===1));
   for(let i=0;i<500;i++)w.updateActor({x:1000+i,y:700});
-  assert.equal(m.fills(),12);assert.equal(m.objects.length,4);assert.equal(m.removed.length,0);
+  assert.equal(m.fills(),192);assert.equal(m.objects.length,4);assert.equal(m.removed.length,0);
   w.destroy();w.destroy();w.updateActor({x:1728,y:888});assert(added.every(o=>o.destroyed===1));assert.equal(w.blocksMovement({x:1728,y:888},{x:1728,y:888},38),false);
 });
 test('partial Graphics creation failure releases every owned object',()=>{
@@ -261,7 +262,7 @@ const mutations={
   'changed original backdrop alpha':s=>s.townCorner.graphics.backdrop.alpha=.28,
   'changed wall width':s=>s.townCorner.graphics.courtyard[0].commandBuffer[12]+=1,
   'restored internal face':s=>s.townCorner.graphics.courtyard[3].commandBuffer.push(7,0x50584f,1),
-  'wall commands overflow':s=>s.townCorner.graphics.courtyard[0].commandBuffer=Array(257).fill(0),
+  'wall commands overflow':s=>s.townCorner.graphics.courtyard[0].commandBuffer=Array(508).fill(0),
   'wall moved':s=>s.townCorner.graphics.courtyard[0].x=1,
   'wall hidden':s=>s.townCorner.graphics.courtyard[0].visible=false,
   'wall inactive':s=>s.townCorner.graphics.courtyard[0].active=false,
@@ -315,8 +316,8 @@ test('upper primitive interiors overlap only at the two caps, bounding cutaway a
 
 test('shared foundation ordering fixes both cross-layer overwrite pixels in actual draw-command order',()=>{
   for(const {actor,pixel,color}of [
-    {actor:{x:1872,y:880},pixel:{x:1731,y:873},color:0x50584f},
-    {actor:{x:1456,y:815},pixel:{x:1725,y:873},color:0x555d57}
+    {actor:{x:1872,y:880},pixel:{x:1731,y:873},color:0x776d5b},
+    {actor:{x:1456,y:815},pixel:{x:1725,y:873},color:0x7a705d}
   ]){
     assert(geometry.every(g=>!crossesTownFootprint(actor,actor,38,g.footprint)));assert.equal(baselineCrosses(actor,actor,38),false);
     const m=mock(),w=createTownCourtyard(m.scene,()=>{});w.updateActor(actor);
@@ -327,7 +328,7 @@ test('shared foundation ordering fixes both cross-layer overwrite pixels in actu
     for(const foundation of m.objects.filter(o=>o.name.endsWith('-foundation'))){
       foundation.depth=m.objects.find(o=>o.name===foundation.name.replace('-foundation','-upper')).depth;
     }
-    assert.equal(paint(),0x646b60);w.destroy();
+    assert.equal(paint(),0x746c5c);w.destroy();
   }
 });
 test('all sampled wall-clear actor positions keep every opaque foundation below every upper layer',()=>{
@@ -374,4 +375,84 @@ test('analytic front-side separation keeps a lowered opposite opaque plinth outs
   // Thus a collision-safe front actor that lowers one arm at y<=888 must obey
   // the straight-side bound. The opposite foundation is >99.28px away in x,
   // beyond the conservative +/-64px envelope. Ties at y=888 are covered too.
+});
+
+// Material proof: real production surface helper, independent saved study
+// polygons/colors, and UV area/coverage checks. No raster alpha is inferred.
+const stoneFixture=JSON.parse(readFileSync(resolve(here,'courtyard-stone-fixtures.json')));
+const baseColor=(layer,face)=>layer==='foundation'?(face===2?0x746c5c:0x605c50):(face===2?0x8b806b:0x706856);
+const painted=geometry.flatMap((wall,wi)=>['foundation','upper'].flatMap(layer=>wall[layer].map((face,fi)=>
+  ({wi,layer,fi,face,tiles:townCourtyardSurface(face,layer,fi,wi)}))));
+const toUV=(face,p)=>{const[a,b,,d]=face.points,x=b.x-a.x,y=b.y-a.y,c=d.x-a.x,e=d.y-a.y,det=x*e-y*c;
+  return {x:((p.x-a.x)*e-(p.y-a.y)*c)/det,y:(x*(p.y-a.y)-y*(p.x-a.x))/det};};
+function tileBounds(face,tiles){return tiles.map(tile=>{assert.equal(tile.points.length,4);const p=tile.points.map(q=>toUV(face,q));
+  approx(p[0].y,p[1].y);approx(p[1].x,p[2].x);approx(p[2].y,p[3].y);approx(p[3].x,p[0].x);
+  const box=[p[0].x,p[1].x,p[0].y,p[2].y];assert(box.every(Number.isFinite));assert(box[0]>=-1e-12&&box[1]<=1+1e-12&&box[2]>=-1e-12&&box[3]<=1+1e-12);
+  assert(box[1]>box[0]&&box[3]>box[2]);return box;});}
+function verifyPartition(face,tiles){const boxes=tileBounds(face,tiles);let area=0;
+  for(let i=0;i<boxes.length;i++){const[a,b,c,d]=boxes[i];area+=(b-a)*(d-c);
+    for(let j=i+1;j<boxes.length;j++){const[e,f,g,h]=boxes[j];assert(Math.max(0,Math.min(b,f)-Math.max(a,e))*Math.max(0,Math.min(d,h)-Math.max(c,g))<1e-12,'positive-area overpainting');}}
+  approx(area,1,1e-12); // containment + full area + disjoint interiors = same support up to shared boundaries
+  for(const p of face.points)assert(tiles.some(t=>t.points.some(q=>q.x===p.x&&q.y===p.y)),'original physical corner changed');
+  return boxes;
+}
+test('only the paint recipe and create-time draw loop differ from the exact bare-wall source',()=>{
+  let source=readFileSync(resolve(base,'assets/townCourtyard.ts'),'utf8');
+  const begin=source.indexOf('/** The reviewed coarse stone recipe'),end=source.indexOf('/** Area-owned, create-once vector art.');
+  assert(begin>0&&end>begin);source=source.slice(0,begin)+source.slice(end);
+  source=source.replace("      for (const [faceIndex, face] of faces.entries()) {\n        for (const paint of townCourtyardSurface(face, layer, faceIndex, wall.id === 'west' ? 0 : 1)) {\n          graphic.fillStyle(paint.color, 1).fillPoints(paint.points, true);\n        }\n      }",'      for (const face of faces) graphic.fillStyle(face.color, 1).fillPoints(face.points, true);');
+  assert.equal(createHash('sha256').update(source).digest('hex'),'ad69819cf818c83feaaab5e3773436a68d757df236f0662131cfa886ef6338e3');
+});
+test('all 76 stones retain the independently saved study polygon/color with no underlay',()=>{
+  assert.equal(stoneFixture.stones.length,76);let count=0;
+  for(const {wi,layer,fi,face,tiles}of painted){
+    const stones=tiles.filter(t=>t.color!==baseColor(layer,fi)),expected=stoneFixture.stones.filter(s=>s[0]===wi&&s[1]===layer&&s[2]===fi);
+    assert.equal(stones.length,expected.length);count+=stones.length;
+    stones.forEach((s,i)=>{assert.equal(s.color,expected[i][3]);s.points.forEach((p,j)=>{approx(p.x,expected[i][4][j][0],1e-11);approx(p.y,expected[i][4][j][1],1e-11);});});
+    verifyPartition(face,tiles);
+  }assert.equal(count,76);
+});
+for(const p of painted)test(`${p.wi?'east':'west'} ${p.layer} face ${p.fi}: strict-interior partition preserves coverage and alpha multiplicity`,()=>{
+  const boxes=verifyPartition(p.face,p.tiles);
+  // Split at every partition boundary. Each resulting open cell has exactly
+  // one covering tile, so every off-seam interior point has baseline multiplicity.
+  const distinct=v=>[...new Set(v.map(x=>Math.round(x*1e12)/1e12))].sort((a,b)=>a-b);
+  const us=distinct(boxes.flatMap(b=>b.slice(0,2))),vs=distinct(boxes.flatMap(b=>b.slice(2)));
+  for(let i=0;i<us.length-1;i++)for(let j=0;j<vs.length-1;j++){
+    const u=(us[i]+us[i+1])/2,v=(vs[j]+vs[j+1])/2;
+    assert.equal(boxes.filter(([a,b,c,d])=>u>a&&u<b&&v>c&&v<d).length,1);
+  }
+});
+test('exact command budget is 192 quads / 768 points, bounded per object and create-once',()=>{
+  const m=mock(),w=createTownCourtyard(m.scene,()=>{});
+  assert.deepEqual(m.objects.map(o=>o.faces.length),[25,17,91,59]);
+  assert.deepEqual(m.objects.map(o=>o.commandBuffer.length),[507,347,1827,1187]);
+  assert.equal(m.objects.flatMap(o=>o.faces).reduce((n,f)=>n+f.points.length,0),768);
+  assert(m.objects.flatMap(o=>o.faces).every(f=>f.alpha===1&&f.closed===true));
+  const before=m.objects.map(o=>structuredClone(o.commandBuffer));
+  for(const actor of [{x:1472,y:536},{x:1456,y:698},{x:1872,y:760},{x:1728,y:832},{x:1456,y:815},{x:1872,y:880}])w.updateActor(actor);
+  assert.deepEqual(m.objects.map(o=>o.commandBuffer),before);assert.equal(m.fills(),192);w.destroy();
+});
+test('partition is deterministic and never mutates physical faces or occlusion polygons',()=>{
+  const before=structuredClone(geometry);
+  for(const p of painted)assert.deepEqual(townCourtyardSurface(p.face,p.layer,p.fi,p.wi),p.tiles);
+  assert.deepEqual(geometry,before);assert.deepEqual(townCourtyardGeometry(),before);
+});
+for(const[why,change]of [
+  ['underlying support overpaint',(p)=>p.tiles.unshift(structuredClone(p.face))],
+  ['missing mortar',(p)=>p.tiles.splice(0,1)],
+  ['duplicate stone',(p)=>p.tiles.push(structuredClone(p.tiles.find(t=>t.color!==baseColor(p.layer,p.fi))))],
+  ['outside footprint',(p)=>p.tiles[0].points[0].x-=1],
+  ['lost physical corner',(p)=>p.tiles[0].points[0].y+=.01]
+])test(`independent partition proof rejects ${why}`,()=>{
+  const p=structuredClone(painted[0]);change(p);assert.throws(()=>verifyPartition(p.face,p.tiles));
+});
+test('cross-face overlap areas remain exactly those of the twelve physical supports',()=>{
+  // Pairwise polygon clipping sums all positive-area partition intersections.
+  // Internal tile boundaries have measure zero; no support alpha is added.
+  for(let i=0;i<painted.length;i++)for(let j=i+1;j<painted.length;j++){
+    const a=painted[i],b=painted[j],expected=Math.abs(signedArea(clipped(a.face.points,b.face.points)));
+    const actual=a.tiles.reduce((n,x)=>n+b.tiles.reduce((m,y)=>m+Math.abs(signedArea(clipped(x.points,y.points))),0),0);
+    approx(actual,expected,1e-7);
+  }
 });

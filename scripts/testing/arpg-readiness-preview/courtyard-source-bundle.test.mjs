@@ -32,7 +32,7 @@ const preserved={
   "src/lib/games/arpg/assets/townFacadeData.ts": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
   "src/lib/games/arpg/assets/manifest.ts": "038729a99f8379762f015bc2a311de6d6c0b19daffb5876ab615df36f72fdd18",
   "src/lib/games/arpg/assets/townBoundary.ts": "bff6d1c28fa19acd6da073f6a9f2b01f031cb9a9433168f7861fbcd00175041c",
-  "src/lib/games/arpg/assets/townCourtyard.ts": "ad69819cf818c83feaaab5e3773436a68d757df236f0662131cfa886ef6338e3"
+  "src/lib/games/arpg/assets/townCourtyard.ts": "dfc44912ebabacad78a382818d759d1ccbd74aaa99b8a9d8dd14382184c402ac"
 };
 for(const[path,digest]of Object.entries(preserved))test(`preserve reviewed app/original contract ${path}`,()=>assert.equal(hash(read(path)),digest));
 test('original outbound isolation/cleanup guard changes only the explicit two native-return titles',()=>{

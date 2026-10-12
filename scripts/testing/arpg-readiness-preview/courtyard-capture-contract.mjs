@@ -47,7 +47,7 @@ export function verifyVisibilityObservation(g){
   for(const[i,w]of v.walls.entries()){
     const actual=g.townArt.ground.courtyard[i];for(const k of['name','objectId','depth','alpha','active','visible','scrollFactorX','scrollFactorY'])assert.equal(w[k],actual[k]);
     assert.deepEqual(w.commands,actual.commands);assert.deepEqual(w.worldMatrix,[1,0,0,1,0,0]);assert.equal(w.aboveHero,w.painterIndex>v.hero.painterIndex);
-    const decoded=readCourtyardFills(w.commands);assert.equal(w.fills.length,3);
+    const decoded=readCourtyardFills(w.commands,w.name);assert.equal(w.fills.length,decoded.length);
     for(const key of['intersectedSamples','contributingSamples'])assert(Number.isSafeInteger(w[key])&&w[key]>=0&&w[key]<=v.samples);
     assert(w.contributingSamples<=w.intersectedSamples);if(!w.aboveHero)assert.equal(w.intersectedSamples,0);
     for(const[j,f]of w.fills.entries()){

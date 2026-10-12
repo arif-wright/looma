@@ -1,6 +1,9 @@
 // Fabricated report/schema checks only; never emit these as browser evidence.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {isDeepStrictEqual} from 'node:util';
+import {verifyCourtyardState} from './verify-courtyard.mjs';
 import {createHash} from 'node:crypto';
 import {deflateSync} from 'node:zlib';
 import {crc32} from './courtyard-png.mjs';
@@ -19,7 +22,7 @@ function executionCase(index){
  const viewport={css:{x:8,y:100,width:358,height:500},backing:{width:358,height:500},logical:{width:358,height:500}};
  for(const p of s.checkpoints){const g=p.scene.gameplay;if(g.area)continue;
   const hero={objectId:9000,depth:g.y+20,alpha:1,name:'hero-idle',worldMatrix:[1,0,0,1,g.x,g.y]};
-  const walls=g.townArt.ground.courtyard.map(o=>({...structuredClone(o),worldMatrix:[1,0,0,1,0,0],intersectedSamples:0,contributingSamples:0,fills:readCourtyardFills(o.commands).map(f=>({...f,intersectedSamples:0,contributingSamples:0}))}));
+  const walls=g.townArt.ground.courtyard.map(o=>({...structuredClone(o),worldMatrix:[1,0,0,1,0,0],intersectedSamples:0,contributingSamples:0,fills:readCourtyardFills(o.commands,o.name).map(f=>({...f,intersectedSamples:0,contributingSamples:0}))}));
   const order=[...walls,hero].sort((a,b)=>a.depth-b.depth);order.forEach((o,i)=>{o.worldIndex=i;o.painterIndex=i;});walls.forEach(w=>w.aboveHero=w.painterIndex>hero.painterIndex);
   g.courtyardVisibility={method:'analytic-source-transmission',nativePixels:false,valid:true,issues:[],alphaThreshold:128,sampleStep:3,samples:100,readable:100,meanTransmission:1,occluders:[],hero,walls,images:[],excludedText:[],viewport:structuredClone(viewport),camera:{...g.viewportGeometry.camera,alpha:1},painterOrder:order.map(o=>({objectId:o.objectId,name:o.name,depth:o.depth,worldIndex:o.worldIndex,painterIndex:o.painterIndex}))};
  }
@@ -34,3 +37,35 @@ test('fabricated discovery verifies exactly two cases and explicitly zero execut
 test('fabricated complete native report composes strict state, same-frame PNG and vector contracts',()=>{const r=verifyCourtyardResults(report(true),'execution');assert.equal(r.results.length,2);assert.equal(r.originalAcceptanceIncluded,false);assert.equal(r.results.flatMap(r=>r.images).length,36);assert(r.results.every(r=>r.images.filter(i=>i.witnessRegions.length).length===2));});
 for(const[name,change]of Object.entries({unknownMode:r=>{},wrongVersion:r=>r.config.version='x',workers:r=>r.config.workers=2,retry:r=>r.config.projects[0].retries=1,missingCase:r=>r.suites[0].specs.pop(),duplicateTitle:r=>r.suites[0].specs[1].title=r.suites[0].specs[0].title,skippedStats:r=>r.stats.skipped=0,extraProject:r=>r.config.projects.push(r.config.projects[0]),expectedFailure:r=>r.suites[0].specs[0].tests[0].expectedStatus='failed'}))test(`discovery rejects ${name}`,()=>{const r=report();change(r);assert.throws(()=>verifyCourtyardResults(r,name==='unknownMode'?'unknown':'discovery'));});
 for(const[name,change]of Object.entries({failure:r=>r.suites[0].specs[0].tests[0].results[0].status='failed',retry:r=>r.suites[0].specs[0].tests[0].results[0].retry=1,missingPNG:r=>r.suites[0].specs[0].tests[0].results[0].attachments.pop(),extraPNG:r=>r.suites[0].specs[0].tests[0].results[0].attachments.push({name:'unplanned',contentType:'image/png',body:image}),nativeBudget:r=>r.suites[0].specs[0].tests[0].results[0].duration=600001}))test(`execution report rejects ${name}`,()=>{const r=report(true);change(r);assert.throws(()=>verifyCourtyardResults(r,'execution'));});
+
+// Complete equality is preserved; only unbounded assertion-diff formatting is
+// avoided at the three large snapshot comparisons. No input is truncated.
+for(const [file,hash,replacements]of [
+ ['verify-courtyard.mjs','1a9394fe3d20b6932bf8e2063bd02bdb9b2e49eafbd0049013aeec7977b43ff5',[
+  ["assert(isDeepStrictEqual(c.checkpoints,s.checkpoints),'Cleanup must retain every complete checkpoint')",'assert.deepEqual(c.checkpoints,s.checkpoints)'],
+  ["assert(isDeepStrictEqual(c.visuals,s.visuals),'Cleanup must retain every complete visual snapshot')",'assert.deepEqual(c.visuals,s.visuals)']]],
+ ['visual-verifier.mjs','e0e3d92ffbdab63139d209c07fd6e97659a2906417f816cef8faeee24b24539b',[
+  ["assert(isDeepStrictEqual(history.history, driver.captures.map(capture => capture.metadata)), 'Capture history must retain every complete metadata snapshot')",'assert.deepEqual(history.history, driver.captures.map(capture => capture.metadata))']]]
+])test(`only bounded diagnostic formatting changes the existing ${file} equality guards`,()=>{
+ let source=readFileSync(new URL(file,import.meta.url),'utf8');
+ source=source.replace("import { isDeepStrictEqual } from 'node:util';\n",'');
+ for(const [updated,original]of replacements){assert.equal(source.split(updated).length,2);source=source.replace(updated,original);}
+ assert.equal(createHash('sha256').update(source).digest('hex'),hash);
+});
+test('bounded boolean assertion preserves strict deep-equality defaults across positive and negative structures',()=>{
+ const cycle={};cycle.self=cycle;const otherCycle={};otherCycle.self=otherCycle;
+ const values=[null,undefined,0,-0,NaN,1,'1',false,[],[undefined],Array(1),{},Object.create(null),{x:1},{x:undefined},
+  new Date(0),new Set([1]),new Map([['x',1]]),new Uint8Array([1]),cycle,otherCycle];
+ let pairs=0;
+ for(const a of values)for(const b of values){let original=true,bounded=true;
+  try{assert.deepEqual(a,b);}catch(error){assert.equal(error.code,'ERR_ASSERTION');original=false;}
+  try{assert(isDeepStrictEqual(a,b),'Complete snapshots differ');}catch(error){assert.equal(error.code,'ERR_ASSERTION');assert.equal(error.message,'Complete snapshots differ');bounded=false;}
+  assert.equal(bounded,original);pairs++;
+ }assert.equal(pairs,441);
+});
+for(const [key,message]of [['checkpoints','Cleanup must retain every complete checkpoint'],['visuals','Cleanup must retain every complete visual snapshot']])
+ test(`full ${key} equality rejects a last-command mismatch with a bounded diagnostic`,()=>{
+  const f=fabricateNativeCourtyard(0),snapshot=f.observation.afterCleanup[key].at(-1).scene.gameplay;
+  snapshot.townArt.ground.courtyard.at(-1).commands[snapshot.townArt.ground.courtyard.at(-1).commands.length-2]+=.001;
+  assert.throws(()=>verifyCourtyardState(f.observation,f.driver,0),error=>error.code==='ERR_ASSERTION'&&error.message===message);
+ });

@@ -227,7 +227,7 @@ function game(receipt, viewport) {
   for (const wall of observedWalls) {
     const aboveHero = wall.painterIndex > observedHero.painterIndex, samples = aboveHero && wall.alpha === .28 ? 10 : 0;
     Object.assign(wall, { aboveHero, worldMatrix: [1,0,0,1,0,0], intersectedSamples: samples, contributingSamples: samples,
-      fills: readCourtyardFills(wall.commands).map(fill => ({ ...fill, intersectedSamples: samples, contributingSamples: samples })) });
+      fills: readCourtyardFills(wall.commands, wall.name).map(fill => ({ ...fill, intersectedSamples: samples, contributingSamples: samples })) });
   }
   g.courtyardVisibility = { method: 'analytic-source-transmission', nativePixels: false, valid: true, issues: [], alphaThreshold: 128, sampleStep: 3,
     samples: 100, readable: 100, meanTransmission: .72, viewport: structuredClone(viewport), camera: { ...camera, alpha: 1 }, hero: observedHero, walls: observedWalls, painterOrder };
@@ -394,4 +394,9 @@ test('zero simulation delta remains valid stationary visual evidence with increa
     }
   }
   assert.match(verifyVisual(r, 'execution'), /visual-only/);
+});
+
+test('complete capture history rejects the final material coordinate without formatting the full receipt',()=>{
+ const r=report();modifyDriver(r,d=>d.captures.at(-1).metadata.gameplay.courtyardVisibility.walls.at(-1).fills.at(-1).points.at(-1)[1]+=.001);
+ assert.throws(()=>verifyVisual(r,'execution'),error=>error.code==='ERR_ASSERTION'&&error.message==='Capture history must retain every complete metadata snapshot');
 });

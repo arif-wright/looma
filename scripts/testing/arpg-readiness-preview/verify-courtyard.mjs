@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isDeepStrictEqual } from 'node:util';
 import { COURTYARD_ACTIONS, COURTYARD_LIMITS, COURTYARD_VIEWS, COURTYARD_SOLIDS, courtyardDirection, courtyardTraceIssues, courtyardScreenshot } from './courtyard-contract.mjs';
 import { courtyardGraphicsIssues, courtyardOwnershipIssues } from './courtyard-graphics.mjs';
 import { sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
@@ -78,7 +79,7 @@ export function verifyCourtyardState(observation,driver,index){
     for(const p of v.plazaMotion)assert(Number.isFinite(p.courtyardFrame?.delta)&&p.courtyardFrame.delta>=0,'Dedicated trace preserves the real movement delta');
   }
   assert.equal(s.scenes[0].destroyed,false);assert.equal(c.scenes[0].destroyed,true);assert.equal(c.authCallbacks,0);assert.equal(c.canvasCount,0);empty(c.mountedPages);
-  assert.deepEqual(c.api,s.api);assert.deepEqual(c.checkpoints,s.checkpoints);assert.deepEqual(c.visuals,s.visuals);assert.deepEqual(c.plazaMotion.slice(0,s.plazaMotion.length),s.plazaMotion);
+  assert.deepEqual(c.api,s.api);assert(isDeepStrictEqual(c.checkpoints,s.checkpoints),'Cleanup must retain every complete checkpoint');assert(isDeepStrictEqual(c.visuals,s.visuals),'Cleanup must retain every complete visual snapshot');assert.deepEqual(c.plazaMotion.slice(0,s.plazaMotion.length),s.plazaMotion);
   assert.equal(driver.kind,'native-courtyard-driver');assert.equal(driver.index,index);assert.equal(driver.completed,true);
   assert.deepEqual(driver.completedActions,COURTYARD_ACTIONS.map(a=>a.label));
   assert.equal(driver.legs,COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0));assert(driver.legs<=COURTYARD_LIMITS.legs);

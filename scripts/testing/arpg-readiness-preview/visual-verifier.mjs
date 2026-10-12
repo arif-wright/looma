@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isDeepStrictEqual } from 'node:util';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -149,7 +150,7 @@ export function verifyVisualState(observation, driver, index, attachments) {
   assert.equal(driver.captures.length, 6);
   const history = driver.captureState; mode(history);
   assert.equal(history.requests, 6); assert.equal(history.captureCount, 6); assert.equal(history.pending, false); assert.equal(history.requested, false);
-  assert.deepEqual(history.history, driver.captures.map(capture => capture.metadata));
+  assert(isDeepStrictEqual(history.history, driver.captures.map(capture => capture.metadata)), 'Capture history must retain every complete metadata snapshot');
   const pngAttachments = attachments.filter(attachment => attachment.contentType === 'image/png');
   assert.equal(pngAttachments.length, 6, 'Exactly six distinct visual-only PNGs per case');
   for (const [i, capture] of driver.captures.entries()) {
