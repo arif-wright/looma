@@ -28,7 +28,7 @@ const preserved={
   "src/lib/games/arpg/ecs/components.ts": "034130bc0bace2542f50854492dceb30b610b459dd05bbd68806bbf29651897a",
   "src/lib/games/arpg/ecs/systems.ts": "23e3a0266e2fc0128d2ff77f9b8b11bc2e42206bef6c2a1635b3757f26afcbb4",
   "src/lib/games/arpg/assets/townCorner.ts": "fc6d2c5da008412135fbcfa204be71d2ae92f326e759057048e3bcadf9c49e18",
-  "src/lib/games/arpg/assets/townGroundSurface.ts": "dfd6650e65453212cb7c4e0ceb538f6f56714ae60c34052098605ae8b06394ef",
+  "src/lib/games/arpg/assets/townGroundSurface.ts": "1f55916d3f4292283b4f05876a13d934dfc53d40dbc808fcfcf75510dd9d2504",
   "src/lib/games/arpg/assets/townFacadeData.ts": "62e2cd05371b28fcc372d32aa402fc7bc2535d8ee43c3818c751251dd71bc7a1",
   "src/lib/games/arpg/assets/manifest.ts": "038729a99f8379762f015bc2a311de6d6c0b19daffb5876ab615df36f72fdd18",
   "src/lib/games/arpg/assets/townBoundary.ts": "bff6d1c28fa19acd6da073f6a9f2b01f031cb9a9433168f7861fbcd00175041c",

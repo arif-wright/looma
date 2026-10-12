@@ -2,7 +2,7 @@
 // stone scale: every source lookup has unit UV scale and a fixed integer offset.
 // The source is still explicitly mirrored; it is not natively periodic art.
 export const TOWN_SURFACE_GRID = 160;
-export const TOWN_SURFACE_SHARPNESS = 6;
+export const TOWN_SURFACE_SHARPNESS = 8;
 
 const hash = (x: number, y: number, salt: number) => {
   let value = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ salt;
