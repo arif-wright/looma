@@ -95,7 +95,9 @@ export function observeCourtyardVisibility({ worldLayer, owned, hero, camera, po
     requireThat(worldLayer.alpha === 1 && worldLayer.visible === true && !worldLayer.parentContainer && !worldLayer.mask && worldLayer.hasPostPipeline !== true && (worldLayer.blendMode === -1 || worldLayer.blendMode === 0),
       'Unsupported world layer state');
     requireThat([camera.scrollX, camera.scrollY].every(finite) && camera.alpha === 1, 'Invalid camera scroll/alpha');
-    requireThat(!camera.fadeEffect?.isRunning && !camera.flashEffect?.isRunning && !(camera.fadeEffect?.alpha > 0) && !(camera.flashEffect?.alpha > 0), 'Unsupported camera fade/flash');
+    // Phaser3.90 Flash initializes/restores alpha=1 even while idle, but both
+    // render paths draw only when isRunning. Fade may draw after completion.
+    requireThat(!camera.fadeEffect?.isRunning && !camera.flashEffect?.isRunning && !(camera.fadeEffect?.alpha > 0), 'Unsupported camera fade/flash');
     // Phaser 3.90 Camera initializes PostPipeline even without FX. Its default
     // postFX.list stays empty for POST effects too: they live in postPipelines.
     // Check both sources (and malformed states), never list length alone.

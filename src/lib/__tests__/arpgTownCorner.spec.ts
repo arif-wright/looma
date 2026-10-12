@@ -5,6 +5,46 @@ import { TOWN_FACADES } from '../games/arpg/assets/townFacadeData';
 import { createTownCorner, crossesTownShop, paintTownCobble, paintTownMaterial, paintTownGround, paintTownLighting, TOWN_LIGHTING_PROOF, townGroundLayout, TOWN_CORNER_ASSETS, TOWN_RUNTIME_ASSETS, TOWN_GROUND_KEY, TOWN_MATERIAL_KEY, TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 
 const iso = (x: number, y: number) => ({ x: (x - y) * 64 + 1152, y: (x + y) * 32 - 200 });
+// Stateful renderer double: the new courtyard updates Graphics opacity as well
+// as depth. Keep Image and Graphics allocation identities separate.
+class MockGraphics {
+  readonly type = 'Graphics';
+  name = '';
+  depth = 0;
+  alpha = 1;
+  destroy = vi.fn();
+  setName = vi.fn((name: string) => { this.name = name; return this; });
+  setDepth = vi.fn((depth: number) => { this.depth = depth; return this; });
+  setAlpha = vi.fn((alpha: number) => { this.alpha = alpha; return this; });
+  fillStyle = vi.fn((_color: number, _alpha: number) => this);
+  fillPoints = vi.fn((_points: readonly { x: number; y: number }[], _closed: boolean) => this);
+}
+const COURTYARD_NAMES = ['town-courtyard-west-foundation', 'town-courtyard-east-foundation',
+  'town-courtyard-west-upper', 'town-courtyard-east-upper'];
+const expectOwnedGraphics = (corner: ReturnType<typeof createTownCorner>, graphics: MockGraphics[], add: any) => {
+  expect(graphics).toHaveLength(6);
+  expect(corner.graphics.perimeter).toBe(graphics[0]);
+  expect(corner.graphics.backdrop).toBe(graphics[1]);
+  expect(Object.isFrozen(corner.graphics)).toBe(true);
+  expect(Object.isFrozen(corner.graphics.courtyard)).toBe(true);
+  expect(corner.graphics.courtyard).toHaveLength(4);
+  expect(new Set(graphics).size).toBe(6);
+  expect(graphics.map(graphic => graphic.name)).toEqual([
+    'town-perimeter-rim', 'town-exterior-backdrop', ...COURTYARD_NAMES
+  ]);
+  expect(graphics.map(graphic => graphic.depth)).toEqual([-160, -162, 907, 907, 908, 908]);
+  expect(graphics.map(graphic => graphic.alpha)).toEqual([1, 1, 1, 1, 1, 1]);
+  for (const graphic of graphics) {
+    expect(graphic).toBeInstanceOf(MockGraphics);
+    expect(graphic.type).toBe('Graphics');
+    expect(add.mock.calls.filter(([object]: [unknown]) => object === graphic)).toHaveLength(1);
+  }
+  for (const [index, graphic] of graphics.slice(2).entries()) {
+    expect(corner.graphics.courtyard[index]).toBe(graphic);
+    expect(graphic.fillPoints).toHaveBeenCalledTimes(3);
+    expect(graphic.fillStyle.mock.calls.map(([, alpha]) => alpha)).toEqual([1, 1, 1]);
+  }
+};
 const make = () => {
   const source = {};
   const context = () => {
@@ -39,11 +79,10 @@ const make = () => {
       remove: vi.fn((key: string) => keys.delete(key))
     },
     add: { graphics: vi.fn(() => {
-      const graphic: any = { destroy: vi.fn() };
-      for (const method of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[method] = vi.fn(() => graphic);
+      const graphic = new MockGraphics();
       boundaries.push(graphic); return graphic;
     }), image: vi.fn((x: number, y: number, key: string) => {
-      const image: any = { x, y, key, destroy: vi.fn() };
+      const image: any = { type: 'Image', x, y, key, destroy: vi.fn() };
       for (const method of ['setOrigin', 'setScale', 'setDepth', 'setName', 'setAlpha']) image[method] = vi.fn(() => image);
       images.push(image); return image;
     }) }
@@ -168,14 +207,24 @@ describe('town ground and retained original art contract (renderer mocked)', () 
   });
 
   it('adds eight area-owned images with unchanged shop/lantern pivots and measured entrance threshold', () => {
-    const { scene, images, ground, material, add } = make();
-    createTownCorner(scene, add, iso, -161);
+    const { scene, images, boundaries, ground, material, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
     expect(scene.textures.createCanvas.mock.calls).toEqual([[TOWN_GROUND_KEY, 1344, 672], [TOWN_MATERIAL_KEY, 256, 256]]);
     expect(ground.refresh).toHaveBeenCalledOnce(); expect(material.refresh).not.toHaveBeenCalled();
     expect(ground.setFilter.mock.calls).toEqual([[0]]); // LINEAR only for generated ground.
     expect(ground.refresh.mock.invocationCallOrder[0]).toBeLessThan(ground.setFilter.mock.invocationCallOrder[0]!);
     expect(material.setFilter).not.toHaveBeenCalled();
-    expect(add).toHaveBeenCalledTimes(10);
+    expect(images).toHaveLength(8);
+    expect(images.map(image => image.type)).toEqual(Array(8).fill('Image'));
+    expectOwnedGraphics(corner, boundaries, add);
+    expect(add).toHaveBeenCalledTimes(14);
+    expect(add.mock.calls.filter(([object]) => !corner.graphics.courtyard.includes(object))).toHaveLength(10);
+    // The original eight images and two ground/backdrop Graphics remain exact;
+    // the only extra registrations are the four separately owned wall layers.
+    expect(add.mock.calls.map(([object]) => object)).toEqual([
+      images[0], boundaries[0], boundaries[1], ...images.slice(1), ...boundaries.slice(2)
+    ]);
+    expect(new Set(add.mock.calls.map(([object]) => object)).size).toBe(14);
     expect(images.map(image => image.key)).toEqual([TOWN_GROUND_KEY, TOWN_CORNER_ASSETS.shop.key, TOWN_CORNER_ASSETS.lantern.key, TOWN_RUNTIME_ASSETS.entrance.key, ...TOWN_FACADES.flatMap(facade => Object.values(facade.layers).map(layer => layer.key))]);
     expect(images[0]).toMatchObject({ x: 128, y: -168 });
     expect(images[0].setOrigin).toHaveBeenCalledWith(0, 0);
@@ -195,10 +244,11 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY]]);
   });
 
-  it('owns bounded perimeter and exterior layers, releases both once, and never rebuilds on updates', () => {
+  it('owns the original perimeter/exterior and four courtyard layers, releases each once, and never rebuilds on updates', () => {
     const { scene, images, boundaries, material, add } = make();
     const corner = createTownCorner(scene, add, iso, -161);
-    expect(boundaries).toHaveLength(2);
+    expectOwnedGraphics(corner, boundaries, add);
+    expect(boundaries.filter(graphic => !COURTYARD_NAMES.includes(graphic.name))).toHaveLength(2);
     expect(boundaries[0].setName).toHaveBeenCalledWith('town-perimeter-rim');
     expect(boundaries[0].setDepth).toHaveBeenCalledWith(-160);
     expect(boundaries[0].fillPoints.mock.calls.length).toBeLessThan(120);
@@ -210,14 +260,20 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     for (let i = 0; i < 20; i++) corner.updateActor({ x: 1472 + i, y: 536 });
     expect(material.context.putImageData).toHaveBeenCalledOnce();
     expect(boundaries[1].fillPoints).toHaveBeenCalledTimes(4);
-    expect(scene.add.graphics).toHaveBeenCalledTimes(2);
+    expect(scene.add.graphics).toHaveBeenCalledTimes(6);
+    expect(boundaries.slice(0, 2).map(graphic => [graphic.depth, graphic.alpha])).toEqual([[-160, 1], [-162, 1]]);
+    for (const graphic of boundaries.slice(2)) expect(graphic.fillPoints).toHaveBeenCalledTimes(3);
     corner.destroy(); corner.destroy();
     expect(boundaries[0].destroy).toHaveBeenCalledOnce();
     expect(boundaries[1].destroy).toHaveBeenCalledOnce();
+    for (const graphic of corner.graphics.courtyard) expect(graphic.destroy).toHaveBeenCalledOnce();
     expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
     const next = createTownCorner(scene, add, iso, -161);
-    expect(boundaries).toHaveLength(4);
-    expect(boundaries[2]).not.toBe(boundaries[0]);expect(boundaries[3]).not.toBe(boundaries[1]);
+    expect(boundaries).toHaveLength(12);
+    expectOwnedGraphics(next, boundaries.slice(6), add);
+    expect(next.graphics.perimeter).not.toBe(corner.graphics.perimeter);
+    expect(next.graphics.backdrop).not.toBe(corner.graphics.backdrop);
+    for (const [index, graphic] of next.graphics.courtyard.entries()) expect(graphic).not.toBe(corner.graphics.courtyard[index]);
     next.destroy();expect(boundaries.every(value => value.destroy.mock.calls.length === 1)).toBe(true);
   });
 
@@ -285,8 +341,78 @@ describe('town ground and retained original art contract (renderer mocked)', () 
     expect(keys.size).toBe(0);
     expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
     const returned = createTownCorner(scene, add, iso, -161);
-    expect(boundaries).toHaveLength(4);returned.destroy();
+    expect(boundaries).toHaveLength(8);
+    expectOwnedGraphics(returned, boundaries.slice(2), add);
+    expect(returned.graphics.perimeter).not.toBe(boundaries[0]);
+    expect(returned.graphics.backdrop).not.toBe(boundaries[1]);
+    returned.destroy();
     expect(boundaries.every(value => value.destroy.mock.calls.length === 1)).toBe(true);
+    expect(keys.size).toBe(0);
+  });
+
+  it('updates only the owned courtyard upper opacity, preserves shared plinth ordering, and restores on reentry', () => {
+    const { scene, boundaries, add } = make();
+    const corner = createTownCorner(scene, add, iso, -161);
+    expectOwnedGraphics(corner, boundaries, add);
+    const owned = boundaries.slice(2);
+    for (const [actor, depths, alphas] of [
+      [{ x: 1456, y: 700 }, [907, 907, 908, 908], [1, 1, 0.28, 1]],
+      [{ x: 1872, y: 770 }, [907, 907, 908, 908], [1, 1, 1, 0.28]],
+      [{ x: 1728, y: 828 }, [907, 907, 908, 908], [1, 1, 0.28, 0.28]],
+      [{ x: 1456, y: 815 }, [833, 833, 834, 908], [1, 1, 1, 1]],
+      [{ x: 1872, y: 880 }, [898, 898, 908, 899], [1, 1, 1, 1]],
+      [{ x: 1728, y: 948 }, [907, 907, 908, 908], [1, 1, 1, 1]],
+      [iso(14, 9), [907, 907, 908, 908], [1, 1, 1, 1]]
+    ] as const) {
+      corner.updateActor(actor);
+      expect(owned.map(graphic => graphic.depth)).toEqual(depths);
+      expect(owned.map(graphic => graphic.alpha)).toEqual(alphas);
+      expect(boundaries.slice(0, 2).map(graphic => [graphic.depth, graphic.alpha])).toEqual([[-160, 1], [-162, 1]]);
+      expect(corner.graphics.courtyard).toEqual(owned);
+    }
+    expect(scene.add.graphics).toHaveBeenCalledTimes(6);
+    for (const graphic of owned) expect(graphic.fillPoints).toHaveBeenCalledTimes(3);
+    for (const foundation of owned.slice(0, 2)) expect(foundation.setAlpha).not.toHaveBeenCalled();
+    corner.destroy(); corner.destroy();
+    for (const graphic of owned) {
+      expect(graphic.destroy).toHaveBeenCalledOnce();
+      expect(graphic.destroy.mock.invocationCallOrder[0]).toBeLessThan(scene.textures.remove.mock.invocationCallOrder[1]);
+      graphic.setDepth.mockClear(); graphic.setAlpha.mockClear();
+    }
+    corner.updateActor({ x: 1728, y: 828 });
+    for (const graphic of owned) {
+      expect(graphic.setDepth).not.toHaveBeenCalled();
+      expect(graphic.setAlpha).not.toHaveBeenCalled();
+    }
+    const returned = createTownCorner(scene, add, iso, -161);
+    expectOwnedGraphics(returned, boundaries.slice(6), add);
+    returned.updateActor(iso(14, 9));
+    expect(boundaries.slice(6).map(graphic => graphic.alpha)).toEqual([1, 1, 1, 1, 1, 1]);
+    returned.destroy();
+  });
+
+  it.each(COURTYARD_NAMES)('rolls back original objects and partial courtyard when %s registration fails', (name) => {
+    const { scene, boundaries, images, keys, add } = make();
+    const register = (object: any) => {
+      if (object.name === name) throw new Error('courtyard registration rejected');
+      add(object);
+    };
+    expect(() => createTownCorner(scene, register, iso, -161)).toThrow('courtyard registration rejected');
+    const partialCount = 2 + COURTYARD_NAMES.indexOf(name) + 1;
+    expect(boundaries).toHaveLength(partialCount);
+    expect(boundaries.map(graphic => graphic.name)).toEqual([
+      'town-perimeter-rim', 'town-exterior-backdrop', ...COURTYARD_NAMES.slice(0, partialCount - 2)
+    ]);
+    expect(boundaries.every(graphic => graphic.destroy.mock.calls.length === 1)).toBe(true);
+    expect(images).toHaveLength(8);
+    expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
+    expect(scene.textures.remove.mock.calls).toEqual([[TOWN_MATERIAL_KEY], [TOWN_GROUND_KEY]]);
+    expect(keys.size).toBe(0);
+    const returned = createTownCorner(scene, add, iso, -161);
+    expectOwnedGraphics(returned, boundaries.slice(partialCount), add);
+    returned.destroy();
+    expect(boundaries.every(graphic => graphic.destroy.mock.calls.length === 1)).toBe(true);
+    expect(images.every(image => image.destroy.mock.calls.length === 1)).toBe(true);
     expect(keys.size).toBe(0);
   });
 

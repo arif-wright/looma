@@ -93,6 +93,8 @@ function make() {
   // Exact no-effects defaults initialized by Phaser 3.90 BaseCamera and
   // Camera.initPostPipeline(). Post FX controllers live in postPipelines.
   const camera = { scrollX: 0, scrollY: 0, alpha: 1, matrix: new ObjectBase().getWorldTransformMatrix(), renderList: [],
+    fadeEffect: { isRunning: false, isComplete: false, alpha: 0 },
+    flashEffect: { isRunning: false, alpha: 1 },
     mask: null, hasPostPipeline: false, postPipelines: [], preFX: null,
     postFX: { isPost: true, enabled: false, list: [] } };
   const scene = new GameScene();
@@ -313,4 +315,31 @@ test('four protected legacy function declarations are still byte-identical to th
   const ast = ts.createSourceFile('observe-scene.ts', source, ts.ScriptTarget.Latest, true);
   const declarations = new Map(ast.statements.filter(s => ts.isFunctionDeclaration(s)).map(s => [s.name.text, source.slice(s.getStart(ast), s.end)]));
   for (const [name, hash] of Object.entries(expected)) assert.equal(createHash('sha256').update(declarations.get(name)).digest('hex'), hash, name);
+});
+
+// Source-backed Phaser3.90 states. Flash's inactive alpha is not a draw flag:
+// constructor alpha=1; completion restores _alpha; reset leaves alpha unchanged.
+// Both Flash render methods early-return unless isRunning. Fade differs because
+// a completed fade can still draw. These mocked observations are not engine pixels.
+// https://raw.githubusercontent.com/phaserjs/phaser/v3.90.0/src/cameras/2d/effects/Flash.js
+// https://raw.githubusercontent.com/phaserjs/phaser/v3.90.0/src/cameras/2d/effects/Fade.js
+for (const [label, effect] of [
+  ['constructor defaults', { isRunning:false, alpha:1 }],
+  ['completed flash restores original alpha', { isRunning:false, alpha:1, _alpha:1, progress:1 }],
+  ['interrupted flash retains intermediate alpha', { isRunning:false, alpha:.5, _alpha:1, progress:.5 }]
+]) test(`Phaser3.90 inactive Flash ${label} does not draw or invalidate visibility`,()=>{
+  const m=make();m.camera.flashEffect=effect;const before=structuredClone(effect),result=m.read();
+  assert.equal(result.valid,true,result.issues.join());assert.equal(result.samples,4);assert.deepEqual(effect,before);
+});
+for (const alpha of [0,1]) test(`Phaser3.90 active Flash remains unsupported at alpha ${alpha}`,()=>{
+  const m=make();m.camera.flashEffect={isRunning:true,alpha};assertInvalid(m.read(),/camera fade\/flash/);
+});
+test('Phaser3.90 completed opaque Fade remains unsupported while no longer running',()=>{
+  const m=make();m.camera.fadeEffect={isRunning:false,isComplete:true,alpha:1};assertInvalid(m.read(),/camera fade\/flash/);
+});
+test('Phaser3.90 active transparent Fade remains unsupported',()=>{
+  const m=make();m.camera.fadeEffect={isRunning:true,isComplete:false,alpha:0};assertInvalid(m.read(),/camera fade\/flash/);
+});
+test('Phaser3.90 completed transparent fade-in does not obscure the frame',()=>{
+  const m=make();m.camera.fadeEffect={isRunning:false,isComplete:true,alpha:0};const result=m.read();assert.equal(result.valid,true,result.issues.join());
 });

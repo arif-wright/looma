@@ -310,7 +310,7 @@ jobs:
             git -C "$fixture" rev-parse HEAD HEAD^{tree}
             node --version
           } > artifacts/moonberry-gather/comparison-source.txt
-          expected_src=5b0543c52a425d2a58d760f15afd32a94dc54e30
+          expected_src=2f5dfdf6c61a6b50cfa0c75f677b98107c4b0477
           if [ "$COMPARISON_SOURCE" = baseline ]; then expected_src=882236c59c42b5c14cb7f28a442295d9690d9ae5; fi
           test "$(git rev-parse HEAD:src)" = "$expected_src"
           node "$fixture/scripts/testing/recovery-dom/verify-playwright-toolchain.mjs" "$COMPARISON_SOURCE" before "$PWD" "$fixture" > artifacts/moonberry-gather/toolchain-before-overlay.json
