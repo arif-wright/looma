@@ -200,7 +200,7 @@ test('real checked-in S4 PNG drives the unchanged fill observer to exactly one c
 });
 
 const preserved={
-  "guard.ts": "9257875b2fafd1d23b60f890d8e872a4c6228366a57d72d7493153da7d5b423a",
+  "guard.ts": "853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173",
   "plaza-browser.ts": "cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac",
   "plaza-navigation.mjs": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322",
   "courtyard-browser.ts": "11e859670c44e0c1388afcf63f737ae68b611e85d5fb2afd52a0d8ddd87e3c25",

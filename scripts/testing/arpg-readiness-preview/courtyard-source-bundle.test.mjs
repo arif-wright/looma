@@ -35,8 +35,15 @@ const preserved={
   "src/lib/games/arpg/assets/townCourtyard.ts": "dfc44912ebabacad78a382818d759d1ccbd74aaa99b8a9d8dd14382184c402ac"
 };
 for(const[path,digest]of Object.entries(preserved))test(`preserve reviewed app/original contract ${path}`,()=>assert.equal(hash(read(path)),digest));
-test('original outbound isolation/cleanup guard changes only the explicit two native-return titles',()=>{
- const s=read('scripts/testing/arpg-readiness-preview/guard.ts').replace("import { COURTYARD_TITLES } from './courtyard-contract.mjs';\n",'').replace(' && !COURTYARD_TITLES.includes(info.title)','');
+test('original outbound isolation/cleanup guard changes only native-return titles and native observation serialization',()=>{
+ let s=read('scripts/testing/arpg-readiness-preview/guard.ts');
+ const serializerImport="import { serializeCourtyardOrLegacyObservation } from './courtyard-observation-wire.mjs';\n";
+ const nativeBody="serializeCourtyardOrLegacyObservation({ browserVersion: browser.version(), state, afterCleanup, blocked, errors,\n        consoleErrors, unexpectedConsoleErrors, cleanupErrors }, info.title)";
+ const legacyBody="JSON.stringify({ browserVersion: browser.version(), state, afterCleanup, blocked, errors,\n        consoleErrors, unexpectedConsoleErrors, cleanupErrors }, null, 2)";
+ assert.equal(s.split(serializerImport).length-1,1,'Exactly one explicit native observation serializer import required');
+ assert.equal(s.split(nativeBody).length-1,1,'Exactly one explicit native observation serializer call required');
+ s=s.replace(serializerImport,'').replace(nativeBody,legacyBody);
+ s=s.replace("import { COURTYARD_TITLES } from './courtyard-contract.mjs';\n",'').replace(' && !COURTYARD_TITLES.includes(info.title)','');
  assert.equal(hash(s),"58fcfd7b06cebd1b788218a8e8d348a8301c2d7997cb5e102fac30df8400ac6a");
 });
 test('original native controller is literal-preserved with shared exports only',()=>{

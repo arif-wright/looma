@@ -9,6 +9,7 @@ import {deflateSync} from 'node:zlib';
 import {crc32} from './courtyard-png.mjs';
 import {readCourtyardFills} from './courtyard-visibility.mjs';
 import {verifyCourtyardResults} from './verify-courtyard-results.mjs';
+import {serializeNativeObservation,decodeNativeObservation} from './courtyard-observation-wire.mjs';
 import {fabricateNativeCourtyard,reconcileFabricatedCopies} from './courtyard-native-schema.mjs';
 import {COURTYARD_ACTIONS,COURTYARD_TITLES,COURTYARD_VIEWS,courtyardScreenshot} from './courtyard-contract.mjs';
 const FILE='courtyard.browser.spec.ts',PROJECT='chromium-arpg-courtyard';
@@ -69,3 +70,23 @@ for(const [key,message]of [['checkpoints','Cleanup must retain every complete ch
   snapshot.townArt.ground.courtyard.at(-1).commands[snapshot.townArt.ground.courtyard.at(-1).commands.length-2]+=.001;
   assert.throws(()=>verifyCourtyardState(f.observation,f.driver,0),error=>error.code==='ERR_ASSERTION'&&error.message===message);
  });
+
+// Transport-only replay of the same fabricated complete report.
+test('fabricated shared native report reconstructs exact objects before unchanged state and PNG checks',()=>{
+ const r=report(true);
+ for(const[index,spec]of r.suites[0].specs.entries()){
+  const attachments=spec.tests[0].results[0].attachments, a=attachments.find(a=>a.name==='arpg-real-engine-observations');
+  const original=JSON.parse(Buffer.from(a.body,'base64').toString('utf8')),other=structuredClone(attachments.filter(v=>v!==a));
+  a.body=Buffer.from(serializeNativeObservation(original,index)).toString('base64');
+  assert.deepEqual(decodeNativeObservation(a.body,index),original);
+  assert.deepEqual(attachments.filter(v=>v!==a),other);
+ }
+ const result=verifyCourtyardResults(r,'execution');assert.equal(result.results.length,2);assert.equal(result.results.flatMap(r=>r.images).length,36);
+});
+for(const key of ['checkpoints','visuals'])test(`shared transport retains cleanup-only ${key} corruption for the original semantic equality guard`,()=>{
+ const f=fabricateNativeCourtyard(0);f.observation.afterCleanup[key].at(-1).scene.gameplay.townArt.ground.courtyard.at(-1).commands[1]+=.25;
+ const original=f.observation,wire=serializeNativeObservation(original,0),encoded=JSON.parse(wire);
+ assert(!encoded.cleanupReferences.includes(key));
+ const restored=decodeNativeObservation(Buffer.from(wire).toString('base64'),0);assert.deepEqual(restored,original);
+ assert.throws(()=>verifyCourtyardState(restored,f.driver,0),/Cleanup must retain every complete/);
+});

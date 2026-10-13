@@ -2,6 +2,7 @@ import { test as base, expect, type Page, type Route } from '@playwright/test';
 import { isExpectedConsoleError, TITLES } from './cases.mjs';
 import { EXPECTED_REWARD_MUTATIONS } from './protocol.mjs';
 import { COURTYARD_TITLES } from './courtyard-contract.mjs';
+import { serializeCourtyardOrLegacyObservation } from './courtyard-observation-wire.mjs';
 import { readFileSync } from 'node:fs';
 const assets = JSON.parse(readFileSync(new URL('./asset-paths.json', import.meta.url), 'utf8')) as string[];
 const ORIGIN = 'http://127.0.0.1:4281';
@@ -35,8 +36,8 @@ export const test = base.extend<{ isolation: void }>({
     } catch (error) { cleanupErrors.push(String(error)); }
     const unexpectedConsoleErrors = consoleErrors.filter(message => !isExpectedConsoleError(info.title, message));
     await info.attach('arpg-real-engine-observations', { contentType: 'application/json',
-      body: JSON.stringify({ browserVersion: browser.version(), state, afterCleanup, blocked, errors,
-        consoleErrors, unexpectedConsoleErrors, cleanupErrors }, null, 2) });
+      body: serializeCourtyardOrLegacyObservation({ browserVersion: browser.version(), state, afterCleanup, blocked, errors,
+        consoleErrors, unexpectedConsoleErrors, cleanupErrors }, info.title) });
     expect(cleanupErrors, 'Cleanup must finish and preserve evidence').toEqual([]);
     expect(unexpectedConsoleErrors, 'Only the case-specific injected image errors are expected').toEqual([]);
     expect(state, 'Runtime snapshot required').not.toBeNull();

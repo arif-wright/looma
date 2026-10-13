@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { COURTYARD_TITLES, COURTYARD_VIEWS, COURTYARD_ACTIONS, courtyardScreenshot } from './courtyard-contract.mjs';
+import { decodeNativeObservation } from './courtyard-observation-wire.mjs';
 import { verifyCourtyardState } from './verify-courtyard.mjs';
 import { verifyCapturedPNG } from './courtyard-capture-contract.mjs';
 const FILE='courtyard.browser.spec.ts',PROJECT='chromium-arpg-courtyard',empty=v=>assert.deepEqual(v,[]);
@@ -20,7 +21,7 @@ export function verifyCourtyardResults(report,mode){
     const names=['arpg-real-engine-observations','courtyard-native-driver','courtyard-native-captures',...COURTYARD_VIEWS.map(v=>courtyardScreenshot(index,v))];
     assert.deepEqual(result.attachments.map(a=>a.name).sort(),names.sort(),'Exact bounded native evidence attachments');
     const attachment=name=>{const a=result.attachments.filter(a=>a.name===name);assert.equal(a.length,1);assert.equal(typeof a[0].body,'string');return a[0];};
-    const json=name=>{const a=attachment(name);assert.equal(a.contentType,'application/json');assert(a.body.length<30000000);return JSON.parse(Buffer.from(a.body,'base64').toString('utf8'));};
+    const json=name=>{const a=attachment(name);assert.equal(a.contentType,'application/json');assert(a.body.length<30000000);return name==='arpg-real-engine-observations'?decodeNativeObservation(a.body,index):JSON.parse(Buffer.from(a.body,'base64').toString('utf8'));};
     const observation=json('arpg-real-engine-observations');assert.equal(observation.browserVersion,'143.0.7499.4');for(const key of['blocked','errors','consoleErrors','unexpectedConsoleErrors','cleanupErrors'])empty(observation[key]);
     const driver=json('courtyard-native-driver'),captures=json('courtyard-native-captures');verifyCourtyardState(observation,driver,index);
     assert.equal(captures.evidenceMode,'native-courtyard');assert.equal(captures.nativeMovementEvidence,true);assert.equal(captures.requests,COURTYARD_ACTIONS.length);assert.equal(captures.captureCount,18);assert.equal(captures.pending,false);assert.equal(captures.requested,false);assert.equal(captures.history.length,18);

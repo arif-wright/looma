@@ -62,7 +62,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/guard.ts",
-      "sha256": "9257875b2fafd1d23b60f890d8e872a4c6228366a57d72d7493153da7d5b423a"
+      "sha256": "853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/index.html",
@@ -130,7 +130,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.json",
-      "sha256": "9f86593abd06543c82cc74271359be03c451667c5b89b2d46c8be5f8eedf1da5"
+      "sha256": "b6d393384860d1acc8048027d30f0f0f06737674b716fcf479706e8a104e8303"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.test.mjs",
