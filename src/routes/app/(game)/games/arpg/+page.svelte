@@ -9,6 +9,7 @@
   import LeaderboardList from '$lib/components/games/LeaderboardList.svelte';
   import AchievementToastStack from '$lib/components/games/AchievementToastStack.svelte';
   import { bootGame, shutdownGame, type ArpgControls } from '$lib/games/arpg/main';
+  import { describeExpeditionObjective, type ExpeditionProgress } from '$lib/games/arpg/expeditionObjectives';
   import { createTownSession, type TownSession, type TownSessionState } from '$lib/games/arpg/townSession';
   import {
     abandonSession,
@@ -66,6 +67,7 @@
   let controls: ArpgControls | null = null;
   let townSession: TownSession | null = null;
   let townState: TownSessionState | null = null;
+  let expeditionProgress: ExpeditionProgress | null = null;
   let bootLoading = false;
   let bootController: AbortController | null = null;
   let reward: SessionReward | null = null;
@@ -84,6 +86,7 @@
     townSession?.dispose();
     townSession = null;
     controls = null;
+    expeditionProgress = null;
     bootLoading = false;
     if (containerEl) shutdownGame(containerEl);
   };
@@ -272,6 +275,7 @@
     startRecoveryAction = null;
     switch (next.phase) {
       case 'starting':
+        expeditionProgress = null;
         reward = null;
         ritualCompletions = [];
         status = 'Starting your expedition…';
@@ -301,6 +305,7 @@
         controls?.setTownStatus('blocked', 'Result rejected. Review the message below.');
         break;
       case 'blocked':
+        expeditionProgress = null;
         startRecoveryAction = 'refresh';
         if (next.issue?.context === 'entry') {
           // A failed area rebuild can leave a partial world. Stop its renderer,
@@ -339,6 +344,7 @@
   const bootTown = async () => {
     if (!mounted || pageBlocked || bootLoading || townSession) return;
     bootLoading = true;
+    expeditionProgress = null;
     const generation = ++workGeneration;
     const controller = new AbortController();
     bootController = controller;
@@ -359,6 +365,10 @@
         },
         onDepartureRequested: () => { if (isCurrent()) depart(); },
         onRetryRequested: () => { if (isCurrent()) void townSession?.retry(); },
+        onExpeditionProgress: (progress) => {
+          if (!isCurrent() || townState?.phase === 'starting' || townState?.phase === 'blocked') return;
+          expeditionProgress = progress ? Object.freeze({ area: progress.area, floorKills: progress.floorKills, outcome: progress.outcome }) : null;
+        },
         onGameOver: (score, durationMs) => {
           if (isCurrent()) void townSession?.returnToTown(score, durationMs);
         }
@@ -394,6 +404,7 @@
     } catch (err) {
       if (!mounted || pageBlocked || generation !== workGeneration) return;
       controls = null;
+      expeditionProgress = null;
       if (containerEl) shutdownGame(containerEl);
       errorMessage = bootTimedOut
         ? 'Town took too long to load. Try loading it again. No expedition session was started.'
@@ -419,6 +430,10 @@
       depart();
     }
   };
+
+  $: objective = !bootLoading && !pageBlocked && !startRecoveryAction && townState &&
+    !['starting', 'blocked', 'disposed'].includes(townState.phase)
+      ? describeExpeditionObjective(expeditionProgress) : null;
 
   $: actionDisabled = bootLoading || ['starting', 'expedition', 'waiting', 'saving', 'rejected'].includes(townState?.phase ?? '');
   $: actionLabel = startRecoveryAction === 'refresh' ? 'Refresh page'
@@ -497,7 +512,21 @@
         <div class="arpg-container" bind:this={containerEl}></div>
       </div>
 
-      <p class="game-status" role="status" aria-live="polite">{status}</p>
+      <section class="expedition-objectives" aria-labelledby="expedition-objectives-title" data-testid="expedition-objectives">
+        <h2 id="expedition-objectives-title">Expedition objectives</h2>
+        {#if objective}
+          <p class="objective-title">{objective.title}</p>
+          <p class="objective-detail">{objective.detail}</p>
+          {#if objective.wardens}
+            <p class="objective-progress">{objective.wardens.remaining} {objective.wardens.remaining === 1 ? 'warden' : 'wardens'} remaining · {objective.wardens.defeated}/{objective.wardens.total} defeated</p>
+          {/if}
+        {:else}
+          <p class="objective-detail">Objective progress is not available yet.</p>
+        {/if}
+        <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{objective?.announcement ?? ''}</p>
+        <p class="game-status" role="status" aria-live="polite">{status}</p>
+        <p class="objective-rules">Town has no time limit. Expeditions last up to 90 seconds. Pause stops combat, but the expedition clock continues. Your dungeon hero level and floor objectives reset each expedition.</p>
+      </section>
 
       <div class="session-actions">
         <button
@@ -636,6 +665,25 @@
     overflow: hidden;
     background: #05060a;
   }
+
+  .expedition-objectives {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    overflow-wrap: anywhere;
+  }
+
+  .expedition-objectives h2 {
+    margin: 0 0 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .objective-title { font-weight: 600; }
+  .objective-detail, .objective-progress { margin-top: 0.35rem; font-size: 0.95rem; }
+  .expedition-objectives .game-status { margin-top: 0.8rem; }
+  .objective-rules { margin-top: 0.8rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.65); }
 
   .game-status {
     color: rgba(255, 255, 255, 0.72);

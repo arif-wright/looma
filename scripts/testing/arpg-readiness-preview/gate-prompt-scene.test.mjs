@@ -156,7 +156,7 @@ test('production delta only adds field canvas containment while preserving field
   assert.equal(current.split(uiComment).length,2);assert.equal(current.split(uiCondition).length,2);
   const preimage=current.replace(anchor,anchor+removed).replace(uiComment,'').replace(uiCondition,'const clearOfUI = this.viewportLayout &&')
     .replace('// viewport edge, or in town behind fixed UI.','// viewport edge or behind fixed UI.');
-  assert.equal(createHash('sha256').update(preimage).digest('hex'),'5a969629cb13e9643300f1b2b025ba2e7b7e6f861bf2b5951dd1328d5b371430');
+  assert.equal(createHash('sha256').update(preimage).digest('hex'),'bcba58bb65e044e1ba2e6300c54ff25d0ba046e2852230f48b5ee05a7735817c');
 });
 for(const area of [1,2])for(const [name,bounds,expected=false] of [
   ['left',rect(-1,200,190,40)],['right',rect(321,270,126,34)],

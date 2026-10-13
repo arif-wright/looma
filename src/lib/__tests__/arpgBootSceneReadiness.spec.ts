@@ -1,3 +1,4 @@
+import type { ExpeditionProgress } from '../games/arpg/expeditionObjectives';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Handlers = {
@@ -6,6 +7,7 @@ type Handlers = {
   onGameOver: (score: number, durationMs?: number) => void;
   onDepartureRequested?: () => void;
   onRetryRequested?: () => void;
+  onExpeditionProgress?: (progress: ExpeditionProgress | null) => void;
   isCurrent: () => boolean;
 };
 type Scene = { handlers: Handlers; beginExpedition: ReturnType<typeof vi.fn>; setTownStatus: ReturnType<typeof vi.fn> };
@@ -204,6 +206,35 @@ describe('ARPG boot waits for its owned scene', () => {
     expect(onDepartureRequested).toHaveBeenCalledOnce();
     expect(onRetryRequested).toHaveBeenCalledOnce();
     expect(onGameOver).toHaveBeenCalledOnce();
+  });
+
+  it('forwards progress without changing game-over arguments and suppresses obsolete observations', async () => {
+    const progress = Object.freeze({ area: 1 as const, floorKills: 2, outcome: 'exploring' as const });
+    const observe = vi.fn(); const onGameOver = vi.fn();
+    const promise = main.bootGame(parent(), { onGameOver, onExpeditionProgress: observe });
+    await flush(); const scene = created.at(-1)!.scene;
+    scene.handlers.onReady(); await promise;
+    scene.handlers.onExpeditionProgress?.(progress);
+    scene.handlers.onExpeditionProgress?.(null);
+    expect(observe.mock.calls).toEqual([[progress], [null]]);
+    scene.handlers.onGameOver(400, 12000);
+    expect(onGameOver.mock.calls).toEqual([[400, 12000]]);
+    main.shutdownGame(); scene.handlers.onExpeditionProgress?.(progress);
+    expect(observe).toHaveBeenCalledTimes(2);
+  });
+
+  it('contains optional presentation failure instead of failing gameplay callbacks', async () => {
+    const observe = vi.fn(() => { throw new Error('optional presentation'); });
+    const promise = main.bootGame(parent(), { onGameOver: vi.fn(), onExpeditionProgress: observe });
+    await flush(); const scene = created.at(-1)!.scene;
+    scene.handlers.onReady(); await promise;
+    expect(() => scene.handlers.onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'preparing' })).not.toThrow();
+    expect(created.at(-1)!.destroy).not.toHaveBeenCalled();
+  });
+
+  it('does not require a progress observer', async () => {
+    const run = await boot(); run.game.scene.handlers.onReady(); await run.promise;
+    expect(() => run.game.scene.handlers.onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'preparing' })).not.toThrow();
   });
 
 });

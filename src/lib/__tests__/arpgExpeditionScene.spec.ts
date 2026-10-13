@@ -2,7 +2,8 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('phaser', () => ({ default: {
   Scene: class {},
-  Scenes: { Events: { SHUTDOWN: 'shutdown', DESTROY: 'destroy' } },
+  Loader: { Events: { FILE_LOAD_ERROR: 'fileloaderror' } },
+  Scenes: { Events: { CREATE: 'create', SHUTDOWN: 'shutdown', DESTROY: 'destroy' } },
   BlendModes: { NORMAL: 'normal', MULTIPLY: 'multiply', ADD: 'add' },
   Math: { Vector2: class { constructor(public x = 0, public y = 0) {} }, Between: (min: number) => min, Linear: (start: number, end: number, amount: number) => start + (end - start) * amount, Distance: { Between: (x: number, y: number, a: number, b: number) => Math.hypot(x - a, y - b) } },
   Input: { Keyboard: { JustDown: () => false } },
@@ -448,6 +449,71 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(start).toHaveBeenCalledOnce();
     expect(abandon).toHaveBeenCalledWith('partial-entry'); // Local bookkeeping, not a server cancellation.
     town.dispose();
+  });
+
+  it('publishes immutable objective changes without frame, score, gold, or health churn', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    const observe = vi.fn(); s.handlers.onExpeditionProgress = observe;
+    s.publishExpeditionProgress(); s.publishExpeditionProgress();
+    expect(observe).toHaveBeenCalledOnce();
+    const town = observe.mock.calls[0][0];
+    expect(town).toEqual({ area: 0, floorKills: 0, outcome: 'preparing' });
+    expect(Object.isFrozen(town)).toBe(true);
+    s.expedition = enterRuins(s.expedition); s.publishExpeditionProgress();
+    s.expedition = { ...s.expedition, xp: 99, carriedGold: 20 }; s.elapsed = 5000;
+    s.publishExpeditionProgress(); expect(observe).toHaveBeenCalledTimes(2);
+    s.expedition = recordKill(s.expedition); s.publishExpeditionProgress();
+    expect(observe).toHaveBeenLastCalledWith({ area: 1, floorKills: 1, outcome: 'exploring' });
+    expect(Object.keys(observe.mock.calls.at(-1)[0]).sort()).toEqual(['area', 'floorKills', 'outcome']);
+    expect(town.floorKills).toBe(0);
+  });
+
+  it('republishes after a town status change without continuous duplicate callbacks', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    s.handlers.onExpeditionProgress = vi.fn();
+    s.publishExpeditionProgress(); s.townStatus = 'starting'; s.publishExpeditionProgress();
+    s.townStatus = 'ready'; s.publishExpeditionProgress(); s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not let an absent or throwing objective observer break progress', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    expect(() => s.publishExpeditionProgress()).not.toThrow();
+    s.handlers.onExpeditionProgress = () => { throw new Error('optional view failed'); };
+    s.expedition = enterRuins(s.expedition);
+    expect(() => s.publishExpeditionProgress()).not.toThrow();
+    expect(s.expedition.area).toBe(1);
+  });
+
+  it('suppresses progress before readiness and after owner invalidation', () => {
+    const s = make(); s.handlers.onExpeditionProgress = vi.fn();
+    s.objectiveObserverActive = true; s.publishExpeditionProgress();
+    s.initialized = true; s.handlers.isCurrent = () => false; s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress).not.toHaveBeenCalled();
+  });
+
+  it.each(['shutdown', 'destroy'])('clears objective observations on %s and suppresses later publication', (event) => {
+    const s = make(); s.events = new EventEmitter(); s.handlers.onExpeditionProgress = vi.fn();
+    s.cameras = { main: { setBackgroundColor: () => { throw new Error('stop after listener'); } } };
+    expect(() => s.initializeScene()).toThrow('stop after listener');
+    s.initialized = true; s.objectiveObserverActive = true; s.publishExpeditionProgress();
+    s.events.emit(event); s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress.mock.calls).toEqual([
+      [{ area: 0, floorKills: 0, outcome: 'preparing' }], [null]
+    ]);
+    expect(s.objectiveObserverActive).toBe(false);
+  });
+
+  it('does not publish readiness or objectives from an obsolete CREATE callback', () => {
+    const s = make(); s.events = new EventEmitter(); s.load = { off: vi.fn() };
+    s.initializeScene = () => { ++s.objectiveObserverEpoch; };
+    s.handlers.onExpeditionProgress = vi.fn();
+    s.create(); ++s.objectiveObserverEpoch; s.events.emit('create');
+    expect(s.handlers.onReady).not.toHaveBeenCalled();
+    expect(s.handlers.onExpeditionProgress).not.toHaveBeenCalled();
+    s.create(); s.events.emit('create');
+    expect(s.handlers.onReady).toHaveBeenCalledOnce();
+    expect(s.handlers.onExpeditionProgress).toHaveBeenCalledWith({ area: 0, floorKills: 0, outcome: 'preparing' });
   });
 
 });

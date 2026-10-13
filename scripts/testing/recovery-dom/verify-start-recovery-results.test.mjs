@@ -85,21 +85,22 @@ for (const [name, mutate] of Object.entries(browserMutations)) test(`reject brow
 for (const kind of ['unit', ...Object.keys(DOM_FILES)]) test(`accept exact ${kind} count`, () => {
   assert.match(verifyVitest(vitest(kind), kind), /Verified/);
   if (kind === 'unit') {
-    // The five reviewed courtyard mock cases extend only this existing file.
-    // Pin every other count and retain exact equality; no case is waived.
+    // Pin the reviewed combined matrix and retain exact equality; no case is waived.
+    // The negative fixture still removes the five existing courtyard mock cases.
     assert.deepEqual(UNIT_FILES, {
       'gameSdkSessionLifecycle.spec.ts': 53, 'gameSdkStartRecovery.spec.ts': 27,
       'gameIntegrationStartRecovery.spec.ts': 9, 'arpgBootStartRecovery.spec.ts': 5,
-      'arpgBootSceneReadiness.spec.ts': 13, 'arpgGameSceneReadiness.spec.ts': 20,
-      'arpgExpedition.spec.ts': 8, 'arpgExpeditionScene.spec.ts': 33,
+      'arpgBootSceneReadiness.spec.ts': 16, 'arpgGameSceneReadiness.spec.ts': 20,
+      'arpgExpedition.spec.ts': 8, 'arpgExpeditionScene.spec.ts': 40,
+      'arpgExpeditionObjectives.spec.ts': 20, 'arpgPausedHit.spec.ts': 23, 'arpgWardenAnimation.spec.ts': 12,
       'arpgTownCorner.spec.ts': 50, 'arpgTownSurface.spec.ts': 21,
       'arpgTownPlaza.spec.ts': 34, 'arpgViewportLayout.spec.ts': 25,
       'arpgTownSession.spec.ts': 30, 'gameFullscreenStartRecovery.spec.ts': 18
     });
-    assert.equal(vitest(kind).numTotalTests, 346);
+    assert.equal(vitest(kind).numTotalTests, 411);
     const outdated = vitest(kind);
     outdated.testResults.find(file => file.name.endsWith('/arpgTownCorner.spec.ts')).assertionResults.splice(45);
-    outdated.numTotalTests = outdated.numPassedTests = 341;
+    outdated.numTotalTests = outdated.numPassedTests = 406;
     assert.throws(() => verifyVitest(outdated, kind), /Exact expected test count/);
     const redistributed = vitest(kind), town = redistributed.testResults.find(file => file.name.endsWith('/arpgTownCorner.spec.ts'));
     town.assertionResults.pop();

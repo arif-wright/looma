@@ -1,3 +1,4 @@
+import type { ExpeditionProgress } from '../expeditionObjectives';
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
@@ -42,6 +43,7 @@ type GameHandlers = {
   onGameOver: (score: number, durationMs?: number) => void;
   onDepartureRequested?: () => void;
   onRetryRequested?: () => void;
+  onExpeditionProgress?: (progress: ExpeditionProgress | null) => void;
   onReady: () => void;
   onError: (error: Error) => void;
   isCurrent: () => boolean;
@@ -167,6 +169,9 @@ const frameKeyFromPath = (path: string) => path.replace(/[^a-zA-Z0-9]+/g, '_');
 
 export class GameScene extends Phaser.Scene {
   private expedition = createExpedition();
+  private objectiveObserverEpoch = 0;
+  private objectiveObserverActive = false;
+  private objectiveProgressKey: string | null = null;
   private expeditionActive = false;
   private durationLimit = MAX_RUN_MS;
   private expeditionStartedAt = 0;
@@ -216,6 +221,7 @@ export class GameScene extends Phaser.Scene {
   private heroAttacking = false;
   private pointerAttack = false;
   private attackCooldown = 0;
+  private pendingAttackHit: Phaser.Time.TimerEvent | undefined;
   private killCount = 0;
   private pendingDash = false;
   private previousPositions = new Map<EntityId, Vec2>();
@@ -293,12 +299,15 @@ export class GameScene extends Phaser.Scene {
         throw new Error('Game assets could not be loaded. Please start a new run.');
       }
       this.initializeScene();
+      const objectiveEpoch = this.objectiveObserverEpoch;
       // Phaser emits CREATE only after create() returns and the scene is running.
       // This is scene initialization evidence, not a first-render guarantee.
       this.events.once(Phaser.Scenes.Events.CREATE, () => {
-        if (!this.handlers.isCurrent() || this.startupFailed) return;
+        if (!this.handlers.isCurrent() || this.startupFailed || objectiveEpoch !== this.objectiveObserverEpoch) return;
         this.initialized = true;
+        this.objectiveObserverActive = true;
         this.handlers.onReady();
+        this.publishExpeditionProgress();
       });
     } catch (error) {
       this.failStartup(error);
@@ -306,10 +315,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private initializeScene() {
+    ++this.objectiveObserverEpoch;
+    this.objectiveObserverActive = false;
+    this.objectiveProgressKey = null;
     const releaseTownCorner = () => {
-      this.clearTownCorner();
+      this.cancelPendingAttackHit();
+      ++this.objectiveObserverEpoch;
+      this.objectiveObserverActive = false;
+      this.objectiveProgressKey = null;
       this.events.off(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
       this.events.off(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
+      this.notifyExpeditionProgress(null);
+      this.clearTownCorner();
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
@@ -840,6 +857,7 @@ export class GameScene extends Phaser.Scene {
     const score = this.playerId ? this.world.getPlayer(this.playerId)?.score ?? 0 : 0;
     const hp = this.playerId ? this.world.getHealth(this.playerId)?.current ?? HERO_MAX_HP : HERO_MAX_HP;
     this.areaEpoch += 1;
+    this.cancelPendingAttackHit();
     this.time.removeAllEvents();
     this.time.clearPendingEvents();
     this.tweens.killAll();
@@ -889,6 +907,7 @@ export class GameScene extends Phaser.Scene {
 
   private pauseGameplay() {
     this.runState = 'paused';
+    if (this.pendingAttackHit) this.pendingAttackHit.paused = true;
     this.pointerAttack = false;
     this.playerSprite.anims.pause();
     this.skeletons.forEach((enemy) => enemy.sprite.anims.pause());
@@ -897,6 +916,7 @@ export class GameScene extends Phaser.Scene {
 
   private resumeGameplay() {
     this.runState = 'running';
+    if (this.pendingAttackHit) this.pendingAttackHit.paused = false;
     this.playerSprite.anims.resume();
     this.skeletons.forEach((enemy) => enemy.sprite.anims.resume());
     this.updateControlButtons();
@@ -1213,7 +1233,10 @@ export class GameScene extends Phaser.Scene {
       const facing = moving ? this.directionFromVector(new Phaser.Math.Vector2(v.vx, v.vy)) : enemy.facing;
       enemy.facing = facing;
       const animKey = `skeleton-${desiredAnim}-${facing}`;
-      if (enemy.sprite.anims.currentAnim?.key !== animKey && !enemy.sprite.anims.isPlaying) {
+      const currentAnim = enemy.sprite.anims.currentAnim?.key;
+      const locomotion = currentAnim?.startsWith(`skeleton-${SKELETON_ANIM_KEYS.idle}-`) ||
+        currentAnim?.startsWith(`skeleton-${SKELETON_ANIM_KEYS.walk}-`);
+      if (!enemy.sprite.anims.isPaused && currentAnim !== animKey && (!enemy.sprite.anims.isPlaying || locomotion)) {
         enemy.sprite.play(animKey);
       }
     });
@@ -1319,6 +1342,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private cancelPendingAttackHit() {
+    this.pendingAttackHit?.remove(false);
+    this.pendingAttackHit = undefined;
+  }
+
   private performAttack() {
     if (!this.playerId) return;
     const transform = this.world.getTransform(this.playerId);
@@ -1335,14 +1363,18 @@ export class GameScene extends Phaser.Scene {
     const attackDir = this.heroFacingVec.lengthSq() > 0 ? this.heroFacingVec.clone() : new Phaser.Math.Vector2(0, 1);
     attackDir.normalize();
     const origin = { x: transform.x, y: transform.y };
-    this.time.delayedCall(140, () => {
+    const hit = this.time.delayedCall(140, () => {
+      if (this.pendingAttackHit !== hit) return;
+      this.pendingAttackHit = undefined;
       if (epoch === this.areaEpoch) this.applyAttackHit(origin, attackDir.clone());
     });
+    this.pendingAttackHit = hit;
     this.attackCooldown = HERO_ATTACK_COOLDOWN;
   }
 
   private applyAttackHit(origin: Vec2, direction: Phaser.Math.Vector2) {
-    if (!this.playerId || this.runState !== 'running' || this.expedition.area === 0 || this.ended || this.hasExpeditionExpired()) return;
+    if (!this.playerId || this.runState !== 'running' || this.expedition.area === 0 || this.ended || this.hasExpeditionExpired() || !this.handlers.isCurrent()) return;
+    if ((this.world.getHealth(this.playerId)?.current ?? 0) <= 0) return;
     const center = {
       x: origin.x + direction.x * ATTACK_RANGE_OFFSET,
       y: origin.y + direction.y * ATTACK_RANGE_OFFSET
@@ -1422,8 +1454,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private notifyExpeditionProgress(progress: ExpeditionProgress | null) {
+    if (!this.handlers.isCurrent()) return;
+    try { this.handlers.onExpeditionProgress?.(progress); } catch { /* Presentation only. */ }
+  }
+
+  private publishExpeditionProgress() {
+    if (!this.objectiveObserverActive || !this.initialized || !this.handlers.isCurrent() || this.ended) return;
+    const { area, floorKills, outcome } = this.expedition;
+    // Town status changes can republish the same objective after a failed departure.
+    // Exclude frame clocks, HP, score, XP and gold: none changes the next objective.
+    const key = `${area}:${floorKills}:${outcome}:${this.townStatus}`;
+    if (key === this.objectiveProgressKey) return;
+    this.objectiveProgressKey = key;
+    this.notifyExpeditionProgress(Object.freeze({ area, floorKills, outcome }));
+  }
+
   private updateUIState() {
     if (!this.playerId) return;
+    this.publishExpeditionProgress();
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
