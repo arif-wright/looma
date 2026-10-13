@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { Page, TestInfo } from '@playwright/test';
-import { test, expect, open, town, gameplay, expedition, screen, snapshot, clickControl } from './guard';
+import { test, expect, open, town, gameplay, screen, snapshot, clickControl } from './guard';
 import { release, releasedFrame, position, walkInto, dashInto } from './plaza-browser';
 import { moveCourtyard } from './courtyard-navigation';
+import { departCourtyard } from './courtyard-departure';
 import { COURTYARD_ACTIONS, COURTYARD_LIMITS, courtyardChordAllowed, courtyardScreenshot } from './courtyard-contract.mjs';
 import { courtyardGraphicsIssues } from './courtyard-graphics.mjs';
 import { plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
@@ -56,7 +57,15 @@ export async function runCourtyard(page: Page, info: TestInfo, index: number) {
       else if(action.kind==='walk')await walkInto(page,action.key);
       else if(action.kind==='dash')await dashInto(page,[action.key]);
       else if(action.kind==='depart'){
-        await page.keyboard.press('e');await expedition(page);
+        await departCourtyard(page, async remaining => {
+          await expect(screen(page).locator('.game-status')).toHaveText('Expedition in progress. Return to town to save your result.', { timeout: remaining() });
+          await expect.poll(async () => {
+            remaining();
+            const scene = (await snapshot(page)).scenes.find(scene => scene.pageId === 1 && !scene.destroyed);
+            remaining();
+            return scene?.gameplay?.area === 1 && scene.gameplay.expeditionActive;
+          }, { timeout: remaining() }).toBe(true);
+        });
       }else if(action.kind==='return'){
         await page.waitForTimeout(1100);
         await clickControl(page,'secondary',index===1?'Retreat':'Return to town');

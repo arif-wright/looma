@@ -60,6 +60,8 @@ test('actual route entry adds only explicit visual observer imports after origin
 const newModules=[
   "courtyard-navigation.ts",
   "courtyard-navigation.test.mjs",
+  "courtyard-departure.ts",
+  "courtyard-departure.test.mjs",
   "visual.spec.ts",
   "visual-browser.ts",
   "verify-courtyard-results.mjs",
