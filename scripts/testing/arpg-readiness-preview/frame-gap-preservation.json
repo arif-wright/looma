@@ -130,7 +130,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.json",
-      "sha256": "11b40f8dbffd8e7bec2e699be735b852e3f6b8e5daf5a3d07380cc822a5282f5"
+      "sha256": "de0de7c97206c8e5c446ef5696fb4cd7bb259612b270b187b0c9819d59878e76"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.test.mjs",
@@ -206,7 +206,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/vite.config.mjs",
-      "sha256": "86ce987f8055acbaf80f72cf6a94e124c48440a7f16fd3f7babbbee5d92c56b4"
+      "sha256": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6"
     },
     {
       "path": "scripts/testing/recovery-dom/verify-playwright-toolchain.mjs",

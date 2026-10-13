@@ -18,7 +18,7 @@ const preserved={
   "scripts/testing/arpg-readiness-preview/plaza-navigation.mjs": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322",
   "scripts/testing/arpg-readiness-preview/plaza-contract.mjs": "1cd2b3dc0158421fc6fb6b700eccb26987252fd90b4a49dcce57bd0665a674c6",
   "scripts/testing/arpg-readiness-preview/protocol.mjs": "3a2557002f82071c4d0e4b9ae0763bda8dd8f5311058d55f81ba81d8dbe81643",
-  "scripts/testing/arpg-readiness-preview/vite.config.mjs": "86ce987f8055acbaf80f72cf6a94e124c48440a7f16fd3f7babbbee5d92c56b4",
+  "scripts/testing/arpg-readiness-preview/vite.config.mjs": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6",
   "src/lib/games/arpg/townSession.ts": "3b98ae4545490d829c6cfb329edee6f0e3da7efb0d04f7997ddd74d3b395e4f0",
   "src/lib/games/arpg/main.ts": "7fd352fce5b07daed82905f37276c3d46bf807dfc44f6c625f1c3883a91ee46b",
   "src/lib/games/arpg/expedition.ts": "0af301e88413268ebb658db41e1d454332773d647157b7517cc55a882bb11ccc",

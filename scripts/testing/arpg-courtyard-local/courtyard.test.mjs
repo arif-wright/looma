@@ -339,12 +339,19 @@ test('all sampled wall-clear actor positions keep every opaque foundation below 
     assert(Math.max(...lower.map(o=>o.depth))<Math.min(...upper.map(o=>o.depth)));assert(lower.every(o=>o.alpha===1));checked++;
   }assert(checked>1000);w.destroy();
 });
-test('actual Vite boundary permits only the exact added courtyard source and retains negative guards',()=>{
+test('actual Vite boundary permits only exact courtyard and expedition-objective sources and retains negative guards',()=>{
   const file=resolve(here,'../arpg-readiness-preview/vite.config.mjs');
   let source=readFileSync(file,'utf8');source=source.replace(/^import .*;\n/gm,'').replaceAll('import.meta.url',JSON.stringify(pathToFileURL(file).href)).replace('export default defineConfig(', 'return defineConfig(');
   const config=new Function('defineConfig','svelte','fileURLToPath','readFileSync','realpathSync',source)(x=>x,()=>({name:'mock-svelte'}),fileURLToPath,()=> '[]',x=>x);
   const boundary=config.plugins.find(p=>p.name==='arpg-real-engine-boundary');assert(boundary);
   assert.doesNotThrow(()=>boundary.transform('',resolve(base,'assets/townCourtyard.ts')));
+  const objectives=resolve(base,'expeditionObjectives.ts');
+  assert.equal(config.server.fs.allow.filter(path=>path===objectives).length,1,'The exact objectives module must be filesystem-allowed once');
+  for(const suffix of ['', '?v=fixture'])assert.doesNotThrow(()=>boundary.transform('',objectives+suffix));
+  for(const path of ['expeditionObjectives.tsx','expeditionObjectives-extra.ts','expeditionObjectives.ts/extra.ts','assets/expeditionObjectives.ts']){
+    assert(!config.server.fs.allow.includes(resolve(base,path)));
+    for(const suffix of ['', '?v=fixture'])assert.throws(()=>boundary.transform('',resolve(base,path)+suffix),/Unexpected application module/);
+  }
   for(const path of ['assets/townCourtyard.tsx','assets/townCourtyard-extra.ts','assets/not-approved.ts','scenes/ExtraScene.ts'])
     assert.throws(()=>boundary.transform('',resolve(base,path)),/Unexpected application module/);
   assert.doesNotThrow(()=>boundary.transform('',resolve(base,'scenes/GameScene.ts')));

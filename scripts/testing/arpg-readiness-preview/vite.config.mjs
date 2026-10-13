@@ -14,7 +14,7 @@ const sources = [
   'lib/games/arpg/assets/townBoundary.ts',
   'lib/games/arpg/assets/townFacadeData.ts',
   'lib/games/arpg/townPlaza.ts',
-  'lib/games/arpg/expedition.ts', 'lib/games/arpg/townSession.ts',
+  'lib/games/arpg/expedition.ts', 'lib/games/arpg/expeditionObjectives.ts', 'lib/games/arpg/townSession.ts',
   'lib/games/arpg/viewportLayout.ts',
   'lib/games/arpg/ecs/components.ts', 'lib/games/arpg/ecs/systems.ts',
   'lib/games/sdk.ts', 'lib/games/types.ts', 'lib/safeMessages.ts',

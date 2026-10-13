@@ -217,7 +217,7 @@ const preserved={
   "playwright.config.ts": "5ca9d83e9c0679b167c4c21b0ca7eaf6e5967ca9374a12d9d258a46a8507b28b",
   "courtyard.playwright.config.ts": "e623b1c92030f4a1b1438b0c107937eb4f54def758eea59199762b450f766c02",
   "courtyard-graphics.mjs": "9a7d52c5f3fd4351f76fab2aaad73ad4a9ee854d6bb57447754afb3322d5e663",
-  "vite.config.mjs": "86ce987f8055acbaf80f72cf6a94e124c48440a7f16fd3f7babbbee5d92c56b4",
+  "vite.config.mjs": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6",
   "asset-paths.json": "433c30e4fbbcaf0002d2d3b06cff0facf3fbea0499f76cda7afb1ba70cc55199"
 };
 for(const[name,sha]of Object.entries(preserved))test(`existing contract byte preservation: ${name}`,()=>assert.equal(createHash('sha256').update(readFileSync(resolve(here,name))).digest('hex'),sha));

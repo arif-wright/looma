@@ -147,7 +147,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/vite.config.mjs",
-      "sha256": "86ce987f8055acbaf80f72cf6a94e124c48440a7f16fd3f7babbbee5d92c56b4"
+      "sha256": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6"
     },
     {
       "path": "scripts/testing/recovery-dom/verify-playwright-toolchain.mjs",
