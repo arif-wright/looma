@@ -12,7 +12,7 @@ import type { Expedition } from '../../../src/lib/games/arpg/expedition';
 // Read-only inspection of real scene state. No field, clock, callback, input,
 // texture or combat outcome is replaced. Browser input drives the scene.
 type ObservedState = {
-  movementInput: { x: number; y: number }; initialized: boolean; expedition: Expedition; expeditionActive: boolean;
+  movementInput: { x: number; y: number }; initialized: boolean; ended: boolean; runState: string; areaEpoch: number; expedition: Expedition; expeditionActive: boolean;
   durationLimit: number; elapsed: number; world: World; playerId: EntityId | null;
   townCorner: TownCorner | null;
   worldLayer: Phaser.GameObjects.Layer; playerSprite: Phaser.GameObjects.Sprite;
@@ -187,6 +187,16 @@ function readCourtyardFrame(scene: GameScene, state: ObservedState) {
   const loop=scene.sys.game.loop,hero=state.playerSprite;
   return {frame:Number.isSafeInteger(loop.frame)&&loop.frame>=0?loop.frame:null,
     delta:Number.isFinite(loop.delta)&&loop.delta>=0?loop.delta:null,
+    // Passive update guards and post-update velocity, only for ordinary
+    // readiness exploration. Existing courtyard/visual payloads stay unchanged.
+    // Never call isCurrent or wrap update/collision: source reconstruction only.
+    ...((window.__arpgPlazaFlow === true && window.__arpgCourtyardFlow !== true && window.__arpgCourtyardVisualFlow !== true) ? {
+      movement: { sceneId: objectId(scene), initialized: state.initialized, ended: state.ended,
+        runState: state.runState, playerId: state.playerId, areaEpoch: state.areaEpoch,
+        sceneStatus: scene.sys.settings?.status, pendingDestroy: (scene.sys.game as Phaser.Game & { readonly pendingDestroy: boolean }).pendingDestroy,
+        hp: state.playerId === null ? null : state.world.getHealth(state.playerId)?.current ?? null,
+        velocity: state.playerId === null ? null : structuredClone(state.world.getVelocity?.(state.playerId) ?? null) }
+    } : {}),
     hero:{textureKey:hero.texture.key,frameName:hero.frame.name,animation:hero.anims?.currentAnim?.key??null,playing:hero.anims?.isPlaying??false}};
 }
 function readGameplay(scene: GameScene, observedAt = performance.now(), explicitFullProbe = false): GameplayObservation | null {
@@ -204,7 +214,8 @@ function readGameplay(scene: GameScene, observedAt = performance.now(), explicit
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
     plazaProbe: null,
-    ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state),courtyardLifecycle: readCourtyardLifecycle(scene, state.townCorner?.graphics.courtyard ?? [], state.worldLayer.list, objectId, state.townCorner !== null) } : {}),
+    ...((window.__arpgPlazaFlow === true || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
+    ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardLifecycle: readCourtyardLifecycle(scene, state.townCorner?.graphics.courtyard ?? [], state.worldLayer.list, objectId, state.townCorner !== null) } : {}),
     plazaVisibility: window.__arpgPlazaFlow === true && state.expedition.area === 0 ? readHeroVisibility(scene, state) : null,
     ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) && window.__arpgPlazaFlow === true && state.expedition.area === 0 && explicitFullProbe &&
       state.movementInput.x === 0 && state.movementInput.y === 0 && (state.world.getDash(state.playerId)?.timer ?? 0) <= 0
@@ -265,7 +276,7 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
     const motion = { at, area, x: position.x, y: position.y,
       // Phaser 3.90 TimeStep passes this same smoothed delta into Game.step;
       // SceneManager/Systems forward it unchanged to GameScene.update.
-      ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
+      ...((window.__arpgPlazaFlow === true || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
       intent: { x: state.movementInput.x, y: state.movementInput.y },
       dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null };
     fixture.plazaLatestMotion = motion;

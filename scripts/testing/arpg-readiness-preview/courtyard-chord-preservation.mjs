@@ -1,5 +1,6 @@
 // Test-only exact reversal of the additive courtyard candidate-selection delta.
 // No runtime steering or verifier imports this historical source adapter.
+import { beforePerimeterCorrection } from './perimeter-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "plaza-navigation.mjs": [
@@ -140,6 +141,7 @@ const changes={
   ]
 };
 export function beforeCourtyardChordSelection(name,source) {
+  source=beforePerimeterCorrection(name,source);
   name=name.split('/').at(-1);
   if(!changes[name])return source;
   source=String(source);

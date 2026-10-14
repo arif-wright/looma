@@ -1,3 +1,4 @@
+import { setupPerimeter } from './perimeter-setup';
 import { departCourtyard } from './courtyard-departure';
 import { waypointStep, chordEndpointAllowed, NAVIGATION_PHASES } from './plaza-navigation.mjs';
 import type { Page, TestInfo } from '@playwright/test';
@@ -94,7 +95,7 @@ export async function runPlazaExploration(page: Page, info: TestInfo, index: num
     await dashInto(page,['d']);await save('rear-side-dash-blocked');
     await route(page,NAVIGATION_PHASES.rearBack);
     await save('rear-back-cutaway','rear-back-cutaway');
-    await route(page,NAVIGATION_PHASES.perimeter);await save('perimeter-ready');
+    await setupPerimeter(page);await save('perimeter-ready');
     await walkInto(page,'w');await save('perimeter-wall-blocked','perimeter-edge-feet');
     await route(page,NAVIGATION_PHASES.perimeterReturn);
     await route(page,NAVIGATION_PHASES.rearRestore);await save('rear-front-restored');

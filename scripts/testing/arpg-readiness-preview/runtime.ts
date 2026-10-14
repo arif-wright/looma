@@ -1,3 +1,4 @@
+import type { EntityId } from '../../../src/lib/games/arpg/ecs/components';
 import type { observeCourtyardVisibility } from './courtyard-visibility.mjs';
 import { FLOW_CAP_MS, SIGNATURE, PLAYER_STATE, RECEIPT, expectedStart, sameJson, validSign, validComplete } from './protocol.mjs';
 export type AuthSession = { user: { id: string } } | null;
@@ -32,7 +33,10 @@ export type TownGroundObservation = {
   samples: Array<{ worldX: number; worldY: number; pixelX: number; pixelY: number; alpha: number | null }>;
 };
 export type PlazaObjectObservation = ArtObjectObservation & { name: string; alpha: number; active: boolean; visible: boolean; objectId: number };
-export type CourtyardFrame = {frame:number|null;delta:number|null;hero:{textureKey:string;frameName:string|number;animation:string|null;playing:boolean}};
+export type CourtyardFrame = {frame:number|null;delta:number|null;movement?: {
+  sceneId:number; initialized:boolean; ended:boolean; runState:string; playerId:EntityId|null; areaEpoch:number;
+  sceneStatus:number; pendingDestroy:boolean; hp:number|null; velocity:{vx:number;vy:number;speed:number}|null;
+};hero:{textureKey:string;frameName:string|number;animation:string|null;playing:boolean}};
 export type PlazaMotion = { courtyardFrame?: CourtyardFrame; intent: { x: number; y: number }; at: number; area: number; x: number; y: number; dash: { cd: number; timer: number; lastDir: { x: number; y: number } } | null };
 export type GameplayObservation = {
   at: number; area: number; elapsed: number; durationLimit: number; expeditionActive: boolean;

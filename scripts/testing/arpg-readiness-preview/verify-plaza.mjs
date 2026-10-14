@@ -1,3 +1,4 @@
+import { verifyPerimeter } from './verify-perimeter.mjs';
 import { courtyardOwnershipIssues } from './courtyard-graphics.mjs';
 import assert from 'node:assert/strict';
 import { FOOTPRINTS, CHECKPOINT_TARGETS, PLAZA_CHECKPOINTS, DASH_ATTEMPTS, sweptDistance, roomAllows, plazaGeometryIssues, plazaObjectsIssues } from './plaza-contract.mjs';
@@ -63,15 +64,7 @@ export function verifyPlaza(state, cleanup, index) {
     const held=motion.filter(t=>t.at>a.at&&t.at<=b.at&&t.intent?.x===0&&t.intent?.y===-1);
     assert(held.length>=3&&held.at(-1).at-held[0].at>=400,'Walk blocking includes sustained observed native movement intent');
   }
-  // Independent original28x18 room math. Near this edge, the cardinal
-  // y−38 probe reaches logical row0 at y=0.5*x−706. No production helper or
-  // visual rim dimensions are consulted to establish the collision stop.
-  const ready=at(points,'perimeter-ready'), blocked=at(points,'perimeter-wall-blocked');
-  const edge=blocked.scene.gameplay, limit=.5*edge.x-706;
-  assert(blocked.at-ready.at>=600,'Perimeter walk is held long enough to hit the original wall');
-  assert(Math.abs(edge.x-1368)<=8&&edge.y>=limit-.5&&edge.y<=limit+16,'Native walk stops at original radius38 room boundary within one15fps step');
-  const held=motion.filter(t=>t.at>ready.at&&t.at<=blocked.at&&t.intent?.x===0&&t.intent?.y===-1);
-  assert(held.length>=3&&held.at(-1).at-held[0].at>=400,'Original wall blocking includes sustained observed native north intent');
+  verifyPerimeter(at(points,'rear-back-cutaway'),at(points,'perimeter-ready'),at(points,'perimeter-wall-blocked'),motion);
   for(const attempt of DASH_ATTEMPTS){
     const before=at(points,attempt.before),after=at(points,attempt.after);
     const events=motion.flatMap((p,i)=>i&&p.at>=before.scene.gameplay.at&&p.at<=after.at&&p.dash?.cd>=200&&motion[i-1].dash?.cd<=50?[{p,prev:motion[i-1]}]:[]);

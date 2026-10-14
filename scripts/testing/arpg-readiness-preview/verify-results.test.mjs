@@ -742,3 +742,40 @@ test('reject reused courtyard wall after original return-flow',()=>{
 test('reject courtyard rebuilt during original untimed idle',()=>{
  const r=report();coherentObservation(r,o=>{o.state.checkpoints[5].scene.gameplay.townArt.ground.courtyard[0].objectId=9999;},10);assert.throws(()=>verify(r,'execution'));
 });
+
+// Measured-frame perimeter integration regressions. Fabricated shapes only.
+import { sourceNorthFrames } from './perimeter-source-model.mjs';
+function measuredPerimeter(o,mode='valid') {
+ const s=o.state,ready=s.checkpoints.find(p=>p.label==='perimeter-ready'),blocked=s.checkpoints.find(p=>p.label==='perimeter-wall-blocked');
+ const first=s.plazaMotion.findIndex(p=>p.at===ready.scene.gameplay.at),last=s.plazaMotion.findIndex(p=>p.at===blocked.scene.gameplay.at);
+ const start=s.plazaMotion[first],prior=s.plazaMotion[first-1];start.y=25.5;prior.y=start.y;
+ prior.courtyardFrame.delta=(s.plazaMotion[first-2].y-prior.y)/220*1000;
+ const count=last-first-1,quanta=Array(count).fill(24);if(mode==='variable')quanta[2]=8;
+ if(mode==='no-contact'){quanta[0]=34;quanta.fill(.22,1);}
+ const modeled=sourceNorthFrames(start.x,start.y,quanta);
+ for(let i=0;i<count;i++){
+  const p=s.plazaMotion[first+1+i],f=modeled[i];p.y=mode==='no-contact'&&i?modeled[0].after.y:f.after.y;
+  p.courtyardFrame.delta=f.delta;p.courtyardFrame.movement.velocity={vx:0,vy:mode==='no-contact'&&i?0:f.velocity.vy,speed:220};
+ }
+ s.plazaMotion[last].y=s.plazaMotion[last-1].y;
+ const sync=()=>{
+  for(const checkpoint of[ready,blocked]){
+   const raw=s.plazaMotion.find(p=>p.at===checkpoint.scene.gameplay.at),g=checkpoint.scene.gameplay;
+   for(const k of['x','y','intent','dash','courtyardFrame'])g[k]=structuredClone(raw[k]);
+   Object.assign(g.townArt.hero,{x:g.x,y:g.y,depth:g.y+20});
+   for(const visual of s.visuals)if(visual.scene.gameplay.at===g.at)visual.scene.gameplay=structuredClone(g);
+  }
+  o.afterCleanup.plazaMotion=structuredClone(s.plazaMotion);
+ };
+ sync();return {first,last,s,sync};
+}
+for(const mode of['valid','variable'])test(`full readiness verifier accepts measured ${mode} perimeter collision beyond old16`,()=>{
+ const r=report();coherentObservation(r,o=>measuredPerimeter(o,mode),12);assert.match(verify(r,'execution'),/14 executed/);
+});
+for(const[name,mutate,pattern]of[
+ ['positive approach followed by stationary no-contact',(o)=>measuredPerimeter(o,'no-contact'),/Unblocked north step/],
+ ['missing intermediate frame',o=>{const f=measuredPerimeter(o);f.s.plazaMotion.splice(f.first+3,1);f.sync();},/contiguous/],
+ ['forged rollback velocity',o=>{const f=measuredPerimeter(o);f.s.plazaMotion[f.first+2].courtyardFrame.movement.velocity.vy=-193.6;f.sync();},/rollback velocity/],
+ ['stale owner after real collision',o=>{const f=measuredPerimeter(o);f.s.plazaMotion[f.first+3].courtyardFrame.movement.pendingDestroy=true;f.sync();},/live healthy/],
+ ['forged delta',o=>{const f=measuredPerimeter(o);f.s.plazaMotion[f.first+2].courtyardFrame.delta=1;f.sync();},/Unblocked north step/]
+])test(`full readiness verifier rejects ${name}`,()=>{const r=report();coherentObservation(r,mutate,13);assert.throws(()=>verify(r,'execution'),pattern);});

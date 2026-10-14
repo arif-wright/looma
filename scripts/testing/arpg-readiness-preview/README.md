@@ -98,12 +98,24 @@ Require a single bounded synthetic expedition and newly owned town images on
 return. The original twelve cases above remain, with only exact asset-count and
 approved source/asset allowlist updates.
 
-At each viewport, the added perimeter leg starts behind the rear facade at
-(1368,210), approaches(1368,-8), holds native W for700ms, and returns to the
-previous route. The independent original room/radius38 formula requires the
-settled center to stop at y=0.5*x−706 within one15fps movement step. Sustained
-post-render north intent must be observed. The case retains its180s budget,
-6.5s waypoint deadline,8px target, full swept checks and strict hero/UI visibility.
+At each viewport, the perimeter setup starts behind the rear facade at
+(1368,210), keeps its actual x within1368±8, and reaches a released north-gap
+strip32..64px inside the boundary y=0.5*x−706. Only this incidental ready-y target changes.
+The unchanged native W hold is700ms, followed by the original return route.
+Complete consecutive engine frames must prove at least8px genuine approach
+before the first of at least two attempted north-room collisions: reconstruct
+220×actual loop.delta/1000, independently test the original five-point radius38
+room probes and every facade sweep, then require unchanged position and zero
+post-update velocity on rollback. Accepted movement instead requires its exact
+candidate and post-friction velocity−193.6. Passive initialized/running/healthy,
+scene/player/area identity and pending-destroy fields reject inactive or stale
+samples. This is source-backed reconstruction, not a recorded collision event.
+The former upper16px “one15fps step” proxy is replaced; the x±8 and lower0.5px
+boundary checks, held≥3frames/400ms, total≥600ms,180s case budget,6.5s setup
+clock without reset, all other8px targets, sweeps and visibility remain strict.
+No universal frame cadence or native setup convergence is assumed. Unsupported
+steps, a skipped setup strip, insufficient approach or missing collision proof
+fail closed. Old reports cannot supply missing new frame evidence.
 One active owned Graphics rim must remain at depth−160, beneath the hero's foot
 shadow, with an unchanged transform, no legacy town wall sprites, and a new
 object identity after return. This drawing never supplies the collision oracle.

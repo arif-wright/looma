@@ -374,11 +374,12 @@ test('above-hero per-wall/per-fill intersections distinguish geometric overlap a
   assert(r.walls[2].fills.slice(3).every(f=>f.intersectedSamples===0&&f.contributingSamples===0));
   assert.equal(r.walls[3].contributingSamples, 0); approx(r.meanTransmission, .72 ** 2);
 });
-test('courtyard motion reads native game.loop.delta only when flag is true', () => {
+test('all plaza motion reads native game.loop.delta including ordinary readiness', () => {
   window.__arpgPlazaFlow = true; window.__arpgCourtyardFlow = false; fixture.plazaProbeRequest = null;
   const m = make(); wire(m); m.game.events.emit('postrender');
   const old = fixture.plazaLatestMotion;
-  assert.deepEqual(Object.keys(old).sort(), ['area', 'at', 'dash', 'intent', 'x', 'y']);
+  assert.deepEqual(Object.keys(old).sort(), ['area', 'at', 'courtyardFrame', 'dash', 'intent', 'x', 'y']);
+  assert.equal(old.courtyardFrame.frame,7);
   window.__arpgCourtyardFlow = true; m.game.loop.delta = 23.125; m.game.events.emit('postrender');
   assert.equal(fixture.plazaLatestMotion.courtyardFrame.delta,23.125);assert.equal(fixture.plazaLatestMotion.courtyardFrame.frame,7);
   assert.equal(m.game.loop.delta, 23.125);
@@ -424,4 +425,24 @@ test('Phaser3.90 active transparent Fade remains unsupported',()=>{
 });
 test('Phaser3.90 completed transparent fade-in does not obscure the frame',()=>{
   const m=make();m.camera.fadeEffect={isRunning:false,isComplete:true,alpha:0};const result=m.read();assert.equal(result.valid,true,result.issues.join());
+});
+
+test('readiness frame records passive live update guards and cloned velocity without callback invocation',()=>{
+ window.__arpgPlazaFlow=true;window.__arpgCourtyardFlow=false;window.__arpgCourtyardVisualFlow=false;fixture.plazaProbeRequest=null;
+ const m=make(),observed=wire(m);const velocity={vx:0,vy:-193.6,speed:220};
+ Object.assign(m.scene,{ended:false,runState:'running',areaEpoch:3,handlers:{isCurrent:()=>{throw Error('Observer must never call ownership handler');}}});
+ m.scene.sys.settings={status:5};m.game.pendingDestroy=false;m.scene.world.getVelocity=()=>velocity;
+ m.game.events.emit('postrender');const first=fixture.plazaLatestMotion.courtyardFrame.movement;
+ assert.equal(first.initialized,true);assert.equal(first.ended,false);assert.equal(first.runState,'running');assert.equal(first.areaEpoch,3);
+ assert.equal(first.sceneStatus,5);assert.equal(first.pendingDestroy,false);assert(first.hp>0);assert(first.playerId>0);assert(first.sceneId>0);
+ assert.deepEqual(first.velocity,velocity);assert.deepEqual(observed.gameplay.courtyardFrame.movement,first);
+ velocity.vy=0;assert.equal(first.velocity.vy,-193.6);assert.equal(observed.gameplay.courtyardFrame.movement.velocity.vy,-193.6);
+ fixture.plazaProbeRequest={id:1,requestedAt:0};m.game.events.emit('postrender');
+ assert.equal(observed.gameplay.plazaProbe.id,1);assert.deepEqual(observed.gameplay.courtyardFrame,fixture.plazaLatestMotion.courtyardFrame);
+ assert.equal(observed.gameplay.courtyardFrame.movement.velocity.vy,0);fixture.plazaProbeRequest=null;
+ m.game.pendingDestroy=true;m.scene.runState='paused';m.game.events.emit('postrender');const changed=fixture.plazaLatestMotion.courtyardFrame.movement;
+ assert.equal(changed.pendingDestroy,true);assert.equal(changed.runState,'paused');assert.equal(changed.sceneId,first.sceneId);assert.equal(changed.velocity.vy,0);
+ window.__arpgCourtyardFlow=true;m.game.events.emit('postrender');assert.equal(Object.hasOwn(fixture.plazaLatestMotion.courtyardFrame,'movement'),false);
+ window.__arpgCourtyardFlow=false;window.__arpgCourtyardVisualFlow=true;m.game.events.emit('postrender');assert.equal(Object.hasOwn(fixture.plazaLatestMotion.courtyardFrame,'movement'),false);
+ window.__arpgCourtyardVisualFlow=false;
 });

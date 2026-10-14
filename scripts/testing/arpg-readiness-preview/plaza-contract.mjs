@@ -80,7 +80,7 @@ export function plazaObjectsIssues(g) {
 
 export const CHECKPOINT_TARGETS = {
  'plaza-home':[1472,536],'rear-front-ready':[1368,430],'rear-side-ready':[1200,260],
- 'rear-back-cutaway':[1368,210],'perimeter-ready':[1368,-8],'rear-front-restored':[1368,430],
+ 'rear-back-cutaway':[1368,210],'rear-front-restored':[1368,430],
  'endcap-front-ready':[1856,380],'endcap-side-ready':[1640,260],
  'endcap-roof-cutaway':[1680,260],'endcap-front-restored':[1856,380],
  'gate-east-approach':[1800,600],'gate-south-approach':[1728,760],
