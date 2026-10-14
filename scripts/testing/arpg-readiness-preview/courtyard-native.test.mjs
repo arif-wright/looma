@@ -1,3 +1,4 @@
+import { beforeCourtyardChordSelection } from './courtyard-chord-preservation.mjs';
 import { beforePlazaDeparture } from './plaza-departure-preservation.mjs';
 // OFFLINE FABRICATED SCHEMA TESTS ONLY. A passing test is not native movement,
 // browser execution, captured pixels, visual approval, or release evidence.
@@ -223,7 +224,7 @@ const ORIGINAL_HASHES={
   'plaza-navigation.mjs':'3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322',
   'readiness.browser.spec.ts':'8afafcd3d89d1e89166993e8da51b7c6c2bb02040c945b2043650fd9c7df241d'
 };
-for(const [name,hash]of Object.entries(ORIGINAL_HASHES))test(`original ${name} remains byte-for-byte preserved`,()=>assert.equal(sha(source(name)),hash));
+for(const [name,hash]of Object.entries(ORIGINAL_HASHES))test(`original ${name} remains byte-preserved outside the exact additive predicate delta`,()=>assert.equal(sha(beforeCourtyardChordSelection(name,source(name))),hash));
 test('original fourteen readiness cases and twenty-one captures remain unchanged',()=>{assert.equal(TITLES.length,14);assert.equal(TITLES.flatMap((_,i)=>requiredScreenshots(i)).length,21);});
 test('original native mover declaration/body remain literal-preserved with exports only',()=>{
   const normalized=beforePlazaDeparture(source('plaza-browser.ts'))

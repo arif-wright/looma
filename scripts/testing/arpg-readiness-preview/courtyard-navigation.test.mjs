@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import vm from 'node:vm';
+import { courtyardChordAllowed } from './courtyard-contract.mjs';
 const ts=createRequire(import.meta.url)('typescript');
 const read=name=>readFileSync(new URL(name,import.meta.url),'utf8');
 const source=read('./courtyard-navigation.ts');
@@ -13,9 +14,10 @@ const original=fn(read('./plaza-browser.ts'),'move'),extended=fn(source,'moveCou
 const signature=', guard: (position: { x: number; y: number }, pulse: ReturnType<typeof waypointStep>) => void';
 const check='      guard(p,pulse); // Additive courtyard checks may only reject this original pulse.\n';
 test('historical move declaration and body retain exact independently pinned source hash',()=>assert.equal(createHash('sha256').update(original).digest('hex'),'bac2e8cf7fa8ac0db91a72fa3aebfda5533f20b0a61ce230c0ca052b77a122c8'));
-test('dedicated wall move has only explicit rename, required parameter and one pre-press rejection line',()=>{
+test('dedicated wall move adds only explicit rename, required guard, candidate predicate and final rejection',()=>{
  assert.equal(extended.split(signature).length,2);assert.equal(extended.split(check).length,2);
- assert.equal(extended.replace('export async function moveCourtyard(','async function move(').replace(signature,'').replace(check,''),original);
+ assert.equal(extended.replace('export async function moveCourtyard(','async function move(').replace(signature,'').replace(check,'').replace('history,courtyardChordAllowed);','history);'),original);
+ assert.equal((extended.match(/history,courtyardChordAllowed\);/g)||[]).length,1);
  assert(extended.indexOf(check)>extended.indexOf('if(!pulse)return;'));
  assert(extended.indexOf(check)<extended.indexOf('await page.keyboard.press'));
  assert.equal((extended.match(/guard\(p,pulse\)/g)||[]).length,1);
@@ -30,9 +32,9 @@ function mocked({pulses=[{key:'d',delay:30},null],positions=[{x:1,y:2},{x:3,y:2}
  const events=[],steps=[],module={exports:{}};let pi=0,fi=0;
  const page={keyboard:{press:async(key,options)=>{events.push(['press',key,options.delay]);if(pressError)throw pressError;}}};
  const require=name=>name==='./plaza-navigation.mjs'?{
-   waypointStep:(p,x,y,elapsed,missed,history)=>{steps.push({p,x,y,elapsed,missed,history:structuredClone(history)});events.push(['choose']);return pulses[pi++];},
+   waypointStep:(p,x,y,elapsed,missed,history,allowed)=>{assert.equal(allowed,courtyardChordAllowed);steps.push({p,x,y,elapsed,missed,history:structuredClone(history)});events.push(['choose']);return pulses[pi++];},
    chordEndpointAllowed:()=>{events.push(['endpoint']);return endpoint;}
- }:name==='./plaza-browser'?{
+ }:name==='./courtyard-contract.mjs'?{courtyardChordAllowed}:name==='./plaza-browser'?{
    releasedFrame:async()=>{events.push(['frame']);if(frameError&&fi>0)throw frameError;return positions[fi++];},
    release:async()=>{events.push(['release']);}
  }:(()=>{throw Error(`Unexpected import ${name}`);})();

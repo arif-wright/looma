@@ -1,17 +1,18 @@
 import type { Page } from '@playwright/test';
 import { waypointStep, chordEndpointAllowed } from './plaza-navigation.mjs';
 import { release, releasedFrame } from './plaza-browser';
+import { courtyardChordAllowed } from './courtyard-contract.mjs';
 
 // Dedicated native wall extension. The original acceptance/timing move remains
-// literal-identical. Offline tests prove this copy differs only by its name,
-// required callback parameter and one reject-only check before native key input.
+// literal-identical. The shared selector tests every candidate against the
+// courtyard solids; the final rejection callback still guards native input.
 export async function moveCourtyard(page: Page, x: number, y: number, guard: (position: { x: number; y: number }, pulse: ReturnType<typeof waypointStep>) => void) {
   const startedAt=Date.now();let missedPulses=0;
   const history: {key:string;delay:number;before:{x:number;y:number};after:{x:number;y:number}}[]=[];
   try {
     let p=await releasedFrame(page);
     for(;;){
-      const pulse=waypointStep(p,x,y,Date.now()-startedAt,missedPulses,history);
+      const pulse=waypointStep(p,x,y,Date.now()-startedAt,missedPulses,history,courtyardChordAllowed);
       if(!pulse)return; // Final neutral position is checked even at the deadline.
       guard(p,pulse); // Additive courtyard checks may only reject this original pulse.
       await page.keyboard.press(pulse.key,{delay:pulse.delay});

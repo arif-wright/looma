@@ -1,3 +1,4 @@
+import { beforeCourtyardChordSelection } from './courtyard-chord-preservation.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
@@ -30,7 +31,7 @@ test('Vite inherits the original boundary and injects only into its dedicated bu
 test('published acceptance fixture identities remain pinned',()=>{
   const manifest=JSON.parse(read('./prompt-timing-preservation.json'));assert.equal(manifest.baseCommit,'ea8836649a065b99cabe99d08d680c08058a16e8');assert.equal(manifest.preservedFiles.length,37);
   for(const name of ['guard.ts','index.html','main.ts','playwright.config.ts','plaza-browser.ts','plaza-navigation.mjs','protocol.mjs','readiness.browser.spec.ts','tsconfig.json','vite.config.mjs']){
-    const entry=manifest.preservedFiles.find(e=>e.path===`scripts/testing/arpg-readiness-preview/${name}`);assert(entry);assert.equal(createHash('sha256').update(read(`./${name}`)).digest('hex'),entry.sha256,name);
+    const entry=manifest.preservedFiles.find(e=>e.path===`scripts/testing/arpg-readiness-preview/${name}`);assert(entry);assert.equal(createHash('sha256').update(beforeCourtyardChordSelection(name,read(`./${name}`))).digest('hex'),entry.sha256,name);
   }
 });
 test('diagnostic retains guard, native page resets, zero sessions and real cleanup',()=>{

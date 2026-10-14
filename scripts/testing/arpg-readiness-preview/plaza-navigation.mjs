@@ -43,11 +43,12 @@ export function waypointPulse(position, x, y, missedPulses=0) {
 }
 
 // Success is assessed from the released observation before deadline failure.
-export function waypointStep(position,x,y,elapsed,missedPulses=0,history=[]){
+/** @param {(pulse: {key:string,delay:number,correction:{bound:number,envelope:number[][]}}) => boolean} [chordAllowed] */
+export function waypointStep(position,x,y,elapsed,missedPulses=0,history=[],chordAllowed=undefined){
   const pulse=waypointPulse(position,x,y,missedPulses);
   if(!pulse)return null;
   if(elapsed>=WAYPOINT_DEADLINE_MS)throw new Error(`Native route stalled before ${x},${y}: ${JSON.stringify(position)}`);
-  return waypointCorrection(position,x,y,history)??pulse;
+  return waypointCorrection(position,x,y,history,chordAllowed)??pulse;
 }
 
 const direction=key=>[Number(key==='d')-Number(key==='a'),Number(key==='s')-Number(key==='w')];
@@ -75,7 +76,10 @@ export function safeChordEnvelope(polygon){
     polygon.every((a,i)=>sweptDistance(a,polygon[(i+1)%polygon.length],solid)>38)&&
     solid.every(vertex=>sweptDistance(vertex,vertex,polygon)>38));
 }
-export function waypointCorrection(position,x,y,history){
+// Optional fixture-specific predicate can only reject original-safe candidates.
+// Omitted predicates keep the original selection; no other caller changes.
+/** @param {(pulse: {key:string,delay:number,correction:{bound:number,envelope:number[][]}}) => boolean} [chordAllowed] */
+export function waypointCorrection(position,x,y,history,chordAllowed=undefined){
   const [a,b]=history.slice(-2);if(!a||!b||a.delay!==16||b.delay!==16||a.key.includes('+')||b.key.includes('+'))return null;
   const axis=['a','d'].includes(b.key)?'x':'y',other=axis==='x'?'y':'x',target=axis==='x'?x:y,otherTarget=axis==='x'?y:x;
   if(a.key===b.key||!(['a','d'].includes(a.key)===['a','d'].includes(b.key))||Math.abs(position[other]-otherTarget)>8)return null;
@@ -92,7 +96,12 @@ export function waypointCorrection(position,x,y,history){
   const bound=Math.max(24,q*1.25);
   for(const lateral of(axis==='x'?['w','s']:['a','d'])){
     const envelope=chordEnvelope(position,lateral,primary,bound);
-    if(safeChordEnvelope(envelope))return {key:`${lateral}+${primary}`,delay:16,correction:{bound,envelope}};
+    if(safeChordEnvelope(envelope)){
+      const pulse={key:`${lateral}+${primary}`,delay:16,correction:{bound,envelope}};
+      // Isolate the candidate from predicate mutations; approval must be true,
+      // never a truthy value or Promise. Exceptions and nonfunctions fail closed.
+      if(chordAllowed===undefined||chordAllowed(structuredClone(pulse))===true)return pulse;
+    }
   }
   throw new Error(`No independently safe native chord envelope near ${x},${y}`);
 }

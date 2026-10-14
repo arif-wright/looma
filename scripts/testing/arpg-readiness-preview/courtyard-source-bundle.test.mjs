@@ -1,3 +1,4 @@
+import { beforeCourtyardChordSelection } from './courtyard-chord-preservation.mjs';
 import { beforePlazaDeparture } from './plaza-departure-preservation.mjs';
 // Static bundle/preservation checks. These are not a Vite build, full TypeScript
 // check, Playwright discovery or browser launch.
@@ -35,7 +36,7 @@ const preserved={
   "src/lib/games/arpg/assets/townBoundary.ts": "bff6d1c28fa19acd6da073f6a9f2b01f031cb9a9433168f7861fbcd00175041c",
   "src/lib/games/arpg/assets/townCourtyard.ts": "dfc44912ebabacad78a382818d759d1ccbd74aaa99b8a9d8dd14382184c402ac"
 };
-for(const[path,digest]of Object.entries(preserved))test(`preserve reviewed app/original contract ${path}`,()=>assert.equal(hash(read(path)),digest));
+for(const[path,digest]of Object.entries(preserved))test(`preserve reviewed app/original contract ${path}`,()=>assert.equal(hash(beforeCourtyardChordSelection(path,read(path))),digest));
 test('original outbound isolation/cleanup guard changes only native-return titles and native observation serialization',()=>{
  let s=read('scripts/testing/arpg-readiness-preview/guard.ts');
  const serializerImport="import { serializeCourtyardOrLegacyObservation } from './courtyard-observation-wire.mjs';\n";
@@ -66,6 +67,8 @@ const newModules=[
   "courtyard-east-setup.ts",
   "courtyard-east-setup-preservation.mjs",
   "courtyard-navigation.ts",
+  "courtyard-chord-preservation.mjs",
+  "courtyard-chord-selection.test.mjs",
   "courtyard-navigation.test.mjs",
   "courtyard-departure.ts",
   "courtyard-departure.test.mjs",

@@ -15,9 +15,10 @@ Eighteen same-frame canvas PNGs per viewport are required, including both elbow
 painter-order witnesses. Every attempted dash includes its observed smoothed
 engine delta in the independently checked 230 + 220*delta/1000 full sweep.
 
-The original waypoint implementation still decides every ordinary move pulse. An
-additional check only rejects its chosen chord when a courtyard wall intersects
-its conservative hull; it does not search another chord. Ordinary 8 px targets,
+The shared waypoint implementation still decides every ordinary move pulse. The
+courtyard caller adds a reject-only predicate during chord enumeration, after
+each original room/solid check. The final pre-press courtyard guard is retained.
+Other callers omit the predicate and retain their original selection behavior. Ordinary 8 px targets,
 6.5 s per-leg deadline, the conditional 24 px correction-model rejection and the
 3,000 ms fresh-neutral watchdog remain unchanged. The three explicitly typed
 inner setup actions below replace only their incidental near-wall goals.

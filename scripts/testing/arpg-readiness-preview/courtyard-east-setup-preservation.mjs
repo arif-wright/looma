@@ -1,4 +1,5 @@
 // Test-only exact reversal of the single east walk setup delta.
+import { beforeCourtyardChordSelection } from './courtyard-chord-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "courtyard-contract.mjs": [
@@ -109,6 +110,7 @@ const changes={
   ]
 };
 export function beforeEastInnerSetup(name,source) {
+  source=beforeCourtyardChordSelection(name,source);
   if(name==='verify-courtyard.mjs'){
     const marker='\n// Independent east-inner receipt acceptance:';
     assert.equal(source.split(marker).length,2,'Exactly one additive east setup verifier');
