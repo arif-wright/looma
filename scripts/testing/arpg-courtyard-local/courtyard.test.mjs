@@ -387,7 +387,7 @@ test('analytic front-side separation keeps a lowered opposite opaque plinth outs
 // Material proof: real production surface helper, independent saved study
 // polygons/colors, and UV area/coverage checks. No raster alpha is inferred.
 const stoneFixture=JSON.parse(readFileSync(resolve(here,'courtyard-stone-fixtures.json')));
-const baseColor=(layer,face)=>layer==='foundation'?(face===2?0x746c5c:0x605c50):(face===2?0x8b806b:0x706856);
+const baseColor=(layer,face)=>layer==='foundation'?(face===2?0x746c5c:0x514c42):(face===2?0x6b6252:0x554f44);
 const painted=geometry.flatMap((wall,wi)=>['foundation','upper'].flatMap(layer=>wall[layer].map((face,fi)=>
   ({wi,layer,fi,face,tiles:townCourtyardSurface(face,layer,fi,wi)}))));
 const toUV=(face,p)=>{const[a,b,,d]=face.points,x=b.x-a.x,y=b.y-a.y,c=d.x-a.x,e=d.y-a.y,det=x*e-y*c;
@@ -410,12 +410,21 @@ test('only the paint recipe and create-time draw loop differ from the exact bare
   source=source.replace("      for (const [faceIndex, face] of faces.entries()) {\n        for (const paint of townCourtyardSurface(face, layer, faceIndex, wall.id === 'west' ? 0 : 1)) {\n          graphic.fillStyle(paint.color, 1).fillPoints(paint.points, true);\n        }\n      }",'      for (const face of faces) graphic.fillStyle(face.color, 1).fillPoints(face.points, true);');
   assert.equal(createHash('sha256').update(source).digest('hex'),'ad69819cf818c83feaaab5e3773436a68d757df236f0662131cfa886ef6338e3');
 });
-test('all 76 stones retain the independently saved study polygon/color with no underlay',()=>{
+test('all 76 stone colors and courses retain the saved study with only internal joint recession',()=>{
   assert.equal(stoneFixture.stones.length,76);let count=0;
   for(const {wi,layer,fi,face,tiles}of painted){
     const stones=tiles.filter(t=>t.color!==baseColor(layer,fi)),expected=stoneFixture.stones.filter(s=>s[0]===wi&&s[1]===layer&&s[2]===fi);
     assert.equal(stones.length,expected.length);count+=stones.length;
-    stones.forEach((s,i)=>{assert.equal(s.color,expected[i][3]);s.points.forEach((p,j)=>{approx(p.x,expected[i][4][j][0],1e-11);approx(p.y,expected[i][4][j][1],1e-11);});});
+    // Independent evolution of the original saved stone polygons: retreat only
+    // internal edges another 0.38 world pixels; keep exterior margins at 0.32.
+    const [a,b,,d]=face.points,L=Math.hypot(b.x-a.x,b.y-a.y),H=Math.hypot(d.x-a.x,d.y-a.y);
+    stones.forEach((s,i)=>{assert.equal(s.color,expected[i][3]);s.points.forEach((p,j)=>{
+      const [x,y]=expected[i][4][j],uv=toUV(face,{x,y});
+      const du=Math.min(uv.x,1-uv.x)*L>.32+1e-8?(j===0||j===3?.38:-.38):0;
+      const dv=Math.min(uv.y,1-uv.y)*H>.32+1e-8?(j<2?.38:-.38):0;
+      approx(p.x,x+du*(b.x-a.x)/L+dv*(d.x-a.x)/H,1e-11);
+      approx(p.y,y+du*(b.y-a.y)/L+dv*(d.y-a.y)/H,1e-11);
+    });});
     verifyPartition(face,tiles);
   }assert.equal(count,76);
 });

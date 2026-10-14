@@ -58,7 +58,10 @@ export function townCourtyardGeometry() {
  * Fixed recipe: 192 quads / 768 points across the four create-once Graphics. */
 export function townCourtyardSurface(face: Face, layer: string, faceIndex: number, wallIndex: number): Face[] {
   const foundation = layer === 'foundation', cap = faceIndex === 2, end = faceIndex === 1;
-  const base = foundation ? (cap ? 0x746c5c : 0x605c50) : (cap ? 0x8b806b : 0x706856);
+  // Recessed joints stay legible in the compact view. Keep the outer 0.32 px
+  // margin and all physical corners unchanged; widen only internal joints.
+  const base = foundation ? (cap ? 0x746c5c : 0x514c42) : (cap ? 0x6b6252 : 0x554f44);
+  const edgeInset = .32, jointInset = .7;
   if (foundation && cap) return [{ points: face.points, color: base }];
   const palette = foundation ? [0x6e6655, 0x746b59, 0x696353, 0x776e5b]
     : end ? [0x776d5b, 0x7a705d]
@@ -81,13 +84,14 @@ export function townCourtyardSurface(face: Face, layer: string, faceIndex: numbe
   const seed = wallIndex * 2 + (cap ? 1 : 0);
   let previousV = 0;
   for (let row = 0; row < rows; row++) {
-    const v0 = row / rows + .32 / extent, v1 = (row + 1) / rows - .32 / extent;
+    const v0 = row / rows + (row === 0 ? edgeInset : jointInset) / extent;
+    const v1 = (row + 1) / rows - (row === rows - 1 ? edgeInset : jointInset) / extent;
     tile(0, 1, previousV, v0, base);
     let previousU = 0, start = row ? -25 : 0, index = 0;
     while (start < length) {
       const stop = end ? length : start + widths[(index + seed + row * 2) % widths.length]!;
-      const u0 = (Math.max(0, end ? 0 : start) + .32) / length;
-      const u1 = (Math.min(length, stop) - .32) / length;
+      const u0 = (Math.max(0, end ? 0 : start) + (end || start <= 0 ? edgeInset : jointInset)) / length;
+      const u1 = (Math.min(length, stop) - (stop >= length ? edgeInset : jointInset)) / length;
       if (u1 > u0) {
         tile(previousU, u0, v0, v1, base);
         tile(u0, u1, v0, v1, palette[(index + row * 3 + wallIndex) % palette.length]!);

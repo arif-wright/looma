@@ -26,7 +26,7 @@ export function expectedCourtyardMaterial(name){
   for(const [faceIndex,{points}]of courtyardFaces(name).entries()){
     const [a,b,,d]=points,cap=faceIndex===2,end=faceIndex===1;
     const length=Math.hypot(b[0]-a[0],b[1]-a[1]),extent=Math.hypot(d[0]-a[0],d[1]-a[1]);
-    const base=foundation?(cap?0x746c5c:0x605c50):(cap?0x8b806b:0x706856);
+    const base=foundation?(cap?0x746c5c:0x514c42):(cap?0x6b6252:0x554f44);
     const palette=foundation?[0x6e6655,0x746b59,0x696353,0x776e5b]:end?[0x776d5b,0x7a705d]:
       cap?[0x978b72,0xa09277,0x92866f,0x9c8f75,0x988d77]:[0x7c715e,0x877a65,0x786e5c,0x817461,0x897b65,0x7d7461];
     const map=(u,v)=>{
@@ -40,12 +40,12 @@ export function expectedCourtyardMaterial(name){
     const rows=cap||foundation?1:2,widths=foundation?[70,88,76,94,82]:[44,56,48,52,60,46,54];
     let previousV=0;
     for(let row=0;row<rows;row++){
-      const v0=row/rows+.32/extent,v1=(row+1)/rows-.32/extent;
+      const v0=row/rows+(row===0?.32:.7)/extent,v1=(row+1)/rows-(row===rows-1?.32:.7)/extent;
       paint(0,1,previousV,v0,base);
       let previousU=0,start=row?-25:0,i=0;
       while(start<length){
         const stop=end?length:Math.min(length,start+widths[(i+wi*2+(cap?1:0)+row*2)%widths.length]);
-        const u0=(Math.max(0,end?0:start)+.32)/length,u1=(stop-.32)/length;
+        const u0=(Math.max(0,end?0:start)+(end||start<=0?.32:.7))/length,u1=(stop-(stop>=length?.32:.7))/length;
         if(u1>u0){
           paint(previousU,u0,v0,v1,base);
           paint(u0,u1,v0,v1,palette[(i+row*3+wi)%palette.length]);

@@ -1,5 +1,6 @@
 // Test-only exact reversal of ordinary-readiness observer scoping.
 // No runtime module imports this historical adapter.
+import { beforeTownMasonry } from './town-masonry-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "observe-scene.ts": [
@@ -65,11 +66,11 @@ const changes={
 };
 export function beforeObserverScope(name,source) {
   name=name.split('/').at(-1);
-  if(!changes[name])return source;
+  if(!changes[name])return beforeTownMasonry(name,source);
   source=String(source);
   for(const [added,original]of [...changes[name]].reverse()){
     assert(added.length>0);assert.equal(source.split(added).length,2,`Exact observer-scope delta required in ${name}`);
     source=source.replace(added,original);
   }
-  return source;
+  return beforeTownMasonry(name,source);
 }

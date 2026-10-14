@@ -128,7 +128,7 @@ test('independent material oracle has exact approved bounded per-object budgets'
     assert.equal(fills.length,graphics.COURTYARD_FILL_COUNTS[name]);
     assert.equal(commands.length,graphics.COURTYARD_COMMAND_COUNTS[name]);
     assert(fills.every(f=>f.alpha===1&&f.points.length===4));
-    total+=fills.length;stones+=fills.filter(f=>![0x746c5c,0x605c50,0x8b806b,0x706856].includes(f.color)).length;
+    total+=fills.length;stones+=fills.filter(f=>![0x746c5c,0x514c42,0x6b6252,0x554f44].includes(f.color)).length;
   }
   assert.equal(total,192);assert.equal(total*4,768);assert.equal(stones,76);
 });
