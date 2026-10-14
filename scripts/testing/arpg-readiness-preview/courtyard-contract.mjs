@@ -7,7 +7,9 @@ export const COURTYARD_TITLES = [
 export const COURTYARD_LIMITS = Object.freeze({caseMs:600000,legs:64,pulses:1200,motion:12000});
 // This explicit goal is limited to the two west-inner challenge preparations.
 export const WEST_INNER_SETUP = Object.freeze({minX:1440,maxX:1472,minY:624,maxY:656});
-/** @typedef {{kind:'setup',region:'west-inner',target:'west',points?:number[][],label:string,view?:string}|{kind:'move',points:number[][],label:string,view?:string}|{kind:'walk'|'dash',key:string,label:string,target:string,view?:string}|{kind:'save'|'depart'|'return',label:string,view?:string}} CourtyardAction */
+// Only east-inner-ready replaces its incidental near-wall walk preparation.
+export const EAST_INNER_SETUP = Object.freeze({minX:1856,maxX:1888,minY:688,maxY:720});
+/** @typedef {{kind:'setup',region:'west-inner'|'east-inner',target:'west'|'east',points?:number[][],label:string,view?:string}|{kind:'move',points:number[][],label:string,view?:string}|{kind:'walk'|'dash',key:string,label:string,target:string,view?:string}|{kind:'save'|'depart'|'return',label:string,view?:string}} CourtyardAction */
 /** @returns {{kind:'move',points:number[][],label:string,view?:string}} */
 const move=(points,label,view)=>({kind:'move',points,label,...(view?{view}: {})});
 /** @returns {{kind:'walk',key:string,label:string,target:string,view?:string}} */
@@ -51,7 +53,7 @@ export const COURTYARD_ACTIONS = [
   dash('w','east-end-reverse-dash','east-end','east-end-reverse-dash'),
   move([[2112,600]],'east-end-forward-ready'),
   dash('s','east-end-forward-dash','east-end','east-end-forward-dash'),
-  move([[2112,600],[1872,600],[1872,752]],'east-inner-ready'),
+  {kind:'setup',region:'east-inner',target:'east',points:[[2112,600],[1872,600]],label:'east-inner-ready'},
   walk('s','east-inner-walk-blocked','east'),
   move([[1872,752]],'east-inner-dash-ready'),
   dash('s','east-inner-dash-blocked','east','east-inner-blocked'),

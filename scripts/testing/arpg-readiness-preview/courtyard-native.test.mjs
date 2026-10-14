@@ -33,10 +33,10 @@ for(const index of [0,1])test(`FABRICATED full ${index?'phone':'desktop'} schema
   const f=fixture(index);assert.equal(f.fabricated,true);assert.equal(f.observation.notNativeEvidence,true);
   assert.match(f.warning,/never native/);assert.equal(f.observation.browserVersion,'FABRICATED-NOT-EXECUTED');verify(f);
 });
-test('native case contract remains exactly 45 checkpoints, 51 ordinary + two setup legs, 18 captures, six walks and ten dashes per viewport',()=>{
+test('native case contract remains exactly 45 checkpoints, 50 ordinary + three setup legs, 18 captures, six walks and ten dashes per viewport',()=>{
   assert.equal(COURTYARD_ACTIONS.length,45);assert.equal(new Set(COURTYARD_ACTIONS.map(a=>a.label)).size,45);
-  assert.equal(COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0),51);
-  assert.deepEqual(COURTYARD_ACTIONS.filter(a=>a.kind==='setup').map(a=>a.label),['west-inner-ready','west-inner-dash-ready']);assert.equal(COURTYARD_VIEWS.length,18);
+  assert.equal(COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0),50);
+  assert.deepEqual(COURTYARD_ACTIONS.filter(a=>a.kind==='setup').map(a=>a.label),['west-inner-ready','west-inner-dash-ready','east-inner-ready']);assert.equal(COURTYARD_VIEWS.length,18);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='walk').length,6);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='dash'&&!a.target.endsWith('-end')).length,6);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='dash'&&a.target.endsWith('-end')).length,4);

@@ -39,9 +39,9 @@ function mocked({frames=[point(),point(1472,640,200)],trace=frames,times=[0,1,2]
   let pulses=0;
   return {run:(guard=()=>{events.push(['guard']);pulses++;})=>module.exports.setupWestInner(page,guard),events,get pulses(){return pulses;}};
 }
-test('only two explicit setup actions replace incidental coordinate goals',()=>{
+test('only two explicit west setup actions replace their incidental coordinate goals',()=>{
   assert.deepEqual(WEST_INNER_SETUP,{minX:1440,maxX:1472,minY:624,maxY:656});
-  assert.deepEqual(COURTYARD_ACTIONS.filter(a=>a.kind==='setup'),[
+  assert.deepEqual(COURTYARD_ACTIONS.filter(a=>a.kind==='setup'&&a.region==='west-inner'),[
     {kind:'setup',region:'west-inner',target:'west',points:[[1456,536]],label:'west-inner-ready',view:'west-inner-ready'},
     {kind:'setup',region:'west-inner',target:'west',label:'west-inner-dash-ready'}]);
   assert.equal(COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0)+(a.kind==='setup'?1:0),0),53);

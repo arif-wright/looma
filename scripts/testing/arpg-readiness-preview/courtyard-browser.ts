@@ -4,6 +4,7 @@ import { test, expect, open, town, gameplay, screen, snapshot, clickControl } fr
 import { release, releasedFrame, position, walkInto, dashInto } from './plaza-browser';
 import { moveCourtyard } from './courtyard-navigation';
 import { setupWestInner } from './courtyard-setup';
+import { setupEastInner } from './courtyard-east-setup';
 import { departCourtyard } from './courtyard-departure';
 import { COURTYARD_ACTIONS, COURTYARD_LIMITS, courtyardChordAllowed, courtyardScreenshot } from './courtyard-contract.mjs';
 import { courtyardGraphicsIssues } from './courtyard-graphics.mjs';
@@ -23,7 +24,7 @@ export async function runCourtyard(page: Page, info: TestInfo, index: number) {
   };
   const guardedSetup=async(label:string)=>{
     if(++receipt.legs>COURTYARD_LIMITS.legs)throw Error('Courtyard waypoint budget exceeded');
-    const setup=await setupWestInner(page,()=>{
+    const setup=await (label==='east-inner-ready'?setupEastInner:setupWestInner)(page,()=>{
       if(++receipt.pulses>COURTYARD_LIMITS.pulses)throw Error('Courtyard native pulse budget exceeded');
     });
     receipt.setups.push({label,...setup});

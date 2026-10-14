@@ -62,6 +62,9 @@ const newModules=[
   "courtyard-setup-preservation.mjs",
   "courtyard-setup.ts",
   "courtyard-setup.mjs",
+  "courtyard-east-setup.mjs",
+  "courtyard-east-setup.ts",
+  "courtyard-east-setup-preservation.mjs",
   "courtyard-navigation.ts",
   "courtyard-navigation.test.mjs",
   "courtyard-departure.ts",
@@ -104,9 +107,9 @@ test('native PNG capture does not alter framebuffer/camera/context options',()=>
  const s=read('scripts/testing/arpg-readiness-preview/courtyard-capture.ts');assert.doesNotMatch(s,/preserveDrawingBuffer|canvas\.(width|height)\s*=|getContext\(|requestAnimationFrame|setTimeout/);assert.equal((s.match(/canvas\.toDataURL/g)||[]).length,1);
 });
 
-test('all 51 ordinary native target boxes and within-route cardinal corridors retain radius38 plus the full8px error box',async()=>{
+test('all 50 ordinary native target boxes and within-route cardinal corridors retain radius38 plus the full8px error box',async()=>{
  const {COURTYARD_ACTIONS,COURTYARD_SOLIDS}=await import('./courtyard-contract.mjs');const{sweptDistance,roomAllows}=await import('./plaza-contract.mjs');let minimum=Infinity,count=0;
  const check=(a,b)=>{const poly=[[Math.min(a[0],b[0])-8,Math.min(a[1],b[1])-8],[Math.max(a[0],b[0])+8,Math.min(a[1],b[1])-8],[Math.max(a[0],b[0])+8,Math.max(a[1],b[1])+8],[Math.min(a[0],b[0])-8,Math.max(a[1],b[1])+8]];assert(poly.every(roomAllows));for(const solid of Object.values(COURTYARD_SOLIDS)){const d=Math.min(...poly.map((p,i)=>sweptDistance(p,poly[(i+1)%4],solid)),...solid.map(p=>sweptDistance(p,p,poly)));assert(d>38);minimum=Math.min(minimum,d-38);}};
  for(const action of COURTYARD_ACTIONS)if(action.points)action.points.forEach((p,i)=>{count++;check(p,p);if(i){const a=action.points[i-1];assert(a[0]===p[0]||a[1]===p[1]);check(a,p);}});
- assert.equal(count,51);assert(Math.abs(minimum-.510214)*1e6<1); // finite corridor proof, not native convergence
+ assert.equal(count,50);assert(Math.abs(minimum-.510214)*1e6<1); // finite corridor proof, not native convergence
 });

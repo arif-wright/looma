@@ -19,8 +19,8 @@ The original waypoint implementation still decides every ordinary move pulse. An
 additional check only rejects its chosen chord when a courtyard wall intersects
 its conservative hull; it does not search another chord. Ordinary 8 px targets,
 6.5 s per-leg deadline, the conditional 24 px correction-model rejection and the
-3,000 ms fresh-neutral watchdog remain unchanged. The two explicitly typed
-west-inner setup actions below replace only their incidental near-wall goals.
+3,000 ms fresh-neutral watchdog remain unchanged. The three explicitly typed
+inner setup actions below replace only their incidental near-wall goals.
 Native bounds: 10 minutes/case, 64 legs, 1,200 pulses, 12,000 motion records and
 64 full-probe requests. Planned routes do not prove native convergence. The
 closer inner ±8 target boxes have only 0.510214 px extra clearance beyond radius38.
@@ -117,8 +117,9 @@ Only `west-inner-ready` and `west-inner-dash-ready` use the closed region
 [1440,1472] × [624,656]. The first action retains the ordinary (1456,536)
 alignment with its original ±8 acceptance; the remaining setup input is vertical
 only at the observed x. Restaging after the blocked walk retreats north without
-lateral motion. These are two distinct region legs alongside 51 ordinary legs;
-the original total of 53 legs, all 45 checkpoint labels and all 18 captures remain.
+lateral motion. Together with the single east walk setup below, these are three distinct region
+legs alongside 50 ordinary legs; the original total of 53 legs, all 45 checkpoint
+labels and all 18 captures remain.
 
 Each setup uses native cardinal pulses, the original pulse sizing, 6,500 ms leg
 clock and 3,000 ms fresh-neutral watchdog. Every attempted pulse counts against
@@ -151,3 +152,40 @@ This redesign is an explicit fixture contract change. Offline tests, source
 preservation, type checks, builds and discovery cannot establish native success.
 A subsequent exact-source desktop and phone run plus native PNG review is still
 required. No local browser launch is part of this candidate's validation.
+
+
+## Explicit east-inner walk setup region
+
+Only `east-inner-ready` uses the closed region [1856,1888] × [688,720]. Its
+ordinary (2112,600), then (1872,600) alignments retain the original ±8 acceptance.
+The remaining setup is vertical at the observed x. `east-inner-dash-ready`
+remains the original ordinary (1872,752) goal; every walk and dash primitive,
+physical assertion, remaining route and session/departure obligation is unchanged.
+
+The east helper has the same 6,500 ms total leg clock, 3,000 ms fresh-neutral
+watchdog, original pulse sizing and mandatory per-pulse budget callback. It adds
+no frame pacing, sleep, correction chord or position assignment. Its complete
+observed slice must stay within x∈[1856,1888], y≥592 and north of y=1752−0.5x,
+with finite chronological contiguous native frames, vertical-only movement and
+intent, no active dash, and >38 swept clearance from every solid. The independent
+verifier requires the exact east action, both ordinary alignments in the contract,
+matching start/settled/checkpoint anchors, a complete alignment prefix and an
+unchanged neutral settled suffix. There are exactly three setup receipts.
+
+Continuous east clearance throughout the region is at least 70.70959280799255 px.
+The radius-38 contact bound is B(x)=1752−0.5x−46√1.25. The available south travel
+is 36.57043651750485–84.57043651750485 px. Conditionally on actual movement
+updates in the failed desktop observation's 55–63.33 ms engine-delta bracket,
+the first update is clear and at most six updates can be admitted before contact;
+eight updates suffice geometrically for approach before first block and two
+blocks. The original thirteen captured held frames span 660.9 ms. Eight of those
+timestamps span only 386.6 ms and correctly fail the unchanged 400 ms held-span
+assertion. For the phone's observed 16.66–25 ms bracket, at most 23 updates can
+move and 25 suffice geometrically; its 38 held frames span 686.1 ms.
+
+These brackets describe observed cases, not universal timing bounds or native
+success for this candidate. The unchanged 700 ms hold does not guarantee enough
+future frames. Insufficient actual samples/span, a first block before any approach,
+unsafe attempts or incomplete setup must still fail without extending any limit.
+Both exact-source native desktop and phone acceptance and PNG review are required
+after publication; offline model/schema passes, builds and discovery are separate.

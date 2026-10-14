@@ -124,7 +124,7 @@ export function fabricateNativeCourtyard(index=0){
     // Explicit fabricated region fixture; retain independent physical stepping.
     if(action.kind==='setup'){
       (action.points??[]).forEach(move);push(16);const before=copy(state.plazaMotion.at(-1));
-      move([pos[0],640]);push(16);setups.push({label:action.label,sceneId:scene.id,before,after:copy(state.plazaMotion.at(-1))});
+      move([pos[0],action.region==='east-inner'?704:640]);push(16);setups.push({label:action.label,sceneId:scene.id,before,after:copy(state.plazaMotion.at(-1))});
     }
     if(action.kind==='walk')for(let i=0;i<44;i++)step(direction(action.key),16);
     if(action.kind==='dash'){

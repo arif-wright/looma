@@ -1,6 +1,7 @@
 // Test-only historical source preservation. The explicit setup delta is removed
 // before checking the original reviewed hashes; no runtime imports this module.
 import assert from 'node:assert/strict';
+import { beforeEastInnerSetup } from './courtyard-east-setup-preservation.mjs';
 const changes={
   "courtyard-contract.mjs": [
     [
@@ -62,6 +63,7 @@ const changes={
   ]
 };
 export function beforeWestInnerSetup(name,source) {
+  source=beforeEastInnerSetup(name,source);
   if(name==='verify-courtyard.mjs'){
     const marker='\n// Independent receipt acceptance:';
     assert.equal(source.split(marker).length,2,'Exactly one additive setup verifier');
