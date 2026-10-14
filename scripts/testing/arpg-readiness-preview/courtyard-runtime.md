@@ -15,10 +15,12 @@ Eighteen same-frame canvas PNGs per viewport are required, including both elbow
 painter-order witnesses. Every attempted dash includes its observed smoothed
 engine delta in the independently checked 230 + 220*delta/1000 full sweep.
 
-The original waypoint implementation still decides each pulse. An optional
+The original waypoint implementation still decides every ordinary move pulse. An
 additional check only rejects its chosen chord when a courtyard wall intersects
-its conservative hull; it does not search another chord. Original 8 px targets,
-6.5 s per-leg deadline, 24 px fine-step quantum limit and release watchdog remain.
+its conservative hull; it does not search another chord. Ordinary 8 px targets,
+6.5 s per-leg deadline, the conditional 24 px correction-model rejection and the
+3,000 ms fresh-neutral watchdog remain unchanged. The two explicitly typed
+west-inner setup actions below replace only their incidental near-wall goals.
 Native bounds: 10 minutes/case, 64 legs, 1,200 pulses, 12,000 motion records and
 64 full-probe requests. Planned routes do not prove native convergence. The
 closer inner ±8 target boxes have only 0.510214 px extra clearance beyond radius38.
@@ -90,13 +92,13 @@ required. The original overlap between physical faces/caps still compounds.
   browser receipts. Do not explicitly rerun `gate-prompt-scene.test.mjs` alongside
   `verify-results.test.mjs`; the latter already imports it.
 
-The local reconstructed subset has TypeScript 5.8.3 for syntax/mocked tests, but
-no Vite, Svelte, Phaser or Playwright installation. Full semantic checking, actual
-bundle build, Playwright discovery, browser execution and native PNG review have
-not run locally. No dependency installation or local browser launch is authorized.
-A future reviewed hosted run must retain the locked toolchain, credential-free
-transport, outbound allowlist and cleanup. Suggested job caps: native30 minutes,
-controlled10 minutes. Those jobs require separate publication approval.
+The reconstructed candidate can run the locked local toolchain for offline tests,
+semantic checks, fixture builds and discovery. Record their exact commands and
+results with the reviewed candidate; none is browser execution. No dependency
+installation or local browser launch is part of this change. A subsequent reviewed
+hosted run must retain the locked toolchain, credential-free transport, outbound
+allowlist and cleanup. Native and controlled job caps remain 30 and 10 minutes.
+Publication and execution require their applicable authorization.
 
 ## Historical driver compatibility
 
@@ -108,3 +110,44 @@ Literal source/AST comparison and mocked execution prove that constrained delta.
 The new callback can reject the already chosen pulse; it does not search for
 another chord or change navigation limits. Shared native primitives retain their
 original implementations. Historical preservation tests remain unchanged.
+
+## Explicit west-inner setup region
+
+Only `west-inner-ready` and `west-inner-dash-ready` use the closed region
+[1440,1472] × [624,656]. The first action retains the ordinary (1456,536)
+alignment with its original ±8 acceptance; the remaining setup input is vertical
+only at the observed x. Restaging after the blocked walk retreats north without
+lateral motion. These are two distinct region legs alongside 51 ordinary legs;
+the original total of 53 legs, all 45 checkpoint labels and all 18 captures remain.
+
+Each setup uses native cardinal pulses, the original pulse sizing, 6,500 ms leg
+clock and 3,000 ms fresh-neutral watchdog. Every attempted pulse counts against
+the unchanged 1,200-pulse cap. No correction chord or alternate waypoint mover
+is used for region setup. Ordinary `waypointCorrection` and its conditional
+24 px guard remain byte-identical. Setup may still fail under an unfavorable
+actual engine cadence; no frame count or wall-clock timing guarantees convergence.
+
+The controller reads the entire observed slice between exact neutral anchors,
+requiring consecutive native frame IDs, chronological timestamps, one scene,
+vertical input and movement, original-room containment and >38 clearance from
+every solid for every sweep. The independent verifier matches all before,
+settled and checkpoint anchor fields to the actual motion, checks the complete
+alignment prefix and requires unchanged position with neutral intent from the
+settled receipt through the checkpoint. It bounds the final neutral pose to the
+explicit region. A
+missing intermediate frame, hidden excursion or scene/anchor mismatch fails.
+
+The blocked walk still holds S for 700 ms and must show real approach before
+its first blocked frame, at least two genuine intended-wall blocks, sufficient
+actual held samples and timestamp span. A ready-region pose may have west-upper
+alpha 1; the blocked inner walk still requires alpha 0.28 and every existing
+visibility, same-frame capture and pixel-review obligation. The dash verifier
+still uses the actual preactivation position and engine delta for the entire
+230 + 220*delta/1000 attempted sweep, including room and non-target isolation.
+Direction-key lead frames do not authorize assuming activation occurred in the
+region; unsafe endpoints must fail even when collision rolled the actor back.
+
+This redesign is an explicit fixture contract change. Offline tests, source
+preservation, type checks, builds and discovery cannot establish native success.
+A subsequent exact-source desktop and phone run plus native PNG review is still
+required. No local browser launch is part of this candidate's validation.

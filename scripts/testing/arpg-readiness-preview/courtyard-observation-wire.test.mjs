@@ -1,3 +1,4 @@
+import { beforeWestInnerSetup } from './courtyard-setup-preservation.mjs';
 // Fabricated transport tests only. No browser execution or movement evidence.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -97,12 +98,12 @@ test('serializer rejects oversized inline data without raising transport cap', (
   const v = fixture(); v.extra = 'x'.repeat(22_500_000);
   assert.throws(() => serializeNativeObservation(v, 0), /byte budget|transport budget/);
 });
-test('semantic movement/state and controlled verifiers retain their exact original bytes', () => {
+test('historical semantic movement/state and controlled verifiers retain exact original bytes outside the explicit setup delta', () => {
   const preserved = {
     'verify-courtyard.mjs': 'fac548f0a2d3b433f4959308217a3d71f075ad178cf111a5736e1545bab21e41', 'visual-verifier.mjs': 'de779e1820657bf9dae9131e137f61030e58cf40743d311aefdc71ab5877bafa',
     'verify-results.mjs': 'b2b3c3b782c23d9fd4b18732c76a026a1411a2f3760c11fb0dbf6aeddab943b1', 'walk-frame-verifier.mjs': '71dcbb1a3f7a90be3b147190d191095c4d7f0ddd320104cdbe903ac41c7695db'
   };
-  for (const [name, hash] of Object.entries(preserved)) assert.equal(createHash('sha256').update(readFileSync(new URL(name, import.meta.url))).digest('hex'), hash, name);
+  for (const [name, hash] of Object.entries(preserved)) assert.equal(createHash('sha256').update(beforeWestInnerSetup(name,readFileSync(new URL(name, import.meta.url),'utf8'))).digest('hex'), hash, name);
 });
 
 test('native producer retains the original JSON normalization of optional fields and numbers',()=>{

@@ -1,3 +1,4 @@
+import { beforeWestInnerSetup } from './courtyard-setup-preservation.mjs';
 // Offline doubles/fabricated schema only. These are not browser or pixel proof.
 import assert from 'node:assert/strict';
 import {test,after} from 'node:test';
@@ -220,7 +221,7 @@ const preserved={
   "vite.config.mjs": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6",
   "asset-paths.json": "433c30e4fbbcaf0002d2d3b06cff0facf3fbea0499f76cda7afb1ba70cc55199"
 };
-for(const[name,sha]of Object.entries(preserved))test(`existing contract byte preservation: ${name}`,()=>assert.equal(createHash('sha256').update(readFileSync(resolve(here,name))).digest('hex'),sha));
+for(const[name,sha]of Object.entries(preserved))test(`existing contract byte preservation: ${name}`,()=>assert.equal(createHash('sha256').update(beforeWestInnerSetup(name,readFileSync(resolve(here,name),'utf8'))).digest('hex'),sha));
 test('only additive walking-mode wiring: main.ts',()=>{const source=readFileSync(resolve(here,'main.ts'),'utf8').replace("import './walk-frame-observer';\n",'');assert.equal(createHash('sha256').update(source).digest('hex'),'fab9597cc4abea2ac4a81894bdfa17e44baa75f9d0380a2f81daba4944feb35e');});
 test('only additive walking-mode wiring: runtime.ts',()=>{const source=readFileSync(resolve(here,'runtime.ts'),'utf8').replace("    return { ...(window.__arpgWalkFrameFlow === true ? { walkFrameEvidence: window.__arpgWalkFrame?.snapshot() ?? null } : {}), courtyardEvidence: window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true ? {\n", "    return { courtyardEvidence: window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true ? {\n");assert.equal(createHash('sha256').update(source).digest('hex'),'9e89294cd6811b2a44da1adba23000b85065cf41a00475c0c853508a43c8493d');});
 test('only additive walking-mode wiring: observe-scene.ts',()=>{const source=readFileSync(resolve(here,'observe-scene.ts'),'utf8').replace('\n// Read-only reuse by the explicitly enabled controlled walking-frame fixture.\nexport { decodedPixels, readCourtyardFrame };\n', '');assert.equal(createHash('sha256').update(source).digest('hex'),'46360dbbd6230884c651770576aca1760162fef9962fcdb37487a4ebadcbc30a');});

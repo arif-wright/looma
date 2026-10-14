@@ -3,6 +3,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { test, expect, open, town, gameplay, screen, snapshot, clickControl } from './guard';
 import { release, releasedFrame, position, walkInto, dashInto } from './plaza-browser';
 import { moveCourtyard } from './courtyard-navigation';
+import { setupWestInner } from './courtyard-setup';
 import { departCourtyard } from './courtyard-departure';
 import { COURTYARD_ACTIONS, COURTYARD_LIMITS, courtyardChordAllowed, courtyardScreenshot } from './courtyard-contract.mjs';
 import { courtyardGraphicsIssues } from './courtyard-graphics.mjs';
@@ -12,13 +13,20 @@ export async function runCourtyard(page: Page, info: TestInfo, index: number) {
   test.setTimeout(COURTYARD_LIMITS.caseMs);
   if(index===1)await page.setViewportSize({width:390,height:844});
   await page.addInitScript(()=>{window.__arpgReturnFlow=true;window.__arpgPlazaFlow=true;window.__arpgCourtyardFlow=true;});
-  const receipt={kind:'native-courtyard-driver',index,legs:0,pulses:0,completed:false,completedActions:[] as string[],captures:[] as Array<{label:string;probeId:number;nativeFrame:number;pngSHA256:string}>};
+  const receipt={kind:'native-courtyard-driver',index,legs:0,pulses:0,completed:false,completedActions:[] as string[],setups:[] as Array<{label:string}&Awaited<ReturnType<typeof setupWestInner>>>,captures:[] as Array<{label:string;probeId:number;nativeFrame:number;pngSHA256:string}>};
   const guardedMove=async(x:number,y:number)=>{
     if(++receipt.legs>COURTYARD_LIMITS.legs)throw Error('Courtyard waypoint budget exceeded');
     await moveCourtyard(page,x,y,(_position,pulse)=>{
       if(++receipt.pulses>COURTYARD_LIMITS.pulses)throw Error('Courtyard native pulse budget exceeded');
       if(!courtyardChordAllowed(pulse))throw Error('Original native chord refused by additional courtyard solids');
     });
+  };
+  const guardedSetup=async(label:string)=>{
+    if(++receipt.legs>COURTYARD_LIMITS.legs)throw Error('Courtyard waypoint budget exceeded');
+    const setup=await setupWestInner(page,()=>{
+      if(++receipt.pulses>COURTYARD_LIMITS.pulses)throw Error('Courtyard native pulse budget exceeded');
+    });
+    receipt.setups.push({label,...setup});
   };
   const save=async(label:string,view?:string)=>{
     await expect.poll(async()=> (await position(page)).dash?.timer).toBe(0);
@@ -54,6 +62,10 @@ export async function runCourtyard(page: Page, info: TestInfo, index: number) {
     await open(page);await town(page);await screen(page).locator('canvas').scrollIntoViewIfNeeded();
     for(const action of COURTYARD_ACTIONS){
       if(action.kind==='move')for(const[x,y]of action.points)await guardedMove(x,y);
+      else if(action.kind==='setup'){
+        for(const[x,y]of action.points??[])await guardedMove(x,y);
+        await guardedSetup(action.label);
+      }
       else if(action.kind==='walk')await walkInto(page,action.key);
       else if(action.kind==='dash')await dashInto(page,[action.key]);
       else if(action.kind==='depart'){

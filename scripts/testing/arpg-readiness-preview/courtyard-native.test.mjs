@@ -32,9 +32,10 @@ for(const index of [0,1])test(`FABRICATED full ${index?'phone':'desktop'} schema
   const f=fixture(index);assert.equal(f.fabricated,true);assert.equal(f.observation.notNativeEvidence,true);
   assert.match(f.warning,/never native/);assert.equal(f.observation.browserVersion,'FABRICATED-NOT-EXECUTED');verify(f);
 });
-test('native case contract remains exactly 45 checkpoints, 53 legs, 18 captures, six walks and ten dashes per viewport',()=>{
+test('native case contract remains exactly 45 checkpoints, 51 ordinary + two setup legs, 18 captures, six walks and ten dashes per viewport',()=>{
   assert.equal(COURTYARD_ACTIONS.length,45);assert.equal(new Set(COURTYARD_ACTIONS.map(a=>a.label)).size,45);
-  assert.equal(COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0),53);assert.equal(COURTYARD_VIEWS.length,18);
+  assert.equal(COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0),51);
+  assert.deepEqual(COURTYARD_ACTIONS.filter(a=>a.kind==='setup').map(a=>a.label),['west-inner-ready','west-inner-dash-ready']);assert.equal(COURTYARD_VIEWS.length,18);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='walk').length,6);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='dash'&&!a.target.endsWith('-end')).length,6);
   assert.equal(COURTYARD_ACTIONS.filter(a=>a.kind==='dash'&&a.target.endsWith('-end')).length,4);
@@ -320,3 +321,46 @@ test('FABRICATED cleanup tail rejects repeated engine ID despite a fresh timesta
   const f=fixture(),trace=f.observation.afterCleanup.plazaMotion,p=structuredClone(trace.at(-1));p.at+=16;trace.push(p);
   assert.throws(()=>verify(f),/Every observed native segment/);
 });
+
+negativeAction('walk with its first blocked frame before any actual approach','west-inner-walk-blocked',f=>{
+  const p=activeSamples(f).find(p=>p.intent.y===1),previous=f.motion[f.motion.indexOf(p)-1];p.x=previous.x;p.y=previous.y;
+},/approaches before its first blocked frame/);
+
+// Bounded-region challenge examples use independent literal geometry and actual
+// per-frame updates. They do not infer engine evidence from elapsed wall time.
+function regionWalk({x=1472,y=624,updates=5,q=27.1326}={}){
+  let pos=[x,y];const make=(at,delta,intent)=>({at,area:0,x:pos[0],y:pos[1],intent:{x:0,y:intent},dash:{cd:0,timer:0,lastDir:{x:0,y:1}},courtyardFrame:{delta}});
+  const motion=[make(0,16,0)];
+  for(let i=0;i<updates;i++){
+    const end=[pos[0],pos[1]+q];if(Object.values(FABRICATED_SOLIDS).every(poly=>fabricatedSweep(pos,end,poly)>38))pos=end;
+    motion.push(make((i+1)*625/updates,q/.22,1));
+  }
+  motion.push(make(700,16,0));
+  return {action:{kind:'walk',key:'s',target:'west'},before:{at:1,scene:{gameplay:motion[0]}},after:{at:701,scene:{gameplay:motion.at(-1)}},motion};
+}
+for(const x of [1440,1472])for(const y of [624,656])for(const q of [26.7652,27.1326])test(`FABRICATED five observed held updates retain real approach/two blocks from region corner ${x},${y},q${q}`,()=>verifyAction(regionWalk({x,y,q})));
+test('FABRICATED700ms hold with too few actual updates cannot manufacture blocking evidence',()=>{
+  assert.throws(()=>verifyAction(regionWalk({updates:3})),/two held frames/);
+  assert.throws(()=>verifyAction(regionWalk({updates:2})),/Sustained/);
+});
+function regionDash({leads=0,delta=123.33}={}){
+  const start=[1440,638],q=27.1326,activationStart=[start[0],start[1]+leads*q];
+  const f=standaloneDash({start:activationStart,delta});
+  const prefix=Array.from({length:leads+1},(_,i)=>({...structuredClone(f.motion[0]),at:-100*(leads+1-i),x:start[0],y:start[1]+i*q,intent:{x:0,y:i?1:0},courtyardFrame:{delta:q/.22}}));
+  f.motion=[...prefix,...f.motion];f.before={at:prefix[0].at+1,scene:{gameplay:prefix[0]}};
+  return f;
+}
+for(const leads of [0,1,2])test(`FABRICATED dash checks actual preactivation pose after ${leads} south updates`,()=>verifyAction(regionDash({leads})));
+test('FABRICATED two-lead delta250 counterexample still fails the full attempted room check',()=>assert.throws(()=>verifyAction(regionDash({leads:2,delta:250})),/original convex room boundary/));
+test('FABRICATED delta250 is permitted for zero-lead activation insideR when actual full sweep is safe',()=>verifyAction(regionDash({leads:0,delta:250})));
+
+negative('safe out-and-back native input after returned setup but before checkpoint',f=>{
+  const s=state(f),r=f.driver.setups[0],settled=r.after,cut=settled.courtyardFrame.frame+1;
+  // Preserve every existing record and insert truthful consecutive raw frames.
+  // This is safe physical movement but unreported input after setup returned.
+  const shift=v=>{if(!v||typeof v!=='object')return;if(v.courtyardFrame?.frame>=cut)v.courtyardFrame.frame+=3;for(const value of Object.values(v))shift(value);};
+  shift(f);
+  const extra=[{dt:4,y:640.88,intent:1},{dt:8,y:640,intent:-1},{dt:12,y:640,intent:0}].map((v,i)=>({...structuredClone(settled),at:settled.at+v.dt,y:v.y,intent:{x:0,y:v.intent},dash:{...structuredClone(settled.dash),lastDir:{x:0,y:v.intent||-1}},courtyardFrame:{...structuredClone(settled.courtyardFrame),frame:cut+i,delta:4}}));
+  const at=s.plazaMotion.findIndex(p=>p.at>settled.at);s.plazaMotion.splice(at,0,...extra);
+  const cp=game(f,'west-inner-ready');cp.dash.lastDir={x:0,y:-1};s.plazaMotion.find(p=>p.at===cp.at).dash.lastDir={x:0,y:-1};
+},{message:/Completed setup stays at its settled pose/});

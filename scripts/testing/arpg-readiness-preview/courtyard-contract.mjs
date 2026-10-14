@@ -5,21 +5,23 @@ export const COURTYARD_TITLES = [
   'phone native courtyard wall blocks shortcuts while both open ends and gate remain usable'
 ];
 export const COURTYARD_LIMITS = Object.freeze({caseMs:600000,legs:64,pulses:1200,motion:12000});
-/** @typedef {{kind:'move',points:number[][],label:string,view?:string}|{kind:'walk'|'dash',key:string,label:string,target:string,view?:string}|{kind:'save'|'depart'|'return',label:string,view?:string}} CourtyardAction */
+// This explicit goal is limited to the two west-inner challenge preparations.
+export const WEST_INNER_SETUP = Object.freeze({minX:1440,maxX:1472,minY:624,maxY:656});
+/** @typedef {{kind:'setup',region:'west-inner',target:'west',points?:number[][],label:string,view?:string}|{kind:'move',points:number[][],label:string,view?:string}|{kind:'walk'|'dash',key:string,label:string,target:string,view?:string}|{kind:'save'|'depart'|'return',label:string,view?:string}} CourtyardAction */
 /** @returns {{kind:'move',points:number[][],label:string,view?:string}} */
 const move=(points,label,view)=>({kind:'move',points,label,...(view?{view}: {})});
 /** @returns {{kind:'walk',key:string,label:string,target:string,view?:string}} */
 const walk=(key,label,target)=>({kind:'walk',key,label,target});
 /** @returns {{kind:'dash',key:string,label:string,target:string,view?:string}} */
 const dash=(key,label,target,view)=>({kind:'dash',key,label,target,...(view?{view}: {})});
-// Cardinal staircase corridors, not a second steering controller. The original
-// waypointStep, target band, watchdog, quantum and chord rules remain active.
+// Ordinary cardinal staircase moves retain the original waypointStep, target
+// band, watchdog and conditional correction rules. Only setup uses a region.
 /** @type {CourtyardAction[]} */
 export const COURTYARD_ACTIONS = [
   {kind:'save',label:'courtyard-home',view:'home'},
-  move([[1456,536],[1456,688]],'west-inner-ready','west-inner-ready'),
+  {kind:'setup',region:'west-inner',target:'west',points:[[1456,536]],label:'west-inner-ready',view:'west-inner-ready'},
   walk('s','west-inner-walk-blocked','west'),
-  move([[1456,688]],'west-inner-dash-ready'),
+  {kind:'setup',region:'west-inner',target:'west',label:'west-inner-dash-ready'},
   dash('s','west-inner-dash-blocked','west','west-inner-blocked'),
   move([[1456,536],[1088,536],[1088,400]],'west-end-forward-ready'),
   dash('s','west-end-forward-dash','west-end','west-end-forward-dash'),

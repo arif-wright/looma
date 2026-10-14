@@ -1,3 +1,4 @@
+import { beforeWestInnerSetup } from './courtyard-setup-preservation.mjs';
 // Fabricated report/schema checks only; never emit these as browser evidence.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -48,7 +49,7 @@ for(const [file,hash,replacements]of [
  ['visual-verifier.mjs','e0e3d92ffbdab63139d209c07fd6e97659a2906417f816cef8faeee24b24539b',[
   ["assert(isDeepStrictEqual(history.history, driver.captures.map(capture => capture.metadata)), 'Capture history must retain every complete metadata snapshot')",'assert.deepEqual(history.history, driver.captures.map(capture => capture.metadata))']]]
 ])test(`only bounded diagnostic formatting changes the existing ${file} equality guards`,()=>{
- let source=readFileSync(new URL(file,import.meta.url),'utf8');
+ let source=beforeWestInnerSetup(file,readFileSync(new URL(file,import.meta.url),'utf8'));
  source=source.replace("import { isDeepStrictEqual } from 'node:util';\n",'');
  for(const [updated,original]of replacements){assert.equal(source.split(updated).length,2);source=source.replace(updated,original);}
  assert.equal(createHash('sha256').update(source).digest('hex'),hash);

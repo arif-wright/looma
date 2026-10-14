@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { isDeepStrictEqual } from 'node:util';
-import { COURTYARD_ACTIONS, COURTYARD_LIMITS, COURTYARD_VIEWS, COURTYARD_SOLIDS, courtyardDirection, courtyardTraceIssues, courtyardScreenshot } from './courtyard-contract.mjs';
+import { COURTYARD_ACTIONS, COURTYARD_LIMITS, COURTYARD_VIEWS, COURTYARD_SOLIDS, WEST_INNER_SETUP, courtyardDirection, courtyardTraceIssues, courtyardScreenshot } from './courtyard-contract.mjs';
 import { courtyardGraphicsIssues, courtyardOwnershipIssues } from './courtyard-graphics.mjs';
 import { sweptDistance, roomAllows, plazaObjectsIssues, plazaGeometryIssues, PLAZA_KEYS } from './plaza-contract.mjs';
 import { townGroundIssues, townBoundaryIssues, townBackdropIssues } from './town-ground.mjs';
@@ -22,6 +22,7 @@ export function verifyCourtyardAction(action,before,after,motion){
     assert(pairs.some(({p,prev})=>Math.hypot(p.x-prev.x,p.y-prev.y)>0),'Walk genuinely approaches the wall');
     const blocked=pairs.filter(({p,prev})=>p.x===prev.x&&p.y===prev.y);
     assert(blocked.length>=2,'At least two held frames are blocked');
+    assert(pairs.some(({p,prev})=>p.at<blocked[0].p.at&&Math.hypot(p.x-prev.x,p.y-prev.y)>0),'Walk genuinely approaches before its first blocked frame');
     for(const p of held)assert(Number.isFinite(p.courtyardFrame?.delta)&&p.courtyardFrame.delta>0,'Actual engine delta required');
     const targets=targetNames(action.target);
     for(const{p,prev}of blocked){
@@ -82,8 +83,9 @@ export function verifyCourtyardState(observation,driver,index){
   assert.deepEqual(c.api,s.api);assert(isDeepStrictEqual(c.checkpoints,s.checkpoints),'Cleanup must retain every complete checkpoint');assert(isDeepStrictEqual(c.visuals,s.visuals),'Cleanup must retain every complete visual snapshot');assert.deepEqual(c.plazaMotion.slice(0,s.plazaMotion.length),s.plazaMotion);
   assert.equal(driver.kind,'native-courtyard-driver');assert.equal(driver.index,index);assert.equal(driver.completed,true);
   assert.deepEqual(driver.completedActions,COURTYARD_ACTIONS.map(a=>a.label));
-  assert.equal(driver.legs,COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0));assert(driver.legs<=COURTYARD_LIMITS.legs);
+  assert.equal(driver.legs,COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0)+(a.kind==='setup'?1:0),0));assert(driver.legs<=COURTYARD_LIMITS.legs);
   assert(Number.isSafeInteger(driver.pulses)&&driver.pulses>0&&driver.pulses<=COURTYARD_LIMITS.pulses);
+  assert.deepEqual(driver.setups?.map(r=>r.label),COURTYARD_ACTIONS.filter(a=>a.kind==='setup').map(a=>a.label),'Exactly one complete receipt per setup action');
   const points=s.checkpoints;assert.deepEqual(points.map(p=>p.label),COURTYARD_ACTIONS.map(a=>a.label));
   const at=label=>points.find(p=>p.label===label),home=points[0].scene.gameplay,zoom=home.viewportGeometry.camera.zoom;
   assert(Number.isFinite(zoom)&&zoom>0,'Original fixed hero zoom must be observed');
@@ -110,7 +112,8 @@ export function verifyCourtyardState(observation,driver,index){
     assert.deepEqual(g.courtyardLifecycle.current.map(o=>o.objectId),g.townArt.ground.courtyard.map(o=>o.objectId));
     if(a.kind==='move'){const target=a.points.at(-1);assert(Math.abs(g.x-target[0])<=8&&Math.abs(g.y-target[1])<=8,'Unchanged native target band');}
     if(a.kind!=='return'){assert.equal(p.starts,0);assert.equal(g.elapsed,0);}else{assert.equal(p.starts,1);assert.equal(g.returned,true);assert.equal(g.outcome,'retreated');assert(g.elapsed>0&&g.elapsed<FLOW_CAP_MS);assert(Math.hypot(g.x-1472,g.y-536)<1);empty(townGroundIssues(g));assert(g.courtyardLifecycle.initial.every(o=>o.destroyed),'Every original wall object was destroyed');}
-    if(i)verifyCourtyardAction(a,points[i-1],p,s.plazaMotion);
+    if(a.kind==='setup')verifyWestInnerSetup(a,points[i-1],p,s.plazaMotion,driver.setups.find(r=>r.label===a.label));
+    else if(i)verifyCourtyardAction(a,points[i-1],p,s.plazaMotion);
   }
   if(index===1)for(const p of[points[0],points.at(-1)])empty(phoneGeometryIssues(p.scene.gameplay.viewportGeometry));
   for(const[before,after,west]of[['west-walk-inner','west-walk-outer',true],['west-walk-outer','west-walk-inner-return',true],['east-walk-outer','east-walk-inner',false],['east-walk-inner','east-walk-outer-return',false]]){
@@ -149,4 +152,64 @@ export function verifyCourtyardState(observation,driver,index){
   assert(start.at>=arrived.at&&start.responseAt<=departed.at&&sign.at>=departed.at&&complete.at>=sign.at&&player.at>=complete.at&&player.at<=returned.at);
   assert.deepEqual(s.visuals.map(v=>v.label),COURTYARD_VIEWS.map(v=>courtyardScreenshot(index,v)));
   for(const visual of s.visuals){const action=COURTYARD_ACTIONS.find(a=>a.view&&courtyardScreenshot(index,a.view)===visual.label),p=at(action.label);assert.deepEqual(visual.scene.gameplay,p.scene.gameplay);assert.deepEqual(visual.viewport,index===1?{width:390,height:844}:{width:1280,height:900});}
+}
+
+// Independent receipt acceptance: the controller's success is not evidence.
+// Existing probe/motion equality checks also require this final frame to be a
+// fresh neutral same-frame full probe, with unchanged graphics/pixel obligations.
+export function verifyWestInnerSetup(action,before,after,motion,receipt) {
+  assert.equal(action.region,'west-inner');assert.equal(action.target,'west');
+  assert(['west-inner-ready','west-inner-dash-ready'].includes(action.label),'Only the two explicit west-inner preparations use a region');
+  const previousCheckpoint=before.scene.gameplay,b=after.scene.gameplay,r=WEST_INNER_SETUP;
+  assert(receipt&&receipt.label===action.label&&receipt.before&&receipt.after,'Exact setup operation receipt required');
+  assert.equal(receipt.sceneId,before.scene.id,'Setup receipt retains the same scene identity');
+  const a=receipt.before,settled=receipt.after;
+  assert(a.at>previousCheckpoint.at&&settled.at>=a.at&&b.at>=settled.at,'Fresh setup operation lies between its checkpoints');
+  assert.deepEqual(a.intent,{x:0,y:0},'Setup receipt anchors must be neutral');assert.deepEqual(settled.intent,{x:0,y:0},'Setup receipt anchors must be neutral');
+  assert.equal(settled.x,b.x);assert.equal(settled.y,b.y);
+  if(action.points?.length){
+    const target=action.points.at(-1);
+    assert(Math.abs(a.x-target[0])<=8&&Math.abs(a.y-target[1])<=8,'Initial ordinary setup alignment retains its original target band');
+  }else{assert.equal(a.x,previousCheckpoint.x);assert.equal(a.y,previousCheckpoint.y);}
+  assert.equal(before.scene.id,after.scene.id,'Setup retains its original scene');
+  assert(Number.isFinite(b.x)&&Number.isFinite(b.y)&&b.x>=r.minX&&b.x<=r.maxX&&b.y>=r.minY&&b.y<=r.maxY,'Fresh setup receipt must be in the bounded west-inner region');
+  assert.deepEqual(b.intent,{x:0,y:0});assert.equal(b.dash.timer,0);
+  assert(b.at>a.at&&b.courtyardFrame.frame>a.courtyardFrame.frame,'Setup receipt must be fresh');
+  const first=motion.findIndex(p=>p.at===a.at),last=motion.findIndex(p=>p.at===b.at);
+  assert(first>=0&&last>first,'Setup needs exact before/after motion anchors');
+  const previousIndex=motion.findIndex(p=>p.at===previousCheckpoint.at);
+  assert(previousIndex>=0&&previousIndex<first,'Setup retains its previous checkpoint anchor');
+  const prefix=motion.slice(previousIndex,first+1);
+  for(const [i,p] of prefix.entries()){
+    const previous=i?prefix[i-1]:p;
+    if(i)assert(p.courtyardFrame.frame===previous.courtyardFrame.frame+1,'Setup alignment prefix is complete');
+    if(!action.points?.length){assert.equal(p.x,previousCheckpoint.x);assert.equal(p.y,previousCheckpoint.y);assert.deepEqual(p.intent,{x:0,y:0},'No unreported setup movement before the first receipt');}
+  }
+  const samples=motion.slice(first,last+1),settledFrame=samples.find(p=>p.at===settled.at);
+  assert(settledFrame,'Exact settled setup anchor required');
+  for(const key of ['at','area','x','y','intent','dash','courtyardFrame'])assert.deepEqual(settledFrame[key],settled[key],'Settled setup anchor matches the entire native receipt');
+  for(const key of ['at','area','x','y','intent','dash','courtyardFrame']){
+    assert.deepEqual(samples[0][key],a[key],'Setup start anchor matches the entire native receipt');
+    assert.deepEqual(samples.at(-1)[key],b[key],'Setup end anchor matches the entire native receipt');
+  }
+  for(const [i,p] of samples.entries()) {
+    assert(['x','y','at'].every(k=>Number.isFinite(p[k])),'Finite setup motion required');
+    assert.equal(p.area,0,'No setup area excursion');
+    assert(p.x>=r.minX&&p.x<=r.maxX&&p.y>=528&&p.y<.5*p.x+24,'Setup stays in the central north-side lane');
+    assert(roomAllows(xy(p)),'Setup remains in the original room');
+    assert.equal(p.dash.timer,0,'No active setup dash');assert.equal(p.intent.x,0,'No lateral setup intent');
+    if(p.at>settled.at){
+      assert.equal(p.x,settled.x,'Completed setup stays at its settled pose');assert.equal(p.y,settled.y,'Completed setup stays at its settled pose');
+      assert.deepEqual(p.intent,{x:0,y:0},'Completed setup stays neutral until its checkpoint');
+    }
+    assert([-1,0,1].includes(p.intent.y));
+    assert(Number.isSafeInteger(p.courtyardFrame?.frame)&&Number.isFinite(p.courtyardFrame.delta)&&p.courtyardFrame.delta>=0,'Actual setup engine frame required');
+    const previous=i?samples[i-1]:p;
+    if(i){
+      assert(p.at>previous.at&&p.courtyardFrame.frame===previous.courtyardFrame.frame+1,'Setup frames are fresh, contiguous and chronological');
+      assert.equal(p.x,previous.x,'Setup never moves laterally near the wall');
+      if(p.y!==previous.y)assert(p.courtyardFrame.delta>0&&Math.sign(p.y-previous.y)===p.intent.y,'Setup displacement matches native vertical intent');
+    }
+    for(const [name,poly] of Object.entries(COURTYARD_SOLIDS))assert(sweptDistance(xy(previous),xy(p),poly)>38,`Every complete setup sweep clears ${name} strictly`);
+  }
 }

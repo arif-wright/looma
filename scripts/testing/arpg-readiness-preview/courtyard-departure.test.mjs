@@ -1,3 +1,4 @@
+import { beforeWestInnerSetup } from './courtyard-setup-preservation.mjs';
 // Offline native-call and deadline models. No browser, engine execution or
 // native departure proof is produced by these tests.
 import assert from 'node:assert/strict';
@@ -145,15 +146,15 @@ test('native acknowledgment retains both exact historical expedition assertions;
 });
 
 test('native driver changes only the E departure import and call, preserving every route, capture, reward and cleanup assertion', () => {
-  let original = driver.replace("import { departCourtyard } from './courtyard-departure';\n", '').replace('gameplay, screen', 'gameplay, expedition, screen');
+  let original = beforeWestInnerSetup('courtyard-browser.ts',driver).replace("import { departCourtyard } from './courtyard-departure';\n", '').replace('gameplay, screen', 'gameplay, expedition, screen');
   original = original.replace(departure.getText(ast), "page.keyboard.press('e');await expedition(page)");
   assert.equal(createHash('sha256').update(original).digest('hex'), '11e859670c44e0c1388afcf63f737ae68b611e85d5fb2afd52a0d8ddd87e3c25');
   assert.equal((driver.match(/departCourtyard\(page/g) || []).length, 1);
 });
 
 test('native budgets, zero retries, session cardinality and historical navigation remain pinned', () => {
-  const pins = JSON.parse('{"./guard.ts":"853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173","./plaza-browser.ts":"cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac","./courtyard-navigation.ts":"92a9e52a9a9bc9f2b88f94b9b601925378d9bc5060851ff14dbb67953b74f709","./courtyard-navigation.test.mjs":"f332bcb8bbd18ce9e3e7511eb12064a3715e0f0797deee377414ed5f178decd3","./courtyard-contract.mjs":"013952b2b1b29ad63a1610ccf8d314f4be749bfd2cb7d150f41a5269073e5d3c","./verify-courtyard.mjs":"fac548f0a2d3b433f4959308217a3d71f075ad178cf111a5736e1545bab21e41","./courtyard-native.test.mjs":"9d293e5ab9eaca14accdafad095912aae00e7b57b8b1cdcc0c88622ee3643a5f","./courtyard.playwright.config.ts":"e623b1c92030f4a1b1438b0c107937eb4f54def758eea59199762b450f766c02","./protocol.mjs":"3a2557002f82071c4d0e4b9ae0763bda8dd8f5311058d55f81ba81d8dbe81643"}');
-  for (const [name, hash] of Object.entries(pins)) assert.equal(createHash('sha256').update(read(name)).digest('hex'), hash, name);
+  const pins = JSON.parse('{"./guard.ts":"853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173","./plaza-browser.ts":"cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac","./courtyard-navigation.ts":"92a9e52a9a9bc9f2b88f94b9b601925378d9bc5060851ff14dbb67953b74f709","./courtyard-navigation.test.mjs":"f332bcb8bbd18ce9e3e7511eb12064a3715e0f0797deee377414ed5f178decd3","./courtyard-contract.mjs":"013952b2b1b29ad63a1610ccf8d314f4be749bfd2cb7d150f41a5269073e5d3c","./verify-courtyard.mjs":"fac548f0a2d3b433f4959308217a3d71f075ad178cf111a5736e1545bab21e41","./courtyard-native.test.mjs":"a2ffcefc3af293d47726965a5e1b9712c4ade9c4e04bf74d53cbd2af856380c5","./courtyard.playwright.config.ts":"e623b1c92030f4a1b1438b0c107937eb4f54def758eea59199762b450f766c02","./protocol.mjs":"3a2557002f82071c4d0e4b9ae0763bda8dd8f5311058d55f81ba81d8dbe81643"}');
+  for (const [name, hash] of Object.entries(pins)) assert.equal(createHash('sha256').update(beforeWestInnerSetup(name.replace('./',''),read(name))).digest('hex'), hash, name);
   assert.match(read('./courtyard.playwright.config.ts'), /workers: 1, retries: 0, timeout: 600_000/);
 });
 

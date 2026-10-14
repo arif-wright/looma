@@ -89,6 +89,7 @@ export function fabricateNativeCourtyard(index=0){
   const keys=[...Array.from({length:249},(_,i)=>`fabricated-key-${i}`),'town_cobble_material_v1','town_corner_shop_v1','town_corner_lantern_v1','town_ruins_entrance_v1',...PLAZA_KEYS];
   const scene={id:1,queuedKeys:keys,decodedKeys:copy(keys),missingKeys:[],preloadAt:0,createAt:1,framesAfterCreate:1,destroyed:false,loadErrors:[],loadComplete:true,totalFailed:0};
   const state={courtyardEvidence:{evidenceMode:'native-courtyard',nativeMovementEvidence:true,visualEnabled:false,visual:null},ready:true,profile:'return-flow',blocked:[],rewardMutations:copy(EXPECTED_REWARD_MUTATIONS),api:[],scenes:[scene],checkpoints:[],visuals:[],pages:[{status:'Result saved. Town is untimed; depart again whenever you’re ready.'}],plazaMotion:[],plazaMotionOverflow:false};
+  const setups=[];
   let time=1000,pos=[1472,536],cd=0,lastDir=[0,1],area=0,recreated=false;
   const push=(delta,intent=[0,0])=>{
     time+=delta;cd=Math.max(0,cd-delta);
@@ -120,6 +121,11 @@ export function fabricateNativeCourtyard(index=0){
   };
   for(const action of COURTYARD_ACTIONS){
     if(action.kind==='move')action.points.forEach(move);
+    // Explicit fabricated region fixture; retain independent physical stepping.
+    if(action.kind==='setup'){
+      (action.points??[]).forEach(move);push(16);const before=copy(state.plazaMotion.at(-1));
+      move([pos[0],640]);push(16);setups.push({label:action.label,sceneId:scene.id,before,after:copy(state.plazaMotion.at(-1))});
+    }
     if(action.kind==='walk')for(let i=0;i<44;i++)step(direction(action.key),16);
     if(action.kind==='dash'){
       while(cd>0)push(Math.min(16,cd));
@@ -141,7 +147,7 @@ export function fabricateNativeCourtyard(index=0){
     {path:'/api/games/player/state',method:'GET',at:returned.at-10}];
   scene.gameplay=copy(returned.scene.gameplay);
   const observation={fabricatedForVerifierUnitTests:true,notNativeEvidence:true,browserVersion:'FABRICATED-NOT-EXECUTED',blocked:[],errors:[],unexpectedConsoleErrors:[],cleanupErrors:[],consoleErrors:[],state,afterCleanup:{...copy(state),scenes:[{...copy(scene),destroyed:true}],canvasCount:0,authCallbacks:0,mountedPages:[]}};
-  const driver={kind:'native-courtyard-driver',index,legs:COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0),0),pulses:800,completed:true,completedActions:COURTYARD_ACTIONS.map(a=>a.label)};
+  const driver={kind:'native-courtyard-driver',index,legs:COURTYARD_ACTIONS.reduce((n,a)=>n+(a.points?.length??0)+(a.kind==='setup'?1:0),0),pulses:800,setups,completed:true,completedActions:COURTYARD_ACTIONS.map(a=>a.label)};
   return {fabricated:true,warning:'FABRICATED schema input; never native browser, engine, pixel or visual proof.',observation,driver,index};
 }
 
