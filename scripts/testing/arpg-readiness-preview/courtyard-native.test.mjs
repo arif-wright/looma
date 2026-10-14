@@ -1,3 +1,4 @@
+import { beforePlazaDeparture } from './plaza-departure-preservation.mjs';
 // OFFLINE FABRICATED SCHEMA TESTS ONLY. A passing test is not native movement,
 // browser execution, captured pixels, visual approval, or release evidence.
 import assert from 'node:assert/strict';
@@ -225,7 +226,7 @@ const ORIGINAL_HASHES={
 for(const [name,hash]of Object.entries(ORIGINAL_HASHES))test(`original ${name} remains byte-for-byte preserved`,()=>assert.equal(sha(source(name)),hash));
 test('original fourteen readiness cases and twenty-one captures remain unchanged',()=>{assert.equal(TITLES.length,14);assert.equal(TITLES.flatMap((_,i)=>requiredScreenshots(i)).length,21);});
 test('original native mover declaration/body remain literal-preserved with exports only',()=>{
-  const normalized=source('plaza-browser.ts')
+  const normalized=beforePlazaDeparture(source('plaza-browser.ts'))
     .replace('\n// Shared native primitives; the original exploration calls keep their defaults.\nexport { release, position, releasedFrame, freshGameplay, move, walkInto, dashInto };\n','');
   assert.equal(sha(normalized),'35567c3633c5cf94ebd62915b466e5dc308626289a3f9dfd1625593a94dcbe04');
 });

@@ -87,7 +87,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/plaza-browser.ts",
-      "sha256": "cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac"
+      "sha256": "6babf820e9afe0ad69dfa01ba722439dfc66875a1520f219fc225c0f549efeed"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/plaza-contract.mjs",

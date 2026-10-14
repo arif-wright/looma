@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-// Native courtyard only: one E edge stays held until the existing departure
+// Native exploration departure: one E edge stays held until the existing departure
 // acknowledgment. Key delivery and both assertions share the original 15s cap.
 export async function departCourtyard(page: Page, acknowledge: (remaining: () => number) => Promise<void>) {
   const deadline = performance.now() + 15_000;

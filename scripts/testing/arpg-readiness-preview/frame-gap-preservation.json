@@ -90,7 +90,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/plaza-browser.ts",
-      "sha256": "cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac"
+      "sha256": "6babf820e9afe0ad69dfa01ba722439dfc66875a1520f219fc225c0f549efeed"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/plaza-contract.mjs",
@@ -130,7 +130,7 @@
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.json",
-      "sha256": "13409424a20a2a28c39134ad70968227e96728236cc13517f30fe75b89c6dcf2"
+      "sha256": "174b9b879b443cdd79575a09c7e110a0cff6c4c3827985fca2973d9cd9676a02"
     },
     {
       "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.test.mjs",

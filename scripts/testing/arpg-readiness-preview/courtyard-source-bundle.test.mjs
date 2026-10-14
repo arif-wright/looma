@@ -1,3 +1,4 @@
+import { beforePlazaDeparture } from './plaza-departure-preservation.mjs';
 // Static bundle/preservation checks. These are not a Vite build, full TypeScript
 // check, Playwright discovery or browser launch.
 import assert from 'node:assert/strict';
@@ -47,7 +48,7 @@ test('original outbound isolation/cleanup guard changes only native-return title
  assert.equal(hash(s),"58fcfd7b06cebd1b788218a8e8d348a8301c2d7997cb5e102fac30df8400ac6a");
 });
 test('original native controller is literal-preserved with shared exports only',()=>{
- let s=read('scripts/testing/arpg-readiness-preview/plaza-browser.ts');
+ let s=beforePlazaDeparture(read('scripts/testing/arpg-readiness-preview/plaza-browser.ts'));
  s=s.replace('\n// Shared native primitives; the original exploration calls keep their defaults.\nexport { release, position, releasedFrame, freshGameplay, move, walkInto, dashInto };\n','');
  assert.equal(hash(s),"35567c3633c5cf94ebd62915b466e5dc308626289a3f9dfd1625593a94dcbe04");
 });

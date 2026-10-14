@@ -202,10 +202,10 @@ test('real checked-in S4 PNG drives the unchanged fill observer to exactly one c
 
 const preserved={
   "guard.ts": "853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173",
-  "plaza-browser.ts": "cf3565826545746b4087f76102b4f58f8f08f8a957f9d0ffaf6b06321ae9dcac",
+  "plaza-browser.ts": "6babf820e9afe0ad69dfa01ba722439dfc66875a1520f219fc225c0f549efeed",
   "plaza-navigation.mjs": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322",
   "courtyard-browser.ts": "dc3d44dca902103db9aa98d776cbf4bd3f5cc75feeafc83603fb469c411c1ad3",
-  "courtyard-departure.ts": "5c733534948ce620b4018307aea19ac842c7d7c55b837441b69a81dba6ee5101",
+  "courtyard-departure.ts": "99a80e091aae4dc2e1c8eda98e7c75511b1046d770ab02ae2ffffc8fd1c9a9b6",
   "courtyard-visibility.mjs": "28eee9916e3ff9ecbc0a19da3973f480691da5ff0ba42d1a0f165f61ec6abbc6",
   "courtyard-capture-contract.mjs": "2cfedf4e8788969f9bccfd12bcb8e8867a77964830f9c06f40e791d393498a11",
   "visual-observer.ts": "c25f34756c9fab3d384a9245514eb56842857e6d5d3911ca4af5a25d93e1ae25",
