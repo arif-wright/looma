@@ -1,5 +1,6 @@
 // Test-only exact reversal of the bounded measured-frame perimeter correction.
 // Runtime modules never import this historical preservation adapter.
+import { beforeObserverScope } from './observer-scope-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "observe-scene.ts": [
@@ -152,6 +153,7 @@ const changes={
   ]
 };
 export function beforePerimeterCorrection(name,source) {
+  source=beforeObserverScope(name,source);
   name=name.split('/').at(-1);
   if(!changes[name])return source;
   source=String(source);

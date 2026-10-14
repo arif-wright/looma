@@ -1,6 +1,7 @@
 // Offline observer proof only. Real observer/production wall source is loaded;
 // Phaser objects, decoded source images and post-render lists are test doubles.
 // No renderer, GPU pixels, screenshots or native game outcome is simulated.
+import { beforeObserverScope } from './observer-scope-preservation.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -71,7 +72,7 @@ const phaser = { GameObjects: { Graphics, Image, Sprite, Text, Ellipse }, Loader
   Scenes: { Events: { CREATE: 'create' } }, Core: { Events: { POST_RENDER: 'postrender', DESTROY: 'destroy' } } };
 const fixture = { scenes: [], plazaMotion: [], plazaMotionOverflow: false, plazaLatestMotion: null, plazaProbeRequest: null };
 const { createTownCourtyard } = loadTs(resolve(root, 'src/lib/games/arpg/assets/townCourtyard.ts'), {});
-const { readCourtyardVisibility } = loadTs(resolve(here, 'observe-scene.ts'), {
+const { readCourtyardVisibility, readCourtyardFrame } = loadTs(resolve(here, 'observe-scene.ts'), {
   './courtyard-capture': {courtyardCapture:{fulfill(){}},readCourtyardLifecycle:()=>({})},
   phaser, './courtyard-graphics.mjs': graphics, './courtyard-visibility.mjs': visibility,
   './alpha-bounds.mjs': alphaBounds, './runtime': { fixture }, '../../../src/lib/games/arpg/scenes/GameScene': { GameScene }
@@ -374,7 +375,8 @@ test('above-hero per-wall/per-fill intersections distinguish geometric overlap a
   assert(r.walls[2].fills.slice(3).every(f=>f.intersectedSamples===0&&f.contributingSamples===0));
   assert.equal(r.walls[3].contributingSamples, 0); approx(r.meanTransmission, .72 ** 2);
 });
-test('all plaza motion reads native game.loop.delta including ordinary readiness', () => {
+test('ordinary readiness motion reads native game.loop.delta', () => {
+  window.__arpgReturnFlow = true; window.__arpgWalkFrameFlow = false;
   window.__arpgPlazaFlow = true; window.__arpgCourtyardFlow = false; fixture.plazaProbeRequest = null;
   const m = make(); wire(m); m.game.events.emit('postrender');
   const old = fixture.plazaLatestMotion;
@@ -428,6 +430,7 @@ test('Phaser3.90 completed transparent fade-in does not obscure the frame',()=>{
 });
 
 test('readiness frame records passive live update guards and cloned velocity without callback invocation',()=>{
+ window.__arpgReturnFlow=true;window.__arpgWalkFrameFlow=false;
  window.__arpgPlazaFlow=true;window.__arpgCourtyardFlow=false;window.__arpgCourtyardVisualFlow=false;fixture.plazaProbeRequest=null;
  const m=make(),observed=wire(m);const velocity={vx:0,vy:-193.6,speed:220};
  Object.assign(m.scene,{ended:false,runState:'running',areaEpoch:3,handlers:{isCurrent:()=>{throw Error('Observer must never call ownership handler');}}});
@@ -445,4 +448,82 @@ test('readiness frame records passive live update guards and cloned velocity wit
  window.__arpgCourtyardFlow=true;m.game.events.emit('postrender');assert.equal(Object.hasOwn(fixture.plazaLatestMotion.courtyardFrame,'movement'),false);
  window.__arpgCourtyardFlow=false;window.__arpgCourtyardVisualFlow=true;m.game.events.emit('postrender');assert.equal(Object.hasOwn(fixture.plazaLatestMotion.courtyardFrame,'movement'),false);
  window.__arpgCourtyardVisualFlow=false;
+});
+
+// Observer producer truth table, not fabricated wire/schema data. Execute the
+// registered callback and direct reader from the actual transpiled source.
+const modeFlags=['__arpgPlazaFlow','__arpgReturnFlow','__arpgCourtyardFlow','__arpgCourtyardVisualFlow','__arpgWalkFrameFlow'];
+function producedMode(flags) {
+ const previous=globalThis.window;
+ globalThis.window={...flags};fixture.scenes=[];fixture.plazaMotion=[];fixture.plazaLatestMotion=null;fixture.plazaProbeRequest=null;
+ try{
+  const m=make(),observed=wire(m),velocity={vx:0,vy:0,speed:220};
+  Object.assign(m.scene,{ended:false,runState:'running',areaEpoch:3,handlers:{isCurrent:()=>{throw Error('Producer must not invoke owner callback');}}});
+  m.scene.sys.settings={status:5};m.game.pendingDestroy=false;m.scene.world.getVelocity=()=>velocity;
+  const frame=flags.__arpgCourtyardFlow===true||flags.__arpgCourtyardVisualFlow===true||
+   (flags.__arpgPlazaFlow===true&&flags.__arpgReturnFlow===true&&flags.__arpgCourtyardFlow!==true&&flags.__arpgCourtyardVisualFlow!==true&&flags.__arpgWalkFrameFlow!==true);
+  const movement=flags.__arpgPlazaFlow===true&&flags.__arpgReturnFlow===true&&flags.__arpgCourtyardFlow!==true&&flags.__arpgCourtyardVisualFlow!==true&&flags.__arpgWalkFrameFlow!==true;
+  const check=()=>{
+   const direct=readCourtyardFrame(m.scene,m.scene),g=observed.gameplay;
+   assert.deepEqual(Object.keys(direct).sort(),movement?['delta','frame','hero','movement']:['delta','frame','hero']);
+   assert.equal(Object.hasOwn(g,'courtyardFrame'),frame);
+   if(frame)assert.deepEqual(g.courtyardFrame,direct);
+   if(flags.__arpgPlazaFlow===true){
+    const motion=fixture.plazaLatestMotion;
+    assert.deepEqual(Object.keys(motion).sort(),frame?['area','at','courtyardFrame','dash','intent','x','y']:['area','at','dash','intent','x','y']);
+    if(frame)assert.deepEqual(motion.courtyardFrame,direct);
+   }else{assert.equal(fixture.plazaLatestMotion,null);assert.deepEqual(fixture.plazaMotion,[]);}
+   return direct;
+  };
+  m.game.events.emit('postrender');const initial=check();
+  if(movement){assert.deepEqual(initial.movement.velocity,velocity);velocity.vy=17;assert.equal(initial.movement.velocity.vy,0);velocity.vy=0;}
+  fixture.plazaProbeRequest={id:1,requestedAt:0};m.game.loop.frame++;m.game.events.emit('postrender');check();
+  if(flags.__arpgPlazaFlow===true)assert.equal(observed.gameplay.plazaProbe.id,1);
+  else assert.equal(observed.gameplay.plazaProbe,null);
+  // Same registered observer across departure and return: area refresh must
+  // preserve mode routing, including the original Return-only no-motion path.
+  for(const area of[1,0]){
+   fixture.plazaProbeRequest=null;m.scene.expedition.area=area;m.game.loop.frame++;m.game.events.emit('postrender');check();
+   assert.equal(observed.gameplay.area,area);
+   if(flags.__arpgPlazaFlow===true)assert.equal(fixture.plazaLatestMotion.area,area);
+  }
+  return {frame,movement,motion:flags.__arpgPlazaFlow===true};
+ }finally{globalThis.window=previous;}
+}
+for(const p of[undefined,false,true])for(const r of[undefined,false,true])for(const c of[undefined,false,true])for(const v of[undefined,false,true])for(const w of[undefined,false,true]){
+ const flags=Object.fromEntries(modeFlags.map((key,i)=>[key,[p,r,c,v,w][i]]));
+ test(`actual observer mode P=${p},R=${r},C=${c},V=${v},W=${w}`,()=>producedMode(flags));
+}
+function actualInitFlags(name) {
+ const source=readFileSync(resolve(here,name),'utf8'),ast=ts.createSourceFile(name,source,ts.ScriptTarget.Latest,true),callbacks=[];
+ const visit=n=>{if(ts.isCallExpression(n)&&ts.isPropertyAccessExpression(n.expression)&&n.expression.name.text==='addInitScript')callbacks.push(n.arguments[0]);ts.forEachChild(n,visit);};visit(ast);
+ assert.equal(callbacks.length,1,`Exactly one actual mode initializer in ${name}`);assert(ts.isArrowFunction(callbacks[0]));
+ const code=ts.transpileModule(`const initialize=${callbacks[0].getText(ast)};initialize();`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const flags={};new Function('window',code)(flags);return flags;
+}
+for(const[name,file,expected]of[
+ ['ordinary readiness','plaza-browser.ts',{frame:true,movement:true,motion:true}],
+ ['native courtyard','courtyard-browser.ts',{frame:true,movement:false,motion:true}],
+ ['controlled visual','visual-browser.ts',{frame:true,movement:false,motion:true}],
+ ['controlled walking-frame','walk-frame-browser.ts',{frame:false,movement:false,motion:true}],
+ ['prompt diagnostic','prompt-timing.browser.spec.ts',{frame:false,movement:false,motion:true}],
+ ['frame-gap diagnostic','frame-gap.browser.spec.ts',{frame:false,movement:false,motion:true}],
+ ['original return case','readiness.browser.spec.ts',{frame:false,movement:false,motion:false}]
+])test(`real ${name} initializer routes all actual producers correctly`,()=>assert.deepEqual(producedMode(actualInitFlags(file)),expected));
+for(const flag of['__arpgPlazaFlow','__arpgReturnFlow'])test(`nonboolean ${flag} cannot opt into readiness evidence`,()=>{
+ for(const value of[1,'true',{}]){const result=producedMode({__arpgPlazaFlow:true,__arpgReturnFlow:true,[flag]:value});assert.equal(result.movement,false);assert.equal(result.frame,false);}
+});
+test('return-enabled walking flag still cannot acquire readiness-only evidence',()=>{
+ assert.deepEqual(producedMode({__arpgPlazaFlow:true,__arpgReturnFlow:true,__arpgWalkFrameFlow:true}),{frame:false,movement:false,motion:true});
+});
+
+const observerScopePins={
+  "observe-scene.ts": "c617902fa69bdece1c761f25214609ef7d27b3cbcdc5bab466454c3b20419856",
+  "perimeter-preservation.mjs": "b9dc2ad3623b79d478ccb52236112f91465371f0132b128c642b57fd0bff52ae",
+  "courtyard-visibility.test.mjs": "310c3afca34d442a0a694699b9c926ef6f0c52490151a509230b3274b62262e1",
+  "perimeter-contract.test.mjs": "41674ef7b8411c9f608847935219f04830a11f0a2b62ba53a87567a3b224a6e1"
+};
+for(const[name,hash]of Object.entries(observerScopePins))test(`exact79e observer-scope reversal: ${name}`,()=>{
+ const source=readFileSync(resolve(here,name),'utf8');assert.equal(createHash('sha256').update(beforeObserverScope(name,source)).digest('hex'),hash);
+ assert.throws(()=>beforeObserverScope(name,source+source),/Exact observer-scope delta/);
 });

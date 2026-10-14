@@ -183,6 +183,11 @@ export function readCourtyardVisibility(scene: GameScene, state: ObservedState) 
     Sprite: Phaser.GameObjects.Sprite, Text: Phaser.GameObjects.Text,
     objectId, decodedPixels, decodedAlphaBounds });
 }
+// Plaza alone is also enabled by walking-frame and diagnostic modes. Only the
+// existing Return+Plaza readiness combination receives the additive evidence;
+// legacy courtyard/visual frame branches remain independent and unchanged.
+const readinessPlazaFlow = () => window.__arpgPlazaFlow === true && window.__arpgReturnFlow === true &&
+  window.__arpgCourtyardFlow !== true && window.__arpgCourtyardVisualFlow !== true && window.__arpgWalkFrameFlow !== true;
 function readCourtyardFrame(scene: GameScene, state: ObservedState) {
   const loop=scene.sys.game.loop,hero=state.playerSprite;
   return {frame:Number.isSafeInteger(loop.frame)&&loop.frame>=0?loop.frame:null,
@@ -190,7 +195,7 @@ function readCourtyardFrame(scene: GameScene, state: ObservedState) {
     // Passive update guards and post-update velocity, only for ordinary
     // readiness exploration. Existing courtyard/visual payloads stay unchanged.
     // Never call isCurrent or wrap update/collision: source reconstruction only.
-    ...((window.__arpgPlazaFlow === true && window.__arpgCourtyardFlow !== true && window.__arpgCourtyardVisualFlow !== true) ? {
+    ...(readinessPlazaFlow() ? {
       movement: { sceneId: objectId(scene), initialized: state.initialized, ended: state.ended,
         runState: state.runState, playerId: state.playerId, areaEpoch: state.areaEpoch,
         sceneStatus: scene.sys.settings?.status, pendingDestroy: (scene.sys.game as Phaser.Game & { readonly pendingDestroy: boolean }).pendingDestroy,
@@ -214,7 +219,7 @@ function readGameplay(scene: GameScene, observedAt = performance.now(), explicit
     outcome: state.expedition.outcome, returned: state.expedition.returned,
     x: position.x, y: position.y, hp: health.current, kills: state.expedition.kills,
     plazaProbe: null,
-    ...((window.__arpgPlazaFlow === true || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
+    ...((readinessPlazaFlow() || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
     ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardLifecycle: readCourtyardLifecycle(scene, state.townCorner?.graphics.courtyard ?? [], state.worldLayer.list, objectId, state.townCorner !== null) } : {}),
     plazaVisibility: window.__arpgPlazaFlow === true && state.expedition.area === 0 ? readHeroVisibility(scene, state) : null,
     ...((window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) && window.__arpgPlazaFlow === true && state.expedition.area === 0 && explicitFullProbe &&
@@ -276,7 +281,7 @@ GameScene.prototype.preload = function (...args: Parameters<typeof originalPrelo
     const motion = { at, area, x: position.x, y: position.y,
       // Phaser 3.90 TimeStep passes this same smoothed delta into Game.step;
       // SceneManager/Systems forward it unchanged to GameScene.update.
-      ...((window.__arpgPlazaFlow === true || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
+      ...((readinessPlazaFlow() || window.__arpgCourtyardFlow === true || window.__arpgCourtyardVisualFlow === true) ? { courtyardFrame:readCourtyardFrame(scene,state) } : {}),
       intent: { x: state.movementInput.x, y: state.movementInput.y },
       dash: state.world.getDash(state.playerId) ? structuredClone(state.world.getDash(state.playerId)!) : null };
     fixture.plazaLatestMotion = motion;

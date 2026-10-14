@@ -137,9 +137,12 @@ test('all old and new facade sweeps remain part of attempted-motion rejection',(
  const t=challenge({gap:452,quanta:[100,100,100,100,100,100,100]});
  assert(issues(t).some(s=>s.includes('facade')||s.includes('sweep intersects')));
 });
-test('passive active fields are scoped to readiness and do not expand other capture payloads',()=>{
- const source=read('./observe-scene.ts');assert.match(source,/window\.__arpgPlazaFlow === true && window\.__arpgCourtyardFlow !== true && window\.__arpgCourtyardVisualFlow !== true/);
- assert.match(source,/window\.__arpgPlazaFlow === true \|\| window\.__arpgCourtyardFlow === true \|\| window\.__arpgCourtyardVisualFlow === true/);
+test('passive active fields use one exclusive ordinary-readiness predicate at all three producers',()=>{
+ const source=read('./observe-scene.ts');
+ assert.match(source,/window\.__arpgPlazaFlow === true && window\.__arpgReturnFlow === true/);
+ assert.match(source,/window\.__arpgCourtyardFlow !== true && window\.__arpgCourtyardVisualFlow !== true && window\.__arpgWalkFrameFlow !== true/);
+ assert.equal((source.match(/readinessPlazaFlow\(\)/g)||[]).length,3);
+ assert.equal((source.match(/readinessPlazaFlow\(\) \|\| window\.__arpgCourtyardFlow === true \|\| window\.__arpgCourtyardVisualFlow === true/g)||[]).length,2);
 });
 test('pinned no-FPS-limiter source forwards native delta once per consecutive engine frame',()=>{
  const main=read('../../../src/lib/games/arpg/main.ts');assert.doesNotMatch(main,/\bfps\s*:/);
