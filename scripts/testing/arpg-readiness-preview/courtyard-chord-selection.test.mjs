@@ -121,7 +121,7 @@ const baselineHashes={
 };
 for(const [name,hash] of Object.entries(baselineHashes))test(`exact 933f baseline bytes outside explicit chord-selection delta: ${name}`,()=>{
  const s=read('./'+name);assert.equal(createHash('sha256').update(beforeCourtyardChordSelection(name,s)).digest('hex'),hash);
- assert.throws(()=>beforeCourtyardChordSelection(name,s+s),/Exact courtyard chord-selection delta/);
+ assert.throws(()=>beforeCourtyardChordSelection(name,s+s),/Exact (endcap staging|courtyard chord-selection) delta/);
 });
 
 test('default omitted-predicate behavior equals exact-hash historical module across deterministic inputs',async()=>{

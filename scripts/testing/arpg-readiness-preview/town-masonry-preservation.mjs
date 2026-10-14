@@ -1,5 +1,6 @@
 // Test-only exact reversal of the reviewed local courtyard material and source-pin delta.
 // No runtime module imports this historical preservation adapter.
+import { beforeEndcapStaging } from './endcap-staging-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "townCourtyard.ts": [
@@ -104,6 +105,7 @@ const changes={
   ]
 };
 export function beforeTownMasonry(name,source) {
+  source=beforeEndcapStaging(name,source);
   name=name.split('/').at(-1);
   if(!changes[name])return source;
   source=String(source);

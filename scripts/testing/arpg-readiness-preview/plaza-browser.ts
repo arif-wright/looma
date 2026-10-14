@@ -1,3 +1,4 @@
+import { recoverEndcapSide } from './endcap-staging';
 import { setupPerimeter } from './perimeter-setup';
 import { departCourtyard } from './courtyard-departure';
 import { waypointStep, chordEndpointAllowed, NAVIGATION_PHASES } from './plaza-navigation.mjs';
@@ -34,13 +35,21 @@ async function freshGameplay(page: Page) {
   },{timeout:5000,intervals:[20,40,80]}).toBe(true);
   return gameplay(page);
 }
-async function move(page: Page, x: number, y: number) {
-  const startedAt=Date.now();let missedPulses=0;
+async function move(page: Page, x: number, y: number, endcapInfo?: TestInfo) {
+  const startedAt=Date.now();let missedPulses=0,recoveryUsed=false;
   const history: {key:string;delay:number;before:{x:number;y:number};after:{x:number;y:number}}[]=[];
   try {
     let p=await releasedFrame(page);
     for(;;){
-      const pulse=waypointStep(p,x,y,Date.now()-startedAt,missedPulses,history);
+      let pulse;
+      try { pulse=waypointStep(p,x,y,Date.now()-startedAt,missedPulses,history); }
+      catch(error) {
+        if(!endcapInfo||recoveryUsed)throw error;
+        recoveryUsed=true;
+        const staged=await recoverEndcapSide(page,endcapInfo,error,p,x,y,history,()=>Date.now()-startedAt,()=>releasedFrame(page));
+        p=staged.position;history.push(...staged.history);history.splice(0,Math.max(0,history.length-2));missedPulses=0;
+        continue; // Original target and original clock remain authoritative.
+      }
       if(!pulse)return; // Final neutral position is checked even at the deadline.
       await page.keyboard.press(pulse.key,{delay:pulse.delay});
       const next=await releasedFrame(page);
@@ -56,7 +65,7 @@ async function move(page: Page, x: number, y: number) {
   // coverage; exceptional paths and the outer case retain exhaustive cleanup.
 
 }
-async function route(page: Page, points: number[][]) { for(const [x,y] of points)await move(page,x!,y!); }
+async function route(page: Page, points: number[][], endcapInfo?: TestInfo) { for(const [x,y] of points)await move(page,x!,y!,x===1610&&y===400?endcapInfo:undefined); }
 async function walkInto(page: Page, key: string) {
   await page.keyboard.down(key);
   try { await page.waitForTimeout(700); } finally { await page.keyboard.up(key); }
@@ -101,7 +110,7 @@ export async function runPlazaExploration(page: Page, info: TestInfo, index: num
     await route(page,NAVIGATION_PHASES.rearRestore);await save('rear-front-restored');
     await route(page,NAVIGATION_PHASES.endcapFront);
     await save('endcap-front-ready');await walkInto(page,'w');await save('endcap-front-walk-blocked');
-    await route(page,NAVIGATION_PHASES.endcapSide);await save('endcap-side-ready');
+    await route(page,NAVIGATION_PHASES.endcapSide,info);await save('endcap-side-ready');
     await dashInto(page,['d','s']);await save('endcap-side-dash-blocked');
     await route(page,NAVIGATION_PHASES.endcapRoof);
     await save('endcap-roof-cutaway','endcap-side-cutaway');

@@ -1,0 +1,58 @@
+{
+  "scope": "Exact observed pose/history excerpt only. Source-based synthetic continuations are not hosted acceptance.",
+  "provenance": {
+    "head": "118eb3a89e693b3bd5a7e0d5b728e5f65d8f65e8",
+    "rootTree": "c836394c28d8cac86fbdc0623876ac3d3bf840f4",
+    "replayInputSha256": "2b935dbdac817833f010f48ba81d664e92eeeffb83e0ceb5c1684dfdfe4536a0",
+    "caseTitle": "desktop native exploration blocks facade walks and swept dashes with readable cutaways and return",
+    "routePhase": "endcapSide",
+    "originalWaypointIndexZeroBased": 5,
+    "lastPulseCallIds": [
+      "call@8287",
+      "call@8291"
+    ]
+  },
+  "target": [
+    1610,
+    400
+  ],
+  "previousTarget": [
+    1660,
+    400
+  ],
+  "releasedPosition": {
+    "x": 1619.8506587615382,
+    "y": 406.4538353964897
+  },
+  "history": [
+    {
+      "key": "a",
+      "delay": 16,
+      "before": {
+        "x": 1619.850658761538,
+        "y": 406.4538353964897
+      },
+      "after": {
+        "x": 1600.785458761538,
+        "y": 406.4538353964897
+      }
+    },
+    {
+      "key": "d",
+      "delay": 16,
+      "before": {
+        "x": 1600.785458761538,
+        "y": 406.4538353964897
+      },
+      "after": {
+        "x": 1619.8506587615382,
+        "y": 406.4538353964897
+      }
+    }
+  ],
+  "approachPosition": {
+    "x": 1657.983258761538,
+    "y": 406.4538353964897
+  },
+  "observedLegIntervalMs": 964.1739999999991
+}

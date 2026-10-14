@@ -1,3 +1,4 @@
+import { beforeEndcapStaging } from './endcap-staging-preservation.mjs';
 import { beforeCourtyardChordSelection } from './courtyard-chord-preservation.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -7,7 +8,7 @@ import {createRequire} from 'node:module';
 import {RUNS,PREFIX_TIMEOUT_MS,WARMUP_FRAMES,NEUTRAL_WINDOW_MS,MAX_INPUT_CALLS} from './prompt-timing-plan.mjs';
 const ts=createRequire(import.meta.url)('typescript');
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
-const ast=(name)=>ts.createSourceFile(name,read(name),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+const ast=(name)=>ts.createSourceFile(name,beforeEndcapStaging(name,read(name)),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
 const original=ast('./plaza-browser.ts'),driver=ast('./prompt-timing-driver.ts');
 const functions=file=>new Map(file.statements.filter(ts.isFunctionDeclaration).map(node=>[node.name.text,node.getText(file)]));
 const before=functions(original),after=functions(driver);

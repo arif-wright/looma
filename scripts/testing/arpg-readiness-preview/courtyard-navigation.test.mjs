@@ -1,3 +1,4 @@
+import { beforeEndcapStaging } from './endcap-staging-preservation.mjs';
 // Offline literal-source and mocked-native-call tests, never browser proof.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -10,7 +11,7 @@ const ts=createRequire(import.meta.url)('typescript');
 const read=name=>readFileSync(new URL(name,import.meta.url),'utf8');
 const source=read('./courtyard-navigation.ts');
 const fn=(text,name)=>{const ast=ts.createSourceFile('fixture.ts',text,ts.ScriptTarget.Latest,true);return ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name.text===name).getText(ast);};
-const original=fn(read('./plaza-browser.ts'),'move'),extended=fn(source,'moveCourtyard');
+const original=fn(beforeEndcapStaging('plaza-browser.ts',read('./plaza-browser.ts')),'move'),extended=fn(source,'moveCourtyard');
 const signature=', guard: (position: { x: number; y: number }, pulse: ReturnType<typeof waypointStep>) => void';
 const check='      guard(p,pulse); // Additive courtyard checks may only reject this original pulse.\n';
 test('historical move declaration and body retain exact independently pinned source hash',()=>assert.equal(createHash('sha256').update(original).digest('hex'),'bac2e8cf7fa8ac0db91a72fa3aebfda5533f20b0a61ce230c0ca052b77a122c8'));
