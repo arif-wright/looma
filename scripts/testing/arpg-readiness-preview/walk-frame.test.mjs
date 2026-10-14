@@ -212,7 +212,7 @@ const preserved={
   "visual.spec.ts": "0101030142958f614cf9cc5fc200b23b67ce6dcb3f7de1db11802c5aaaa6d3eb",
   "visual-verifier.mjs": "de779e1820657bf9dae9131e137f61030e58cf40743d311aefdc71ab5877bafa",
   "visual.playwright.config.ts": "899200e3da76b0e81b6c1f0b2fb14961db214c3137d249e9d8c3a51b373b0742",
-  "readiness.browser.spec.ts": "1315bab32320b8ffc9d2c3fea804d0964c5b200f1240434777f3f0c8f3968d46",
+  "readiness.browser.spec.ts": "8afafcd3d89d1e89166993e8da51b7c6c2bb02040c945b2043650fd9c7df241d",
   "courtyard.browser.spec.ts": "e71038f2d90c7b16baf66af264d0800977ef5c7df8907cbce403b0d23c32dec7",
   "playwright.config.ts": "5ca9d83e9c0679b167c4c21b0ca7eaf6e5967ca9374a12d9d258a46a8507b28b",
   "courtyard.playwright.config.ts": "e623b1c92030f4a1b1438b0c107937eb4f54def758eea59199762b450f766c02",

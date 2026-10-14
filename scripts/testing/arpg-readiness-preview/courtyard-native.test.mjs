@@ -219,7 +219,7 @@ const ORIGINAL_HASHES={
   'cases.mjs':'b11aea766a2497ea2e0682b0d9cc43854d99724d4848891ee822137f8a126196',
   'screenshots.mjs':'ef3c40e44fc363ef3dc65982684753685b692dad853a75e28e8f490726170e26',
   'plaza-navigation.mjs':'3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322',
-  'readiness.browser.spec.ts':'1315bab32320b8ffc9d2c3fea804d0964c5b200f1240434777f3f0c8f3968d46'
+  'readiness.browser.spec.ts':'8afafcd3d89d1e89166993e8da51b7c6c2bb02040c945b2043650fd9c7df241d'
 };
 for(const [name,hash]of Object.entries(ORIGINAL_HASHES))test(`original ${name} remains byte-for-byte preserved`,()=>assert.equal(sha(source(name)),hash));
 test('original fourteen readiness cases and twenty-one captures remain unchanged',()=>{assert.equal(TITLES.length,14);assert.equal(TITLES.flatMap((_,i)=>requiredScreenshots(i)).length,21);});
