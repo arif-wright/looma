@@ -13,7 +13,7 @@ const read=p=>readFileSync(resolve(root,p),'utf8'),hash=s=>createHash('sha256').
 const preserved={
   "scripts/testing/arpg-readiness-preview/cases.mjs": "b11aea766a2497ea2e0682b0d9cc43854d99724d4848891ee822137f8a126196",
   "scripts/testing/arpg-readiness-preview/screenshots.mjs": "ef3c40e44fc363ef3dc65982684753685b692dad853a75e28e8f490726170e26",
-  "scripts/testing/arpg-readiness-preview/readiness.browser.spec.ts": "1315bab32320b8ffc9d2c3fea804d0964c5b200f1240434777f3f0c8f3968d46",
+  "scripts/testing/arpg-readiness-preview/readiness.browser.spec.ts": "8afafcd3d89d1e89166993e8da51b7c6c2bb02040c945b2043650fd9c7df241d",
   "scripts/testing/arpg-readiness-preview/playwright.config.ts": "5ca9d83e9c0679b167c4c21b0ca7eaf6e5967ca9374a12d9d258a46a8507b28b",
   "scripts/testing/arpg-readiness-preview/plaza-navigation.mjs": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322",
   "scripts/testing/arpg-readiness-preview/plaza-contract.mjs": "1cd2b3dc0158421fc6fb6b700eccb26987252fd90b4a49dcce57bd0665a674c6",

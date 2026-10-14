@@ -44,6 +44,25 @@ test(TITLES[0]!, async ({ page }, info) => {
   await hold.release(); await town(page);
   expect(await starts(page)).toHaveLength(0);
   await record(page, 'town-ready');
+  // The isolated fixture omits the app's global stylesheet. Its exact sr-only
+  // utility must clip the live announcement without hiding it from accessibility.
+  const objectives = screen(page).getByTestId('expedition-objectives');
+  await expect(objectives).toHaveAccessibleName('Expedition objectives');
+  const announcement = objectives.locator('.sr-only');
+  await expect(announcement).toHaveCount(1);
+  await expect(announcement).toHaveAttribute('role', 'status');
+  await expect(announcement).toHaveAttribute('aria-live', 'polite');
+  await expect(announcement).toHaveAttribute('aria-atomic', 'true');
+  await expect(objectives.getByRole('status').filter({ hasText: 'Prepare in town. Enter the ruins when you’re ready.' })).toHaveCount(1);
+  expect(await announcement.evaluate(element => {
+    const style = getComputedStyle(element);
+    return { position: style.position, width: style.width, height: style.height,
+      padding: style.padding, margin: style.margin, overflow: style.overflow,
+      clip: style.clip, whiteSpace: style.whiteSpace, borderWidth: style.borderWidth,
+      display: style.display, visibility: style.visibility };
+  })).toEqual({ position: 'absolute', width: '1px', height: '1px', padding: '0px',
+    margin: '-1px', overflow: 'hidden', clip: 'rect(0px, 0px, 0px, 0px)',
+    whiteSpace: 'nowrap', borderWidth: '0px', display: 'block', visibility: 'visible' });
   await screenshot(page, info, 'initialized-town-real-decoded-assets');
   await page.evaluate(() => window.__arpgFixture.holdStart());
   await screen(page).getByRole('button', { name: 'Depart on expedition', exact: true }).click();
