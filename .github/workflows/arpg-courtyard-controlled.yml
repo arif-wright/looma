@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/arpg-courtyard-controlled
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$(git rev-parse HEAD:src)" = 805e1fcc084b21e0dd97ee9f632a2aba326ef8f1
+          test "$(git rev-parse HEAD:src)" = bed604d6dcffa2b665fb962f33ab8ed16e9f0648
           test "$(git rev-parse HEAD:static)" = 4e73595fef84bde3a91c0d9d129eaa2969c7fe68
           test "$(git rev-parse HEAD:supabase)" = 0a420e027ca5ff8038408d43072ece95c6333c8c
           test -z "${ARPG_READINESS_BROWSER_EXECUTABLE:-}"

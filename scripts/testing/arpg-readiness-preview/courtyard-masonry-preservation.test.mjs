@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { beforeTownMasonry } from './town-masonry-preservation.mjs';
+import { beforeUpperStoneDepth } from './upper-stone-depth-preservation.mjs';
 const root=new URL('../../../',import.meta.url),hash=s=>createHash('sha256').update(s).digest('hex');
 const records=[
   {
@@ -79,13 +80,13 @@ const records=[
 ];
 for(const row of records)test(`exact current-head source outside material integration: ${row.path}`,()=>{
  const source=readFileSync(new URL(row.path,root),'utf8');
- assert.equal(hash(source),row.sha256,'Exact composed candidate required');
+ assert.equal(hash(beforeUpperStoneDepth(row.path,source)),row.sha256,'Exact composed candidate required');
  assert.equal(hash(beforeTownMasonry(row.path,source)),row.baselineSHA256,'Original 80a fixture behavior outside exact delta');
- assert.throws(()=>beforeTownMasonry(row.path,source+source),/Exact courtyard masonry delta/);
+ assert.throws(()=>beforeTownMasonry(row.path,source+source),/Exact courtyard (?:masonry|upper stone-depth) delta/);
  const changed=source+'\n// unrelated corruption\n';
  assert.notEqual(hash(beforeTownMasonry(row.path,changed)),row.baselineSHA256,'Unrelated edits remain visible to historical hash guards');
 });
 test('all nine live source-tree pins use the exact new production tree',()=>{
  const paths=[".github/workflows/arpg-prompt-timing.yml", ".github/workflows/arpg-walk-frame.yml", ".github/workflows/arpg-courtyard-native.yml", ".github/workflows/startup-recovery.yml", ".github/workflows/recovery-release.yml", ".github/workflows/arpg-scene-readiness.yml", ".github/workflows/arpg-courtyard-controlled.yml", ".github/workflows/arpg-frame-gap.yml", "tests/sql/helpers/game-postgrest-bootstrap.mjs"];
- for(const path of paths){const s=readFileSync(new URL(path,root),'utf8');assert.equal(s.split('805e1fcc084b21e0dd97ee9f632a2aba326ef8f1').length,2);assert(!s.includes('e0907ac0beccf4d364494d818c9e8d02fdaa96fd'));}
+ for(const path of paths){const s=beforeUpperStoneDepth(path,readFileSync(new URL(path,root),'utf8')); assert.equal(s.split('805e1fcc084b21e0dd97ee9f632a2aba326ef8f1').length,2);assert(!s.includes('e0907ac0beccf4d364494d818c9e8d02fdaa96fd'));}
 });

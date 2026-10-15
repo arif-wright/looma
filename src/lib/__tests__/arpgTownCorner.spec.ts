@@ -21,7 +21,7 @@ class MockGraphics {
 }
 const COURTYARD_NAMES = ['town-courtyard-west-foundation', 'town-courtyard-east-foundation',
   'town-courtyard-west-upper', 'town-courtyard-east-upper'];
-const COURTYARD_FILL_COUNTS = [25, 17, 91, 59];
+const COURTYARD_FILL_COUNTS = [25, 17, 160, 98];
 const expectOwnedGraphics = (corner: ReturnType<typeof createTownCorner>, graphics: MockGraphics[], add: any) => {
   expect(graphics).toHaveLength(6);
   expect(corner.graphics.perimeter).toBe(graphics[0]);

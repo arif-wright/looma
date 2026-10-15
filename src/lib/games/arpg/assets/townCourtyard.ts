@@ -55,7 +55,9 @@ export function townCourtyardGeometry() {
  * fill sits under a stone and compounds the upper object's cutaway alpha.
  * Shared raster edges still require native pixel review. Geometry/occlusion
  * continues to use the original twelve faces, never these paint tiles.
- * Fixed recipe: 192 quads / 768 points across the four create-once Graphics. */
+ * Candidate upper-front relief recipe: 300 quads / 1200 points across the same four
+ * create-once Graphics. Only the 36 broad upper-front stone outlines contain three uneven bevels
+ * and one face. All 40 other stones and 116 mortar/support tiles are unchanged. */
 export function townCourtyardSurface(face: Face, layer: string, faceIndex: number, wallIndex: number): Face[] {
   const foundation = layer === 'foundation', cap = faceIndex === 2, end = faceIndex === 1;
   // Recessed joints stay legible in the compact view. Keep the outer 0.32 px
@@ -79,6 +81,35 @@ export function townCourtyardSurface(face: Face, layer: string, faceIndex: numbe
   const tile = (u0: number, u1: number, v0: number, v1: number, color: number) => {
     if (u1 > u0 && v1 > v0) tiles.push({ color, points: [point(u0, v0), point(u1, v0), point(u1, v1), point(u0, v1)] });
   };
+  // Shallow chipped-looking edges are paint only. Each selected stone is a four-quad
+  // partition of its exact prior rectangle, not a bevel overlay. In particular,
+  // its center is never painted underneath the rim during cutaway.
+  const stone = (u0: number, u1: number, v0: number, v1: number, color: number, stamp: number) => {
+    if (foundation || faceIndex !== 0 || (u1 - u0) * length < 24) { tile(u0, u1, v0, v1, color); return; }
+    const outer = [point(u0, v0), point(u1, v0), point(u1, v1), point(u0, v1)];
+    const width = (u1 - u0) * length, height = (v1 - v0) * extent;
+    const inset = (corner: number, vertical: boolean) => {
+      const variation = ((stamp * 7 + corner * 3) % 5) * .16;
+      return Math.min((vertical ? height : width) * .23, (vertical ? .8 : 1.1) + variation);
+    };
+    const inner = outer.map((_p, i) => point(
+      (i === 0 || i === 3 ? u0 : u1 - inset(i, false) / length),
+      (i < 2 ? v0 + inset(i, true) / extent : v1 - inset(i, true) / extent)
+    ));
+    const tint = (delta: number) => {
+      const channel = (shift: number) => Math.max(0, Math.min(255, ((color >> shift) & 255) + delta));
+      return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+    };
+    // A consistent upper-left light: front top bevel catches it, lower/right
+    // edges recede. The center reaches the left boundary, so no redundant
+    // left rim is drawn. Flat caps/end faces/foundations keep their exact paint.
+    const light = cap ? [-12, -7, 17, 7] : [-19, -9, 24, 9];
+    for (let i = 0; i < 3; i++) {
+      const next = (i + 1) % 4;
+      tiles.push({ color: tint(light[i]!), points: [outer[i]!, outer[next]!, inner[next]!, inner[i]!] });
+    }
+    tiles.push({ color: tint((stamp % 5) - 2), points: inner });
+  };
   const rows = cap || foundation ? 1 : 2;
   const widths = foundation ? [70, 88, 76, 94, 82] : [44, 56, 48, 52, 60, 46, 54];
   const seed = wallIndex * 2 + (cap ? 1 : 0);
@@ -94,7 +125,7 @@ export function townCourtyardSurface(face: Face, layer: string, faceIndex: numbe
       const u1 = (Math.min(length, stop) - (stop >= length ? edgeInset : jointInset)) / length;
       if (u1 > u0) {
         tile(previousU, u0, v0, v1, base);
-        tile(u0, u1, v0, v1, palette[(index + row * 3 + wallIndex) % palette.length]!);
+        stone(u0, u1, v0, v1, palette[(index + row * 3 + wallIndex) % palette.length]!, index + row * 11 + wallIndex * 19 + faceIndex * 7);
         previousU = u1;
       }
       start = stop; index++;

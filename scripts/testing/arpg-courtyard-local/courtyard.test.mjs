@@ -1,5 +1,5 @@
 import {sweptDistance} from '../arpg-readiness-preview/plaza-contract.mjs';
-import {readTownGraphics,courtyardGraphicsIssues,COURTYARD_NAMES,expectedCourtyardCommands} from '../arpg-readiness-preview/courtyard-graphics.mjs';
+import {readTownGraphics,courtyardGraphicsIssues,COURTYARD_NAMES,expectedCourtyardCommands,expectedCourtyardMaterial} from '../arpg-readiness-preview/courtyard-graphics.mjs';
 import {townBackdropIssues,townBoundaryIssues} from '../arpg-readiness-preview/town-ground.mjs';
 // Offline proof only: actual production scene/ECS/corner, renderer mocked.
 import assert from 'node:assert/strict';
@@ -112,9 +112,9 @@ test('shared elbow lies in both exact solids and both caps; inner/outer local co
 test('four area-owned graphics, foundations before uppers, fixed draw commands and idempotent teardown',()=>{
   const m=mock(),added=[],w=createTownCourtyard(m.scene,o=>added.push(o));
   assert.deepEqual(added.map(o=>o.name),['town-courtyard-west-foundation','town-courtyard-east-foundation','town-courtyard-west-upper','town-courtyard-east-upper']);
-  assert.equal(m.fills(),192);assert(added.every(o=>o.depth===(o.name.endsWith('-foundation')?907:908)&&o.alpha===1));
+  assert.equal(m.fills(),300);assert(added.every(o=>o.depth===(o.name.endsWith('-foundation')?907:908)&&o.alpha===1));
   for(let i=0;i<500;i++)w.updateActor({x:1000+i,y:700});
-  assert.equal(m.fills(),192);assert.equal(m.objects.length,4);assert.equal(m.removed.length,0);
+  assert.equal(m.fills(),300);assert.equal(m.objects.length,4);assert.equal(m.removed.length,0);
   w.destroy();w.destroy();w.updateActor({x:1728,y:888});assert(added.every(o=>o.destroyed===1));assert.equal(w.blocksMovement({x:1728,y:888},{x:1728,y:888},38),false);
 });
 test('partial Graphics creation failure releases every owned object',()=>{
@@ -387,21 +387,29 @@ test('analytic front-side separation keeps a lowered opposite opaque plinth outs
 // Material proof: real production surface helper, independent saved study
 // polygons/colors, and UV area/coverage checks. No raster alpha is inferred.
 const stoneFixture=JSON.parse(readFileSync(resolve(here,'courtyard-stone-fixtures.json')));
+const depthBaselineBytes=readFileSync(resolve(here,'courtyard-stone-depth-baseline.json'));
+assert.equal(createHash('sha256').update(depthBaselineBytes).digest('hex'),'7357f57ce56a7cb1e7aeda02fe8f8a28a95342ed442add9b5106382c11ca9a11');
+const depthBaseline=JSON.parse(depthBaselineBytes);
 const baseColor=(layer,face)=>layer==='foundation'?(face===2?0x746c5c:0x514c42):(face===2?0x6b6252:0x554f44);
 const painted=geometry.flatMap((wall,wi)=>['foundation','upper'].flatMap(layer=>wall[layer].map((face,fi)=>
   ({wi,layer,fi,face,tiles:townCourtyardSurface(face,layer,fi,wi)}))));
 const toUV=(face,p)=>{const[a,b,,d]=face.points,x=b.x-a.x,y=b.y-a.y,c=d.x-a.x,e=d.y-a.y,det=x*e-y*c;
   return {x:((p.x-a.x)*e-(p.y-a.y)*c)/det,y:(x*(p.y-a.y)-y*(p.x-a.x))/det};};
-function tileBounds(face,tiles){return tiles.map(tile=>{assert.equal(tile.points.length,4);const p=tile.points.map(q=>toUV(face,q));
-  approx(p[0].y,p[1].y);approx(p[1].x,p[2].x);approx(p[2].y,p[3].y);approx(p[3].x,p[0].x);
-  const box=[p[0].x,p[1].x,p[0].y,p[2].y];assert(box.every(Number.isFinite));assert(box[0]>=-1e-12&&box[1]<=1+1e-12&&box[2]>=-1e-12&&box[3]<=1+1e-12);
-  assert(box[1]>box[0]&&box[3]>box[2]);return box;});}
-function verifyPartition(face,tiles){const boxes=tileBounds(face,tiles);let area=0;
-  for(let i=0;i<boxes.length;i++){const[a,b,c,d]=boxes[i];area+=(b-a)*(d-c);
-    for(let j=i+1;j<boxes.length;j++){const[e,f,g,h]=boxes[j];assert(Math.max(0,Math.min(b,f)-Math.max(a,e))*Math.max(0,Math.min(d,h)-Math.max(c,g))<1e-12,'positive-area overpainting');}}
-  approx(area,1,1e-12); // containment + full area + disjoint interiors = same support up to shared boundaries
+function verifyPartition(face,tiles){
+  const polygons=tiles.map(tile=>{
+    assert.equal(tile.points.length,4);const polygon=tile.points.map(q=>toUV(face,q));
+    assert(polygon.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=-1e-12&&p.x<=1+1e-12&&p.y>=-1e-12&&p.y<=1+1e-12),'outside support');
+    const turns=polygon.map((a,i)=>{const b=polygon[(i+1)%4],c=polygon[(i+2)%4];return (b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x);});
+    assert(turns.every(n=>n>1e-15),'non-convex or zero-area tile');return polygon;
+  });
+  let area=0;
+  for(let i=0;i<polygons.length;i++){
+    area+=signedArea(polygons[i]);
+    for(let j=i+1;j<polygons.length;j++)assert(Math.abs(signedArea(clipped(polygons[i],polygons[j])))<1e-12,'positive-area overpainting');
+  }
+  approx(area,1,1e-12); // containment + full area + disjoint convex interiors = same support
   for(const p of face.points)assert(tiles.some(t=>t.points.some(q=>q.x===p.x&&q.y===p.y)),'original physical corner changed');
-  return boxes;
+  return polygons;
 }
 test('only the paint recipe and create-time draw loop differ from the exact bare-wall source',()=>{
   let source=readFileSync(resolve(base,'assets/townCourtyard.ts'),'utf8');
@@ -410,13 +418,46 @@ test('only the paint recipe and create-time draw loop differ from the exact bare
   source=source.replace("      for (const [faceIndex, face] of faces.entries()) {\n        for (const paint of townCourtyardSurface(face, layer, faceIndex, wall.id === 'west' ? 0 : 1)) {\n          graphic.fillStyle(paint.color, 1).fillPoints(paint.points, true);\n        }\n      }",'      for (const face of faces) graphic.fillStyle(face.color, 1).fillPoints(face.points, true);');
   assert.equal(createHash('sha256').update(source).digest('hex'),'ad69819cf818c83feaaab5e3773436a68d757df236f0662131cfa886ef6338e3');
 });
-test('all 76 stone colors and courses retain the saved study with only internal joint recession',()=>{
+test('all 76 original stone outlines and 116 mortar/support tiles match exact PR18 bytes',()=>{
+  assert.equal(depthBaseline.commit,'118eb3a89e693b3bd5a7e0d5b728e5f65d8f65e8');
+  assert.equal(depthBaseline.faces.length,12);let stones=0,mortar=0,flat=0;
+  for(const [index,p] of painted.entries()){
+    const baseline=depthBaseline.faces[index];assert.deepEqual(p.face,baseline.face);
+    let cursor=0;
+    for(const original of baseline.tiles){
+      const [a,b]=original.points,width=Math.hypot(b.x-a.x,b.y-a.y);
+      const isMortar=original.color===baseColor(p.layer,p.fi);
+      if(isMortar||p.layer!=='upper'||p.fi!==0||width<24){
+        assert.deepEqual(p.tiles[cursor++],original);if(isMortar)mortar++;else flat++;continue;
+      }
+      const pieces=p.tiles.slice(cursor,cursor+4);cursor+=4;stones++;
+      assert.equal(pieces.length,4);const polygons=verifyPartition(original,pieces);
+      for(let edge=0;edge<3;edge++){
+        const next=edge+1;
+        assert.deepEqual(pieces[edge].points[0],original.points[edge]);
+        assert.deepEqual(pieces[edge].points[1],original.points[next]);
+        assert.deepEqual(pieces[edge].points[2],pieces[3].points[next]);
+        assert.deepEqual(pieces[edge].points[3],pieces[3].points[edge]);
+      }
+      // The center's left side is part of the exact original support boundary.
+      // Lower rim, center and upper rim tile that edge without another fill.
+      approx(polygons[3][0].x,0,1e-12);approx(polygons[3][3].x,0,1e-12);
+      assert(polygons[3][0].y>0&&polygons[3][3].y<1&&polygons[3][0].y<polygons[3][3].y);
+      const luminance=c=>((c>>16)&255)+((c>>8)&255)+(c&255);
+      assert(luminance(pieces[2].color)>luminance(pieces[3].color));
+      assert(luminance(pieces[3].color)>luminance(pieces[0].color));
+    }
+    assert.equal(cursor,p.tiles.length);verifyPartition(p.face,p.tiles);
+  }
+  assert.equal(stones,36);assert.equal(flat,40);assert.equal(mortar,116);
+  for(const name of COURTYARD_NAMES){const wi=name.includes('-east-')?1:0,layer=name.endsWith('-upper')?'upper':'foundation';
+    assert.deepEqual(expectedCourtyardMaterial(name,true).map(t=>({...t,points:t.points.map(([x,y])=>({x,y}))})),depthBaseline.faces.filter(p=>p.wi===wi&&p.layer===layer).flatMap(p=>p.tiles));}
+});
+test('baseline independently retains every saved study stone and only the reviewed 0.38px internal joint recession',()=>{
   assert.equal(stoneFixture.stones.length,76);let count=0;
-  for(const {wi,layer,fi,face,tiles}of painted){
+  for(const {wi,layer,fi,face,tiles}of depthBaseline.faces){
     const stones=tiles.filter(t=>t.color!==baseColor(layer,fi)),expected=stoneFixture.stones.filter(s=>s[0]===wi&&s[1]===layer&&s[2]===fi);
     assert.equal(stones.length,expected.length);count+=stones.length;
-    // Independent evolution of the original saved stone polygons: retreat only
-    // internal edges another 0.38 world pixels; keep exterior margins at 0.32.
     const [a,b,,d]=face.points,L=Math.hypot(b.x-a.x,b.y-a.y),H=Math.hypot(d.x-a.x,d.y-a.y);
     stones.forEach((s,i)=>{assert.equal(s.color,expected[i][3]);s.points.forEach((p,j)=>{
       const [x,y]=expected[i][4][j],uv=toUV(face,{x,y});
@@ -425,29 +466,28 @@ test('all 76 stone colors and courses retain the saved study with only internal 
       approx(p.x,x+du*(b.x-a.x)/L+dv*(d.x-a.x)/H,1e-11);
       approx(p.y,y+du*(b.y-a.y)/L+dv*(d.y-a.y)/H,1e-11);
     });});
-    verifyPartition(face,tiles);
   }assert.equal(count,76);
 });
-for(const p of painted)test(`${p.wi?'east':'west'} ${p.layer} face ${p.fi}: strict-interior partition preserves coverage and alpha multiplicity`,()=>{
-  const boxes=verifyPartition(p.face,p.tiles);
-  // Split at every partition boundary. Each resulting open cell has exactly
-  // one covering tile, so every off-seam interior point has baseline multiplicity.
-  const distinct=v=>[...new Set(v.map(x=>Math.round(x*1e12)/1e12))].sort((a,b)=>a-b);
-  const us=distinct(boxes.flatMap(b=>b.slice(0,2))),vs=distinct(boxes.flatMap(b=>b.slice(2)));
-  for(let i=0;i<us.length-1;i++)for(let j=0;j<vs.length-1;j++){
-    const u=(us[i]+us[i+1])/2,v=(vs[j]+vs[j+1])/2;
-    assert.equal(boxes.filter(([a,b,c,d])=>u>a&&u<b&&v>c&&v<d).length,1);
+for(const p of painted)test(`${p.wi?'east':'west'} ${p.layer} face ${p.fi}: strict-interior convex partition preserves alpha multiplicity`,()=>{
+  const polygons=verifyPartition(p.face,p.tiles);
+  const strictlyInside=(point,poly)=>poly.every((a,i)=>{const b=poly[(i+1)%poly.length];return (b.x-a.x)*(point.y-a.y)-(b.y-a.y)*(point.x-a.x)>1e-13;});
+  // Analytic pairwise intersection/area checks above cover the whole face;
+  // nine strict interior witnesses per quad additionally check multiplicity.
+  for(const [a,b,c,d]of polygons)for(const u of [.2,.5,.8])for(const v of [.2,.5,.8]){
+    const point={x:a.x*(1-u)*(1-v)+b.x*u*(1-v)+c.x*u*v+d.x*(1-u)*v,
+      y:a.y*(1-u)*(1-v)+b.y*u*(1-v)+c.y*u*v+d.y*(1-u)*v};
+    assert.equal(polygons.filter(q=>strictlyInside(point,q)).length,1);
   }
 });
-test('exact command budget is 192 quads / 768 points, bounded per object and create-once',()=>{
+test('exact candidate command budget is 300 quads / 1200 points, bounded per object and create-once',()=>{
   const m=mock(),w=createTownCourtyard(m.scene,()=>{});
-  assert.deepEqual(m.objects.map(o=>o.faces.length),[25,17,91,59]);
-  assert.deepEqual(m.objects.map(o=>o.commandBuffer.length),[507,347,1827,1187]);
-  assert.equal(m.objects.flatMap(o=>o.faces).reduce((n,f)=>n+f.points.length,0),768);
+  assert.deepEqual(m.objects.map(o=>o.faces.length),[25,17,160,98]);
+  assert.deepEqual(m.objects.map(o=>o.commandBuffer.length),[507,347,3207,1967]);
+  assert.equal(m.objects.flatMap(o=>o.faces).reduce((n,f)=>n+f.points.length,0),1200);
   assert(m.objects.flatMap(o=>o.faces).every(f=>f.alpha===1&&f.closed===true));
   const before=m.objects.map(o=>structuredClone(o.commandBuffer));
   for(const actor of [{x:1472,y:536},{x:1456,y:698},{x:1872,y:760},{x:1728,y:832},{x:1456,y:815},{x:1872,y:880}])w.updateActor(actor);
-  assert.deepEqual(m.objects.map(o=>o.commandBuffer),before);assert.equal(m.fills(),192);w.destroy();
+  assert.deepEqual(m.objects.map(o=>o.commandBuffer),before);assert.equal(m.fills(),300);w.destroy();
 });
 test('partition is deterministic and never mutates physical faces or occlusion polygons',()=>{
   const before=structuredClone(geometry);

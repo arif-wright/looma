@@ -32,7 +32,9 @@ function executionCase(index){
  const history=COURTYARD_VIEWS.map(view=>{const a=COURTYARD_ACTIONS.find(a=>a.view===view),g=s.checkpoints.find(p=>p.label===a.label).scene.gameplay;return {evidenceMode:'native-courtyard',nativeMovementEvidence:true,poseReceipt:null,nativeFrame:g.courtyardFrame.frame,heroFrame:structuredClone(g.courtyardFrame.hero),label:courtyardScreenshot(index,view),probeId:g.plazaProbe.id,at:g.at,capturedAt:g.at+.25,consumedAt:g.at+.5,viewport:index?{width:390,height:844}:{width:1280,height:900},documentWidth:index?390:1280,...structuredClone(viewport),base64Chars:image.length,gameplay:structuredClone(g)};});
  f.driver.captures=history.map(m=>({label:m.label,probeId:m.probeId,nativeFrame:m.nativeFrame,pngSHA256:createHash('sha256').update(Buffer.from(image,'base64')).digest('hex')}));
  f.observation.browserVersion='143.0.7499.4';
- return [json('arpg-real-engine-observations',f.observation),json('courtyard-native-driver',f.driver),json('courtyard-native-captures',{evidenceMode:'native-courtyard',nativeMovementEvidence:true,requests:45,captureCount:18,pending:false,requested:false,history}),...history.map(m=>({name:m.label,contentType:'image/png',body:image}))];
+ // Complete synthetic observations use the same bounded lossless codec as production.
+ const observationAttachment={name:'arpg-real-engine-observations',contentType:'application/json',body:Buffer.from(serializeNativeObservation(f.observation,index)).toString('base64')};
+ return [observationAttachment,json('courtyard-native-driver',f.driver),json('courtyard-native-captures',{evidenceMode:'native-courtyard',nativeMovementEvidence:true,requests:45,captureCount:18,pending:false,requested:false,history}),...history.map(m=>({name:m.label,contentType:'image/png',body:image}))];
 }
 function report(execute=false){return {errors:[],config:{version:'1.57.0',forbidOnly:true,workers:1,shard:null,projects:[{name:PROJECT,id:PROJECT,repeatEach:1,retries:0,testMatch:[FILE]}]},suites:[{file:FILE,title:FILE,suites:[],specs:COURTYARD_TITLES.map((title,i)=>({title,id:`fabricated-${i}`,file:FILE,ok:true,tests:[{projectId:PROJECT,projectName:PROJECT,expectedStatus:'passed',annotations:[],status:execute?'expected':'skipped',results:execute?[{status:'passed',retry:0,errors:[],annotations:[],workerIndex:0,startTime:'2026-10-11T00:00:00Z',duration:100000,attachments:executionCase(i)}]:[]}]}))}],stats:{expected:execute?2:0,skipped:execute?0:2,unexpected:0,flaky:0}};}
 test('fabricated discovery verifies exactly two cases and explicitly zero execution',()=>assert.match(verifyCourtyardResults(report(),'discovery').status,/ZERO executed/));
@@ -77,7 +79,7 @@ test('fabricated shared native report reconstructs exact objects before unchange
  const r=report(true);
  for(const[index,spec]of r.suites[0].specs.entries()){
   const attachments=spec.tests[0].results[0].attachments, a=attachments.find(a=>a.name==='arpg-real-engine-observations');
-  const original=JSON.parse(Buffer.from(a.body,'base64').toString('utf8')),other=structuredClone(attachments.filter(v=>v!==a));
+  const original=decodeNativeObservation(a.body,index),other=structuredClone(attachments.filter(v=>v!==a));
   a.body=Buffer.from(serializeNativeObservation(original,index)).toString('base64');
   assert.deepEqual(decodeNativeObservation(a.body,index),original);
   assert.deepEqual(attachments.filter(v=>v!==a),other);

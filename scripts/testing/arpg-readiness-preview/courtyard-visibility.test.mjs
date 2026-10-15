@@ -120,8 +120,8 @@ function threeSquares(object, square = [[0, 0], [6, 0], [6, 6], [0, 6]], fillAlp
 }
 
 test('independent material oracle has exact approved bounded per-object budgets',()=>{
-  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_FILL_COUNTS[name]),[25,17,91,59]);
-  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_COMMAND_COUNTS[name]),[507,347,1827,1187]);
+  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_FILL_COUNTS[name]),[25,17,160,98]);
+  assert.deepEqual(graphics.COURTYARD_NAMES.map(name=>graphics.COURTYARD_COMMAND_COUNTS[name]),[507,347,3207,1967]);
   let total=0,stones=0;
   for(const name of graphics.COURTYARD_NAMES){
     const commands=graphics.expectedCourtyardCommands(name),fills=visibility.readCourtyardFills(commands,name);
@@ -130,7 +130,7 @@ test('independent material oracle has exact approved bounded per-object budgets'
     assert(fills.every(f=>f.alpha===1&&f.points.length===4));
     total+=fills.length;stones+=fills.filter(f=>![0x746c5c,0x514c42,0x6b6252,0x554f44].includes(f.color)).length;
   }
-  assert.equal(total,192);assert.equal(total*4,768);assert.equal(stones,76);
+  assert.equal(total,300);assert.equal(total*4,1200);assert.equal(stones,184);
 });
 test('tiny parser fixtures need an explicit count; live names never infer or widen their grammar',()=>{
   const wall=new Graphics();threeSquares(wall);
@@ -147,7 +147,7 @@ function approvedSnapshot(){
 }
 test('actual production graphics observation retains every exact named material command',()=>{
   const {gameplay}=approvedSnapshot();assert.deepEqual(graphics.courtyardGraphicsIssues(gameplay),[]);
-  assert.deepEqual(gameplay.townArt.ground.courtyard.map(w=>w.commandCount),[507,347,1827,1187]);
+  assert.deepEqual(gameplay.townArt.ground.courtyard.map(w=>w.commandCount),[507,347,3207,1967]);
   for(const w of gameplay.townArt.ground.courtyard)assert.deepEqual(w.commands,graphics.expectedCourtyardCommands(w.name));
 });
 for(const[label,mutate]of[
@@ -177,7 +177,7 @@ test('actual read-only adapter consumes real production wall buffers and exposes
   const r = m.read(); assert.equal(r.valid, true, r.issues.join()); assert.equal(r.nativePixels, false); assert.equal(r.method, 'analytic-source-transmission');
   assert.equal(r.samples, 4); assert.equal(r.alphaThreshold, 128); assert.equal(r.sampleStep, 3);
   assert.equal(r.walls.length, 4); assert.deepEqual(r.walls.map(w => w.name), graphics.COURTYARD_NAMES);
-  assert.deepEqual(r.walls.map(w=>w.fills.length),[25,17,91,59]);
+  assert.deepEqual(r.walls.map(w=>w.fills.length),[25,17,160,98]);
   for (let i = 0; i < 4; i++) assert.deepEqual(r.walls[i].commands, graphics.expectedCourtyardCommands(graphics.COURTYARD_NAMES[i]));
   assert.deepEqual(r.viewport, { css: { x: 7, y: 9, width: 800, height: 450 }, backing: { width: 1600, height: 900 }, logical: { width: 800, height: 450 } });
   assert.deepEqual(r.hero.worldMatrix, [1, 0, -0, 1, 1500, 752]);
@@ -188,19 +188,19 @@ test('three overlapping fills compound per fill, not as one precomposited Graphi
   const m = make(), wall = m.walls[2]; threeSquares(wall); Object.assign(wall, { x: 1500, y: 752, alpha: .28 });
   const r = m.read(); assert.equal(r.valid, true, r.issues.join()); approx(r.meanTransmission, .72 ** 3);
 });
-test('all 91 observed upper-wall paint primitives compound when they overlap',()=>{
+test('all 160 observed upper-wall paint primitives compound when they overlap',()=>{
   const m=make(),wall=m.walls[2];wall.commandBuffer=[6,1,0,0,7,0,0];
-  for(let i=0;i<91;i++)wall.fillStyle(0x123456,1).fillPoints([{x:0,y:0},{x:6,y:0},{x:6,y:6},{x:0,y:6}],true);
+  for(let i=0;i<160;i++)wall.fillStyle(0x123456,1).fillPoints([{x:0,y:0},{x:6,y:0},{x:6,y:6},{x:0,y:6}],true);
   Object.assign(wall,{x:1500,y:752,alpha:.28});
   const r=m.read();assert.equal(r.valid,true,r.issues.join());
-  assert.equal(r.walls[2].fills.length,91);assert(r.walls[2].fills.every(f=>f.contributingSamples===4));
-  assert(Math.abs(r.meanTransmission/.72**91-1)<1e-12);assert.equal(r.readable,0);
+  assert.equal(r.walls[2].fills.length,160);assert(r.walls[2].fills.every(f=>f.contributingSamples===4));
+  assert(Math.abs(r.meanTransmission/.72**160-1)<1e-12);assert.equal(r.readable,0);
 });
 test('conservative source sampling counts both cells on an exact partition seam',()=>{
   const m=make(),wall=m.walls[2];wall.commandBuffer=[6,1,0,0,7,0,0];
   for(const [left,right]of [[0,3],[3,6]])wall.fillStyle(0x123456,1).fillPoints([
     {x:left,y:0},{x:right,y:0},{x:right,y:6},{x:left,y:6}],true);
-  for(let i=2;i<91;i++)wall.fillStyle(0x123456,1).fillPoints([
+  for(let i=2;i<160;i++)wall.fillStyle(0x123456,1).fillPoints([
     {x:10000,y:10000},{x:10006,y:10000},{x:10006,y:10006},{x:10000,y:10006}],true);
   Object.assign(wall,{x:1500,y:752,alpha:.28});
   m.hero.frame=frame(pixels(1,1));Object.assign(m.hero,{x:1502,y:754.5});

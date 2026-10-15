@@ -1,5 +1,6 @@
 // Test-only exact reversal of the one-use, original-refusal-only endcap recovery.
 // No runtime controller or verifier imports this adapter. Historical hashes stay fixed.
+import { beforeUpperStoneDepth } from './upper-stone-depth-preservation.mjs';
 import assert from 'node:assert/strict';
 const changes={
   "plaza-browser.ts": [
@@ -58,6 +59,7 @@ const changes={
   ]
 };
 export function beforeEndcapStaging(name,source){
+  source=beforeUpperStoneDepth(name,source);
   name=name.split('/').at(-1);
   if(!changes[name])return source;
   source=String(source);

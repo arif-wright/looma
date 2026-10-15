@@ -14,13 +14,14 @@ export function courtyardFaces(name){
   return [...edges.map(([a,b,color])=>({color,points:[raise(a,low),raise(b,low),raise(b,high),raise(a,high)]})),
     {color:upper?0x929383:0x646b60,points:p.map(q=>raise(q,high))}];
 }
-// Independent transcription of the reviewed coarse-stone UV recipe. Physical
+// Independent transcription of the reviewed stone-depth UV recipe. Physical
 // faces above remain the collision/presentation oracle, never material cells.
+// flat=true retains the exact PR18 stone/mortar partition for invariant checks.
 export const COURTYARD_FILL_COUNTS = Object.freeze(Object.fromEntries(
-  COURTYARD_NAMES.map((name,i)=>[name,[25,17,91,59][i]])));
+  COURTYARD_NAMES.map((name,i)=>[name,[25,17,160,98][i]])));
 export const COURTYARD_COMMAND_COUNTS = Object.freeze(Object.fromEntries(
   COURTYARD_NAMES.map(name=>[name,7+20*COURTYARD_FILL_COUNTS[name]])));
-export function expectedCourtyardMaterial(name){
+export function expectedCourtyardMaterial(name, flat = false){
   if(!COURTYARD_NAMES.includes(name))throw Error('Unknown courtyard object');
   const wi=name.includes('-east-')?1:0,foundation=name.endsWith('-foundation'),out=[];
   for(const [faceIndex,{points}]of courtyardFaces(name).entries()){
@@ -33,8 +34,20 @@ export function expectedCourtyardMaterial(name){
       if((u===0||u===1)&&(v===0||v===1))return [...points[v===0?(u===0?0:1):(u===0?3:2)]];
       return a.map((n,k)=>n+(b[k]-n)*u+(d[k]-n)*v);
     };
-    const paint=(u0,u1,v0,v1,color)=>{
-      if(u1>u0&&v1>v0)out.push({color,points:[[u0,v0],[u1,v0],[u1,v1],[u0,v1]].map(([u,v])=>map(u,v))});
+    const paint=(u0,u1,v0,v1,color,stamp)=>{
+      if(!(u1>u0&&v1>v0))return;
+      const corners=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]],outer=corners.map(([u,v])=>map(u,v));
+      if(stamp===undefined||flat||foundation||faceIndex!==0||(u1-u0)*length<24){out.push({color,points:outer});return;}
+      const sizes=[(u1-u0)*length,(v1-v0)*extent];
+      const inner=corners.map(([u,v],corner)=>map(...[u,v].map((q,axis)=>{
+        const inset=Math.min(sizes[axis]*.23,(axis?.8:1.1)+((stamp*7+corner*3)%5)*.16);
+        const positive=axis?corner<2:corner===0||corner===3;
+        return positive?(axis?q+inset/extent:q):q-inset/(axis?extent:length);
+      })));
+      const offsets=cap?[-12,-7,17,7]:[-19,-9,24,9];
+      const shade=offset=>[16,8,0].reduce((result,bits)=>result|(Math.max(0,Math.min(255,((color>>bits)&255)+offset))<<bits),0);
+      for(let edge=0;edge<3;edge++){const next=(edge+1)%4;out.push({color:shade(offsets[edge]),points:[outer[edge],outer[next],inner[next],inner[edge]]});}
+      out.push({color:shade((stamp%5)-2),points:inner});
     };
     if(foundation&&cap){paint(0,1,0,1,base);continue;}
     const rows=cap||foundation?1:2,widths=foundation?[70,88,76,94,82]:[44,56,48,52,60,46,54];
@@ -48,7 +61,7 @@ export function expectedCourtyardMaterial(name){
         const u0=(Math.max(0,end?0:start)+(end||start<=0?.32:.7))/length,u1=(stop-(stop>=length?.32:.7))/length;
         if(u1>u0){
           paint(previousU,u0,v0,v1,base);
-          paint(u0,u1,v0,v1,palette[(i+row*3+wi)%palette.length]);
+          paint(u0,u1,v0,v1,palette[(i+row*3+wi)%palette.length],i+row*11+wi*19+faceIndex*7);
           previousU=u1;
         }
         if(end)break;
@@ -58,7 +71,7 @@ export function expectedCourtyardMaterial(name){
     }
     paint(0,1,previousV,1,base);
   }
-  if(out.length!==COURTYARD_FILL_COUNTS[name])throw Error('Independent courtyard material count mismatch');
+  if(out.length!==(flat?[25,17,91,59][COURTYARD_NAMES.indexOf(name)]:COURTYARD_FILL_COUNTS[name]))throw Error('Independent courtyard material count mismatch');
   return out;
 }
 export function expectedCourtyardCommands(name){

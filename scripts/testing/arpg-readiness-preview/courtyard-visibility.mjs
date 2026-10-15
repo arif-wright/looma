@@ -6,7 +6,7 @@
 import { COURTYARD_NAMES, COURTYARD_FILL_COUNTS, COURTYARD_COMMAND_COUNTS } from './courtyard-graphics.mjs';
 
 export const COURTYARD_VISIBILITY_LIMITS = Object.freeze({
-  worldObjects: 256, renderedObjects: 512, commandsPerWall: 1827,
+  worldObjects: 256, renderedObjects: 512, commandsPerWall: 3207,
   framePixels: 4194304, totalFramePixels: 33554432, sampleCandidates: 16384
 });
 const METHOD = 'analytic-source-transmission';
@@ -30,7 +30,7 @@ const inside = (x, y, polygon) => {
 export function readCourtyardFills(commands, nameOrCount) {
   const named=typeof nameOrCount==='string';
   const count=named?COURTYARD_FILL_COUNTS[nameOrCount]:nameOrCount;
-  requireThat(Number.isSafeInteger(count)&&count>0&&count<=91, 'Unknown courtyard object or unsupported explicit fill count');
+  requireThat(Number.isSafeInteger(count)&&count>0&&(named?count<=160:count<=91), 'Unknown courtyard object or unsupported explicit fill count');
   const expected=named?COURTYARD_COMMAND_COUNTS[nameOrCount]:7+20*count;
   requireThat(Array.isArray(commands) && commands.length <= expected, 'Missing or excessive Graphics command buffer');
   requireThat(commands.length === expected && [6, 1, 0, 0, 7, 0, 0].every((v, i) => commands[i] === v), 'Unsupported Graphics command grammar/prefix');

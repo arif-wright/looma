@@ -62,11 +62,11 @@ export function validateWalkGameplay(g,source){
   for(const w of v.walls){
     const expected=w.name==='town-courtyard-east-upper'?1:0;
     assert.equal(w.intersectedSamples,expected);assert.equal(w.contributingSamples,expected);contributing+=w.contributingSamples;
-    for(const f of w.fills){const count=w.name==='town-courtyard-east-upper'&&f.fillIndex===56?1:0;assert.equal(f.intersectedSamples,count);assert.equal(f.contributingSamples,count);
+    for(const f of w.fills){const count=w.name==='town-courtyard-east-upper'&&f.fillIndex===95?1:0;assert.equal(f.intersectedSamples,count);assert.equal(f.contributingSamples,count);
       if(w.aboveHero&&inside(world,f.points))hits.push({wall:w.name,objectId:w.objectId,painterIndex:w.painterIndex,depth:w.depth,objectAlpha:w.alpha,fillIndex:f.fillIndex,color:f.color,fillAlpha:f.alpha,points:f.points,edgeMargin:Math.min(...f.points.map((p,i)=>distance(world,p,f.points[(i+1)%f.points.length])))});
     }
   }
-  assert.equal(contributing,1);assert.equal(hits.length,1);const hit=hits[0];assert.equal(hit.wall,'town-courtyard-east-upper');assert.equal(hit.fillIndex,56);assert.equal(hit.color,0x92866f);assert.equal(hit.depth,908);assert.equal(hit.objectAlpha,.28);assert.equal(hit.fillAlpha,1);assert(hit.painterIndex>h.painterIndex);assert(Math.abs(hit.edgeMargin-.5245824720008054)<1e-9);
+  assert.equal(contributing,1);assert.equal(hits.length,1);const hit=hits[0];assert.equal(hit.wall,'town-courtyard-east-upper');assert.equal(hit.fillIndex,95);assert.equal(hit.color,0x92866f);assert.equal(hit.depth,908);assert.equal(hit.objectAlpha,.28);assert.equal(hit.fillAlpha,1);assert(hit.painterIndex>h.painterIndex);assert(Math.abs(hit.edgeMargin-.5245824720008054)<1e-9);
   return {sourcePixel:source.pixel,sourceRGBA:source.rgba,sourceAlpha:232/255,world,actualObservedFill:hit,analyticForegroundTransmission:.72,vignette,analyticCombinedSampleTransmission:.72*vignette.foregroundTransmission,measuredPixelTransmission:null,samples:61,coloredBodyGridContributions:1,broadReadabilityProven:false};
 }
 export function verifyWalkCapturedPNG(m,base64,index){
