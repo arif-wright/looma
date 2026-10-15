@@ -1,3 +1,5 @@
+import type { ExpeditionProgress } from './expeditionObjectives';
+
 type PhaserGameInstance = import('phaser').Game;
 
 type BootOwner = { parent: HTMLDivElement; cancel: () => void };
@@ -19,6 +21,7 @@ export type BootOptions = {
   onGameOver: (score: number, durationMs?: number) => void;
   onDepartureRequested?: () => void;
   onRetryRequested?: () => void;
+  onExpeditionProgress?: (progress: ExpeditionProgress | null) => void;
   onControls?: (controls: ArpgControls) => void;
   signal?: AbortSignal;
 };
@@ -68,6 +71,11 @@ export const bootGame = async (parent: HTMLDivElement, opts: BootOptions) => {
       onError: rejectReady,
       onDepartureRequested: () => { if (isCurrent()) opts.onDepartureRequested?.(); },
       onRetryRequested: () => { if (isCurrent()) opts.onRetryRequested?.(); },
+      onExpeditionProgress: (progress) => {
+        if (!isCurrent()) return;
+        // An optional presentation observer must never interrupt gameplay or settlement.
+        try { opts.onExpeditionProgress?.(progress); } catch { /* Presentation only. */ }
+      },
       onGameOver: (score, durationMs) => {
         if (isCurrent()) {
           if (durationMs === undefined) opts.onGameOver(score);

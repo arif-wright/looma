@@ -2,13 +2,16 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('phaser', () => ({ default: {
   Scene: class {},
-  Scenes: { Events: { SHUTDOWN: 'shutdown', DESTROY: 'destroy' } },
+  Loader: { Events: { FILE_LOAD_ERROR: 'fileloaderror' } },
+  Scenes: { Events: { CREATE: 'create', SHUTDOWN: 'shutdown', DESTROY: 'destroy' } },
   BlendModes: { NORMAL: 'normal', MULTIPLY: 'multiply', ADD: 'add' },
   Math: { Vector2: class { constructor(public x = 0, public y = 0) {} }, Between: (min: number) => min, Linear: (start: number, end: number, amount: number) => start + (end - start) * amount, Distance: { Between: (x: number, y: number, a: number, b: number) => Math.hypot(x - a, y - b) } },
   Input: { Keyboard: { JustDown: () => false } },
   Animations: { Events: { ANIMATION_COMPLETE: 'animationcomplete' } }
 } }));
 import { GameScene } from '../games/arpg/scenes/GameScene';
+import { createTownCorner } from '../games/arpg/assets/townCorner';
+import { movementSystem } from '../games/arpg/ecs/systems';
 import { World } from '../games/arpg/ecs/components';
 import { createTownSession } from '../games/arpg/townSession';
 import { createExpedition, enterRuins, recordKill, AREAS } from '../games/arpg/expedition';
@@ -70,10 +73,11 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     const objects: any[] = [];
     const object = (kind: string, x: number, y: number, texture?: string) => {
       const value: any = { kind, x, y, texture, depth: 0, scaleX: 1 };
-      for (const method of ['setScale', 'setTint', 'setAlpha', 'setOrigin', 'setBlendMode', 'play']) {
+      for (const method of ['setScale', 'setTint', 'setAlpha', 'setOrigin', 'setBlendMode', 'setName', 'play']) {
         value[method] = vi.fn(() => value);
       }
       value.setDepth = vi.fn((depth: number) => { value.depth = depth; return value; });
+      value.setName = vi.fn((name: string) => { value.name = name; return value; });
       value.setPosition = vi.fn((nextX: number, nextY: number) => { value.x = nextX; value.y = nextY; return value; });
       objects.push(value); return value;
     };
@@ -82,22 +86,33 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
       sprite: (x: number, y: number, key: string) => object('sprite', x, y, key),
       ellipse: vi.fn((x: number, y: number) => object('ellipse', x, y)),
       text: (x: number, y: number) => object('text', x, y),
-      group: vi.fn()
+      group: vi.fn(),
+      graphics: () => { const g = object('graphics', 0, 0); g.fillStyle = vi.fn(() => g); g.fillPoints = vi.fn(() => g); return g; }
     };
     s.addToWorld = vi.fn(); s.spawnSkeletons = vi.fn(); s.createProps = vi.fn();
     s.cameras = { main: { setZoom: vi.fn(), setBounds: vi.fn(), startFollow: vi.fn() } };
-    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect'].map(key => [key, vi.fn()]));
-    Object.assign(context, { createPattern: vi.fn(() => ({})) });
-    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    const context = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
+    Object.assign(context, { createPattern: vi.fn(() => ({})), createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })) });
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
     s.buildDungeonRoom(); s.setupPlayer(); s.buildAreaContent();
     const floors = objects.filter(value => value.texture?.startsWith('floor_'));
     const ground = objects.filter(value => value.texture === 'town_ground_plane_v1');
-    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_ground_plane_v1');
+    const exterior = objects.filter(value => value.name === 'town-exterior-backdrop');
+    const foreground = objects.filter(value => !value.texture?.startsWith('floor_') && value.texture !== 'town_ground_plane_v1' && value.name !== 'town-exterior-backdrop');
     expect(ground).toHaveLength(area === 0 ? 1 : 0);
+    expect(exterior).toHaveLength(area === 0 ? 1 : 0);
     expect(foreground.length).toBeGreaterThan(0);
     if (area === 0) {
       expect(floors).toHaveLength(0);
+      expect(objects.filter(value => value.texture?.startsWith('wall_'))).toHaveLength(0);
+      expect(objects.find(value => value.kind === 'graphics').depth).toBe(-160);
       expect(ground[0].depth).toBe(-161);
+      expect(exterior[0].depth).toBe(-162);
+      expect(exterior[0].depth).toBeLessThan(ground[0].depth);
       expect(ground[0].depth).toBeLessThan(Math.min(...foreground.map(value => value.depth)));
       expect(s.add.ellipse).toHaveBeenCalledTimes(1); // Only the hero shadow, no fake service/entrance markers.
       const entrance = objects.find(value => value.texture === 'town_ruins_entrance_v1');
@@ -207,6 +222,46 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(s.townCorner.blocksMovement).toHaveBeenCalledWith(previous, expect.any(Object), 38);
     expect(s.world.getTransform(s.playerId)).toMatchObject(previous);
     expect(s.world.getVelocity(s.playerId)).toMatchObject({ vx: 0, vy: 0 });
+  });
+
+  it.each([
+    ['rear', { x: 1368, y: 430 }, { x: 0, y: -1 }],
+    ['endcap', { x: 1640, y: 260 }, { x: 1, y: 1 }]
+  ] as const)('rolls actual ECS dash back against the generated %s foundation despite a legal endpoint', (_id, from, direction) => {
+    const s = make(); s.world = new World(); s.playerId = s.world.createEntity();
+    s.world.setTransform(s.playerId, { ...from, rot: 0 });
+    s.world.setVelocity(s.playerId, { vx: 0, vy: 0, speed: 220 });
+    s.world.setDash(s.playerId, { cd: 0, cdMax: 700, timer: 0, duration: 140, power: 230, lastDir: { ...direction } });
+    const context: any = Object.fromEntries(['save', 'restore', 'clearRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'translate', 'scale', 'transform', 'fillRect', 'fill'].map(key => [key, vi.fn()]));
+    Object.assign(context, { createPattern: () => ({}), createRadialGradient: () => ({ addColorStop: vi.fn() }) });
+    Object.assign(context, {
+      getImageData: () => ({ data: new Uint8ClampedArray(256 * 256 * 4).fill(255) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData: vi.fn()
+    });
+    s.textures = { exists: () => false, remove: vi.fn(), createCanvas: () => ({ context, canvas: {}, refresh: vi.fn(), setFilter: vi.fn(), setSize: vi.fn() }), get: () => ({ getSourceImage: () => ({}) }) };
+    s.add = { graphics: () => {
+      const graphic: any = { destroy: vi.fn() };
+      for (const name of ['setName', 'setDepth', 'fillStyle', 'fillPoints']) graphic[name] = () => graphic;
+      return graphic;
+    }, image: () => {
+      const image: any = { destroy: vi.fn() };
+      for (const name of ['setName', 'setOrigin', 'setScale', 'setDepth', 'setAlpha']) image[name] = () => image;
+      return image;
+    } };
+    s.townCorner = createTownCorner(s, () => {}, (x, y) => s.isoToWorld(x, y), -161);
+    s.lastMoveDir = { ...direction, lengthSq: () => direction.x ** 2 + direction.y ** 2 };
+    s.pendingDash = true;
+    const snapshots = s.captureTransforms();
+    expect(s.handleDash(16)?.activated).toBe(true);
+    movementSystem(s.world, 16);
+    const destination = { ...s.world.getTransform(s.playerId) };
+    expect(s.isBlocked(destination.x, destination.y, 38)).toBe(false);
+    expect(s.townCorner.blocksMovement(from, destination, 38)).toBe(true);
+    s.resolveCollisions(snapshots);
+    expect(s.world.getTransform(s.playerId)).toEqual({ ...from, rot: 0 });
+    expect(s.world.getVelocity(s.playerId)).toMatchObject({ vx: 0, vy: 0 });
+    expect(s.world.getDash(s.playerId).cd).toBe(700); // A blocked dash still consumes the real cooldown.
+    s.townCorner.destroy();
   });
 
   it.each(['shutdown', 'destroy'])('clears town scenery on scene %s and can clear it again safely', (event) => {
@@ -394,6 +449,71 @@ describe('ARPG scene expedition wiring (renderer mocked)', () => {
     expect(start).toHaveBeenCalledOnce();
     expect(abandon).toHaveBeenCalledWith('partial-entry'); // Local bookkeeping, not a server cancellation.
     town.dispose();
+  });
+
+  it('publishes immutable objective changes without frame, score, gold, or health churn', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    const observe = vi.fn(); s.handlers.onExpeditionProgress = observe;
+    s.publishExpeditionProgress(); s.publishExpeditionProgress();
+    expect(observe).toHaveBeenCalledOnce();
+    const town = observe.mock.calls[0][0];
+    expect(town).toEqual({ area: 0, floorKills: 0, outcome: 'preparing' });
+    expect(Object.isFrozen(town)).toBe(true);
+    s.expedition = enterRuins(s.expedition); s.publishExpeditionProgress();
+    s.expedition = { ...s.expedition, xp: 99, carriedGold: 20 }; s.elapsed = 5000;
+    s.publishExpeditionProgress(); expect(observe).toHaveBeenCalledTimes(2);
+    s.expedition = recordKill(s.expedition); s.publishExpeditionProgress();
+    expect(observe).toHaveBeenLastCalledWith({ area: 1, floorKills: 1, outcome: 'exploring' });
+    expect(Object.keys(observe.mock.calls.at(-1)[0]).sort()).toEqual(['area', 'floorKills', 'outcome']);
+    expect(town.floorKills).toBe(0);
+  });
+
+  it('republishes after a town status change without continuous duplicate callbacks', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    s.handlers.onExpeditionProgress = vi.fn();
+    s.publishExpeditionProgress(); s.townStatus = 'starting'; s.publishExpeditionProgress();
+    s.townStatus = 'ready'; s.publishExpeditionProgress(); s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not let an absent or throwing objective observer break progress', () => {
+    const s = make(); s.initialized = true; s.objectiveObserverActive = true;
+    expect(() => s.publishExpeditionProgress()).not.toThrow();
+    s.handlers.onExpeditionProgress = () => { throw new Error('optional view failed'); };
+    s.expedition = enterRuins(s.expedition);
+    expect(() => s.publishExpeditionProgress()).not.toThrow();
+    expect(s.expedition.area).toBe(1);
+  });
+
+  it('suppresses progress before readiness and after owner invalidation', () => {
+    const s = make(); s.handlers.onExpeditionProgress = vi.fn();
+    s.objectiveObserverActive = true; s.publishExpeditionProgress();
+    s.initialized = true; s.handlers.isCurrent = () => false; s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress).not.toHaveBeenCalled();
+  });
+
+  it.each(['shutdown', 'destroy'])('clears objective observations on %s and suppresses later publication', (event) => {
+    const s = make(); s.events = new EventEmitter(); s.handlers.onExpeditionProgress = vi.fn();
+    s.cameras = { main: { setBackgroundColor: () => { throw new Error('stop after listener'); } } };
+    expect(() => s.initializeScene()).toThrow('stop after listener');
+    s.initialized = true; s.objectiveObserverActive = true; s.publishExpeditionProgress();
+    s.events.emit(event); s.publishExpeditionProgress();
+    expect(s.handlers.onExpeditionProgress.mock.calls).toEqual([
+      [{ area: 0, floorKills: 0, outcome: 'preparing' }], [null]
+    ]);
+    expect(s.objectiveObserverActive).toBe(false);
+  });
+
+  it('does not publish readiness or objectives from an obsolete CREATE callback', () => {
+    const s = make(); s.events = new EventEmitter(); s.load = { off: vi.fn() };
+    s.initializeScene = () => { ++s.objectiveObserverEpoch; };
+    s.handlers.onExpeditionProgress = vi.fn();
+    s.create(); ++s.objectiveObserverEpoch; s.events.emit('create');
+    expect(s.handlers.onReady).not.toHaveBeenCalled();
+    expect(s.handlers.onExpeditionProgress).not.toHaveBeenCalled();
+    s.create(); s.events.emit('create');
+    expect(s.handlers.onReady).toHaveBeenCalledOnce();
+    expect(s.handlers.onExpeditionProgress).toHaveBeenCalledWith({ area: 0, floorKills: 0, outcome: 'preparing' });
   });
 
 });

@@ -1,0 +1,214 @@
+{
+  "scope": "Offline deterministic original-source reconstruction from recorded native key calls and released observations. The refused candidate was never sent to the browser; no guard or tolerance changed.",
+  "from": {
+    "x": 1524.7771031918116,
+    "y": 866.3151900954881
+  },
+  "from_observation": {
+    "at": 63734.79999999999,
+    "x": 1524.7771031918116,
+    "y": 866.3151900954881,
+    "courtyardFrame": {
+      "frame": 650,
+      "delta": 91.65999999999985,
+      "hero": {
+        "textureKey": "_games_arpg_characters_hero_knight_knight_armed_idle_W_knight_armed_idle_W_180_0_0_png",
+        "frameName": "__BASE",
+        "animation": "hero-knight_armed_idle-W",
+        "playing": true
+      }
+    },
+    "intent": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "target": [
+    1536,
+    864
+  ],
+  "history": [
+    {
+      "key": "d",
+      "delay": 16,
+      "before": {
+        "x": 1525.1445031918117,
+        "y": 866.3151900954881
+      },
+      "after": {
+        "x": 1545.3097031918116,
+        "y": 866.3151900954881
+      }
+    },
+    {
+      "key": "a",
+      "delay": 16,
+      "before": {
+        "x": 1545.3097031918116,
+        "y": 866.3151900954881
+      },
+      "after": {
+        "x": 1524.7771031918116,
+        "y": 866.3151900954881
+      }
+    }
+  ],
+  "quantum": 20.532600000000002,
+  "candidate": {
+    "key": "w+d",
+    "delay": 16,
+    "correction": {
+      "bound": 25.665750000000003,
+      "envelope": [
+        [
+          1524.7771031918116,
+          763.6521900954881
+        ],
+        [
+          1561.073954930289,
+          727.3553383570109
+        ],
+        [
+          1561.073954930289,
+          830.0183383570109
+        ],
+        [
+          1524.7771031918116,
+          866.3151900954881
+        ]
+      ]
+    }
+  },
+  "original_footprints_envelope_allowed": true,
+  "additional_courtyard_guard_allowed": false,
+  "solid_clearances": {
+    "rear": {
+      "at_from": 435.2675108663546,
+      "hull_edge_distances": [
+        302.439077346585,
+        302.439077346585,
+        403.30288528442895,
+        332.8983281172285
+      ],
+      "solid_vertex_to_hull": [
+        531.3362655136164,
+        522.9106065798704,
+        327.35710001468635,
+        302.439077346585
+      ],
+      "minimum_clearance": 302.439077346585
+    },
+    "endcap": {
+      "at_from": 530.7622174057666,
+      "hull_edge_distances": [
+        388.99213143016766,
+        388.99213143016766,
+        483.7323186299179,
+        437.6107018415797
+      ],
+      "solid_vertex_to_hull": [
+        388.99213143016766,
+        639.2558017020039,
+        624.7497001964846,
+        396.93209268149445
+      ],
+      "minimum_clearance": 388.99213143016766
+    },
+    "shop": {
+      "at_from": 328.89637268512615,
+      "hull_edge_distances": [
+        186.63880955085543,
+        186.63880955085543,
+        281.50911244409343,
+        234.07768173522385
+      ],
+      "solid_vertex_to_hull": [
+        203.3785702506727,
+        273.08944713691926,
+        295.7745908519257,
+        189.7047564416075
+      ],
+      "minimum_clearance": 186.63880955085543
+    },
+    "west": {
+      "at_from": 63.48855875924707,
+      "hull_edge_distances": [
+        12.336019950377223,
+        0,
+        14.791222045367151,
+        0
+      ],
+      "solid_vertex_to_hull": [
+        371.9134033871364,
+        175.85652690978355,
+        177.91806305775472,
+        371.0375007739659
+      ],
+      "minimum_clearance": 0
+    },
+    "east": {
+      "at_from": 200.17318589668827,
+      "hull_edge_distances": [
+        224.1464410443198,
+        171.07304306839325,
+        171.07304306839325,
+        200.17318589668827
+      ],
+      "solid_vertex_to_hull": [
+        182.52224290292477,
+        458.5037538337108,
+        451.3483363057114,
+        171.07304306839325
+      ],
+      "minimum_clearance": 171.07304306839325
+    }
+  },
+  "failed_leg": {
+    "leg": 21,
+    "label": "west-elbow-witness",
+    "target": [
+      1536,
+      864
+    ]
+  },
+  "checkpoint_action": {
+    "kind": "move",
+    "points": [
+      [
+        1456,
+        864
+      ],
+      [
+        1536,
+        864
+      ],
+      [
+        1536,
+        928
+      ],
+      [
+        1584,
+        928
+      ],
+      [
+        1584,
+        880
+      ]
+    ],
+    "label": "west-elbow-witness",
+    "view": "west-elbow-witness"
+  },
+  "terminal_witness": [
+    1584,
+    880
+  ],
+  "role": "Target [1536,864] is the second of five incidental routing waypoints toward required west-elbow-witness [1584,880]. The witness and its captured visibility obligations were not reached on desktop.",
+  "native_input_after_candidate": "Trace proceeds directly from released observation call@1267 to keyboardUp cleanup calls; no w+d key press was sent.",
+  "provenance": {
+    "commit": "933f5b9f08e264768e17c78b78806e18e11651da",
+    "native_report_artifact": 11927054831,
+    "raw_report_sha256": "1fd24379137313debf04a75492dca5c48861694a1ade8b129e3570290226c738",
+    "derived_replay_sha256": "7dd382e15068891698b98d5214ed93bac1c0877ea2298fc07f816f1dc623d0b7",
+    "evidence_kind": "Captured pre-refusal position and native key history, deterministic offline reconstruction; candidate chord was not sent"
+  }
+}

@@ -9,12 +9,17 @@ export const UNIT_FILES = {
   'gameSdkStartRecovery.spec.ts': 27,
   'gameIntegrationStartRecovery.spec.ts': 9,
   'arpgBootStartRecovery.spec.ts': 5,
-  'arpgBootSceneReadiness.spec.ts': 13,
-  'arpgGameSceneReadiness.spec.ts': 16,
+  'arpgBootSceneReadiness.spec.ts': 16,
+  'arpgGameSceneReadiness.spec.ts': 20,
   'arpgExpedition.spec.ts': 8,
-  'arpgExpeditionScene.spec.ts': 31,
-  'arpgTownCorner.spec.ts': 24,
-  'arpgViewportLayout.spec.ts': 23,
+  'arpgExpeditionScene.spec.ts': 40,
+  'arpgExpeditionObjectives.spec.ts': 20,
+  'arpgPausedHit.spec.ts': 23,
+  'arpgWardenAnimation.spec.ts': 12,
+  'arpgTownCorner.spec.ts': 50,
+  'arpgTownSurface.spec.ts': 21,
+  'arpgTownPlaza.spec.ts': 34,
+  'arpgViewportLayout.spec.ts': 25,
   'arpgTownSession.spec.ts': 30,
   'gameFullscreenStartRecovery.spec.ts': 18
 };
@@ -23,7 +28,7 @@ export const DOM_FILES = {
   portal: { 'portal-component.spec.ts': 52 },
   start: { 'start-component.spec.ts': 32 },
   legacy: { 'legacy-component.spec.ts': 17 },
-  'arpg-town': { 'arpg-town-component.spec.ts': 26 }
+  'arpg-town': { 'arpg-town-component.spec.ts': 33 }
 };
 export const BROWSER_TITLES = [
   ...['fetch', 'body', 'error-body'].map(stage => `30-second ${stage} timeout is uncertain, never auto-replayed, and ignores a late reply`),

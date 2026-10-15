@@ -251,6 +251,10 @@
   "/games/arpg/ui/cursor/cursor_gauntlet_blue.png",
   "/games/arpg/town-corner-v1/town-corner-shop.png",
   "/games/arpg/town-corner-v1/town-lantern-plinth.png",
-  "/games/arpg/town-ground-v1/town-cobble-material-v1.png",
-  "/games/arpg/town-ground-v1/town-ruins-entrance-v1.png"
+  "/games/arpg/town-plaza-v1/town-worn-paving-material-v2.png",
+  "/games/arpg/town-ground-v1/town-ruins-entrance-v1.png",
+  "/games/arpg/town-plaza-v1/town_plaza_rear_foundation_v1.png",
+  "/games/arpg/town-plaza-v1/town_plaza_rear_upper_v1.png",
+  "/games/arpg/town-plaza-v1/town_plaza_endcap_foundation_v1.png",
+  "/games/arpg/town-plaza-v1/town_plaza_endcap_upper_v1.png"
 ]

@@ -17,7 +17,12 @@ mkdir -p "$artifacts"
   src/lib/__tests__/arpgGameSceneReadiness.spec.ts \
   src/lib/__tests__/arpgExpedition.spec.ts \
   src/lib/__tests__/arpgExpeditionScene.spec.ts \
+  src/lib/__tests__/arpgExpeditionObjectives.spec.ts \
+  src/lib/__tests__/arpgPausedHit.spec.ts \
+  src/lib/__tests__/arpgWardenAnimation.spec.ts \
   src/lib/__tests__/arpgTownCorner.spec.ts \
+  src/lib/__tests__/arpgTownSurface.spec.ts \
+  src/lib/__tests__/arpgTownPlaza.spec.ts \
   src/lib/__tests__/arpgViewportLayout.spec.ts \
   src/lib/__tests__/arpgTownSession.spec.ts \
   src/lib/__tests__/gameFullscreenStartRecovery.spec.ts \
@@ -35,4 +40,4 @@ for suite in neon portal start legacy arpg-town; do
   "$node_bin" scripts/testing/recovery-dom/verify-results.mjs "$suite" "$report"
   "$node_bin" scripts/testing/recovery-dom/verify-start-recovery-results.mjs "$suite" "$report"
 done
-printf '%s\n' 'Verified 257 focused unit cases + 130 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'
+printf '%s\n' 'Verified 411 focused unit cases + 137 component-DOM cases; no skipped tests or retries. Browser execution is a separate gate.'

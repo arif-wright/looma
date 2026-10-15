@@ -42,13 +42,14 @@ Revert this code-only release or restore the previous production deployment if r
 
 ## Local startup and untimed-town integration
 
-The local runner verifies 257 focused unit cases in 12 exact files:
+The local runner verifies 411 focused unit cases in 17 exact files:
 SDK lifecycle 53, SDK start recovery 27, template start recovery 9, ARPG boot
-start recovery 5, boot scene readiness 13, game scene readiness 15,
-expedition model 8, expedition scene 30, town art 13, responsive layout 18, town coordinator 30 and viewport 18.
+start recovery 5, boot scene readiness 16, game scene readiness 20,
+expedition model 8, expedition scene 40, expedition objectives 20, town art 50, ground/boundary surface 21, explorable plaza 34, responsive layout 25,
+town coordinator 30, fullscreen recovery 18, paused sword hit and observer lifecycle 23, and warden animation 12.
 
-It also verifies 130 real-component DOM cases: Neon completion 3, portal 52,
-maintained-shell start 32, legacy Wrapper/ARPG 17 and dedicated ARPG town 26.
+It also verifies 137 real-component DOM cases: Neon completion 3, portal 52,
+maintained-shell start 32, legacy Wrapper/ARPG 17 and dedicated ARPG town 33.
 The nine Wrapper cases retain their prior coverage. The eight legacy ARPG cases
 now exercise explicit departures after town boot, cancellation and owner changes,
 uncertain-start recovery, fail-closed accepted-session cleanup when expedition entry partially fails,
@@ -79,12 +80,14 @@ pass under another runtime must be identified as such.
 
 ### Workflow/source-pin integration
 
-The startup workflow must run the same 12 focused unit files and all five DOM
-suites as this local runner, with exact totals of 257 units and 130 DOM cases.
+The startup workflow must run the same 17 focused unit files and all five DOM
+suites as this local runner, with exact totals of 411 units and 137 DOM cases.
 Compared with the inherited PR15 workflow (136 units and 104 DOM), this adds
-`arpgExpedition.spec.ts`, `arpgExpeditionScene.spec.ts`, `arpgTownSession.spec.ts`,
-`arpgTownCorner.spec.ts`, `arpgViewportLayout.spec.ts`
-and the `arpg-town` DOM suite; the boot-readiness file also gains one case.
+`arpgExpedition.spec.ts`, `arpgExpeditionScene.spec.ts`, `arpgExpeditionObjectives.spec.ts`, `arpgTownSession.spec.ts`,
+`arpgTownCorner.spec.ts`, `arpgTownSurface.spec.ts`, `arpgTownPlaza.spec.ts`, `arpgViewportLayout.spec.ts`
+and the `arpg-town` DOM suite; the boot-readiness file also gains four cases.
+The combined integration additionally includes `arpgPausedHit.spec.ts` (23)
+and `arpgWardenAnimation.spec.ts` (12), with exact per-file counts retained.
 The existing no-retry, no-skip, isolation, browser and dependency guards must
 remain intact.
 

@@ -10,7 +10,9 @@ export const TITLES = [
   'same-owner token refresh during loading preserves the original town',
   'an older page cleanup cannot destroy its replacement scene',
   'real movement and return preserve untimed town around a bounded expedition',
-  'phone-sized viewport renders decoded town art without starting an expedition'
+  'phone-sized viewport renders decoded town art without starting an expedition',
+  'desktop native exploration blocks facade walks and swept dashes with readable cutaways and return',
+  'phone native exploration blocks facade walks and swept dashes with readable cutaways and return'
 ];
 
 // Exact injected errors only. Every other console error remains a gate failure.

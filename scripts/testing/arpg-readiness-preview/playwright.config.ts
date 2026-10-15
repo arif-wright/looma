@@ -10,7 +10,10 @@ export default defineConfig({
   expect: { timeout: 15_000 }, outputDir: `${root}.results/browser-artifacts`,
   use: { baseURL: 'http://127.0.0.1:4281', browserName: 'chromium',
     viewport: { width: 1280, height: 900 }, serviceWorkers: 'block',
-    trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+    // Keep explicit checkpoint PNGs and action/source diagnostics, but avoid
+    // continuous duplicate image/DOM capture while measuring native cadence.
+    trace: { mode: 'retain-on-failure', screenshots: false, snapshots: false, sources: true },
+    screenshot: 'only-on-failure' },
   projects: [{ name: 'chromium-arpg-readiness' }],
   webServer: {
     command: `"${process.execPath}" node_modules/vite/bin/vite.js build --config scripts/testing/arpg-readiness-preview/vite.config.mjs && "${process.execPath}" node_modules/vite/bin/vite.js preview --config scripts/testing/arpg-readiness-preview/vite.config.mjs`,

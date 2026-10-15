@@ -1,0 +1,216 @@
+{
+  "baseCommit": "751622126a2cd131213bee8accc17eb2ebf65628",
+  "srcTree": "e0907ac0beccf4d364494d818c9e8d02fdaa96fd",
+  "staticTree": "4e73595fef84bde3a91c0d9d129eaa2969c7fe68",
+  "supabaseTree": "0a420e027ca5ff8038408d43072ece95c6333c8c",
+  "preservedFiles": [
+    {
+      "path": ".github/workflows/arpg-prompt-timing.yml",
+      "sha256": "e83eb3a461bbbaca213db8bbd5b4cf74259e6f4e0947a1a469d280798026d342"
+    },
+    {
+      "path": ".github/workflows/arpg-scene-readiness.yml",
+      "sha256": "9f957c2faf26016a13a4fef02f365ce1a3e66a00c59e0dd74c671a5e9773430f"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "7f0aa402c5032c5ab0a266959b1b7895208356567e5be9c1f6f68b675e37bf6b"
+    },
+    {
+      "path": "package.json",
+      "sha256": "30d3a5d5e08627e86d673612b60b1a7dd95fa3468faa7f64e6b70e00ce3ded24"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "ccb1d8150ced25661e43b619dcb5365a542274705c4ffbb5339b1304d4ca7953"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/.gitignore",
+      "sha256": "2f3ab857d43726373da9a18f147489006f8e943e3e2395b790885977f1547091"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/Presentation.svelte",
+      "sha256": "732a2c931af0988ab5ccc3cdc172d93323bd2ecdb9ac08f1c7a577120a8fc1dd"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/README.md",
+      "sha256": "19034273f746cf743f4a99209b006ef51e2cdd67433d8cada8f24c6dfc8cb438"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/alpha-bounds.mjs",
+      "sha256": "47a895db59029e544af6137a95e2c0249171309f0bc97fbaf6fe6c7224d6d64c"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/asset-paths.json",
+      "sha256": "433c30e4fbbcaf0002d2d3b06cff0facf3fbea0499f76cda7afb1ba70cc55199"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/cases.mjs",
+      "sha256": "b11aea766a2497ea2e0682b0d9cc43854d99724d4848891ee822137f8a126196"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/collaborators.ts",
+      "sha256": "15e4abbd6224baaf06f0008ae90f16562a5fa7ac276c8d67836b4bb0468ec08b"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/gate-prompt-geometry.json",
+      "sha256": "c6d5bf288926f90d228d40054567e4c4eb8d516f7dc63e8868bf9736be4f48e6"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/gate-prompt-scene.test.mjs",
+      "sha256": "d470ca6d7035ea6af938e272777d91885f8ce6a408c392e10bff9d92d5acdaf3"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/guard.ts",
+      "sha256": "853558aedcab5363cba542d5401be17daf4e9675968a8288ce9d7ddc757ee173"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/index.html",
+      "sha256": "dad37acc68f7f7363c15789a3ecd79059816759636bdc2306dda88032f70066c"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/main.ts",
+      "sha256": "de652691cb02fcdedadf58feddc65713ac2a70e2416c5c667b4dbb7305642f21"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/navigation.ts",
+      "sha256": "fc2c76491380817774b731f6c577e0267543737b8c8a4f0ca2bff574df1ccf37"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/observe-scene.ts",
+      "sha256": "2961adc70bc3df7e9e7c676ef5196bbaa4a5743d3e0b898a348e4eb6243f5e5d"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/phone-geometry.mjs",
+      "sha256": "9130c2a05feffded134b9d545bfa8d6bd3fa98fa1a771b42bd8358a67c92b69a"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/playwright.config.ts",
+      "sha256": "5ca9d83e9c0679b167c4c21b0ca7eaf6e5967ca9374a12d9d258a46a8507b28b"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/plaza-browser.ts",
+      "sha256": "6babf820e9afe0ad69dfa01ba722439dfc66875a1520f219fc225c0f549efeed"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/plaza-contract.mjs",
+      "sha256": "1cd2b3dc0158421fc6fb6b700eccb26987252fd90b4a49dcce57bd0665a674c6"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/plaza-feedback-replay.json",
+      "sha256": "7e7595ce4394d61fde5ea230464073670d905d5e9fba8d5100b0f2cc344774aa"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/plaza-navigation.mjs",
+      "sha256": "3236281de80be869dbbf0319a73c90aa9c39d057c22b7e8bb347b3c2dde9b322"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-README.md",
+      "sha256": "e20425744fb83040effa278c771da2e864b55f98dcad28eb426da1a5c796a3bf"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-driver.ts",
+      "sha256": "4d6419688226e895084baed12e18e1219d9a6f965bbcca1609b8785d3b567ce0"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-metrics.mjs",
+      "sha256": "6f26d7d1ea31c539cc81e5122c067ced35642791715c6830f6a38cd3a0a120ab"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-metrics.test.mjs",
+      "sha256": "c3f6732e1203919a7e78556ea6ac3b40e05630468b0ff661c787d32a287ff2d2"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-observer.ts",
+      "sha256": "1ad35332369d39c1c21c55336c5c3ece82c3da9be1ae6da46e87bbc41e187661"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-plan.mjs",
+      "sha256": "03dd75822ee76516cadfc2df774cdd7663477fb27e6e195a6fbb612944b30df5"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.json",
+      "sha256": "174b9b879b443cdd79575a09c7e110a0cff6c4c3827985fca2973d9cd9676a02"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-preservation.test.mjs",
+      "sha256": "5035527cd1451a7e67d888f0931d6bf7b705974641e2c866dfe9c0ef36a94a6e"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-report.mjs",
+      "sha256": "5b0f106fdbf094c08292a647a74fd57b3aaac5dbdba8a7ecb161be4f06ffadd2"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-report.test.mjs",
+      "sha256": "b3c4a41f88e34f4e4ced78d5adcb17511fb12d868a19e15b66e8b3cda7a61e7f"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing-source-guard.mjs",
+      "sha256": "8f01829b74087c6f4c7d64682029a16f31e140197e9d8962d3c7fb622257faed"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing.browser.spec.ts",
+      "sha256": "09ed58c0aca84459f2655947a78409251d726e974e7eb50a4b2a856f6ae1ca90"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing.playwright.config.ts",
+      "sha256": "a74dbcb813b72e09216b9ae8649762c763e0c93a0243e7dd499adace3611f525"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/prompt-timing.vite.config.mjs",
+      "sha256": "3252e77762153ddc292b64321b16c13973c020c17f1c768439c3e285f1239acb"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/protocol.mjs",
+      "sha256": "3a2557002f82071c4d0e4b9ae0763bda8dd8f5311058d55f81ba81d8dbe81643"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/readiness.browser.spec.ts",
+      "sha256": "8afafcd3d89d1e89166993e8da51b7c6c2bb02040c945b2043650fd9c7df241d"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/runtime.ts",
+      "sha256": "6287efb9812574b9dcc9fb41ae442e690624e3efbf9340d469d7c3ae28c6eaaf"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/schema-plaza-data.mjs",
+      "sha256": "069e7a16e008d88f4cd973f0a9c7ffe05a0f5857d3f68a85782840f05b715f8b"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/screenshots.mjs",
+      "sha256": "ef3c40e44fc363ef3dc65982684753685b692dad853a75e28e8f490726170e26"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/town-ground.mjs",
+      "sha256": "3aae794390091760e3d88739258c375ec3771fa7000815942093d7231fef12a7"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/tsconfig.json",
+      "sha256": "ff1b756ee3d3ae55b53410d414f03b4f5daa49903c99da644d83bf86a363fee0"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/verify-observations.mjs",
+      "sha256": "7d30ea89962cf00c5fa4d0436da592d73fbf0864725d06e9ba415987a8e0e76c"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/verify-plaza.mjs",
+      "sha256": "d4deddfb05044113f29b7fc62ad73a6f7abd1506a16db6b9b126ec317422b8ff"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/verify-results.mjs",
+      "sha256": "b2b3c3b782c23d9fd4b18732c76a026a1411a2f3760c11fb0dbf6aeddab943b1"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/verify-results.test.mjs",
+      "sha256": "96d09fa8de840bdd88bcddd802dac4f0e6a58bbaeef67c7718505439c90ef933"
+    },
+    {
+      "path": "scripts/testing/arpg-readiness-preview/vite.config.mjs",
+      "sha256": "ea44102b9b0f7f296e9de9b3710b329c9d723c1ebe143700c07e9752acb641e6"
+    },
+    {
+      "path": "scripts/testing/recovery-dom/verify-playwright-toolchain.mjs",
+      "sha256": "a2563b1ed33927f386bb3d3bcd5c507da5dfb0474337a9fbbc8bec4ee3a2c801"
+    }
+  ]
+}

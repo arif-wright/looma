@@ -1,6 +1,8 @@
+import type { ExpeditionProgress } from '../expeditionObjectives';
 import Phaser from 'phaser';
 import type { TownStatus } from '../main';
 import { arpgViewportLayout, ARPG_DESKTOP_ZOOM } from '../viewportLayout';
+import { townExplorationOffset } from '../townPlaza';
 import { HERO_MANIFEST, SKELETON_MANIFEST, type CharacterManifest, type DirectionKey } from '../assets/manifest';
 import { createTownCorner, TOWN_RUNTIME_ASSETS, TOWN_CORNER_LAYOUT, type TownCorner } from '../assets/townCorner';
 import { World, type EntityId, type Player, type Vec2 } from '../ecs/components';
@@ -41,6 +43,7 @@ type GameHandlers = {
   onGameOver: (score: number, durationMs?: number) => void;
   onDepartureRequested?: () => void;
   onRetryRequested?: () => void;
+  onExpeditionProgress?: (progress: ExpeditionProgress | null) => void;
   onReady: () => void;
   onError: (error: Error) => void;
   isCurrent: () => boolean;
@@ -166,6 +169,9 @@ const frameKeyFromPath = (path: string) => path.replace(/[^a-zA-Z0-9]+/g, '_');
 
 export class GameScene extends Phaser.Scene {
   private expedition = createExpedition();
+  private objectiveObserverEpoch = 0;
+  private objectiveObserverActive = false;
+  private objectiveProgressKey: string | null = null;
   private expeditionActive = false;
   private durationLimit = MAX_RUN_MS;
   private expeditionStartedAt = 0;
@@ -215,6 +221,7 @@ export class GameScene extends Phaser.Scene {
   private heroAttacking = false;
   private pointerAttack = false;
   private attackCooldown = 0;
+  private pendingAttackHit: Phaser.Time.TimerEvent | undefined;
   private killCount = 0;
   private pendingDash = false;
   private previousPositions = new Map<EntityId, Vec2>();
@@ -232,6 +239,7 @@ export class GameScene extends Phaser.Scene {
   private controlPanel!: Phaser.GameObjects.Rectangle;
   private compactHUD = false;
   private viewportLayoutKey = '';
+  private viewportLayout: ReturnType<typeof arpgViewportLayout> | null = null;
   private hpBarSize = { width: 240, height: 16 };
   private controlContainer!: Phaser.GameObjects.Container;
   private primaryControl!: Phaser.GameObjects.Text;
@@ -291,12 +299,15 @@ export class GameScene extends Phaser.Scene {
         throw new Error('Game assets could not be loaded. Please start a new run.');
       }
       this.initializeScene();
+      const objectiveEpoch = this.objectiveObserverEpoch;
       // Phaser emits CREATE only after create() returns and the scene is running.
       // This is scene initialization evidence, not a first-render guarantee.
       this.events.once(Phaser.Scenes.Events.CREATE, () => {
-        if (!this.handlers.isCurrent() || this.startupFailed) return;
+        if (!this.handlers.isCurrent() || this.startupFailed || objectiveEpoch !== this.objectiveObserverEpoch) return;
         this.initialized = true;
+        this.objectiveObserverActive = true;
         this.handlers.onReady();
+        this.publishExpeditionProgress();
       });
     } catch (error) {
       this.failStartup(error);
@@ -304,10 +315,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private initializeScene() {
+    ++this.objectiveObserverEpoch;
+    this.objectiveObserverActive = false;
+    this.objectiveProgressKey = null;
     const releaseTownCorner = () => {
-      this.clearTownCorner();
+      this.cancelPendingAttackHit();
+      ++this.objectiveObserverEpoch;
+      this.objectiveObserverActive = false;
+      this.objectiveProgressKey = null;
       this.events.off(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
       this.events.off(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
+      this.notifyExpeditionProgress(null);
+      this.clearTownCorner();
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, releaseTownCorner);
     this.events.once(Phaser.Scenes.Events.DESTROY, releaseTownCorner);
@@ -325,6 +344,7 @@ export class GameScene extends Phaser.Scene {
     this.createOverlays();
     this.setupUICamera();
     this.updateFixedUITransforms();
+    this.setupPortalPromptVisibility();
   }
 
   update(_time: number, delta: number) {
@@ -369,10 +389,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateUIState();
     this.updateFixedUITransforms();
+    this.updateTownCamera();
   }
 
   private resetState() {
     this.viewportLayoutKey = '';
+    this.viewportLayout = null;
     this.compactHUD = false;
     this.hpBarSize = { width: 240, height: 16 };
     this.previousPositions.clear();
@@ -466,10 +488,15 @@ export class GameScene extends Phaser.Scene {
           : this.expedition.area === 2 && ((tx === 10 && ty >= 11 && ty <= 14) || (tx === 20 && ty >= 5 && ty <= 7));
         if (isBorder || isPillar) {
           const texture = `wall_${Phaser.Math.Between(0, WALL_TEXTURES.length - 1)}`;
-          const wall = this.add.image(pos.x, pos.y - 42, texture);
-          wall.setScale(TILE_SCALE);
-          wall.setDepth(pos.y + 160);
-          this.addToWorld(wall);
+          // Town's continuous low coping covers the same blocked ring. Keep
+          // wallTiles, random selection and recorded camera bounds unchanged;
+          // dungeon walls and pillars retain their original rendering.
+          if (this.expedition.area !== 0) {
+            const wall = this.add.image(pos.x, pos.y - 42, texture);
+            wall.setScale(TILE_SCALE);
+            wall.setDepth(pos.y + 160);
+            this.addToWorld(wall);
+          }
           this.wallTiles.add(`${tx},${ty}`);
           recordBounds(pos, 70);
         } else {
@@ -543,7 +570,8 @@ export class GameScene extends Phaser.Scene {
     this.heroRing.setDepth(spawn.y - 4);
     this.addToWorld(this.heroRing);
 
-    this.cameras.main.startFollow(this.playerSprite, true, 0.12, 0.12);
+    const followLerp = this.expedition.area === 0 ? 1 : 0.12;
+    this.cameras.main.startFollow(this.playerSprite, true, followLerp, followLerp);
 
     this.dashAfterimages = this.add.group();
   }
@@ -671,20 +699,24 @@ export class GameScene extends Phaser.Scene {
     if (key === this.viewportLayoutKey) return;
     this.viewportLayoutKey = key;
     const layout = arpgViewportLayout(this.scale.width, this.scale.height, this.expedition.area === 0);
+    this.viewportLayout = layout;
+    const townOverview = !layout.compact && this.expedition.area === 0;
     this.compactHUD = layout.compact;
     this.uiContainer.setScale(1).setPosition(layout.hud.x, layout.hud.y);
     this.controlContainer.setScale(1).setPosition(layout.controls.x, layout.controls.y);
     this.hudPanel.setSize(layout.hud.width, layout.hud.height);
     this.controlPanel.setSize(layout.controls.width, layout.controls.height);
-    this.instructionsText.setVisible(!layout.compact);
-    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 58)
-      .setFontSize(layout.compact ? 12 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
-    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 98).setFontSize(layout.compact ? 11 : 16);
-    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : { width: 240, height: 16 };
-    this.hpBarBg.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.hpBarFill.setPosition(layout.compact ? 76 : 16, layout.compact ? 29 : 120);
-    this.areaText.setPosition(layout.compact ? 140 : 16, layout.compact ? 25 : 145)
-      .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.instructionsText.setVisible(!layout.compact)
+      .setText(townOverview ? 'WASD move · Space dash · Click attack · E at gate' : 'WASD move · Space dash · Click attack\nE at the gate · Gold and levels last this run')
+      .setPosition(16, townOverview ? 10 : 12).setFontSize(townOverview ? 13 : 16);
+    this.scoreText.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : townOverview ? 34 : 58)
+      .setFontSize(layout.compact ? 12 : townOverview ? 17 : 20).setWordWrapWidth(layout.compact ? layout.hud.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
+    this.hpText.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : townOverview ? 64 : 98).setFontSize(layout.compact ? 11 : townOverview ? 14 : 16);
+    this.hpBarSize = layout.compact ? { width: 52, height: 8 } : townOverview ? { width: 96, height: 10 } : { width: 240, height: 16 };
+    this.hpBarBg.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.hpBarFill.setPosition(layout.compact ? 76 : townOverview ? 96 : 16, layout.compact ? 29 : townOverview ? 67 : 120);
+    this.areaText.setPosition(layout.compact ? 140 : townOverview ? 216 : 16, layout.compact ? 25 : townOverview ? 65 : 145)
+      .setFontSize(layout.compact ? 11 : townOverview ? 13 : 14).setWordWrapWidth(layout.compact ? Math.max(1, layout.hud.width - 148) : 0).setMaxLines(layout.compact ? 1 : 0);
     this.controlStatus.setPosition(layout.compact ? 8 : 16, layout.compact ? 5 : 10)
       .setFontSize(layout.compact ? 11 : 14).setWordWrapWidth(layout.compact ? layout.controls.width - 16 : 0).setMaxLines(layout.compact ? 1 : 0);
     this.primaryControl.setPosition(layout.compact ? 8 : 16, layout.compact ? 25 : 34);
@@ -699,12 +731,61 @@ export class GameScene extends Phaser.Scene {
     // Keep the compact entrance prompt readable while its art remains at world
     // scale. Only resize on layout changes, never rerasterize it every frame.
     if (this.portalText) this.portalText.setScale(this.expedition.area === 0 && layout.compact ? 1 / layout.camera.zoom : 1);
-    camera.setFollowOffset(layout.camera.offsetX, layout.camera.offsetY);
+    const offset = this.expedition.area === 0 && this.playerSprite
+      ? townExplorationOffset(layout, this.playerSprite, this.isoToWorld(14, 9), this.isoToWorld(18, 9)) : layout.camera;
+    camera.setFollowOffset(offset.offsetX, offset.offsetY);
     if (this.playerSprite) {
-      camera.centerOn(this.playerSprite.x - layout.camera.offsetX, this.playerSprite.y - layout.camera.offsetY);
+      camera.centerOn(this.playerSprite.x - offset.offsetX, this.playerSprite.y - offset.offsetY);
     }
     this.resizeVignette();
     this.updateUIState();
+  }
+
+  private updateTownCamera() {
+    if (this.expedition.area !== 0 || !this.playerSprite || !this.viewportLayout) return;
+    const offset = townExplorationOffset(this.viewportLayout, this.playerSprite,
+      this.isoToWorld(14, 9), this.isoToWorld(18, 9));
+    this.cameras.main.setFollowOffset(offset.offsetX, offset.offsetY);
+  }
+
+  private setupPortalPromptVisibility() {
+    const camera = this.cameras.main;
+    const update = () => this.updatePortalPromptVisibility();
+    // FOLLOW_UPDATE runs after Phaser settles the follow scroll and matrix,
+    // before this camera draws. An update-loop check would lag by one frame.
+    camera.on(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, update);
+    const release = () => {
+      camera.off(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, update);
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, release);
+      this.events.off(Phaser.Scenes.Events.DESTROY, release);
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, release);
+    this.events.once(Phaser.Scenes.Events.DESTROY, release);
+  }
+
+  private updatePortalPromptVisibility() {
+    const prompt = this.portalText;
+    if (!prompt) return;
+    // Cull the complete, currently scaled text, never leave a fragment at a
+    // viewport edge, or in town behind fixed UI. This changes presentation only; the
+    // gate's world position, camera, input and interaction radius stay intact.
+    const camera = this.cameras.main as Phaser.Cameras.Scene2D.Camera & {
+      readonly matrix: Phaser.GameObjects.Components.TransformMatrix;
+    };
+    const bounds = prompt.getBounds();
+    const points = [[bounds.left, bounds.top], [bounds.right, bounds.top],
+      [bounds.left, bounds.bottom], [bounds.right, bounds.bottom]].map(([x, y]) =>
+      camera.matrix.transformPoint(x! - camera.scrollX, y! - camera.scrollY));
+    const left = Math.min(...points.map(p => p.x)), right = Math.max(...points.map(p => p.x));
+    const top = Math.min(...points.map(p => p.y)), bottom = Math.max(...points.map(p => p.y));
+    const padding = 2;
+    const contained = left >= camera.x + padding && right <= camera.x + camera.width - padding &&
+      top >= camera.y + padding && bottom <= camera.y + camera.height - padding;
+    // Keep the existing field HUD overlap behavior; only town excludes fixed UI.
+    const clearOfUI = this.expedition.area !== 0 || this.viewportLayout && [this.viewportLayout.hud, this.viewportLayout.controls].every(panel =>
+      right <= panel.x - padding || left >= panel.x + panel.width + padding ||
+      bottom <= panel.y - padding || top >= panel.y + panel.height + padding);
+    prompt.setVisible(Boolean(prompt.text && contained && clearOfUI));
   }
 
   private setupUICamera() {
@@ -776,6 +857,7 @@ export class GameScene extends Phaser.Scene {
     const score = this.playerId ? this.world.getPlayer(this.playerId)?.score ?? 0 : 0;
     const hp = this.playerId ? this.world.getHealth(this.playerId)?.current ?? HERO_MAX_HP : HERO_MAX_HP;
     this.areaEpoch += 1;
+    this.cancelPendingAttackHit();
     this.time.removeAllEvents();
     this.time.clearPendingEvents();
     this.tweens.killAll();
@@ -812,7 +894,7 @@ export class GameScene extends Phaser.Scene {
         this, image => this.addToWorld(image), (tx, ty) => this.isoToWorld(tx, ty),
         FLOOR_DEPTH_OFFSET + this.roomBounds.maxY + 1
       );
-
+      this.townCorner.updateActor(this.playerSprite);
     }
     const gate = this.isoToWorld(18, 9);
     if (this.expedition.area !== 0) this.addToWorld(this.add.ellipse(gate.x, gate.y, 150, 65, 0x73d8dd, 0.65).setDepth(gate.y + 1));
@@ -825,6 +907,7 @@ export class GameScene extends Phaser.Scene {
 
   private pauseGameplay() {
     this.runState = 'paused';
+    if (this.pendingAttackHit) this.pendingAttackHit.paused = true;
     this.pointerAttack = false;
     this.playerSprite.anims.pause();
     this.skeletons.forEach((enemy) => enemy.sprite.anims.pause());
@@ -833,6 +916,7 @@ export class GameScene extends Phaser.Scene {
 
   private resumeGameplay() {
     this.runState = 'running';
+    if (this.pendingAttackHit) this.pendingAttackHit.paused = false;
     this.playerSprite.anims.resume();
     this.skeletons.forEach((enemy) => enemy.sprite.anims.resume());
     this.updateControlButtons();
@@ -1129,6 +1213,7 @@ export class GameScene extends Phaser.Scene {
     if (transform && velocity) {
       this.playerSprite.setPosition(transform.x, transform.y);
       this.playerSprite.setDepth(transform.y + 20);
+      this.townCorner?.updateActor(transform);
       this.playerShadow.setPosition(transform.x, transform.y);
       this.playerShadow.setDepth(transform.y - 5);
       this.heroRing.setPosition(transform.x, transform.y);
@@ -1148,7 +1233,10 @@ export class GameScene extends Phaser.Scene {
       const facing = moving ? this.directionFromVector(new Phaser.Math.Vector2(v.vx, v.vy)) : enemy.facing;
       enemy.facing = facing;
       const animKey = `skeleton-${desiredAnim}-${facing}`;
-      if (enemy.sprite.anims.currentAnim?.key !== animKey && !enemy.sprite.anims.isPlaying) {
+      const currentAnim = enemy.sprite.anims.currentAnim?.key;
+      const locomotion = currentAnim?.startsWith(`skeleton-${SKELETON_ANIM_KEYS.idle}-`) ||
+        currentAnim?.startsWith(`skeleton-${SKELETON_ANIM_KEYS.walk}-`);
+      if (!enemy.sprite.anims.isPaused && currentAnim !== animKey && (!enemy.sprite.anims.isPlaying || locomotion)) {
         enemy.sprite.play(animKey);
       }
     });
@@ -1254,6 +1342,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private cancelPendingAttackHit() {
+    this.pendingAttackHit?.remove(false);
+    this.pendingAttackHit = undefined;
+  }
+
   private performAttack() {
     if (!this.playerId) return;
     const transform = this.world.getTransform(this.playerId);
@@ -1270,14 +1363,18 @@ export class GameScene extends Phaser.Scene {
     const attackDir = this.heroFacingVec.lengthSq() > 0 ? this.heroFacingVec.clone() : new Phaser.Math.Vector2(0, 1);
     attackDir.normalize();
     const origin = { x: transform.x, y: transform.y };
-    this.time.delayedCall(140, () => {
+    const hit = this.time.delayedCall(140, () => {
+      if (this.pendingAttackHit !== hit) return;
+      this.pendingAttackHit = undefined;
       if (epoch === this.areaEpoch) this.applyAttackHit(origin, attackDir.clone());
     });
+    this.pendingAttackHit = hit;
     this.attackCooldown = HERO_ATTACK_COOLDOWN;
   }
 
   private applyAttackHit(origin: Vec2, direction: Phaser.Math.Vector2) {
-    if (!this.playerId || this.runState !== 'running' || this.expedition.area === 0 || this.ended || this.hasExpeditionExpired()) return;
+    if (!this.playerId || this.runState !== 'running' || this.expedition.area === 0 || this.ended || this.hasExpeditionExpired() || !this.handlers.isCurrent()) return;
+    if ((this.world.getHealth(this.playerId)?.current ?? 0) <= 0) return;
     const center = {
       x: origin.x + direction.x * ATTACK_RANGE_OFFSET,
       y: origin.y + direction.y * ATTACK_RANGE_OFFSET
@@ -1357,15 +1454,33 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private notifyExpeditionProgress(progress: ExpeditionProgress | null) {
+    if (!this.handlers.isCurrent()) return;
+    try { this.handlers.onExpeditionProgress?.(progress); } catch { /* Presentation only. */ }
+  }
+
+  private publishExpeditionProgress() {
+    if (!this.objectiveObserverActive || !this.initialized || !this.handlers.isCurrent() || this.ended) return;
+    const { area, floorKills, outcome } = this.expedition;
+    // Town status changes can republish the same objective after a failed departure.
+    // Exclude frame clocks, HP, score, XP and gold: none changes the next objective.
+    const key = `${area}:${floorKills}:${outcome}:${this.townStatus}`;
+    if (key === this.objectiveProgressKey) return;
+    this.objectiveProgressKey = key;
+    this.notifyExpeditionProgress(Object.freeze({ area, floorKills, outcome }));
+  }
+
   private updateUIState() {
     if (!this.playerId) return;
+    this.publishExpeditionProgress();
     const player = this.world.getPlayer(this.playerId) as Player | undefined;
     const health = this.world.getHealth(this.playerId);
     const score = player?.score ?? this.killCount * 250;
-    this.scoreText.setText(`${this.compactHUD ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
+    const conciseStatus = this.compactHUD || this.expedition.area === 0;
+    this.scoreText.setText(`${conciseStatus ? 'Lv' : 'Hero Lv'} ${heroLevel(this.expedition.xp)} · XP ${this.expedition.xp % 100}/100 · Score ${score}`);
     const area = AREAS[this.expedition.area];
     const compactArea = ['Lantern Sq.', 'Mossgate', 'Ember Vault'][this.expedition.area];
-    this.areaText.setText(this.compactHUD
+    this.areaText.setText(conciseStatus
       ? `${compactArea} · G${this.expedition.carriedGold}/${this.expedition.bankedGold}`
       : `${area.name} · Gold ${this.expedition.carriedGold} carried / ${this.expedition.bankedGold} banked`);
     if (this.portalText) this.portalText.setText(this.expedition.area === 0 ? (this.townStatus === 'ready' ? 'E · Enter ruins' : this.townStatus === 'retry' ? 'E · Retry saving' : this.townStatus === 'blocked' ? 'Unavailable' : 'Please wait…') : canAdvance(this.expedition) ? (this.expedition.area === 1 ? 'STAIR TO EMBER VAULT\nE · Descend' : 'WAY HOME\nE · Return victorious') : `${area.name}\nWardens ${this.expedition.floorKills}/${area.enemies}`);

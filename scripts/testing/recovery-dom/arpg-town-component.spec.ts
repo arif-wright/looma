@@ -189,7 +189,11 @@ describe('actual ARPG town route and SDK lifecycle', () => {
   });
 
   it('holds a short return transparently until the minimum with frozen gameplay time and no new departure', async () => {
-    minDurationMs = 10_000; await open(); await depart(); await finish(400, 2000);
+    minDurationMs = 10_000; await open(); await depart();
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'retreated' });
+    await finish(400, 2000);
+    expect(document.querySelector('[data-testid="expedition-objectives"]')?.textContent).toContain('Your result is fixed');
+    expect(document.body.textContent).not.toContain('Result saved');
     expect(document.body.textContent).toContain('Your result is fixed');
     expect(button('Waiting to save…')?.disabled).toBe(true); expect(requests(SIGN)).toHaveLength(0);
     options().onDepartureRequested?.(); options().onGameOver(9999, 9999); await sync();
@@ -230,7 +234,10 @@ describe('actual ARPG town route and SDK lifecycle', () => {
   it('does not make a score-rate rejection look retryable or pad time', async () => {
     await open(); await depart();
     handler = (call) => call.url === SIGN ? Promise.resolve(Response.json({ code: 'invalid_score_rate' }, { status: 400 })) : null;
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'completed' });
     await finish(5600, 2000);
+    expect(document.querySelector('[data-testid="expedition-objectives"]')?.textContent).toContain('The server rejected this expedition result');
+    expect(document.body.textContent).not.toContain('Result saved');
     expect(button('Result rejected')?.disabled).toBe(true);
     expect(document.body.textContent).toContain('waiting in town cannot make this result valid');
     await vi.advanceTimersByTimeAsync(120_000); options().onRetryRequested?.(); options().onDepartureRequested?.(); await sync();
@@ -307,4 +314,92 @@ describe('actual ARPG town route and SDK lifecycle', () => {
     late.resolve(leaderboard('foreign-stale')); await sync();
     expect(document.querySelector('[data-testid="town-test-leaderboard"]')?.textContent).not.toContain('foreign-stale');
   });
+  it('keeps unobserved progress unknown and renders a labeled non-interactive objective card', async () => {
+    await open();
+    const card = document.querySelector('[data-testid="expedition-objectives"]')!;
+    expect(card.getAttribute('aria-labelledby')).toBe('expedition-objectives-title');
+    expect(card.querySelector('h2')?.textContent).toBe('Expedition objectives');
+    expect(card.textContent).toContain('Objective progress is not available yet.');
+    expect(card.querySelectorAll('button, input, [tabindex]')).toHaveLength(0);
+    expect(card.textContent).toContain('Pause stops combat, but the expedition clock continues.');
+    expect(card.textContent).toContain('Your dungeon hero level and floor objectives reset each expedition.');
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'preparing' }); await sync();
+    expect(card.textContent).toContain('Enter the ruins when you’re ready.');
+    expect(requests(START)).toHaveLength(0);
+  });
+
+  it('shows actual remaining counts and next actions without live-announcing every kill', async () => {
+    await open(); await depart();
+    const card = document.querySelector('[data-testid="expedition-objectives"]')!;
+    const announcement = () => card.querySelector('.sr-only')?.textContent;
+    options().onExpeditionProgress?.({ area: 1, floorKills: 2, outcome: 'exploring' }); await sync();
+    expect(card.textContent).toContain('2 wardens remaining · 2/4 defeated');
+    const first = announcement();
+    options().onExpeditionProgress?.({ area: 1, floorKills: 3, outcome: 'exploring' }); await sync();
+    expect(card.textContent).toContain('1 warden remaining · 3/4 defeated'); expect(announcement()).toBe(first);
+    options().onExpeditionProgress?.({ area: 1, floorKills: 4, outcome: 'exploring' }); await sync();
+    expect(card.textContent).toContain('Stair open. Choose Descend or press E at the stair.');
+    expect(announcement()).not.toBe(first);
+    options().onExpeditionProgress?.({ area: 2, floorKills: 0, outcome: 'exploring' }); await sync();
+    expect(card.textContent).toContain('6 wardens remaining · 0/6 defeated');
+    options().onExpeditionProgress?.({ area: 2, floorKills: 6, outcome: 'exploring' }); await sync();
+    expect(card.textContent).toContain('Way home open. Return to town.');
+    expect(requests(SIGN)).toHaveLength(0);
+  });
+
+  it('never treats a local completed objective as saved and preserves retry authority', async () => {
+    await open(); await depart();
+    let failures = 0;
+    handler = call => call.url === COMPLETE && failures++ === 0 ? Promise.reject(new TypeError('offline')) : null;
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'completed' }); await sync();
+    expect(document.body.textContent).toContain('You cleared both floors and returned to town.');
+    expect(document.body.textContent).not.toContain('Result saved'); expect(h.reward).not.toHaveBeenCalled();
+    await finish();
+    expect(document.body.textContent).toContain('Save not confirmed. Retry this result before departing again.');
+    expect(document.body.textContent).not.toContain('Result saved');
+    expect(button('Retry save')?.disabled).toBe(false);
+    const payload = requests(COMPLETE)[0].body;
+    click('Retry save'); await sync();
+    expect(requests(COMPLETE)[1].body).toEqual(payload);
+    expect(document.body.textContent).toContain('Result saved.');
+    expect(document.querySelector('[data-testid="expedition-objectives"] .sr-only')?.textContent).not.toContain('saved');
+  });
+
+  it('clears the prior objective during a new start and waits for fresh scene progress', async () => {
+    await open(); await depart(); await finish();
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'completed' }); await sync();
+    const late = hold(START); await depart();
+    options().onExpeditionProgress?.({ area: 0, floorKills: 0, outcome: 'completed' }); await sync();
+    expect(document.body.textContent).not.toContain('You cleared both floors');
+    expect(document.body.textContent).toContain('Objective progress is not available yet.');
+    late.resolve(Response.json(payload('new-objective-run'))); await sync();
+    expect(document.body.textContent).toContain('Objective progress is not available yet.');
+    options().onExpeditionProgress?.({ area: 1, floorKills: 0, outcome: 'exploring' }); await sync();
+    expect(document.body.textContent).toContain('4 wardens remaining · 0/4 defeated');
+  });
+
+  it.each(['owner-b', null])('clears objective data and suppresses late observations after owner becomes %s', async owner => {
+    await open(); await depart(); const previous = options();
+    previous.onExpeditionProgress?.({ area: 2, floorKills: 5, outcome: 'exploring' }); await sync();
+    expect(document.body.textContent).toContain('1 warden remaining');
+    emitOwner(owner); await sync();
+    previous.onExpeditionProgress?.({ area: 2, floorKills: 6, outcome: 'exploring' }); await sync();
+    expect(document.body.textContent).not.toContain('Ember Vault');
+    expect(document.body.textContent).not.toContain('Way home open');
+    expect(document.body.textContent).toContain('Objective progress is not available yet.');
+  });
+
+  it('clears scene cleanup observations, snapshots primitive data, and suppresses updates after unmount', async () => {
+    await open(); await depart(); const previous = options();
+    const progress = { area: 1 as const, floorKills: 2, outcome: 'exploring' as const };
+    previous.onExpeditionProgress?.(progress); await sync(); progress.floorKills = 4; await sync();
+    expect(document.body.textContent).toContain('2 wardens remaining');
+    previous.onExpeditionProgress?.(null); await sync();
+    expect(document.body.textContent).toContain('Objective progress is not available yet.');
+    await unmount(component!); component = null; await sync();
+    previous.onExpeditionProgress?.({ area: 2, floorKills: 6, outcome: 'exploring' }); await sync();
+    expect(document.querySelector('[data-testid="expedition-objectives"]')).toBeNull();
+    expect(requests(SIGN)).toHaveLength(0);
+  });
+
 });

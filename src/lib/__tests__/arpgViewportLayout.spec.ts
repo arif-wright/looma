@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { arpgViewportLayout, ARPG_DESKTOP_ZOOM, TOWN_FRAMING_BOUNDS } from '../games/arpg/viewportLayout';
+import { arpgViewportLayout, ARPG_DESKTOP_ZOOM, TOWN_FRAMING_BOUNDS, TOWN_VISIBLE_RIGHT, TOWN_SOURCE_RIGHT } from '../games/arpg/viewportLayout';
 import { TOWN_CORNER_LAYOUT } from '../games/arpg/assets/townCorner';
 import { World } from '../games/arpg/ecs/components';
 vi.mock('phaser', () => ({ default: { Scene: class {}, Math: { Vector2: class {}, Between: (minimum: number) => minimum } } }));
@@ -18,7 +18,7 @@ const within = (point: { x: number; y: number }, rect: { x: number; y: number; w
 };
 
 describe('ARPG narrow viewport geometry (no renderer)', () => {
-  it.each([[280, 280], [320, 280], [374, 280], [600, 340], [390, 420], [844, 320]])(
+  it.each([[280, 280], [320, 280], [374, 280], [600, 340], [844, 320]])(
     'fits the full hero/shop/entrance framing box between readable UI strips at %sx%s', (width, height) => {
       const layout = arpgViewportLayout(width, height, true);
       expect(layout.compact).toBe(true);
@@ -67,17 +67,39 @@ describe('ARPG narrow viewport geometry (no renderer)', () => {
     for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, layout.playfield);
   });
 
-  it('gives the actual phone portrait canvas enough height without changing framing bounds', () => {
-    const width = 374, height = width * 4 / 3;
+  it.each([320, 374, 390])('places the portrait hero at 25–40 percent width with visible art and prompt clear of UI (%s wide)', (width) => {
+    const height = width * 4 / 3;
     const layout = arpgViewportLayout(width, height, true);
     expect(layout.camera.zoom).toBeCloseTo((width - 32) / 470);
-    expect(layout.camera.zoom).toBeGreaterThanOrEqual(0.72);
-    expect(layout.camera.zoom / arpgViewportLayout(width, 280, true).camera.zoom).toBeGreaterThan(2);
-    for (const x of [TOWN_FRAMING_BOUNDS.left, TOWN_FRAMING_BOUNDS.right]) {
-      for (const y of [TOWN_FRAMING_BOUNDS.top, TOWN_FRAMING_BOUNDS.bottom]) within(project(layout, x, y), layout.playfield);
+    expect(layout.camera.zoom).toBeGreaterThanOrEqual(0.61);
+    expect(layout.camera.zoom / arpgViewportLayout(width, 280, true).camera.zoom).toBeGreaterThan(1.7);
+    const hero = project(layout, 0, 0);
+    expect(hero.x / width).toBeGreaterThanOrEqual(0.25);
+    expect(hero.x / width).toBeLessThanOrEqual(0.40);
+    // Alpha>=32 hulls from the pinned source and released decoded hero frame.
+    // Geometric assertions do not establish newly rendered pixel clarity.
+    const artBand = { x: 24, y: layout.hud.y + layout.hud.height + 12,
+      width: width - 48, height: layout.controls.y - 12 - (layout.hud.y + layout.hud.height + 12) };
+    for (const x of [-12, 41]) for (const y of [-34, 12]) within(project(layout, x, y), artBand);
+    const art = TOWN_CORNER_LAYOUT;
+    for (const x of [395, 1214]) for (const y of [155, 936]) {
+      within(project(layout, 256 + (x - 666) * art.entranceScale, 128 + (y - 826) * art.entranceScale), artBand);
+    }
+    // The untrimmed shop is conservative and remains entirely visible.
+    for (const x of [192 - 618 * art.shopScale, 192 + (1254 - 618) * art.shopScale]) {
+      for (const y of [32 - 1175 * art.shopScale, 32 + (1254 - 1175) * art.shopScale]) within(project(layout, x, y), artBand);
+    }
+    expect(project(layout, TOWN_VISIBLE_RIGHT, 128).x).toBeLessThanOrEqual(width - 24);
+    expect(project(layout, TOWN_SOURCE_RIGHT, 128).x).toBeLessThanOrEqual(width - 2 + 0.001);
+    const fullSourceBand = { ...artBand, x: 0, width };
+    for (const x of [0, 1536]) for (const y of [0, 1024]) {
+      within(project(layout, 256 + (x - 666) * art.entranceScale, 128 + (y - 826) * art.entranceScale), fullSourceBand);
     }
     const label = project(layout, 256, 168);
-    for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, layout.playfield);
+    const labelBand = { ...artBand, x: 12, width: width - 24 };
+    for (const dx of [-60, 60]) for (const dy of [-12, 12]) within({ x: label.x + dx, y: label.y + dy }, labelBand);
+    expect(layout.camera.zoom).toBeCloseTo((width - 32) / 470); // No added sprite scale/zoom.
+
   });
 
   it('scopes the taller route ratio to narrow portrait and preserves desktop and landscape CSS', () => {
@@ -89,11 +111,11 @@ describe('ARPG narrow viewport geometry (no renderer)', () => {
     expect(portrait!.index).toBeGreaterThan(source.indexOf('@media (max-width: 768px)'));
   });
 
-  it.each([true, false])('preserves the desktop layout and camera exactly (town=%s)', (town) => {
+  it.each([true, false])('uses shallow town UI, preserves dungeon UI, and keeps the desktop camera exactly (town=%s)', (town) => {
     const layout = arpgViewportLayout(1068, 600, town);
     expect(layout.compact).toBe(false);
-    expect(layout.hud).toEqual({ x: 36, y: 32, width: 440, height: 180 });
-    expect(layout.controls).toEqual({ x: 36, y: 210, width: 360, height: 72 });
+    expect(layout.hud).toEqual(town ? { x: 24, y: 20, width: 480, height: 90 } : { x: 36, y: 32, width: 440, height: 180 });
+    expect(layout.controls).toEqual(town ? { x: 24, y: 508, width: 420, height: 72 } : { x: 36, y: 210, width: 360, height: 72 });
     expect(layout.camera).toEqual({ zoom: 1.35, offsetX: 0, offsetY: 0 });
   });
 
@@ -170,29 +192,58 @@ describe('real ARPG scene applies and restores responsive layout (renderer mocke
     expect(s.portalText.text).toBe('E · Enter ruins');
   });
 
-  it('restores desktop positions, text, sizes, wrapping and camera after a resize', () => {
+  it('applies shallow desktop town UI while restoring readable controls and the unchanged camera', () => {
     const s = makeScene(); s.updateFixedUITransforms();
     s.scale = { width: 1068, height: 600, gameSize: { width: 1068, height: 600 } };
     s.updateFixedUITransforms();
-    expect(s.hudPanel.setSize).toHaveBeenLastCalledWith(440, 180);
-    expect(s.uiContainer.setPosition).toHaveBeenLastCalledWith(36, 32);
-    expect(s.controlContainer.setPosition).toHaveBeenLastCalledWith(36, 210);
-    expect(s.controlPanel.setSize).toHaveBeenLastCalledWith(360, 72);
+    expect(s.hudPanel.setSize).toHaveBeenLastCalledWith(480, 90);
+    expect(s.uiContainer.setPosition).toHaveBeenLastCalledWith(24, 20);
+    expect(s.controlContainer.setPosition).toHaveBeenLastCalledWith(24, 508);
+    expect(s.controlPanel.setSize).toHaveBeenLastCalledWith(420, 72);
     expect(s.instructionsText.visible).toBe(true);
-    expect(s.scoreText.fontSize).toBe(20); expect(s.hpText.fontSize).toBe(16);
-    expect(s.scoreText.text).toBe('Hero Lv 1 · XP 0/100 · Score 5600');
-    expect(s.areaText.text).toBe('Lantern Square · Gold 0 carried / 0 banked');
+    expect(s.scoreText.fontSize).toBe(17); expect(s.hpText.fontSize).toBe(14);
+    expect(s.scoreText.text).toBe('Lv 1 · XP 0/100 · Score 5600');
+    expect(s.areaText.text).toBe('Lantern Sq. · G0/0');
     expect(s.controlStatus.text).toBe('Town is untimed. Depart when ready.');
     expect(s.primaryControl.fontSize).toBe(16);
     expect(s.primaryControl.setPadding).toHaveBeenLastCalledWith(10, 4);
     expect(s.primaryControl.setWordWrapWidth).toHaveBeenLastCalledWith(0);
     expect(s.primaryControl.setMaxLines).toHaveBeenLastCalledWith(0);
-    expect(s.hpBarSize).toEqual({ width: 240, height: 16 });
+    expect(s.hpBarSize).toEqual({ width: 96, height: 10 });
     expect(s.cameras.main.setZoom).toHaveBeenLastCalledWith(1.35);
     expect(s.portalText.setScale).toHaveBeenLastCalledWith(1);
     expect(s.cameras.main.setFollowOffset).toHaveBeenLastCalledWith(0, 0);
     expect(s.cameras.main.centerOn).toHaveBeenLastCalledWith(1472, 536);
     expect(s.uiCamera.setSize).toHaveBeenLastCalledWith(1068, 600);
+  });
+
+  it('restores every original desktop dungeon HUD field and retains detailed town status', () => {
+    const s = makeScene(1068, 600);
+    s.townMessage = 'Saving is unavailable. Please retry.';
+    s.updateFixedUITransforms();
+    expect(s.controlStatus.text).toBe('Saving is unavailable. Please retry.');
+    const hero = { ...s.world.getTransform(s.playerId) };
+    s.expedition.area = 1; s.expeditionActive = true; s.elapsed = 1234;
+    s.updateFixedUITransforms();
+    expect(s.compactHUD).toBe(false);
+    expect(s.hudPanel.setSize).toHaveBeenLastCalledWith(440, 180);
+    expect(s.uiContainer.setPosition).toHaveBeenLastCalledWith(36, 32);
+    expect(s.controlContainer.setPosition).toHaveBeenLastCalledWith(36, 210);
+    expect(s.controlPanel.setSize).toHaveBeenLastCalledWith(360, 72);
+    expect(s.instructionsText.text).toContain('Gold and levels last this run');
+    expect(s.instructionsText.fontSize).toBe(16);
+    expect(s.scoreText.fontSize).toBe(20); expect(s.hpText.fontSize).toBe(16);
+    expect(s.scoreText.text).toBe('Hero Lv 1 · XP 0/100 · Score 5600');
+    expect(s.areaText.text).toContain('Gold 0 carried / 0 banked');
+    expect(s.hpBarSize).toEqual({ width: 240, height: 16 });
+    expect(s.hpBarBg.setPosition).toHaveBeenLastCalledWith(16, 120);
+    expect(s.cameras.main.setZoom).toHaveBeenLastCalledWith(1.35);
+    expect(s.cameras.main.setFollowOffset).toHaveBeenLastCalledWith(0, 0);
+    expect(s.world.getTransform(s.playerId)).toEqual(hero);
+    expect([s.elapsed, s.durationLimit, s.expeditionActive]).toEqual([1234, 90000, true]);
+    s.expedition.area = 0; s.updateFixedUITransforms();
+    expect(s.hudPanel.setSize).toHaveBeenLastCalledWith(480, 90);
+    expect(s.controlStatus.text).toBe('Saving is unavailable. Please retry.');
   });
 
   it('does not recenter or rerasterize text on every unchanged frame', () => {
